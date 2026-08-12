@@ -14,7 +14,7 @@ from core.db import db, client  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
 from engines import storage, alerting  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
-                    ai_routes, leads, admin, photos, billing, revenue, phase4, phase5)  # noqa: E402
+                    ai_routes, leads, admin, photos, billing, revenue, phase4, phase5, phase6)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
@@ -42,6 +42,7 @@ api_router.include_router(billing.router)
 api_router.include_router(revenue.router)
 api_router.include_router(phase4.router)
 api_router.include_router(phase5.router)
+api_router.include_router(phase6.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -115,6 +116,30 @@ async def seed():
     scheduler.add_job(alerting.check_all_alerts,
                       CronTrigger(hour=8, minute=0),
                       id="daily_price_alerts", max_instances=1, coalesce=True)
+    # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
+    async def snapshot_watched():
+        from engines import price_search
+        queries = await db.price_alerts.distinct("query", {"active": True})
+        for q in queries[:50]:
+            try:
+                res = await price_search.search(q, 20)
+                day = datetime.now(timezone.utc).date().isoformat()
+                for r in res.get("results", []):
+                    if not r.get("price"):
+                        continue
+                    exists = await db.price_history_daily.find_one(
+                        {"query": q.lower(), "supplier_key": r.get("supplier_key"), "day": day})
+                    if exists:
+                        continue
+                    await db.price_history_daily.insert_one({
+                        "query": q.lower(), "supplier_key": r.get("supplier_key"),
+                        "supplier": r.get("supplier"), "price": r.get("price"),
+                        "product": r.get("product"), "day": day,
+                        "at": datetime.now(timezone.utc).isoformat()})
+            except Exception as e:
+                logger.warning(f"Snapshot failed for '{q}': {e}")
+    scheduler.add_job(snapshot_watched, CronTrigger(hour=3, minute=0),
+                      id="daily_price_snapshot", max_instances=1, coalesce=True)
     scheduler.start()
     app.state.scheduler = scheduler
     logger.info("Scheduler started (daily price alerts @ 08:00 UTC)")

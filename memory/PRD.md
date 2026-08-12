@@ -50,7 +50,20 @@ Langue produit : **Français**.
 - **Leads** : `POST /api/leads`, admin `GET /api/admin/leads`, `GET /api/admin/stats`.
 - **Admin** : RBAC via `Depends(admin_user)` — user reçoit 403.
 
-## 4. État actuel (12/02/2026 — itération 9 · Phase 5 livrée)
+## 4. État actuel (12/02/2026 — itération 10 · Phases 1-6 livrées)
+### ✅ Implémenté & testé (Backend 155/155 pytest cumulés · Frontend 100%)
+- Fondations : Landing, Smart Project IA, Estimateur, 5 calculateurs, Coach IA SSE, Dashboard, Photos avant/après (Object Storage + compression), Chantier Timeline, Alertes Prix cron, Tavily temps réel, PDF devis + email Resend, QuoteScanner (image + PDF), rebranding ConstruPilot.
+- **PHASE 1** : 8 plans core + Stripe + entitlements + trial 7j + soft paywall.
+- **PHASE 2** : Savings Engine (4 postes) + Codes promo Stripe admin.
+- **PHASE 3** : Referral 5€/5€ + Marketplace + Lead Scoring 0-100.
+- **PHASE 4** : API commerciale + KYC pros + Portail Pro + Affiliation.
+- **PHASE 5** : White Label + Portail Fournisseurs + Enterprise + Landing /docs.
+- **PHASE 6** ✅
+  - **Onboarding Guidé** : 4 étapes, auto-affiché sur /dashboard, flag localStorage.
+  - **PWA** : `manifest.json` + `sw.js` (cache-first shell, network-first API avec fallback), installable iPhone/Android + offline pour les données déjà chargées.
+  - **Sponsored Products** : admin CRUD `/api/admin/sponsorships` (supplier_key, keywords, budget quotidien, CPC, priorité). Insertion en tête de `/api/prices/search` avec badge "Sponsorisé". Décrément budget via `/api/sponsored/click`.
+  - **Historique Prix** : snapshot quotidien 03:00 UTC + endpoint manuel + `GET /api/prices/history/chart`. Composant `PriceHistoryChart` (recharts) sur `/prix` avec delta prix, min/max/actuel.
+- Bug latent fixé : `insert_many([])` dans `price_search.search` (guard `if docs:` ajouté par testing agent).
 ### ✅ Implémenté & testé (Backend 136/136 pytest cumulés · Frontend 100%)
 Toutes les fondations + Phases 1 à 5 du Revenue Engine :
 - Fondations : Landing, Smart Project IA, Estimateur, 5 calculateurs, Coach IA SSE, Dashboard, Photos avant/après (Object Storage + compression), Chantier Timeline, Alertes Prix quotidiennes (APScheduler), Tavily temps réel, PDF devis + email Resend, QuoteScanner (image + PDF), rebranding ConstruPilot.

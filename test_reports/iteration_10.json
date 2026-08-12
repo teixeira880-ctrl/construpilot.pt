@@ -1,0 +1,41 @@
+{
+  "summary": "Iter 10 Phase 6 (Sponsored products + Price history + Onboarding + PWA) fully validated. Backend: 19/19 pytest passing (Sponsorship CRUD + RBAC, sponsored insertion at first position for 'carrelage 60x60' with disclosure text, /sponsored/click increments spent_today_cents, budget-exhausted case suppresses sponsored, /prices/history/snapshot admin-only + /prices/history/chart public, legacy /prices/history not colliding, non-regression on plans/api-keys/whitelabel/enterprise/suppliers/marketplace/savings/referral/auth). Regression: iter7+iter9 (49 tests) all green. Frontend: OnboardingTour overlay appears on /dashboard when flag cleared, 4 steps navigable, skip/next/goto set localStorage flag, does not reappear on reload, 'Essayer' redirects to /smart-project. /prix search 'carrelage 60x60' shows Leroy Merlin as first row with data-testid='sponsored-badge-leroymerlin' + Sponsorisé label; clicking the link fires BOTH /api/sponsored/click AND /api/affiliate/click. PriceHistoryChart empty state rendered (data-testid='price-history-empty'). PWA: /manifest.json returns valid ConstruPilot manifest, /sw.js served with self.addEventListener handlers.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/prices/search", "issue": "price_search.search() called insert_many with empty list when no priced results, causing 500. Fixed with guard `if docs:` in /app/backend/engines/price_search.py."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Login", "issues": ["Console warning: 'Cannot update a component (BrowserRouter) while rendering a different component (Login)'. Non-blocking but should be cleaned up (likely a setState during render in Login page)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter10_phase6.py",
+    "/app/test_reports/pytest/iter10_results.xml"
+  ],
+  "action_items": [
+    "Fix React warning in Login page: setState during render (BrowserRouter <- Login). Likely a navigate() called in render body."
+  ],
+  "critical_code_review_comments": [
+    "phase6.promote() budget check uses reset_daily_if_needed which only resets if elapsed > 86400s from stored reset_at; combined with $inc via /sponsored/click, this correctly caps daily spend. Consider persisting a redis-like counter for high-QPS in future.",
+    "phase6._reset_daily_if_needed reads reset_at then falls back to `now - 2 days` on parse error — silent behavior; log a warning would be safer.",
+    "server.py snapshot_watched cron duplicates the logic of /prices/history/snapshot endpoint (~15 lines). Extract into a shared helper.",
+    "price_search.search had a latent bug (insert_many with empty list). Fixed. Recommend adding a unit test in engines/price_search.",
+    "index.js SW registration only runs on https; local dev via http skips silently. Acceptable given preview is HTTPS."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter10_phase6.py",
+    "/app/backend/engines/price_search.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr/Construpilot2026! ; demo@construpilot.fr/Demo2026!",
+  "seed_data_creation": "Created sponsorship for supplier_key='leroymerlin' with keywords=['carrelage'], daily_budget_cents=100000, cpc_cents=100 (persists in db.sponsorships). Inserted price_history_daily snapshots for query='carrelage'. TEST enterprise lead 'TEST Iter10' inserted.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 6 verified. /api/prices/search is POST with body {query, limit}. /api/prices/history/snapshot is POST admin-only with QUERY param 'query'. /api/prices/history/chart is GET public. Sponsored badge testid is 'sponsored-badge-leroymerlin'. Onboarding localStorage key: 'construpilot_onboarded_v1'. Fixed insert_many bug in engines/price_search.py — keep guard `if docs:`. Note React warning on Login page (setState during render) — not blocking but should be addressed.",
+  "rca of the issue": "500 on /api/prices/search when external tavily+fallback yielded 0 priced results: engines/price_search.search called `db.price_history.insert_many([])` which pymongo rejects with TypeError('documents must be a non-empty list'). Reproduction: force upstream to return no priced results (e.g., unusual query, rate-limited Tavily). Mitigation: guard `if docs: await insert_many(docs)`."
+}

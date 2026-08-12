@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { api, eur2, num } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
+import { PriceHistoryChart } from "@/components/PriceHistoryChart";
 import { useAuth } from "@/context/AuthContext";
 
 const SORTS = {
@@ -153,7 +154,12 @@ export default function PriceSearch() {
                   <TableRow key={`${r.supplier_key}-${i}`} className="even:bg-muted/30" data-testid={`price-row-${r.supplier_key}`}>
                     <TableCell className="font-medium whitespace-nowrap">
                       {r.supplier}
-                      {i === 0 && sort === "cheapest" && (
+                      {r.sponsored && (
+                        <Badge className="ml-2 rounded-sm bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 text-[9px] uppercase tracking-wider" title={r.sponsored_disclosure} data-testid={`sponsored-badge-${r.supplier_key}`}>
+                          Sponsorisé
+                        </Badge>
+                      )}
+                      {i === 0 && sort === "cheapest" && !r.sponsored && (
                         <Badge className="ml-2 rounded-sm bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0">Meilleur prix</Badge>
                       )}
                       {r.is_affiliate && (
@@ -176,7 +182,10 @@ export default function PriceSearch() {
                     </TableCell>
                     <TableCell>
                       <a href={r.tracking_url || r.url} target="_blank" rel="noreferrer noopener sponsored"
-                         onClick={() => { if (r.is_affiliate) api.post("/affiliate/click", { supplier_key: r.supplier_key, product_url: r.url, query }).catch(() => {}); }}
+                         onClick={() => {
+                           if (r.sponsored) api.post("/sponsored/click", { supplier_key: r.supplier_key, query }).catch(() => {});
+                           if (r.is_affiliate) api.post("/affiliate/click", { supplier_key: r.supplier_key, product_url: r.url, query }).catch(() => {});
+                         }}
                          data-testid={`price-link-${r.supplier_key}`}>
                         <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
                       </a>
@@ -186,6 +195,8 @@ export default function PriceSearch() {
               </TableBody>
             </Table>
           </div>
+
+          <PriceHistoryChart query={query} days={90} />
 
           <div className="grid lg:grid-cols-3 gap-4">
             {history && (

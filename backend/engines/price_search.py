@@ -188,10 +188,12 @@ async def search(query: str, limit: int = 10) -> dict:
         results = demo_search(query, limit)
         mode = "demo"
     now = datetime.now(timezone.utc)
-    await db.price_history.insert_many([{
+    docs = [{
         "query": query.lower(), "supplier_key": r["supplier_key"], "product": r["product"],
         "price": r["price"], "source": r["source"], "checked_at": now.isoformat(),
-    } for r in results if r.get("price")])
+    } for r in results if r.get("price")]
+    if docs:
+        await db.price_history.insert_many(docs)
     return {"query": query, "mode": mode, "checked_at": now.isoformat(), "results": results}
 
 

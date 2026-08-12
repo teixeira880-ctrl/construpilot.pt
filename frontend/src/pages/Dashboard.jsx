@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, eur, num, IMAGES } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import { Stat } from "@/components/Bits";
 
 const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
@@ -42,6 +43,7 @@ export default function Dashboard() {
 
   return (
     <div className="grid gap-10">
+      <OnboardingTour />
       <div className="relative overflow-hidden rounded-md border border-border grain">
         <img src={IMAGES.dashboard_banner} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />

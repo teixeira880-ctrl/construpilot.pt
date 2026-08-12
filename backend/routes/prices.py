@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from core.db import db
 from core.security import current_user, optional_user
 from engines import price_search, affiliate
+from routes.phase6 import promote as promote_sponsored
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 
@@ -30,7 +31,8 @@ async def search(body: SearchIn, user=Depends(optional_user)):
                                       "$set": {"last_at": datetime.now(timezone.utc).isoformat()}},
                                      upsert=True)
     result = await price_search.search(body.query, body.limit)
-    result["results"] = await affiliate.enrich_prices(result.get("results") or [])
+    enriched = await affiliate.enrich_prices(result.get("results") or [])
+    result["results"] = await promote_sponsored(enriched, body.query)
     return result
 
 
