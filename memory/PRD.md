@@ -50,7 +50,24 @@ Langue produit : **Français**.
 - **Leads** : `POST /api/leads`, admin `GET /api/admin/leads`, `GET /api/admin/stats`.
 - **Admin** : RBAC via `Depends(admin_user)` — user reçoit 403.
 
-## 4. État actuel (12/02/2026 — itération 7-8)
+## 4. État actuel (12/02/2026 — itération 9 · Phase 5 livrée)
+### ✅ Implémenté & testé (Backend 136/136 pytest cumulés · Frontend 100%)
+Toutes les fondations + Phases 1 à 5 du Revenue Engine :
+- Fondations : Landing, Smart Project IA, Estimateur, 5 calculateurs, Coach IA SSE, Dashboard, Photos avant/après (Object Storage + compression), Chantier Timeline, Alertes Prix quotidiennes (APScheduler), Tavily temps réel, PDF devis + email Resend, QuoteScanner (image + PDF), rebranding ConstruPilot.
+- **PHASE 1** : 8 plans core + Stripe checkout + entitlements + trial 7j + soft paywall + upgrade CTA.
+- **PHASE 2** : Savings Engine (4 postes) + Codes promo Stripe admin.
+- **PHASE 3** : Referral 5€/5€ + Marketplace + Lead Scoring 0-100.
+- **PHASE 4** : API commerciale (3 plans, page `/developpeurs`), KYC pros, Portail Pro `/pro` (crédits + achats leads), Affiliation Awin/CJ.
+- **PHASE 5** ✅
+  - **White Label** : `WhiteLabelContext` (lit `?tenant=slug`), config publique `/api/whitelabel/config`, admin CRUD. Applique couleur primaire + document.title.
+  - **Portail Fournisseurs** `/fournisseur` : réclamation d'enseigne, dashboard KPI clics/redirections/GMV/commissions/top produits/top requêtes.
+  - **Enterprise** `/enterprise` (public) : formulaire complet (SSO/SLA), scoring interne, notification email admin. Admin liste `/api/admin/enterprise/leads`.
+  - **Landing Développeurs** `/docs` : 4 cas d'usage B2B, exemples curl copiables (estimation/prices/calculators + Node.js), CTA vers /tarifs + /enterprise.
+
+### 🟡 Points d'attention (non bloquants)
+- Warning React setState during render dans Login/AuthContext.
+- Tavily ~25% fallback demo.
+- Webhook Stripe non testable en preview.
 ### ✅ Implémenté & testé (Backend 119/119 pytest cumulés, tous flows frontend 100%)
 - Landing, Smart Project, catalogue travaux, auth email + Google, seed idempotent.
 - Smart Project IA, Estimateur wizard, 5 calculateurs matériaux.

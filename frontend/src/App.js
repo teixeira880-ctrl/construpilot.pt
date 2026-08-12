@@ -4,6 +4,7 @@ import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BillingProvider } from "@/context/BillingContext";
+import { WhiteLabelProvider } from "@/context/WhiteLabelContext";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import Landing from "@/pages/Landing";
@@ -24,6 +25,9 @@ import Referral from "@/pages/Referral";
 import Marketplace from "@/pages/Marketplace";
 import ProPortal from "@/pages/ProPortal";
 import ApiKeys from "@/pages/ApiKeys";
+import Docs from "@/pages/Docs";
+import Enterprise from "@/pages/Enterprise";
+import SupplierPortal from "@/pages/SupplierPortal";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 
 const Protected = ({ children, admin }) => {
@@ -69,6 +73,9 @@ function AppRouter() {
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />
       <Route path="/pro/paiement/succes" element={<Protected><Shell><PaymentSuccess /></Shell></Protected>} />
       <Route path="/developpeurs" element={<Protected><Shell><ApiKeys /></Shell></Protected>} />
+      <Route path="/docs" element={<Shell><Docs /></Shell>} />
+      <Route path="/enterprise" element={<Shell><Enterprise /></Shell>} />
+      <Route path="/fournisseur" element={<Protected><Shell><SupplierPortal /></Shell></Protected>} />
       <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
       <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
@@ -90,8 +97,10 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <BillingProvider>
-            <AppRouter />
-            <Toaster position="top-right" richColors />
+            <WhiteLabelProvider>
+              <AppRouter />
+              <Toaster position="top-right" richColors />
+            </WhiteLabelProvider>
           </BillingProvider>
         </AuthProvider>
       </BrowserRouter>

@@ -18,6 +18,7 @@ const LINKS = [
   { to: "/coach", label: "Coach IA", icon: MessageSquare },
   { to: "/marketplace", label: "Trouver un pro", icon: Wrench },
   { to: "/pro", label: "Espace pro", icon: Handshake },
+  { to: "/docs", label: "API & Développeurs", icon: FileSearch },
   { to: "/tarifs", label: "Tarifs", icon: Sparkles },
 ];
 
