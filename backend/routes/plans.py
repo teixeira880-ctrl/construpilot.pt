@@ -415,12 +415,6 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
 
     Retourne une image PNG base64 stockée sur le plan (permet re-render sans coût).
     """
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
-
-    api_key = os.getenv("EMERGENT_LLM_KEY")
-    if not api_key:
-        raise HTTPException(500, "EMERGENT_LLM_KEY manquant")
-
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "pages": 1, "filename": 1, "rooms": 1}
@@ -434,41 +428,11 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
     if not img_b64:
         raise HTTPException(500, "Image du plan manquante")
 
-    # Build prompt
-    style_prompt = _STYLE_PROMPTS.get(body.style, _STYLE_PROMPTS["photoreal"])
-    rooms = p.get("rooms") or []
-    room_hint = ""
-    if rooms:
-        room_labels = ", ".join(sorted({r.get("name", "") for r in rooms if r.get("name")}))
-        if room_labels:
-            room_hint = f"\nDetected room labels: {room_labels}."
-    furniture = ("with realistic furniture" if body.include_furniture
-                  else "empty, no furniture")
-    extra = f"\nAdditional instructions: {body.extra_prompt}" if body.extra_prompt else ""
-    prompt = (
-        f"Convert this 2D architectural floor plan into a {style_prompt}, "
-        f"{furniture}. Preserve the room layout, walls, doors and windows exactly "
-        f"as shown. Do NOT return a 2D plan — generate a full 3D visualization."
-        f"{room_hint}{extra}"
+    generated_b64, mime, prompt = await _gemini_render_3d(
+        plan_id=plan_id, page_index=body.page_index, page_img_b64=img_b64,
+        rooms=p.get("rooms") or [], style=body.style,
+        include_furniture=body.include_furniture, extra_prompt=body.extra_prompt,
     )
-
-    try:
-        chat = (LlmChat(api_key=api_key,
-                        session_id=f"render3d_{plan_id}_{body.page_index}",
-                        system_message="You are an architectural visualization AI.")
-                .with_model("gemini", "gemini-2.5-flash-image"))
-        message = UserMessage(text=prompt,
-                              file_contents=[ImageContent(image_base64=img_b64)])
-        text_out, images = await chat.send_message_multimodal_response(message)
-    except Exception as e:
-        logger.error(f"render_3d LLM error: {type(e).__name__} {e}")
-        raise HTTPException(502, f"Génération 3D échouée : {type(e).__name__}")
-
-    if not images:
-        raise HTTPException(502,
-            "Le modèle n'a pas renvoyé d'image (essayez un autre style).")
-    generated_b64 = images[0].get("data")
-    mime = images[0].get("mime_type", "image/png")
 
     render_id = "r3d_" + secrets.token_hex(5)
     render_doc = {
@@ -487,6 +451,53 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
     return {"ok": True, "render_id": render_id, "style": body.style,
             "mime_type": mime, "image_b64": generated_b64,
             "prompt_used": prompt[:400]}
+
+
+async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
+                             rooms: list, style: str, include_furniture: bool,
+                             extra_prompt: str | None = None) -> tuple[str, str, str]:
+    """Core Gemini Nano Banana call — returns (b64_out, mime, prompt_used).
+
+    Extracted so it can be reused by the multi-style video endpoint.
+    """
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+
+    api_key = os.getenv("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(500, "EMERGENT_LLM_KEY manquant")
+
+    style_prompt = _STYLE_PROMPTS.get(style, _STYLE_PROMPTS["photoreal"])
+    room_hint = ""
+    if rooms:
+        room_labels = ", ".join(sorted({r.get("name", "") for r in rooms if r.get("name")}))
+        if room_labels:
+            room_hint = f"\nDetected room labels: {room_labels}."
+    furniture = ("with realistic furniture" if include_furniture
+                  else "empty, no furniture")
+    extra = f"\nAdditional instructions: {extra_prompt}" if extra_prompt else ""
+    prompt = (
+        f"Convert this 2D architectural floor plan into a {style_prompt}, "
+        f"{furniture}. Preserve the room layout, walls, doors and windows exactly "
+        f"as shown. Do NOT return a 2D plan — generate a full 3D visualization."
+        f"{room_hint}{extra}"
+    )
+
+    try:
+        chat = (LlmChat(api_key=api_key,
+                        session_id=f"render3d_{plan_id}_{page_index}_{style}",
+                        system_message="You are an architectural visualization AI.")
+                .with_model("gemini", "gemini-2.5-flash-image"))
+        message = UserMessage(text=prompt,
+                              file_contents=[ImageContent(image_base64=page_img_b64)])
+        _text_out, images = await chat.send_message_multimodal_response(message)
+    except Exception as e:
+        logger.error(f"_gemini_render_3d LLM error: {type(e).__name__} {e}")
+        raise HTTPException(502, f"Génération 3D échouée : {type(e).__name__}") from e
+
+    if not images:
+        raise HTTPException(502,
+            "Le modèle n'a pas renvoyé d'image (essayez un autre style).")
+    return images[0].get("data"), images[0].get("mime_type", "image/png"), prompt
 
 
 @router.get("/{plan_id}/renders-3d")
@@ -524,6 +535,113 @@ async def get_render_3d(plan_id: str, render_id: str, user=Depends(current_user)
                     "image_b64": r.get("image_b64"),
                     "created_at": r.get("created_at")}
     raise HTTPException(404, "Rendu 3D introuvable")
+
+
+
+# ============ VIDEO TOUR 3D (multi-styles Nano Banana → MP4) ============
+
+class RenderVideoIn(BaseModel):
+    page_index: int = 0
+    include_furniture: bool = True
+    # Styles used in order (each = 5s clip). Default = the "wow" sequence.
+    styles: list[str] = Field(default_factory=lambda:
+        ["isometric", "photoreal", "axonometric", "interior"])
+
+
+@router.post("/{plan_id}/render-video")
+async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(current_user)):
+    """Génère 4 rendus IA du plan avec des styles différents et les assemble
+    en un tour vidéo MP4 (Ken Burns + crossfade) à joindre au devis.
+
+    Réutilise `_gemini_render_3d` pour chaque style. Prévoir 60-180s d'exécution.
+    """
+    from engines.video_tour import build_video_tour, VIDEO_CACHE_DIR  # noqa: F401
+
+    if not body.styles or len(body.styles) < 2:
+        raise HTTPException(400, "Au moins 2 styles requis pour un tour vidéo")
+    if len(body.styles) > 6:
+        raise HTTPException(400, "6 styles max par vidéo")
+    unknown = [s for s in body.styles if s not in _STYLE_PROMPTS]
+    if unknown:
+        raise HTTPException(400, f"Style(s) inconnu(s) : {', '.join(unknown)}")
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages": 1, "rooms": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if body.page_index < 0 or body.page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    img_b64 = pages[body.page_index].get("image_png_b64")
+    if not img_b64:
+        raise HTTPException(500, "Image du plan manquante")
+    rooms = p.get("rooms") or []
+
+    # 1) Generate one PNG per style (sequential — Gemini rate limits)
+    frames_b64: list[str] = []
+    for style in body.styles:
+        b64_out, _mime, _prompt = await _gemini_render_3d(
+            plan_id=plan_id, page_index=body.page_index, page_img_b64=img_b64,
+            rooms=rooms, style=style, include_furniture=body.include_furniture,
+        )
+        frames_b64.append(b64_out)
+
+    # 2) Assemble MP4 (ffmpeg)
+    try:
+        mp4_path, meta = build_video_tour(frames_b64, styles=body.styles)
+    except Exception as e:
+        logger.error(f"video_tour build failed: {type(e).__name__} {e}")
+        raise HTTPException(502, f"Assemblage vidéo échoué : {type(e).__name__}") from e
+
+    # 3) Save meta doc (video file kept on disk)
+    doc = {
+        "video_id": meta["video_id"],
+        "plan_id": plan_id,
+        "user_id": user["user_id"],
+        "page_index": body.page_index,
+        "styles": body.styles,
+        "include_furniture": body.include_furniture,
+        "duration_s": meta["duration_s"],
+        "size_bytes": meta["size_bytes"],
+        "filename": mp4_path.name,
+        "created_at": _now(),
+    }
+    await db.plan_videos_3d.insert_one(doc)
+    return {"ok": True, **{k: v for k, v in doc.items() if k != "_id"}}
+
+
+@router.get("/{plan_id}/videos-3d")
+async def list_videos_3d(plan_id: str, user=Depends(current_user)):
+    """Liste les tours vidéo 3D générés pour ce plan (meta uniquement)."""
+    cursor = db.plan_videos_3d.find(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "video_id": 1, "styles": 1, "duration_s": 1,
+         "size_bytes": 1, "created_at": 1, "page_index": 1},
+    ).sort("created_at", -1).limit(20)
+    videos = await cursor.to_list(length=20)
+    return {"plan_id": plan_id, "videos": videos}
+
+
+@router.get("/{plan_id}/videos-3d/{video_id}/mp4")
+async def get_video_3d_mp4(plan_id: str, video_id: str, user=Depends(current_user)):
+    """Stream le MP4 depuis le disque (FileResponse)."""
+    from fastapi.responses import FileResponse
+    from engines.video_tour import get_video_path
+
+    doc = await db.plan_videos_3d.find_one(
+        {"plan_id": plan_id, "video_id": video_id, "user_id": user["user_id"]},
+        {"_id": 0, "filename": 1},
+    )
+    if not doc:
+        raise HTTPException(404, "Vidéo introuvable")
+    path = get_video_path(video_id)
+    if not path:
+        raise HTTPException(404, "Fichier vidéo manquant sur le disque")
+    return FileResponse(str(path), media_type="video/mp4",
+                        filename=f"tour-3d-{plan_id}.mp4")
+
 
 
 @router.post("/{plan_id}/room-autofill")

@@ -36,6 +36,7 @@ import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
 import PlanCompare from "@/pages/PlanCompare";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
+import { I18nProvider } from "@/context/I18nContext";
 
 const Protected = ({ children, admin }) => {
   const { user, loading } = useAuth();
@@ -109,14 +110,16 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <AuthProvider>
-          <BillingProvider>
-            <WhiteLabelProvider>
-              <AppRouter />
-              <Toaster position="top-right" richColors />
-            </WhiteLabelProvider>
-          </BillingProvider>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <BillingProvider>
+              <WhiteLabelProvider>
+                <AppRouter />
+                <Toaster position="top-right" richColors />
+              </WhiteLabelProvider>
+            </BillingProvider>
+          </AuthProvider>
+        </I18nProvider>
       </BrowserRouter>
     </div>
   );

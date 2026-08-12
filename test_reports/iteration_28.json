@@ -1,0 +1,26 @@
+{
+  "summary": "Iteration 28 — Frontend-only testing of 3 features: (1) Demo Access Panel on /login, (2) FR/EN Lang Toggle in Nav (i18n context + localStorage), (3) Interactive 3D Three.js mode inside render-3d-dialog. All three features PASS. 4/4 demo login buttons present with correct emails; demo-login-pro navigates to /dashboard. LangToggle is visible logged-out on public pages (homepage + Nav pages) and logged-in — toggles FR→EN, persists to localStorage key 'construpilot_lang', updates document.documentElement.lang, and survives hard reload. Interactive 3D dialog opens via plan-render-3d-btn, mode switcher swaps AI vs Interactive views, three-canvas + <canvas> element rendered, wall-height-slider / cam-reset-btn / cam-top-btn all functional, and the empty-state (no measured rooms, uploaded blank test PNG) renders with just the grid without crashing. Switching back to AI mode restores the render-3d-style Select. No console errors thrown by Interactive3D.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/login", "issues": ["Login page is a standalone layout WITHOUT the Nav component, so the lang-toggle is not present on /login itself. The review request said 'toggle also visible when logged out (next to Commencer button in Nav)' — this is satisfied on ALL pages that use Nav (homepage, /estimation, /tarifs, etc.). This is correct behaviour, not a bug — but worth noting in case the spec expected the toggle on /login too."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iter28_interactive3d.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx is ~2118 lines — recommend splitting into smaller sub-components (Interactive3D was already extracted, similar work needed for dialogs).",
+    "There is no URL-based deep-link to open an existing plan by id (e.g. /plan/{id}). Currently the user must upload a plan or none of the plan-level features (including render-3d) can be reached. This is a UX gap for demo/testing (had to upload a dummy PNG to reach the render-3d-btn during testing).",
+    "I18nContext only wires the toggle + storage; no components actually consume t() yet (as noted in the review). This is expected but should be documented as 'wiring only' feature.",
+    "Interactive3D uses manual orbit controls (mousedown/mousemove listeners on window). onUp/onMove listeners are attached to window and correctly removed on cleanup — good. However mount.innerHTML='' on both init and cleanup means a StrictMode double-invoke would work, verified no leaked canvases."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! used via demo-login-pro button. All 4 demo buttons validated to match /app/memory/test_credentials.md.",
+  "seed_data_creation": "Uploaded a small dummy 200x200 white PNG via /takeoffs/upload as the plan_d6e446d3a459 could not be opened directly by URL (no deep-link route). This proved the empty-state behaviour of Interactive3D (no rooms → grid-only, no crash).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "PlanTakeoff has no /plan/{id} route — to reach the render-3d dialog you must upload a plan first (or trigger loadAllPlans + inject state). Demo login buttons on /login work reliably. LangToggle is in Nav; /login page uses its own layout and does not show the toggle there."
+}

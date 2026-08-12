@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { LangToggle } from "@/context/I18nContext";
 
 const LINKS = [
   { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, auth: true },
@@ -104,6 +105,7 @@ export const Nav = () => {
           )}
           {user ? (
             <>
+              <LangToggle />
               <NotificationsBell />
               <span className="hidden md:block text-sm text-muted-foreground max-w-[140px] truncate">
                 {user.name}
@@ -116,11 +118,14 @@ export const Nav = () => {
               </Button>
             </>
           ) : (
-            <Link to="/login" data-testid="nav-login-btn">
-              <Button size="sm" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                <Sparkles className="h-4 w-4" /> Commencer
-              </Button>
-            </Link>
+            <>
+              <LangToggle />
+              <Link to="/login" data-testid="nav-login-btn">
+                <Button size="sm" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                  <Sparkles className="h-4 w-4" /> Commencer
+                </Button>
+              </Link>
+            </>
           )}
           <button
             className="xl:hidden h-9 w-9 grid place-items-center rounded-sm border border-border"

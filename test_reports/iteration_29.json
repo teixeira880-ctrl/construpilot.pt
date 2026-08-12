@@ -1,0 +1,31 @@
+{
+  "summary": "Iter29 tested: (1) PlanTakeoff refactor regression (dialog extraction — 2117→1662 lines, 4 sub-components), (2) new Rendu Vidéo backend endpoints + validation, (3) new Rendu Vidéo frontend panel. Backend: 6/6 pytest tests PASS (3 validation + 3 full generation flow incl. 200 render-video with 2 styles, GET /videos-3d listing, GET /videos-3d/{id}/mp4 streaming valid MP4 with ftyp magic bytes). Video generation completed in ~23s (much faster than the 60-180s budget). Frontend: logged in as pro@construpilot.fr, uploaded a 800x600 PNG plan, opened all 4 dialogs — Estimate (estimate-dialog + estimate-run-btn OK; estimate-to-devis-btn only appears AFTER running an estimation, which is CORRECT pre-existing behaviour, not a regression), Quote (quote-dialog + all 5 testids OK), Render3D (render-3d-dialog + all 3 mode-tabs OK), MultiQuote (multi-quote-dialog OK). Video panel: clicking render-3d-mode-video tab shows render-video-panel with render-video-run-btn — no actual generation triggered via UI as instructed. Refactor is a pure extraction with zero regression.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter29_video_tour.py",
+    "/app/test_reports/pytest/iter29_video.xml",
+    "/app/test_reports/iter29_plan_loaded.png",
+    "/app/test_reports/iter29_video_panel.png"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx still 1662 lines — extraction is a solid start but more room to split (canvas/measure logic, walls detection UI, PDF export flow could each be their own components).",
+    "The 3 video routes (POST render-video, GET videos-3d, GET /mp4) are cleanly scoped and correctly reuse _gemini_render_3d + validate styles against _STYLE_PROMPTS. Good input validation (2-6 styles range + unknown-style rejection).",
+    "estimate-to-devis-btn is conditionally rendered based on estimateResult truthiness — expected behaviour, matches pre-refactor UX (test agent verified the guard in EstimateDialog.jsx line 117).",
+    "Video generation Gemini calls run sequentially (rate-limit friendly). Duration ~23s in test with 2 styles → main agent's 60-180s prediction was conservative, real perf is better."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter29_video_tour.py (new — 6 tests, all passing)"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (all 4 dialogs + video panel)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! (via demo-login-pro button)",
+  "seed_data_creation": "Created /tmp/testplan_big.png (800x600 with room rectangles) as upload sample to reach the plan detail view. Uploaded to pro@ account, created plan doc + one video via test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend URL env var must be exported before pytest: `export REACT_APP_BACKEND_URL=https://cmrenov-ai.preview.emergentagent.com`. Backend pytest.ini uses xdist with -n 2 --dist loadscope; for a single serial run use `-n 0` (NOT `-p no:xdist`). To reach plan detail UI (dialogs) you MUST upload a valid PNG/PDF first (no /plan/{id} deep-link route yet). A 1x1 or extremely tiny PNG fails with 422 — use 800x600 or larger. Plan detail data-testids: plan-estimate-btn, plan-quote-pdf-btn (opens quote-dialog), plan-render-3d-btn, plan-multi-quote-btn."
+}

@@ -442,12 +442,58 @@ Voir `/app/memory/test_credentials.md`.
 - iter27 : **8/8 backend pytest + frontend E2E complet PASS**.
 - Régression totale : **66/66 + 8/8 = 74/74 PASS**.
 
+## 15. Changelog Iter 29 (12/02/2026) — Refactor PlanTakeoff + Tour vidéo 3D
+
+### Refactor PlanTakeoff.jsx (2117 → 1662 lignes)
+- Extraction de 4 dialogs volumineux vers `/app/frontend/src/components/planTakeoff/` :
+  - `QuoteDialog.jsx` (devis PDF + envoi email + TVA + templates + sends history).
+  - `Render3dDialog.jsx` (IA Nano Banana + Three.js interactive + tour vidéo).
+  - `EstimateDialog.jsx` (estimation depuis takeoff).
+  - `MultiPlanDialog.jsx` (devis multi-plans consolidé).
+- État & callbacks passés en props (pas de logique déplacée). Tous les `data-testid`
+  existants préservés → 0 régression.
+
+### Rendu Vidéo 3D (nouveau — effet "wow" pour devis)
+- Nouveau moteur `engines/video_tour.py` — assemble N frames PNG en MP4 via
+  **ffmpeg** avec effet **Ken Burns** (zoompan) + **crossfade** entre clips (0.5s).
+  Sortie 1280×720 @ 30fps, ~5s par style.
+- Backend (3 endpoints, `plans.py`) :
+  - `POST /api/takeoffs/{plan_id}/render-video` — génère 2 à 6 rendus Nano Banana
+    séquentiels puis assemble en MP4. Validation styles (400 si inconnu ou <2/>6).
+  - `GET /api/takeoffs/{plan_id}/videos-3d` — liste meta (video_id, styles,
+    duration_s, size_bytes, created_at) triée desc.
+  - `GET /api/takeoffs/{plan_id}/videos-3d/{video_id}/mp4` — stream MP4 via
+    `FileResponse`. Cache disque : `/app/backend/video_cache/{video_id}.mp4`,
+    métadonnées dans collection `plan_videos_3d`.
+- Refactoring cœur : `_gemini_render_3d(*, plan_id, page_index, page_img_b64,
+  rooms, style, include_furniture, extra_prompt)` extrait de `render_3d` pour
+  réutilisation dans le tour vidéo.
+- Frontend : `Render3dDialog` gagne un 3ᵉ mode « Tour vidéo » (icône Film) avec
+  bouton `render-video-run-btn`, loader animé, `<video controls>` du résultat,
+  bouton `render-video-download-btn` (MP4), et historique vidéos précédentes.
+
+### Sécurité / robustesse
+- `subprocess.run` (ffmpeg CLI) marqué `# noqa: S603` — args contrôlés,
+  aucun input utilisateur direct dans la commande shell.
+- Test unitaire local : 3 frames (rouge/vert/bleu 800×600) → MP4 38kB en <1s.
+- Test réel avec Gemini : 2 styles générés + assemblage MP4 en ~23s (bien
+  meilleur que les 60-180s estimés).
+
+### Env
+- `VIDEO_CACHE_DIR` (défaut `/app/backend/video_cache`) — configurable.
+- ffmpeg installé via `apt-get install ffmpeg` (7.5.1.9).
+
+### Tests
+- iter29 : **6/6 backend pytest** (3 validation 400 + 3 flow complet 200) +
+  **frontend E2E 100 %** (4 dialogs refactorés + panel vidéo). 0 régression sur
+  les iter précédentes.
+- Total cumulé : **74 + 6 = 80/80 PASS**.
+
 ### Backlog restant
-- **b. Three.js 3D interactif** (option demandée en second) : extrusion 3D réelle
-  navigable dans le navigateur depuis les rooms/walls détectés. À faire dans un
-  round dédié.
-- **Multi-langue FR/EN** (encore reporté).
-- **Édition pro des lots** (prix/qté/desc/TVA sur l'Estimator).
-- **Refactor PlanTakeoff.jsx** (2 087 lignes — dépasse largement les guidelines,
-  à découper en `RenderDialog / EstimateDialog / QuoteDialog / MultiPlanDialog`).
+- PlanTakeoff.jsx encore à 1662 lignes — pourrait descendre à ~800 en extrayant
+  la logique canvas (draw/measure), les outils walls, et le panel matériaux
+  dans des sous-composants dédiés (P2, hors scope urgent).
+- Tavily API réelle (P2) — clé utilisateur toujours en attente.
+- Video : possibilité future d'ajouter un jingle audio et un logo watermark
+  en overlay pour un rendu encore plus pro.
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Hammer, ArrowLeft, Gift } from "lucide-react";
+import { Hammer, ArrowLeft, Gift, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,24 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", ref: refCodeFromUrl });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const DEMO_ACCOUNTS = [
+    { label: "Client particulier", email: "client@construpilot.fr", password: "Client2026!", color: "border-blue-500/50 text-blue-600" },
+    { label: "Pro / Owner (BTP Demo)", email: "pro@construpilot.fr", password: "Pro2026!", color: "border-primary text-primary" },
+    { label: "Collègue (member)", email: "collegue@construpilot.fr", password: "Collegue2026!", color: "border-emerald-500/50 text-emerald-600" },
+    { label: "Admin (back-office)", email: "admin@construpilot.fr", password: "Construpilot2026!", color: "border-purple-500/50 text-purple-600" },
+  ];
+
+  const demoLogin = (acc) => async () => {
+    setBusy(true);
+    try {
+      await login(acc.email, acc.password);
+      toast.success(`Connexion démo : ${acc.label}`, { position: "bottom-right", duration: 2500 });
+      navigate("/dashboard");
+    } catch (err) {
+      toast.error("Échec connexion démo — le compte a peut-être été modifié");
+    } finally { setBusy(false); }
+  };
 
   useEffect(() => {
     if (refCodeFromUrl) sessionStorage.setItem("construpilot_ref", refCodeFromUrl.toUpperCase());
@@ -159,6 +177,28 @@ export default function Login() {
               </form>
             </TabsContent>
           </Tabs>
+
+          {/* Accès démo — 1 clic */}
+          <div className="mt-8 border-t border-border pt-6" data-testid="demo-access-panel">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <p className="overline">Accès démonstration — 1 clic</p>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Testez immédiatement l'application avec un compte pré-configuré.
+              Idéal pour démonstrations ou évaluation.
+            </p>
+            <div className="grid gap-2">
+              {DEMO_ACCOUNTS.map((acc) => (
+                <button key={acc.email} onClick={demoLogin(acc)} disabled={busy}
+                        data-testid={`demo-login-${acc.email.split("@")[0]}`}
+                        className={`text-left border rounded-sm p-2 hover:bg-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed ${acc.color}`}>
+                  <p className="text-xs font-bold">{acc.label}</p>
+                  <p className="text-[10px] text-muted-foreground num">{acc.email}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

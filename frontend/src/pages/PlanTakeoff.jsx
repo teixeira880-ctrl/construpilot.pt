@@ -2,11 +2,15 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BrandingDialog } from "@/components/BrandingDialog";
+import { QuoteDialog } from "@/components/planTakeoff/QuoteDialog";
+import { Render3dDialog } from "@/components/planTakeoff/Render3dDialog";
+import { EstimateDialog } from "@/components/planTakeoff/EstimateDialog";
+import { MultiPlanDialog } from "@/components/planTakeoff/MultiPlanDialog";
 import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
-  Wand2, Zap, FileDown, History,
+  Wand2, Zap, FileDown, History, Film,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -262,6 +266,12 @@ export default function PlanTakeoff() {
   const [render3dBusy, setRender3dBusy] = useState(false);
   const [render3dImg, setRender3dImg] = useState(null);
   const [render3dHistory, setRender3dHistory] = useState([]);
+  const [render3dMode, setRender3dMode] = useState("ai"); // ai | interactive | video
+  // Video Tour (multi-styles) — assemble 4 IA renders into an MP4
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [videoHistory, setVideoHistory] = useState([]);
+  const [currentVideoId, setCurrentVideoId] = useState(null);
   const [wallsSummary, setWallsSummary] = useState(null);
   const [reclassifyMode, setReclassifyMode] = useState(false);
   const [snapPickA, setSnapPickA] = useState(null);
@@ -685,6 +695,48 @@ export default function PlanTakeoff() {
     document.body.appendChild(a); a.click(); a.remove();
   };
 
+  // ─── Tour vidéo 3D (multi-styles → MP4) ───────────────────────────────
+  const loadVideoHistory = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/videos-3d`);
+      setVideoHistory(data.videos || []);
+    } catch { /* ignore */ }
+  };
+
+  const videoBlobUrl = (videoId) =>
+    `${api.defaults.baseURL}/takeoffs/${plan.plan_id}/videos-3d/${videoId}/mp4`;
+
+  const runRenderVideo = async () => {
+    if (!plan?.plan_id) return;
+    setVideoBusy(true); setVideoUrl(null);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/render-video`, {
+        page_index: pageIndex,
+        include_furniture: render3dFurniture,
+      }, { timeout: 300000 }); // 5 min : 4 renders IA + montage ffmpeg
+      setCurrentVideoId(data.video_id);
+      setVideoUrl(videoBlobUrl(data.video_id));
+      toast.success("Tour vidéo 3D généré !");
+      await loadVideoHistory();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Génération vidéo échouée (réessayez)");
+    } finally { setVideoBusy(false); }
+  };
+
+  const openVideoHistory = (videoId) => {
+    setCurrentVideoId(videoId);
+    setVideoUrl(videoBlobUrl(videoId));
+  };
+
+  const downloadVideo = () => {
+    if (!currentVideoId) return;
+    const a = document.createElement("a");
+    a.href = videoBlobUrl(currentVideoId);
+    a.download = `tour-3d-${plan.plan_id}.mp4`;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
 
   const loadWallsSummary = async () => {
     if (!plan?.plan_id) return;
@@ -944,7 +996,7 @@ export default function PlanTakeoff() {
             <Sparkles className="h-4 w-4" /> Estimation
           </Button>
           <Button variant="outline"
-                  onClick={() => { setRender3dDialog(true); setRender3dImg(null); loadRender3dHistory(); }}
+                  onClick={() => { setRender3dDialog(true); setRender3dImg(null); setVideoUrl(null); loadRender3dHistory(); loadVideoHistory(); }}
                   data-testid="plan-render-3d-btn"
                   className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
             <Sparkles className="h-4 w-4" /> Voir en 3D
@@ -1497,535 +1549,58 @@ export default function PlanTakeoff() {
         </DialogContent>
       </Dialog>
 
-      {/* QUOTE PDF DIALOG (Devis) */}
-      <Dialog open={quoteDialog} onOpenChange={setQuoteDialog}>
-        <DialogContent className="rounded-sm max-w-md" data-testid="quote-dialog">
-          <DialogHeader>
-            <DialogTitle>
-              {quoteMode === "send" ? "Envoyer le devis par email" : "Générer un devis PDF"}
-            </DialogTitle>
-            <DialogDescription>
-              Le devis reprend automatiquement les surfaces mesurées et applique la main
-              d'œuvre & les prix matériaux moyens France 2026.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-2 border-b border-border pb-2">
-            <Button size="sm" variant={quoteMode === "download" ? "default" : "ghost"}
-                    onClick={() => setQuoteMode("download")}
-                    data-testid="quote-mode-download"
-                    className={`rounded-sm gap-1 ${quoteMode === "download" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
-              <FileDown className="h-3 w-3" /> Télécharger
-            </Button>
-            <Button size="sm" variant={quoteMode === "send" ? "default" : "ghost"}
-                    onClick={() => setQuoteMode("send")}
-                    data-testid="quote-mode-send"
-                    className={`rounded-sm gap-1 ${quoteMode === "send" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
-              Envoyer au client
-            </Button>
-          </div>
+      {/* QUOTE / RENDER 3D / ESTIMATE / MULTI-PLAN dialogs — extracted subcomponents */}
+      <QuoteDialog
+        open={quoteDialog} onOpenChange={setQuoteDialog}
+        quoteMode={quoteMode} setQuoteMode={setQuoteMode}
+        templates={templates} applyTemplate={applyTemplate} deleteTemplate={deleteTemplate}
+        quoteFinish={quoteFinish} setQuoteFinish={setQuoteFinish}
+        quoteFloor={quoteFloor} setQuoteFloor={setQuoteFloor}
+        quoteSubject={quoteSubject} setQuoteSubject={setQuoteSubject}
+        quoteIntro={quoteIntro} setQuoteIntro={setQuoteIntro}
+        quoteClientEmail={quoteClientEmail} setQuoteClientEmail={setQuoteClientEmail}
+        quoteClientName={quoteClientName} setQuoteClientName={setQuoteClientName}
+        quoteClientAddress={quoteClientAddress} setQuoteClientAddress={setQuoteClientAddress}
+        quoteMessage={quoteMessage} setQuoteMessage={setQuoteMessage}
+        quoteIncludeTva={quoteIncludeTva} setQuoteIncludeTva={setQuoteIncludeTva}
+        quoteSends={quoteSends} createSignatureLink={createSignatureLink}
+        templateName={templateName} setTemplateName={setTemplateName}
+        templateShared={templateShared} setTemplateShared={setTemplateShared}
+        saveTemplate={saveTemplate}
+        quoteBusy={quoteBusy} downloadQuotePdf={downloadQuotePdf} sendQuotePdf={sendQuotePdf}
+      />
 
-          {/* Templates picker */}
-          {templates.length > 0 && (
-            <div className="border border-border rounded-sm p-3 bg-secondary/30" data-testid="templates-picker">
-              <p className="overline mb-2">Modèles de devis</p>
-              <div className="flex flex-wrap gap-1">
-                {templates.map(t => (
-                  <div key={t.template_id}
-                       className="flex items-center bg-background border border-border rounded-sm text-[10px]">
-                    <button onClick={() => applyTemplate(t)}
-                            data-testid={`apply-template-${t.template_id}`}
-                            className="px-2 py-1 hover:bg-primary/10 flex items-center gap-1">
-                      {t.organization_id && <span className="text-primary">◈</span>}
-                      {t.name}
-                      <span className="text-muted-foreground">
-                        · {t.finish} · {t.floor_material}
-                      </span>
-                    </button>
-                    {t.user_id && (
-                      <button onClick={() => deleteTemplate(t.template_id)}
-                              data-testid={`delete-template-${t.template_id}`}
-                              className="px-1.5 py-1 text-muted-foreground hover:text-destructive border-l border-border">
-                        ×
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label>Gamme de finition</Label>
-              <Select value={quoteFinish} onValueChange={setQuoteFinish}>
-                <SelectTrigger data-testid="quote-finish-select" className="rounded-sm h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="eco">Éco (petit budget)</SelectItem>
-                  <SelectItem value="std">Standard (recommandé)</SelectItem>
-                  <SelectItem value="premium">Premium (haut de gamme)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Matériau du sol</Label>
-              <Select value={quoteFloor} onValueChange={setQuoteFloor}>
-                <SelectTrigger data-testid="quote-floor-select" className="rounded-sm h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="carrelage">Carrelage</SelectItem>
-                  <SelectItem value="parquet">Parquet</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <Render3dDialog
+        open={render3dDialog} onOpenChange={setRender3dDialog}
+        render3dMode={render3dMode} setRender3dMode={setRender3dMode}
+        plan={plan} detectedWalls={detectedWalls} pageIndex={pageIndex}
+        render3dStyle={render3dStyle} setRender3dStyle={setRender3dStyle}
+        render3dFurniture={render3dFurniture} setRender3dFurniture={setRender3dFurniture}
+        render3dBusy={render3dBusy} render3dImg={render3dImg}
+        runRender3d={runRender3d} downloadRender3d={downloadRender3d}
+        render3dHistory={render3dHistory} openRender3dHistory={openRender3dHistory}
+        videoBusy={videoBusy} videoUrl={videoUrl}
+        runRenderVideo={runRenderVideo} downloadVideo={downloadVideo}
+        videoHistory={videoHistory} openVideoHistory={openVideoHistory}
+      />
 
-            {quoteMode === "send" && (
-              <>
-                <div className="grid gap-2">
-                  <Label>Objet email (optionnel)</Label>
-                  <Input value={quoteSubject} onChange={(e) => setQuoteSubject(e.target.value)}
-                         placeholder="Ex : Votre devis pour la rénovation appartement Paris 11"
-                         maxLength={180}
-                         data-testid="quote-subject-input" className="rounded-sm h-11" />
-                  <p className="text-[10px] text-muted-foreground">
-                    Vide → « Devis · {`{société}`} ». Personnalisez pour un rendu plus pro.
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Introduction personnalisée (optionnel)</Label>
-                  <textarea value={quoteIntro} onChange={(e) => setQuoteIntro(e.target.value)}
-                         placeholder="Suite à notre échange téléphonique, voici notre proposition détaillée pour..."
-                         rows={2} maxLength={500}
-                         data-testid="quote-intro-input"
-                         className="rounded-sm text-sm p-2 border border-border bg-background" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Email du client *</Label>
-                  <Input value={quoteClientEmail} onChange={(e) => setQuoteClientEmail(e.target.value)}
-                         placeholder="client@exemple.fr" type="email"
-                         data-testid="quote-client-email" className="rounded-sm h-11" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Nom du client (optionnel)</Label>
-                  <Input value={quoteClientName} onChange={(e) => setQuoteClientName(e.target.value)}
-                         placeholder="M. Dupont"
-                         data-testid="quote-client-name" className="rounded-sm h-11" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>
-                    Adresse du client{quoteIncludeTva && <span className="text-primary"> *</span>}
-                  </Label>
-                  <textarea value={quoteClientAddress} onChange={(e) => setQuoteClientAddress(e.target.value)}
-                         placeholder="12 rue de la Paix — 75002 Paris"
-                         rows={2} maxLength={200}
-                         data-testid="quote-client-address"
-                         className="rounded-sm text-sm p-2 border border-border bg-background" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Message complémentaire (optionnel)</Label>
-                  <textarea value={quoteMessage} onChange={(e) => setQuoteMessage(e.target.value)}
-                         placeholder="Nous restons disponibles pour toute question..."
-                         rows={2} maxLength={500}
-                         data-testid="quote-message"
-                         className="rounded-sm text-sm p-2 border border-border bg-background" />
-                </div>
-                {/* TVA Attestation toggle */}
-                <label className="flex items-start gap-2 p-3 border border-primary/40 rounded-sm bg-primary/5 cursor-pointer"
-                       data-testid="quote-tva-toggle">
-                  <input type="checkbox" checked={quoteIncludeTva}
-                         onChange={(e) => setQuoteIncludeTva(e.target.checked)}
-                         data-testid="quote-tva-checkbox"
-                         className="accent-primary h-4 w-4 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs font-bold">Joindre l'attestation TVA à taux réduit (10 %)</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Requise pour bénéficier du taux 10 % en rénovation logement &gt; 2 ans
-                      (art. 279-0 bis CGI). Le client la signe et vous la retourne avant facturation.
-                    </p>
-                  </div>
-                </label>
-                <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm">
-                  Une copie sera envoyée à votre adresse pour trace. L'envoi est loggé dans l'historique.
-                </p>
+      <EstimateDialog
+        open={estimateDialog} onOpenChange={setEstimateDialog}
+        estProjectType={estProjectType} setEstProjectType={setEstProjectType}
+        estFinishLevel={estFinishLevel} setEstFinishLevel={setEstFinishLevel}
+        estimateBusy={estimateBusy} estimateResult={estimateResult}
+        runEstimation={runEstimation} proceedToDevis={proceedToDevis}
+      />
 
-                {/* Sends history with tracking */}
-                {quoteSends.length > 0 && (
-                  <div className="border border-border rounded-sm p-3" data-testid="sends-history">
-                    <p className="overline mb-2">Historique des envois ({quoteSends.length})</p>
-                    <div className="grid gap-1 max-h-40 overflow-y-auto">
-                      {quoteSends.map(s => (
-                        <div key={s.log_id}
-                             className="text-[10px] flex items-center justify-between border-b border-border py-1"
-                             data-testid={`send-log-${s.log_id}`}>
-                          <div className="min-w-0">
-                            <p className="font-bold truncate">{s.client_name || s.client_email}</p>
-                            <p className="num text-muted-foreground">
-                              {new Date(s.created_at).toLocaleDateString("fr-FR")} · {s.total_ttc?.toLocaleString("fr-FR")} € TTC
-                            </p>
-                          </div>
-                          <div className="flex gap-1 shrink-0">
-                            {s.signed && (
-                              <span className="bg-primary text-white px-1.5 py-0.5 rounded-sm text-[9px]"
-                                    data-testid={`sign-badge-${s.log_id}`}>Signé</span>
-                            )}
-                            {!s.signed && s.opened && (
-                              <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-1.5 py-0.5 rounded-sm text-[9px]"
-                                    data-testid={`open-badge-${s.log_id}`}>
-                                Ouvert ({s.open_count || 1})
-                              </span>
-                            )}
-                            {!s.signed && (
-                              <button onClick={() => createSignatureLink(s.log_id)}
-                                      data-testid={`sign-link-${s.log_id}`}
-                                      className="text-primary hover:underline text-[10px]">
-                                Lien signature
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+      <MultiPlanDialog
+        open={multiDialog} onOpenChange={setMultiDialog}
+        multiProjectName={multiProjectName} setMultiProjectName={setMultiProjectName}
+        multiSelected={multiSelected} setMultiSelected={setMultiSelected}
+        allPlans={allPlans} plan={plan}
+        quoteFinish={quoteFinish} quoteFloor={quoteFloor}
+        multiBusy={multiBusy} downloadMultiQuote={downloadMultiQuote}
+      />
 
-            {/* Save current config as template */}
-            <div className="border border-dashed border-border rounded-sm p-3">
-              <p className="overline mb-2">Enregistrer comme modèle</p>
-              <div className="flex gap-2 items-center">
-                <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)}
-                       placeholder="Ex : Rénovation T3 standard"
-                       maxLength={80}
-                       data-testid="template-name-input"
-                       className="rounded-sm h-9 text-xs" />
-                <Button size="sm" onClick={saveTemplate} disabled={!templateName.trim()}
-                        data-testid="template-save-btn"
-                        className="rounded-sm hover:bg-orange-600 hover:text-white">
-                  Enregistrer
-                </Button>
-              </div>
-              <label className="flex items-center gap-1 text-[10px] mt-2 cursor-pointer text-muted-foreground">
-                <input type="checkbox" checked={templateShared}
-                       onChange={(e) => setTemplateShared(e.target.checked)}
-                       data-testid="template-shared-checkbox"
-                       className="accent-primary h-3 w-3" />
-                Partager avec toute mon équipe (organisation)
-              </label>
-            </div>
-
-            <p className="text-xs text-muted-foreground border border-border p-3 rounded-sm bg-secondary/30">
-              Inclus par défaut : placo/plâtre, peinture, sol, plinthes. TVA à 10 %
-              (rénovation logement &gt; 2 ans).
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQuoteDialog(false)} className="rounded-sm">
-              Annuler
-            </Button>
-            {quoteMode === "download" ? (
-              <Button onClick={downloadQuotePdf} disabled={quoteBusy} data-testid="quote-download-btn"
-                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                <FileDown className="h-4 w-4" />
-                {quoteBusy ? "Génération…" : "Télécharger"}
-              </Button>
-            ) : (
-              <Button onClick={sendQuotePdf} disabled={quoteBusy || !quoteClientEmail}
-                      data-testid="quote-send-btn"
-                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                {quoteBusy ? "Envoi…" : "Envoyer au client"}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 3D RENDER DIALOG (Nano Banana) */}
-      <Dialog open={render3dDialog} onOpenChange={setRender3dDialog}>
-        <DialogContent className="rounded-sm max-w-4xl max-h-[90vh] overflow-y-auto"
-                        data-testid="render-3d-dialog">
-          <DialogHeader>
-            <DialogTitle>Convertir le plan 2D en rendu 3D IA</DialogTitle>
-            <DialogDescription>
-              L'IA (Gemini Nano Banana) transforme votre plan 2D en visualisation 3D
-              réaliste. Idéal pour présenter à un client avant travaux.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1">
-                <Label className="text-xs">Style de rendu</Label>
-                <Select value={render3dStyle} onValueChange={setRender3dStyle}>
-                  <SelectTrigger data-testid="render-3d-style" className="rounded-sm h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="isometric">Isométrique (dessus, coloré)</SelectItem>
-                    <SelectItem value="photoreal">Photoréaliste (rendu matériaux)</SelectItem>
-                    <SelectItem value="axonometric">Axonométrique (murs en coupe)</SelectItem>
-                    <SelectItem value="interior">Vue intérieur (salon principal)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs opacity-0">.</Label>
-                <label className="flex items-center gap-2 h-10 px-3 border border-border rounded-sm cursor-pointer bg-secondary/30"
-                       data-testid="render-3d-furniture-toggle">
-                  <input type="checkbox" checked={render3dFurniture}
-                         onChange={(e) => setRender3dFurniture(e.target.checked)}
-                         className="accent-primary h-4 w-4" />
-                  <span className="text-sm">Ajouter du mobilier</span>
-                </label>
-              </div>
-            </div>
-
-            {!render3dImg && !render3dBusy && (
-              <Button onClick={runRender3d} disabled={render3dBusy}
-                      data-testid="render-3d-run-btn"
-                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                <Sparkles className="h-4 w-4" />
-                Générer le rendu 3D
-              </Button>
-            )}
-            {render3dBusy && (
-              <div className="border border-primary/40 bg-primary/5 rounded-sm p-8 text-center space-y-3">
-                <Sparkles className="h-10 w-10 mx-auto text-primary animate-pulse" />
-                <p className="font-display font-bold">L'IA génère votre rendu 3D…</p>
-                <p className="text-xs text-muted-foreground">
-                  Cela prend 30-60 secondes. Ne fermez pas la fenêtre.
-                </p>
-              </div>
-            )}
-            {render3dImg && !render3dBusy && (
-              <div className="space-y-3" data-testid="render-3d-result">
-                <img src={render3dImg} alt="Rendu 3D"
-                     className="w-full rounded-sm border border-border" />
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={runRender3d} disabled={render3dBusy}
-                          data-testid="render-3d-redo-btn"
-                          className="rounded-sm gap-2">
-                    <Sparkles className="h-3 w-3" /> Régénérer
-                  </Button>
-                  <Button onClick={downloadRender3d} data-testid="render-3d-download-btn"
-                          className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                    <FileDown className="h-4 w-4" /> Télécharger
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* History */}
-            {render3dHistory.length > 0 && (
-              <div className="border border-border rounded-sm p-3">
-                <p className="overline mb-2">Rendus précédents ({render3dHistory.length})</p>
-                <div className="flex flex-wrap gap-1">
-                  {render3dHistory.slice().reverse().map(r => (
-                    <button key={r.render_id}
-                            onClick={() => openRender3dHistory(r.render_id)}
-                            data-testid={`render-3d-history-${r.render_id}`}
-                            className="text-[10px] px-2 py-1 border border-border rounded-sm
-                                       hover:bg-primary/10 hover:border-primary">
-                      {r.style} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm bg-secondary/30">
-              💡 Astuce : essayez d'abord <b>Isométrique</b> pour un rendu global,
-              puis <b>Vue intérieur</b> pour immerger votre client dans le salon.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRender3dDialog(false)} className="rounded-sm">
-              Fermer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ESTIMATION FROM TAKEOFF DIALOG */}
-      <Dialog open={estimateDialog} onOpenChange={setEstimateDialog}>
-        <DialogContent className="rounded-sm max-w-lg" data-testid="estimate-dialog">
-          <DialogHeader>
-            <DialogTitle>Créer une estimation depuis le plan</DialogTitle>
-            <DialogDescription>
-              Envoie automatiquement les surfaces mesurées au service Estimateur.
-              Vous pourrez ensuite générer un devis client directement depuis ce résultat.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1">
-                <Label className="text-xs">Type de projet</Label>
-                <Select value={estProjectType} onValueChange={setEstProjectType}>
-                  <SelectTrigger data-testid="estimate-project-type" className="rounded-sm h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="renovation_complete">Rénovation complète</SelectItem>
-                    <SelectItem value="renovation_partielle">Rénovation partielle</SelectItem>
-                    <SelectItem value="renovation_energetique">Rénovation énergétique</SelectItem>
-                    <SelectItem value="salle_de_bain">Salle de bain</SelectItem>
-                    <SelectItem value="cuisine">Cuisine</SelectItem>
-                    <SelectItem value="construction_neuve">Construction neuve</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">Gamme finition</Label>
-                <Select value={estFinishLevel} onValueChange={setEstFinishLevel}>
-                  <SelectTrigger data-testid="estimate-finish" className="rounded-sm h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="eco">Éco</SelectItem>
-                    <SelectItem value="standard">Standard</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {!estimateResult && (
-              <Button onClick={runEstimation} disabled={estimateBusy}
-                      data-testid="estimate-run-btn"
-                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                <Sparkles className="h-4 w-4" />
-                {estimateBusy ? "Estimation en cours…" : "Lancer l'estimation"}
-              </Button>
-            )}
-            {estimateResult && (
-              <div className="border border-primary/40 bg-primary/5 rounded-sm p-4 space-y-2"
-                   data-testid="estimate-result">
-                <div className="flex items-center justify-between">
-                  <p className="overline text-primary">Résultat</p>
-                  {estimateResult.is_renovation && (
-                    <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-sm">
-                      Rénovation · TVA 10 %
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">Surface totale</p>
-                    <p className="num font-display text-2xl font-extrabold">
-                      {estimateResult.surface_m2} <span className="text-sm">m²</span>
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">Lots</p>
-                    <p className="num font-display text-2xl font-extrabold">
-                      {estimateResult.estimation.lots?.length}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">Estimation moyenne</p>
-                    <p className="num font-display text-xl font-extrabold text-primary">
-                      {estimateResult.estimation.total_avg?.toLocaleString("fr-FR")} €
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">€ / m²</p>
-                    <p className="num font-display text-xl font-extrabold">
-                      {estimateResult.estimation.price_per_sqm?.toLocaleString("fr-FR")} €
-                    </p>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
-                  Fourchette : {estimateResult.estimation.total_min?.toLocaleString("fr-FR")} €
-                  → {estimateResult.estimation.total_max?.toLocaleString("fr-FR")} € · Durée
-                  estimée : {estimateResult.estimation.duration_weeks} semaine(s)
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEstimateDialog(false)} className="rounded-sm">
-              Fermer
-            </Button>
-            {estimateResult && (
-              <Button onClick={proceedToDevis} data-testid="estimate-to-devis-btn"
-                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                <FileDown className="h-4 w-4" /> Passer à la création du devis
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* MULTI-PLAN QUOTE DIALOG */}
-      <Dialog open={multiDialog} onOpenChange={setMultiDialog}>        <DialogContent className="rounded-sm max-w-lg" data-testid="multi-quote-dialog">
-          <DialogHeader>
-            <DialogTitle>Devis projet multi-plans</DialogTitle>
-            <DialogDescription>
-              Combinez plusieurs plans (RDC, étages, extensions…) en un seul devis projet.
-              Les surfaces et prix sont additionnés automatiquement.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3">
-            <div className="grid gap-1">
-              <Label className="text-xs">Nom du projet (optionnel)</Label>
-              <Input value={multiProjectName} onChange={(e) => setMultiProjectName(e.target.value)}
-                     placeholder="Ex : Maison Dupont — rénovation complète"
-                     maxLength={120}
-                     data-testid="multi-project-name" className="rounded-sm h-10" />
-            </div>
-            <div>
-              <p className="overline mb-2">Plans à inclure ({multiSelected.length} sélectionné{multiSelected.length > 1 ? "s" : ""})</p>
-              <div className="grid gap-1 max-h-60 overflow-y-auto border border-border rounded-sm p-2"
-                   data-testid="multi-plans-list">
-                {allPlans.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    Aucun plan disponible. Uploadez au moins 2 plans depuis la page /plan.
-                  </p>
-                ) : allPlans.map(p => {
-                  const on = multiSelected.includes(p.plan_id);
-                  return (
-                    <label key={p.plan_id}
-                           className={`flex items-center gap-2 p-2 rounded-sm cursor-pointer border ${on ? "border-primary bg-primary/5" : "border-transparent hover:bg-secondary/40"}`}
-                           data-testid={`multi-plan-item-${p.plan_id}`}>
-                      <input type="checkbox" checked={on}
-                             onChange={(e) => {
-                               setMultiSelected(prev =>
-                                 e.target.checked ? [...prev, p.plan_id]
-                                                  : prev.filter(id => id !== p.plan_id));
-                             }}
-                             data-testid={`multi-plan-checkbox-${p.plan_id}`}
-                             className="accent-primary h-4 w-4" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold truncate">{p.filename || p.plan_id}</p>
-                        <p className="text-[10px] text-muted-foreground num">
-                          {p.rooms?.length || 0} pièces · {(p.rooms?.reduce((s, r) => s + (r.surface_m2 || 0), 0) || 0).toFixed(1)} m²
-                          {p.plan_id === plan?.plan_id && (
-                            <span className="text-primary ml-1">(en cours)</span>
-                          )}
-                        </p>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-            <p className="text-[10px] text-muted-foreground border border-border p-2 rounded-sm bg-secondary/30">
-              Gamme & sol utilisés : <b>{quoteFinish}</b> · <b>{quoteFloor}</b>. Modifiez-les
-              dans le dialog Devis principal si besoin.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMultiDialog(false)} className="rounded-sm">
-              Annuler
-            </Button>
-            <Button onClick={downloadMultiQuote} disabled={multiBusy || multiSelected.length === 0}
-                    data-testid="multi-quote-download-btn"
-                    className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <FileDown className="h-4 w-4" />
-              {multiBusy ? "Génération…" : `Télécharger (${multiSelected.length})`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
