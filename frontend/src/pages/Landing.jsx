@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   ArrowRight, Sparkles, Calculator, Search, Wrench, ShieldCheck, FileText,
-  MessageSquare, Camera, TrendingDown, Hammer, ChevronRight,
+  MessageSquare, Camera, TrendingDown, Hammer, ChevronRight, Building2,
+  HardHat, Home as HomeIcon, Store, GraduationCap, Factory, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Nav, Footer } from "@/components/Nav";
+import { SEO } from "@/components/SEO";
 import { api, IMAGES, eur } from "@/lib/api";
 
 const EXAMPLE =
@@ -30,9 +32,58 @@ const FEATURES = [
   { icon: MessageSquare, title: "Coach IA ConstruPilot", text: "Toutes vos questions travaux, réponses de professionnel.", to: "/coach" },
 ];
 
+// SEO — publics visés (pour section "Pour qui ?")
+const AUDIENCES = [
+  { icon: HardHat, title: "Artisans BTP",       text: "Générez vos devis client en 30 s avec attestation TVA 10 %, signature électronique et suivi ouverture." },
+  { icon: HomeIcon, title: "Particuliers",      text: "Estimez votre rénovation avant de contacter un pro. Comparez les devis reçus." },
+  { icon: Building2, title: "Architectes",      text: "Métré 2D auto depuis vos plans PDF/DXF, chiffrage instantané par lot, rendu 3D pour vos clients." },
+  { icon: Store, title: "Marchands de matériaux", text: "Vos prix, comparés en temps réel. Générez la liste de courses depuis un plan." },
+  { icon: GraduationCap, title: "Écoles BTP",   text: "Un terrain de jeu pédagogique : IA, calculateurs et guides métier accessibles gratuitement." },
+  { icon: Factory, title: "Promoteurs & CMI",   text: "Chiffrage rapide pour vos offres. Devis multi-plans consolidé, tour vidéo 3D à joindre." },
+];
+
+// SEO — Q&A extrait Google People-Also-Ask sur les mots-clés du BTP
+const FAQ = [
+  {
+    q: "Combien coûte une rénovation complète au m² en 2026 ?",
+    a: "En rénovation lourde en France, comptez 900 à 1 800 €/m² selon la région et la gamme (éco / standard / premium). ConstruPilot calcule votre estimation exacte en 30 secondes à partir d'une simple description de votre projet.",
+  },
+  {
+    q: "ConstruPilot est-il gratuit ?",
+    a: "Oui pour les particuliers : estimation, calculateurs matériaux, comparateur de prix, coach IA et guides DIY sont gratuits. Une offre Pro (devis PDF illimités, signature client, rendu 3D IA, tour vidéo) est disponible pour les artisans dès 39 €/mois.",
+  },
+  {
+    q: "Comment fonctionne le métré 2D automatique ?",
+    a: "Uploadez votre plan (PDF, PNG, DXF). Notre moteur OpenCV détecte automatiquement les murs, les portes et calcule les surfaces au m² pour chaque pièce. Vous pouvez ensuite étiqueter les pièces d'un clic et générer estimation + devis + rendu 3D en un seul flux.",
+  },
+  {
+    q: "Puis-je générer un devis avec attestation TVA à 10 % ?",
+    a: "Oui. ConstruPilot génère automatiquement l'attestation TVA à taux réduit (art. 279-0 bis CGI) requise pour bénéficier du taux 10 % en rénovation de logement de plus de 2 ans. Le client la signe en ligne, vous êtes couvert.",
+  },
+  {
+    q: "Vos prix matériaux sont-ils à jour ?",
+    a: "Nous croisons les catalogues des principales enseignes du BTP (Point.P, Leroy Merlin, Castorama, Brico Dépôt…) mis à jour hebdomadairement, avec l'historique 12 mois pour détecter les hausses.",
+  },
+  {
+    q: "L'IA remplace-t-elle un métreur ou un architecte ?",
+    a: "Non. ConstruPilot fournit une estimation instantanée avec ±20 % de précision, idéale pour un premier chiffrage ou une comparaison. Pour un chantier complexe (structure, mur porteur, gros œuvre), un professionnel reste indispensable — et notre coach IA vous dit quand le consulter.",
+  },
+];
+
+const FAQ_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": FAQ.map(({ q, a }) => ({
+    "@type": "Question",
+    "name": q,
+    "acceptedAnswer": { "@type": "Answer", "text": a },
+  })),
+};
+
 export default function Landing() {
   const [description, setDescription] = useState("");
   const [types, setTypes] = useState([]);
+  const [openFaq, setOpenFaq] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,24 +98,33 @@ export default function Landing() {
 
   return (
     <>
+      <SEO
+        title={null}
+        description="ConstruPilot : l'assistant IA du BTP. Générez un devis chiffré en 30 s, comparez les prix matériaux de 10 fournisseurs, calculez vos quantités exactes et éditez vos devis clients PDF avec tour vidéo 3D. Gratuit pour les particuliers."
+        keywords="devis travaux, estimation rénovation, calculateur matériaux, comparateur prix BTP, logiciel devis artisan, plan 2D 3D, prix rénovation maison, IA construction, devis en ligne gratuit, métré automatique"
+        canonical="/"
+        jsonLd={FAQ_JSON_LD}
+      />
       <Nav />
 
       <section className="relative overflow-hidden border-b border-border grain">
         <img
-          src={IMAGES.hero} alt="Architecture contemporaine"
+          src={IMAGES.hero} alt="Rénovation maison contemporaine : estimation IA travaux ConstruPilot"
           className="absolute inset-0 h-full w-full object-cover opacity-25 dark:opacity-20"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/40" />
         <div className="relative mx-auto max-w-[1500px] px-5 lg:px-8 py-20 lg:py-28">
           <div className="max-w-3xl">
-            <p className="overline animate-rise">ConstruPilot Smart Project</p>
+            <p className="overline animate-rise">Devis Travaux IA · Estimation Rénovation en 30 secondes</p>
             <h1 className="mt-5 font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tighter animate-rise">
-              Estimez. Comparez.<br />
-              <span className="text-primary">Construisez.</span>
+              Estimez vos travaux.<br />
+              Comparez les prix.<br />
+              <span className="text-primary">Construisez sereinement.</span>
             </h1>
             <p className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl animate-rise">
-              Des prix réels. Des conseils de pros. Un chantier mieux maîtrisé. Décrivez votre projet :
-              ConstruPilot le décompose, l'estime, calcule les matériaux et trouve les meilleurs prix.
+              L'assistant IA du BTP pour <strong>artisans</strong>, <strong>particuliers</strong> et
+              <strong> architectes</strong>. Décrivez votre projet : ConstruPilot le décompose en lots,
+              chiffre chaque poste, calcule les matériaux et trouve les meilleurs prix France 2026.
             </p>
 
             <div className="mt-10 relative animate-rise">
@@ -229,6 +289,62 @@ export default function Landing() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Pour qui ? (SEO : audiences / secteurs) ────────────────────── */}
+      <section className="border-y border-border bg-secondary/30" id="pour-qui">
+        <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-20">
+          <p className="overline">Pour qui ConstruPilot ?</p>
+          <h2 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight">
+            Un logiciel de devis travaux pour tout le BTP français
+          </h2>
+          <p className="mt-4 text-sm text-muted-foreground max-w-3xl">
+            Que vous soyez artisan indépendant, particulier en rénovation, architecte, marchand de
+            matériaux ou promoteur, ConstruPilot s'adapte à votre flux de travail. Un seul outil,
+            de l'estimation au devis signé.
+          </p>
+          <div className="mt-10 grid md:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+            {AUDIENCES.map((a) => (
+              <div key={a.title} className="surface p-6" data-testid={`audience-card-${a.title.toLowerCase().replace(/[^a-z]+/g,"-")}`}>
+                <a.icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                <h3 className="mt-4 font-display text-lg font-semibold">{a.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{a.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ (SEO : rich snippet Google) ─────────────────────────────── */}
+      <section className="mx-auto max-w-[1500px] px-5 lg:px-8 py-20" id="faq">
+        <p className="overline">Questions fréquentes</p>
+        <h2 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight">
+          Vos questions sur ConstruPilot & les devis travaux
+        </h2>
+        <div className="mt-10 grid gap-3 max-w-4xl">
+          {FAQ.map((item, i) => {
+            const open = openFaq === i;
+            return (
+              <div key={i} className="surface" data-testid={`faq-item-${i}`}>
+                <button
+                  onClick={() => setOpenFaq(open ? -1 : i)}
+                  data-testid={`faq-toggle-${i}`}
+                  aria-expanded={open}
+                  className="w-full text-left flex items-center justify-between p-5 hover:text-primary transition-colors"
+                >
+                  <span className="font-display font-semibold text-base pr-8">{item.q}</span>
+                  <ChevronDown className={`h-5 w-5 shrink-0 text-primary transition-transform ${open ? "rotate-180" : ""}`} />
+                </button>
+                {open && (
+                  <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border pt-4"
+                       data-testid={`faq-answer-${i}`}>
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

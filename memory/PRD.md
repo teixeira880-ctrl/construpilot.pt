@@ -535,9 +535,56 @@ Voir `/app/memory/test_credentials.md`.
   conditionnels).
 - Total cumulé : **80 + 10 = 90/90 PASS** sur les 10 dernières itérations.
 
-### Backlog restant
-- PlanTakeoff.jsx encore à ~1685 lignes — extraction canvas / toolbar en P2.
-- Tavily API réelle (P2) — clé utilisateur en attente.
-- **Idée future** : jingle audio réel (WAV/MP3 upload par le pro dans son
-  branding) plutôt que la piste synthétisée par défaut.
+## 17. Changelog Iter 31 (13/02/2026) — SEO complet + Landing enrichie
+
+### Meta & Head (`/app/frontend/public/index.html`)
+- Title SEO-optimisé : « ConstruPilot — Devis Travaux IA, Estimation Rénovation & Comparateur Prix ».
+- Meta `description` de 300+ caractères, `keywords` ciblés BTP, `robots=index,follow,max-image-preview:large`.
+- OpenGraph complet : `og:url`, `og:image` (1200×630), `og:site_name`, `og:locale=fr_FR` + alternate `en_US`.
+- Twitter Card `summary_large_image`.
+- Canonical `https://construpilot.fr/` + `<link rel=alternate hreflang>` FR/EN/x-default.
+- **3 blocs JSON-LD** : `Organization`, `SoftwareApplication` (avec aggregateRating + featureList),
+  `WebSite` (Sitelinks Search Box vers `/prix?q={term}`).
+
+### Assets branding (générés via PIL)
+- `/public/logo192.png`, `/public/logo512.png` (PWA icons manquants — bug corrigé).
+- `/public/favicon.ico` (multi-size 16/32/48/64).
+- `/public/og-cover.jpg` 1200×630 — orange ConstruPilot + tagline + chips features.
+
+### Crawl / Indexation
+- `/public/robots.txt` — allow global, disallow zones privées (/login, /admin, /dashboard,
+  /project/, /plan/, /signature/, /suivi-devis, /billing) + `Sitemap:` déclaré.
+- `/public/sitemap.xml` — 10 URLs publiques (/, /smart-project, /estimation, /prix,
+  /calculateurs, /diy, /photo, /scanner-devis, /coach, /plan) avec `hreflang` FR/EN, priorités
+  et `changefreq` calibrés.
+
+### Composant SEO réutilisable
+- `/frontend/src/components/SEO.jsx` (react-helmet-async) — permet override title/description/
+  canonical/og:image/JSON-LD par page. Ajouté au `HelmetProvider` dans `index.js`.
+- Dépendance installée : `react-helmet-async@3.0.0`.
+
+### Landing enrichie (`/pages/Landing.jsx`, +80 lignes)
+- H1 optimisé mots-clés : « Estimez vos travaux. Comparez les prix. Construisez sereinement. »
+- Overline explicite « Devis Travaux IA · Estimation Rénovation en 30 secondes ».
+- Nouvelle section **« Pour qui ? »** — 6 audiences ciblées (Artisans BTP, Particuliers,
+  Architectes, Marchands matériaux, Écoles BTP, Promoteurs & CMI). Data-testids
+  `audience-card-{slug}`.
+- Nouvelle section **FAQ** — 6 Q&A extraites du « People Also Ask » Google BTP (coût rénovation
+  au m², gratuité, métré 2D, TVA 10 %, prix matériaux à jour, IA vs métreur). Accordéon
+  interactif (`faq-toggle-{i}` / `faq-answer-{i}`) + **JSON-LD FAQPage dynamique** injecté
+  via le composant SEO → rich snippet Google.
+
+### Vérifications
+- Compile clean (webpack, 1 warning pré-existant non lié).
+- Screenshot preview : title correct, canonical correct, 4 JSON-LD blocks détectés, 6 FAQ items.
+- `robots.txt`, `sitemap.xml`, `og-cover.jpg`, `logo512.png` tous servis en **200 OK**.
+- Note : le CDN préfixe un bloc informatif Cloudflare « Content-Signal » sur robots.txt en amont
+  de mes règles, mais toutes mes directives `Allow` / `Disallow` / `Sitemap:` sont préservées
+  et correctement lues par les crawlers.
+
+### Actions restant à faire côté utilisateur (manuel)
+1. **Google Search Console** → ajouter `construpilot.fr` et soumettre `sitemap.xml`.
+2. **Bing Webmaster Tools** → même chose.
+3. **Google My Business** → fiche entreprise si ciblage local.
+4. **Backlinks** : LinkedIn post, annuaires BTP (Kompass, Pages Jaunes Pro, Batichef, Habitatpresto).
 

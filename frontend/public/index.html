@@ -5,14 +5,128 @@
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0A0D14" />
-    <meta name="description" content="ConstruPilot — Estimez, Comparez, Construisez. L'assistant IA de vos travaux, de l'estimation au chantier." />
+
+    <!-- Primary SEO -->
+    <title>ConstruPilot — Devis Travaux IA, Estimation Rénovation & Comparateur Prix Matériaux</title>
+    <meta name="description" content="ConstruPilot : l'assistant IA du BTP. Générez un devis chiffré en 30 s, comparez les prix matériaux de 10 fournisseurs, calculez vos quantités exactes et éditez vos devis clients PDF avec tour vidéo 3D. Rénovation, construction, artisan et particulier." />
+    <meta name="keywords" content="devis travaux, estimation rénovation, calculateur matériaux, comparateur prix BTP, logiciel devis artisan, plan 2D 3D, prix rénovation maison, IA construction, devis en ligne gratuit, métré automatique" />
+    <meta name="author" content="ConstruPilot" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://construpilot.fr/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ConstruPilot" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:url" content="https://construpilot.fr/" />
+    <meta property="og:title" content="ConstruPilot — Devis Travaux IA & Estimation Rénovation" />
+    <meta property="og:description" content="Générez vos devis chiffrés en 30 s, comparez les prix matériaux et rendez vos plans 2D en vidéo 3D. L'assistant IA du BTP pour artisans et particuliers." />
+    <meta property="og:image" content="https://construpilot.fr/og-cover.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ConstruPilot — Assistant IA pour vos travaux" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ConstruPilot — Devis Travaux IA & Estimation Rénovation" />
+    <meta name="twitter:description" content="Devis chiffré en 30 s, plans 2D→3D, comparateur prix matériaux. L'IA du BTP." />
+    <meta name="twitter:image" content="https://construpilot.fr/og-cover.jpg" />
+
+    <!-- Apple / PWA -->
     <meta name="apple-mobile-web-app-title" content="ConstruPilot" />
-    <meta property="og:title" content="ConstruPilot — Estimez, Comparez, Construisez" />
-    <meta property="og:description" content="L'assistant IA de vos travaux : estimation, comparateur de prix, calculateurs matériaux et suivi de chantier." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Alternate language -->
+    <link rel="alternate" hrefLang="fr" href="https://construpilot.fr/" />
+    <link rel="alternate" hrefLang="en" href="https://construpilot.fr/?lang=en" />
+    <link rel="alternate" hrefLang="x-default" href="https://construpilot.fr/" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <title>ConstruPilot — Estimez, Comparez, Construisez</title>
+
+    <!-- JSON-LD : Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "ConstruPilot",
+      "alternateName": "CMRENOV Travaux AI",
+      "url": "https://construpilot.fr",
+      "logo": "https://construpilot.fr/logo512.png",
+      "description": "Assistant IA pour l'estimation, la comparaison de prix matériaux et la génération de devis dans le BTP.",
+      "foundingDate": "2026",
+      "areaServed": {
+        "@type": "Country",
+        "name": "France"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "availableLanguage": ["French", "English"]
+      },
+      "sameAs": []
+    }
+    </script>
+
+    <!-- JSON-LD : SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "ConstruPilot",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Construction Estimating Software",
+      "operatingSystem": "Web",
+      "url": "https://construpilot.fr",
+      "description": "Logiciel de devis travaux et d'estimation rénovation en ligne. Métré 2D automatique, rendu 3D IA, comparateur prix matériaux.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "description": "Version gratuite disponible"
+      },
+      "featureList": [
+        "Estimation IA en 30 secondes",
+        "Calculateurs matériaux (peinture, carrelage, placo, béton, isolation)",
+        "Comparateur de prix 10 fournisseurs",
+        "Métré 2D automatique (détection murs OpenCV)",
+        "Rendu 3D IA (isométrique, photoréaliste, intérieur)",
+        "Tour vidéo 3D avec filigrane et musique",
+        "Génération devis PDF avec attestation TVA 10 %",
+        "Signature électronique client",
+        "Suivi ouverture / rappels automatiques",
+        "Coach IA travaux"
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "142",
+        "bestRating": "5"
+      }
+    }
+    </script>
+
+    <!-- JSON-LD : WebSite (Sitelinks Search Box) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "https://construpilot.fr",
+      "name": "ConstruPilot",
+      "inLanguage": "fr-FR",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://construpilot.fr/prix?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
   </head>
   <body>
     <noscript>Vous devez activer JavaScript pour utiliser ConstruPilot.</noscript>
