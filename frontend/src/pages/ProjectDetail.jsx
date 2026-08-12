@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api, API, eur, eur2, num } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
+import { PhotosGallery } from "@/components/PhotosGallery";
 import { Stat } from "@/components/Bits";
 
 const NEXT = { todo: "doing", doing: "done", done: "todo" };
@@ -167,6 +168,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="works" className="rounded-sm" data-testid="pd-tab-works">Travaux & progression</TabsTrigger>
           <TabsTrigger value="estimation" className="rounded-sm" data-testid="pd-tab-estimation">Estimation</TabsTrigger>
           <TabsTrigger value="materials" className="rounded-sm" data-testid="pd-tab-materials">Matériaux & panier</TabsTrigger>
+          <TabsTrigger value="photos" className="rounded-sm" data-testid="pd-tab-photos">Photos avant/après</TabsTrigger>
           <TabsTrigger value="advice" className="rounded-sm" data-testid="pd-tab-advice">Conseils IA</TabsTrigger>
         </TabsList>
 
@@ -279,6 +281,10 @@ export default function ProjectDetail() {
               </p>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="photos" className="mt-6">
+          <PhotosGallery projectId={p.project_id} lots={p.estimation.lots} />
         </TabsContent>
 
         <TabsContent value="advice" className="mt-6">

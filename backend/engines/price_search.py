@@ -138,22 +138,31 @@ async def tavily_search(query: str, limit: int = 10) -> list[dict]:
     key = os.environ.get('TAVILY_API_KEY') or ''
     if not key:
         return []
-    payload = {
+    base_payload = {
         "query": f"{query} prix € France",
         "search_depth": "basic", "topic": "general", "max_results": min(20, limit * 2),
-        "include_domains": [s["domain"] for s in SUPPLIERS], "country": "fr",
+        "country": "france",
     }
-    try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.post("https://api.tavily.com/search",
-                                  headers={"Authorization": f"Bearer {key}"}, json=payload)
-            r.raise_for_status()
-            data = r.json()
-    except Exception:
-        return []
+    domains = [s["domain"] for s in SUPPLIERS]
+    async def _call(payload: dict):
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                r = await client.post("https://api.tavily.com/search",
+                                      headers={"Authorization": f"Bearer {key}"}, json=payload)
+                r.raise_for_status()
+                return r.json()
+        except Exception:
+            return {"results": []}
+    # 1er appel filtré sur les enseignes whitelistées
+    data = await _call({**base_payload, "include_domains": domains})
+    items = data.get("results") or []
+    # 2e appel sans filtre si vide, pour élargir la couverture
+    if not items:
+        data = await _call(base_payload)
+        items = data.get("results") or []
     now = datetime.now(timezone.utc)
     out = []
-    for item in data.get("results", []):
+    for item in items:
         url = item.get("url", "")
         sup = next((s for s in SUPPLIERS if s["domain"] in url.lower()), None)
         if not sup:

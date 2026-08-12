@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Calculator, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calculator, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,6 +78,27 @@ export default function Estimator() {
       navigate(`/projet/${data.project_id}`);
     } catch {
       toast.error("Sauvegarde impossible");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const downloadPdf = async () => {
+    setBusy(true);
+    try {
+      const res = await api.post("/estimation/pdf",
+        { project: { name: name || "Mon projet", city: form.city, description: form.description },
+          estimation: est },
+        { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Estimation-CMRENOV-${name || "projet"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF téléchargé");
+    } catch {
+      toast.error("PDF indisponible");
     } finally {
       setBusy(false);
     }
@@ -248,6 +269,9 @@ export default function Estimator() {
             <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="estimation-project-name" className="rounded-sm max-w-xs" placeholder="Nom du projet" />
             <Button onClick={save} disabled={busy} data-testid="save-estimation-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <Save className="h-4 w-4" /> Enregistrer le projet
+            </Button>
+            <Button variant="outline" onClick={downloadPdf} disabled={busy} data-testid="download-pdf-btn" className="rounded-sm gap-2">
+              <Download className="h-4 w-4" /> Télécharger le devis PDF
             </Button>
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>

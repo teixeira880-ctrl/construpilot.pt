@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 2 — 3 nouvelles features validées end-to-end. Backend: 12/12 nouveaux tests pytest (Tavily prices, PDF public, photos CRUD + RBAC + validation) + 24/24 régression iter1. Frontend: Estimator PDF download, tab Photos avant/après (upload before + after, gallery, compare slider avec range mouvant, delete via hover) et PriceSearch : tous OK. Tavily fonctionne mais fallback demo pour certaines requêtes courantes (voir issue mineure).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/prices/search", "issue": "Fallback vers mode='demo' pour requêtes populaires comme 'peinture', 'peinture murale', 'ba13 hydrofuge', 'laine de verre 200mm' (Tavily retourne 0 résultat sur les domaines whitelistés SUPPLIERS). Fonctionne bien pour 'carrelage 60x60', 'parquet stratifié'. Cela dégrade l'UX (utilisateur voit 'Données de démonstration' au lieu de prix web). Piste: assouplir include_domains (retirer le filtre ou l'élargir), enrichir la query côté serveur (ex: append ' site:leroymerlin.fr OR site:manomano.fr'), ou faire un 2e appel sans include_domains si le 1er est vide."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "console", "issues": ["Warning React persistant (déjà signalé iter1): 'Cannot update a component (BrowserRouter) while rendering a different component (Login)' — setState/navigate() pendant render dans Login/AuthContext. Non bloquant."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter2_new_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/iter2_results.xml"
+  ],
+  "action_items": [
+    "(mineur) Améliorer Tavily coverage: fallback intelligent pour requêtes courantes qui retournent 0 résultat sur les domaines whitelistés. Actuellement l'utilisateur voit 'mode=demo' pour 'peinture', 'ba13 hydrofuge', etc. Recommandation: si tavily retourne [] AVEC include_domains, refaire un appel sans include_domains et filtrer côté serveur, ou élargir include_domains.",
+    "(mineur/report iter1) Corriger warning React setState-in-render dans Login (probablement useEffect qui navigate() sans dépendance stable, ou setState conditionnel pendant render)."
+  ],
+  "critical_code_review_comments": [
+    "OK: /api/estimation/pdf est bien public (aucun Depends(current_user)), renvoie Content-Disposition + Content-Type application/pdf, gestion 400 pour body vide.",
+    "OK: /api/projects/{id}/photos utilise Depends(current_user) partout, _get_owned filtre bien par user_id → RBAC 404 confirmé pour autre user.",
+    "OK: Validation photos correcte — kind ∈ {before,after,progress} (400), taille max 10 Mo (413), fichier vide (400).",
+    "OK: storage.py réutilise storage_key via init_storage() (lazy singleton), extension du path sanitizée.",
+    "OK: Frontend PhotosGallery utilise responseType blob pour download, URL.createObjectURL bien libéré au unmount.",
+    "OK: Slider comparateur horizontal accessible via <input type='range'> transparent en overlay — bonne pratique a11y.",
+    "OK: bouton download-pdf-btn n'exige pas d'auth (route publique), mais est affiché seulement après compute → cohérent.",
+    "Amélioration possible: dans price_search.tavily_search(), envisager un 2e appel sans include_domains si le 1er retourne 0 résultat, pour éviter le fallback demo trop fréquent."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter2_new_features.py (nouveau)"
+  ],
+  "success_rate": {"backend": "100% (12/12 nouveaux + 24/24 régression)", "frontend": "100% des flows critiques testés"},
+  "test_credentials": "Admin: admin@cmrenov.fr / Cmrenov2026! — Demo: demo@cmrenov.fr / Demo2026!",
+  "seed_data_creation": "Projets TEST_ créés et supprimés en teardown pytest. Un projet 'TEST_Photos UI' créé via frontend est resté (utilisé pour vérifier photos), à nettoyer manuellement si besoin.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Route frontend estimator = /estimation (pas /estimateur). Tavily API_KEY configurée et opérationnelle. Fallback demo actif sur certaines requêtes (piste amélioration côté engine). Tests photos utilisent des JPEG minimaux (magic bytes 0xFFD8FF). Emergent Object Storage OK.",
+  "rca of the issue": "Fallback Tavily → demo: dans price_search.tavily_search() ligne 141-145, include_domains est restreint à la liste SUPPLIERS. Pour queries populaires comme 'peinture', Tavily ne retourne aucun résultat provenant de ces 10 domaines exacts → out=[] → search() bascule sur demo_search. Reproduction: POST /api/prices/search {'query':'peinture'} → mode=demo. Mitigation: 2e appel sans include_domains si vide, ou enrichir SUPPLIERS domains (sous-domaines catalog.leroymerlin.fr, etc)."
+}

@@ -12,8 +12,9 @@ load_dotenv(ROOT_DIR / '.env')
 
 from core.db import db, client  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
+from engines import storage  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
-                    ai_routes, leads, admin)  # noqa: E402
+                    ai_routes, leads, admin, photos)  # noqa: E402
 
 app = FastAPI(title="CMRENOV AI API")
 api_router = APIRouter(prefix="/api")
@@ -33,6 +34,7 @@ api_router.include_router(projects.router)
 api_router.include_router(ai_routes.router)
 api_router.include_router(leads.router)
 api_router.include_router(admin.router)
+api_router.include_router(photos.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -66,6 +68,10 @@ async def seed():
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")
+    try:
+        storage.init_storage()
+    except Exception as e:
+        logger.warning(f"Storage init skipped: {e}")
     logger.info("CMRENOV AI backend prêt")
 
 

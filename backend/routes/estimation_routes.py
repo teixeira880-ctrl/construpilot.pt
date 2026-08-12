@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user
-from engines import estimation, ai
+from engines import estimation, ai, pdf
 from engines.catalog import (PROJECT_TYPES, LOTS, FINISH_LEVELS, REGIONS, DIFFICULTY,
                             CONDITION_COEF)
 
@@ -91,6 +91,27 @@ async def advice(body: dict):
 
 class MaterialsIn(BaseModel):
     lots: list[dict]
+
+
+class PdfIn(BaseModel):
+    project: dict
+    estimation: dict
+    advice: str = ""
+
+
+@router.post("/pdf")
+async def estimation_pdf(body: PdfIn):
+    """Génère un PDF de devis à partir d'une estimation calculée (avant sauvegarde)."""
+    if not body.estimation or not body.estimation.get("lots"):
+        raise HTTPException(status_code=400, detail="Estimation requise")
+    data = pdf.build_estimation_pdf(body.project or {},
+                                    body.estimation,
+                                    body.estimation.get("planning") or [],
+                                    body.advice or "", None)
+    name = (body.project or {}).get("name") or "Projet"
+    safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
+    return Response(content=data, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="Estimation-CMRENOV-{safe}.pdf"'})
 
 
 @router.post("/materials")

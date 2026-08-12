@@ -47,48 +47,45 @@ Langue produit : **Français**.
 - **Leads** : `POST /api/leads`, admin `GET /api/admin/leads`, `GET /api/admin/stats`.
 - **Admin** : RBAC via `Depends(admin_user)` — user reçoit 403.
 
-## 4. État actuel (12/02/2026)
-### ✅ Implémenté & testé (Backend 24/24 pytest, tous flows frontend critiques OK)
+## 4. État actuel (12/02/2026 — itération 2)
+### ✅ Implémenté & testé (Backend 36/36 pytest = 24 régression + 12 nouveaux, tous flows frontend OK)
 - Landing, formulaire Smart Project, catalogue travaux.
 - Auth email (register/login/logout/me) + Google Emergent.
 - Seed idempotent au démarrage : `admin@cmrenov.fr` / `Cmrenov2026!` et `demo@cmrenov.fr` / `Demo2026!`.
 - Smart Project IA (GPT via Emergent Universal LLM Key) → analyse projet en lots/matériaux/estimation.
 - Estimateur (wizard 3 étapes) + calcul montant global.
 - 5 calculateurs matériaux (peinture, carrelage, placo, béton, isolation).
-- Recherche prix mockée (demo connector, 10 fournisseurs, cartes prix, badge « Données de démonstration »).
+- **Recherche prix Tavily temps réel** (mode `web`) avec fallback intelligent : 1er appel filtré sur enseignes FR, 2e appel sans filtre si vide → 3/4 des requêtes en vrais prix web (Leroy Merlin, Bricoman, Castorama, ManoMano, Brico Dépôt, Point.P, Lapeyre…). Fallback demo automatique sinon.
 - Dashboard projets utilisateur.
 - Coach IA (streaming SSE).
 - Back-office admin (users, projets, leads, stats).
-- Génération PDF de devis (ReportLab).
+- **Génération PDF de devis** : bouton "Télécharger le devis PDF" sur Estimator (route publique `/api/estimation/pdf`) ET sur ProjectDetail (route auth `/api/projects/{id}/pdf`).
+- **Photos avant/après** : nouveau tab dans ProjectDetail. Upload multi-photos (kind: before/after/progress, lot, caption), galerie 3 colonnes, slider comparateur avant/après horizontal, suppression par photo. Stockage via **Emergent Object Storage** persistant.
 - Thème clair/sombre.
 
 ### 🟡 Points d'attention identifiés par le testing agent
-- **(mineur)** Warning React `setState during render` — non bloquant, à investiguer.
-- **(mineur — corrigé)** 401 bruyants côté console sur pages publiques : `AuthContext` ne pingue plus `/auth/me` sans token ni cookie.
-- **(mineur)** Cookie `session_token` prime sur `Authorization: Bearer` dans `optional_user` — non bloquant en usage réel.
-- **Ambiguïté nommage routes** : brief mentionnait `/api/estimation/calculate` et `/api/tools/calculator/*` ; implémentation utilise `/api/estimation/compute` et `/api/calculators/*`. À aligner si client externe l'exige.
+- **(mineur)** Warning React `setState during render` (probablement dans Login/AuthContext, `navigate()` pendant render) — non bloquant.
+- **(mineur)** Tavily : ~25% des requêtes populaires (ex: "peinture") retournent 0 résultat même sans filtre de domaines → fallback demo. Comportement acceptable.
+- **(mineur)** Cookie `session_token` prime sur `Authorization: Bearer` dans `optional_user` — non bloquant.
 
 ## 5. Backlog priorisé
 ### P1 — Fiabilité & complétude
-- Vérifier le flux **PDF devis** de bout en bout (bouton front → génération → téléchargement).
-- Vérifier le **CMRENOV lead generation** (LeadDialog → `/api/leads` → admin).
-- Corriger le warning React `setState during render` (probablement dans un composant page).
+- Corriger le warning React `setState during render` (probablement dans Login/AuthContext).
+- Elargir la couverture Tavily : whitelist enrichie ou parseur prix plus robuste pour requêtes courantes.
 
-### P2 — Intégrations & data réelles
-- **Tavily** : remplacer le mock `engines/price_search.py` par la vraie API (attente clé utilisateur). Mock déjà au format cible.
-- Refactor mineur : uniformiser le format de retour prix pour bascule zéro-diff sur Tavily.
-- Enrichir le catalogue matériaux et coefficients régionaux via back-office.
-
-### P3 — Enhancements
+### P2 — Enhancements
 - Export estimation → email + PDF signé.
 - Historique versions d'un projet.
+- Compression client-side des photos avant upload (économie de bande passante + rapidité).
 - Analyse photo / scan de devis (pages présentes, à connecter à un modèle vision).
 - Onboarding et tour produit.
+- Alertes prix : quand un matériau descend sous le prix cible.
 
 ## 6. Intégrations 3rd-party
-- **Emergent Universal LLM Key** — GPT (Smart Project + Coach).
+- **Emergent Universal LLM Key** — GPT (Smart Project + Coach) + Object Storage (photos).
 - **Emergent-managed Google OAuth** — via `auth.emergentagent.com` + callback `/auth/google/session`.
-- **Tavily** — **MOCKÉ** (à activer dès réception de la clé).
+- **Tavily** — clé configurée, mode web opérationnel, fallback demo automatique.
+- **Emergent Object Storage** — bucket `cmrenov/projects/{project_id}/photos/*`.
 
 ## 7. Credentials de test
 Voir `/app/memory/test_credentials.md`.
