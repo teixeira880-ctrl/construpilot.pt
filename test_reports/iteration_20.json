@@ -1,0 +1,33 @@
+{
+  "summary": "Iter20 tested end-to-end. Backend pytest 15/15 PASS on new suite test_iter20_branding_diff_filter.py: (1) BRANDING endpoint — GET default null values, PUT full payload persists via GET refresh, PUT empty string clears field to null, PUT logo_b64 >500 000 chars returns 413. (2) PDF WITH BRANDING — After PUT branding {company_name, contact_line, logo_b64=TINY_PNG}, PDF is 200 + magic '%PDF-' + starts >2000 bytes AND is strictly larger than the plain-user PDF baseline (logo header inflates size). Cleared-branding user gets fallback PDF (still valid PDF). Invalid base64 logo does NOT crash the export (silent fallback ok). (3) NON-RÉGRESSION — takeoffs full pipeline (upload/calibrate/rooms/measure/takeoff/materials/history/restore), detect-walls, room-autofill, compare, calculators/roof_facade, estimation/compute, prices/optimize, admin/revenue/kpis, share/sms/config, push/public-key — ALL pass with corrected schemas. FRONTEND Playwright — /plan post-upload: branding-open-btn + plan-pdf-export-btn visible; branding-dialog opens with all 3 inputs (company/contact/logo); save persists (reopen shows saved company name). History tab: after 3 mutations (calibrate + 2 room_upsert) shows 3 history-item entries; every item has a history-diff-{snap_id} with correct summary ('+1 (Cuisine)', '+1 (Salon)', 'État initial' for the calibrate=oldest) AND the HTML title attribute matches. Compare page: after selecting 2 plans and clicking Comparer, all 4 filter checkboxes (compare-filter-added, -removed, -modified, -hide-unchanged) are present and toggleable; toggling hide-unchanged correctly hides the compare-unchanged block (visible→hidden). Overlay canvas re-renders correctly on each toggle without console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter20_branding_diff_filter.py",
+    "/app/test_reports/pytest/iter20.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/phase7.py PUT /users/me/branding: correct empty-string→null clearing via .strip()[:120] or None; 500 000 char b64 cap enforced with 413. Note: cap counts the base64 payload only after stripping the data-URL prefix (split(',')[-1]) — good.",
+    "routes/plans.py export_takeoff_pdf: correctly fetches user branding from the users collection and only passes a non-null dict when at least one branding field is set; falls back cleanly otherwise.",
+    "engines/pdf_takeoff.py build_takeoff_pdf(branding=...): wraps logo decoding in try/except so an invalid base64 doesn't crash export — verified with malformed logo test. Consider logging the exception for observability.",
+    "PlanTakeoff.jsx computeSnapshotDiff: correct DESC handling — iterates history[idx+1] as prev; correctly shows 'État initial' for the oldest snapshot. As noted in the spec, a room name-only change is NOT detected (only surface delta > 0.01) — acceptable for MVP.",
+    "PlanCompare.jsx: 4 filter checkboxes wired correctly to canvas overlay re-render and unchanged block conditional rendering. No console errors on toggle."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter20_branding_diff_filter.py"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% (all iter20 data-testids present and functional)"},
+  "test_credentials": "demo@construpilot.fr / Demo2026!  |  admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "3 plans uploaded via /api/takeoffs/upload using /app/before.png; branding PUT with tiny 1x1 red PNG base64; mutations = calibrate + 2 room_upsert per plan (Salon/Cuisine/Chambre variants for compare test). Branding cleared at end of PDF-invalid-logo test to leave demo user clean.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter20 green across the board. Reused iter19 mutation-pre-write snapshot semantic (see iter19 report) — computeSnapshotDiff on the oldest snapshot returns 'État initial' since prev is undefined. Native browser navigation to /plan/{plan_id} is NOT supported (only /plan) — to test history/tab-history the flow is: upload via UI, list plans via GET /api/takeoffs to grab the plan_id, then POST calibrate/rooms via API, then click tab-history in the same session. Compare page uses Radix Select combobox (not native <select>) with 67 options in demo account — pick options by text_content match against filename or plan_id suffix. Backend pytest ran with -n 0 (serial) via /app/backend/pytest.ini defaults."
+}

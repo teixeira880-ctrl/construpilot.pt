@@ -39,8 +39,15 @@ def _styles():
     }
 
 
-def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None) -> bytes:
-    """Rend un PDF de métré à partir d'un plan (rooms + totals + levels)."""
+def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
+                       branding: dict | None = None) -> bytes:
+    """Rend un PDF de métré à partir d'un plan (rooms + totals + levels).
+
+    `branding` optionnel : {"company_name": str, "contact_line": str, "logo_b64": str}
+    """
+    from reportlab.platypus import Image as RLImage
+    import base64 as b64lib
+    from io import BytesIO as BIO
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             leftMargin=18*mm, rightMargin=18*mm,
@@ -48,7 +55,36 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None) 
     S = _styles()
     story = []
 
-    # ---- Header ----
+    # ---- Header branding (logo + société) ----
+    if branding and (branding.get("company_name") or branding.get("logo_b64")):
+        header_cells = []
+        if branding.get("logo_b64"):
+            try:
+                logo_bytes = b64lib.b64decode(branding["logo_b64"].split(",")[-1])
+                logo_img = RLImage(BIO(logo_bytes), width=32*mm, height=32*mm,
+                                    kind="proportional")
+                header_cells.append(logo_img)
+            except Exception:
+                header_cells.append("")
+        else:
+            header_cells.append("")
+        info_lines = []
+        if branding.get("company_name"):
+            info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>",
+                                         S["body"]))
+        if branding.get("contact_line"):
+            info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
+        header_cells.append(info_lines)
+        t = Table([header_cells], colWidths=[35*mm, None])
+        t.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 6))
+
+    # ---- Header ConstruPilot ----
     story.append(Paragraph("MÉTRÉ CONSTRUPILOT", S["kicker"]))
     title = plan.get("filename") or "Plan"
     story.append(Paragraph(title, S["h1"]))

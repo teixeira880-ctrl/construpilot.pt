@@ -29,9 +29,9 @@ Langue produit : **Français**.
 - PDF : ReportLab / pypdf.
 - Prix : Tavily réel + fallback demo.
 
-## 4. État actuel (13/02/2026 — itération 15)
+## 4. État actuel (13/02/2026 — itération 20)
 
-### ✅ Implémenté & testé (Backend 186+/186+ pytest · Frontend 100%)
+### ✅ Implémenté & testé (Backend 200+/200+ pytest · Frontend 100%)
 - Fondations MVP complètes.
 - **PHASE 1** — Stripe subscriptions + 10 plans + trial 7j + paywall.
 - **PHASE 2** — Savings Engine + Codes promo admin.
@@ -74,6 +74,10 @@ Langue produit : **Français**.
   - **Métré PDF Export** : `GET /api/takeoffs/{id}/pdf` via reportlab (kicker + h1 + totaux globaux + totaux par niveau + détail pièces + matériaux + footer). Bouton "Métré PDF" côté frontend + download blob.
   - **Historique automatique** : chaque `calibrate`, `room_upsert`, `room_delete` déclenche un `_snapshot()` (rooms + calibrations + page_levels + meta + action). Endpoint `GET /api/takeoffs/{id}/history` + `POST /api/takeoffs/{id}/history/restore/{snap_id}` avec pré-snapshot `before_restore` pour undo. Cap 50 snapshots par plan. Snapshots capturés POST-mutation (état actuel) pour restauration cohérente. Onglet Historique dans le panel droit avec bouton "Restaurer" par ligne.
   - **Compare Visuel** : canvas overlay dans `/plan/compare` — pièces ajoutées en vert, supprimées en rouge, modifiées en ambre, sur fond du plan AFTER. Légende avec les 3 badges colorés.
+- **ITER 20 — 13/02/2026** ✅ 3 features UX polish (15/15 pytest · 100% frontend) :
+  - **PDF Sur Mesure** : branding pro stocké sur `users` (`brand_company_name`, `brand_contact_line`, `brand_logo_b64`). Endpoints `GET/PUT /api/users/me/branding` (cap logo 500k chars b64, empty string clears à null). `build_takeoff_pdf` accepte `branding=` et injecte logo + société + contact en tête. Dialog frontend `BrandingDialog` (upload logo, prévisualisation, sauvegarde).
+  - **Compare Filtre** : 4 checkboxes sur `/plan/compare` — toggle Ajouté / Supprimé / Modifié sur le canvas overlay + "Masquer inchangées" pour cacher la section unchanged.
+  - **Historique Diff** : fonction `computeSnapshotDiff()` compare snapshot précédent → actuel (par room_id) et affiche un résumé compact sous chaque item (`+2 (Salon, Cuisine)` / `−1 (SDB)` / `~1 (Chambre 12→14 m²)` / `+1 calibration`). Tooltip HTML title identique.
 
 ### 🟡 Points d'attention (non bloquants)
 - Tavily ~25% fallback demo.

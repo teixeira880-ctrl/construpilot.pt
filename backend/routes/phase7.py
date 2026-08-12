@@ -108,3 +108,45 @@ async def update_prefs(body: PrefsIn, user=Depends(current_user)):
     fresh = await db.users.find_one({"user_id": user["user_id"]},
                                     {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1})
     return fresh or {}
+
+
+# =============== PDF BRANDING (Pro) ===============
+
+class BrandingIn(BaseModel):
+    company_name: str | None = None
+    contact_line: str | None = None
+    logo_b64: str | None = None  # data URL ou base64 brute
+
+
+@router.get("/users/me/branding")
+async def get_branding(user=Depends(current_user)):
+    doc = await db.users.find_one(
+        {"user_id": user["user_id"]},
+        {"_id": 0, "brand_company_name": 1, "brand_contact_line": 1,
+         "brand_logo_b64": 1}
+    ) or {}
+    return {
+        "company_name": doc.get("brand_company_name"),
+        "contact_line": doc.get("brand_contact_line"),
+        "has_logo": bool(doc.get("brand_logo_b64")),
+        "logo_b64": doc.get("brand_logo_b64"),
+    }
+
+
+@router.put("/users/me/branding")
+async def update_branding(body: BrandingIn, user=Depends(current_user)):
+    upd = {}
+    if body.company_name is not None:
+        upd["brand_company_name"] = body.company_name.strip()[:120] or None
+    if body.contact_line is not None:
+        upd["brand_contact_line"] = body.contact_line.strip()[:200] or None
+    if body.logo_b64 is not None:
+        # Limite raisonnable : ~500 ko en base64 = 375 ko fichier
+        b64_clean = body.logo_b64.split(",")[-1] if body.logo_b64 else ""
+        if len(b64_clean) > 500_000:
+            from fastapi import HTTPException
+            raise HTTPException(413, "Logo trop volumineux (max ~375 Ko)")
+        upd["brand_logo_b64"] = b64_clean or None
+    if upd:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
+    return await get_branding(user)

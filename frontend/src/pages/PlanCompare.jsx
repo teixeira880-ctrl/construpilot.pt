@@ -23,6 +23,10 @@ export default function PlanCompare() {
   const [beforeRooms, setBeforeRooms] = useState([]);
   const [afterRooms, setAfterRooms] = useState([]);
   const [afterImage, setAfterImage] = useState(null);
+  const [showAdded, setShowAdded] = useState(true);
+  const [showRemoved, setShowRemoved] = useState(true);
+  const [showModified, setShowModified] = useState(true);
+  const [hideUnchanged, setHideUnchanged] = useState(false);
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
 
@@ -98,27 +102,33 @@ export default function PlanCompare() {
       const beforeNames = new Set(beforeRooms.map(r => _n(r.name)));
 
       // Rouge : rooms de BEFORE qui n'existent plus dans AFTER
-      beforeRooms.forEach(r => {
-        if (!afterNames.has(_n(r.name))) {
-          drawRoom(r, "rgba(239,68,68,0.28)", "rgba(220,38,38,0.9)", "SUPPR.");
-        }
-      });
+      if (showRemoved) {
+        beforeRooms.forEach(r => {
+          if (!afterNames.has(_n(r.name))) {
+            drawRoom(r, "rgba(239,68,68,0.28)", "rgba(220,38,38,0.9)", "SUPPR.");
+          }
+        });
+      }
       // Vert : rooms de AFTER qui n'étaient pas dans BEFORE
-      afterRooms.forEach(r => {
-        if (!beforeNames.has(_n(r.name))) {
-          drawRoom(r, "rgba(34,197,94,0.28)", "rgba(22,163,74,0.9)", "AJOUT");
-        }
-      });
+      if (showAdded) {
+        afterRooms.forEach(r => {
+          if (!beforeNames.has(_n(r.name))) {
+            drawRoom(r, "rgba(34,197,94,0.28)", "rgba(22,163,74,0.9)", "AJOUT");
+          }
+        });
+      }
       // Ambre : rooms modifiées
-      (result?.modified || []).forEach(mod => {
-        const ra = afterRooms.find(r => _n(r.name) === _n(mod.name));
-        if (ra) drawRoom(ra, "rgba(251,191,36,0.25)", "rgba(217,119,6,0.9)",
-                        `MOD (${mod.delta_m2 >= 0 ? "+" : ""}${mod.delta_m2} m²)`);
-      });
+      if (showModified) {
+        (result?.modified || []).forEach(mod => {
+          const ra = afterRooms.find(r => _n(r.name) === _n(mod.name));
+          if (ra) drawRoom(ra, "rgba(251,191,36,0.25)", "rgba(217,119,6,0.9)",
+                          `MOD (${mod.delta_m2 >= 0 ? "+" : ""}${mod.delta_m2} m²)`);
+        });
+      }
       ctx.restore();
     };
     img.src = `data:image/png;base64,${afterImage}`;
-  }, [afterImage, beforeRooms, afterRooms, result]);
+  }, [afterImage, beforeRooms, afterRooms, result, showAdded, showRemoved, showModified]);
 
   return (
     <div className="mx-auto max-w-[1200px] px-5 py-8 grid gap-8">
@@ -183,18 +193,35 @@ export default function PlanCompare() {
           {/* Overlay visuel */}
           {afterImage && (
             <div className="surface p-4" data-testid="compare-overlay">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                 <p className="overline">Superposition visuelle</p>
-                <div className="flex gap-2 text-xs">
-                  <Badge variant="outline" className="rounded-sm gap-1 border-emerald-500/50 text-emerald-500">
-                    <Plus className="h-3 w-3" /> Ajouté
-                  </Badge>
-                  <Badge variant="outline" className="rounded-sm gap-1 border-destructive text-destructive">
-                    <Minus className="h-3 w-3" /> Supprimé
-                  </Badge>
-                  <Badge variant="outline" className="rounded-sm gap-1 border-amber-500/50 text-amber-500">
-                    <Edit3 className="h-3 w-3" /> Modifié
-                  </Badge>
+                <div className="flex gap-3 text-xs items-center flex-wrap">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={showAdded} onChange={(e) => setShowAdded(e.target.checked)}
+                           data-testid="compare-filter-added" className="accent-emerald-500 h-4 w-4" />
+                    <Badge variant="outline" className="rounded-sm gap-1 border-emerald-500/50 text-emerald-500">
+                      <Plus className="h-3 w-3" /> Ajouté ({result.added.length})
+                    </Badge>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)}
+                           data-testid="compare-filter-removed" className="accent-red-500 h-4 w-4" />
+                    <Badge variant="outline" className="rounded-sm gap-1 border-destructive text-destructive">
+                      <Minus className="h-3 w-3" /> Supprimé ({result.removed.length})
+                    </Badge>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={showModified} onChange={(e) => setShowModified(e.target.checked)}
+                           data-testid="compare-filter-modified" className="accent-amber-500 h-4 w-4" />
+                    <Badge variant="outline" className="rounded-sm gap-1 border-amber-500/50 text-amber-500">
+                      <Edit3 className="h-3 w-3" /> Modifié ({result.modified.length})
+                    </Badge>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer text-muted-foreground">
+                    <input type="checkbox" checked={hideUnchanged} onChange={(e) => setHideUnchanged(e.target.checked)}
+                           data-testid="compare-filter-hide-unchanged" className="accent-primary h-4 w-4" />
+                    Masquer inchangées
+                  </label>
                 </div>
               </div>
               <div className="overflow-auto bg-secondary/30">
@@ -250,7 +277,7 @@ export default function PlanCompare() {
                           items={result.modified} type="modified" testId="compare-modified" />
           </div>
 
-          {result.unchanged.length > 0 && (
+          {result.unchanged.length > 0 && !hideUnchanged && (
             <details className="surface p-5" data-testid="compare-unchanged">
               <summary className="cursor-pointer text-sm font-medium">
                 {result.unchanged.length} pièce{result.unchanged.length > 1 ? "s" : ""} inchangée{result.unchanged.length > 1 ? "s" : ""}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { BrandingDialog } from "@/components/BrandingDialog";
 import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
@@ -578,6 +579,7 @@ export default function PlanTakeoff() {
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" /> Métré PDF
           </Button>
+          <BrandingDialog />
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <Sparkles className={`h-4 w-4 ${aiBusy ? "animate-pulse" : ""}`} />
             {aiBusy ? "Analyse IA…" : "Analyse IA du plan"}
@@ -862,23 +864,36 @@ export default function PlanTakeoff() {
                 </p>
               ) : (
                 <div className="grid gap-2 text-xs" data-testid="history-list">
-                  {history.map((s) => (
-                    <div key={s.snapshot_id} className="border border-border p-2 rounded-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-bold capitalize">{s.action.replace(/_/g, " ")}</p>
-                          <p className="num text-muted-foreground text-[10px]">
-                            {new Date(s.created_at).toLocaleString("fr-FR")} · {s.rooms?.length || 0} pièces
-                          </p>
+                  {history.map((s, idx) => {
+                    // Diff avec le snapshot précédent (idx+1 car trié DESC)
+                    const prev = history[idx + 1];
+                    const diff = computeSnapshotDiff(prev, s);
+                    return (
+                      <div key={s.snapshot_id}
+                           className="border border-border p-2 rounded-sm group relative"
+                           title={diff.summary}
+                           data-testid={`history-item-${s.snapshot_id}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold capitalize">{s.action.replace(/_/g, " ")}</p>
+                            <p className="num text-muted-foreground text-[10px]">
+                              {new Date(s.created_at).toLocaleString("fr-FR")} · {s.rooms?.length || 0} pièces
+                            </p>
+                            {diff.summary && (
+                              <p className="text-[10px] mt-1 text-primary" data-testid={`history-diff-${s.snapshot_id}`}>
+                                {diff.summary}
+                              </p>
+                            )}
+                          </div>
+                          <Button size="sm" variant="ghost" onClick={() => restoreSnapshot(s.snapshot_id)}
+                                  data-testid={`restore-${s.snapshot_id}`}
+                                  className="rounded-sm gap-1 text-xs h-6">
+                            Restaurer
+                          </Button>
                         </div>
-                        <Button size="sm" variant="ghost" onClick={() => restoreSnapshot(s.snapshot_id)}
-                                data-testid={`restore-${s.snapshot_id}`}
-                                className="rounded-sm gap-1 text-xs h-6">
-                          Restaurer
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
@@ -961,3 +976,35 @@ function MatCard({ label, lines }) {
     </div>
   );
 }
+
+/** Calcule un diff compact entre 2 snapshots (précédent → actuel). */
+function computeSnapshotDiff(prev, curr) {
+  if (!prev) return { summary: "État initial" };
+  const byRoomIdPrev = new Map((prev.rooms || []).map(r => [r.room_id, r]));
+  const byRoomIdCurr = new Map((curr.rooms || []).map(r => [r.room_id, r]));
+  const added = [];
+  const removed = [];
+  const modified = [];
+  for (const [id, r] of byRoomIdCurr) {
+    if (!byRoomIdPrev.has(id)) added.push(r.name);
+    else {
+      const p = byRoomIdPrev.get(id);
+      if (Math.abs((p.surface_m2 || 0) - (r.surface_m2 || 0)) > 0.01) {
+        modified.push(`${r.name} ${p.surface_m2}→${r.surface_m2} m²`);
+      }
+    }
+  }
+  for (const [id, r] of byRoomIdPrev) {
+    if (!byRoomIdCurr.has(id)) removed.push(r.name);
+  }
+  const calibPrev = Object.keys(prev.calibrations || {}).length;
+  const calibCurr = Object.keys(curr.calibrations || {}).length;
+  const calibDelta = calibCurr - calibPrev;
+  const parts = [];
+  if (added.length) parts.push(`+${added.length} (${added.slice(0, 2).join(", ")}${added.length > 2 ? "…" : ""})`);
+  if (removed.length) parts.push(`−${removed.length} (${removed.slice(0, 2).join(", ")}${removed.length > 2 ? "…" : ""})`);
+  if (modified.length) parts.push(`~${modified.length} (${modified[0]}${modified.length > 1 ? "…" : ""})`);
+  if (calibDelta > 0) parts.push(`+${calibDelta} calibration`);
+  return { summary: parts.join(" · ") || "Aucun changement" };
+}
+

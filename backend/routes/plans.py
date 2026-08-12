@@ -775,7 +775,19 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
 
     plan_light = {"plan_id": p.get("plan_id"), "filename": p.get("filename"),
                   "page_count": p.get("page_count", 1)}
-    pdf_bytes = build_takeoff_pdf(plan_light, takeoff, materials)
+
+    # Branding pro personnalisé (si défini sur le user)
+    user_doc = await db.users.find_one({"user_id": user["user_id"]},
+                                         {"_id": 0, "brand_company_name": 1,
+                                          "brand_contact_line": 1, "brand_logo_b64": 1})
+    branding = None
+    if user_doc:
+        if any(user_doc.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64")):
+            branding = {"company_name": user_doc.get("brand_company_name"),
+                        "contact_line": user_doc.get("brand_contact_line"),
+                        "logo_b64": user_doc.get("brand_logo_b64")}
+
+    pdf_bytes = build_takeoff_pdf(plan_light, takeoff, materials, branding=branding)
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
