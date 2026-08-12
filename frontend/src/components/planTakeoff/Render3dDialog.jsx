@@ -25,6 +25,8 @@ export function Render3dDialog({
   videoBusy, videoUrl,
   runRenderVideo, downloadVideo,
   videoHistory, openVideoHistory,
+  videoAddWatermark, setVideoAddWatermark,
+  videoAddMusic, setVideoAddMusic,
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,6 +166,23 @@ export function Render3dDialog({
               et les assemble en une vidéo MP4 de 20 secondes à joindre à votre devis.
               Effet <b>wow</b> garanti auprès de vos clients.
             </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 h-10 px-3 border border-border rounded-sm cursor-pointer bg-secondary/30"
+                     data-testid="video-watermark-toggle">
+                <input type="checkbox" checked={videoAddWatermark}
+                       onChange={(e) => setVideoAddWatermark(e.target.checked)}
+                       className="accent-primary h-4 w-4" />
+                <span className="text-xs">Filigrane logo (branding)</span>
+              </label>
+              <label className="flex items-center gap-2 h-10 px-3 border border-border rounded-sm cursor-pointer bg-secondary/30"
+                     data-testid="video-music-toggle">
+                <input type="checkbox" checked={videoAddMusic}
+                       onChange={(e) => setVideoAddMusic(e.target.checked)}
+                       className="accent-primary h-4 w-4" />
+                <span className="text-xs">Musique d'ambiance</span>
+              </label>
+            </div>
 
             {!videoUrl && !videoBusy && (
               <Button onClick={runRenderVideo} disabled={videoBusy}

@@ -1,0 +1,33 @@
+{
+  "summary": "Iter30 tested: (1) video watermark logo overlay, (2) audio jingle track, (3) auto-attach latest 3D tour MP4 to devis email. Backend: 10/10 pytest tests PASS in ~49s incl. 3 validation regressions from iter29 (1/7/unknown styles → 400), full render-video with add_watermark=True + add_music=True → response has has_watermark=true/has_audio=true, ffprobe on downloaded MP4 confirms h264 1280x720 video stream + aac audio stream, retry with both flags False → response has_watermark=false/has_audio=false AND ffprobe shows NO audio stream, send-quote with attach_latest_video=true persists attach_latest_video=true & attached_video_id=v3d_… in db.quote_sends (verified via GET /quote-sends), retry with attach_latest_video=false → attached_video_id=null. Email delivery to example.com returns email_status='failed' as expected (Resend blocks that domain) but the log & video attachment logic still executes correctly BEFORE the send failure — this matches the intended behaviour. Frontend: logged in as pro@construpilot.fr via demo-login-pro, uploaded a plan, opened Render3D dialog → video mode tab shows render-video-panel with BOTH new toggles (video-watermark-toggle & video-music-toggle) both checked ON by default, clicking checkboxes toggles them OFF correctly. Quote dialog opens, switching to 'Envoyer au client' mode calls loadVideoHistory as expected; on the freshly-uploaded plan (no video yet), quote-video-toggle is correctly NOT rendered (conditional on latestVideo — matches spec).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter30_video_extras.py",
+    "/app/test_reports/pytest/iter30_full.xml",
+    "/app/test_reports/iter30_plan_takeoff.png",
+    "/app/test_reports/iter30_quote_dialog.png"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "RenderVideoIn.add_watermark / add_music default True is a great UX choice — pros get watermark+music by default for max wow.",
+    "send_quote correctly gates video attach with a 20 MB size cap (Resend limit) and gracefully falls back (logs warning + attached_video_id stays None) if the file exceeds the cap — good defensive coding.",
+    "Watermark uses _resolve_branding (org > user fallback) — consistent with PDF branding logic, no duplication.",
+    "REVIEW REQUEST FIELD NAME MISMATCH: the request said 'PUT /api/users/me/branding with brand_logo_b64=<...>' but the actual BrandingIn Pydantic model only accepts 'logo_b64' (not 'brand_logo_b64'). The DB column is 'brand_logo_b64' but the request body key is 'logo_b64'. Not a bug (test used correct key), just documenting for main agent.",
+    "Frontend: latestVideo state is populated by loadVideoHistory; quote dialog opens correctly and only renders quote-video-toggle when a video actually exists — the conditional wrapper `{latestVideo && (…)}` is the right pattern.",
+    "No regression detected on iter29 tests (video base flow still works)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter30_video_extras.py (new — 10 tests, all passing)"
+  ],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100% (12/12 assertions)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! (via demo-login-pro button)",
+  "seed_data_creation": "For backend tests: PUT /api/users/me/branding with a synthetic 240x120 orange PNG logo + company_name='BTP Test'. Fixture selects a plan with rooms (or calibrates + upserts a TEST_Salon 5m×4m room via API on an existing plan) so send-quote can build the PDF.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run backend tests with: `export REACT_APP_BACKEND_URL=https://cmrenov-ai.preview.emergentagent.com && cd /app/backend && python -m pytest tests/test_iter30_video_extras.py -v -n 0` (~50s total, includes 2 full Gemini video generations). To retest quote-video-toggle POSITIVE path in the UI (toggle actually rendered), you need a plan that already has ≥1 video generated — the fresh-upload path won't have one. Simplest: run the full backend suite first, then in the UI navigate to the specific plan_id used by the backend test (needs a plans-list page — currently only /plan opens the most recent). Field name gotcha: PUT /api/users/me/branding uses `logo_b64` (NOT `brand_logo_b64` as the request stated). ffprobe & ffmpeg are both present in /usr/bin."
+}

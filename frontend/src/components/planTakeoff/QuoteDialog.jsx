@@ -26,6 +26,8 @@ export function QuoteDialog({
   quoteClientAddress, setQuoteClientAddress,
   quoteMessage, setQuoteMessage,
   quoteIncludeTva, setQuoteIncludeTva,
+  quoteAttachVideo, setQuoteAttachVideo,
+  latestVideo,
   quoteSends, createSignatureLink,
   templateName, setTemplateName,
   templateShared, setTemplateShared,
@@ -178,6 +180,27 @@ export function QuoteDialog({
                   </p>
                 </div>
               </label>
+
+              {/* Auto-attach latest 3D tour video */}
+              {latestVideo && (
+                <label className="flex items-start gap-2 p-3 border border-primary/40 rounded-sm bg-primary/5 cursor-pointer"
+                       data-testid="quote-video-toggle">
+                  <input type="checkbox" checked={quoteAttachVideo}
+                         onChange={(e) => setQuoteAttachVideo(e.target.checked)}
+                         data-testid="quote-video-checkbox"
+                         className="accent-primary h-4 w-4 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold">
+                      🎬 Joindre le tour vidéo 3D ({(latestVideo.size_bytes / 1024 / 1024).toFixed(1)} Mo)
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {latestVideo.duration_s}s · Styles : {(latestVideo.styles || []).join(", ") || "—"}
+                      {latestVideo.has_watermark && " · avec filigrane"}
+                      {latestVideo.has_audio && " · avec musique"}
+                    </p>
+                  </div>
+                </label>
+              )}
               <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm">
                 Une copie sera envoyée à votre adresse pour trace. L'envoi est loggé dans l'historique.
               </p>

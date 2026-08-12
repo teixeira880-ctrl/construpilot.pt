@@ -489,11 +489,55 @@ Voir `/app/memory/test_credentials.md`.
   les iter précédentes.
 - Total cumulé : **74 + 6 = 80/80 PASS**.
 
+## 16. Changelog Iter 30 (12/02/2026) — Watermark logo + Musique + Auto-attach vidéo au devis
+
+### Filigrane logo sur les tours vidéo
+- `engines/video_tour.py::build_video_tour(logo_bytes: bytes|None)` — nouveau
+  paramètre. Le logo est overlay en haut-droite (15 % de la largeur vidéo,
+  opacité 0.85, marge 24 px), baked into the MP4 via `ffmpeg overlay=W-w-24:24`.
+- `render_video_tour` récupère le logo via `_resolve_branding` (org > user,
+  cohérent avec le pipeline PDF). Toggle `add_watermark` (défaut `True`).
+
+### Musique d'ambiance procédurale
+- Génération 100 % locale via `ffmpeg -f lavfi -i sine=...` — accord C majeur
+  (C4 + E4 + G4) + basse subtile (C3), mixé à volume 0.05 avec fade in/out 1.5s.
+- Aucun fichier audio à shipper : la piste est synthétisée à chaque build.
+- Encodage AAC 128 kb/s, 44.1 kHz stéréo. Toggle `add_music` (défaut `True`).
+- Résultat vérifié via `ffprobe` : le MP4 contient bien deux streams (h264 + aac)
+  quand activé, et un seul (h264) quand désactivé.
+
+### Auto-attach du tour vidéo dans les devis email
+- `SendQuoteIn.attach_latest_video: bool = False` — nouveau champ optionnel.
+- Quand `True`, `send_quote` récupère le doc le plus récent de
+  `db.plan_videos_3d` pour ce plan/user, lit le MP4 sur disque, et l'ajoute à
+  `extra_attachments` avec `content_type=video/mp4`.
+- **Garde-fou 20 MB** (limite Resend) : si le MP4 dépasse, il est loggé et
+  ignoré silencieusement (`attached_video_id` reste `None`).
+- Le corps HTML de l'email est enrichi d'un bandeau orange 🎬 signalant la vidéo.
+- Le log `quote_sends` conserve `attach_latest_video` + `attached_video_id`
+  pour audit / dashboard suivi.
+
+### Frontend
+- `Render3dDialog` : 2 nouveaux toggles dans le mode vidéo
+  (`[data-testid=video-watermark-toggle]`, `[data-testid=video-music-toggle]`),
+  activés par défaut.
+- `QuoteDialog` : bloc conditionnel `[data-testid=quote-video-toggle]` visible
+  uniquement quand un tour vidéo existe pour ce plan. Affiche taille (Mo),
+  durée, styles, présence filigrane & musique.
+- `PlanTakeoff.jsx` : nouveaux states `videoAddWatermark`, `videoAddMusic`,
+  `quoteAttachVideo`, `latestVideo`. `loadVideoHistory` alimente `latestVideo`.
+  Le POST `send-quote` inclut désormais `attach_latest_video`.
+
+### Tests
+- iter30 : **10/10 backend pytest** (validation stylistique + génération réelle
+  Gemini avec/sans watermark et audio + ffprobe streams + auto-attach persistence
+  + toggle attach off) et **12/12 frontend assertions** (dialogs, toggles,
+  conditionnels).
+- Total cumulé : **80 + 10 = 90/90 PASS** sur les 10 dernières itérations.
+
 ### Backlog restant
-- PlanTakeoff.jsx encore à 1662 lignes — pourrait descendre à ~800 en extrayant
-  la logique canvas (draw/measure), les outils walls, et le panel matériaux
-  dans des sous-composants dédiés (P2, hors scope urgent).
-- Tavily API réelle (P2) — clé utilisateur toujours en attente.
-- Video : possibilité future d'ajouter un jingle audio et un logo watermark
-  en overlay pour un rendu encore plus pro.
+- PlanTakeoff.jsx encore à ~1685 lignes — extraction canvas / toolbar en P2.
+- Tavily API réelle (P2) — clé utilisateur en attente.
+- **Idée future** : jingle audio réel (WAV/MP3 upload par le pro dans son
+  branding) plutôt que la piste synthétisée par défaut.
 

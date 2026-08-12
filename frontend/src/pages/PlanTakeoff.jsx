@@ -254,6 +254,8 @@ export default function PlanTakeoff() {
   const [quoteIntro, setQuoteIntro] = useState("");
   const [quoteClientAddress, setQuoteClientAddress] = useState("");
   const [quoteIncludeTva, setQuoteIncludeTva] = useState(true);
+  const [quoteAttachVideo, setQuoteAttachVideo] = useState(false);
+  const [latestVideo, setLatestVideo] = useState(null);
   const [estimateDialog, setEstimateDialog] = useState(false);
   const [estimateResult, setEstimateResult] = useState(null);
   const [estimateBusy, setEstimateBusy] = useState(false);
@@ -272,6 +274,8 @@ export default function PlanTakeoff() {
   const [videoUrl, setVideoUrl] = useState(null);
   const [videoHistory, setVideoHistory] = useState([]);
   const [currentVideoId, setCurrentVideoId] = useState(null);
+  const [videoAddWatermark, setVideoAddWatermark] = useState(true);
+  const [videoAddMusic, setVideoAddMusic] = useState(true);
   const [wallsSummary, setWallsSummary] = useState(null);
   const [reclassifyMode, setReclassifyMode] = useState(false);
   const [snapPickA, setSnapPickA] = useState(null);
@@ -610,9 +614,13 @@ export default function PlanTakeoff() {
         message: quoteMessage.trim() || null,
         finish: quoteFinish, floor_material: quoteFloor, cc_self: true,
         include_tva_attestation: quoteIncludeTva,
+        attach_latest_video: quoteAttachVideo,
       });
       if (data.email_status === "sent") {
-        const extra = quoteIncludeTva ? " + attestation TVA jointe" : "";
+        const extras = [];
+        if (quoteIncludeTva) extras.push("attestation TVA");
+        if (quoteAttachVideo && latestVideo) extras.push("tour vidéo 3D");
+        const extra = extras.length ? " + " + extras.join(" + ") + " joint(s)" : "";
         toast.success(`Devis envoyé à ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("fr-FR")} € TTC)`);
         setQuoteDialog(false);
         setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
@@ -700,7 +708,10 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     try {
       const { data } = await api.get(`/takeoffs/${plan.plan_id}/videos-3d`);
-      setVideoHistory(data.videos || []);
+      const videos = data.videos || [];
+      setVideoHistory(videos);
+      // First (most recent) becomes the "latest" candidate for quote attachment
+      setLatestVideo(videos[0] || null);
     } catch { /* ignore */ }
   };
 
@@ -714,6 +725,8 @@ export default function PlanTakeoff() {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/render-video`, {
         page_index: pageIndex,
         include_furniture: render3dFurniture,
+        add_watermark: videoAddWatermark,
+        add_music: videoAddMusic,
       }, { timeout: 300000 }); // 5 min : 4 renders IA + montage ffmpeg
       setCurrentVideoId(data.video_id);
       setVideoUrl(videoBlobUrl(data.video_id));
@@ -1001,7 +1014,7 @@ export default function PlanTakeoff() {
                   className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
             <Sparkles className="h-4 w-4" /> Voir en 3D
           </Button>
-          <Button variant="outline" onClick={() => { setQuoteDialog(true); loadTemplates(); loadQuoteSends(); }}
+          <Button variant="outline" onClick={() => { setQuoteDialog(true); loadTemplates(); loadQuoteSends(); loadVideoHistory(); }}
                   data-testid="plan-quote-pdf-btn"
                   className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
             <FileDown className="h-4 w-4" /> Devis PDF
@@ -1563,6 +1576,8 @@ export default function PlanTakeoff() {
         quoteClientAddress={quoteClientAddress} setQuoteClientAddress={setQuoteClientAddress}
         quoteMessage={quoteMessage} setQuoteMessage={setQuoteMessage}
         quoteIncludeTva={quoteIncludeTva} setQuoteIncludeTva={setQuoteIncludeTva}
+        quoteAttachVideo={quoteAttachVideo} setQuoteAttachVideo={setQuoteAttachVideo}
+        latestVideo={latestVideo}
         quoteSends={quoteSends} createSignatureLink={createSignatureLink}
         templateName={templateName} setTemplateName={setTemplateName}
         templateShared={templateShared} setTemplateShared={setTemplateShared}
@@ -1582,6 +1597,8 @@ export default function PlanTakeoff() {
         videoBusy={videoBusy} videoUrl={videoUrl}
         runRenderVideo={runRenderVideo} downloadVideo={downloadVideo}
         videoHistory={videoHistory} openVideoHistory={openVideoHistory}
+        videoAddWatermark={videoAddWatermark} setVideoAddWatermark={setVideoAddWatermark}
+        videoAddMusic={videoAddMusic} setVideoAddMusic={setVideoAddMusic}
       />
 
       <EstimateDialog

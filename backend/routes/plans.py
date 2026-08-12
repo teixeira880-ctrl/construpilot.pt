@@ -546,15 +546,20 @@ class RenderVideoIn(BaseModel):
     # Styles used in order (each = 5s clip). Default = the "wow" sequence.
     styles: list[str] = Field(default_factory=lambda:
         ["isometric", "photoreal", "axonometric", "interior"])
+    # Extras (all default ON for max wow)
+    add_watermark: bool = True   # overlay the pro's brand logo
+    add_music: bool = True       # soft ambient background audio
 
 
 @router.post("/{plan_id}/render-video")
 async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(current_user)):
     """Génère 4 rendus IA du plan avec des styles différents et les assemble
-    en un tour vidéo MP4 (Ken Burns + crossfade) à joindre au devis.
+    en un tour vidéo MP4 (Ken Burns + crossfade + filigrane logo + musique)
+    à joindre au devis.
 
     Réutilise `_gemini_render_3d` pour chaque style. Prévoir 60-180s d'exécution.
     """
+    import base64 as _b64
     from engines.video_tour import build_video_tour, VIDEO_CACHE_DIR  # noqa: F401
 
     if not body.styles or len(body.styles) < 2:
@@ -588,14 +593,29 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
         )
         frames_b64.append(b64_out)
 
-    # 2) Assemble MP4 (ffmpeg)
+    # 2) Load branding logo bytes (if user opted in AND has one)
+    logo_bytes: bytes | None = None
+    if body.add_watermark:
+        branding = await _resolve_branding(user["user_id"]) or {}
+        logo_b64 = branding.get("logo_b64")
+        if logo_b64:
+            try:
+                logo_bytes = _b64.b64decode(logo_b64)
+            except Exception as e:
+                logger.warning(f"invalid brand logo b64: {e}")
+                logo_bytes = None
+
+    # 3) Assemble MP4 (ffmpeg)
     try:
-        mp4_path, meta = build_video_tour(frames_b64, styles=body.styles)
+        mp4_path, meta = build_video_tour(
+            frames_b64, styles=body.styles,
+            logo_bytes=logo_bytes, add_audio=body.add_music,
+        )
     except Exception as e:
         logger.error(f"video_tour build failed: {type(e).__name__} {e}")
         raise HTTPException(502, f"Assemblage vidéo échoué : {type(e).__name__}") from e
 
-    # 3) Save meta doc (video file kept on disk)
+    # 4) Save meta doc (video file kept on disk)
     doc = {
         "video_id": meta["video_id"],
         "plan_id": plan_id,
@@ -606,6 +626,8 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
         "duration_s": meta["duration_s"],
         "size_bytes": meta["size_bytes"],
         "filename": mp4_path.name,
+        "has_watermark": meta["has_watermark"],
+        "has_audio": meta["has_audio"],
         "created_at": _now(),
     }
     await db.plan_videos_3d.insert_one(doc)
@@ -1397,6 +1419,7 @@ class SendQuoteIn(BaseModel):
     include_skirting: bool = True
     cc_self: bool = True
     include_tva_attestation: bool = False  # ajoute l'attestation TVA 10 %
+    attach_latest_video: bool = False       # attach the most recent 3D tour MP4
 
 
 @router.post("/{plan_id}/send-quote")
@@ -1490,6 +1513,43 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         )
         html = wrap_html(subject, inner_with_att)
 
+    # ---- Auto-attach latest 3D tour MP4 (if pro opted in) ----
+    attached_video_id: str | None = None
+    if body.attach_latest_video:
+        latest = await db.plan_videos_3d.find_one(
+            {"plan_id": plan_id, "user_id": user["user_id"]},
+            sort=[("created_at", -1)],
+        )
+        if latest:
+            from engines.video_tour import get_video_path
+            vpath = get_video_path(latest.get("video_id", ""))
+            if vpath:
+                try:
+                    mp4_bytes = vpath.read_bytes()
+                    # Cap at 20 MB to avoid Resend rejection
+                    if len(mp4_bytes) <= 20 * 1024 * 1024:
+                        extra_attachments.append({
+                            "filename": f"tour-3d-{plan_id}.mp4",
+                            "content": mp4_bytes,
+                            "content_type": "video/mp4",
+                        })
+                        attached_video_id = latest["video_id"]
+                        # Enrich email body with a video mention
+                        html = html.replace(
+                            "Total TTC :",
+                            "<p style='margin:0 0 12px;font-size:13px;color:#FF5A00;"
+                            "font-weight:700'>🎬 Un tour vidéo 3D de votre projet est "
+                            "joint à cet email — regardez-le pour visualiser votre "
+                            "chantier avant travaux.</p>Total TTC :",
+                            1,
+                        )
+                    else:
+                        logger.warning(
+                            f"video too large to attach: {len(mp4_bytes)} bytes"
+                        )
+                except Exception as e:
+                    logger.warning(f"failed to attach video: {e}")
+
     email_status = "sent"; email_id = None
     error = None
     try:
@@ -1513,6 +1573,8 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         "total_ttc": ttc, "finish": body.finish, "floor_material": body.floor_material,
         "subject": subject, "intro": body.intro, "message": body.message,
         "include_tva_attestation": body.include_tva_attestation,
+        "attach_latest_video": body.attach_latest_video,
+        "attached_video_id": attached_video_id,
         "email_status": email_status, "email_id": email_id, "error": error,
         "created_at": _now(),
         "opened": False, "open_count": 0,
