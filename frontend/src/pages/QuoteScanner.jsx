@@ -24,6 +24,8 @@ export default function QuoteScanner() {
   const [company, setCompany] = useState("");
   const [text, setText] = useState("");
   const [b64, setB64] = useState(null);
+  const [pdfB64, setPdfB64] = useState(null);
+  const [pdfName, setPdfName] = useState("");
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
@@ -40,22 +42,45 @@ export default function QuoteScanner() {
   const onFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!/image\/(jpeg|png|webp|jpg)/.test(file.type)) return toast.error("Formats : JPEG, PNG, WEBP");
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImg = /image\/(jpeg|png|webp|jpg)/.test(file.type);
+    if (!isPdf && !isImg) return toast.error("Formats acceptés : JPEG, PNG, WEBP ou PDF");
+    if (file.size > 15 * 1024 * 1024) return toast.error("Fichier trop lourd (max 15 Mo)");
     const reader = new FileReader();
-    reader.onload = () => { setPreview(reader.result); setB64(String(reader.result).split(",")[1]); };
+    reader.onload = () => {
+      const b64only = String(reader.result).split(",")[1];
+      if (isPdf) {
+        setPdfB64(b64only);
+        setPdfName(file.name);
+        setPreview(null);
+        setB64(null);
+      } else {
+        setPreview(reader.result);
+        setB64(b64only);
+        setPdfB64(null);
+        setPdfName("");
+      }
+    };
     reader.readAsDataURL(file);
   };
 
   const analyse = async () => {
-    if (!b64 && text.trim().length < 20) return toast.error("Importez une photo du devis ou collez son texte");
+    if (!b64 && !pdfB64 && text.trim().length < 20) {
+      return toast.error("Importez une photo, un PDF ou collez le texte du devis");
+    }
     setBusy(true);
     try {
-      const { data } = await api.post("/quotes/analyse", { text, image_base64: b64, company });
+      const { data } = await api.post("/quotes/analyse", {
+        text, image_base64: b64, pdf_base64: pdfB64, company,
+      });
       setResult(data);
       loadSaved();
       toast.success("Devis analysé");
-    } catch { toast.error("Analyse impossible"); }
-    finally { setBusy(false); }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Analyse impossible");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const compare = async () => {
@@ -85,16 +110,25 @@ export default function QuoteScanner() {
             <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nom de l'entreprise" data-testid="quote-company-input" className="rounded-sm" />
           </div>
           <div className="grid gap-2">
-            <Label>Photo du devis / facture</Label>
+            <Label>Photo, PDF ou capture du devis</Label>
             <label htmlFor="quote-file" className="border border-dashed border-border rounded-sm p-6 text-center cursor-pointer hover:border-primary transition-colors" data-testid="quote-dropzone">
-              {preview ? <img src={preview} alt="Devis" className="max-h-52 mx-auto object-contain rounded-sm" /> : (
+              {preview ? (
+                <img src={preview} alt="Devis" className="max-h-52 mx-auto object-contain rounded-sm" />
+              ) : pdfB64 ? (
+                <div className="flex items-center justify-center gap-3 text-sm">
+                  <FileSearch className="h-6 w-6 text-primary" />
+                  <span className="font-medium">{pdfName || "Devis.pdf"}</span>
+                  <Badge variant="outline" className="rounded-sm">PDF</Badge>
+                </div>
+              ) : (
                 <>
                   <Upload className="h-6 w-6 mx-auto text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">Importer une image du devis</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Importer une image ou un PDF du devis</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">JPEG · PNG · WEBP · PDF · 15 Mo max</p>
                 </>
               )}
             </label>
-            <input id="quote-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="hidden" data-testid="quote-file-input" />
+            <input id="quote-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" onChange={onFile} className="hidden" data-testid="quote-file-input" />
           </div>
           <div className="grid gap-2">
             <Label>Ou collez le texte du devis</Label>

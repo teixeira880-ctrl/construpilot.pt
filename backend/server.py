@@ -14,7 +14,7 @@ from core.db import db, client  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
 from engines import storage, alerting  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
-                    ai_routes, leads, admin, photos)  # noqa: E402
+                    ai_routes, leads, admin, photos, billing)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
@@ -38,6 +38,7 @@ api_router.include_router(ai_routes.router)
 api_router.include_router(leads.router)
 api_router.include_router(admin.router)
 api_router.include_router(photos.router)
+api_router.include_router(billing.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -74,10 +75,30 @@ async def seed():
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")
+    await db.entitlements.create_index("user_id")
+    await db.entitlements.create_index("stripe_subscription_id")
+    await db.payment_transactions.create_index("session_id", unique=True)
+    await db.plans.create_index("plan_id", unique=True)
     try:
         storage.init_storage()
     except Exception as e:
         logger.warning(f"Storage init skipped: {e}")
+
+    # Seed plans + feature flags (idempotent)
+    from engines.monetization_catalog import DEFAULT_PLANS, DEFAULT_FEATURE_FLAGS
+    from engines import monetization
+    for plan in DEFAULT_PLANS:
+        exists = await db.plans.find_one({"plan_id": plan["plan_id"]})
+        if not exists:
+            await db.plans.insert_one(plan)
+    if not await db.feature_flags.find_one({"_id": "global"}):
+        await db.feature_flags.insert_one({"_id": "global", **DEFAULT_FEATURE_FLAGS})
+
+    # Sync catalogue Stripe (best effort — n'échoue pas si Stripe indispo)
+    try:
+        await monetization.ensure_stripe_catalog()
+    except Exception as e:
+        logger.warning(f"Stripe catalog sync skipped: {e}")
 
     # Vérification quotidienne des alertes prix (tous les jours à 08:00 UTC)
     scheduler = AsyncIOScheduler(timezone="UTC")

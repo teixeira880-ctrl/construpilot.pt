@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { BillingProvider } from "@/context/BillingContext";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import Landing from "@/pages/Landing";
@@ -18,6 +19,8 @@ import Coach from "@/pages/Coach";
 import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
+import Pricing from "@/pages/Pricing";
+import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 
 const Protected = ({ children, admin }) => {
   const { user, loading } = useAuth();
@@ -55,6 +58,9 @@ function AppRouter() {
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/devis" element={<Shell><QuoteScanner /></Shell>} />
+      <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
+      <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
+      <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
@@ -73,8 +79,10 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <AuthProvider>
-          <AppRouter />
-          <Toaster position="top-right" richColors />
+          <BillingProvider>
+            <AppRouter />
+            <Toaster position="top-right" richColors />
+          </BillingProvider>
         </AuthProvider>
       </BrowserRouter>
     </div>

@@ -50,39 +50,57 @@ Langue produit : **Français**.
 - **Leads** : `POST /api/leads`, admin `GET /api/admin/leads`, `GET /api/admin/stats`.
 - **Admin** : RBAC via `Depends(admin_user)` — user reçoit 403.
 
-## 4. État actuel (12/02/2026 — itération 4)
-### ✅ Implémenté & testé (Backend 49/49 pytest cumulés, tous flows frontend OK)
+## 4. État actuel (12/02/2026 — itération 5)
+### ✅ Implémenté & testé (Backend 69/69 pytest cumulés, tous flows frontend OK)
 - Landing, formulaire Smart Project, catalogue travaux.
 - Auth email (register/login/logout/me) + Google Emergent.
-- Seed idempotent au démarrage : `admin@construpilot.fr` / `Construpilot2026!` et `demo@construpilot.fr` / `Demo2026!`. Suppression automatique des anciens comptes `@cmrenov.fr`.
-- Smart Project IA (GPT via Emergent Universal LLM Key) → analyse projet en lots/matériaux/estimation.
-- Estimateur (wizard 3 étapes) + calcul montant global.
-- 5 calculateurs matériaux (peinture, carrelage, placo, béton, isolation).
-- **Recherche prix Tavily temps réel** (mode `web`) avec fallback intelligent (2 appels + demo).
-- Dashboard projets utilisateur, Coach IA (streaming SSE), Back-office admin.
-- **PDF de devis** — bouton "Télécharger" ET "Envoyer par email" (via Resend) sur Estimator + ProjectDetail.
-- **Photos avant/après** — compression client Canvas (~150 Ko cible), galerie multi-photos, slider comparateur horizontal, Emergent Object Storage.
-- **Chantier Timeline** — frise chronologique mélangeant photos + dépenses + progression + leads, avec filtres.
-- **Alertes Prix** — création alertes, vérification quotidienne (APScheduler cron 08:00 UTC) + bouton "Vérifier maintenant" + notifications email Resend.
-- Thème clair/sombre.
-- **Rebranding ConstruPilot** — tagline "Estimez. Comparez. Construisez.", logo Constru+**Pilot**, PDF/emails/UI cohérents.
+- Seed idempotent : `admin@construpilot.fr` / `Construpilot2026!` et `demo@construpilot.fr` / `Demo2026!`.
+- Smart Project IA, Estimateur wizard, 5 calculateurs matériaux.
+- **Recherche prix Tavily temps réel** (mode `web` + fallback demo).
+- Dashboard, Coach IA (SSE), Back-office admin.
+- **PDF de devis** — téléchargement + envoi email via Resend.
+- **Photos avant/après** — compression client Canvas + Emergent Object Storage + slider comparateur.
+- **Chantier Timeline** — frise chronologique.
+- **Alertes Prix** — APScheduler cron 08:00 UTC + notifications Resend.
+- **Rebranding ConstruPilot** — tagline "Estimez. Comparez. Construisez."
+- **QuoteScanner** — accepte désormais les PDF (extraction pypdf) en plus des images.
+- **CONSTRUPILOT REVENUE ENGINE — PHASE 1** ✅
+  - 8 plans configurables en DB (Free / Project Pass 19,90€ / Premium 9,99€/mois / Premium 79€/an / Pro 49€/mois / Pro 490€/an / Pro Business 99€/mois / Pro Business 990€/an).
+  - Feature flags (`trial_enabled`, `trial_days=7`, `paywall_mode='soft'`, `marketplace/affiliate/api/white_label` désactivés).
+  - **Stripe sandbox Emergent** claimable — catalogue Products+Prices synchronisé automatiquement au startup.
+  - Endpoints : `/api/plans`, `/api/billing/checkout`, `/api/billing/status/{id}`, `/api/billing/me`, `/api/billing/portal`, `/api/billing/flags`, `/api/stripe/webhook`.
+  - Admin : `/api/admin/plans` (CRUD), `/api/admin/feature-flags`, `/api/admin/plans/sync-stripe`, `/api/admin/revenue` (MRR-ready).
+  - Frontend : `/tarifs` (page publique avec tabs Particulier/Pro), `/paiement/succes`, `/paiement/annule`, `BillingContext` + `SoftPaywall` (non bloquant).
+  - Upgrade CTA "Passer Premium — 7 j offerts" sur Dashboard pour FREE.
+  - Trial 7 jours activé sur tous les abonnements.
 
 ### 🟡 Points d'attention (non bloquants)
-- Warning React `setState during render` dans Login/AuthContext (identifié par testing agent iter 4).
-- Tavily : ~25% des requêtes populaires (ex: "peinture") en fallback demo.
-- Cookie `session_token` prime sur `Authorization: Bearer` dans `optional_user`.
+- Warning React `setState during render` dans Login/AuthContext.
+- Tavily : ~25% requêtes populaires en fallback demo.
+- Webhook Stripe : nécessite un événement Stripe réel pour tester la signature.
 
 ## 5. Backlog priorisé
-### P1 — Fiabilité
-- Corriger warning React `setState during render` dans Login/AuthContext.
-- Domaine Resend vérifié (au lieu de `onboarding@resend.dev` en sandbox) pour envoyer vers n'importe quel destinataire.
+### PHASE 2 — Conversion & Savings (à venir)
+- Savings Engine (matériaux + DIY + alternatives + fournisseurs) — calculs réels
+- Smart Paywall contextuel avancé (messages selon écran)
+- Calculateur ROI sur pricing + résultat d'estimation
+- Promo codes (réductions %, fixes, expiration, limite)
+- Referral program (parrainage crédits)
 
-### P2 — Enhancements produit
-- Onboarding / tour produit interactif.
-- Historique versions d'un projet.
-- Analyse photo / scan de devis (pages présentes, à connecter à un modèle vision).
-- Whitelist Tavily élargie + parseur prix plus robuste.
-- App mobile PWA (installer + offline).
+### PHASE 3 — Leads Marketplace + Affiliation
+- Affiliation fournisseurs (tracking clics/conversions/GMV)
+- Lead Marketplace (score qualité 0-100, tarification par tranche, crédits pro)
+- Badges "Sponsorisé" et "Lien partenaire"
+
+### PHASE 4 — B2B / API / White Label
+- API commerciale (clés, rate limits, usage tracking, billing)
+- White Label (logo/couleurs partenaire)
+- Enterprise + SSO
+- Revenue Dashboard admin complet (MRR/ARR/ARPU/LTV/CAC/funnel)
+
+### P1 — Fiabilité
+- Corriger warning React `setState during render`.
+- Domaine Resend vérifié (au-delà de la sandbox).
 
 ## 6. Intégrations 3rd-party
 - **Emergent Universal LLM Key** — GPT (Smart Project + Coach) + Object Storage.
@@ -91,6 +109,8 @@ Langue produit : **Français**.
 - **Resend** — envoi PDF + alertes prix (sandbox `onboarding@resend.dev`).
 - **Emergent Object Storage** — bucket `construpilot/projects/{project_id}/photos/*`.
 - **APScheduler** — cron quotidien 08:00 UTC pour les alertes prix.
+- **Stripe (sandbox Emergent)** — Subscriptions + one-time (Project Pass) + Customer Portal + Webhook.
+- **pypdf** — extraction texte devis PDF.
 
 ## 7. Credentials de test
 Voir `/app/memory/test_credentials.md`.

@@ -14,8 +14,10 @@ import { api } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
 import { EmailPdfDialog } from "@/components/EmailPdfDialog";
+import { SoftPaywall } from "@/components/SoftPaywall";
 import { SectionTitle } from "@/components/Bits";
 import { useAuth } from "@/context/AuthContext";
+import { useBilling } from "@/context/BillingContext";
 
 const CONDITION_LABEL = {
   neuf: "Neuf", bon: "Bon état", moyen: "État moyen", vetuste: "Vétuste",
@@ -24,6 +26,7 @@ const CONDITION_LABEL = {
 
 export default function Estimator() {
   const [params] = useSearchParams();
+  const { has, tier } = useBilling();
   const [catalog, setCatalog] = useState(null);
   const [step, setStep] = useState(0);
   const [est, setEst] = useState(null);
@@ -278,6 +281,7 @@ export default function Estimator() {
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           <EstimationView est={est} />
+          {tier === "free" && <SoftPaywall context="savings" />}
         </>
       )}
     </div>

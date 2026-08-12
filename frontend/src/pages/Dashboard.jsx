@@ -9,12 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, eur, num, IMAGES } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useBilling } from "@/context/BillingContext";
 import { Stat } from "@/components/Bits";
 
 const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { tier, active, flags } = useBilling();
   const [projects, setProjects] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -50,10 +52,20 @@ export default function Dashboard() {
               Bonjour {user?.name?.split(" ")[0]}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Plan {user?.plan} · vos projets, estimations, matériaux, devis et demandes ConstruPilot.
+              {tier === "free" ? (
+                <>Plan <b>Gratuit</b> · découvrez l'application, puis débloquez toutes les fonctionnalités.</>
+              ) : (
+                <>Plan <b className="text-primary">{active?.plan?.name || tier}</b> actif · toutes les fonctionnalités sont ouvertes.</>
+              )}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            {tier === "free" && (
+              <Button onClick={() => navigate("/tarifs")} data-testid="upgrade-cta" variant="outline" className="rounded-sm gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground">
+                <TrendingUp className="h-4 w-4" />
+                Passer Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} j offerts` : ""}
+              </Button>
+            )}
             <Button onClick={() => navigate("/smart-project")} data-testid="new-smart-project-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <Sparkles className="h-4 w-4" /> Smart Project
             </Button>

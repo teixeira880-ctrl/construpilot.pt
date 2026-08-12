@@ -16,6 +16,7 @@ const LINKS = [
   { to: "/photo", label: "Analyse photo", icon: Camera },
   { to: "/devis", label: "Scanner de devis", icon: FileSearch },
   { to: "/coach", label: "Coach IA", icon: MessageSquare },
+  { to: "/tarifs", label: "Tarifs", icon: Sparkles },
 ];
 
 export const Nav = () => {

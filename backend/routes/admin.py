@@ -153,3 +153,102 @@ async def add_supplier(body: SupplierIn):
 async def delete_supplier(key: str):
     await db.suppliers.delete_one({"key": key})
     return {"ok": True}
+
+
+
+# ---------- Plans & Monétisation ----------
+
+@router.get("/plans")
+async def list_all_plans():
+    return await db.plans.find({}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+
+
+class PlanIn(BaseModel):
+    plan_id: str
+    code: str
+    name: str
+    tagline: str | None = None
+    description: str | None = None
+    audience: str = "particulier"
+    kind: str = "subscription"
+    amount_cents: int = 0
+    currency: str = "eur"
+    interval: str | None = None
+    lookup_key: str | None = None
+    trial_days: int | None = None
+    features: list[str] = []
+    quotas: dict = {}
+    sort_order: int = 100
+    active: bool = True
+    highlight: bool = False
+    badge: str | None = None
+
+
+@router.post("/plans")
+async def upsert_plan(body: PlanIn):
+    doc = body.model_dump()
+    # Préserver les IDs Stripe existants (ils sont re-synchronisés par sync-stripe)
+    existing = await db.plans.find_one({"plan_id": doc["plan_id"]}, {"_id": 0})
+    if existing:
+        for k in ("stripe_product_id", "stripe_price_id", "synced_at"):
+            if existing.get(k):
+                doc.setdefault(k, existing[k])
+    await db.plans.update_one({"plan_id": doc["plan_id"]}, {"$set": doc}, upsert=True)
+    return doc
+
+
+@router.delete("/plans/{plan_id}")
+async def delete_plan(plan_id: str):
+    await db.plans.delete_one({"plan_id": plan_id})
+    return {"ok": True}
+
+
+@router.post("/plans/sync-stripe")
+async def sync_stripe():
+    from engines import monetization
+    await monetization.ensure_stripe_catalog()
+    return {"ok": True}
+
+
+@router.get("/feature-flags")
+async def get_flags():
+    flags = await db.feature_flags.find_one({"_id": "global"})
+    if flags:
+        flags.pop("_id", None)
+    return flags or {}
+
+
+@router.put("/feature-flags")
+async def set_flags(body: dict):
+    body.pop("_id", None)
+    await db.feature_flags.update_one({"_id": "global"}, {"$set": body}, upsert=True)
+    return body
+
+
+# ---------- Revenue dashboard (Phase 1 : basique) ----------
+
+@router.get("/revenue")
+async def revenue_dashboard():
+    paid = await db.payment_transactions.find(
+        {"payment_status": "paid"}, {"_id": 0}).to_list(5000)
+    from collections import defaultdict
+    by_plan = defaultdict(lambda: {"count": 0, "revenue_cents": 0})
+    total = 0
+    for p in paid:
+        by_plan[p["plan_id"]]["count"] += 1
+        by_plan[p["plan_id"]]["revenue_cents"] += p.get("amount_cents", 0)
+        total += p.get("amount_cents", 0)
+    active_subs = await db.entitlements.count_documents(
+        {"status": "active", "kind": "subscription"})
+    active_passes = await db.entitlements.count_documents(
+        {"status": "active", "kind": "one_time",
+         "$or": [{"expires_at": {"$exists": False}},
+                 {"expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}]})
+    return {
+        "total_revenue_cents": total,
+        "total_revenue_eur": round(total / 100, 2),
+        "active_subscriptions": active_subs,
+        "active_project_pass": active_passes,
+        "by_plan": [{"plan_id": k, **v} for k, v in by_plan.items()],
+        "transactions_count": len(paid),
+    }

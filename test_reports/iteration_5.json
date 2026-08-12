@@ -1,0 +1,34 @@
+{
+  "summary": "Iter 5 (Revenue Engine Phase 1 + PDF Quote) tested end-to-end. Backend: 20/20 pytest passing in /app/backend/tests/test_iter5_revenue_engine.py — PDF text extraction OK, empty PDF returns 422 with FR message, /api/plans returns 8 plans sorted by sort_order with correct flags (trial_enabled/trial_days=7/paywall_mode='soft'), audience filters return 4/4, checkout for project_pass (mode=payment) & premium_monthly (mode=subscription) return valid https://checkout.stripe.com URLs + create payment_transactions row with status='initiated'/payment_status='pending', unknown plan → 404, free plan → 400, unknown session → 404, /api/billing/me requires auth (401) and returns tier='free'/active=null/history=[] for demo user, /api/billing/flags public, all /api/admin/* endpoints work for admin and return 403 for demo, all 7 paid plans have stripe_product_id + stripe_price_id after startup, admin sync-stripe idempotent, /api/admin/revenue returns total_revenue_cents=0. Frontend: /tarifs renders with 4 Particulier plans (Free 0€, Project Pass 19.90€, Premium 9.99€/mois, Premium annuel 79€) and switching to Pro tab shows 4 Pro plans, badges 'Idéal pour une rénovation ponctuelle' + 'Le plus populaire' visible, Nav has 'Tarifs' link, unauth CTA click redirects to /login with toast 'Connectez-vous pour souscrire', authed CTA click for project_pass redirects to real https://checkout.stripe.com/c/pay/cs_test_... URL, Dashboard shows 'Passer Premium — 7 j offerts' (data-testid=upgrade-cta) for FREE demo user and navigates to /tarifs, /paiement/annule renders payment-cancel-page, /paiement/succes without session_id shows 'Session introuvable'. QuoteScanner input has accept='image/jpeg,image/png,image/webp,application/pdf,.pdf' and after PDF upload the 'PDF' badge appears in the dropzone.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter5_revenue_engine.py",
+    "/app/test_reports/pytest/iter5_revenue.xml"
+  ],
+  "action_items": [
+    "(pre-existing, non-blocking) Login.jsx still triggers React warning 'Cannot update a component (BrowserRouter) while rendering a different component (Login)' — was already reported in iter4.",
+    "(pre-existing) Stripe webhook /api/stripe/webhook returns 400 SignatureVerificationError when called without a real Stripe signature (expected in preview — no real webhook events). Not a bug per problem statement."
+  ],
+  "critical_code_review_comments": [
+    "engines/monetization.py ensure_stripe_catalog() iterates ALL Stripe products (stripe.Product.list(limit=100).auto_paging_iter()) on EACH plan iteration — O(N*M). Fine for 8 plans but should be pulled outside the loop as a dict for scalability.",
+    "routes/billing.py /api/stripe/webhook is registered under the router with tag 'billing' — path is /api/stripe/webhook (correct, matches Stripe dashboard config).",
+    "engines/monetization.py grant_entitlement() sets stripe_customer_id from user twice (line 183 then 187) — dead assignment on 183.",
+    "routes/ai_routes.py _extract_pdf_text uses reader.pages[:15] (15 pages max) — reasonable but not documented in error message; could improve UX if a 20-page PDF is truncated silently.",
+    "routes/admin.py PlanIn model does not include stripe_product_id/stripe_price_id fields, so /api/admin/plans upsert erases these on any edit until next sync-stripe run. Acceptable because ensure_stripe_catalog re-populates, but consider preserving them on upsert."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter5_revenue_engine.py (new)"
+  ],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100% on flows tested"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "Startup seeds 8 plans + feature_flags (idempotent) + syncs Stripe catalog (7 paid plans have product/price IDs).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter5 Revenue Engine Phase 1 is fully functional. Routes reminder: /devis (QuoteScanner), /estimation (Estimator), /tarifs (Pricing), /paiement/succes and /paiement/annule (Payment). Stripe sandbox is Emergent-claimable; real checkout URLs cs_test_* generated. To fully validate paid flow, a manual card entry with 4242 4242 4242 4242 is required — NOT automated. Webhook signature verification requires STRIPE_WEBHOOK_SECRET matching Stripe dashboard config; expected to return 400 in preview.",
+  "rca of the issue": "N/A — no bugs found."
+}

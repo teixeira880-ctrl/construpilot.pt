@@ -95,8 +95,23 @@ async def analyse_photo(body: PhotoIn, user=Depends(optional_user)):
 class QuoteIn(BaseModel):
     text: str = ""
     image_base64: str | None = None
+    pdf_base64: str | None = None
     project_id: str | None = None
     company: str | None = None
+
+
+def _extract_pdf_text(b64: str) -> str:
+    import base64, io
+    from pypdf import PdfReader
+    raw = base64.b64decode(b64.split(",")[-1])
+    reader = PdfReader(io.BytesIO(raw))
+    parts = []
+    for page in reader.pages[:15]:  # limite à 15 pages
+        try:
+            parts.append(page.extract_text() or "")
+        except Exception:
+            continue
+    return "\n".join(parts).strip()
 
 
 @router.post("/quotes/analyse")
@@ -109,8 +124,20 @@ async def analyse_quote(body: QuoteIn, user=Depends(optional_user)):
             reference = {"total_avg": p["estimation"]["total_avg"],
                          "lots": [{"nom": l["name"], "total": l["total"]}
                                   for l in p["estimation"]["lots"]]}
+    text = body.text or ""
     b64 = body.image_base64.split(",")[-1] if body.image_base64 else None
-    result = await ai.analyse_quote(body.text, b64, reference)
+    if body.pdf_base64:
+        try:
+            extracted = _extract_pdf_text(body.pdf_base64)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"PDF illisible: {e}")
+        if not extracted or len(extracted) < 30:
+            raise HTTPException(status_code=422,
+                                detail="Le PDF ne contient pas de texte extractible (scan image ?). Utilisez une capture JPEG/PNG.")
+        text = (text + "\n\n" + extracted).strip() if text else extracted
+    if not text and not b64:
+        raise HTTPException(status_code=400, detail="Fournissez un texte, une image ou un PDF")
+    result = await ai.analyse_quote(text, b64, reference)
     doc = {"quote_id": f"qt_{uuid.uuid4().hex[:10]}",
            "user_id": user["user_id"] if user else None, "project_id": body.project_id,
            "company": body.company or result.get("company"), "analysis": result,
