@@ -19,6 +19,9 @@ export function BrandingDialog({ trigger }) {
   const [contactLine, setContactLine] = useState("");
   const [logoB64, setLogoB64] = useState("");
   const [busy, setBusy] = useState(false);
+  const [source, setSource] = useState("user");
+  const [orgName, setOrgName] = useState("");
+  const [canEdit, setCanEdit] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -26,6 +29,9 @@ export function BrandingDialog({ trigger }) {
       setCompanyName(data.company_name || "");
       setContactLine(data.contact_line || "");
       setLogoB64(data.logo_b64 || "");
+      setSource(data.source || "user");
+      setOrgName(data.org_name || "");
+      setCanEdit(data.can_edit !== false);
     });
   }, [open]);
 
@@ -66,7 +72,11 @@ export function BrandingDialog({ trigger }) {
         <DialogHeader>
           <DialogTitle>Personnaliser le PDF Métré</DialogTitle>
           <DialogDescription>
-            Ajoutez votre logo et vos coordonnées — ils apparaîtront en tête de chaque PDF que vous exportez.
+            {source === "organization"
+              ? <>Identité partagée avec l'équipe <b>{orgName}</b>. {canEdit
+                  ? "En tant qu'admin/propriétaire, vos modifications s'appliquent à tous les membres."
+                  : "Seul un admin ou le propriétaire peut modifier ces informations."}</>
+              : "Ajoutez votre logo et vos coordonnées — ils apparaîtront en tête de chaque PDF que vous exportez."}
           </DialogDescription>
         </DialogHeader>
 
@@ -74,7 +84,7 @@ export function BrandingDialog({ trigger }) {
           <div className="grid gap-2">
             <Label>Nom de la société</Label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)}
-                   placeholder="Ex : BTP Construction SAS"
+                   placeholder="Ex : BTP Construction SAS" disabled={!canEdit}
                    data-testid="branding-company-input"
                    className="rounded-sm h-11" maxLength={120} />
           </div>
@@ -82,6 +92,7 @@ export function BrandingDialog({ trigger }) {
             <Label>Ligne contact</Label>
             <Textarea value={contactLine} onChange={(e) => setContactLine(e.target.value)}
                       placeholder="12 rue de la Paix · 75002 Paris · 01 23 45 67 89 · contact@…"
+                      disabled={!canEdit}
                       data-testid="branding-contact-input"
                       className="rounded-sm text-sm" rows={2} maxLength={200} />
           </div>
@@ -91,27 +102,35 @@ export function BrandingDialog({ trigger }) {
               <div className="flex items-center gap-3 border border-border rounded-sm p-3 bg-secondary/30">
                 <img src={logoB64.startsWith("data:") ? logoB64 : `data:image/png;base64,${logoB64}`}
                      alt="Logo" className="h-16 w-16 object-contain" data-testid="branding-logo-preview" />
-                <Button size="sm" variant="ghost" onClick={removeLogo} data-testid="branding-logo-remove"
-                        className="rounded-sm gap-1 ml-auto text-destructive">
-                  <Trash2 className="h-3 w-3" /> Retirer
-                </Button>
+                {canEdit && (
+                  <Button size="sm" variant="ghost" onClick={removeLogo} data-testid="branding-logo-remove"
+                          className="rounded-sm gap-1 ml-auto text-destructive">
+                    <Trash2 className="h-3 w-3" /> Retirer
+                  </Button>
+                )}
               </div>
-            ) : (
+            ) : canEdit ? (
               <label className="border border-dashed border-border rounded-sm p-4 text-center cursor-pointer hover:border-primary">
                 <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
                 <p className="text-xs text-muted-foreground mt-1">Cliquez pour importer un logo</p>
                 <input type="file" accept="image/png,image/jpeg" onChange={onLogoChange}
                        data-testid="branding-logo-input" className="sr-only" />
               </label>
+            ) : (
+              <p className="text-xs text-muted-foreground">Aucun logo défini.</p>
             )}
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-sm">Annuler</Button>
-          <Button onClick={save} disabled={busy} data-testid="branding-save-btn"
-                  className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Save className="h-4 w-4" /> Enregistrer
+          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-sm">
+            {canEdit ? "Annuler" : "Fermer"}
           </Button>
+          {canEdit && (
+            <Button onClick={save} disabled={busy} data-testid="branding-save-btn"
+                    className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+              <Save className="h-4 w-4" /> Enregistrer
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

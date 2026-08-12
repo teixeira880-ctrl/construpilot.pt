@@ -89,6 +89,12 @@ async def seed():
     await db.entitlements.create_index("stripe_subscription_id")
     await db.payment_transactions.create_index("session_id", unique=True)
     await db.plans.create_index("plan_id", unique=True)
+    # Organizations (team branding)
+    await db.organizations.create_index("org_id", unique=True)
+    await db.organizations.create_index("org_code", unique=True)
+    await db.users.create_index("organization_id")
+    await db.org_invites.create_index("invite_id", unique=True)
+    await db.org_invites.create_index("email")
     try:
         storage.init_storage()
     except Exception as e:

@@ -209,3 +209,144 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
 
     doc.build(story)
     return buf.getvalue()
+
+
+# ============ DEVIS (Full quote PDF) ============
+
+def build_quote_pdf(quote: dict, branding: dict | None = None) -> bytes:
+    """Rend un PDF Devis à partir d'un quote (line_items + totaux)."""
+    from reportlab.platypus import Image as RLImage
+    import base64 as b64lib
+    from io import BytesIO as BIO
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                             leftMargin=18*mm, rightMargin=18*mm,
+                             topMargin=18*mm, bottomMargin=18*mm)
+    S = _styles()
+    story = []
+
+    # ---- Header branding ----
+    if branding and (branding.get("company_name") or branding.get("logo_b64")):
+        header_cells = []
+        if branding.get("logo_b64"):
+            try:
+                logo_bytes = b64lib.b64decode(branding["logo_b64"].split(",")[-1])
+                logo_img = RLImage(BIO(logo_bytes), width=32*mm, height=32*mm,
+                                    kind="proportional")
+                header_cells.append(logo_img)
+            except Exception:
+                header_cells.append("")
+        else:
+            header_cells.append("")
+        info_lines = []
+        if branding.get("company_name"):
+            info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
+        if branding.get("contact_line"):
+            info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
+        header_cells.append(info_lines)
+        t = Table([header_cells], colWidths=[35*mm, None])
+        t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
+        story.append(t)
+        story.append(Spacer(1, 6))
+
+    # ---- Title ----
+    story.append(Paragraph("DEVIS ESTIMATIF CONSTRUPILOT", S["kicker"]))
+    story.append(Paragraph(quote.get("filename") or "Devis travaux", S["h1"]))
+    date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
+        quote.get("finish", "std"), "Standard")
+    story.append(Paragraph(
+        f"Plan <b>{quote.get('plan_id','?')}</b> · Gamme <b>{finish_label}</b> · "
+        f"Sol : <b>{quote.get('floor_material','').capitalize()}</b> · généré le {date_str}",
+        S["muted"]))
+    story.append(Spacer(1, 10))
+
+    # ---- Totaux surfaces ----
+    tots = quote.get("totals", {})
+    story.append(Paragraph("Surfaces mesurées", S["h2"]))
+    surf_data = [
+        ["Sol", _fmt(tots.get("floor_m2", 0), "m²")],
+        ["Plafonds", _fmt(tots.get("ceiling_m2", 0), "m²")],
+        ["Murs nets", _fmt(tots.get("walls_net_m2", 0), "m²")],
+        ["Périmètre", _fmt(tots.get("perimeter_m", 0), "m")],
+    ]
+    t = Table(surf_data, colWidths=[60*mm, 40*mm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(t)
+
+    # ---- Detail lignes ----
+    story.append(Paragraph("Détail des postes", S["h2"]))
+    rows = [["Désignation", "Qté", "Unit.", "Matériaux", "M.O.", "Total HT"]]
+    for li in quote.get("line_items", []):
+        rows.append([
+            li["name"],
+            _fmt(li["quantity"]),
+            li["unit"],
+            _fmt(li["material_total"], "€"),
+            _fmt(li["labour_total"], "€"),
+            _fmt(li["total"], "€"),
+        ])
+    t = Table(rows, colWidths=[70*mm, 18*mm, 14*mm, 25*mm, 22*mm, 25*mm], repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), DARK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+    ]))
+    story.append(t)
+
+    # ---- Totaux ----
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Récapitulatif", S["h2"]))
+    tva_pct = int(round(quote.get("tva_rate", 0.10) * 100))
+    tot_rows = [
+        ["Sous-total matériaux", _fmt(quote.get("subtotal_material", 0), "€")],
+        ["Sous-total main d'œuvre", _fmt(quote.get("subtotal_labour", 0), "€")],
+        ["Sous-total HT", _fmt(quote.get("subtotal_ht", 0), "€")],
+        [f"TVA {tva_pct} %", _fmt(quote.get("tva", 0), "€")],
+        ["TOTAL TTC", _fmt(quote.get("total_ttc", 0), "€")],
+    ]
+    t = Table(tot_rows, colWidths=[110*mm, 45*mm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("BACKGROUND", (0, -1), (-1, -1), ORANGE),
+        ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+        ("FONTSIZE", (0, -1), (-1, -1), 12),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(t)
+
+    # ---- Footer ----
+    story.append(Spacer(1, 18))
+    story.append(Paragraph(
+        "Devis <b>estimatif</b> généré par ConstruPilot à partir de votre plan métré. "
+        "Prix moyens France 2026 (base de référence + main d'œuvre). "
+        "TVA à 10 % applicable en rénovation logement de plus de 2 ans. "
+        "Ce document ne constitue pas un devis contractuel : demandez plusieurs devis "
+        "artisans pour comparer.", S["muted"]))
+
+    doc.build(story)
+    return buf.getvalue()

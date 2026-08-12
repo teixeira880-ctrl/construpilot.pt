@@ -122,3 +122,35 @@ Langue produit : **Français**.
 
 ## 7. Credentials de test
 Voir `/app/memory/test_credentials.md`.
+
+## 8. Changelog Iter 21 (12/02/2026) — Team + Snapshot naming + Compare vecteurs + Devis PDF
+
+### Multi-User Branding (Système d'équipe complet)
+- Modèle `organizations` (org_id, org_code au format LLLL-DDDD, name, owner, branding partagé).
+- Endpoints `/api/organizations` : create / join (code) / me / leave / delete member / invite (email via Resend).
+- `PUT /api/users/me/branding` écrit dans l'org si l'utilisateur en fait partie (member=403).
+- `GET /api/users/me/branding` renvoie `source: 'organization'` + `can_edit` selon le rôle.
+- Nouvelle page `/equipe` (Team.jsx) : créer/rejoindre, code copiable, membres, invitations, retirer membre, quitter.
+- `BrandingDialog` affiche le contexte org + verrouille l'édition pour les membres non-admin.
+- Migration automatique : le branding perso de l'owner est repris dans la nouvelle org.
+
+### Snapshot Naming
+- Champ `label` (max 80 chars) sur chaque snapshot d'historique.
+- `PUT /api/takeoffs/{plan_id}/history/{snapshot_id}/label`.
+- UI PlanTakeoff onglet Historique : bouton "Nommer"/"Renommer" + dialog + affichage du label en accent primaire.
+
+### Compare Vecteurs (murs)
+- `POST /api/takeoffs/compare` renvoie désormais `walls: { before_count, after_count, added[], removed[], unchanged[] }`.
+- Matching par orientation (h/v) + tolérance 10 px + recouvrement > 60 %.
+- Frontend PlanCompare : filtres "+ Murs / – Murs" + overlay canvas (verts / rouges) sur la page 0.
+
+### PDF Devis
+- Nouveau `build_quote_pdf` (reportlab) : header branding + surfaces + tableau détaillé + récap TTC.
+- `GET /api/takeoffs/{plan_id}/quote-pdf?finish=eco|std|premium&floor_material=carrelage|parquet`.
+- Reprend automatiquement les quantités du takeoff (sol, plafond, murs nets, plinthes).
+- Applique prix moyens du catalogue (`LOTS_BY_KEY`) + main d'œuvre + TVA 10 %.
+- Bouton "Devis PDF" dans le header PlanTakeoff + dialog de configuration.
+
+### Tests
+- iter21 : 100 % backend (20/20 pytest) + 100 % frontend E2E.
+

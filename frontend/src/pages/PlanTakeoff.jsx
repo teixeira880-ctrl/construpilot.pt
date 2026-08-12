@@ -229,6 +229,12 @@ export default function PlanTakeoff() {
   const [floorMaterial, setFloorMaterial] = useState("parquet");
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [labelDialog, setLabelDialog] = useState(null); // {snapshot_id, label}
+  const [labelValue, setLabelValue] = useState("");
+  const [quoteDialog, setQuoteDialog] = useState(false);
+  const [quoteFinish, setQuoteFinish] = useState("std");
+  const [quoteFloor, setQuoteFloor] = useState("carrelage");
+  const [quoteBusy, setQuoteBusy] = useState(false);
   const fileRef = useRef(null);
 
   const currentCalib = plan?.calibrations?.[String(pageIndex)];
@@ -432,10 +438,10 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("construpilot_token");
       const res = await fetch(
         `${base}/api/takeoffs/${plan.plan_id}/pdf?include_materials=true&floor_material=${floorMaterial}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, credentials: "include" }
       );
       if (!res.ok) throw new Error("PDF error");
       const blob = await res.blob();
@@ -465,6 +471,51 @@ export default function PlanTakeoff() {
       await loadHistory();
       toast.success("Snapshot restauré");
     } catch { toast.error("Restauration impossible"); }
+  };
+
+  const openLabelDialog = (snap) => {
+    setLabelDialog(snap);
+    setLabelValue(snap.label || "");
+  };
+
+  const saveSnapshotLabel = async () => {
+    if (!plan?.plan_id || !labelDialog) return;
+    try {
+      await api.put(
+        `/takeoffs/${plan.plan_id}/history/${labelDialog.snapshot_id}/label`,
+        { label: labelValue },
+      );
+      setLabelDialog(null); setLabelValue("");
+      await loadHistory();
+      toast.success("Nom enregistré");
+    } catch { toast.error("Enregistrement impossible"); }
+  };
+
+  const downloadQuotePdf = async () => {
+    if (!plan?.plan_id) return;
+    setQuoteBusy(true);
+    try {
+      const backend = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("construpilot_token");
+      const qs = new URLSearchParams({
+        finish: quoteFinish, floor_material: quoteFloor,
+      }).toString();
+      const res = await fetch(`${backend}/api/takeoffs/${plan.plan_id}/quote-pdf?${qs}`,
+        { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "PDF error");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `devis-${plan.plan_id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Devis PDF téléchargé");
+      setQuoteDialog(false);
+    } catch (e) { toast.error(e.message || "Export Devis impossible"); }
+    finally { setQuoteBusy(false); }
   };
 
   // ---------- RENDER ----------
@@ -578,6 +629,10 @@ export default function PlanTakeoff() {
           <Button variant="outline" onClick={downloadPdf} data-testid="plan-pdf-export-btn"
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" /> Métré PDF
+          </Button>
+          <Button variant="outline" onClick={() => setQuoteDialog(true)} data-testid="plan-quote-pdf-btn"
+                  className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
+            <FileDown className="h-4 w-4" /> Devis PDF
           </Button>
           <BrandingDialog />
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
@@ -874,9 +929,15 @@ export default function PlanTakeoff() {
                            title={diff.summary}
                            data-testid={`history-item-${s.snapshot_id}`}>
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-bold capitalize">{s.action.replace(/_/g, " ")}</p>
+                          <div className="min-w-0">
+                            {s.label ? (
+                              <p className="font-bold text-primary truncate" title={s.label}
+                                 data-testid={`history-label-${s.snapshot_id}`}>{s.label}</p>
+                            ) : (
+                              <p className="font-bold capitalize">{s.action.replace(/_/g, " ")}</p>
+                            )}
                             <p className="num text-muted-foreground text-[10px]">
+                              {s.label && <span className="capitalize">{s.action.replace(/_/g, " ")} · </span>}
                               {new Date(s.created_at).toLocaleString("fr-FR")} · {s.rooms?.length || 0} pièces
                             </p>
                             {diff.summary && (
@@ -885,11 +946,18 @@ export default function PlanTakeoff() {
                               </p>
                             )}
                           </div>
-                          <Button size="sm" variant="ghost" onClick={() => restoreSnapshot(s.snapshot_id)}
-                                  data-testid={`restore-${s.snapshot_id}`}
-                                  className="rounded-sm gap-1 text-xs h-6">
-                            Restaurer
-                          </Button>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="sm" variant="ghost" onClick={() => openLabelDialog(s)}
+                                    data-testid={`label-${s.snapshot_id}`}
+                                    className="rounded-sm gap-1 text-xs h-6">
+                              {s.label ? "Renommer" : "Nommer"}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => restoreSnapshot(s.snapshot_id)}
+                                    data-testid={`restore-${s.snapshot_id}`}
+                                    className="rounded-sm gap-1 text-xs h-6">
+                              Restaurer
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -947,6 +1015,90 @@ export default function PlanTakeoff() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRoomDialog(false)} className="rounded-sm">Annuler</Button>
             <Button onClick={saveRoom} data-testid="room-save-btn" className="rounded-sm hover:bg-orange-600 hover:text-white">Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* LABEL DIALOG (snapshot naming) */}
+      <Dialog open={!!labelDialog} onOpenChange={(o) => { if (!o) setLabelDialog(null); }}>
+        <DialogContent className="rounded-sm" data-testid="label-dialog">
+          <DialogHeader>
+            <DialogTitle>Nommer cette version</DialogTitle>
+            <DialogDescription>
+              Donnez à ce snapshot un nom parlant (ex : « Version client 12/02 »,
+              « Avant modification cloison »).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="snap-label">Nom du snapshot</Label>
+            <Input id="snap-label" value={labelValue}
+                   onChange={(e) => setLabelValue(e.target.value)}
+                   placeholder="Version client · 12/02"
+                   maxLength={80} autoFocus
+                   data-testid="label-input" className="rounded-sm h-11" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLabelDialog(null)} className="rounded-sm">
+              Annuler
+            </Button>
+            <Button onClick={saveSnapshotLabel} data-testid="label-save-btn"
+                    className="rounded-sm hover:bg-orange-600 hover:text-white">
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* QUOTE PDF DIALOG (Devis) */}
+      <Dialog open={quoteDialog} onOpenChange={setQuoteDialog}>
+        <DialogContent className="rounded-sm max-w-md" data-testid="quote-dialog">
+          <DialogHeader>
+            <DialogTitle>Générer un devis PDF</DialogTitle>
+            <DialogDescription>
+              Le devis reprend automatiquement les surfaces mesurées et applique la main
+              d'œuvre & les prix matériaux moyens France 2026.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>Gamme de finition</Label>
+              <Select value={quoteFinish} onValueChange={setQuoteFinish}>
+                <SelectTrigger data-testid="quote-finish-select" className="rounded-sm h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eco">Éco (petit budget)</SelectItem>
+                  <SelectItem value="std">Standard (recommandé)</SelectItem>
+                  <SelectItem value="premium">Premium (haut de gamme)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Matériau du sol</Label>
+              <Select value={quoteFloor} onValueChange={setQuoteFloor}>
+                <SelectTrigger data-testid="quote-floor-select" className="rounded-sm h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="carrelage">Carrelage</SelectItem>
+                  <SelectItem value="parquet">Parquet</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground border border-border p-3 rounded-sm bg-secondary/30">
+              Inclus par défaut : placo/plâtre, peinture, sol, plinthes. TVA à 10 %
+              (rénovation logement &gt; 2 ans).
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuoteDialog(false)} className="rounded-sm">
+              Annuler
+            </Button>
+            <Button onClick={downloadQuotePdf} disabled={quoteBusy} data-testid="quote-download-btn"
+                    className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+              <FileDown className="h-4 w-4" />
+              {quoteBusy ? "Génération…" : "Télécharger"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

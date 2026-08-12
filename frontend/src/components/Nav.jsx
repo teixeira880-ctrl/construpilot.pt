@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
-  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler,
+  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -73,6 +73,13 @@ export const Nav = () => {
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
+          {user && (
+            <Link to="/equipe" data-testid="nav-link-team" className="hidden md:inline-flex">
+              <Button variant="ghost" size="sm" className="rounded-sm gap-2">
+                <Users className="h-4 w-4 text-primary" /> Équipe
+              </Button>
+            </Link>
+          )}
           {user && (
             <Link to="/inviter" data-testid="nav-link-referral" className="hidden md:inline-flex">
               <Button variant="ghost" size="sm" className="rounded-sm gap-2">

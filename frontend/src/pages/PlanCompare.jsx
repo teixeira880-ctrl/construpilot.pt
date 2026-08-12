@@ -29,6 +29,8 @@ export default function PlanCompare() {
   const [hideUnchanged, setHideUnchanged] = useState(false);
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
+  const [showAddedWalls, setShowAddedWalls] = useState(true);
+  const [showRemovedWalls, setShowRemovedWalls] = useState(true);
 
   useEffect(() => {
     api.get("/takeoffs").then(({ data }) => setPlans(data.plans || []));
@@ -125,10 +127,36 @@ export default function PlanCompare() {
                           `MOD (${mod.delta_m2 >= 0 ? "+" : ""}${mod.delta_m2} m²)`);
         });
       }
+
+      // ============ WALL SEGMENTS DIFF (Compare Vecteurs) ============
+      const drawSeg = (s, color) => {
+        ctx.beginPath();
+        ctx.moveTo(s.x1, s.y1);
+        ctx.lineTo(s.x2, s.y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4 / scale;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      };
+      const walls = result?.walls;
+      if (walls) {
+        if (showAddedWalls) {
+          (walls.added || []).filter(w => w.page === 0).forEach(w => {
+            drawSeg(w, "rgba(34,197,94,0.95)");
+          });
+        }
+        if (showRemovedWalls) {
+          (walls.removed || []).filter(w => w.page === 0).forEach(w => {
+            drawSeg(w, "rgba(220,38,38,0.85)");
+          });
+        }
+      }
+
       ctx.restore();
     };
     img.src = `data:image/png;base64,${afterImage}`;
-  }, [afterImage, beforeRooms, afterRooms, result, showAdded, showRemoved, showModified]);
+  }, [afterImage, beforeRooms, afterRooms, result, showAdded, showRemoved, showModified,
+      showAddedWalls, showRemovedWalls]);
 
   return (
     <div className="mx-auto max-w-[1200px] px-5 py-8 grid gap-8">
@@ -222,6 +250,31 @@ export default function PlanCompare() {
                            data-testid="compare-filter-hide-unchanged" className="accent-primary h-4 w-4" />
                     Masquer inchangées
                   </label>
+                  {result.walls && (result.walls.added.length + result.walls.removed.length > 0) && (
+                    <>
+                      <span className="text-xs text-muted-foreground ml-2 border-l border-border pl-3">
+                        Murs :
+                      </span>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" checked={showAddedWalls}
+                               onChange={(e) => setShowAddedWalls(e.target.checked)}
+                               data-testid="compare-filter-walls-added"
+                               className="accent-emerald-500 h-4 w-4" />
+                        <Badge variant="outline" className="rounded-sm border-emerald-500/50 text-emerald-500">
+                          + Murs ({result.walls.added.length})
+                        </Badge>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" checked={showRemovedWalls}
+                               onChange={(e) => setShowRemovedWalls(e.target.checked)}
+                               data-testid="compare-filter-walls-removed"
+                               className="accent-red-500 h-4 w-4" />
+                        <Badge variant="outline" className="rounded-sm border-destructive text-destructive">
+                          – Murs ({result.walls.removed.length})
+                        </Badge>
+                      </label>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="overflow-auto bg-secondary/30">
@@ -264,6 +317,12 @@ export default function PlanCompare() {
                   <Edit3 className="h-3 w-3" /> {result.modified.length}
                 </Badge>
               </div>
+              {result.walls && (result.walls.before_count + result.walls.after_count > 0) && (
+                <p className="text-[10px] text-muted-foreground mt-2 num" data-testid="walls-summary">
+                  Murs détectés : {result.walls.before_count} → {result.walls.after_count}
+                  {" · "}+{result.walls.added.length} / −{result.walls.removed.length}
+                </p>
+              )}
             </div>
           </div>
 

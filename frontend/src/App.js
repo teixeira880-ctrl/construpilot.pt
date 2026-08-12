@@ -29,6 +29,7 @@ import Docs from "@/pages/Docs";
 import Enterprise from "@/pages/Enterprise";
 import SupplierPortal from "@/pages/SupplierPortal";
 import Invite from "@/pages/Invite";
+import Team from "@/pages/Team";
 import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
 import PlanCompare from "@/pages/PlanCompare";
@@ -74,6 +75,7 @@ function AppRouter() {
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
+      <Route path="/equipe" element={<Protected><Shell><Team /></Shell></Protected>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/plan" element={<Protected><Shell><PlanTakeoff /></Shell></Protected>} />
       <Route path="/plan/compare" element={<Protected><Shell><PlanCompare /></Shell></Protected>} />

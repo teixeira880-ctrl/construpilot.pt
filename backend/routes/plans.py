@@ -45,7 +45,8 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-async def _snapshot(plan_id: str, user_id: str, action: str, meta: dict | None = None):
+async def _snapshot(plan_id: str, user_id: str, action: str, meta: dict | None = None,
+                    label: str | None = None):
     """Sauvegarde un instantané du plan avant/après une mutation (auto-history)."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user_id},
@@ -58,6 +59,7 @@ async def _snapshot(plan_id: str, user_id: str, action: str, meta: dict | None =
         "snapshot_id": "snap_" + secrets.token_hex(6),
         "plan_id": plan_id, "user_id": user_id,
         "action": action, "meta": meta or {},
+        "label": (label or "").strip()[:80] or None,
         "created_at": _now(),
         "rooms": p.get("rooms") or [],
         "calibrations": p.get("calibrations") or {},
@@ -460,11 +462,11 @@ async def compare_plans(body: CompareIn, user=Depends(current_user)):
     """Compare 2 plans (avant/après) et renvoie les pièces ajoutées, supprimées, modifiées."""
     before = await db.plans_takeoff.find_one(
         {"plan_id": body.before_plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "rooms": 1, "filename": 1}
+        {"_id": 0, "rooms": 1, "filename": 1, "cv_walls": 1}
     )
     after = await db.plans_takeoff.find_one(
         {"plan_id": body.after_plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "rooms": 1, "filename": 1}
+        {"_id": 0, "rooms": 1, "filename": 1, "cv_walls": 1}
     )
     if not before or not after:
         raise HTTPException(404, "Un des deux plans est introuvable")
@@ -518,6 +520,72 @@ async def compare_plans(body: CompareIn, user=Depends(current_user)):
 
     total_b = sum(r.get("surface_m2", 0) for r in rooms_b)
     total_a = sum(r.get("surface_m2", 0) for r in rooms_a)
+
+    # ============ WALLS DIFF (compare vecteurs) ============
+    def _walls_of(cv_walls: dict | None) -> list[dict]:
+        """Aplati cv_walls (par page) en une liste de segments."""
+        if not cv_walls:
+            return []
+        segs = []
+        for page_key, entry in (cv_walls or {}).items():
+            for s in (entry or {}).get("segments") or []:
+                try:
+                    segs.append({
+                        "page": int(page_key),
+                        "x1": float(s["x1"]), "y1": float(s["y1"]),
+                        "x2": float(s["x2"]), "y2": float(s["y2"]),
+                    })
+                except (KeyError, TypeError, ValueError):
+                    continue
+        return segs
+
+    def _seg_dir(s: dict) -> tuple[str, int, int]:
+        """Renvoie ('h' ou 'v' ou 'o', mid_a, mid_b) pour un segment.
+        h=horizontal (dy~0), v=vertical (dx~0), o=oblique (rare pour un plan).
+        """
+        dx = s["x2"] - s["x1"]
+        dy = s["y2"] - s["y1"]
+        if abs(dy) <= max(3, abs(dx) * 0.1):  # horizontal
+            y_mid = int(round((s["y1"] + s["y2"]) / 2))
+            x_min = int(round(min(s["x1"], s["x2"])))
+            x_max = int(round(max(s["x1"], s["x2"])))
+            return ("h", y_mid, (x_min, x_max))
+        if abs(dx) <= max(3, abs(dy) * 0.1):  # vertical
+            x_mid = int(round((s["x1"] + s["x2"]) / 2))
+            y_min = int(round(min(s["y1"], s["y2"])))
+            y_max = int(round(max(s["y1"], s["y2"])))
+            return ("v", x_mid, (y_min, y_max))
+        return ("o", 0, (0, 0))
+
+    def _match_seg(target: dict, others: list[dict], tol: int = 10) -> int:
+        """Cherche un segment similaire dans `others`. Retourne l'index, ou -1."""
+        t_orient, t_mid, t_range = _seg_dir(target)
+        for i, s in enumerate(others):
+            o_orient, o_mid, o_range = _seg_dir(s)
+            if o_orient != t_orient:
+                continue
+            if abs(o_mid - t_mid) > tol:
+                continue
+            # Chevauchement des ranges
+            overlap = max(0, min(t_range[1], o_range[1]) - max(t_range[0], o_range[0]))
+            length = max(1, t_range[1] - t_range[0])
+            if overlap / length >= 0.6:  # au moins 60% de recouvrement
+                return i
+        return -1
+
+    walls_b = _walls_of(before.get("cv_walls"))
+    walls_a = _walls_of(after.get("cv_walls"))
+    walls_removed, walls_added, walls_unchanged = [], [], []
+    remaining_a = list(walls_a)
+    for wb in walls_b:
+        idx = _match_seg(wb, remaining_a)
+        if idx >= 0:
+            walls_unchanged.append(wb)
+            remaining_a.pop(idx)
+        else:
+            walls_removed.append(wb)
+    walls_added.extend(remaining_a)
+
     return {
         "before": {"plan_id": body.before_plan_id, "filename": before.get("filename"),
                    "room_count": len(rooms_b), "total_surface_m2": round(total_b, 2)},
@@ -528,6 +596,11 @@ async def compare_plans(body: CompareIn, user=Depends(current_user)):
         "added": added, "removed": removed,
         "modified": modified, "unchanged": unchanged,
         "surface_tolerance_pct": tol,
+        "walls": {
+            "before_count": len(walls_b), "after_count": len(walls_a),
+            "added": walls_added, "removed": walls_removed,
+            "unchanged": walls_unchanged,
+        },
     }
 
 
@@ -709,6 +782,24 @@ async def restore_snapshot(plan_id: str, snapshot_id: str, user=Depends(current_
             "action": snap.get("action")}
 
 
+class SnapshotLabelIn(BaseModel):
+    label: str = Field(default="", max_length=80)
+
+
+@router.put("/{plan_id}/history/{snapshot_id}/label")
+async def label_snapshot(plan_id: str, snapshot_id: str, body: SnapshotLabelIn,
+                        user=Depends(current_user)):
+    """Renomme un snapshot d'historique (ex. « Version client 12/02 »)."""
+    label = body.label.strip()[:80] or None
+    res = await db.plans_takeoff_history.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"], "snapshot_id": snapshot_id},
+        {"$set": {"label": label}}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Snapshot introuvable")
+    return {"ok": True, "snapshot_id": snapshot_id, "label": label}
+
+
 # ============ PDF EXPORT MÉTRÉ ============
 
 @router.get("/{plan_id}/pdf")
@@ -776,20 +867,136 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
     plan_light = {"plan_id": p.get("plan_id"), "filename": p.get("filename"),
                   "page_count": p.get("page_count", 1)}
 
-    # Branding pro personnalisé (si défini sur le user)
-    user_doc = await db.users.find_one({"user_id": user["user_id"]},
-                                         {"_id": 0, "brand_company_name": 1,
-                                          "brand_contact_line": 1, "brand_logo_b64": 1})
-    branding = None
-    if user_doc:
-        if any(user_doc.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64")):
-            branding = {"company_name": user_doc.get("brand_company_name"),
-                        "contact_line": user_doc.get("brand_contact_line"),
-                        "logo_b64": user_doc.get("brand_logo_b64")}
+    branding = await _resolve_branding(user["user_id"])
 
     pdf_bytes = build_takeoff_pdf(plan_light, takeoff, materials, branding=branding)
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
                  f'attachment; filename="metre-{plan_id}.pdf"'}
+    )
+
+
+# ============ PDF DEVIS (Full quote with labor + materials) ============
+
+async def _resolve_branding(user_id: str) -> dict | None:
+    """Récupère branding : prefer org branding si user en fait partie."""
+    u = await db.users.find_one({"user_id": user_id},
+                                 {"_id": 0, "organization_id": 1,
+                                  "brand_company_name": 1, "brand_contact_line": 1,
+                                  "brand_logo_b64": 1})
+    if not u:
+        return None
+    if u.get("organization_id"):
+        org = await db.organizations.find_one({"org_id": u["organization_id"]},
+                                                {"_id": 0, "brand_company_name": 1,
+                                                 "brand_contact_line": 1, "brand_logo_b64": 1})
+        if org and any(org.get(k) for k in ("brand_company_name", "brand_contact_line",
+                                              "brand_logo_b64")):
+            return {"company_name": org.get("brand_company_name"),
+                    "contact_line": org.get("brand_contact_line"),
+                    "logo_b64": org.get("brand_logo_b64")}
+    if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64")):
+        return {"company_name": u.get("brand_company_name"),
+                "contact_line": u.get("brand_contact_line"),
+                "logo_b64": u.get("brand_logo_b64")}
+    return None
+
+
+@router.get("/{plan_id}/quote-pdf")
+async def export_quote_pdf(plan_id: str, finish: str = "std",
+                            floor_material: str = "carrelage",
+                            include_paint: bool = True, include_placo: bool = True,
+                            include_floor: bool = True, include_skirting: bool = True,
+                            user=Depends(current_user)):
+    """Génère un PDF Devis complet : main d'œuvre + matériaux pré-remplis depuis le takeoff.
+
+    Utilise les prix du catalogue (LOTS_BY_KEY) et les quantités calculées.
+    """
+    from fastapi.responses import Response
+    from engines.pdf_takeoff import build_quote_pdf
+    from engines.catalog import LOTS_BY_KEY
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages.image_png_b64": 0}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    rooms = p.get("rooms") or []
+    if not rooms:
+        raise HTTPException(400, "Aucune pièce mesurée sur ce plan.")
+
+    total_floor = sum(r.get("surface_m2", 0) for r in rooms)
+    total_ceiling = sum(r.get("ceiling_area_m2", 0) for r in rooms)
+    total_walls_net = sum(r.get("wall_area_net_m2", 0) for r in rooms)
+    total_perim = sum(r.get("perimeter_m", 0) for r in rooms)
+
+    mat_key = "mat_eco" if finish == "eco" else "mat_premium" if finish == "premium" else "mat_std"
+
+    line_items: list[dict] = []
+
+    def add(name: str, qty: float, unit: str, mat_unit_eur: float, labour_unit_eur: float):
+        if qty <= 0:
+            return
+        mat_total = round(qty * mat_unit_eur, 2)
+        lab_total = round(qty * labour_unit_eur, 2)
+        line_items.append({
+            "name": name, "quantity": round(qty, 2), "unit": unit,
+            "unit_material": mat_unit_eur, "unit_labour": labour_unit_eur,
+            "material_total": mat_total, "labour_total": lab_total,
+            "total": round(mat_total + lab_total, 2),
+        })
+
+    if include_placo:
+        placo = LOTS_BY_KEY.get("placo")
+        if placo:
+            add("Plâtrerie / Placo (murs + plafonds)", total_walls_net + total_ceiling, "m²",
+                placo.get(mat_key, 17), placo.get("labour", 26))
+    if include_paint:
+        peint = LOTS_BY_KEY.get("peinture")
+        if peint:
+            add("Peinture (murs + plafonds)", total_walls_net + total_ceiling, "m²",
+                peint.get(mat_key, 8), peint.get("labour", 16))
+    if include_floor:
+        # map floor_material → catalog lot
+        lot_key = "carrelage" if floor_material.lower() in ("carrelage", "tile") else "parquet"
+        lot = LOTS_BY_KEY.get(lot_key)
+        if lot:
+            add(f"Sol : {lot['name']}", total_floor, "m²",
+                lot.get(mat_key, 35), lot.get("labour", 26))
+    if include_skirting:
+        # Utilise le lot 'parquet' pour approximer le prix des plinthes en €/ml matériaux
+        # (pas de lot dédié — approx : 5€/ml matériaux + 6€/ml pose)
+        add("Plinthes (ml)", total_perim - 1.8 * sum(  # -1.8m par porte estimée
+            len([o for o in r.get("openings", [])
+                 if o.get("type", "").lower().startswith("port")]) for r in rooms),
+            "ml", 5.0, 6.0)
+
+    subtotal_mat = round(sum(li["material_total"] for li in line_items), 2)
+    subtotal_lab = round(sum(li["labour_total"] for li in line_items), 2)
+    subtotal = round(subtotal_mat + subtotal_lab, 2)
+    tva_rate = 0.10  # rénovation logement > 2 ans
+    tva = round(subtotal * tva_rate, 2)
+    ttc = round(subtotal + tva, 2)
+
+    quote = {
+        "plan_id": plan_id, "filename": p.get("filename"), "finish": finish,
+        "floor_material": floor_material,
+        "totals": {"floor_m2": round(total_floor, 2),
+                    "ceiling_m2": round(total_ceiling, 2),
+                    "walls_net_m2": round(total_walls_net, 2),
+                    "perimeter_m": round(total_perim, 2)},
+        "line_items": line_items,
+        "subtotal_material": subtotal_mat,
+        "subtotal_labour": subtotal_lab,
+        "subtotal_ht": subtotal,
+        "tva_rate": tva_rate, "tva": tva, "total_ttc": ttc,
+    }
+
+    branding = await _resolve_branding(user["user_id"])
+    pdf_bytes = build_quote_pdf(quote, branding=branding)
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="devis-{plan_id}.pdf"'}
     )

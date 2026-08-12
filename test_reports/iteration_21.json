@@ -1,0 +1,38 @@
+{
+  "summary": "Iter21 — 4 new features (Team, Snapshot naming, Compare Vecteurs walls, PDF Devis) tested end-to-end. Backend: 20/20 pytest PASS in /app/backend/tests/test_iter21_team_snapshot_walls_quote.py covering (a) full team lifecycle: create org (code LLLL-DDDD format), owner get_me with member_count=1, invite delivered@resend.dev (email_status returned), 2nd user register+join, member sees source=organization/can_edit=false while owner sees can_edit=true, member PUT branding→403, owner PUT branding shared across both users, owner DELETE member removes member, owner leave when solo OK, owner leave blocked (400) when members remain; (b) snapshot label: PUT /takeoffs/{pid}/history/{sid}/label persists, appears in GET history, unknown snapshot returns 404; (c) compare walls: 'walls' object always present with before/after_count/added/removed/unchanged, empty arrays when no cv_walls (no crash); (d) PDF Devis: /quote-pdf returns 200 + application/pdf + >2KB + %PDF- magic for finish=std/eco/premium+floor=carrelage, returns 400 'Aucune pièce mesurée' when no rooms; (e) branding priority: user with empty personal branding + org-only branding still generates valid quote-pdf (>2KB) without crash. Frontend: /equipe page — non-member sees team-create-card + team-join-card, create dialog works, after creation code (RDYT-9858 format), member_count, owner role, Inviter+Quitter buttons, Members list visible; invite dialog accepts delivered@resend.dev and returns success toast. Nav 'Équipe' link renders when logged in. PlanTakeoff — plan-quote-pdf-btn visible next to Métré PDF, quote-dialog opens with quote-finish-select + quote-floor-select + quote-download-btn. History tab — label-{snap_id} buttons render for each snapshot, label-dialog + label-input + label-save-btn work, after save history-label-* is rendered with class 'text-primary' (orange) at top of card (verified text='Version client UI').",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/equipe Team members list", "issues": ["Hydration warning: <Badge> (renders as <div>) placed inside <p> at Team.jsx line 316/318 — 'In HTML, <div> cannot be a descendant of <p>. This will cause a hydration error.' Change the wrapping <p> to a <div> or <span> to silence the warning."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter21_team_snapshot_walls_quote.py",
+    "/app/test_reports/pytest/iter21.xml"
+  ],
+  "action_items": [
+    "(Optional/minor) Fix Team.jsx line ~316: wrap Badge in a <div>/<span> instead of <p> to fix React hydration warning ('<div> cannot be a descendant of <p>')."
+  ],
+  "critical_code_review_comments": [
+    "phase7.py org_create is correctly idempotent-guarded (400 if user already in org) and migrates personal branding into the new org — good UX so first-time owner keeps their existing brand.",
+    "phase7.py org_leave for owner-with-members returns 400 as spec'd; owner-solo deletes the org — verified. Note: currently there is no 'transfer ownership' endpoint, so a stuck-owner scenario forces manual member removal first. Consider a POST /organizations/transfer-ownership for later.",
+    "phase7.py get_branding returns logo_b64 as raw base64 in the payload even for members (can_edit=false) — that's fine for display, but the response can be heavy if a large logo is set. Consider only returning has_logo=True + a separate /branding/logo endpoint for on-demand fetch to keep GET /me/branding light.",
+    "plans.py _resolve_branding fallback chain (org → user → None) is correct and defensive; matches the spec that org branding takes priority. Tested empty-personal + org-only path — no crash.",
+    "plans.py export_quote_pdf: skirting length formula uses (total_perim - 1.8 * sum_of_door_openings). When rooms lack 'openings' this is fine (defaults to 0). Edge: if perim is small and doors many, this could go negative — add() ignores qty<=0 so no crash. OK.",
+    "Team.jsx: Badge nested inside <p> triggers a React hydration warning — cosmetic but should be fixed (see design_issues)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter21_team_snapshot_walls_quote.py"
+  ],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100% (all iter21 data-testids present and functional)"},
+  "test_credentials": "demo@construpilot.fr / Demo2026!  |  admin@construpilot.fr / Construpilot2026!  |  transient TEST_iter21_<hex>@example.com / TestPass2026! (registered/leave-cleaned per run)",
+  "seed_data_creation": "Per-test-run: fresh org 'BTP Test Iter21' + 'Solo Test' + 'Brand Prio' created and cleaned up (owner-solo leave deletes org). One test user registered per run (TEST_iter21_<hex>@example.com) — left in DB but out of any org. Several transient takeoff plans uploaded via /app/before.png for quote-pdf/label tests; not cleaned up (consistent with iter20 pattern).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Team lifecycle tests must leave demo user OUT of any org — the module fixture 'owner_auth' calls _leave_if_in_org at teardown. If a run is interrupted mid-way and demo user is stuck as owner-with-members, manually call DELETE /organizations/members/{uid} for each member from the demo owner token, then POST /organizations/leave. The /plan route ALWAYS starts on the upload landing and the plan-quote-pdf-btn / tab-history / label-{snap_id} controls only appear AFTER an in-session upload (no /plan/{id} deep-link). Do the upload, seed calibrate+room via API using the token, and the same UI session will render the takeoff editor without reload. PlanCompare walls filter checkboxes '+ Murs' / '– Murs' only render when walls arrays are non-empty; the demo test plans have no cv_walls, so the checkboxes are correctly hidden and no crash — this is expected per spec. The email_status from POST /organizations/invite depends on Resend availability at runtime (RESEND sandbox = only delivered@resend.dev); tests assert only that email_status ∈ {sent,failed,skipped}, not a specific value."
+}
