@@ -168,12 +168,17 @@ async def _mark_paid(session_id: str, s):
                   "updated_at": now_iso()}})
     if upd.modified_count == 0:
         return
-    # Grant entitlement
     rec = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     plan = await db.plans.find_one({"plan_id": rec["plan_id"]}, {"_id": 0})
     if not plan:
         return
     await grant_entitlement(rec["user_id"], plan, rec)
+    # Créditer le parrain si c'est le 1er paiement du filleul
+    try:
+        from engines import referral
+        await referral.credit_referrer_on_first_payment(rec["user_id"])
+    except Exception as e:
+        logger.warning(f"Referral credit failed: {e}")
 
 
 async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict):

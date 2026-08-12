@@ -14,7 +14,7 @@ from core.db import db, client  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
 from engines import storage, alerting  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
-                    ai_routes, leads, admin, photos, billing)  # noqa: E402
+                    ai_routes, leads, admin, photos, billing, revenue)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
@@ -39,6 +39,7 @@ api_router.include_router(leads.router)
 api_router.include_router(admin.router)
 api_router.include_router(photos.router)
 api_router.include_router(billing.router)
+api_router.include_router(revenue.router)
 app.include_router(api_router)
 
 app.add_middleware(

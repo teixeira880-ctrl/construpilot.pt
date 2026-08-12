@@ -1,20 +1,26 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Hammer, ArrowLeft } from "lucide-react";
+import { Hammer, ArrowLeft, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { IMAGES } from "@/lib/api";
+import { api, IMAGES } from "@/lib/api";
 
 export default function Login() {
   const { login, register, user } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const refCodeFromUrl = params.get("ref") || "";
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", ref: refCodeFromUrl });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  useEffect(() => {
+    if (refCodeFromUrl) sessionStorage.setItem("construpilot_ref", refCodeFromUrl.toUpperCase());
+  }, [refCodeFromUrl]);
 
   if (user) navigate("/dashboard", { replace: true });
 
@@ -23,7 +29,17 @@ export default function Login() {
     setBusy(true);
     try {
       if (mode === "login") await login(form.email, form.password);
-      else await register(form.name, form.email, form.password);
+      else {
+        await register(form.name, form.email, form.password);
+        const ref = (form.ref || sessionStorage.getItem("construpilot_ref") || "").trim();
+        if (ref) {
+          try {
+            await api.post("/referral/apply", { code: ref });
+            toast.success("Code parrainage appliqué — 5 € offerts sur votre premier achat");
+            sessionStorage.removeItem("construpilot_ref");
+          } catch { /* silencieux */ }
+        }
+      }
       toast.success("Bienvenue chez ConstruPilot");
       navigate("/dashboard");
     } catch (err) {
@@ -127,6 +143,13 @@ export default function Login() {
                 <div className="grid gap-2">
                   <Label>Mot de passe</Label>
                   <Input required type="password" minLength={6} value={form.password} onChange={set("password")} data-testid="register-password-input" className="rounded-sm h-11" />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Gift className="h-3 w-3" />
+                    Code parrainage (optionnel — 5 € offerts)
+                  </Label>
+                  <Input value={form.ref} onChange={set("ref")} data-testid="register-ref-input" placeholder="CP-XXXXXX" className="rounded-sm h-11 font-mono uppercase" />
                 </div>
                 <Button type="submit" disabled={busy} data-testid="register-submit-btn" className="rounded-sm h-11 hover:bg-orange-600 hover:text-white">
                   {busy ? "Création…" : "Créer mon compte gratuit"}

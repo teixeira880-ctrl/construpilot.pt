@@ -20,6 +20,8 @@ import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
 import Pricing from "@/pages/Pricing";
+import Referral from "@/pages/Referral";
+import Marketplace from "@/pages/Marketplace";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 
 const Protected = ({ children, admin }) => {
@@ -50,6 +52,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/inscription" element={<Login />} />
       <Route path="/smart-project" element={<Shell><SmartProject /></Shell>} />
       <Route path="/estimation" element={<Shell><Estimator /></Shell>} />
       <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
@@ -59,6 +62,8 @@ function AppRouter() {
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/devis" element={<Shell><QuoteScanner /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
+      <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
+      <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
       <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />

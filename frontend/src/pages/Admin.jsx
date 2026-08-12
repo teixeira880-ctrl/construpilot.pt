@@ -33,7 +33,7 @@ export default function Admin() {
     api.get("/admin/leads").then(({ data }) => setLeads(data));
     api.get("/admin/suppliers").then(({ data }) => setSuppliers(data));
   };
-  useEffect(load, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const savePrice = async (key) => {
     const body = edits[key];
@@ -87,6 +87,8 @@ export default function Admin() {
           <TabsTrigger value="projects" className="rounded-sm" data-testid="admin-tab-projects">Projets</TabsTrigger>
           <TabsTrigger value="leads" className="rounded-sm" data-testid="admin-tab-leads">CRM / Devis</TabsTrigger>
           <TabsTrigger value="searches" className="rounded-sm" data-testid="admin-tab-searches">Recherches</TabsTrigger>
+          <TabsTrigger value="promos" className="rounded-sm" data-testid="admin-tab-promos">Codes promo</TabsTrigger>
+          <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">Plans & Revenu</TabsTrigger>
         </TabsList>
 
         <TabsContent value="prices" className="mt-6">
@@ -326,7 +328,239 @@ export default function Admin() {
             </Button>
           </div>
         </TabsContent>
+
+        <TabsContent value="promos" className="mt-6">
+          <PromoCodesPanel />
+        </TabsContent>
+
+        <TabsContent value="plans" className="mt-6">
+          <PlansRevenuePanel />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/* ---------- Promo codes ---------- */
+function PromoCodesPanel() {
+  const [codes, setCodes] = useState([]);
+  const [form, setForm] = useState({ code: "", percent_off: "", amount_off_cents: "", max_redemptions: "", duration: "once", name: "" });
+  const [busy, setBusy] = useState(false);
+
+  const load = () => api.get("/admin/promo-codes").then(({ data }) => setCodes(data)).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  const create = async () => {
+    if (!form.code || (!form.percent_off && !form.amount_off_cents)) {
+      return toast.error("Code + réduction (% ou €) requis");
+    }
+    setBusy(true);
+    try {
+      const payload = {
+        code: form.code.toUpperCase().trim(),
+        duration: form.duration,
+        name: form.name || null,
+        percent_off: form.percent_off ? Number(form.percent_off) : null,
+        amount_off_cents: form.amount_off_cents ? Math.round(Number(form.amount_off_cents) * 100) : null,
+        max_redemptions: form.max_redemptions ? Number(form.max_redemptions) : null,
+      };
+      await api.post("/admin/promo-codes", payload);
+      toast.success("Code créé sur Stripe et activé");
+      setForm({ code: "", percent_off: "", amount_off_cents: "", max_redemptions: "", duration: "once", name: "" });
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Création impossible");
+    } finally { setBusy(false); }
+  };
+
+  const toggle = async (c, active) => {
+    try {
+      await api.patch(`/admin/promo-codes/${c.code}?active=${active}`);
+      load();
+    } catch { toast.error("Impossible"); }
+  };
+
+  return (
+    <div className="grid gap-6">
+      <div className="surface p-6 grid gap-4" data-testid="promo-form">
+        <p className="overline">Créer un code promo</p>
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Code (ex: LANCEMENT10)</Label>
+            <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="rounded-sm h-10 uppercase" data-testid="promo-code-input" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Réduction %</Label>
+            <Input type="number" value={form.percent_off} onChange={(e) => setForm({ ...form, percent_off: e.target.value, amount_off_cents: "" })} className="rounded-sm h-10 num" data-testid="promo-percent-input" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Ou montant € fixe</Label>
+            <Input type="number" step="0.01" value={form.amount_off_cents} onChange={(e) => setForm({ ...form, amount_off_cents: e.target.value, percent_off: "" })} className="rounded-sm h-10 num" data-testid="promo-amount-input" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Utilisations max</Label>
+            <Input type="number" value={form.max_redemptions} onChange={(e) => setForm({ ...form, max_redemptions: e.target.value })} className="rounded-sm h-10 num" data-testid="promo-max-input" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Récurrence</Label>
+            <Select value={form.duration} onValueChange={(v) => setForm({ ...form, duration: v })}>
+              <SelectTrigger className="rounded-sm h-10" data-testid="promo-duration"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="once">1 fois (premier paiement)</SelectItem>
+                <SelectItem value="forever">Chaque paiement</SelectItem>
+                <SelectItem value="repeating">3 mois (repeating)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Nom interne (optionnel)</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-sm h-10" data-testid="promo-name-input" />
+          </div>
+        </div>
+        <Button onClick={create} disabled={busy} data-testid="promo-create-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
+          <Plus className="h-4 w-4" /> Créer le code
+        </Button>
+      </div>
+
+      <div className="surface p-6">
+        <p className="overline mb-4">Codes actifs ({codes.length})</p>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead>Code</TableHead><TableHead>Réduction</TableHead><TableHead>Utilisations max</TableHead>
+            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+          </TableRow></TableHeader>
+          <TableBody data-testid="promo-list">
+            {codes.map((c) => (
+              <TableRow key={c.code}>
+                <TableCell className="font-mono">{c.code}</TableCell>
+                <TableCell className="num">
+                  {c.percent_off ? `${c.percent_off} %`
+                   : c.amount_off_cents ? `${(c.amount_off_cents / 100).toFixed(2)} €` : "—"}
+                </TableCell>
+                <TableCell className="num">{c.max_redemptions || "illimité"}</TableCell>
+                <TableCell>
+                  <Badge variant={c.active ? "default" : "outline"} className="rounded-sm">
+                    {c.active ? "Actif" : "Désactivé"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="outline" onClick={() => toggle(c, !c.active)} className="rounded-sm">
+                    {c.active ? "Désactiver" : "Activer"}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {codes.length === 0 && (
+              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">Aucun code promo</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Plans & Revenue ---------- */
+function PlansRevenuePanel() {
+  const [plans, setPlans] = useState([]);
+  const [revenue, setRevenue] = useState(null);
+  const [flags, setFlags] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    api.get("/admin/plans").then(({ data }) => setPlans(data));
+    api.get("/admin/revenue").then(({ data }) => setRevenue(data));
+    api.get("/admin/feature-flags").then(({ data }) => setFlags(data));
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveFlags = async () => {
+    setBusy(true);
+    try {
+      await api.put("/admin/feature-flags", flags);
+      toast.success("Flags sauvegardés");
+    } catch { toast.error("Impossible"); }
+    finally { setBusy(false); }
+  };
+
+  const syncStripe = async () => {
+    setBusy(true);
+    try {
+      await api.post("/admin/plans/sync-stripe");
+      toast.success("Catalogue Stripe synchronisé");
+      load();
+    } catch { toast.error("Sync Stripe impossible"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="grid gap-6">
+      {revenue && (
+        <div className="grid md:grid-cols-4 gap-4" data-testid="admin-revenue-stats">
+          <Stat label="Revenu total" value={eur(revenue.total_revenue_eur)} accent />
+          <Stat label="Abonnements actifs" value={num(revenue.active_subscriptions)} />
+          <Stat label="Project Pass actifs" value={num(revenue.active_project_pass)} />
+          <Stat label="Transactions" value={num(revenue.transactions_count)} />
+        </div>
+      )}
+
+      <div className="surface p-6 grid gap-4" data-testid="admin-flags">
+        <p className="overline">Feature flags</p>
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {["marketplace_enabled", "affiliate_enabled", "api_commercial_enabled",
+            "white_label_enabled", "referral_enabled", "promo_codes_enabled",
+            "trial_enabled"].map((k) => (
+            <label key={k} className="flex items-center gap-2 text-sm border border-border rounded-sm p-3 cursor-pointer">
+              <input type="checkbox" checked={!!flags[k]} onChange={(e) => setFlags({ ...flags, [k]: e.target.checked })} data-testid={`flag-${k}`} />
+              <span className="font-mono text-xs">{k}</span>
+            </label>
+          ))}
+          <div className="border border-border rounded-sm p-3 text-sm">
+            <Label className="text-xs">Trial (jours)</Label>
+            <Input type="number" value={flags.trial_days || 7} onChange={(e) => setFlags({ ...flags, trial_days: Number(e.target.value) })} className="rounded-sm h-9 num mt-1" />
+          </div>
+          <div className="border border-border rounded-sm p-3 text-sm">
+            <Label className="text-xs">Paywall mode</Label>
+            <Select value={flags.paywall_mode || "soft"} onValueChange={(v) => setFlags({ ...flags, paywall_mode: v })}>
+              <SelectTrigger className="rounded-sm h-9 mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="soft">Soft (recommandé)</SelectItem>
+                <SelectItem value="hard">Hard (bloquant)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button onClick={saveFlags} disabled={busy} data-testid="save-flags-btn" className="rounded-sm hover:bg-orange-600 hover:text-white gap-2">
+            <Save className="h-4 w-4" /> Sauvegarder les flags
+          </Button>
+          <Button variant="outline" onClick={syncStripe} disabled={busy} data-testid="sync-stripe-btn" className="rounded-sm gap-2">
+            <RefreshCw className="h-4 w-4" /> Synchroniser Stripe
+          </Button>
+        </div>
+      </div>
+
+      <div className="surface p-6" data-testid="admin-plans-table">
+        <p className="overline mb-4">Plans configurés ({plans.length})</p>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead>Nom</TableHead><TableHead>Code</TableHead><TableHead>Public</TableHead>
+            <TableHead>Prix</TableHead><TableHead>Type</TableHead><TableHead>Stripe Price ID</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {plans.map((p) => (
+              <TableRow key={p.plan_id}>
+                <TableCell>{p.name}</TableCell>
+                <TableCell className="font-mono text-xs">{p.code}</TableCell>
+                <TableCell><Badge variant="outline" className="rounded-sm">{p.audience}</Badge></TableCell>
+                <TableCell className="num">{(p.amount_cents / 100).toFixed(2)} € {p.interval ? `/ ${p.interval}` : ""}</TableCell>
+                <TableCell>{p.kind}</TableCell>
+                <TableCell className="font-mono text-[10px] text-muted-foreground">{p.stripe_price_id || "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

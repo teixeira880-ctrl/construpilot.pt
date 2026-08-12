@@ -15,6 +15,7 @@ import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
 import { EmailPdfDialog } from "@/components/EmailPdfDialog";
 import { SoftPaywall } from "@/components/SoftPaywall";
+import { SavingsCard } from "@/components/SavingsCard";
 import { SectionTitle } from "@/components/Bits";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
@@ -281,6 +282,7 @@ export default function Estimator() {
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           <EstimationView est={est} />
+          <SavingsCard estimation={est} />
           {tier === "free" && <SoftPaywall context="savings" />}
         </>
       )}

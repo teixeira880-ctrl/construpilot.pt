@@ -16,6 +16,7 @@ const LINKS = [
   { to: "/photo", label: "Analyse photo", icon: Camera },
   { to: "/devis", label: "Scanner de devis", icon: FileSearch },
   { to: "/coach", label: "Coach IA", icon: MessageSquare },
+  { to: "/marketplace", label: "Trouver un pro", icon: Wrench },
   { to: "/tarifs", label: "Tarifs", icon: Sparkles },
 ];
 
@@ -69,6 +70,13 @@ export const Nav = () => {
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
+          {user && (
+            <Link to="/parrainage" data-testid="nav-link-referral" className="hidden md:inline-flex">
+              <Button variant="ghost" size="sm" className="rounded-sm gap-2">
+                <Sparkles className="h-4 w-4 text-primary" /> Parrainer
+              </Button>
+            </Link>
+          )}
           {user?.role === "admin" && (
             <Link to="/admin" data-testid="nav-link-admin">
               <Button variant="outline" size="sm" className="rounded-sm gap-2">

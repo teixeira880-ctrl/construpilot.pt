@@ -50,47 +50,45 @@ Langue produit : **Français**.
 - **Leads** : `POST /api/leads`, admin `GET /api/admin/leads`, `GET /api/admin/stats`.
 - **Admin** : RBAC via `Depends(admin_user)` — user reçoit 403.
 
-## 4. État actuel (12/02/2026 — itération 5)
-### ✅ Implémenté & testé (Backend 69/69 pytest cumulés, tous flows frontend OK)
-- Landing, formulaire Smart Project, catalogue travaux.
-- Auth email (register/login/logout/me) + Google Emergent.
-- Seed idempotent : `admin@construpilot.fr` / `Construpilot2026!` et `demo@construpilot.fr` / `Demo2026!`.
+## 4. État actuel (12/02/2026 — itération 6)
+### ✅ Implémenté & testé (Backend 87/87 pytest cumulés, tous flows frontend OK)
+- Landing, Smart Project, catalogue travaux, auth email + Google, seed idempotent.
 - Smart Project IA, Estimateur wizard, 5 calculateurs matériaux.
-- **Recherche prix Tavily temps réel** (mode `web` + fallback demo).
-- Dashboard, Coach IA (SSE), Back-office admin.
-- **PDF de devis** — téléchargement + envoi email via Resend.
-- **Photos avant/après** — compression client Canvas + Emergent Object Storage + slider comparateur.
-- **Chantier Timeline** — frise chronologique.
-- **Alertes Prix** — APScheduler cron 08:00 UTC + notifications Resend.
-- **Rebranding ConstruPilot** — tagline "Estimez. Comparez. Construisez."
-- **QuoteScanner** — accepte désormais les PDF (extraction pypdf) en plus des images.
-- **CONSTRUPILOT REVENUE ENGINE — PHASE 1** ✅
-  - 8 plans configurables en DB (Free / Project Pass 19,90€ / Premium 9,99€/mois / Premium 79€/an / Pro 49€/mois / Pro 490€/an / Pro Business 99€/mois / Pro Business 990€/an).
-  - Feature flags (`trial_enabled`, `trial_days=7`, `paywall_mode='soft'`, `marketplace/affiliate/api/white_label` désactivés).
-  - **Stripe sandbox Emergent** claimable — catalogue Products+Prices synchronisé automatiquement au startup.
-  - Endpoints : `/api/plans`, `/api/billing/checkout`, `/api/billing/status/{id}`, `/api/billing/me`, `/api/billing/portal`, `/api/billing/flags`, `/api/stripe/webhook`.
-  - Admin : `/api/admin/plans` (CRUD), `/api/admin/feature-flags`, `/api/admin/plans/sync-stripe`, `/api/admin/revenue` (MRR-ready).
-  - Frontend : `/tarifs` (page publique avec tabs Particulier/Pro), `/paiement/succes`, `/paiement/annule`, `BillingContext` + `SoftPaywall` (non bloquant).
-  - Upgrade CTA "Passer Premium — 7 j offerts" sur Dashboard pour FREE.
-  - Trial 7 jours activé sur tous les abonnements.
+- Recherche prix Tavily temps réel (fallback demo intelligent).
+- Dashboard, Coach IA SSE, Back-office admin.
+- PDF de devis (téléchargement + envoi email Resend).
+- Photos avant/après avec compression client + Object Storage + slider comparateur.
+- Chantier Timeline (frise chronologique multi-sources).
+- Alertes Prix (APScheduler cron 08:00 UTC + emails Resend).
+- Rebranding ConstruPilot.
+- QuoteScanner accepte PDF (extraction pypdf) + images.
+- **CONSTRUPILOT REVENUE ENGINE — PHASE 1 ✅** : 8 plans configurables, Stripe sandbox, checkout, webhook, entitlements, page /tarifs, /paiement/succes+annule, BillingContext, SoftPaywall, trial 7 jours, admin plans + revenu.
+- **CONSTRUPILOT REVENUE ENGINE — PHASES 2 & 3 ✅**
+  - **Savings Engine** — 4 postes calculés (matériaux 8%, alternatives std→eco, DIY main d'œuvre, fournisseurs 6%) + ROI Project Pass. Component `SavingsCard` sur Estimator + ProjectDetail. FREE : 1er poste ouvert, autres floutés + CTA upgrade.
+  - **Codes Promo Admin** — CRUD complet, création Stripe Coupons + PromotionCodes (nested `promotion={type,coupon}`), toggle actif, panel dédié `/admin` tab "Codes promo". `allow_promotion_codes=true` dans checkout Stripe (les codes sont utilisables directement à la caisse).
+  - **Referral (parrainage 5€/5€)** — code unique CP-XXXXXX par user, page `/parrainage` (copier lien + code + stats), input "Code parrainage" sur inscription (auto-apply si `?ref=`), génération automatique d'un promotion_code Stripe pour le filleul, crédit +5€ au parrain via webhook `_mark_paid`.
+  - **Marketplace Pros + Lead Scoring** — score 0-100 (11 facteurs) + tier (petit/standard/premium/grand) + prix cents. Page `/marketplace` publique (feature-flag `marketplace_enabled` avec bandeau bêta). Endpoints /marketplace/leads (soumission), /marketplace/pros (annuaire vérifiés), /marketplace/register (candidature pro), /marketplace/leads/buy (achat par pros vérifiés avec crédits).
 
 ### 🟡 Points d'attention (non bloquants)
 - Warning React `setState during render` dans Login/AuthContext.
+- Webhook Stripe non testable en preview (mais wire vérifié : `_mark_paid` déclenche entitlement + referral credit).
 - Tavily : ~25% requêtes populaires en fallback demo.
-- Webhook Stripe : nécessite un événement Stripe réel pour tester la signature.
 
 ## 5. Backlog priorisé
-### PHASE 2 — Conversion & Savings (à venir)
-- Savings Engine (matériaux + DIY + alternatives + fournisseurs) — calculs réels
-- Smart Paywall contextuel avancé (messages selon écran)
-- Calculateur ROI sur pricing + résultat d'estimation
-- Promo codes (réductions %, fixes, expiration, limite)
-- Referral program (parrainage crédits)
+### PHASE 4 — B2B / API / White Label / Affiliation avancée
+- Affiliation fournisseurs (tracking clics/conversions/GMV/commissions)
+- Badges "Sponsorisé" et "Lien partenaire" (transparence)
+- Enrichir marketplace : vérification KYC pros (SIREN/RC/décennale), badges, avis, portail pro complet
+- Crédits pros ConstruPilot (rechargement Stripe pour acheter les leads)
+- API commerciale (clés, rate limits, usage tracking, billing)
+- White Label (logo/couleurs partenaire, sous-domaines)
+- Enterprise + SSO
+- Revenue Dashboard admin avancé (MRR/ARR/ARPU/LTV/CAC/funnel/A/B)
 
-### PHASE 3 — Leads Marketplace + Affiliation
-- Affiliation fournisseurs (tracking clics/conversions/GMV)
-- Lead Marketplace (score qualité 0-100, tarification par tranche, crédits pro)
-- Badges "Sponsorisé" et "Lien partenaire"
+### P1 — Fiabilité
+- Corriger warning React `setState during render`.
+- Domaine Resend vérifié (au-delà de la sandbox).
+- Vérification par email/téléphone (phone_verified/email_verified pour lead scoring +5pts chacun).
 
 ### PHASE 4 — B2B / API / White Label
 - API commerciale (clés, rate limits, usage tracking, billing)

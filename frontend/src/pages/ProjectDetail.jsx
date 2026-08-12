@@ -16,6 +16,7 @@ import { LeadDialog } from "@/components/LeadDialog";
 import { EmailPdfDialog } from "@/components/EmailPdfDialog";
 import { PhotosGallery } from "@/components/PhotosGallery";
 import { Timeline } from "@/components/Timeline";
+import { SavingsCard } from "@/components/SavingsCard";
 import { Stat } from "@/components/Bits";
 
 const NEXT = { todo: "doing", doing: "done", done: "todo" };
@@ -165,6 +166,8 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
+
+      <SavingsCard projectId={p.project_id} estimation={p.estimation} />
 
       <Tabs defaultValue="works">
         <TabsList className="rounded-sm flex-wrap h-auto">

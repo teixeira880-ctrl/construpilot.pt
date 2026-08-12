@@ -1,0 +1,36 @@
+{
+  "summary": "Iter 6 (Revenue Engine Phase 2+3) tested end-to-end. Backend: 18/18 pytest in /app/backend/tests/test_iter6_revenue_phase23.py — POST /api/savings/analyse returns 4 items (materials_optimization, alternative_materials, diy_savings, supplier_optimization) with total>0, pct_of_project>0, roi_multiplier>0 and message containing 'ConstruPilot a identifié'; empty body → 400; GET /api/projects/unknown/savings → 404. Referral: GET /api/referral/me generates CP-XXXXXX and returns {code, credit_eur, invited, converted, share_url}; POST /api/referral/apply with unknown code → 400; with another user's code creates db.referrals doc and generates real Stripe promotion_code (BIENVENUE-XXXXXX) returned as referee_code. Marketplace: high-quality lead (budget 45k+adresse 75011+tel+desc longue+urgent) scored 95/100 tier=premium; poor lead (name+email+desc short) scored <40 tier=petit; POST /marketplace/register with flag off → 403 'Marketplace bientôt disponible', after PUT /admin/feature-flags {marketplace_enabled:true} → 200; GET /marketplace/pros returns count:0; POST /marketplace/leads/buy without verified pro → 403. Promo Codes: POST /api/admin/promo-codes {code,percent_off:10} creates real Stripe coupon + promotion_code (uses nested promotion={type:'coupon',coupon:X}) and stores in db.promo_codes; GET lists; PATCH ?active=false works; demo user gets 403 on all 3 promo admin routes. Regression: /plans, /billing/flags, POST /prices/search, /projects (auth), /auth/login all 200. credit_referrer_on_first_payment hook is wired in engines/monetization._mark_paid (line 179). Frontend: /marketplace shows beta banner + form + 'Professionnels vérifiés (0)' panel; submitting a high-quality lead displays marketplace-preview with score 95/100 excellent premium. /login?ref=CP-TEST99 auto-fills register-ref-input=CP-TEST99 after switching to 'Créer un compte' tab. Estimator wizard-compute produces savings-card with 4 items and total (28 729 € for demo 80m² std IdF); demo user (billing tier='free' — no active entitlement) sees only item 0 with details, items 1-3 blurred (•• ••• €) with lock icon + 'Détail débloqué avec Premium ou Project Pass' + visible savings-upgrade-cta button linking to /tarifs. Nav shows 'Trouver un pro' and 'Tarifs' links; 'Parrainer' button appears next to logout for logged-in users. /parrainage shows CP-M5H5HJ code, share URL https://.../inscription?ref=CP-M5H5HJ, Copier button, and stats (Filleuls 0, Crédit 0 €). Admin /admin has new 'Codes promo' and 'Plans & Revenu' tabs. Promo tab: create form (code+percent) → real Stripe promotion_code created + appears in promo-list. Plans & Revenu tab: revenue-stats (revenu total, abos actifs, project pass actifs, transactions), feature flags with checkboxes + Trial days + Paywall mode, Sauvegarder + Synchroniser Stripe buttons, plans table with all 8 plans. Fixed a runtime bug in PromoCodesPanel where `useEffect(load, [])` passed a promise-returning function directly to useEffect → 'destroy is not a function' error — now wrapped in an arrow.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Admin.jsx PromoCodesPanel", "issue": "useEffect(load, []) where load returns a Promise (from .then().catch()) caused 'destroy is not a function' React runtime error when switching to Codes promo tab.", "selector": "[data-testid=admin-tab-promos]", "priority": "HIGH — FIXED by testing agent (wrapped in () => { load(); })"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter6_revenue_phase23.py",
+    "/app/test_reports/pytest/iter6.xml"
+  ],
+  "action_items": [
+    "None blocking. (Pre-existing) Stripe webhook cannot be exercised in preview — credit_referrer_on_first_payment hook is wired (engines/monetization.py:179) but only fires on real checkout.session.completed events.",
+    "Consider: apply same useEffect(load, []) fix pattern to PlansRevenuePanel (line 475) and top-level Admin (line 36) as defensive — currently they don't return promises, but if future edits add .then() they will regress."
+  ],
+  "critical_code_review_comments": [
+    "engines/referral.py generate_referee_coupon retrieves an existing PromotionCode only by ID (stripe.PromotionCode.retrieve) but then returns promo.code which comes from Stripe response — this is fine; however the on-repeat call will still perform a live Stripe API call. Consider caching referee_code on the db.referrals doc first.",
+    "routes/revenue.py `apply_referral` awaits `referral.generate_referee_coupon` synchronously (Stripe network call). Under high concurrency this blocks the request. Fine for MVP.",
+    "routes/revenue.py `PATCH /admin/promo-codes/{code}` uses query param `active`. Consider a JSON body {active:bool} for consistency.",
+    "engines/lead_scoring.py test 'poor lead' with name='X' passes only because minlength isn't enforced. The Pydantic model has no min_length on name/description — accept but consider validation."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter6_revenue_phase23.py (new)",
+    "/app/frontend/src/pages/Admin.jsx (fixed PromoCodesPanel useEffect signature)"
+  ],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "100% on flows tested after 1 fix"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "None beyond existing seed. Test creates ephemeral users test_iter6_<ts>@example.com and TESTPROMO<ts> Stripe promotion codes.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter6 backend fully covered by /app/backend/tests/test_iter6_revenue_phase23.py (uses `token` from /api/auth/login response, POST /api/prices/search, /api/auth/register expects `name` not `full_name`). The BillingContext /api/billing/me returns tier='free' for demo user because entitlement grant only happens via webhook; that's why SavingsCard on Estimator correctly shows the FREE-tier lock/CTA even though user.plan='premium' on the users doc. The runtime 'destroy is not a function' error was FIXED in Admin.jsx (PromoCodesPanel line 351). marketplace_enabled flag is left OFF at test-end (last test resets to false).",
+  "rca of the issue": "PromoCodesPanel bug — `useEffect(load, [])` was passed a function returning a Promise (axios .then().catch() chain). React interprets a non-undefined non-function return value from a useEffect callback as the cleanup 'destroy' function, throwing TypeError on unmount. Repro: login as admin → /admin → click 'Codes promo' tab. Fix applied: wrap in `useEffect(() => { load(); }, [])` so no return value bubbles up."
+}
