@@ -5,7 +5,7 @@ import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
-  Wand2, Zap,
+  Wand2, Zap, FileDown, History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -226,6 +226,8 @@ export default function PlanTakeoff() {
   const [takeoff, setTakeoff] = useState(null);
   const [materials, setMaterials] = useState(null);
   const [floorMaterial, setFloorMaterial] = useState("parquet");
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const fileRef = useRef(null);
 
   const currentCalib = plan?.calibrations?.[String(pageIndex)];
@@ -425,6 +427,45 @@ export default function PlanTakeoff() {
     nav(`/prix?q=${encodeURIComponent(q.join(" "))}`);
   };
 
+  const downloadPdf = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${base}/api/takeoffs/${plan.plan_id}/pdf?include_materials=true&floor_material=${floorMaterial}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error("PDF error");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `metre-${plan.plan_id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("PDF téléchargé");
+    } catch { toast.error("Export PDF impossible"); }
+  };
+
+  const loadHistory = async () => {
+    if (!plan?.plan_id) return;
+    setHistoryLoading(true);
+    try {
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/history`);
+      setHistory(data.history || []);
+    } finally { setHistoryLoading(false); }
+  };
+
+  const restoreSnapshot = async (snapshotId) => {
+    if (!plan?.plan_id) return;
+    try {
+      await api.post(`/takeoffs/${plan.plan_id}/history/restore/${snapshotId}`);
+      await refreshPlan();
+      await loadHistory();
+      toast.success("Snapshot restauré");
+    } catch { toast.error("Restauration impossible"); }
+  };
+
   // ---------- RENDER ----------
 
   if (!plan) {
@@ -532,6 +573,10 @@ export default function PlanTakeoff() {
                   className="rounded-sm gap-2 border-cyan-500/50 text-cyan-500 hover:bg-cyan-500 hover:text-white">
             <Zap className={`h-4 w-4 ${cvBusy ? "animate-pulse" : ""}`} />
             {cvBusy ? "…" : "Détecter les murs"}
+          </Button>
+          <Button variant="outline" onClick={downloadPdf} data-testid="plan-pdf-export-btn"
+                  className="rounded-sm gap-2">
+            <FileDown className="h-4 w-4" /> Métré PDF
           </Button>
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <Sparkles className={`h-4 w-4 ${aiBusy ? "animate-pulse" : ""}`} />
@@ -669,6 +714,9 @@ export default function PlanTakeoff() {
               <TabsTrigger value="rooms" className="flex-1 rounded-sm" data-testid="tab-rooms">Pièces</TabsTrigger>
               <TabsTrigger value="materials" className="flex-1 rounded-sm" data-testid="tab-materials">Matériaux</TabsTrigger>
               <TabsTrigger value="ai" className="flex-1 rounded-sm" data-testid="tab-ai">IA</TabsTrigger>
+              <TabsTrigger value="history" className="flex-1 rounded-sm" data-testid="tab-history" onClick={loadHistory}>
+                <History className="h-3 w-3" />
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="rooms" className="mt-3 grid gap-3">
@@ -802,6 +850,35 @@ export default function PlanTakeoff() {
                       ⚠ {plan.ai_analysis.warnings.join(" · ")}
                     </div>
                   )}
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="history" className="mt-3 grid gap-2">
+              {historyLoading ? (
+                <p className="text-xs text-muted-foreground">Chargement…</p>
+              ) : history.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Aucun historique — l'app enregistre automatiquement les modifications (calibration, pièces, niveaux).
+                </p>
+              ) : (
+                <div className="grid gap-2 text-xs" data-testid="history-list">
+                  {history.map((s) => (
+                    <div key={s.snapshot_id} className="border border-border p-2 rounded-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-bold capitalize">{s.action.replace(/_/g, " ")}</p>
+                          <p className="num text-muted-foreground text-[10px]">
+                            {new Date(s.created_at).toLocaleString("fr-FR")} · {s.rooms?.length || 0} pièces
+                          </p>
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => restoreSnapshot(s.snapshot_id)}
+                                data-testid={`restore-${s.snapshot_id}`}
+                                className="rounded-sm gap-1 text-xs h-6">
+                          Restaurer
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>

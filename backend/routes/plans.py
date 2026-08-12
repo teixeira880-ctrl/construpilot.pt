@@ -31,6 +31,7 @@ from engines import geometry as G
 from engines.plan_processor import process_upload, auto_calibration_from_pdf_scale
 from engines.plan_ai import analyze_plan_image
 from engines.plan_cv import detect_walls, flood_fill_room
+from engines.pdf_takeoff import build_takeoff_pdf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["plans"], prefix="/takeoffs")
@@ -42,6 +43,35 @@ ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg", "image/jpg", "ima
 
 def _now():
     return datetime.now(timezone.utc).isoformat()
+
+
+async def _snapshot(plan_id: str, user_id: str, action: str, meta: dict | None = None):
+    """Sauvegarde un instantané du plan avant/après une mutation (auto-history)."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user_id},
+        {"_id": 0, "rooms": 1, "calibrations": 1, "pages.level_index": 1,
+         "pages.level_label": 1, "pages.index": 1}
+    )
+    if not p:
+        return
+    snap = {
+        "snapshot_id": "snap_" + secrets.token_hex(6),
+        "plan_id": plan_id, "user_id": user_id,
+        "action": action, "meta": meta or {},
+        "created_at": _now(),
+        "rooms": p.get("rooms") or [],
+        "calibrations": p.get("calibrations") or {},
+        "page_levels": [{"index": pg.get("index"),
+                         "level_index": pg.get("level_index"),
+                         "level_label": pg.get("level_label")} for pg in (p.get("pages") or [])],
+    }
+    await db.plans_takeoff_history.insert_one(snap)
+    # Cap : garde les 50 derniers snapshots par plan
+    old = await db.plans_takeoff_history.find(
+        {"plan_id": plan_id, "user_id": user_id}, {"_id": 1}
+    ).sort("created_at", -1).skip(50).to_list(200)
+    if old:
+        await db.plans_takeoff_history.delete_many({"_id": {"$in": [o["_id"] for o in old]}})
 
 
 def _plan_summary(p: dict) -> dict:
@@ -198,6 +228,8 @@ async def calibrate_plan(plan_id: str, body: CalibIn, user=Depends(current_user)
         {"plan_id": plan_id},
         {"$set": {f"calibrations.{body.page_index}": payload, "updated_at": _now()}}
     )
+    await _snapshot(plan_id, user["user_id"], "calibrate",
+                    {"page": body.page_index, "ppm": payload["pixels_per_meter"]})
     return {"ok": True, "page_index": body.page_index, "calibration": payload}
 
 
@@ -401,6 +433,7 @@ async def upsert_room(plan_id: str, body: RoomIn, user=Depends(current_user)):
         {"plan_id": plan_id},
         {"$set": {"rooms": existing, "updated_at": _now()}}
     )
+    await _snapshot(plan_id, user["user_id"], "room_upsert", {"room_name": room["name"]})
     return room
 
 
@@ -412,6 +445,7 @@ async def delete_room(plan_id: str, room_id: str, user=Depends(current_user)):
     )
     if res.matched_count == 0:
         raise HTTPException(404, "Plan introuvable")
+    await _snapshot(plan_id, user["user_id"], "room_delete", {"room_id": room_id})
     return {"ok": True}
 
 
@@ -625,3 +659,125 @@ async def compute_materials(plan_id: str, body: MaterialsIn, user=Depends(curren
                     for r in rooms)
         result["skirting"] = G.skirting_length_m(perim, doors * 0.9)
     return result
+
+
+# ============ HISTORIQUE (auto-snapshots) ============
+
+@router.get("/{plan_id}/history")
+async def list_history(plan_id: str, user=Depends(current_user)):
+    # Vérifie ownership
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
+                                         {"_id": 0, "plan_id": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    snaps = await db.plans_takeoff_history.find(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "user_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return {"plan_id": plan_id, "history": snaps,
+            "count": len(snaps)}
+
+
+@router.post("/{plan_id}/history/restore/{snapshot_id}")
+async def restore_snapshot(plan_id: str, snapshot_id: str, user=Depends(current_user)):
+    snap = await db.plans_takeoff_history.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"], "snapshot_id": snapshot_id},
+        {"_id": 0}
+    )
+    if not snap:
+        raise HTTPException(404, "Snapshot introuvable")
+    # snapshot du current avant restauration (pour permettre l'undo)
+    await _snapshot(plan_id, user["user_id"], "before_restore",
+                    {"restored_from": snapshot_id})
+    # Restaure rooms + calibrations + levels
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
+                                         {"_id": 0, "pages": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    updates = {"rooms": snap.get("rooms") or [],
+               "calibrations": snap.get("calibrations") or {},
+               "updated_at": _now()}
+    # Restore page levels
+    for pl in snap.get("page_levels") or []:
+        idx = pl.get("index")
+        if idx is not None:
+            updates[f"pages.{idx}.level_index"] = pl.get("level_index")
+            updates[f"pages.{idx}.level_label"] = pl.get("level_label")
+    await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": updates})
+    return {"ok": True, "restored_from": snapshot_id,
+            "rooms": len(snap.get("rooms") or []),
+            "action": snap.get("action")}
+
+
+# ============ PDF EXPORT MÉTRÉ ============
+
+@router.get("/{plan_id}/pdf")
+async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
+                              floor_material: str = "parquet",
+                              user=Depends(current_user)):
+    """Génère et renvoie le PDF de métré du plan (streaming binaire)."""
+    from fastapi.responses import Response
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages.image_png_b64": 0}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+
+    rooms = p.get("rooms") or []
+    total_floor = sum(r.get("surface_m2", 0) for r in rooms)
+    total_ceiling = sum(r.get("ceiling_area_m2", 0) for r in rooms)
+    total_walls_gross = sum(r.get("wall_area_gross_m2", 0) for r in rooms)
+    total_walls_net = sum(r.get("wall_area_net_m2", 0) for r in rooms)
+    total_perim = sum(r.get("perimeter_m", 0) for r in rooms)
+
+    # Reconstitue le takeoff (comme /takeoff)
+    page_level = {pg.get("index"): {"index": pg.get("level_index"),
+                                     "label": pg.get("level_label")}
+                  for pg in (p.get("pages") or [])}
+    by_level: dict = {}
+    for r in rooms:
+        info = page_level.get(r.get("page_index"), {"index": None, "label": None})
+        key = f"{info['index'] if info['index'] is not None else 'none'}"
+        bucket = by_level.setdefault(key, {
+            "level_index": info["index"], "level_label": info["label"] or "Sans niveau",
+            "rooms": [], "totals": {"floor_m2": 0, "walls_net_m2": 0, "perimeter_m": 0}})
+        bucket["rooms"].append(r)
+        bucket["totals"]["floor_m2"] += r.get("surface_m2", 0)
+        bucket["totals"]["walls_net_m2"] += r.get("wall_area_net_m2", 0)
+        bucket["totals"]["perimeter_m"] += r.get("perimeter_m", 0)
+    for b in by_level.values():
+        for k in b["totals"]:
+            b["totals"][k] = round(b["totals"][k], 2)
+    levels_sorted = sorted(by_level.values(),
+                           key=lambda x: (x["level_index"] is None,
+                                          x["level_index"] if x["level_index"] is not None else 99))
+
+    takeoff = {
+        "room_count": len(rooms), "rooms": rooms, "levels": levels_sorted,
+        "totals": {"floor_m2": round(total_floor, 2),
+                    "ceiling_m2": round(total_ceiling, 2),
+                    "walls_gross_m2": round(total_walls_gross, 2),
+                    "walls_net_m2": round(total_walls_net, 2),
+                    "perimeter_m": round(total_perim, 2)},
+    }
+
+    # Matériaux (optionnel)
+    materials = None
+    if include_materials and rooms:
+        floor_q = G.floor_quantity(total_floor, floor_material)
+        paint_q = G.paint_liters(total_walls_net + total_ceiling)
+        placo_q = G.placo_quantity(total_walls_net + total_ceiling)
+        doors_est = 2 * len(rooms)  # heuristique
+        skirt_q = G.skirting_length_m(total_perim, doors_est * 0.9)
+        materials = {"floor": floor_q, "paint": paint_q,
+                      "placo": placo_q, "skirting": skirt_q}
+
+    plan_light = {"plan_id": p.get("plan_id"), "filename": p.get("filename"),
+                  "page_count": p.get("page_count", 1)}
+    pdf_bytes = build_takeoff_pdf(plan_light, takeoff, materials)
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="metre-{plan_id}.pdf"'}
+    )

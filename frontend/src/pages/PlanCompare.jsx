@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   GitCompareArrows, TrendingUp, TrendingDown, Plus, Minus, Edit3, ArrowLeft,
@@ -20,6 +20,11 @@ export default function PlanCompare() {
   const [afterId, setAfterId] = useState("");
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [beforeRooms, setBeforeRooms] = useState([]);
+  const [afterRooms, setAfterRooms] = useState([]);
+  const [afterImage, setAfterImage] = useState(null);
+  const canvasRef = useRef(null);
+  const imgRef = useRef(null);
 
   useEffect(() => {
     api.get("/takeoffs").then(({ data }) => setPlans(data.plans || []));
@@ -32,10 +37,88 @@ export default function PlanCompare() {
       const { data } = await api.post("/takeoffs/compare",
         { before_plan_id: beforeId, after_plan_id: afterId });
       setResult(data);
+      // Charge les rooms des 2 plans et l'image du after (page 0) pour overlay
+      const [{ data: beforePlan }, { data: afterPlan }, { data: afterPage }] =
+        await Promise.all([
+          api.get(`/takeoffs/${beforeId}`),
+          api.get(`/takeoffs/${afterId}`),
+          api.get(`/takeoffs/${afterId}/page/0`),
+        ]);
+      setBeforeRooms((beforePlan.rooms || []).filter(r => r.page_index === 0));
+      setAfterRooms((afterPlan.rooms || []).filter(r => r.page_index === 0));
+      setAfterImage(afterPage.image_png_b64);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Comparaison impossible");
     } finally { setBusy(false); }
   };
+
+  // Rendu du canvas overlay
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c || !afterImage) return;
+    const img = new Image();
+    img.onload = () => {
+      imgRef.current = img;
+      const maxW = 1000;
+      const scale = img.width > maxW ? maxW / img.width : 1;
+      c.width = img.width * scale;
+      c.height = img.height * scale;
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.save();
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = 0.6;
+      ctx.drawImage(img, 0, 0);
+      ctx.globalAlpha = 1;
+
+      const drawRoom = (r, fill, stroke, label) => {
+        if (!r.points || r.points.length < 3) return;
+        ctx.beginPath();
+        r.points.forEach((p, i) =>
+          i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 3 / scale;
+        ctx.stroke();
+        const cx = r.points.reduce((s, p) => s + p[0], 0) / r.points.length;
+        const cy = r.points.reduce((s, p) => s + p[1], 0) / r.points.length;
+        ctx.font = `bold ${14 / scale}px system-ui`;
+        ctx.fillStyle = stroke;
+        ctx.textAlign = "center";
+        ctx.fillText(`${label} · ${r.name}`, cx, cy);
+        ctx.font = `${11 / scale}px system-ui`;
+        ctx.fillStyle = "#111";
+        ctx.fillText(`${r.surface_m2} m²`, cx, cy + 14 / scale);
+      };
+
+      const _n = (s) => (s || "").trim().toLowerCase();
+      const afterNames = new Set(afterRooms.map(r => _n(r.name)));
+      const beforeNames = new Set(beforeRooms.map(r => _n(r.name)));
+
+      // Rouge : rooms de BEFORE qui n'existent plus dans AFTER
+      beforeRooms.forEach(r => {
+        if (!afterNames.has(_n(r.name))) {
+          drawRoom(r, "rgba(239,68,68,0.28)", "rgba(220,38,38,0.9)", "SUPPR.");
+        }
+      });
+      // Vert : rooms de AFTER qui n'étaient pas dans BEFORE
+      afterRooms.forEach(r => {
+        if (!beforeNames.has(_n(r.name))) {
+          drawRoom(r, "rgba(34,197,94,0.28)", "rgba(22,163,74,0.9)", "AJOUT");
+        }
+      });
+      // Ambre : rooms modifiées
+      (result?.modified || []).forEach(mod => {
+        const ra = afterRooms.find(r => _n(r.name) === _n(mod.name));
+        if (ra) drawRoom(ra, "rgba(251,191,36,0.25)", "rgba(217,119,6,0.9)",
+                        `MOD (${mod.delta_m2 >= 0 ? "+" : ""}${mod.delta_m2} m²)`);
+      });
+      ctx.restore();
+    };
+    img.src = `data:image/png;base64,${afterImage}`;
+  }, [afterImage, beforeRooms, afterRooms, result]);
 
   return (
     <div className="mx-auto max-w-[1200px] px-5 py-8 grid gap-8">
@@ -97,6 +180,29 @@ export default function PlanCompare() {
 
       {result && (
         <div className="grid gap-6" data-testid="compare-result">
+          {/* Overlay visuel */}
+          {afterImage && (
+            <div className="surface p-4" data-testid="compare-overlay">
+              <div className="flex items-center justify-between mb-3">
+                <p className="overline">Superposition visuelle</p>
+                <div className="flex gap-2 text-xs">
+                  <Badge variant="outline" className="rounded-sm gap-1 border-emerald-500/50 text-emerald-500">
+                    <Plus className="h-3 w-3" /> Ajouté
+                  </Badge>
+                  <Badge variant="outline" className="rounded-sm gap-1 border-destructive text-destructive">
+                    <Minus className="h-3 w-3" /> Supprimé
+                  </Badge>
+                  <Badge variant="outline" className="rounded-sm gap-1 border-amber-500/50 text-amber-500">
+                    <Edit3 className="h-3 w-3" /> Modifié
+                  </Badge>
+                </div>
+              </div>
+              <div className="overflow-auto bg-secondary/30">
+                <canvas ref={canvasRef} className="block mx-auto" data-testid="compare-canvas" />
+              </div>
+            </div>
+          )}
+
           {/* Résumé */}
           <div className="grid sm:grid-cols-4 gap-4">
             <div className="surface p-5">

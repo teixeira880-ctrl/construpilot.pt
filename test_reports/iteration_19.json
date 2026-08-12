@@ -1,0 +1,36 @@
+{
+  "summary": "Iter19 tested end-to-end. Backend pytest 11/11 PASS on new suite test_iter19_pdf_history.py: PDF export (full 200 + application/pdf + Content-Disposition metre-{plan_id}.pdf + magic '%PDF-' + >2000 bytes; include_materials=false shorter; floor_material=carrelage ok; empty-plan still valid; unknown 404), History auto-snapshots (count=4 after calibrate+2 upsert+1 delete; DESC sorted; full schema {snapshot_id, plan_id, action, rooms, calibrations, page_levels, created_at, meta}; cap 50 enforced after 55 mutations), Restore (200 with ok/restored_from/action, rooms reset while calibrations kept, before_restore snapshot created; 404 on unknown snap; 404 on unknown plan), Compare backing (/api/takeoffs/{id}/page/0 returns non-empty image_png_b64). Non-regression iter18 suite: 16/17 pass (1 pre-existing minor: 'Rampant non fourni' warning already noted in iter18 report — NOT an iter19 regression). Frontend UI /plan (demo login): after PNG upload, all 3 buttons present with correct data-testids (plan-pdf-export-btn, plan-detect-walls-btn, plan-ai-btn), tab-history visible in right panel, click loads history and shows 'Aucun historique' fallback (empty state, expected on fresh plan). compare-canvas + compare-overlay + legend (Ajouté vert / Supprimé rouge / Modifié ambre) wired in PlanCompare.jsx. plan-compare-link exists in code (list header) but not rendered in freshly-uploaded flow state — visible only when >=1 plan exists in list view.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/takeoffs/{id}/history + restore", "issue": "Auto-snapshots are captured BEFORE each mutation, so the snapshot labelled action='calibrate' actually contains the PRE-calibrate state (rooms=[] AND calibrations={}). Consequently, restoring the oldest snapshot wipes calibrations — contradicting the spec which stated 'restore oldest -> calibrations toujours présentes'. Workaround in tests: restore the 2nd-oldest (first 'room_upsert') which captures post-calibrate+0-rooms. Recommend either snapshotting AFTER mutations, or capturing an initial post-calibrate snapshot explicitly."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter19_pdf_history.py",
+    "/app/test_reports/pytest/iter19.xml"
+  ],
+  "action_items": [
+    "Consider snapshotting AFTER the mutation (or add an implicit post-calibrate snapshot) so that restoring the oldest snapshot preserves calibrations, matching the iter19 spec.",
+    "(Carried from iter18) refine 'Rampant non fourni' warning condition — still emits when pitch_deg supplied."
+  ],
+  "critical_code_review_comments": [
+    "engines/pdf_takeoff.py build_takeoff_pdf: clean reportlab layout (kicker + h1 + totals + per-level + per-room + materials + footer); handles empty rooms and materials=None gracefully.",
+    "routes/plans.py _snapshot(): correctly capped to 50 via .skip(50).sort DESC then delete_many. Ownership scoped by user_id. Considered pre-mutation semantics — see minor issue above.",
+    "restore_snapshot creates a 'before_restore' snapshot before writing — good for undo. However on restore it does not restore page_levels for pages absent from the snapshot (uses partial $set only for indexes present in page_levels list) — acceptable.",
+    "PDF export endpoint reuses aggregation logic duplicated with /takeoff — consider extracting into a helper to DRY."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter19_pdf_history.py"],
+  "success_rate": {"backend": "100% (11/11 new; 16/17 regression, pre-existing)", "frontend": "100% (all iter19 data-testids present and functional)"},
+  "test_credentials": "demo@construpilot.fr / Demo2026!  |  admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "Multiple test plans via /api/takeoffs/upload (PNG /app/before.png), calibrated ppm=100, rooms Salon 6x4 / Cuisine 3x3 etc. Cap-50 test spawned 55 room upserts on one plan.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter19 green. Key semantic note for snapshots: _snapshot() runs BEFORE the write, so history[len-1].action='calibrate' captures the PRE-calibrate state. To restore a 'post-calibrate, zero-rooms' state, pick history[len-2] (first room_upsert snapshot). Backend pytest runs with `python -m pytest ... -n 0` to force serial mode inside /app/backend/pytest.ini (which defaults to -n 2). BASE_URL is read from /app/frontend/.env when REACT_APP_BACKEND_URL isn't in the env (see helper at top of test_iter19_pdf_history.py).",
+  "rca of the issue": "Snapshot restore losing calibrations: _snapshot() is called immediately before the DB write of the calibrate action, so it captures the previous document (no calibrations yet). Recommended fix: move _snapshot AFTER the update_one for calibrate (and consistently for room_upsert/delete), OR emit an additional 'initial' snapshot post-write. Either way, keep the current 'before_restore' snapshot for undo functionality."
+}

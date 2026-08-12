@@ -1,0 +1,175 @@
+"""Génération du PDF de MÉTRÉ ConstruPilot PLAN."""
+from io import BytesIO
+from datetime import datetime, timezone
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+                               KeepTogether, PageBreak)
+
+ORANGE = colors.HexColor('#FF5A00')
+DARK = colors.HexColor('#0A0D14')
+GREY = colors.HexColor('#64748B')
+LIGHT_GREY = colors.HexColor('#F1F5F9')
+
+
+def _fmt(v, unit=""):
+    if isinstance(v, (int, float)):
+        return f"{v:,.2f} {unit}".replace(",", " ").replace(".", ",").strip()
+    return str(v)
+
+
+def _styles():
+    ss = getSampleStyleSheet()
+    return {
+        "h1": ParagraphStyle("h1", parent=ss["Heading1"], textColor=DARK,
+                              fontName="Helvetica-Bold", fontSize=22, leading=26,
+                              spaceAfter=6),
+        "h2": ParagraphStyle("h2", parent=ss["Heading2"], textColor=ORANGE,
+                              fontName="Helvetica-Bold", fontSize=13, leading=16,
+                              spaceBefore=14, spaceAfter=6),
+        "kicker": ParagraphStyle("k", textColor=ORANGE, fontName="Helvetica-Bold",
+                                  fontSize=9, letterSpacing=1.5, spaceAfter=2),
+        "body": ParagraphStyle("body", parent=ss["BodyText"], fontSize=9,
+                                leading=12, textColor=DARK),
+        "muted": ParagraphStyle("mu", parent=ss["BodyText"], fontSize=8, leading=11,
+                                 textColor=GREY),
+    }
+
+
+def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None) -> bytes:
+    """Rend un PDF de métré à partir d'un plan (rooms + totals + levels)."""
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=18*mm, rightMargin=18*mm,
+                            topMargin=18*mm, bottomMargin=18*mm)
+    S = _styles()
+    story = []
+
+    # ---- Header ----
+    story.append(Paragraph("MÉTRÉ CONSTRUPILOT", S["kicker"]))
+    title = plan.get("filename") or "Plan"
+    story.append(Paragraph(title, S["h1"]))
+    date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    story.append(Paragraph(
+        f"Plan ID <b>{plan.get('plan_id','?')}</b> · {plan.get('page_count', 1)} page(s) · "
+        f"{takeoff.get('room_count', 0)} pièces · généré le {date_str}", S["muted"]))
+    story.append(Spacer(1, 10))
+
+    # ---- Totaux globaux ----
+    tots = takeoff.get("totals", {})
+    story.append(Paragraph("Totaux globaux", S["h2"]))
+    data = [
+        ["Sol", _fmt(tots.get("floor_m2", 0), "m²")],
+        ["Plafonds", _fmt(tots.get("ceiling_m2", 0), "m²")],
+        ["Murs bruts", _fmt(tots.get("walls_gross_m2", 0), "m²")],
+        ["Murs nets", _fmt(tots.get("walls_net_m2", 0), "m²")],
+        ["Périmètre total", _fmt(tots.get("perimeter_m", 0), "m")],
+    ]
+    t = Table(data, colWidths=[60*mm, 40*mm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("TEXTCOLOR", (0, 0), (-1, -1), DARK),
+        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(t)
+
+    # ---- Par niveau ----
+    levels = takeoff.get("levels", [])
+    if len(levels) > 1:
+        story.append(Paragraph("Totaux par niveau", S["h2"]))
+        rows = [["Niveau", "Pièces", "Sol", "Murs nets", "Périmètre"]]
+        for lvl in levels:
+            lt = lvl.get("totals", {})
+            rows.append([lvl.get("level_label", "—"),
+                         str(len(lvl.get("rooms", []))),
+                         _fmt(lt.get("floor_m2", 0), "m²"),
+                         _fmt(lt.get("walls_net_m2", 0), "m²"),
+                         _fmt(lt.get("perimeter_m", 0), "m")])
+        t = Table(rows, colWidths=[35*mm, 20*mm, 30*mm, 30*mm, 30*mm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+            ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+            ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ]))
+        story.append(t)
+
+    # ---- Détail pièces ----
+    rooms = takeoff.get("rooms", [])
+    if rooms:
+        story.append(Paragraph("Détail par pièce", S["h2"]))
+        rows = [["Pièce", "Surface", "Périmètre", "Murs bruts", "Murs nets", "H."]]
+        for r in rooms:
+            rows.append([r.get("name", "—"),
+                         _fmt(r.get("surface_m2", 0), "m²"),
+                         _fmt(r.get("perimeter_m", 0), "m"),
+                         _fmt(r.get("wall_area_gross_m2", 0), "m²"),
+                         _fmt(r.get("wall_area_net_m2", 0), "m²"),
+                         _fmt(r.get("ceiling_height_m", 2.5), "m")])
+        t = Table(rows, colWidths=[45*mm, 24*mm, 24*mm, 27*mm, 27*mm, 15*mm], repeatRows=1)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+            ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+            ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+        ]))
+        story.append(t)
+
+    # ---- Matériaux (optionnel) ----
+    if materials:
+        story.append(PageBreak())
+        story.append(Paragraph("Quantitatif matériaux", S["h2"]))
+        rows = [["Matériau", "Quantité"]]
+        for section in ("floor", "paint", "placo", "skirting"):
+            m = materials.get(section)
+            if not m:
+                continue
+            if section == "floor":
+                rows.append([f"Sol ({m.get('material','?')}) — surface + pertes",
+                             _fmt(m.get("quantity_m2", 0), "m²")])
+            elif section == "paint":
+                rows.append([f"Peinture ({m.get('coats',2)} couches, marge {m.get('margin_pct',15)}%)",
+                             _fmt(m.get("liters_recommended", 0), "L")])
+            elif section == "placo":
+                rows.append(["Plaques BA13 (pertes 5%)",
+                             _fmt(m.get("plates", 0), "plaques")])
+            elif section == "skirting":
+                rows.append(["Plinthes (périmètre - portes + pertes)",
+                             _fmt(m.get("quantity_m", 0), "m")])
+        if len(rows) > 1:
+            t = Table(rows, colWidths=[110*mm, 45*mm], repeatRows=1)
+            t.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+                ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+            ]))
+            story.append(t)
+
+    # ---- Footer ----
+    story.append(Spacer(1, 20))
+    story.append(Paragraph(
+        "Métré généré par <b>ConstruPilot</b> — Estimez. Comparez. Construisez. "
+        "<br/>Estimations indicatives — ne constituent pas un devis contractuel.",
+        S["muted"]))
+
+    doc.build(story)
+    return buf.getvalue()
