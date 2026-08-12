@@ -1,0 +1,23 @@
+{
+  "summary": "Iter16 backend validation of 2 critical quantity bugs. Created /app/backend/tests/test_iter16_quantity_fixes.py with 12 pytest tests covering DEFAULT_LOT_FACTORS dict, calculators (insulation vapor barrier, paint pot 10L, drywall barres 3m), /api/prices/optimize (shopping optimizer preserving qty=1 for membrane), /api/estimation/compute (17 lots with realistic quantities for 150m² reno), /api/estimation/analyse (Smart Project sanity check via AI), plus non-regression (renovation_complete without lot_keys, login demo, sms config, push key, admin KPIs). All 12/12 pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter16_quantity_fixes.py",
+    "/app/test_reports/pytest/iter16.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "estimation.py L48-53: when lot_keys is provided, keys in template AND lot_keys are kept from template AND keys not in template use DEFAULT_LOT_FACTORS — fix correct. Note that template values (e.g. maconnerie=0.15 in renovation_complete) still take precedence over DEFAULT_LOT_FACTORS (0.20) — this is by design and produces 22.5 m² for maconnerie in the compute test (matches expected).",
+    "catalog.py DEFAULT_LOT_FACTORS covers all 18 requested keys with the exact expected coefficients.",
+    "calculators.insulation: vapor_rolls uses ceil(net/75). For area=64 → net=67.84 → 1 rouleau ✓. For area=64 → adhesif ceil(67.84/40)=2 ✓.",
+    "calculators.drywall(plafond, 50 m²): rails ceil(50*0.9)=45 ml → 15 barres; studs ceil(50*1.7)=85 ml → 29 barres; suspente ceil(80/100)=1 lot ✓."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter16_quantity_fixes.py"],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "N/A (not requested)"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter16 fixed 2 quantity bugs: (1) calculators.py now returns packaged materials (rouleau 75m² for vapor membrane, pot 10L for paint, barres 3m for drywall rails/studs, lot 100 for suspentes) and (2) estimation.py falls back to DEFAULT_LOT_FACTORS in catalog.py when a requested lot is outside the project template (previously used 1.0 uniformly which produced 150 u/ml/m² for menuiseries/cuisine/salle_de_bain). All 12 tests pass. Endpoint is /api/calculators/{key} (not /api/tools/calc/{key} as originally described in the request)."
+}

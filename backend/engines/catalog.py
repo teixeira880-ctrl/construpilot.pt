@@ -76,6 +76,34 @@ LOTS = [
 
 LOTS_BY_KEY = {l["key"]: l for l in LOTS}
 
+# Facteurs par défaut (surface × factor = quantité réaliste) — utilisés quand
+# un lot est ajouté à l'estimation hors du template projet initial.
+# Basé sur une maison type de 100 m² SHAB avec hauteur 2.5 m.
+DEFAULT_LOT_FACTORS = {
+    "demolition": 0.90,     # m² : ~90% de la surface est démolie
+    "fondations": 0.30,     # m³ : 0.30 m³ de béton / m² SHAB
+    "maconnerie": 0.20,     # m² : 20% de refends/reprises
+    "toiture": 1.10,        # m² : léger débord de toit
+    "facade": 0.90,         # m² : périmètre × hauteur / surface
+    "menuiseries": 0.08,    # u : ~12 fenêtres+portes pour 150 m²
+    "electricite": 1.00,    # m² : chaque m² équipé
+    "plomberie": 1.00,      # m² (routing intérieur)
+    "chauffage": 1.00,      # m²
+    "climatisation": 0.03,  # u : ~5 splits pour 150 m²
+    "isolation": 1.40,      # m² : murs + rampants + planchers bas
+    "placo": 1.80,          # m² : cloisons + doublages + plafonds
+    "carrelage": 0.35,      # m² : pièces humides + cuisine
+    "parquet": 0.50,        # m² : sols secs
+    "peinture": 2.90,       # m² : 2 faces murs + plafond
+    "cuisine": 0.03,        # ml : ~5 ml pour 150 m²
+    "salle_de_bain": 0.06,  # m² : ~9 m² pour 150 m²
+    "terrasse": 0.20,       # m² : ~20% de la surface
+    "extension": 0.20,      # m²
+    "renovation_energetique": 1.00,
+    "dechets": 1.00,        # m² : évacuation ≈ surface
+    "ventilation": 1.00,
+}
+
 # Modèles de projet : lot -> facteur de quantité par m² de surface du projet
 PROJECT_TYPES = [
     {"key": "renovation_complete", "name": "Rénovation complète maison", "image": "project_card_exterior",

@@ -2,7 +2,7 @@
 import math
 from engines.catalog import (LOTS_BY_KEY, PROJECT_TYPES_BY_KEY, FINISH_BY_KEY, REGIONS,
                             CONDITION_COEF, BUILDING_COEF, DIFFICULTY, EXECUTION_ORDER,
-                            HIGH_RISK_LOTS, RISK_KEYWORDS)
+                            HIGH_RISK_LOTS, RISK_KEYWORDS, DEFAULT_LOT_FACTORS)
 
 
 def region_coef(country: str, region: str | None) -> float:
@@ -49,7 +49,8 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
         selected = {k: v for k, v in tpl["lots"].items() if k in lot_keys}
         for k in lot_keys:
             if k not in selected and k in LOTS_BY_KEY:
-                selected[k] = 1.0
+                # Fallback : facteur réaliste par lot (au lieu de 1.0 uniforme)
+                selected[k] = DEFAULT_LOT_FACTORS.get(k, 1.0)
 
     lots = []
     for key, factor in selected.items():

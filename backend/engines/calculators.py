@@ -29,10 +29,10 @@ def paint(length: float, width: float, height: float, doors: int = 1, windows: i
             {"label": "Sous-couche", "value": round(primer * 1.07, 1), "unit": "L"},
         ],
         "materials": [
-            {"name": "Peinture murale", "quantity": round(litres_margin, 1), "unit": "L",
-             "search": "peinture murale mate blanche"},
-            {"name": "Sous-couche universelle", "quantity": round(primer * 1.07, 1), "unit": "L",
-             "search": "sous couche universelle peinture"},
+            {"name": "Peinture murale (pot 10 L)", "quantity": _ceil(litres_margin / 10), "unit": "pot 10L",
+             "search": "peinture murale mate blanche 10L"},
+            {"name": "Sous-couche universelle (pot 10 L)", "quantity": _ceil(primer * 1.07 / 10), "unit": "pot 10L",
+             "search": "sous couche universelle 10L"},
             {"name": "Rouleau + manchon", "quantity": 2, "unit": "u", "search": "rouleau peinture manchon"},
             {"name": "Adhésif de masquage", "quantity": 2, "unit": "u", "search": "ruban masquage peinture"},
             {"name": "Bâche de protection", "quantity": 1, "unit": "u", "search": "bache protection chantier"},
@@ -96,8 +96,10 @@ def drywall(area: float, plate_type: str = "BA13 standard", plate_length: float 
     mats = [
         {"name": f"Plaque {plate_type} {int(plate_length)}x{int(plate_width)}", "quantity": plates,
          "unit": "plaque", "search": f"plaque platre {plate_type} {int(plate_length)}x{int(plate_width)}"},
-        {"name": "Rail R48 / R90", "quantity": rails, "unit": "ml", "search": "rail placo R48"},
-        {"name": "Montant M48 / M90", "quantity": studs, "unit": "ml", "search": "montant placo M48"},
+        {"name": "Rail R48 (barre 3 m)", "quantity": _ceil(rails / 3), "unit": "barre",
+         "search": "rail placo R48 3m"},
+        {"name": "Montant M48 (barre 3 m)", "quantity": _ceil(studs / 3), "unit": "barre",
+         "search": "montant placo M48 3m"},
         {"name": "Vis TTPC 25mm", "quantity": screw_boxes, "unit": "boîte 500", "search": "vis placo TTPC 25"},
         {"name": "Bande à joint 150 m", "quantity": _ceil(bands / 150), "unit": "rouleau",
          "search": "bande a joint placo 150m"},
@@ -113,8 +115,10 @@ def drywall(area: float, plate_type: str = "BA13 standard", plate_length: float 
         {"label": "Enduit", "value": coating_bags, "unit": "sac 25 kg"},
     ]
     if structure == "plafond":
-        mats.insert(3, {"name": "Suspente", "quantity": suspentes, "unit": "u", "search": "suspente placo plafond"})
-        mats.insert(4, {"name": "Fourrure F530", "quantity": fourrures, "unit": "ml", "search": "fourrure F530 placo"})
+        mats.insert(3, {"name": "Suspente (lot 100)", "quantity": _ceil(suspentes / 100), "unit": "lot",
+                        "search": "suspente placo lot 100"})
+        mats.insert(4, {"name": "Fourrure F530 (barre 3 m)", "quantity": _ceil(fourrures / 3), "unit": "barre",
+                        "search": "fourrure F530 3m"})
         results.insert(3, {"label": "Suspentes", "value": suspentes, "unit": "u"})
         results.insert(4, {"label": "Fourrures", "value": fourrures, "unit": "ml"})
     return {
@@ -182,6 +186,9 @@ def insulation(area: float, material: str = "laine_de_verre", thickness_mm: floa
     r_value = round((thickness_mm / 1000) / lam, 2)
     net = area * 1.06
     rolls = _ceil(net / 6.0)
+    # Membrane pare-vapeur : vendue en rouleaux ~75 m² → convertir la surface
+    ROLL_COVERAGE_M2 = 75.0
+    vapor_rolls = _ceil(net / ROLL_COVERAGE_M2)
     return {
         "inputs": {"area": area, "material": material, "thickness_mm": thickness_mm,
                    "target_r": target_r},
@@ -191,12 +198,13 @@ def insulation(area: float, material: str = "laine_de_verre", thickness_mm: floa
             {"label": "Résistance thermique R obtenue", "value": r_value, "unit": "m².K/W"},
             {"label": "Surface avec 6% de marge", "value": round(net, 2), "unit": "m²"},
             {"label": "Rouleaux / paquets (6 m²)", "value": rolls, "unit": "u"},
+            {"label": "Rouleaux pare-vapeur (75 m² / rouleau)", "value": vapor_rolls, "unit": "u"},
         ],
         "materials": [
             {"name": f"{material.replace('_', ' ').title()} {thickness_mm} mm", "quantity": round(net, 2),
              "unit": "m²", "search": f"{material.replace('_', ' ')} {thickness_mm} mm"},
-            {"name": "Membrane pare-vapeur", "quantity": round(net, 2), "unit": "m²",
-             "search": "membrane pare vapeur isolation"},
+            {"name": "Membrane pare-vapeur (rouleau 75 m²)", "quantity": vapor_rolls, "unit": "rouleau",
+             "search": "membrane pare vapeur 75m2 rouleau"},
             {"name": "Adhésif pare-vapeur", "quantity": _ceil(net / 40), "unit": "rouleau",
              "search": "adhesif pare vapeur"},
         ],

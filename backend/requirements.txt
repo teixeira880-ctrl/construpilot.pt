@@ -23,10 +23,12 @@ ecdsa==0.19.2
 email-validator==2.3.0
 emergentintegrations==0.2.0
 execnet==2.1.2
+ezdxf==1.4.4
 fastapi==0.110.1
 fastuuid==0.14.0
 filelock==3.32.2
 flake8==7.3.0
+fonttools==4.63.0
 frozenlist==1.8.0
 fsspec==2026.7.0
 google-ai-generativelanguage==0.6.15
