@@ -1,0 +1,163 @@
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel
+
+from core.db import db
+from core.security import current_user
+from engines import estimation, ai, pdf
+
+router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+class ProjectIn(BaseModel):
+    name: str
+    description: str = ""
+    project_type: str = "renovation_complete"
+    surface: float = 100
+    finish_level: str = "standard"
+    country: str = "FR"
+    region: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+    building_type: str = "maison"
+    condition: str = "bon"
+    construction_year: int | None = None
+    budget: float | None = None
+    lots: list[str] | None = None
+    estimation: dict | None = None
+    analysis: dict | None = None
+
+
+def _now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+async def _get(project_id: str, user: dict):
+    p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Projet introuvable")
+    return p
+
+
+@router.post("")
+async def create_project(body: ProjectIn, user=Depends(current_user)):
+    est = body.estimation
+    if not est:
+        est = estimation.estimate(body.project_type, body.surface, body.finish_level, body.country,
+                                  body.region, body.building_type, body.condition,
+                                  body.construction_year, body.lots)
+        est["planning"] = estimation.planning(est["lots"])
+        est["diy_vs_pro"] = estimation.diy_vs_pro(est)
+        est["safety_alerts"] = estimation.safety_check(body.description,
+                                                       [l["key"] for l in est["lots"]])
+    doc = {
+        "project_id": f"prj_{uuid.uuid4().hex[:12]}", "user_id": user["user_id"],
+        **body.model_dump(exclude={"estimation"}), "estimation": est,
+        "budget": body.budget or est["total_avg"],
+        "progress": {l["key"]: "todo" for l in est["lots"]},
+        "expenses": [], "photos": [], "documents": [], "materials": [], "quotes": [],
+        "advice": "", "status": "active", "created_at": _now(), "updated_at": _now(),
+    }
+    await db.projects.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.get("")
+async def list_projects(user=Depends(current_user)):
+    return await db.projects.find({"user_id": user["user_id"]}, {"_id": 0}) \
+        .sort("created_at", -1).to_list(200)
+
+
+@router.get("/{project_id}")
+async def get_project(project_id: str, user=Depends(current_user)):
+    return await _get(project_id, user)
+
+
+class UpdateIn(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    budget: float | None = None
+    city: str | None = None
+    region: str | None = None
+    progress: dict | None = None
+    materials: list | None = None
+    advice: str | None = None
+    status: str | None = None
+    estimation: dict | None = None
+
+
+@router.patch("/{project_id}")
+async def update_project(project_id: str, body: UpdateIn, user=Depends(current_user)):
+    await _get(project_id, user)
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updates["updated_at"] = _now()
+    await db.projects.update_one({"project_id": project_id}, {"$set": updates})
+    return await _get(project_id, user)
+
+
+@router.delete("/{project_id}")
+async def delete_project(project_id: str, user=Depends(current_user)):
+    await _get(project_id, user)
+    await db.projects.delete_one({"project_id": project_id})
+    return {"ok": True}
+
+
+class ExpenseIn(BaseModel):
+    label: str
+    amount: float
+    lot: str | None = None
+
+
+@router.post("/{project_id}/expenses")
+async def add_expense(project_id: str, body: ExpenseIn, user=Depends(current_user)):
+    await _get(project_id, user)
+    exp = {"expense_id": f"exp_{uuid.uuid4().hex[:8]}", **body.model_dump(), "date": _now()}
+    await db.projects.update_one({"project_id": project_id},
+                                 {"$push": {"expenses": exp}, "$set": {"updated_at": _now()}})
+    return await budget(project_id, user)
+
+
+@router.get("/{project_id}/budget")
+async def budget(project_id: str, user=Depends(current_user)):
+    p = await _get(project_id, user)
+    initial = float(p.get("budget") or p["estimation"]["total_avg"])
+    spent = round(sum(e["amount"] for e in p.get("expenses", [])), 2)
+    progress = p.get("progress", {})
+    lots = p["estimation"]["lots"]
+    done_value = sum(l["total"] for l in lots if progress.get(l["key"]) == "done")
+    total_value = sum(l["total"] for l in lots) or 1
+    pct_done = done_value / total_value
+    forecast = round(spent / pct_done, 2) if pct_done > 0.05 else round(
+        max(initial, spent + p["estimation"]["total_avg"] * (1 - pct_done)), 2)
+    overrun = round(forecast - initial, 2)
+    return {
+        "initial": initial, "spent": spent, "remaining": round(initial - spent, 2),
+        "forecast": forecast, "overrun": overrun if overrun > 0 else 0,
+        "progress_pct": round(pct_done * 100, 1),
+        "warning": (f"Risque de dépassement de {overrun:,.0f} € détecté : "
+                    f"réduisez le niveau de finition ou renégociez un lot."
+                    .replace(",", " ") if overrun > 0 else None),
+        "expenses": p.get("expenses", []),
+    }
+
+
+@router.post("/{project_id}/advice")
+async def project_advice(project_id: str, user=Depends(current_user)):
+    p = await _get(project_id, user)
+    text = await ai.project_advice(p["estimation"])
+    await db.projects.update_one({"project_id": project_id},
+                                 {"$set": {"advice": text, "updated_at": _now()}})
+    return {"advice": text}
+
+
+@router.get("/{project_id}/pdf")
+async def project_pdf(project_id: str, user=Depends(current_user)):
+    p = await _get(project_id, user)
+    est = p["estimation"]
+    data = pdf.build_estimation_pdf(p, est, est.get("planning") or [], p.get("advice") or "", user)
+    safe = "".join(c for c in p["name"] if c.isalnum() or c in " -_").strip() or "projet"
+    return Response(content=data, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="Estimation-CMRENOV-{safe}.pdf"'})

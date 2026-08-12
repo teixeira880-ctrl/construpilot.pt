@@ -1,0 +1,129 @@
+{
+  "theme_strategy": "toggle",
+  "default_theme": "dark",
+  "typography": {
+    "primary_heading_font": "Outfit",
+    "secondary_body_font": "Manrope",
+    "mono_font": "JetBrains Mono",
+    "rules": {
+      "headings": "Tracking tight (tracking-tight to tracking-tighter), NEVER use Inter for headings. Keep H1 max size to text-5xl or text-6xl. Use fluid scaling where possible.",
+      "overline_labels": "Uppercase, tiny text (text-xs), wide spacing (tracking-[0.2em]), bold weight.",
+      "numbers_and_data": "Use JetBrains Mono for all pricing, estimations, quantities, and technical data."
+    }
+  },
+  "colors": {
+    "archetype": "Luxury & Swiss High-Contrast Hybrid (Premium Construction + Tech)",
+    "palette": {
+      "primary_accent": "#FF5A00",
+      "primary_accent_hover": "#E04F00",
+      "primary_accent_foreground": "#FFFFFF",
+      "background_dark": "#0A0D14",
+      "surface_dark": "#131722",
+      "surface_dark_border": "#222736",
+      "background_light": "#F8FAFC",
+      "surface_light": "#FFFFFF",
+      "surface_light_border": "#E2E8F0",
+      "text_dark_mode": "#F8FAFC",
+      "text_dark_mode_muted": "#94A3B8",
+      "text_light_mode": "#0F172A",
+      "text_light_mode_muted": "#64748B",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "danger": "#EF4444"
+    },
+    "rules": {
+      "contrast": "Maintain WCAG AA (minimum 4.5:1 for body text). When text is over images, use a dark gradient overlay or backdrop-blur with a dark tint.",
+      "gradients": "Do not use full-screen gradients. Use solid colors or very subtle radial glows (blur-3xl) behind key elements like the AI input field.",
+      "borders": "Use 1px subtle borders (border-border/40) to define sections. Avoid muddy grey backgrounds."
+    }
+  },
+  "visual_enhancers": {
+    "surfaces": {
+      "header": "Crystal Glassmorphism (backdrop-blur-xl, bg-background/70, border-b border-border/50).",
+      "cards": "Flat solid surfaces with subtle 1px border. No soft, muddy shadows. Hover states should lift slightly (-translate-y-1) and add a crisp drop shadow.",
+      "ai_elements": "Use a subtle glowing outline or a 'Tracing Beam' effect on the AI prompt container to make it feel alive and intelligent."
+    },
+    "radius": "Minimal. Use rounded-md (6px) or rounded-lg (8px) maximum. Architecture requires sharp, precise corners.",
+    "textures": "Include a very subtle noise/grain texture over dark mode backgrounds to eliminate the 'digital flatness'."
+  },
+  "components": {
+    "strategy": "Use Shadcn UI for all forms, tables, dropdowns, dialogs, and sliders. Heavily customize them to remove the 'default Vercel' look by applying the sharp radius and strict color palette.",
+    "ai_prompt_hero": "A massive, centered input field on the hero section. High contrast, glowing border on focus, with a prominent 'Generate/Estimate' icon button inside.",
+    "trade_cards": "Large bento-grid cards for categories (Renovation, Bathroom, Kitchen). Must include background images with a dark overlay and text anchored to the bottom-left.",
+    "budget_gauges": "Use Recharts to build clean, minimalist circular progress rings or linear progress bars showing Budget vs Spent vs Predicted.",
+    "comparison_tables": "Dense, data-heavy tables using Shadcn Table. Zebra-striping (bg-muted/30) on alternating rows for readability. JetBrains Mono for prices.",
+    "diy_guides": "Step-by-step vertical timelines using a custom timeline component (left border with dots). Color-coded difficulty badges (Green: Easy, Yellow: Med, Orange: Hard, Red: Pro only)."
+  },
+  "grids_and_layouts": {
+    "spacing": "Generous. Use p-8 to p-12 for section paddings. Inside cards, use p-6.",
+    "bento_grid": "For the dashboard, use a High-Density Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4) with gap-4 or gap-6. Make sure cards stretch (h-full).",
+    "forms": "Multi-step estimation wizard should have a clean, centered layout with a progress bar at the top."
+  },
+  "motion": {
+    "transitions": "Use specific transitions (e.g., transition-colors, transition-transform duration-200). DO NOT use transition-all.",
+    "hover_states": "Buttons must have explicit hover text colors (e.g., hover:bg-orange-600 hover:text-white).",
+    "page_load": "Framer motion staggered entrance for dashboard widgets and trade category cards."
+  },
+  "accessibility": {
+    "focus": "All inputs and buttons must have focus:ring-2 focus:ring-primary focus:ring-offset-2.",
+    "aria": "Use aria-hidden='true' for decorative icons.",
+    "testing": "MUST add data-testid attributes to all interactive elements (e.g., data-testid='ai-submit-btn', data-testid='category-card-bathroom')."
+  },
+  "media": {
+    "icons": "Use lucide-react for standard UI icons. Use @phosphor-icons/react (Duotone) for large, decorative trade category icons.",
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1670589953882-b94c9cb380f5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwzfHxsdXh1cnklMjBtb2Rlcm4lMjBhcmNoaXRlY3R1cmUlMjBleHRlcmlvcnxlbnwwfHx8fDE3ODY0NDc4OTF8MA&ixlib=rb-4.1.0&q=85",
+        "category": "hero_background",
+        "description": "Luxury modern architecture with pool. Use with a dark gradient overlay for the main landing page hero."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1748063578185-3d68121b11ff?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHw0fHxsdXh1cnklMjBtb2Rlcm4lMjBhcmNoaXRlY3R1cmUlMjBleHRlcmlvcnxlbnwwfHx8fDE3ODY0NDc4OTF8MA&ixlib=rb-4.1.0&q=85",
+        "category": "project_card_exterior",
+        "description": "Modern house exterior glowing with lights. Use for 'Complete Home Renovation' or 'Exterior' cards."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1661107259637-4e1c55462428?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBtaW5pbWFsaXN0JTIwYmF0aHJvb20lMjByZW5vdmF0aW9ufGVufDB8fHx8MTc4NjQ0Nzg5MXww&ixlib=rb-4.1.0&q=85",
+        "category": "project_card_bathroom",
+        "description": "Modern minimalist bathroom. Use for the 'Bathroom Renovation' category."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwaW50ZXJpb3IlMjBob21lJTIwZGVzaWdufGVufDB8fHx8MTc4NjQ0Nzg5MXww&ixlib=rb-4.1.0&q=85",
+        "category": "project_card_interior",
+        "description": "Elegant living room interior. Use for 'Interior Design' or 'Living Room' cards."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1608303588026-884930af2559?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzOTB8MHwxfHNlYXJjaHwzfHxjb25zdHJ1Y3Rpb24lMjBibHVlcHJpbnQlMjBwbGFubmluZ3xlbnwwfHx8fDE3ODY0NDc4OTF8MA&ixlib=rb-4.1.0&q=85",
+        "category": "dashboard_banner",
+        "description": "People reviewing blueprints. Use as a header banner for the Dashboard or Planning section."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Install required dependencies: `yarn add framer-motion recharts lucide-react @phosphor-icons/react`.",
+    "Set up Tailwind config with the custom color palette (primary accent: #FF5A00) and fonts (Outfit, Manrope, JetBrains Mono).",
+    "Build the hybrid app structure: Public Marketing Landing Page -> Auth -> Dashboard / App.",
+    "The hero section MUST have the 'Smart Project' AI prompt prominently displayed above the fold.",
+    "Use Shadcn components for complex interactions but strip away the default rounded-xl borders to rounded-md for a sharper, architectural look.",
+    "Ensure dark mode is fully supported. Dark mode should use #0A0D14 for background and #131722 for surfaces, not pure black.",
+    "For the estimation wizard, make it a smooth multi-step form with progress indicators.",
+    "For data tables (materials, lots), ensure high contrast and use JetBrains Mono for all numeric values.",
+    "Ensure the DIY vs Pro comparator uses distinct visual cues (badges, color coding) to warn users about dangerous tasks."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Make creative, distinctive frontends that surprise and delight.",
+    "DO NOT use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy and subtle 1px borders.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for sticky headers.",
+    "You MUST NOT apply universal transition (e.g., transition: all). Add transitions for specific properties.",
+    "You MUST NOT center align the app container (.App { text-align: center; }).",
+    "Always use modern button styles (sharp corners or rounded-md) with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters (🤖🧠💭💡) for icons. Use Phosphor or Lucide icons.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Missing image categories = you will use placeholder text which is FORBIDDEN. Use the provided image URLs.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Use sonner for toasts, located in /app/src/components/ui/sonner.tsx.",
+    "All interactive and key informational elements MUST include a data-testid attribute to facilitate robust automated testing."
+  ]
+}

@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 220 33% 98%;
+        --foreground: 222 47% 11%;
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+        --primary: 21 100% 50%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 214 32% 95%;
+        --secondary-foreground: 222 47% 11%;
+        --muted: 214 32% 95%;
+        --muted-foreground: 215 16% 42%;
+        --accent: 21 100% 96%;
+        --accent-foreground: 21 100% 34%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 214 25% 89%;
+        --input: 214 25% 89%;
+        --ring: 21 100% 50%;
+        --chart-1: 21 100% 50%;
+        --chart-2: 160 84% 39%;
+        --chart-3: 217 91% 60%;
+        --chart-4: 38 92% 50%;
+        --chart-5: 262 83% 58%;
+        --radius: 0.375rem;
+    }
+    .dark {
+        --background: 222 43% 6%;
+        --foreground: 210 40% 98%;
+        --card: 224 29% 11%;
+        --card-foreground: 210 40% 98%;
+        --popover: 224 29% 11%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 21 100% 50%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 223 24% 16%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 223 24% 16%;
+        --muted-foreground: 215 20% 65%;
+        --accent: 223 30% 18%;
+        --accent-foreground: 21 100% 62%;
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 224 20% 20%;
+        --input: 224 20% 20%;
+        --ring: 21 100% 50%;
+    }
+}
+
+@layer base {
+    * { @apply border-border; }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+        @apply bg-background text-foreground font-sans;
+        margin: 0;
+    }
+    h1, h2, h3, h4, .font-display { font-family: 'Outfit', sans-serif; }
+    ::selection { background: #FF5A00; color: #fff; }
+}
+
+@layer components {
+    .overline {
+        @apply text-xs font-bold uppercase tracking-[0.2em] text-primary;
+    }
+    .surface {
+        @apply bg-card border border-border rounded-md;
+    }
+    .num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+    .grain::before {
+        content: "";
+        position: absolute; inset: 0; pointer-events: none; opacity: 0.035; z-index: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .glow-ring {
+        box-shadow: 0 0 0 1px hsl(var(--border)), 0 18px 60px -20px rgba(255, 90, 0, 0.45);
+    }
+    .stagger > * { animation: rise 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+    .stagger > *:nth-child(1) { animation-delay: 0.04s }
+    .stagger > *:nth-child(2) { animation-delay: 0.08s }
+    .stagger > *:nth-child(3) { animation-delay: 0.12s }
+    .stagger > *:nth-child(4) { animation-delay: 0.16s }
+    .stagger > *:nth-child(5) { animation-delay: 0.2s }
+    .stagger > *:nth-child(6) { animation-delay: 0.24s }
+    .stagger > *:nth-child(7) { animation-delay: 0.28s }
+    .stagger > *:nth-child(8) { animation-delay: 0.32s }
+}
+
+@layer base {
+    [data-debug-wrapper="true"] { display: contents !important; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 6px; }
