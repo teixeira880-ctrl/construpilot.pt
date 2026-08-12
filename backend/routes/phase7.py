@@ -328,6 +328,37 @@ async def org_leave(user=Depends(current_user)):
     return {"ok": True}
 
 
+class OrgTransferIn(BaseModel):
+    new_owner_user_id: str
+
+
+@router.post("/organizations/transfer-ownership")
+async def org_transfer_ownership(body: OrgTransferIn, user=Depends(current_user)):
+    """Transfère la propriété de l'org à un autre membre. L'ancien devient admin."""
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "organization_id": 1, "org_role": 1})
+    if not u or not u.get("organization_id"):
+        raise HTTPException(400, "Aucune organisation.")
+    if u.get("org_role") != "owner":
+        raise HTTPException(403, "Réservé au propriétaire actuel.")
+    if body.new_owner_user_id == user["user_id"]:
+        raise HTTPException(400, "Vous êtes déjà propriétaire.")
+    new_owner = await db.users.find_one(
+        {"user_id": body.new_owner_user_id, "organization_id": u["organization_id"]},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1}
+    )
+    if not new_owner:
+        raise HTTPException(404, "Ce membre ne fait pas partie de votre organisation.")
+    # Swap roles
+    await db.users.update_one({"user_id": user["user_id"]},
+                               {"$set": {"org_role": "admin"}})
+    await db.users.update_one({"user_id": body.new_owner_user_id},
+                               {"$set": {"org_role": "owner"}})
+    await db.organizations.update_one({"org_id": u["organization_id"]},
+                                       {"$set": {"owner_user_id": body.new_owner_user_id}})
+    return {"ok": True, "new_owner": new_owner}
+
+
 @router.delete("/organizations/members/{member_user_id}")
 async def org_remove_member(member_user_id: str, user=Depends(current_user)):
     u = await db.users.find_one({"user_id": user["user_id"]},

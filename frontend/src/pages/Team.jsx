@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Users, Crown, Building2, Copy, LogOut, Trash2, UserPlus, Mail, Check,
+  Users, Crown, Building2, Copy, LogOut, Trash2, UserPlus, Mail, Check, ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +94,20 @@ export default function Team() {
       await refresh();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Suppression impossible");
+    }
+  };
+
+  const transferOwnership = async (uid, name) => {
+    if (!window.confirm(
+      `Transférer la propriété de l'équipe à ${name || uid} ?\n\n` +
+      `Vous deviendrez admin. Cette action est réversible uniquement si le nouveau propriétaire vous re-transfère la propriété.`
+    )) return;
+    try {
+      await api.post("/organizations/transfer-ownership", { new_owner_user_id: uid });
+      toast.success(`Propriété transférée à ${name}`);
+      await refresh();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Transfert impossible");
     }
   };
 
@@ -330,11 +344,21 @@ export default function Team() {
                 </p>
               </div>
               {isAdmin && m.org_role !== "owner" && m.user_id !== user.user_id && (
-                <Button size="sm" variant="ghost" onClick={() => removeMember(m.user_id, m.name)}
-                        data-testid={`team-remove-${m.user_id}`}
-                        className="rounded-sm gap-1 text-destructive">
-                  <Trash2 className="h-3 w-3" /> Retirer
-                </Button>
+                <div className="flex gap-1 shrink-0">
+                  {state.role === "owner" && (
+                    <Button size="sm" variant="ghost"
+                            onClick={() => transferOwnership(m.user_id, m.name || m.email)}
+                            data-testid={`team-transfer-${m.user_id}`}
+                            className="rounded-sm gap-1 text-primary">
+                      <ArrowRightLeft className="h-3 w-3" /> Transférer
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => removeMember(m.user_id, m.name)}
+                          data-testid={`team-remove-${m.user_id}`}
+                          className="rounded-sm gap-1 text-destructive">
+                    <Trash2 className="h-3 w-3" /> Retirer
+                  </Button>
+                </div>
               )}
             </div>
           ))}

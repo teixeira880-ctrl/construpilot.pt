@@ -40,9 +40,11 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
                  canny_high: int = 150) -> dict:
     """Détecte les segments de murs (lignes droites) via Canny + HoughLinesP.
 
-    Retourne une liste de segments {x1, y1, x2, y2, length_px, angle_deg}.
-    Fusionne les segments quasi-colinéaires très proches pour réduire le bruit.
+    Retourne une liste de segments {x1, y1, x2, y2, length_px, angle_deg,
+    thickness_px, wall_type} où wall_type ∈ {porteur, cloison, doublage}
+    est déterminé par l'épaisseur via distance transform.
     """
+    import secrets as _sec
     arr, gray = _load_gray(png_b64)
     h, w = gray.shape
 
@@ -60,18 +62,53 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
         minLineLength=min_length_px, maxLineGap=max_line_gap_px,
     )
 
+    # ---- Binarisation pour estimer l'épaisseur des murs ----
+    # Otsu inversé : les traits (noir) deviennent blancs (255)
+    _, bin_inv = cv2.threshold(blur, 0, 255,
+                                 cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    # Distance transform : pour chaque pixel blanc (=intérieur du trait), distance au pixel noir
+    dist = cv2.distanceTransform(bin_inv, cv2.DIST_L2, 3)
+
+    def _wall_type_from_thickness(t: float) -> str:
+        # px @ 150 dpi ; ces seuils correspondent à une échelle typique de plan A3 architecte
+        if t >= 8.0:
+            return "porteur"
+        if t >= 3.5:
+            return "cloison"
+        return "doublage"
+
     segments = []
     if lines is not None:
         for line in lines:
-            # OpenCV 4.x → line[0] = (x1,y1,x2,y2); OpenCV 5.x → line directly is (x1,y1,x2,y2)
             coords = line[0] if hasattr(line[0], "__len__") and len(line[0]) == 4 else line
             x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
             length = float(np.hypot(x2 - x1, y2 - y1))
             angle = float(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
+
+            # Sample 5 points along the segment → mean thickness via distance transform
+            thicknesses = []
+            n_samples = 5
+            for k in range(n_samples):
+                t_ratio = (k + 1) / (n_samples + 1)
+                sx = int(x1 + (x2 - x1) * t_ratio)
+                sy = int(y1 + (y2 - y1) * t_ratio)
+                # Search in a 3px neighbourhood for the max distance value (avoid edge picking)
+                x0, x1n = max(0, sx - 3), min(w, sx + 4)
+                y0, y1n = max(0, sy - 3), min(h, sy + 4)
+                patch = dist[y0:y1n, x0:x1n]
+                if patch.size:
+                    thicknesses.append(float(patch.max()))
+            median_thick = float(np.median(thicknesses)) if thicknesses else 0.0
+            # px_thickness = 2 × distance (rayon → épaisseur)
+            thickness_px = round(2.0 * median_thick, 1)
+
             segments.append({
+                "wall_id": "w_" + _sec.token_hex(3),
                 "x1": x1, "y1": y1, "x2": x2, "y2": y2,
                 "length_px": round(length, 1),
                 "angle_deg": round(angle, 1),
+                "thickness_px": thickness_px,
+                "wall_type": _wall_type_from_thickness(thickness_px),
             })
 
     # Trie par longueur décroissante et cap

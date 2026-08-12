@@ -61,12 +61,19 @@ function PlanCanvas({
     ctx.translate(-imgRef.current.width / 2, -imgRef.current.height / 2);
     ctx.drawImage(imgRef.current, 0, 0);
 
-    // DETECTED WALLS overlay (Phase B)
+    // DETECTED WALLS overlay (Phase B) — coloration par type de mur
     if (showWalls && detectedWalls?.segments?.length) {
-      ctx.strokeStyle = "rgba(0, 200, 255, 0.85)";
-      ctx.lineWidth = 3 / zoom;
+      const WALL_COLORS = {
+        porteur:  "rgba(220, 38, 38, 0.9)",   // rouge
+        cloison:  "rgba(255, 149, 0, 0.9)",   // orange
+        doublage: "rgba(59, 130, 246, 0.9)",  // bleu
+      };
       ctx.lineCap = "round";
       detectedWalls.segments.forEach((s) => {
+        const t = s.wall_type || "cloison";
+        ctx.strokeStyle = WALL_COLORS[t] || "rgba(0, 200, 255, 0.85)";
+        // Épaisseur visuelle proportionnelle
+        ctx.lineWidth = (t === "porteur" ? 5 : t === "cloison" ? 3 : 2) / zoom;
         ctx.beginPath();
         ctx.moveTo(s.x1, s.y1);
         ctx.lineTo(s.x2, s.y2);
@@ -235,6 +242,15 @@ export default function PlanTakeoff() {
   const [quoteFinish, setQuoteFinish] = useState("std");
   const [quoteFloor, setQuoteFloor] = useState("carrelage");
   const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteMode, setQuoteMode] = useState("download"); // download | send
+  const [quoteClientEmail, setQuoteClientEmail] = useState("");
+  const [quoteClientName, setQuoteClientName] = useState("");
+  const [quoteMessage, setQuoteMessage] = useState("");
+  const [wallsSummary, setWallsSummary] = useState(null);
+  const [reclassifyMode, setReclassifyMode] = useState(false);
+  const [snapPickA, setSnapPickA] = useState(null);
+  const [snapPickB, setSnapPickB] = useState(null);
+  const [snapCompareResult, setSnapCompareResult] = useState(null);
   const fileRef = useRef(null);
 
   const currentCalib = plan?.calibrations?.[String(pageIndex)];
@@ -280,6 +296,26 @@ export default function PlanTakeoff() {
   };
 
   const onCanvasClick = (pt) => {
+    // Reclassify mode : cherche le mur le plus proche (distance point-segment)
+    if (reclassifyMode && detectedWalls?.segments?.length) {
+      const [px, py] = pt;
+      let best = -1, bestD = 999;
+      detectedWalls.segments.forEach((s, i) => {
+        // distance point → segment
+        const dx = s.x2 - s.x1, dy = s.y2 - s.y1;
+        const len2 = dx * dx + dy * dy;
+        const t = len2 ? Math.max(0, Math.min(1, ((px - s.x1) * dx + (py - s.y1) * dy) / len2)) : 0;
+        const cx = s.x1 + t * dx, cy = s.y1 + t * dy;
+        const d = Math.hypot(px - cx, py - cy);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      if (best >= 0 && bestD < 15) {
+        reclassifyWall(best);
+      } else {
+        toast.info("Aucun mur à proximité (cliquez plus près)");
+      }
+      return;
+    }
     if (tool === TOOLS.AUTOROOM) {
       autoFillRoom(pt);
       return;
@@ -386,6 +422,7 @@ export default function PlanTakeoff() {
       setDetectedWalls(data);
       setShowWalls(true);
       toast.success(`${data.segment_count} segments de murs détectés`);
+      await loadWallsSummary();
     } catch (e) { toast.error("Détection murs impossible"); }
     finally { setCvBusy(false); }
   };
@@ -516,6 +553,68 @@ export default function PlanTakeoff() {
       setQuoteDialog(false);
     } catch (e) { toast.error(e.message || "Export Devis impossible"); }
     finally { setQuoteBusy(false); }
+  };
+
+  const sendQuotePdf = async () => {
+    if (!plan?.plan_id) return;
+    if (!/@/.test(quoteClientEmail)) return toast.error("Email client invalide");
+    setQuoteBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/send-quote`, {
+        client_email: quoteClientEmail.trim(),
+        client_name: quoteClientName.trim() || null,
+        message: quoteMessage.trim() || null,
+        finish: quoteFinish, floor_material: quoteFloor, cc_self: true,
+      });
+      if (data.email_status === "sent") {
+        toast.success(`Devis envoyé à ${quoteClientEmail} (${data.total_ttc?.toLocaleString("fr-FR")} € TTC)`);
+        setQuoteDialog(false);
+        setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
+      } else {
+        toast.error("Envoi email échoué — vérifiez la clé Resend");
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Envoi impossible");
+    } finally { setQuoteBusy(false); }
+  };
+
+  const loadWallsSummary = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/walls-summary`);
+      setWallsSummary(data);
+    } catch { /* ignore */ }
+  };
+
+  const reclassifyWall = async (segIndex) => {
+    if (!plan?.plan_id || !detectedWalls?.segments?.[segIndex]) return;
+    const s = detectedWalls.segments[segIndex];
+    const order = ["porteur", "cloison", "doublage"];
+    const next = order[(order.indexOf(s.wall_type || "cloison") + 1) % order.length];
+    try {
+      await api.patch(
+        `/takeoffs/${plan.plan_id}/walls/${pageIndex}/${s.wall_id}/type`,
+        { wall_type: next }
+      );
+      const updated = [...detectedWalls.segments];
+      updated[segIndex] = { ...s, wall_type: next };
+      setDetectedWalls({ ...detectedWalls, segments: updated });
+      toast.success(`Mur reclassé : ${next}`);
+      await loadWallsSummary();
+    } catch { toast.error("Reclassement impossible"); }
+  };
+
+  const runSnapshotCompare = async () => {
+    if (!plan?.plan_id || !snapPickA || !snapPickB) return;
+    try {
+      const { data } = await api.post(
+        `/takeoffs/${plan.plan_id}/history/compare`,
+        { before_snapshot_id: snapPickA, after_snapshot_id: snapPickB }
+      );
+      setSnapCompareResult(data);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Comparaison impossible");
+    }
   };
 
   // ---------- RENDER ----------
@@ -711,11 +810,19 @@ export default function PlanTakeoff() {
             <ToolButton icon={Wand2} label="Auto-pièce" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
             <div className="flex-1" />
             {detectedWalls && (
-              <Button size="sm" variant={showWalls ? "default" : "outline"} onClick={() => setShowWalls(!showWalls)}
-                      data-testid="toggle-walls-overlay"
-                      className="rounded-sm gap-1 h-8">
-                <Layers className="h-3 w-3" /> Murs ({detectedWalls.segment_count})
-              </Button>
+              <>
+                <Button size="sm" variant={showWalls ? "default" : "outline"} onClick={() => setShowWalls(!showWalls)}
+                        data-testid="toggle-walls-overlay"
+                        className="rounded-sm gap-1 h-8">
+                  <Layers className="h-3 w-3" /> Murs ({detectedWalls.segment_count})
+                </Button>
+                <Button size="sm" variant={reclassifyMode ? "default" : "outline"}
+                        onClick={() => setReclassifyMode(v => !v)}
+                        data-testid="toggle-reclassify-mode"
+                        className={`rounded-sm gap-1 h-8 ${reclassifyMode ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
+                  {reclassifyMode ? "Reclasser (actif)" : "Reclasser"}
+                </Button>
+              </>
             )}
             <Button size="sm" variant="ghost" onClick={() => setPoints(points.slice(0, -1))} disabled={!points.length} className="rounded-sm gap-1">
               <Undo2 className="h-3 w-3" /> Annuler
@@ -760,6 +867,38 @@ export default function PlanTakeoff() {
                 </Button>
               )}
               <Button size="sm" variant="ghost" onClick={() => setPoints([])} className="rounded-sm">Annuler</Button>
+            </div>
+          )}
+
+          {/* WALLS SUMMARY CARD */}
+          {detectedWalls && wallsSummary?.totals && (
+            <div className="mt-3 border border-border rounded-sm p-3 bg-secondary/30"
+                 data-testid="walls-summary-card">
+              <div className="flex items-center justify-between mb-2">
+                <p className="overline">Murs détectés {reclassifyMode && (
+                  <span className="text-primary">· cliquez sur un mur pour cycler son type</span>
+                )}</p>
+                <Badge variant="outline" className="rounded-sm text-[10px] num">
+                  {detectedWalls.segment_count} segments
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  ["porteur",  "text-red-500 border-red-500/40 bg-red-500/5",   "Porteur"],
+                  ["cloison",  "text-primary border-primary/40 bg-primary/5",   "Cloison"],
+                  ["doublage", "text-blue-500 border-blue-500/40 bg-blue-500/5", "Doublage"],
+                ].map(([key, cls, label]) => {
+                  const t = wallsSummary.totals[key] || { count: 0, ml: 0 };
+                  return (
+                    <div key={key} className={`border rounded-sm p-2 ${cls}`}
+                         data-testid={`walls-${key}`}>
+                      <p className="text-[10px] uppercase font-bold tracking-wider">{label}</p>
+                      <p className="num text-lg font-extrabold">{t.count}</p>
+                      <p className="text-[10px] num">{t.ml} ml</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -919,13 +1058,91 @@ export default function PlanTakeoff() {
                 </p>
               ) : (
                 <div className="grid gap-2 text-xs" data-testid="history-list">
+                  {/* Compare toolbar */}
+                  <div className="border border-border rounded-sm p-2 bg-secondary/30 flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[10px] text-muted-foreground">
+                      Sélectionnez 2 snapshots à comparer (A puis B) :
+                    </p>
+                    <div className="flex gap-1 items-center">
+                      <Badge variant={snapPickA ? "default" : "outline"}
+                             className={`rounded-sm text-[10px] ${snapPickA ? "bg-primary text-white" : ""}`}
+                             data-testid="snap-pick-a">
+                        A {snapPickA ? "✓" : "?"}
+                      </Badge>
+                      <Badge variant={snapPickB ? "default" : "outline"}
+                             className={`rounded-sm text-[10px] ${snapPickB ? "bg-primary text-white" : ""}`}
+                             data-testid="snap-pick-b">
+                        B {snapPickB ? "✓" : "?"}
+                      </Badge>
+                      <Button size="sm" onClick={runSnapshotCompare}
+                              disabled={!snapPickA || !snapPickB || snapPickA === snapPickB}
+                              data-testid="snap-compare-btn"
+                              className="rounded-sm gap-1 h-6 text-[10px] hover:bg-orange-600 hover:text-white">
+                        Comparer
+                      </Button>
+                      {(snapPickA || snapPickB || snapCompareResult) && (
+                        <Button size="sm" variant="ghost"
+                                onClick={() => { setSnapPickA(null); setSnapPickB(null); setSnapCompareResult(null); }}
+                                data-testid="snap-compare-clear"
+                                className="rounded-sm gap-1 h-6 text-[10px]">
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Compare result panel */}
+                  {snapCompareResult && (
+                    <div className="border border-primary/40 bg-primary/5 rounded-sm p-3"
+                         data-testid="snap-compare-result">
+                      <p className="font-bold text-primary mb-2">
+                        Diff : {snapCompareResult.before.label || snapCompareResult.before.action}
+                        {" → "}
+                        {snapCompareResult.after.label || snapCompareResult.after.action}
+                      </p>
+                      <div className="grid grid-cols-4 gap-2 text-[10px]">
+                        <div className="text-emerald-500">+{snapCompareResult.added.length} ajoutées</div>
+                        <div className="text-destructive">−{snapCompareResult.removed.length} retirées</div>
+                        <div className="text-amber-500">~{snapCompareResult.modified.length} modifiées</div>
+                        <div className="num">
+                          {snapCompareResult.delta_surface_m2 >= 0 ? "+" : ""}
+                          {snapCompareResult.delta_surface_m2} m²
+                        </div>
+                      </div>
+                      {snapCompareResult.added.length > 0 && (
+                        <p className="text-[10px] mt-2 text-emerald-600" data-testid="snap-compare-added">
+                          + {snapCompareResult.added.map(r => r.name).join(", ")}
+                        </p>
+                      )}
+                      {snapCompareResult.removed.length > 0 && (
+                        <p className="text-[10px] mt-1 text-destructive" data-testid="snap-compare-removed">
+                          − {snapCompareResult.removed.map(r => r.name).join(", ")}
+                        </p>
+                      )}
+                      {snapCompareResult.modified.length > 0 && (
+                        <p className="text-[10px] mt-1 text-amber-600" data-testid="snap-compare-modified">
+                          ~ {snapCompareResult.modified.map(r => `${r.name} (${r.delta_m2 >= 0 ? "+" : ""}${r.delta_m2} m²)`).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {history.map((s, idx) => {
                     // Diff avec le snapshot précédent (idx+1 car trié DESC)
                     const prev = history[idx + 1];
                     const diff = computeSnapshotDiff(prev, s);
+                    const isA = snapPickA === s.snapshot_id;
+                    const isB = snapPickB === s.snapshot_id;
+                    const pickSnap = () => {
+                      if (isA) { setSnapPickA(null); return; }
+                      if (isB) { setSnapPickB(null); return; }
+                      if (!snapPickA) setSnapPickA(s.snapshot_id);
+                      else if (!snapPickB) setSnapPickB(s.snapshot_id);
+                      else { setSnapPickA(snapPickB); setSnapPickB(s.snapshot_id); }
+                    };
                     return (
                       <div key={s.snapshot_id}
-                           className="border border-border p-2 rounded-sm group relative"
+                           className={`border p-2 rounded-sm group relative ${isA || isB ? "border-primary bg-primary/5" : "border-border"}`}
                            title={diff.summary}
                            data-testid={`history-item-${s.snapshot_id}`}>
                         <div className="flex items-center justify-between">
@@ -947,6 +1164,11 @@ export default function PlanTakeoff() {
                             )}
                           </div>
                           <div className="flex gap-1 shrink-0">
+                            <Button size="sm" variant={isA || isB ? "default" : "ghost"} onClick={pickSnap}
+                                    data-testid={`pick-${s.snapshot_id}`}
+                                    className={`rounded-sm gap-1 text-xs h-6 ${isA || isB ? "bg-primary text-white" : ""}`}>
+                              {isA ? "A" : isB ? "B" : "◯"}
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => openLabelDialog(s)}
                                     data-testid={`label-${s.snapshot_id}`}
                                     className="rounded-sm gap-1 text-xs h-6">
@@ -1053,12 +1275,28 @@ export default function PlanTakeoff() {
       <Dialog open={quoteDialog} onOpenChange={setQuoteDialog}>
         <DialogContent className="rounded-sm max-w-md" data-testid="quote-dialog">
           <DialogHeader>
-            <DialogTitle>Générer un devis PDF</DialogTitle>
+            <DialogTitle>
+              {quoteMode === "send" ? "Envoyer le devis par email" : "Générer un devis PDF"}
+            </DialogTitle>
             <DialogDescription>
               Le devis reprend automatiquement les surfaces mesurées et applique la main
               d'œuvre & les prix matériaux moyens France 2026.
             </DialogDescription>
           </DialogHeader>
+          <div className="flex gap-2 border-b border-border pb-2">
+            <Button size="sm" variant={quoteMode === "download" ? "default" : "ghost"}
+                    onClick={() => setQuoteMode("download")}
+                    data-testid="quote-mode-download"
+                    className={`rounded-sm gap-1 ${quoteMode === "download" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
+              <FileDown className="h-3 w-3" /> Télécharger
+            </Button>
+            <Button size="sm" variant={quoteMode === "send" ? "default" : "ghost"}
+                    onClick={() => setQuoteMode("send")}
+                    data-testid="quote-mode-send"
+                    className={`rounded-sm gap-1 ${quoteMode === "send" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
+              Envoyer au client
+            </Button>
+          </div>
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label>Gamme de finition</Label>
@@ -1085,6 +1323,35 @@ export default function PlanTakeoff() {
                 </SelectContent>
               </Select>
             </div>
+
+            {quoteMode === "send" && (
+              <>
+                <div className="grid gap-2">
+                  <Label>Email du client *</Label>
+                  <Input value={quoteClientEmail} onChange={(e) => setQuoteClientEmail(e.target.value)}
+                         placeholder="client@exemple.fr" type="email"
+                         data-testid="quote-client-email" className="rounded-sm h-11" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Nom du client (optionnel)</Label>
+                  <Input value={quoteClientName} onChange={(e) => setQuoteClientName(e.target.value)}
+                         placeholder="M. Dupont"
+                         data-testid="quote-client-name" className="rounded-sm h-11" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Message personnalisé (optionnel)</Label>
+                  <textarea value={quoteMessage} onChange={(e) => setQuoteMessage(e.target.value)}
+                         placeholder="Suite à notre échange, veuillez trouver…"
+                         rows={3} maxLength={500}
+                         data-testid="quote-message"
+                         className="rounded-sm text-sm p-2 border border-border bg-background" />
+                </div>
+                <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm">
+                  Une copie sera envoyée à votre adresse pour trace. L'envoi est loggé dans l'historique.
+                </p>
+              </>
+            )}
+
             <p className="text-xs text-muted-foreground border border-border p-3 rounded-sm bg-secondary/30">
               Inclus par défaut : placo/plâtre, peinture, sol, plinthes. TVA à 10 %
               (rénovation logement &gt; 2 ans).
@@ -1094,11 +1361,19 @@ export default function PlanTakeoff() {
             <Button variant="outline" onClick={() => setQuoteDialog(false)} className="rounded-sm">
               Annuler
             </Button>
-            <Button onClick={downloadQuotePdf} disabled={quoteBusy} data-testid="quote-download-btn"
-                    className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <FileDown className="h-4 w-4" />
-              {quoteBusy ? "Génération…" : "Télécharger"}
-            </Button>
+            {quoteMode === "download" ? (
+              <Button onClick={downloadQuotePdf} disabled={quoteBusy} data-testid="quote-download-btn"
+                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                <FileDown className="h-4 w-4" />
+                {quoteBusy ? "Génération…" : "Télécharger"}
+              </Button>
+            ) : (
+              <Button onClick={sendQuotePdf} disabled={quoteBusy || !quoteClientEmail}
+                      data-testid="quote-send-btn"
+                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                {quoteBusy ? "Envoi…" : "Envoyer au client"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

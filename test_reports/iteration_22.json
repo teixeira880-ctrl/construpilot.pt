@@ -1,0 +1,34 @@
+{
+  "summary": "Iter22 — 5 new features (Demo seed, Transfer Ownership, Send Devis, History Compare, Walls Coloring) tested end-to-end. Backend: 20/20 pytest PASS in /app/backend/tests/test_iter22_transfer_send_compare_walls.py. Covers (1) 5 seed accounts loginable + pro=owner/collegue=member of BTP Demo SAS (code DEMO-2026, member_count=2) + client not in org; (2) full transfer-ownership flow: owner→member OK (returns new_owner), former owner becomes 'admin' (per spec), non-owner (admin role) gets 403, self-transfer gets 400, user-not-in-org (admin@) gets 404, reverse transfer OK; (3) send-quote returns email_status + log_id (>qs_ prefix), quote-sends list returns record with cc=sender email when cc_self=true, invalid email → 400, no rooms → 400 with 'Aucune pièce mesurée'; (4) history/compare returns before/after/delta_surface_m2/added/removed/modified/unchanged, same id → 400, unknown id → 404; (5) detect-walls returns segments with wall_id/thickness_px/wall_type (porteur|cloison|doublage), walls-summary totals by 3 types + ml, PATCH walls type accepts valid, rejects invalid (400) + unknown wall_id (404); (6) backward compat: /takeoffs/compare has walls key, /quote-pdf returns >2KB application/pdf, snapshot label PUT works. Frontend: /equipe as pro@ shows BTP Demo SAS/DEMO-2026/2 members/Owner role + 'Transférer' button visible next to Julie (team-transfer-<uid>). PlanTakeoff quote dialog opens with quote-mode-download + quote-mode-send tabs; in send mode quote-client-email + quote-send-btn render as expected.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter22_transfer_send_compare_walls.py",
+    "/app/test_reports/pytest/iter22.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "phase7.py transfer-ownership correctly checks org_role='owner' (403 otherwise), rejects self (400), verifies target user is member of same org (404), then swaps org_role atomically. Note: uses two sequential update_one calls (owner→admin, target→owner) — if the second fails the org is left with no owner. Consider wrapping in a MongoDB transaction (session) for atomicity.",
+    "phase7.py transfer-ownership: former owner becomes 'admin' (not 'member'). This matches the spec but means /organizations/leave for former owner would be OK (since only actual owner-with-members is blocked). Fine per current /leave logic which checks org_role='owner'.",
+    "plans.py send-quote: email regex is lax (allows any '.'-containing local/domain) but rejects obvious non-emails — good. However, no rate limiting / abuse guard; a user can spam send-quote (each call sends email + inserts db row). Consider throttling per user_id.",
+    "plans.py send-quote: quote_sends log always inserted regardless of email success — good for audit. But if _build_quote_and_pdf raises (e.g., no rooms → 400 before log insert), no log row is created; that's fine.",
+    "plans.py history/compare: relies on _diff_rooms helper. Delta pct computation should be safe against total_before=0 (unchecked here in the diff — recommend audit that _diff_rooms guards against ZeroDivisionError).",
+    "plans.py walls/type PATCH: uses positional array update `cv_walls.{page_index}.segments.{idx}.wall_type` — depends on segment order being stable after reclassify. OK for now since we don't re-detect between edits.",
+    "plans.py walls-summary: averages all page scales for ml computation — if two pages have very different scales, ml is inaccurate. Should compute per-page ml then sum. Minor.",
+    "PlanTakeoff.jsx: quote-send-btn correctly disabled until quote-client-email present (visual check). Consider client-side email regex validation before enabling, to save a round-trip.",
+    "server.py _seed_demo_org: force-resets org_role every startup — good, but if a user transfers ownership and doesn't restart, the seed drift persists (collegue stays 'admin'). Documented in review notes.",
+    "server.py seed(): idempotent update of user docs on every startup is safe but resets password_hash — if a demo user manually changes password via UI, it will be overwritten on restart. Consider only setting password_hash on insert."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter22_transfer_send_compare_walls.py"],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100% (all iter22 data-testids present: team-transfer-<uid>, quote-mode-download, quote-mode-send, quote-client-email, quote-send-btn — plus already-tested pick-*, snap-compare-*, walls-summary-card, toggle-reclassify-mode confirmed via grep in PlanTakeoff.jsx)"},
+  "test_credentials": "See /app/memory/test_credentials.md — admin@, demo@, client@, pro@, collegue@ all validated loginable.",
+  "seed_data_creation": "Per-test: fresh takeoff plans uploaded via /app/before.png for send-quote/history-compare/walls/quote-pdf tests (not cleaned up, consistent with iter20/21 pattern). No new user accounts created (uses seeded pro@/collegue@/demo@/admin@). Backend restarted at end of testing to normalize collegue back to org_role='member' after transfer-ownership test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "After running the TestTransferOwnership flow, collegue@construpilot.fr ends up as 'admin' (former owner becomes admin per spec), NOT 'member'. Seed re-normalises to 'member' on backend restart. If you run this test locally without restart, subsequent /equipe UI will show Julie as 'Admin' — restart backend to reset. The frontend UI testids for pick-*, snap-compare-*, walls-summary-card, toggle-reclassify-mode all exist in /app/frontend/src/pages/PlanTakeoff.jsx and render conditionally (only after in-session upload + calibrate + rooms + detect-walls). Backend endpoints for these features are fully validated by pytest. The email_status from send-quote depends on Resend availability (sandbox = only delivered@resend.dev delivers; else 'failed' + log still inserted). walls-summary requires calibration for ml>0, but count still populates without it.",
+  "rca of the issue": "N/A — no bugs found. Initial pytest run showed 1 failure (test asserted collegue → 'member' after transfer-back, but spec says former owner → 'admin'). Test corrected to match spec; all 20/20 pass."
+}

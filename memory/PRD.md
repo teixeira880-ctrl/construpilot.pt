@@ -154,3 +154,49 @@ Voir `/app/memory/test_credentials.md`.
 ### Tests
 - iter21 : 100 % backend (20/20 pytest) + 100 % frontend E2E.
 
+
+## 9. Changelog Iter 22 (12/02/2026) — Comptes démo + 4 features Pro
+
+### Comptes démo idempotents
+- Seed automatique de 5 comptes à chaque restart du backend :
+  `admin`, `demo`, `client` (particulier), `pro` (owner org), `collegue` (member).
+- Seed automatique de l'org **BTP Demo SAS** (code `DEMO-2026`) avec branding partagé.
+- Fichier `/app/memory/test_credentials.md` remis à jour.
+
+### Transfert Propriété (Team)
+- `POST /api/organizations/transfer-ownership` — le owner devient admin, le nouveau devient owner.
+- Refus : self-transfer (400), non-owner (403), user hors org (404).
+- Bouton « Transférer » sur chaque membre non-owner dans `/equipe` (owner only).
+
+### Devis envoyable au client
+- `POST /api/takeoffs/{plan_id}/send-quote` — envoie le PDF par email au client + CC au sender.
+- Log dans `db.quote_sends` (plan_id, client_email, cc, total_ttc, email_status, log_id).
+- `GET /api/takeoffs/{plan_id}/quote-sends` — historique par plan.
+- Dialog PDF Devis étendu avec deux tabs : **Télécharger** / **Envoyer au client**
+  (email client, nom, message perso).
+
+### Historique Compare (2 snapshots du même plan)
+- `POST /api/takeoffs/{plan_id}/history/compare` — diff rooms entre 2 snapshots (utilise
+  `_diff_rooms` refactoré pour partager la logique avec `/compare` plans).
+- UI onglet Historique : sélection A/B via bouton `pick-*`, panneau de résultat orange
+  (ajoutées / retirées / modifiées + delta m²), bouton Reset.
+
+### Coloration Murs par lot
+- `plan_cv.detect_walls` : distance transform → épaisseur px médiane par segment,
+  classification auto (**porteur ≥8 px** rouge / **cloison ≥3.5 px** orange /
+  **doublage** bleu).
+- `PATCH /api/takeoffs/{plan_id}/walls/{page_index}/{wall_id}/type` — reclasse manuel.
+- `GET /api/takeoffs/{plan_id}/walls-summary` — totaux (count + ml) par type.
+- UI : card résumé sous canvas, bouton **Reclasser** (mode click-to-cycle porteur→cloison→doublage),
+  couleur du trait selon `wall_type`.
+
+### Tests
+- iter22 : 20/20 backend pytest + frontend testids validés (transfer, snap compare,
+  send devis, walls coloring, reclassify).
+
+### Notes de revue (à traiter plus tard)
+- Transfer ownership : deux update_one séquentiels (non transactionnel).
+- Send-quote : pas de rate-limit.
+- Walls-summary : moyenne les scales sur plusieurs pages (imprécis multi-échelle).
+- Seed : le mot de passe demo est reset à chaque restart — OK pour démo, à isoler en prod.
+

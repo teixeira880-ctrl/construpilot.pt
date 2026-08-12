@@ -319,6 +319,65 @@ async def detect_walls_route(plan_id: str, page_index: int = 0,
     return result
 
 
+class WallTypeIn(BaseModel):
+    wall_type: str  # porteur | cloison | doublage
+
+
+@router.patch("/{plan_id}/walls/{page_index}/{wall_id}/type")
+async def update_wall_type(plan_id: str, page_index: int, wall_id: str,
+                           body: WallTypeIn, user=Depends(current_user)):
+    """Reclasse manuellement un mur détecté (porteur / cloison / doublage)."""
+    if body.wall_type not in ("porteur", "cloison", "doublage"):
+        raise HTTPException(400, "wall_type invalide (porteur|cloison|doublage)")
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, f"cv_walls.{page_index}.segments": 1},
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    segs = ((p.get("cv_walls") or {}).get(str(page_index))
+            or (p.get("cv_walls") or {}).get(page_index) or {}).get("segments") or []
+    idx = next((i for i, s in enumerate(segs) if s.get("wall_id") == wall_id), -1)
+    if idx < 0:
+        raise HTTPException(404, "Mur introuvable")
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$set": {f"cv_walls.{page_index}.segments.{idx}.wall_type": body.wall_type,
+                   f"cv_walls.{page_index}.segments.{idx}.type_source": "manual"}}
+    )
+    return {"ok": True, "wall_id": wall_id, "wall_type": body.wall_type}
+
+
+@router.get("/{plan_id}/walls-summary")
+async def walls_summary(plan_id: str, user=Depends(current_user)):
+    """Résumé des murs détectés par type + ML total pour lien avec l'estimation."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "cv_walls": 1, "calibrations": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    cv_walls = p.get("cv_walls") or {}
+    calibs = p.get("calibrations") or {}
+    scales = [c.get("scale_m_per_px") for c in calibs.values() if c.get("scale_m_per_px")]
+    scale = sum(scales) / len(scales) if scales else None
+
+    totals = {"porteur": {"count": 0, "ml": 0.0},
+              "cloison": {"count": 0, "ml": 0.0},
+              "doublage": {"count": 0, "ml": 0.0}}
+    for _, entry in cv_walls.items():
+        for s in (entry or {}).get("segments") or []:
+            wt = s.get("wall_type") or "cloison"
+            if wt not in totals:
+                wt = "cloison"
+            totals[wt]["count"] += 1
+            length_m = (s.get("length_px", 0) * scale) if scale else 0
+            totals[wt]["ml"] += length_m
+    for t in totals.values():
+        t["ml"] = round(t["ml"], 2)
+    return {"plan_id": plan_id, "scale_m_per_px": scale, "totals": totals}
+
+
 @router.post("/{plan_id}/room-autofill")
 async def room_autofill(plan_id: str, body: RoomAutofillIn, user=Depends(current_user)):
     """À partir d'un point cliqué à l'intérieur d'une pièce, extrait le polygone
@@ -457,37 +516,18 @@ class CompareIn(BaseModel):
     surface_tolerance_pct: float = Field(default=5.0, ge=0, le=100)
 
 
-@router.post("/compare")
-async def compare_plans(body: CompareIn, user=Depends(current_user)):
-    """Compare 2 plans (avant/après) et renvoie les pièces ajoutées, supprimées, modifiées."""
-    before = await db.plans_takeoff.find_one(
-        {"plan_id": body.before_plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "rooms": 1, "filename": 1, "cv_walls": 1}
-    )
-    after = await db.plans_takeoff.find_one(
-        {"plan_id": body.after_plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "rooms": 1, "filename": 1, "cv_walls": 1}
-    )
-    if not before or not after:
-        raise HTTPException(404, "Un des deux plans est introuvable")
-    if body.before_plan_id == body.after_plan_id:
-        raise HTTPException(400, "Sélectionnez deux plans différents")
-
+def _diff_rooms(rooms_b: list[dict], rooms_a: list[dict], tol: float = 5.0) -> dict:
+    """Diff pur entre 2 listes de rooms — utilisé par plans-compare & snapshot-compare."""
+    import re
     def _norm(name: str) -> str:
-        import re
         return re.sub(r"\s+", " ", (name or "").strip().lower())
 
-    rooms_b = before.get("rooms") or []
-    rooms_a = after.get("rooms") or []
     by_name_b = {}
     for r in rooms_b:
         by_name_b.setdefault(_norm(r.get("name")), []).append(r)
     matched_after_names = set()
 
     added, removed, modified, unchanged = [], [], [], []
-    tol = body.surface_tolerance_pct
-
-    # Passe 1 : pour chaque room APRÈS, cherche un match dans AVANT (nom identique)
     for ra in rooms_a:
         name_norm = _norm(ra.get("name"))
         if name_norm in by_name_b and by_name_b[name_norm]:
@@ -505,14 +545,10 @@ async def compare_plans(body: CompareIn, user=Depends(current_user)):
                 "perimeter_after_m": ra.get("perimeter_m", 0),
             }
             (unchanged if delta_pct <= tol else modified).append(entry)
-
-    # Rooms restantes dans AVANT non matchées → supprimées
     for lst in by_name_b.values():
         for rb in lst:
             removed.append({"name": rb.get("name"), "surface_m2": rb.get("surface_m2", 0),
                             "perimeter_m": rb.get("perimeter_m", 0)})
-
-    # Rooms d'APRÈS non matchées → ajoutées
     for ra in rooms_a:
         if id(ra) not in matched_after_names:
             added.append({"name": ra.get("name"), "surface_m2": ra.get("surface_m2", 0),
@@ -520,6 +556,35 @@ async def compare_plans(body: CompareIn, user=Depends(current_user)):
 
     total_b = sum(r.get("surface_m2", 0) for r in rooms_b)
     total_a = sum(r.get("surface_m2", 0) for r in rooms_a)
+    return {
+        "delta_surface_m2": round(total_a - total_b, 2),
+        "delta_surface_pct": round((total_a - total_b) / total_b * 100, 2) if total_b else 0,
+        "added": added, "removed": removed,
+        "modified": modified, "unchanged": unchanged,
+        "surface_tolerance_pct": tol,
+        "total_before_m2": round(total_b, 2), "total_after_m2": round(total_a, 2),
+    }
+
+
+@router.post("/compare")
+async def compare_plans(body: CompareIn, user=Depends(current_user)):
+    """Compare 2 plans (avant/après) et renvoie les pièces ajoutées, supprimées, modifiées."""
+    before = await db.plans_takeoff.find_one(
+        {"plan_id": body.before_plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "rooms": 1, "filename": 1, "cv_walls": 1}
+    )
+    after = await db.plans_takeoff.find_one(
+        {"plan_id": body.after_plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "rooms": 1, "filename": 1, "cv_walls": 1}
+    )
+    if not before or not after:
+        raise HTTPException(404, "Un des deux plans est introuvable")
+    if body.before_plan_id == body.after_plan_id:
+        raise HTTPException(400, "Sélectionnez deux plans différents")
+
+    rooms_b = before.get("rooms") or []
+    rooms_a = after.get("rooms") or []
+    diff = _diff_rooms(rooms_b, rooms_a, body.surface_tolerance_pct)
 
     # ============ WALLS DIFF (compare vecteurs) ============
     def _walls_of(cv_walls: dict | None) -> list[dict]:
@@ -588,19 +653,62 @@ async def compare_plans(body: CompareIn, user=Depends(current_user)):
 
     return {
         "before": {"plan_id": body.before_plan_id, "filename": before.get("filename"),
-                   "room_count": len(rooms_b), "total_surface_m2": round(total_b, 2)},
+                   "room_count": len(rooms_b), "total_surface_m2": diff["total_before_m2"]},
         "after": {"plan_id": body.after_plan_id, "filename": after.get("filename"),
-                  "room_count": len(rooms_a), "total_surface_m2": round(total_a, 2)},
-        "delta_surface_m2": round(total_a - total_b, 2),
-        "delta_surface_pct": round((total_a - total_b) / total_b * 100, 2) if total_b else 0,
-        "added": added, "removed": removed,
-        "modified": modified, "unchanged": unchanged,
-        "surface_tolerance_pct": tol,
+                  "room_count": len(rooms_a), "total_surface_m2": diff["total_after_m2"]},
+        "delta_surface_m2": diff["delta_surface_m2"],
+        "delta_surface_pct": diff["delta_surface_pct"],
+        "added": diff["added"], "removed": diff["removed"],
+        "modified": diff["modified"], "unchanged": diff["unchanged"],
+        "surface_tolerance_pct": diff["surface_tolerance_pct"],
         "walls": {
             "before_count": len(walls_b), "after_count": len(walls_a),
             "added": walls_added, "removed": walls_removed,
             "unchanged": walls_unchanged,
         },
+    }
+
+
+class SnapshotCompareIn(BaseModel):
+    before_snapshot_id: str
+    after_snapshot_id: str
+    surface_tolerance_pct: float = Field(default=5.0, ge=0, le=100)
+
+
+@router.post("/{plan_id}/history/compare")
+async def compare_snapshots(plan_id: str, body: SnapshotCompareIn,
+                             user=Depends(current_user)):
+    """Compare 2 snapshots d'historique du MÊME plan (avant/après édition)."""
+    if body.before_snapshot_id == body.after_snapshot_id:
+        raise HTTPException(400, "Sélectionnez deux snapshots différents.")
+    sb = await db.plans_takeoff_history.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"],
+         "snapshot_id": body.before_snapshot_id}, {"_id": 0}
+    )
+    sa = await db.plans_takeoff_history.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"],
+         "snapshot_id": body.after_snapshot_id}, {"_id": 0}
+    )
+    if not sb or not sa:
+        raise HTTPException(404, "Un des deux snapshots est introuvable.")
+
+    diff = _diff_rooms(sb.get("rooms") or [], sa.get("rooms") or [], body.surface_tolerance_pct)
+    return {
+        "before": {"snapshot_id": sb["snapshot_id"],
+                    "label": sb.get("label"), "action": sb.get("action"),
+                    "created_at": sb.get("created_at"),
+                    "room_count": len(sb.get("rooms") or []),
+                    "total_surface_m2": diff["total_before_m2"]},
+        "after": {"snapshot_id": sa["snapshot_id"],
+                   "label": sa.get("label"), "action": sa.get("action"),
+                   "created_at": sa.get("created_at"),
+                   "room_count": len(sa.get("rooms") or []),
+                   "total_surface_m2": diff["total_after_m2"]},
+        "delta_surface_m2": diff["delta_surface_m2"],
+        "delta_surface_pct": diff["delta_surface_pct"],
+        "added": diff["added"], "removed": diff["removed"],
+        "modified": diff["modified"], "unchanged": diff["unchanged"],
+        "surface_tolerance_pct": diff["surface_tolerance_pct"],
     }
 
 
@@ -903,22 +1011,16 @@ async def _resolve_branding(user_id: str) -> dict | None:
     return None
 
 
-@router.get("/{plan_id}/quote-pdf")
-async def export_quote_pdf(plan_id: str, finish: str = "std",
-                            floor_material: str = "carrelage",
-                            include_paint: bool = True, include_placo: bool = True,
-                            include_floor: bool = True, include_skirting: bool = True,
-                            user=Depends(current_user)):
-    """Génère un PDF Devis complet : main d'œuvre + matériaux pré-remplis depuis le takeoff.
-
-    Utilise les prix du catalogue (LOTS_BY_KEY) et les quantités calculées.
-    """
-    from fastapi.responses import Response
+async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
+                                floor_material: str, include_paint: bool,
+                                include_placo: bool, include_floor: bool,
+                                include_skirting: bool) -> tuple[dict, bytes]:
+    """Construit le quote (dict) + le PDF bytes. Réutilisé par download & send-quote."""
     from engines.pdf_takeoff import build_quote_pdf
     from engines.catalog import LOTS_BY_KEY
 
     p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"plan_id": plan_id, "user_id": user_id},
         {"_id": 0, "pages.image_png_b64": 0}
     )
     if not p:
@@ -932,7 +1034,8 @@ async def export_quote_pdf(plan_id: str, finish: str = "std",
     total_walls_net = sum(r.get("wall_area_net_m2", 0) for r in rooms)
     total_perim = sum(r.get("perimeter_m", 0) for r in rooms)
 
-    mat_key = "mat_eco" if finish == "eco" else "mat_premium" if finish == "premium" else "mat_std"
+    mat_key = ("mat_eco" if finish == "eco"
+                else "mat_premium" if finish == "premium" else "mat_std")
 
     line_items: list[dict] = []
 
@@ -959,16 +1062,13 @@ async def export_quote_pdf(plan_id: str, finish: str = "std",
             add("Peinture (murs + plafonds)", total_walls_net + total_ceiling, "m²",
                 peint.get(mat_key, 8), peint.get("labour", 16))
     if include_floor:
-        # map floor_material → catalog lot
         lot_key = "carrelage" if floor_material.lower() in ("carrelage", "tile") else "parquet"
         lot = LOTS_BY_KEY.get(lot_key)
         if lot:
             add(f"Sol : {lot['name']}", total_floor, "m²",
                 lot.get(mat_key, 35), lot.get("labour", 26))
     if include_skirting:
-        # Utilise le lot 'parquet' pour approximer le prix des plinthes en €/ml matériaux
-        # (pas de lot dédié — approx : 5€/ml matériaux + 6€/ml pose)
-        add("Plinthes (ml)", total_perim - 1.8 * sum(  # -1.8m par porte estimée
+        add("Plinthes (ml)", total_perim - 1.8 * sum(
             len([o for o in r.get("openings", [])
                  if o.get("type", "").lower().startswith("port")]) for r in rooms),
             "ml", 5.0, 6.0)
@@ -976,7 +1076,7 @@ async def export_quote_pdf(plan_id: str, finish: str = "std",
     subtotal_mat = round(sum(li["material_total"] for li in line_items), 2)
     subtotal_lab = round(sum(li["labour_total"] for li in line_items), 2)
     subtotal = round(subtotal_mat + subtotal_lab, 2)
-    tva_rate = 0.10  # rénovation logement > 2 ans
+    tva_rate = 0.10
     tva = round(subtotal * tva_rate, 2)
     ttc = round(subtotal + tva, 2)
 
@@ -993,10 +1093,115 @@ async def export_quote_pdf(plan_id: str, finish: str = "std",
         "subtotal_ht": subtotal,
         "tva_rate": tva_rate, "tva": tva, "total_ttc": ttc,
     }
-
-    branding = await _resolve_branding(user["user_id"])
+    branding = await _resolve_branding(user_id)
     pdf_bytes = build_quote_pdf(quote, branding=branding)
+    return quote, pdf_bytes
+
+
+@router.get("/{plan_id}/quote-pdf")
+async def export_quote_pdf(plan_id: str, finish: str = "std",
+                            floor_material: str = "carrelage",
+                            include_paint: bool = True, include_placo: bool = True,
+                            include_floor: bool = True, include_skirting: bool = True,
+                            user=Depends(current_user)):
+    """Génère un PDF Devis complet : main d'œuvre + matériaux pré-remplis depuis le takeoff."""
+    from fastapi.responses import Response
+    _q, pdf_bytes = await _build_quote_and_pdf(
+        plan_id, user["user_id"], finish, floor_material,
+        include_paint, include_placo, include_floor, include_skirting)
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="devis-{plan_id}.pdf"'}
     )
+
+
+class SendQuoteIn(BaseModel):
+    client_email: str
+    client_name: str | None = None
+    message: str | None = None
+    finish: str = "std"
+    floor_material: str = "carrelage"
+    include_paint: bool = True
+    include_placo: bool = True
+    include_floor: bool = True
+    include_skirting: bool = True
+    cc_self: bool = True
+
+
+@router.post("/{plan_id}/send-quote")
+async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)):
+    """Envoie le PDF Devis directement au client par email + copie au sender + log."""
+    import re
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.client_email or ""):
+        raise HTTPException(400, "Email client invalide.")
+
+    quote, pdf_bytes = await _build_quote_and_pdf(
+        plan_id, user["user_id"], body.finish, body.floor_material,
+        body.include_paint, body.include_placo, body.include_floor, body.include_skirting)
+
+    # Récupère nom société pour email
+    branding = await _resolve_branding(user["user_id"]) or {}
+    sender_u = await db.users.find_one({"user_id": user["user_id"]},
+                                         {"_id": 0, "name": 1, "email": 1})
+    company = branding.get("company_name") or (sender_u or {}).get("name") or "ConstruPilot"
+    contact = branding.get("contact_line") or ""
+
+    ttc = quote.get("total_ttc", 0)
+    finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
+        body.finish, "Standard")
+
+    # Email HTML
+    from engines.emailer import send_email_with_pdf, wrap_html
+    hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
+    custom = f"<p>{body.message}</p>" if body.message else ""
+    inner = (
+        f"<p>{hello}</p>"
+        f"{custom}"
+        f"<p>Veuillez trouver ci-joint votre <b>devis estimatif</b> "
+        f"({finish_label}) élaboré depuis votre plan.</p>"
+        f"<div style='background:#FF5A00;color:white;padding:16px 22px;border-radius:6px;"
+        f"font-size:18px;font-weight:700;text-align:center;letter-spacing:1px'>"
+        f"Total TTC : {ttc:,.2f} €</div>"
+        f"<p style='margin-top:16px'>Ce document est un devis estimatif indicatif "
+        f"(TVA 10 % rénovation logement &gt; 2 ans). Nous restons à votre disposition "
+        f"pour toute question ou visite technique.</p>"
+        f"<p style='color:#666;font-size:12px;margin-top:24px'>"
+        f"{company}<br/>{contact}</p>"
+    )
+    html = wrap_html(f"Devis · {company}", inner)
+
+    email_status = "sent"; email_id = None
+    error = None
+    try:
+        cc = (sender_u or {}).get("email") if body.cc_self else None
+        res = await send_email_with_pdf(body.client_email, f"Devis · {company}",
+                                          html, pdf_bytes,
+                                          filename=f"devis-{plan_id}.pdf", cc=cc)
+        email_id = res.get("id")
+    except Exception as e:
+        logger.warning(f"Send quote email failed: {e}")
+        email_status = "failed"; error = str(e)
+
+    # Log l'envoi en base
+    log = {
+        "log_id": "qs_" + secrets.token_hex(6),
+        "plan_id": plan_id, "user_id": user["user_id"],
+        "client_email": body.client_email, "client_name": body.client_name,
+        "cc": (sender_u or {}).get("email") if body.cc_self else None,
+        "total_ttc": ttc, "finish": body.finish, "floor_material": body.floor_material,
+        "email_status": email_status, "email_id": email_id, "error": error,
+        "created_at": _now(),
+    }
+    await db.quote_sends.insert_one(log)
+    return {"ok": email_status == "sent", "email_status": email_status,
+            "email_id": email_id, "log_id": log["log_id"], "total_ttc": ttc}
+
+
+@router.get("/{plan_id}/quote-sends")
+async def list_quote_sends(plan_id: str, user=Depends(current_user)):
+    """Historique des envois de devis pour ce plan."""
+    docs = await db.quote_sends.find(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    return {"plan_id": plan_id, "sends": docs}

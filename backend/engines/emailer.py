@@ -38,7 +38,8 @@ async def send_email(to: str, subject: str, html: str) -> dict:
 
 
 async def send_email_with_pdf(to: str, subject: str, html: str,
-                              pdf_bytes: bytes, filename: str = "devis.pdf") -> dict:
+                              pdf_bytes: bytes, filename: str = "devis.pdf",
+                              cc: str | None = None) -> dict:
     if not _configure():
         raise RuntimeError("RESEND_API_KEY manquant")
     params = {
@@ -49,6 +50,8 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
             "content_type": "application/pdf",
         }],
     }
+    if cc:
+        params["cc"] = [cc]
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
         return {"ok": True, "id": resp.get("id")}

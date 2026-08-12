@@ -65,6 +65,40 @@ logger = logging.getLogger(__name__)
 
 ADMIN_EMAIL = "admin@construpilot.fr"
 DEMO_EMAIL = "demo@construpilot.fr"
+CLIENT_EMAIL = "client@construpilot.fr"
+PRO_EMAIL = "pro@construpilot.fr"
+COLLEGUE_EMAIL = "collegue@construpilot.fr"
+
+async def _seed_demo_org():
+    """Crée idempotemment l'org 'BTP Demo SAS' avec pro@ owner + collegue@ member."""
+    import secrets
+    pro = await db.users.find_one({"email": PRO_EMAIL}, {"_id": 0, "user_id": 1})
+    col = await db.users.find_one({"email": COLLEGUE_EMAIL}, {"_id": 0, "user_id": 1})
+    if not pro or not col:
+        return
+    org = await db.organizations.find_one({"name": "BTP Demo SAS"})
+    if not org:
+        org_id = "org_" + secrets.token_hex(6)
+        code = "DEMO-2026"
+        doc = {
+            "org_id": org_id, "org_code": code, "name": "BTP Demo SAS",
+            "owner_user_id": pro["user_id"],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "brand_company_name": "BTP Demo SAS",
+            "brand_contact_line": "12 rue des Compagnons · 75011 Paris · 01 45 67 89 00 · contact@btp-demo.fr",
+            "brand_logo_b64": None,
+        }
+        await db.organizations.insert_one(doc)
+        org = doc
+    # Force les membres à être dans l'org (idempotent)
+    await db.users.update_one({"email": PRO_EMAIL},
+                              {"$set": {"organization_id": org["org_id"], "org_role": "owner",
+                                        "joined_org_at": datetime.now(timezone.utc).isoformat()}})
+    await db.users.update_one({"email": COLLEGUE_EMAIL},
+                              {"$set": {"organization_id": org["org_id"], "org_role": "member",
+                                        "joined_org_at": datetime.now(timezone.utc).isoformat()}})
+
+
 
 
 @app.on_event("startup")
@@ -72,16 +106,25 @@ async def seed():
     # Nettoyage des anciens comptes (renommage marque)
     await db.users.delete_many({"email": {"$in": ["admin@cmrenov.fr", "demo@cmrenov.fr"]}})
 
-    for email, name, role, pw in ((ADMIN_EMAIL, "Admin ConstruPilot", "admin", "Construpilot2026!"),
-                                  (DEMO_EMAIL, "Client Démo", "user", "Demo2026!")):
+    accounts = (
+        (ADMIN_EMAIL,     "Admin ConstruPilot", "admin", "premium", "Construpilot2026!"),
+        (DEMO_EMAIL,      "Client Démo",        "user",  "premium", "Demo2026!"),
+        (CLIENT_EMAIL,    "Alice Particulier",  "user",  "free",    "Client2026!"),
+        (PRO_EMAIL,       "Marc BTP (Pro)",     "user",  "premium", "Pro2026!"),
+        (COLLEGUE_EMAIL,  "Julie Collègue",     "user",  "free",    "Collegue2026!"),
+    )
+    for email, name, role, plan, pw in accounts:
         existing = await db.users.find_one({"email": email})
-        doc = {"email": email, "name": name, "role": role, "plan": "pro" if role == "admin" else "premium",
+        doc = {"email": email, "name": name, "role": role, "plan": plan,
                "password_hash": hash_password(pw), "auth_provider": "password", "picture": None}
         if existing:
             await db.users.update_one({"email": email}, {"$set": doc})
         else:
             await db.users.insert_one({**doc, "user_id": new_user_id(),
                                        "created_at": datetime.now(timezone.utc).isoformat()})
+
+    # Seed "BTP Demo SAS" — org démo pour montrer le partage de branding
+    await _seed_demo_org()
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")
