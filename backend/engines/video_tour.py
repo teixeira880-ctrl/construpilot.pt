@@ -18,7 +18,12 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 VIDEO_CACHE_DIR = Path(os.getenv("VIDEO_CACHE_DIR", "/app/backend/video_cache"))
-VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+except OSError as _e:
+    # Read-only FS in some deployment images — creation is retried lazily
+    # when the first video is actually built.
+    logger.warning(f"video cache dir not creatable at import: {_e}")
 
 # Per-frame duration in seconds; total video = N * FRAME_DURATION_S
 FRAME_DURATION_S = 5.0
@@ -125,6 +130,7 @@ def build_video_tour(image_b64_list: list[str], styles: list[str] | None = None,
             logo_path.write_bytes(logo_bytes)
 
         # 4) Concat with crossfade transitions + optional watermark + optional audio
+        VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)  # lazy creation
         out_path = VIDEO_CACHE_DIR / f"{video_id}.mp4"
         _concat_and_finalize(
             ffmpeg=ffmpeg,
