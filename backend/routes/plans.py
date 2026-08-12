@@ -30,6 +30,7 @@ from core.security import current_user
 from engines import geometry as G
 from engines.plan_processor import process_upload, auto_calibration_from_pdf_scale
 from engines.plan_ai import analyze_plan_image
+from engines.plan_cv import detect_walls, flood_fill_room
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["plans"], prefix="/takeoffs")
@@ -240,6 +241,80 @@ async def analyze_plan(plan_id: str, page_index: int = 0, user=Depends(current_u
                                   "analyzed_at": _now()}, "updated_at": _now()}}
     )
     return analysis
+
+
+# ============ COMPUTER VISION (Phase B) ============
+
+class RoomAutofillIn(BaseModel):
+    page_index: int
+    seed_x: int = Field(ge=0)
+    seed_y: int = Field(ge=0)
+    tolerance: int = Field(default=25, ge=1, le=100)
+
+
+@router.post("/{plan_id}/detect-walls")
+async def detect_walls_route(plan_id: str, page_index: int = 0,
+                              user=Depends(current_user)):
+    """Détecte automatiquement les segments de murs sur une page via OpenCV Hough."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages": 1},
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if page_index < 0 or page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    img = pages[page_index].get("image_png_b64")
+    if not img:
+        raise HTTPException(500, "Image manquante")
+    try:
+        result = detect_walls(img)
+    except Exception as e:
+        logger.exception("wall detection failed")
+        raise HTTPException(500, f"Détection murs impossible : {e}")
+    # Persist le résultat (utile pour re-render / debug)
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {f"cv_walls.{page_index}": {**result, "detected_at": _now()},
+                  "updated_at": _now()}},
+    )
+    return result
+
+
+@router.post("/{plan_id}/room-autofill")
+async def room_autofill(plan_id: str, body: RoomAutofillIn, user=Depends(current_user)):
+    """À partir d'un point cliqué à l'intérieur d'une pièce, extrait le polygone
+    de son contour via flood fill. NB : le calcul de surface reste géré par le
+    Geometry Engine — cette route ne renvoie QUE le polygone en pixels image.
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages": 1, "calibrations": 1},
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if body.page_index < 0 or body.page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    img = pages[body.page_index].get("image_png_b64")
+    if not img:
+        raise HTTPException(500, "Image manquante")
+    try:
+        cv_res = flood_fill_room(img, body.seed_x, body.seed_y, body.tolerance)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        logger.exception("flood fill failed")
+        raise HTTPException(500, f"Détection contour impossible : {e}")
+
+    # Si la page est calibrée, renvoie aussi la surface/périmètre calculés
+    calib = (p.get("calibrations") or {}).get(str(body.page_index))
+    if calib and len(cv_res["points"]) >= 3:
+        ppm = calib["pixels_per_meter"]
+        cv_res["surface_m2"] = round(G.polygon_area_m2(cv_res["points"], ppm), 3)
+        cv_res["perimeter_m"] = round(G.polygon_perimeter_m(cv_res["points"], ppm), 3)
+    return cv_res
 
 
 # ============ MESURE PONCTUELLE ============

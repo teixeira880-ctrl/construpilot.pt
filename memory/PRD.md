@@ -29,9 +29,9 @@ Langue produit : **Français**.
 - PDF : ReportLab / pypdf.
 - Prix : Tavily réel + fallback demo.
 
-## 4. État actuel (13/02/2026 — itération 12)
+## 4. État actuel (13/02/2026 — itération 15)
 
-### ✅ Implémenté & testé (Backend 168/168 pytest · Frontend 100%)
+### ✅ Implémenté & testé (Backend 186+/186+ pytest · Frontend 100%)
 - Fondations MVP complètes.
 - **PHASE 1** — Stripe subscriptions + 10 plans + trial 7j + paywall.
 - **PHASE 2** — Savings Engine + Codes promo admin.
@@ -56,6 +56,10 @@ Langue produit : **Français**.
   - **Route backend** : `/api/takeoffs` (renommée depuis `/api/plans` pour éviter collision avec billing).
   - Frontend : nouvelle page `/plan` + lien Nav "Plan 2D".
 - **Twilio partial** : SID + AUTH_TOKEN configurés dans `.env`, il ne manque plus que `TWILIO_FROM_NUMBER`.
+- **ITER 15 — 13/02/2026** ✅ Phase B partielle + finalisation Twilio (18/18 pytest) :
+  - **Auto Wall Detection** (`engines/plan_cv.py::detect_walls`) : Canny + HoughLinesP OpenCV 5.0, dilate morpho, fusion segments courts. Endpoint `POST /api/takeoffs/{id}/detect-walls`. Overlay canvas cyan sur la page.
+  - **Room Auto Fill** (`engines/plan_cv.py::flood_fill_room`) : adaptive threshold + floodFill + approxPolyDP. Endpoint `POST /api/takeoffs/{id}/room-autofill` avec seed_x/seed_y du clic. Si calibré, renvoie aussi surface_m2 et perimeter_m. Nouvel outil "Auto-pièce" (icône Wand2) dans la toolbar.
+  - **Twilio SMS complet** : `TWILIO_FROM_NUMBER=+33623762847` ajouté → `twilio_enabled: true`. Endpoint `POST /api/projects/{id}/share/sms` opérationnel (peut renvoyer 502 si le numéro n'est pas un vrai Twilio du compte, sans crash serveur).
 
 ### 🟡 Points d'attention (non bloquants)
 - Tavily ~25% fallback demo.

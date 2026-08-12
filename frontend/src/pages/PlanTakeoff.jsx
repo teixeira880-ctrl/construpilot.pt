@@ -5,6 +5,7 @@ import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
+  Wand2, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ import { api, eur, num } from "@/lib/api";
 
 const TOOLS = {
   SELECT: "select", DIST: "distance", POLY: "polyline",
-  ROOM: "room", CALIB: "calibrate",
+  ROOM: "room", CALIB: "calibrate", AUTOROOM: "autoroom",
 };
 
 const ROOM_COLORS = [
@@ -32,6 +33,7 @@ const ROOM_COLORS = [
 function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
   onCanvasClick, onZoomChange, onOffsetChange, hoverPoint,
+  detectedWalls, showWalls,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -57,6 +59,19 @@ function PlanCanvas({
     ctx.scale(zoom, zoom);
     ctx.translate(-imgRef.current.width / 2, -imgRef.current.height / 2);
     ctx.drawImage(imgRef.current, 0, 0);
+
+    // DETECTED WALLS overlay (Phase B)
+    if (showWalls && detectedWalls?.segments?.length) {
+      ctx.strokeStyle = "rgba(0, 200, 255, 0.85)";
+      ctx.lineWidth = 3 / zoom;
+      ctx.lineCap = "round";
+      detectedWalls.segments.forEach((s) => {
+        ctx.beginPath();
+        ctx.moveTo(s.x1, s.y1);
+        ctx.lineTo(s.x2, s.y2);
+        ctx.stroke();
+      });
+    }
 
     // ROOMS overlays
     rooms.forEach((r, i) => {
@@ -109,7 +124,7 @@ function PlanCanvas({
       ctx.setLineDash([]);
     }
     ctx.restore();
-  }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool, calibration]);
+  }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool, calibration, detectedWalls, showWalls]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -204,6 +219,9 @@ export default function PlanTakeoff() {
   const [roomDialog, setRoomDialog] = useState(false);
   const [ceilingH, setCeilingH] = useState("2.5");
   const [aiBusy, setAiBusy] = useState(false);
+  const [cvBusy, setCvBusy] = useState(false);
+  const [detectedWalls, setDetectedWalls] = useState(null);
+  const [showWalls, setShowWalls] = useState(true);
   const [takeoff, setTakeoff] = useState(null);
   const [materials, setMaterials] = useState(null);
   const [floorMaterial, setFloorMaterial] = useState("parquet");
@@ -221,6 +239,7 @@ export default function PlanTakeoff() {
       setPoints([]);
       setOffset({ x: 0, y: 0 });
       setZoom(0.5);
+      setDetectedWalls(null);
     });
   }, [plan?.plan_id, pageIndex]);
 
@@ -249,6 +268,10 @@ export default function PlanTakeoff() {
   };
 
   const onCanvasClick = (pt) => {
+    if (tool === TOOLS.AUTOROOM) {
+      autoFillRoom(pt);
+      return;
+    }
     if (tool === TOOLS.CALIB) {
       const next = [...points, pt];
       if (next.length === 2) {
@@ -343,6 +366,39 @@ export default function PlanTakeoff() {
     finally { setAiBusy(false); }
   };
 
+  const detectWalls = async () => {
+    if (!plan?.plan_id) return;
+    setCvBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-walls?page_index=${pageIndex}`);
+      setDetectedWalls(data);
+      setShowWalls(true);
+      toast.success(`${data.segment_count} segments de murs détectés`);
+    } catch (e) { toast.error("Détection murs impossible"); }
+    finally { setCvBusy(false); }
+  };
+
+  const autoFillRoom = async (pt) => {
+    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    setCvBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/room-autofill`, {
+        page_index: pageIndex,
+        seed_x: Math.round(pt[0]),
+        seed_y: Math.round(pt[1]),
+        tolerance: 25,
+      });
+      // Charge les points détectés dans l'état — l'utilisateur peut ajuster puis valider
+      setPoints(data.points);
+      toast.success(`Contour détecté (${data.point_count} points, ${data.surface_m2} m²)`);
+      // Ouvre le dialog de nom immédiatement
+      setPendingRoomName(`Pièce ${String(rooms.length + 1).padStart(2, "0")}`);
+      setRoomDialog(true);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Aucune pièce détectée à ce point");
+    } finally { setCvBusy(false); }
+  };
+
   const loadTakeoff = async () => {
     const { data } = await api.get(`/takeoffs/${plan.plan_id}/takeoff`);
     setTakeoff(data);
@@ -412,7 +468,7 @@ export default function PlanTakeoff() {
         <div className="grid sm:grid-cols-3 gap-4">
           {[
             { icon: Ruler, title: "Calibration précise", desc: "Auto échelle 1:X, cote connue, ou 2 points manuels" },
-            { icon: Square, title: "Métré par pièce", desc: "Surface, périmètre, murs bruts et nets, plafonds" },
+            { icon: Wand2, title: "Détection auto", desc: "Murs détectés en 1 clic (OpenCV) · pièces auto-fill en 1 clic intérieur" },
             { icon: Calculator, title: "Vers estimation", desc: "1 clic → estimation ConstruPilot + prix matériaux" },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="surface p-6">
@@ -448,6 +504,11 @@ export default function PlanTakeoff() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setPlan(null)} data-testid="plan-back-btn" className="rounded-sm gap-2">
             <Home className="h-4 w-4" /> Nouveau plan
+          </Button>
+          <Button variant="outline" onClick={detectWalls} disabled={cvBusy} data-testid="plan-detect-walls-btn"
+                  className="rounded-sm gap-2 border-cyan-500/50 text-cyan-500 hover:bg-cyan-500 hover:text-white">
+            <Zap className={`h-4 w-4 ${cvBusy ? "animate-pulse" : ""}`} />
+            {cvBusy ? "…" : "Détecter les murs"}
           </Button>
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <Sparkles className={`h-4 w-4 ${aiBusy ? "animate-pulse" : ""}`} />
@@ -487,7 +548,15 @@ export default function PlanTakeoff() {
             <ToolButton icon={Move} label="Distance" testId="tool-distance" active={tool === TOOLS.DIST} onClick={() => { setTool(TOOLS.DIST); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Layers} label="Polyligne" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Square} label="Pièce" testId="tool-room" active={tool === TOOLS.ROOM} onClick={() => { setTool(TOOLS.ROOM); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={Wand2} label="Auto-pièce" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
             <div className="flex-1" />
+            {detectedWalls && (
+              <Button size="sm" variant={showWalls ? "default" : "outline"} onClick={() => setShowWalls(!showWalls)}
+                      data-testid="toggle-walls-overlay"
+                      className="rounded-sm gap-1 h-8">
+                <Layers className="h-3 w-3" /> Murs ({detectedWalls.segment_count})
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={() => setPoints(points.slice(0, -1))} disabled={!points.length} className="rounded-sm gap-1">
               <Undo2 className="h-3 w-3" /> Annuler
             </Button>
@@ -508,6 +577,7 @@ export default function PlanTakeoff() {
             pageData={pageData} tool={tool} points={points} rooms={rooms}
             calibration={currentCalib} zoom={zoom} offset={offset} rotation={rotation}
             onCanvasClick={onCanvasClick} onZoomChange={setZoom} onOffsetChange={setOffset}
+            detectedWalls={detectedWalls} showWalls={showWalls}
           />
 
           {/* CONTEXT ACTIONS */}
