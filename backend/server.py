@@ -14,7 +14,7 @@ from core.db import db, client  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
 from engines import storage, alerting  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
-                    ai_routes, leads, admin, photos, billing, revenue)  # noqa: E402
+                    ai_routes, leads, admin, photos, billing, revenue, phase4)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
@@ -40,6 +40,7 @@ api_router.include_router(admin.router)
 api_router.include_router(photos.router)
 api_router.include_router(billing.router)
 api_router.include_router(revenue.router)
+api_router.include_router(phase4.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -94,6 +95,13 @@ async def seed():
             await db.plans.insert_one(plan)
     if not await db.feature_flags.find_one({"_id": "global"}):
         await db.feature_flags.insert_one({"_id": "global", **DEFAULT_FEATURE_FLAGS})
+
+    # Affiliate configs seed (idempotent)
+    try:
+        from engines import affiliate
+        await affiliate.seed_affiliate_configs()
+    except Exception as e:
+        logger.warning(f"Affiliate seed skipped: {e}")
 
     # Sync catalogue Stripe (best effort — n'échoue pas si Stripe indispo)
     try:

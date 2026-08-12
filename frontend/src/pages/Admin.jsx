@@ -88,6 +88,8 @@ export default function Admin() {
           <TabsTrigger value="leads" className="rounded-sm" data-testid="admin-tab-leads">CRM / Devis</TabsTrigger>
           <TabsTrigger value="searches" className="rounded-sm" data-testid="admin-tab-searches">Recherches</TabsTrigger>
           <TabsTrigger value="promos" className="rounded-sm" data-testid="admin-tab-promos">Codes promo</TabsTrigger>
+          <TabsTrigger value="kyc" className="rounded-sm" data-testid="admin-tab-kyc">KYC pros</TabsTrigger>
+          <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">Affiliation</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">Plans & Revenu</TabsTrigger>
         </TabsList>
 
@@ -333,6 +335,14 @@ export default function Admin() {
           <PromoCodesPanel />
         </TabsContent>
 
+        <TabsContent value="kyc" className="mt-6">
+          <KycPanel />
+        </TabsContent>
+
+        <TabsContent value="affiliate" className="mt-6">
+          <AffiliatePanel />
+        </TabsContent>
+
         <TabsContent value="plans" className="mt-6">
           <PlansRevenuePanel />
         </TabsContent>
@@ -564,3 +574,112 @@ function PlansRevenuePanel() {
     </div>
   );
 }
+
+
+/* ---------- KYC review ---------- */
+function KycPanel() {
+  const [rows, setRows] = useState([]);
+  const [filter, setFilter] = useState("pending");
+  const load = () => api.get(`/admin/kyc${filter ? "?status=" + filter : ""}`).then(({ data }) => setRows(data)).catch(() => {});
+  useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  const act = async (user_id, approve, reason) => {
+    try { await api.post("/admin/kyc/review", { user_id, approve, reason: reason || null }); load(); }
+    catch { toast.error("Impossible"); }
+  };
+  return (
+    <div className="grid gap-4">
+      <div className="flex gap-2" data-testid="kyc-filters">
+        {["pending", "verified", "rejected", ""].map((s) => (
+          <button key={s || "all"} onClick={() => setFilter(s)}
+                  className={`px-3 py-2 text-xs rounded-sm border ${filter === s ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"}`}>
+            {s || "Tous"}
+          </button>
+        ))}
+      </div>
+      <div className="surface p-6" data-testid="kyc-list">
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead>Entreprise</TableHead><TableHead>SIREN</TableHead><TableHead>Métiers</TableHead>
+            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.user_id}>
+                <TableCell>{r.company_name || "—"}</TableCell>
+                <TableCell className="font-mono text-xs">{r.siren || "—"}</TableCell>
+                <TableCell className="text-xs">{(r.trades || []).slice(0, 3).join(", ")}</TableCell>
+                <TableCell>
+                  <Badge variant={r.verified ? "default" : "outline"} className="rounded-sm">
+                    {r.status || "pending"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right space-x-2">
+                  {!r.verified && (
+                    <>
+                      <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Valider</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motif du refus ?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
+                    </>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">Aucun dossier</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Affiliate ---------- */
+function AffiliatePanel() {
+  const [configs, setConfigs] = useState([]);
+  const [stats, setStats] = useState(null);
+  const load = () => {
+    api.get("/admin/affiliate/configs").then(({ data }) => setConfigs(data));
+    api.get("/admin/affiliate/stats?days=30").then(({ data }) => setStats(data));
+  };
+  useEffect(() => { load(); }, []);
+  const toggle = async (cfg, enabled) => {
+    try { await api.post("/admin/affiliate/configs", { ...cfg, affiliate_enabled: enabled }); load(); }
+    catch { toast.error("Impossible"); }
+  };
+  return (
+    <div className="grid gap-6" data-testid="affiliate-panel">
+      {stats && (
+        <div className="grid md:grid-cols-4 gap-4">
+          <Stat label="Clics (30j)" value={num(stats.totals.affiliate_click || 0)} />
+          <Stat label="Redirections" value={num(stats.totals.supplier_redirect || 0)} />
+          <Stat label="Conversions" value={num(stats.totals.purchase_confirmed || 0)} />
+          <Stat label="Revenu (€)" value={eur(stats.revenue_eur)} accent />
+        </div>
+      )}
+      <div className="surface p-6">
+        <p className="overline mb-4">Configurations partenaires</p>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead>Fournisseur</TableHead><TableHead>Réseau</TableHead>
+            <TableHead>Commission</TableHead><TableHead>Cookie</TableHead>
+            <TableHead>Actif</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {configs.map((c) => (
+              <TableRow key={c.supplier_key}>
+                <TableCell className="font-medium">{c.supplier_key}</TableCell>
+                <TableCell>{c.affiliate_network || "—"}</TableCell>
+                <TableCell className="num">{((c.commission_rate || 0) * 100).toFixed(1)} %</TableCell>
+                <TableCell className="num">{c.cookie_duration} j</TableCell>
+                <TableCell>
+                  <input type="checkbox" checked={!!c.affiliate_enabled}
+                         onChange={(e) => toggle(c, e.target.checked)}
+                         data-testid={`aff-toggle-${c.supplier_key}`} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+

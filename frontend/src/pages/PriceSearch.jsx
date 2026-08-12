@@ -156,6 +156,11 @@ export default function PriceSearch() {
                       {i === 0 && sort === "cheapest" && (
                         <Badge className="ml-2 rounded-sm bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0">Meilleur prix</Badge>
                       )}
+                      {r.is_affiliate && (
+                        <Badge variant="outline" className="ml-2 rounded-sm text-[9px] uppercase tracking-wider border-primary/30 text-primary" title={r.affiliate_disclosure} data-testid={`affiliate-badge-${r.supplier_key}`}>
+                          Lien partenaire
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-[280px] truncate">{r.product}</TableCell>
                     <TableCell className="num text-right font-semibold">{r.price ? eur2(r.price) : "—"}</TableCell>
@@ -170,7 +175,9 @@ export default function PriceSearch() {
                       <Truck className="inline h-3 w-3 mr-1" />{r.delivery_days} j
                     </TableCell>
                     <TableCell>
-                      <a href={r.url} target="_blank" rel="noreferrer" data-testid={`price-link-${r.supplier_key}`}>
+                      <a href={r.tracking_url || r.url} target="_blank" rel="noreferrer noopener sponsored"
+                         onClick={() => { if (r.is_affiliate) api.post("/affiliate/click", { supplier_key: r.supplier_key, product_url: r.url, query }).catch(() => {}); }}
+                         data-testid={`price-link-${r.supplier_key}`}>
                         <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
                       </a>
                     </TableCell>

@@ -22,6 +22,8 @@ import Admin from "@/pages/Admin";
 import Pricing from "@/pages/Pricing";
 import Referral from "@/pages/Referral";
 import Marketplace from "@/pages/Marketplace";
+import ProPortal from "@/pages/ProPortal";
+import ApiKeys from "@/pages/ApiKeys";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 
 const Protected = ({ children, admin }) => {
@@ -64,6 +66,9 @@ function AppRouter() {
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
+      <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />
+      <Route path="/pro/paiement/succes" element={<Protected><Shell><PaymentSuccess /></Shell></Protected>} />
+      <Route path="/developpeurs" element={<Protected><Shell><ApiKeys /></Shell></Protected>} />
       <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
       <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />

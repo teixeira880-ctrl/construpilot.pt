@@ -135,10 +135,10 @@ export default function Marketplace() {
           <ul className="grid gap-3 mt-2">
             {pros.slice(0, 5).map((p) => (
               <li key={p.user_id} className="border border-border rounded-sm p-3">
-                <p className="font-display font-semibold text-sm flex items-center gap-2">
+                <div className="font-display font-semibold text-sm flex items-center gap-2">
                   {p.company_name}
                   {p.badge && <Badge variant="outline" className="rounded-sm text-[10px]">{p.badge}</Badge>}
-                </p>
+                </div>
                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                   <Wrench className="h-3 w-3" /> {(p.trades || []).slice(0, 3).join(", ")}
                 </p>

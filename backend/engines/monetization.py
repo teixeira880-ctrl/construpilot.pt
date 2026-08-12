@@ -169,6 +169,16 @@ async def _mark_paid(session_id: str, s):
     if upd.modified_count == 0:
         return
     rec = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+
+    # Cas 1 : recharge de crédits pro
+    if rec.get("type") == "pro_credit_topup":
+        total = rec.get("amount_cents", 0) + rec.get("bonus_cents", 0)
+        await db.marketplace_pros.update_one({"user_id": rec["user_id"]},
+                                             {"$inc": {"credits_cents": total}})
+        logger.info(f"Pro credits +{total} cents pour {rec['user_id']}")
+        return
+
+    # Cas 2 : subscription/one_time — entitlement
     plan = await db.plans.find_one({"plan_id": rec["plan_id"]}, {"_id": 0})
     if not plan:
         return

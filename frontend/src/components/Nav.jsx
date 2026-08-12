@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
-  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles,
+  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -17,6 +17,7 @@ const LINKS = [
   { to: "/devis", label: "Scanner de devis", icon: FileSearch },
   { to: "/coach", label: "Coach IA", icon: MessageSquare },
   { to: "/marketplace", label: "Trouver un pro", icon: Wrench },
+  { to: "/pro", label: "Espace pro", icon: Handshake },
   { to: "/tarifs", label: "Tarifs", icon: Sparkles },
 ];
 

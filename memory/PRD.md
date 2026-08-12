@@ -50,7 +50,32 @@ Langue produit : **Français**.
 - **Leads** : `POST /api/leads`, admin `GET /api/admin/leads`, `GET /api/admin/stats`.
 - **Admin** : RBAC via `Depends(admin_user)` — user reçoit 403.
 
-## 4. État actuel (12/02/2026 — itération 6)
+## 4. État actuel (12/02/2026 — itération 7-8)
+### ✅ Implémenté & testé (Backend 119/119 pytest cumulés, tous flows frontend 100%)
+- Landing, Smart Project, catalogue travaux, auth email + Google, seed idempotent.
+- Smart Project IA, Estimateur wizard, 5 calculateurs matériaux.
+- Recherche prix Tavily temps réel (fallback demo intelligent) — **enrichie affiliate** (badge "Lien partenaire" pour Leroy Merlin/ManoMano, tracking Awin/CJ, transparence).
+- Dashboard, Coach IA SSE, Back-office admin.
+- PDF de devis (téléchargement + envoi email Resend).
+- Photos avant/après avec compression client + Object Storage + slider comparateur.
+- Chantier Timeline (frise chronologique).
+- Alertes Prix (APScheduler cron 08:00 UTC + emails Resend).
+- Rebranding ConstruPilot.
+- QuoteScanner accepte PDF (pypdf) + images.
+- **PHASE 1** : 8 plans core + Stripe checkout + entitlements + trial 7j + soft paywall + upgrade CTA.
+- **PHASE 2** : Savings Engine (4 postes calculés) + Codes promo Stripe Coupons/PromotionCodes admin.
+- **PHASE 3** : Referral 5€/5€ + Marketplace + Lead Scoring 0-100.
+- **PHASE 4** ✅
+  - **API Commerciale** : 3 plans (Starter 99€, Business 299€, Scale 999€), clés `ckp_live_XXX`, rate limiting mensuel, endpoints /api/v1/public/{estimation,prices,calculators}. Page `/developpeurs` (renommée depuis `/api` pour éviter collision ingress k8s).
+  - **KYC Pros** : SIREN + RC Pro + décennale + admin review + badge "ConstruPilot Verified".
+  - **Portail Pro** : dashboard `/pro` avec crédits, leads dispo (filtered), leads achetés, recharge Stripe avec bonus (+5% à 250€, +10% à 500€).
+  - **Affiliation Fournisseurs** : configs par supplier (Awin/CJ), enrichissement `/api/prices/search`, tracking clic + redirect `/api/r/aff/{sup}`, admin dashboard clics/redirections/conversions/revenue.
+
+### 🟡 Points d'attention (non bloquants)
+- Warning React setState during render dans Login/AuthContext.
+- Tavily ~25% fallback demo.
+- Webhook Stripe non testable en preview (mais wire vérifié).
+- Consider: shadcn AlertDialog remplaçant window.confirm() dans ApiKeys.jsx.
 ### ✅ Implémenté & testé (Backend 87/87 pytest cumulés, tous flows frontend OK)
 - Landing, Smart Project, catalogue travaux, auth email + Google, seed idempotent.
 - Smart Project IA, Estimateur wizard, 5 calculateurs matériaux.

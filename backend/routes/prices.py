@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user, optional_user
-from engines import price_search
+from engines import price_search, affiliate
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 
@@ -29,7 +29,9 @@ async def search(body: SearchIn, user=Depends(optional_user)):
                                      {"$inc": {"count": 1},
                                       "$set": {"last_at": datetime.now(timezone.utc).isoformat()}},
                                      upsert=True)
-    return await price_search.search(body.query, body.limit)
+    result = await price_search.search(body.query, body.limit)
+    result["results"] = await affiliate.enrich_prices(result.get("results") or [])
+    return result
 
 
 @router.get("/history")

@@ -1,0 +1,25 @@
+{
+  "summary": "Iter7 retest — Route conflict fix verified. /developpeurs now renders ApiKeys.jsx fully (was dead code under /api). Full end-to-end flow works: create (ckp_live_...), rotate (new key, old marked Révoqué), revoke (Révoqué count increments). Non-regression: all SPA routes (/, /tarifs, /marketplace, /pro, /parrainage, /admin, /dashboard, /developpeurs) render React app with correct title. Backend regression on POST/GET /api/api-keys is green (200 with admin token). Route conflict is definitively resolved.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Marketplace (non-blocker)", "issues": ["React hydration warning: <div> (Badge) descendant of <p> in Marketplace.jsx line 138 — cosmetic React warning, not blocking"]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_8.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Marketplace.jsx line 138: <Badge> (renders <div>) is nested inside a <p>, causing a React hydration warning. Wrap company_name in a <span> or change <p> to <div>.",
+    "ApiKeys.jsx uses native window.confirm() for rotate/revoke — acceptable but shadcn AlertDialog would be more consistent with the app UI system."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created 2 API keys via UI (TEST_iter7retest_*), 1 via backend curl (TEST_backend_regression). Test-prefixed, safe to leave or cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Route /developpeurs (formerly /api) hosts ApiKeys.jsx. All data-testid intact: api-key-create-btn, api-key-plan, api-key-name, fresh-key-dialog, fresh-key-value, api-keys-list, api-key-rotate-{prefix}, api-key-revoke-{prefix}. Auth via localStorage.setItem('construpilot_token', <token>) works for programmatic login in Playwright.",
+  "rca of the issue": "N/A — this iteration validated the fix. Previous iter7 RCA: k8s ingress routes ANY path starting with /api* to the FastAPI backend, so the SPA route '/api' was unreachable (backend returned JSON). Fix: renamed frontend route from '/api' to '/developpeurs' in App.js line 71 → route now served by React SPA, ApiKeys component renders normally."
+}
