@@ -468,7 +468,7 @@ export default function PlanTakeoff() {
           />
         </label>
 
-        <div className="flex items-center gap-3 justify-center">
+        <div className="flex items-center gap-4 justify-between flex-wrap">
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input
               type="checkbox"
@@ -479,6 +479,13 @@ export default function PlanTakeoff() {
             />
             Corriger la perspective (photo smartphone inclinée)
           </label>
+          <button
+            onClick={() => nav("/plan/compare")}
+            data-testid="plan-compare-link"
+            className="text-sm text-primary hover:underline gap-1 inline-flex items-center"
+          >
+            Comparer 2 plans (avant / après) →
+          </button>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-4">

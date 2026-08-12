@@ -415,6 +415,88 @@ async def delete_room(plan_id: str, room_id: str, user=Depends(current_user)):
     return {"ok": True}
 
 
+class CompareIn(BaseModel):
+    before_plan_id: str
+    after_plan_id: str
+    surface_tolerance_pct: float = Field(default=5.0, ge=0, le=100)
+
+
+@router.post("/compare")
+async def compare_plans(body: CompareIn, user=Depends(current_user)):
+    """Compare 2 plans (avant/après) et renvoie les pièces ajoutées, supprimées, modifiées."""
+    before = await db.plans_takeoff.find_one(
+        {"plan_id": body.before_plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "rooms": 1, "filename": 1}
+    )
+    after = await db.plans_takeoff.find_one(
+        {"plan_id": body.after_plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "rooms": 1, "filename": 1}
+    )
+    if not before or not after:
+        raise HTTPException(404, "Un des deux plans est introuvable")
+    if body.before_plan_id == body.after_plan_id:
+        raise HTTPException(400, "Sélectionnez deux plans différents")
+
+    def _norm(name: str) -> str:
+        import re
+        return re.sub(r"\s+", " ", (name or "").strip().lower())
+
+    rooms_b = before.get("rooms") or []
+    rooms_a = after.get("rooms") or []
+    by_name_b = {}
+    for r in rooms_b:
+        by_name_b.setdefault(_norm(r.get("name")), []).append(r)
+    matched_after_names = set()
+
+    added, removed, modified, unchanged = [], [], [], []
+    tol = body.surface_tolerance_pct
+
+    # Passe 1 : pour chaque room APRÈS, cherche un match dans AVANT (nom identique)
+    for ra in rooms_a:
+        name_norm = _norm(ra.get("name"))
+        if name_norm in by_name_b and by_name_b[name_norm]:
+            rb = by_name_b[name_norm].pop(0)
+            matched_after_names.add(id(ra))
+            sb = rb.get("surface_m2", 0)
+            sa = ra.get("surface_m2", 0)
+            delta_pct = abs(sa - sb) / sb * 100 if sb else 100
+            entry = {
+                "name": ra.get("name"),
+                "surface_before_m2": sb, "surface_after_m2": sa,
+                "delta_m2": round(sa - sb, 2),
+                "delta_pct": round(delta_pct, 1),
+                "perimeter_before_m": rb.get("perimeter_m", 0),
+                "perimeter_after_m": ra.get("perimeter_m", 0),
+            }
+            (unchanged if delta_pct <= tol else modified).append(entry)
+
+    # Rooms restantes dans AVANT non matchées → supprimées
+    for lst in by_name_b.values():
+        for rb in lst:
+            removed.append({"name": rb.get("name"), "surface_m2": rb.get("surface_m2", 0),
+                            "perimeter_m": rb.get("perimeter_m", 0)})
+
+    # Rooms d'APRÈS non matchées → ajoutées
+    for ra in rooms_a:
+        if id(ra) not in matched_after_names:
+            added.append({"name": ra.get("name"), "surface_m2": ra.get("surface_m2", 0),
+                          "perimeter_m": ra.get("perimeter_m", 0)})
+
+    total_b = sum(r.get("surface_m2", 0) for r in rooms_b)
+    total_a = sum(r.get("surface_m2", 0) for r in rooms_a)
+    return {
+        "before": {"plan_id": body.before_plan_id, "filename": before.get("filename"),
+                   "room_count": len(rooms_b), "total_surface_m2": round(total_b, 2)},
+        "after": {"plan_id": body.after_plan_id, "filename": after.get("filename"),
+                  "room_count": len(rooms_a), "total_surface_m2": round(total_a, 2)},
+        "delta_surface_m2": round(total_a - total_b, 2),
+        "delta_surface_pct": round((total_a - total_b) / total_b * 100, 2) if total_b else 0,
+        "added": added, "removed": removed,
+        "modified": modified, "unchanged": unchanged,
+        "surface_tolerance_pct": tol,
+    }
+
+
 # ============ TAKEOFF AGRÉGÉ ============
 
 class PageLevelIn(BaseModel):

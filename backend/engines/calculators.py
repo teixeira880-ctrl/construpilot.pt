@@ -212,6 +212,86 @@ def insulation(area: float, material: str = "laine_de_verre", thickness_mm: floa
     }
 
 
+def roof_facade(projected_m2: float = 100.0, pitch_deg: float | None = 30,
+                rampant_m: float | None = None, wall_perimeter_m: float = 0.0,
+                wall_height_m: float = 2.5, openings_m2: float = 0.0,
+                ite_thickness_mm: int = 140):
+    """Toitures inclinées + ITE façades.
+
+    - Si `pitch_deg` est fourni : real_area = projected / cos(angle).
+    - Sinon si `rampant_m` : real_area = projected * (rampant / (span/2)) — approximation.
+      On demande donc juste `rampant_m` et `projected_m2` et on calcule le ratio moyen.
+
+    Renvoie les quantités matériaux (couverture, écran sous-toiture, isolation combles,
+    et pour la façade : ITE, enduit, bardage, peinture).
+    """
+    import math
+    projected_m2 = max(0.0, projected_m2)
+    pitch = pitch_deg if pitch_deg is not None else 0
+    angle = math.radians(min(75, max(0, pitch)))
+    real_area = round(projected_m2 / math.cos(angle) if angle < math.pi / 2 else projected_m2, 2)
+    slope_ratio = real_area / projected_m2 if projected_m2 else 1.0
+
+    # NB : le rampant seul (longueur d'un versant) est ambigu sans la longueur du bâti
+    # → on privilégie la pente. Le rampant est conservé à titre indicatif uniquement.
+
+    # Surface façade
+    facade_gross = round(wall_perimeter_m * wall_height_m, 2)
+    facade_net = round(max(0.0, facade_gross - openings_m2), 2)
+
+    # ITE : épaisseur pilote la quantité de panneaux
+    ite_panels = _ceil(facade_net * (ite_thickness_mm / 140))  # référence 140mm
+    return {
+        "inputs": {
+            "projected_m2": projected_m2, "pitch_deg": pitch_deg, "rampant_m": rampant_m,
+            "wall_perimeter_m": wall_perimeter_m, "wall_height_m": wall_height_m,
+            "openings_m2": openings_m2, "ite_thickness_mm": ite_thickness_mm,
+        },
+        "results": [
+            {"label": "Surface toiture projetée", "value": projected_m2, "unit": "m²"},
+            {"label": "Surface toiture RÉELLE (rampant)", "value": real_area, "unit": "m²"},
+            {"label": "Ratio pente", "value": round(slope_ratio, 3), "unit": ""},
+            {"label": "Façade brute", "value": facade_gross, "unit": "m²"},
+            {"label": "Façade nette (- ouvertures)", "value": facade_net, "unit": "m²"},
+        ],
+        "materials": [
+            # Toiture
+            {"name": "Tuile / ardoise (couverture)", "quantity": round(real_area * 1.05, 2),
+             "unit": "m²", "search": "tuile terre cuite couverture"},
+            {"name": "Écran sous-toiture (rouleau 75 m²)",
+             "quantity": _ceil(real_area / 75), "unit": "rouleau",
+             "search": "ecran sous toiture HPV 75m2"},
+            {"name": "Liteaux 25×50 (barre 4 m)",
+             "quantity": _ceil(real_area * 3 / 4), "unit": "barre",
+             "search": "liteau bois 25x50 4m"},
+            {"name": "Isolation combles (laine roche 240 mm)",
+             "quantity": round(projected_m2 * 1.05, 2), "unit": "m²",
+             "search": "laine de roche 240 mm combles"},
+            # Façade ITE
+            {"name": f"Panneau ITE {ite_thickness_mm} mm (paquet 3 m²)",
+             "quantity": _ceil(facade_net / 3), "unit": "paquet",
+             "search": f"panneau ite polystyrene {ite_thickness_mm}mm"},
+            {"name": "Colle ITE (sac 25 kg)",
+             "quantity": _ceil(facade_net / 4.5), "unit": "sac",
+             "search": "colle enduit ite sac 25 kg"},
+            {"name": "Enduit de finition (sac 25 kg)",
+             "quantity": _ceil(facade_net / 3.5), "unit": "sac",
+             "search": "enduit de finition sac 25 kg"},
+            {"name": "Treillis fibre (rouleau 50 m²)",
+             "quantity": _ceil(facade_net / 50), "unit": "rouleau",
+             "search": "treillis armature ite rouleau 50m2"},
+            {"name": "Peinture façade (pot 10 L)",
+             "quantity": _ceil(facade_net * 0.15 / 10), "unit": "pot 10L",
+             "search": "peinture facade acrylique 10L"},
+        ],
+        "warnings": (
+            ["Pente > 60° — vérifier le rendu de la surface calculée"] if pitch_deg and pitch_deg > 60 else []
+        ) + (
+            ["Ni pente ni rampant fournis — surface réelle = surface projetée"] if not pitch_deg and not rampant_m else []
+        ),
+    }
+
+
 CALCULATORS = {
     "paint": {"key": "paint", "name": "Peinture", "fn": paint, "icon": "PaintRoller",
               "fields": [
@@ -260,4 +340,14 @@ CALCULATORS = {
                        {"name": "thickness_mm", "label": "Épaisseur (mm)", "type": "number", "default": 200},
                        {"name": "target_r", "label": "R visé (optionnel)", "type": "number", "default": None},
                    ]},
+    "roof_facade": {"key": "roof_facade", "name": "Toiture & Façade ITE", "fn": roof_facade, "icon": "Home",
+                    "fields": [
+                        {"name": "projected_m2", "label": "Surface toiture projetée (m²)", "type": "number", "default": 100},
+                        {"name": "pitch_deg", "label": "Pente (°)", "type": "number", "default": 30},
+                        {"name": "rampant_m", "label": "Longueur rampant (m, optionnel)", "type": "number", "default": None},
+                        {"name": "wall_perimeter_m", "label": "Périmètre façade (m)", "type": "number", "default": 40},
+                        {"name": "wall_height_m", "label": "Hauteur façade (m)", "type": "number", "default": 5.5},
+                        {"name": "openings_m2", "label": "Ouvertures totales (m²)", "type": "number", "default": 15},
+                        {"name": "ite_thickness_mm", "label": "Épaisseur ITE (mm)", "type": "number", "default": 140},
+                    ]},
 }

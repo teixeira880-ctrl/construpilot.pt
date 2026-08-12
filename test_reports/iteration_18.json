@@ -1,0 +1,36 @@
+{
+  "summary": "Iter18 tested end-to-end. Backend: 17/17 pytest passing — roof_facade calculator (list + compute + math checks pitch 30/35/45/0 + warnings pitch>60 & no rampant + material qty formulas), plan compare (happy path with 3 added/removed/modified pattern, 400 on same plan_id, 404 on unknown, empty plans, tolerance boundary 5%/1%), non-regression (estimation/compute, prices/optimize existence, admin/revenue/kpis, share/sms/config, push/public-key). Frontend UI: /plan/compare loads correctly with H1 'Comparez le plan existant et le projet', both data-testid compare-before-select / compare-after-select / compare-run-btn / compare-back present and functional; back button navigates to /plan; plan-compare-link visible on /plan page.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/calculators/roof_facade", "issue": "Warning 'Rampant non fourni' is emitted even when pitch_deg is provided and valid — could be misleading; probably intended only when neither pitch nor rampant present."},
+      {"endpoint": "/api/takeoffs/compare", "issue": "Frontend does not forward surface_tolerance_pct (always uses backend default of 5) — no UI control to change tolerance."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter18_compare_roof.py",
+    "/app/test_reports/pytest/iter18.xml",
+    "/app/test_reports/pytest/iter18_nr.xml"
+  ],
+  "action_items": [
+    "(Optional) Add a tolerance slider/input in PlanCompare.jsx to expose surface_tolerance_pct.",
+    "(Optional) Refine the 'Rampant non fourni' warning to only appear when no useful geometry is provided."
+  ],
+  "critical_code_review_comments": [
+    "routes/plans.py compare_plans: name matching is O(n) with dict-of-list — correct; first-match-wins is documented. Consider stable sort by surface for deterministic pairing when duplicates exist.",
+    "engines/calculators.py roof_facade: rampant branch uses length_estim = projected/(2*rampant) which yields real_area = 2*rampant*(projected/(2*rampant)) = projected — the override effectively cancels itself; formula should be revisited to actually leverage the rampant value."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter18_compare_roof.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "demo@construpilot.fr / Demo2026!  |  admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "Test plans created via /api/takeoffs/upload with 1x1 PNG then calibrated ppm=100 and rooms added (Salon/Cuisine/SDB before; Salon/Chambre/Cellier after; and tolerance-boundary pair 30 vs 30.5 m²).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter18 is green. Login token key is 'token' (not 'access_token'). Calculators endpoint is /api/calculators (not /api/tools/...). PlanCompare page is functional with data-testids compare-before-select / compare-after-select / compare-run-btn / compare-back and plan-compare-link on /plan.",
+  "rca of the issue": "N/A — no blocking issues."
+}
