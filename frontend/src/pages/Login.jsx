@@ -24,7 +24,7 @@ export default function Login() {
     try {
       if (mode === "login") await login(form.email, form.password);
       else await register(form.name, form.email, form.password);
-      toast.success("Bienvenue chez CMRENOV AI");
+      toast.success("Bienvenue chez ConstruPilot");
       navigate("/dashboard");
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Échec de la connexion");
@@ -49,7 +49,7 @@ export default function Login() {
             <span className="h-8 w-8 grid place-items-center bg-primary rounded-sm">
               <Hammer className="h-4 w-4 text-primary-foreground" />
             </span>
-            <span className="font-display font-extrabold text-lg">CMRENOV<span className="text-primary"> AI</span></span>
+            <span className="font-display font-extrabold text-lg">Constru<span className="text-primary">Pilot</span></span>
           </Link>
           <div>
             <p className="overline">Estimez. Comparez. Construisez.</p>
@@ -109,7 +109,7 @@ export default function Login() {
                   {busy ? "Connexion…" : "Se connecter"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Compte de démonstration : <span className="num">demo@cmrenov.fr</span> / <span className="num">Demo2026!</span>
+                  Compte de démonstration : <span className="num">demo@construpilot.fr</span> / <span className="num">Demo2026!</span>
                 </p>
               </form>
             </TabsContent>

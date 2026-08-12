@@ -50,7 +50,7 @@ export default function Dashboard() {
               Bonjour {user?.name?.split(" ")[0]}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Plan {user?.plan} · vos projets, estimations, matériaux, devis et demandes CMRENOV.
+              Plan {user?.plan} · vos projets, estimations, matériaux, devis et demandes ConstruPilot.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -68,7 +68,7 @@ export default function Dashboard() {
         <Stat label="Mes projets" value={num(projects.length)} testId="stat-projects" />
         <Stat label="Budget cumulé" value={eur(totalBudget)} testId="stat-budget" accent />
         <Stat label="Surface totale" value={`${num(totalSurface, 1)} m²`} testId="stat-surface" />
-        <Stat label="Demandes CMRENOV" value={num(leads.length)} testId="stat-leads" />
+        <Stat label="Demandes ConstruPilot" value={num(leads.length)} testId="stat-leads" />
       </div>
 
       <Tabs defaultValue="projects">
@@ -76,7 +76,7 @@ export default function Dashboard() {
           <TabsTrigger value="projects" className="rounded-sm" data-testid="dash-tab-projects">Mes projets</TabsTrigger>
           <TabsTrigger value="quotes" className="rounded-sm" data-testid="dash-tab-quotes">Mes devis analysés</TabsTrigger>
           <TabsTrigger value="alerts" className="rounded-sm" data-testid="dash-tab-alerts">Mes alertes prix</TabsTrigger>
-          <TabsTrigger value="leads" className="rounded-sm" data-testid="dash-tab-leads">Mes demandes CMRENOV</TabsTrigger>
+          <TabsTrigger value="leads" className="rounded-sm" data-testid="dash-tab-leads">Mes demandes ConstruPilot</TabsTrigger>
         </TabsList>
 
         <TabsContent value="projects" className="mt-6">
@@ -188,7 +188,7 @@ export default function Dashboard() {
           {leads.length === 0 ? (
             <div className="surface p-12 text-center" data-testid="leads-empty">
               <HardHat className="h-8 w-8 mx-auto text-muted-foreground" />
-              <p className="mt-4 text-sm text-muted-foreground">Aucune demande envoyée à CMRENOV.</p>
+              <p className="mt-4 text-sm text-muted-foreground">Aucune demande envoyée à ConstruPilot.</p>
             </div>
           ) : (
             <div className="grid gap-3" data-testid="leads-list">

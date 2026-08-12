@@ -10,6 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { api, API } from "@/lib/api";
+import { compressImage } from "@/lib/imageCompress";
 
 const KIND_LABEL = { before: "Avant", after: "Après", progress: "Chantier" };
 const KIND_STYLE = {
@@ -139,14 +140,18 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
   };
   useEffect(() => { load(); }, [projectId]);
 
-  const upload = async (file) => {
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Fichier trop lourd (max 10 Mo)");
+  const upload = async (rawFile) => {
+    if (!rawFile) return;
+    if (rawFile.size > 25 * 1024 * 1024) {
+      toast.error("Fichier trop lourd (max 25 Mo avant compression)");
       return;
     }
     setUploading(true);
     try {
+      const file = await compressImage(rawFile);
+      const gain = rawFile.size > file.size
+        ? ` (compressée : ${Math.round((1 - file.size / rawFile.size) * 100)} %)`
+        : "";
       const fd = new FormData();
       fd.append("file", file);
       fd.append("kind", kind);
@@ -156,7 +161,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setCaption("");
-      toast.success("Photo ajoutée");
+      toast.success(`Photo ajoutée${gain}`);
       load();
     } catch {
       toast.error("Upload impossible");
@@ -240,7 +245,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
             <Upload className="h-4 w-4" /> {uploading ? "Envoi…" : "Choisir une photo"}
           </Button>
           <p className="text-xs text-muted-foreground self-center">
-            JPG, PNG, WEBP · 10 Mo max · associez un lot pour comparer avant/après
+            JPG, PNG, WEBP · compressé automatiquement (~150 Ko) · associez un lot pour comparer avant/après
           </p>
         </div>
       </div>

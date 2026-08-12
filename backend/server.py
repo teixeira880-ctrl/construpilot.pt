@@ -12,17 +12,20 @@ load_dotenv(ROOT_DIR / '.env')
 
 from core.db import db, client  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
-from engines import storage  # noqa: E402
+from engines import storage, alerting  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
                     ai_routes, leads, admin, photos)  # noqa: E402
 
-app = FastAPI(title="CMRENOV AI API")
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
+from apscheduler.triggers.cron import CronTrigger  # noqa: E402
+
+app = FastAPI(title="ConstruPilot API")
 api_router = APIRouter(prefix="/api")
 
 
 @api_router.get("/")
 async def root():
-    return {"app": "CMRENOV AI", "tagline": "Votre expert travaux, de l'idée au chantier.",
+    return {"app": "ConstruPilot", "tagline": "Estimez, Comparez, Construisez.",
             "status": "ok"}
 
 
@@ -49,13 +52,16 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-ADMIN_EMAIL = "admin@cmrenov.fr"
-DEMO_EMAIL = "demo@cmrenov.fr"
+ADMIN_EMAIL = "admin@construpilot.fr"
+DEMO_EMAIL = "demo@construpilot.fr"
 
 
 @app.on_event("startup")
 async def seed():
-    for email, name, role, pw in ((ADMIN_EMAIL, "Admin CMRENOV", "admin", "Cmrenov2026!"),
+    # Nettoyage des anciens comptes (renommage marque)
+    await db.users.delete_many({"email": {"$in": ["admin@cmrenov.fr", "demo@cmrenov.fr"]}})
+
+    for email, name, role, pw in ((ADMIN_EMAIL, "Admin ConstruPilot", "admin", "Construpilot2026!"),
                                   (DEMO_EMAIL, "Client Démo", "user", "Demo2026!")):
         existing = await db.users.find_one({"email": email})
         doc = {"email": email, "name": name, "role": role, "plan": "pro" if role == "admin" else "premium",
@@ -72,7 +78,17 @@ async def seed():
         storage.init_storage()
     except Exception as e:
         logger.warning(f"Storage init skipped: {e}")
-    logger.info("CMRENOV AI backend prêt")
+
+    # Vérification quotidienne des alertes prix (tous les jours à 08:00 UTC)
+    scheduler = AsyncIOScheduler(timezone="UTC")
+    scheduler.add_job(alerting.check_all_alerts,
+                      CronTrigger(hour=8, minute=0),
+                      id="daily_price_alerts", max_instances=1, coalesce=True)
+    scheduler.start()
+    app.state.scheduler = scheduler
+    logger.info("Scheduler started (daily price alerts @ 08:00 UTC)")
+
+    logger.info("ConstruPilot backend prêt")
 
 
 @app.on_event("shutdown")

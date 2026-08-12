@@ -79,7 +79,7 @@ export default function Diy() {
             <AlertDescription>
               <ul className="mt-2 grid gap-1 text-sm">{guide.safety.map((s, i) => <li key={i}>• {s}</li>)}</ul>
               {guide.pro_recommended && (
-                <div className="mt-4"><LeadDialog label="Demander une intervention CMRENOV" /></div>
+                <div className="mt-4"><LeadDialog label="Demander une intervention ConstruPilot" /></div>
               )}
             </AlertDescription>
           </Alert>
@@ -154,7 +154,7 @@ export default function Diy() {
                   <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
                     {s.tips && (
                       <div className="p-3 rounded-sm border border-emerald-500/30 bg-emerald-500/5">
-                        <p className="overline text-emerald-600 dark:text-emerald-400">Conseil CMRENOV</p>
+                        <p className="overline text-emerald-600 dark:text-emerald-400">Conseil ConstruPilot</p>
                         <p className="mt-1 text-muted-foreground">{s.tips}</p>
                       </div>
                     )}
@@ -183,7 +183,7 @@ export default function Diy() {
   return (
     <div className="grid gap-10">
       <SectionTitle over="DIY — Je réalise les travaux moi-même" title="Matériaux calculés, guide de professionnel">
-        Choisissez un travail : CMRENOV AI calcule les quantités (marges incluses), détaille chaque étape,
+        Choisissez un travail : ConstruPilot calcule les quantités (marges incluses), détaille chaque étape,
         les conseils, les erreurs à éviter et vous alerte quand un professionnel est nécessaire.
       </SectionTitle>
 

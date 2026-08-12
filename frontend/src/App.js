@@ -65,7 +65,7 @@ function AppRouter() {
 
 function App() {
   useEffect(() => {
-    const saved = localStorage.getItem("cmrenov_theme");
+    const saved = localStorage.getItem("construpilot_theme");
     if (saved !== "light") document.documentElement.classList.add("dark");
   }, []);
 

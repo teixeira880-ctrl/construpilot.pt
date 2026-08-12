@@ -66,7 +66,7 @@ export default function Admin() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Back-office CMRENOV" title="Administration">
+      <SectionTitle over="Back-office ConstruPilot" title="Administration">
         Prix de référence, coefficients régionaux, fournisseurs, utilisateurs, projets et demandes de devis.
       </SectionTitle>
 

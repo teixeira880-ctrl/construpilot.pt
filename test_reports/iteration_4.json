@@ -1,0 +1,34 @@
+{
+  "summary": "Iter 4 rebranding testing done: CMRENOV Travaux AI -> ConstruPilot. 13/13 backend rebranding tests pass. Frontend: landing/login/dashboard/estimator/prices/coach/diy/quote-scanner/photo-analyse/smart-project all render with new brand, no visible 'CMRENOV' leak on any of the 8 protected pages tested. LocalStorage now uses 'construpilot_token' correctly and old 'cmrenov_token' is not set. Logout clears token. PDF header contains 'ConstruPilot' and no 'cmrenov'. Old @cmrenov.fr credentials (admin/demo) are rejected; new @construpilot.fr credentials (admin/demo) work and admin has role='admin'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter4_rebranding.py",
+    "/app/test_reports/pytest/iter4_rebranding.xml"
+  ],
+  "action_items": [
+    "(pre-existing, NON-blocking) Login.jsx logs a React warning: 'Cannot update a component (BrowserRouter) while rendering a different component (Login)'. Likely a setState-in-render or navigate() during render. Not related to rebranding but worth fixing eventually."
+  ],
+  "critical_code_review_comments": [
+    "backend/.env still contains JWT_SECRET=cmrenov_ai_jwt_secret_2026_change_me — cosmetic only, not user-visible, but consider renaming the env var for full rebranding consistency (invalidates existing tokens, safe if done at deploy).",
+    "frontend/.env: REACT_APP_BACKEND_URL still points to cmrenov-ai.preview.emergentagent.com — noted by the problem statement as intentional (Emergent preview domain, not brand). OK.",
+    "Login.jsx setState-in-render warning should be investigated (pre-existing)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter4_rebranding.py (new)"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% on manual + scripted checks"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "None. Idempotent seed at backend startup deletes old @cmrenov.fr accounts and creates the two ConstruPilot accounts.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter 4 is a pure rebranding pass. New brand 'ConstruPilot' with tagline 'Estimez, Comparez, Construisez.' is live end-to-end (API root, PDF header/filename, email subject, frontend title, H1, footer, logo, login hint, localStorage keys 'construpilot_token' and 'construpilot_theme'). Regression smoke passed for /api/estimation/compute, /api/estimation/pdf, /api/estimation/pdf/email, /api/estimation/analyse (called 'smart-project' in the review), /api/prices/search, /api/prices/alerts/check-now. New rebranding test file at /app/backend/tests/test_iter4_rebranding.py. Note: the review mentions /api/ai/smart-project but backend route is /api/estimation/analyse (existing route since iter 1); this is a naming mismatch in the review, not a backend regression.",
+  "rca of the issue": "N/A — no bugs found."
+}

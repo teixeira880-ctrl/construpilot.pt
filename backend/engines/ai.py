@@ -14,12 +14,12 @@ KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 PROVIDER, MODEL = "openai", "gpt-5.5"
 
 BRAND = (
-    "Tu es CMRENOV AI, l'expert travaux de l'entreprise CMRENOV. "
+    "Tu es ConstruPilot, l'expert travaux de l'plateforme ConstruPilot. "
     "Tu réponds toujours en français, de façon professionnelle, concrète et chiffrée. "
     "Tu n'encourages jamais un particulier à intervenir sur le gaz, un tableau électrique, "
     "un mur porteur, la structure, l'amiante, une toiture dangereuse ou l'étanchéité structurelle : "
     "dans ces cas tu recommandes explicitement un professionnel. "
-    "Les prix et quantités définitifs viennent du moteur de calcul CMRENOV, pas de toi : "
+    "Les prix et quantités définitifs viennent du moteur de calcul ConstruPilot, pas de toi : "
     "tu peux donner des ordres de grandeur mais tu invites à utiliser l'estimateur."
 )
 
@@ -44,7 +44,7 @@ async def _complete(system: str, text: str, images: list[str] | None = None,
 
 async def stream_chat(history: list[dict], message: str, session_id: str, context: str = ""):
     system = BRAND + (f"\n\nContexte du projet de l'utilisateur :\n{context}" if context else "")
-    convo = "\n".join(f"{'Utilisateur' if m['role'] == 'user' else 'CMRENOV AI'}: {m['content']}"
+    convo = "\n".join(f"{'Utilisateur' if m['role'] == 'user' else 'ConstruPilot'}: {m['content']}"
                       for m in history[-10:])
     prompt = (f"Historique de la conversation:\n{convo}\n\nNouveau message: {message}"
               if convo else message)
@@ -145,7 +145,7 @@ async def analyse_quote(text: str = "", image_b64: str | None = None,
     system = BRAND + "\nTu analyses un devis ou une facture de travaux et retournes UNIQUEMENT du JSON valide."
     ref = json.dumps(reference or {}, ensure_ascii=False)[:2000]
     prompt = f"""Analyse ce devis / facture de travaux.
-Prix de référence CMRENOV pour comparaison : {ref}
+Prix de référence ConstruPilot pour comparaison : {ref}
 Retourne ce JSON :
 {{
  "company": "nom de l'entreprise si visible",
@@ -180,7 +180,7 @@ async def compare_quotes(quotes: list[dict]) -> dict:
  "best_value": "nom de l'entreprise offrant le meilleur rapport qualité/prix",
  "differences": ["différences importantes de prestations, quantités ou matériaux"],
  "missing_items": ["éléments oubliés par certains devis"],
- "recommendation": "recommandation finale CMRENOV"
+ "recommendation": "recommandation finale ConstruPilot"
 }}
 Devis : {json.dumps(quotes, ensure_ascii=False)[:8000]}"""
     raw = await _complete(system, prompt)
@@ -199,7 +199,7 @@ async def project_advice(estimation: dict) -> str:
         "lots": [{"nom": l["name"], "total": l["total"], "difficulté": l["difficulty_label"]}
                  for l in estimation.get("lots", [])],
     }
-    prompt = ("Rédige des recommandations professionnelles CMRENOV pour ce chantier "
+    prompt = ("Rédige des recommandations professionnelles ConstruPilot pour ce chantier "
               "(6 à 10 puces courtes : ordre des travaux, points de vigilance, économies possibles, "
               "ce qui est faisable soi-même). Pas de markdown de titre, uniquement des puces '- '.\n"
               + json.dumps(slim, ensure_ascii=False))

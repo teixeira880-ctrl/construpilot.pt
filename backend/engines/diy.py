@@ -187,8 +187,8 @@ TASKS = [
         "safety": ["DANGER MORTEL : intervention sur tableau électrique réservée à un électricien qualifié.",
                    "Consignation obligatoire, vérification d'absence de tension, conformité NF C 15-100 et attestation Consuel."],
         "steps": [
-            {"title": "Intervention professionnelle requise", "text": "Cette opération engage la sécurité des personnes et l'assurance du logement. CMRENOV recommande fortement de confier ce lot à un électricien qualifié.",
-             "tips": "Demandez une proposition CMRENOV depuis votre projet.", "mistakes": "Travailler sous tension.", "tools": []},
+            {"title": "Intervention professionnelle requise", "text": "Cette opération engage la sécurité des personnes et l'assurance du logement. ConstruPilot recommande fortement de confier ce lot à un électricien qualifié.",
+             "tips": "Demandez une proposition ConstruPilot depuis votre projet.", "mistakes": "Travailler sous tension.", "tools": []},
         ],
     },
 ]

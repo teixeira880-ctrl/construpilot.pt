@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SectionTitle } from "@/components/Bits";
 
 export default function SmartProject() {
-  const [description, setDescription] = useState(sessionStorage.getItem("cmrenov_description") || "");
+  const [description, setDescription] = useState(sessionStorage.getItem("construpilot_description") || "");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [name, setName] = useState("");
@@ -39,16 +39,16 @@ export default function SmartProject() {
   }, []);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("cmrenov_description");
+    const stored = sessionStorage.getItem("construpilot_description");
     if (stored) {
-      sessionStorage.removeItem("cmrenov_description");
+      sessionStorage.removeItem("construpilot_description");
       run(stored);
     }
   }, [run]);
 
   const save = async () => {
     if (!user) {
-      sessionStorage.setItem("cmrenov_description", description);
+      sessionStorage.setItem("construpilot_description", description);
       navigate("/login");
       return;
     }
@@ -73,7 +73,7 @@ export default function SmartProject() {
   return (
     <div className="grid gap-12">
       <div>
-        <SectionTitle over="CMRENOV Smart Project" title="Décrivez votre projet, l'IA fait le reste">
+        <SectionTitle over="ConstruPilot Smart Project" title="Décrivez votre projet, l'IA fait le reste">
           Liste des travaux, ordre d'exécution, budget, quantités, durée, ce que vous pouvez faire
           vous-même, risques et économies possibles.
         </SectionTitle>
@@ -100,7 +100,7 @@ export default function SmartProject() {
         <div className="surface p-12 text-center" data-testid="smart-project-loading">
           <div className="h-8 w-8 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="mt-6 text-sm text-muted-foreground">
-            CMRENOV AI analyse votre projet, décompose les lots et lance le moteur de calcul…
+            ConstruPilot analyse votre projet, décompose les lots et lance le moteur de calcul…
           </p>
         </div>
       )}
@@ -109,7 +109,7 @@ export default function SmartProject() {
         <>
           <div className="grid lg:grid-cols-3 gap-4" data-testid="analysis-block">
             <div className="surface p-6 lg:col-span-2">
-              <p className="overline">Ce que CMRENOV AI a compris</p>
+              <p className="overline">Ce que ConstruPilot a compris</p>
               <p className="mt-3 text-sm">{result.analysis.summary}</p>
               {result.analysis.diy_advice && (
                 <p className="mt-4 text-sm text-muted-foreground flex gap-2">
@@ -158,7 +158,7 @@ export default function SmartProject() {
           </div>
           <p className="text-xs text-muted-foreground -mt-8">
             Estimation moyenne : <span className="num">{eur(result.estimation.total_avg)}</span> — indicative,
-            calculée par le moteur déterministe CMRENOV (prix de référence régionaux).
+            calculée par le moteur déterministe ConstruPilot (prix de référence régionaux).
           </p>
         </>
       )}

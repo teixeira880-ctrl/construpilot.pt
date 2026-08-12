@@ -13,7 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api, API, eur, eur2, num } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
+import { EmailPdfDialog } from "@/components/EmailPdfDialog";
 import { PhotosGallery } from "@/components/PhotosGallery";
+import { Timeline } from "@/components/Timeline";
 import { Stat } from "@/components/Bits";
 
 const NEXT = { todo: "doing", doing: "done", done: "todo" };
@@ -94,7 +96,7 @@ export default function ProjectDetail() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Estimation-CMRENOV-${p.name}.pdf`;
+      a.download = `Estimation-ConstruPilot-${p.name}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("PDF généré");
@@ -116,6 +118,7 @@ export default function ProjectDetail() {
           <Button onClick={downloadPdf} disabled={busy === "pdf"} data-testid="download-pdf-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <Download className="h-4 w-4" /> {busy === "pdf" ? "Génération…" : "Télécharger le PDF"}
           </Button>
+          <EmailPdfDialog project={{ name: p.name, city: p.city, description: p.description }} estimation={p.estimation} advice={p.advice || ""} />
           <LeadDialog projectId={p.project_id} budget={p.estimation.total_avg} description={p.description} />
         </div>
       </div>
@@ -169,6 +172,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="estimation" className="rounded-sm" data-testid="pd-tab-estimation">Estimation</TabsTrigger>
           <TabsTrigger value="materials" className="rounded-sm" data-testid="pd-tab-materials">Matériaux & panier</TabsTrigger>
           <TabsTrigger value="photos" className="rounded-sm" data-testid="pd-tab-photos">Photos avant/après</TabsTrigger>
+          <TabsTrigger value="timeline" className="rounded-sm" data-testid="pd-tab-timeline">Chantier timeline</TabsTrigger>
           <TabsTrigger value="advice" className="rounded-sm" data-testid="pd-tab-advice">Conseils IA</TabsTrigger>
         </TabsList>
 
@@ -287,10 +291,14 @@ export default function ProjectDetail() {
           <PhotosGallery projectId={p.project_id} lots={p.estimation.lots} />
         </TabsContent>
 
+        <TabsContent value="timeline" className="mt-6">
+          <Timeline projectId={p.project_id} />
+        </TabsContent>
+
         <TabsContent value="advice" className="mt-6">
           <div className="surface p-8">
             <Button onClick={genAdvice} disabled={busy === "advice"} data-testid="generate-advice-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <Sparkles className="h-4 w-4" /> {busy === "advice" ? "Génération…" : "Générer les conseils CMRENOV AI"}
+              <Sparkles className="h-4 w-4" /> {busy === "advice" ? "Génération…" : "Générer les conseils ConstruPilot"}
             </Button>
             {p.advice && (
               <div className="mt-8 grid gap-3 text-sm" data-testid="advice-content">

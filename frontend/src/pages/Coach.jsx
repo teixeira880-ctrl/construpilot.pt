@@ -17,7 +17,7 @@ const EXAMPLES = [
 
 export default function Coach() {
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Bonjour, je suis CMRENOV AI. Décrivez votre chantier ou posez-moi votre question travaux : estimation, matériaux, étapes, choix techniques." },
+    { role: "assistant", content: "Bonjour, je suis ConstruPilot. Décrivez votre chantier ou posez-moi votre question travaux : estimation, matériaux, étapes, choix techniques." },
   ]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -103,7 +103,7 @@ export default function Coach() {
 
   return (
     <div className="grid gap-8">
-      <SectionTitle over="Coach IA CMRENOV" title="Votre copilote travaux, à la voix ou au clavier">
+      <SectionTitle over="Coach IA ConstruPilot" title="Votre copilote travaux, à la voix ou au clavier">
         Explications, ordres de grandeur, matériaux, étapes et recommandations professionnelles.
         Les chiffrages définitifs passent toujours par le moteur de calcul.
       </SectionTitle>

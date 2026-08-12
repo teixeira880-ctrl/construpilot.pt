@@ -111,7 +111,49 @@ async def estimation_pdf(body: PdfIn):
     name = (body.project or {}).get("name") or "Projet"
     safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
     return Response(content=data, media_type="application/pdf", headers={
-        "Content-Disposition": f'attachment; filename="Estimation-CMRENOV-{safe}.pdf"'})
+        "Content-Disposition": f'attachment; filename="Estimation-ConstruPilot-{safe}.pdf"'})
+
+
+class PdfEmailIn(BaseModel):
+    project: dict
+    estimation: dict
+    advice: str = ""
+    to: str
+    message: str = ""
+
+
+@router.post("/pdf/email")
+async def estimation_pdf_email(body: PdfEmailIn):
+    """Envoie le PDF de devis par email via Resend (route publique)."""
+    if not body.estimation or not body.estimation.get("lots"):
+        raise HTTPException(status_code=400, detail="Estimation requise")
+    from engines import emailer
+    name = (body.project or {}).get("name") or "Votre projet"
+    data = pdf.build_estimation_pdf(body.project or {}, body.estimation,
+                                    body.estimation.get("planning") or [],
+                                    body.advice or "", None)
+    safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
+    total = body.estimation.get("total_avg", 0)
+    surface = body.estimation.get("surface", 0)
+    extra = f"<p style='margin-top:20px;padding:16px;background:#f8fafc;border-left:3px solid #FF5A00'>{body.message}</p>" if body.message else ""
+    html = emailer.wrap_html(
+        f"Votre estimation : {name}",
+        f"""<p>Bonjour,</p>
+<p>Vous trouverez en pièce jointe l'estimation détaillée générée par <b>ConstruPilot</b>.</p>
+<ul>
+<li><b>Surface</b> : {surface} m²</li>
+<li><b>Coût moyen estimé</b> : {total:,.0f} €</li>
+</ul>
+<p>Le PDF détaille chaque lot, le planning, les matériaux et les recommandations.</p>{extra}
+<p>Pour affiner ou obtenir une intervention ConstruPilot, revenez sur l'application.</p>""".replace(",", " "))
+    try:
+        await emailer.send_email_with_pdf(body.to,
+                                          f"Estimation ConstruPilot — {name}",
+                                          html, data,
+                                          filename=f"Estimation-ConstruPilot-{safe}.pdf")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Envoi impossible: {e}")
+    return {"ok": True, "to": body.to}
 
 
 @router.post("/materials")

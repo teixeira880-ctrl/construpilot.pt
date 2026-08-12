@@ -1,4 +1,4 @@
-"""Emergent Object Storage wrapper for CMRENOV AI.
+"""Emergent Object Storage wrapper for ConstruPilot.
 
 Init once at startup, then reuse the storage_key globally.
 """
@@ -13,7 +13,7 @@ STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() \
     or "https://integrations.emergentagent.com"
 STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
 EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
-APP_NAME = "cmrenov"
+APP_NAME = "construpilot"
 
 _storage_key: str | None = None
 

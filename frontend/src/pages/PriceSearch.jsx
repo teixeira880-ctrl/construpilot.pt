@@ -72,6 +72,18 @@ export default function PriceSearch() {
     setTarget("");
   };
 
+  const checkAlertsNow = async () => {
+    if (!user) return toast.error("Connectez-vous pour vérifier vos alertes");
+    try {
+      const { data } = await api.post("/prices/alerts/check-now");
+      if (data.notified > 0) {
+        toast.success(`${data.notified} email(s) d'alerte envoyé(s)`);
+      } else {
+        toast.info("Aucun matériau surveillé sous son prix cible pour l'instant");
+      }
+    } catch { toast.error("Vérification impossible"); }
+  };
+
   const rows = data ? [...data.results].sort(SORTS[sort].fn) : [];
 
   return (
@@ -190,12 +202,15 @@ export default function PriceSearch() {
             <div className="surface p-6">
               <p className="overline flex items-center gap-2"><Bell className="h-4 w-4" /> Alerte prix</p>
               <p className="mt-3 text-xs text-muted-foreground">
-                Ex : « M'avertir lorsque ce produit passe sous 20 € ».
+                Nous surveillons ce produit chaque jour. Vous recevez un email dès qu'il passe sous le prix cible.
               </p>
               <div className="mt-4 flex gap-2">
                 <Input type="number" placeholder="Prix cible €" value={target} onChange={(e) => setTarget(e.target.value)} data-testid="alert-target-input" className="rounded-sm num" />
                 <Button variant="outline" onClick={createAlert} data-testid="create-alert-btn" className="rounded-sm">Créer</Button>
               </div>
+              <Button variant="ghost" size="sm" onClick={checkAlertsNow} data-testid="check-alerts-now-btn" className="mt-3 rounded-sm gap-2 w-full text-xs">
+                <Bell className="h-3 w-3" /> Vérifier mes alertes maintenant
+              </Button>
             </div>
 
             <div className="surface p-6">
@@ -224,7 +239,7 @@ export default function PriceSearch() {
 
           <p className="text-xs text-muted-foreground">
             {data.mode === "demo"
-              ? "Mode démonstration : les prix proviennent du connecteur de démonstration CMRENOV (clairement identifiés comme tels). Ajoutez une clé de recherche web ou les API fournisseurs pour des prix réels."
+              ? "Mode démonstration : les prix proviennent du connecteur de démonstration ConstruPilot (clairement identifiés comme tels). Ajoutez une clé de recherche web ou les API fournisseurs pour des prix réels."
               : "Prix indicatifs issus d'une recherche web : vérifiez toujours le prix final sur la page du marchand."}
           </p>
         </>

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-export const LeadDialog = ({ projectId, budget, description, trigger, label = "Recevoir une proposition CMRENOV" }) => {
+export const LeadDialog = ({ projectId, budget, description, trigger, label = "Recevoir une proposition ConstruPilot" }) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,7 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
         budget: form.budget ? Number(form.budget) : null,
         project_id: projectId || null,
       });
-      toast.success("Demande transmise à CMRENOV — un conseiller vous contacte sous 48 h.");
+      toast.success("Demande transmise à ConstruPilot — un conseiller vous contacte sous 48 h.");
       setOpen(false);
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Envoi impossible");
@@ -50,7 +50,7 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
       </DialogTrigger>
       <DialogContent className="rounded-md max-w-lg max-h-[90vh] overflow-y-auto" data-testid="lead-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Faire réaliser ces travaux par CMRENOV</DialogTitle>
+          <DialogTitle className="font-display text-xl">Faire réaliser ces travaux par ConstruPilot</DialogTitle>
           <DialogDescription>
             Votre projet, vos surfaces et l'estimation générée sont transmis automatiquement à notre équipe.
           </DialogDescription>

@@ -59,7 +59,7 @@ export const EstimationView = ({ est, projectId }) => {
               {est.safety_alerts.slice(0, 6).map((a, i) => <li key={i}>• {a.message}</li>)}
             </ul>
             <div className="mt-4">
-              <LeadDialog projectId={projectId} budget={est.total_avg} label="Demander une intervention CMRENOV" />
+              <LeadDialog projectId={projectId} budget={est.total_avg} label="Demander une intervention ConstruPilot" />
             </div>
           </AlertDescription>
         </Alert>
@@ -149,7 +149,7 @@ export const EstimationView = ({ est, projectId }) => {
                 <p className="num mt-1 text-xs text-muted-foreground">soit {dp.savings_pct} % · risque {dp.risk}</p>
               </div>
               <div className="lg:col-span-3 surface p-6">
-                <p className="overline">Conclusion CMRENOV AI</p>
+                <p className="overline">Conclusion ConstruPilot</p>
                 <p className="mt-3 text-sm">{dp.conclusion}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {dp.diy_tasks.map((t) => (

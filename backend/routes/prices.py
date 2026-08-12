@@ -81,6 +81,14 @@ async def list_alerts(user=Depends(current_user)):
     return alerts
 
 
+@router.post("/alerts/check-now")
+async def check_alerts_now(user=Depends(current_user)):
+    """Force la vérification immédiate des alertes de l'utilisateur + envoi email des déclenchées."""
+    from engines import alerting
+    sent = await alerting.check_user_alerts(user["user_id"])
+    return {"ok": True, "notified": sent}
+
+
 @router.delete("/alerts/{alert_id}")
 async def delete_alert(alert_id: str, user=Depends(current_user)):
     await db.price_alerts.delete_one({"alert_id": alert_id, "user_id": user["user_id"]})

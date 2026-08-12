@@ -1,4 +1,4 @@
-"""Génération du PDF d'estimation CMRENOV."""
+"""Génération du PDF d'estimation ConstruPilot."""
 from io import BytesIO
 from datetime import datetime, timezone
 
@@ -23,7 +23,7 @@ def build_estimation_pdf(project: dict, estimation: dict, planning: list, advice
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
                            topMargin=16 * mm, bottomMargin=16 * mm,
-                           title=f"Estimation CMRENOV - {project.get('name', '')}")
+                           title=f"Estimation ConstruPilot - {project.get('name', '')}")
     ss = getSampleStyleSheet()
     h1 = ParagraphStyle('h1', parent=ss['Heading1'], textColor=DARK, fontSize=20, spaceAfter=4)
     h2 = ParagraphStyle('h2', parent=ss['Heading2'], textColor=ORANGE, fontSize=12,
@@ -32,7 +32,7 @@ def build_estimation_pdf(project: dict, estimation: dict, planning: list, advice
     small = ParagraphStyle('small', parent=ss['BodyText'], fontSize=8, textColor=GREY)
 
     story = []
-    header = Table([[Paragraph("<b>CMRENOV</b> <font color='#FF5A00'>AI</font>", h1),
+    header = Table([[Paragraph("<b>ConstruPilot</b>", h1),
                      Paragraph("Votre expert travaux,<br/>de l'idée au chantier.", small)]],
                    colWidths=[100 * mm, 74 * mm])
     header.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -124,16 +124,16 @@ def build_estimation_pdf(project: dict, estimation: dict, planning: list, advice
                                 f"({estimation['total_hours']:g} heures de main-d'œuvre).", small)]
 
     if advice:
-        story.append(Paragraph("Recommandations CMRENOV", h2))
+        story.append(Paragraph("Recommandations ConstruPilot", h2))
         for line in advice.split("\n"):
             line = line.strip().lstrip("-•*").strip()
             if line:
                 story.append(Paragraph(f"• {line}", body))
 
     story += [Spacer(1, 12), Paragraph(
-        "Document généré automatiquement par CMRENOV AI. Estimation indicative fondée sur des prix de "
+        "Document généré automatiquement par ConstruPilot. Estimation indicative fondée sur des prix de "
         "référence régionaux, ne constituant pas un devis contractuel. Pour une proposition ferme, "
-        "demandez une intervention CMRENOV depuis l'application.", small)]
+        "demandez une intervention ConstruPilot depuis l'application.", small)]
 
     doc.build(story)
     return buf.getvalue()

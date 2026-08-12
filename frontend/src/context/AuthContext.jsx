@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     // Éviter un 401 bruyant si l'utilisateur n'a jamais été connecté
-    const hasToken = !!localStorage.getItem("cmrenov_token");
+    const hasToken = !!localStorage.getItem("construpilot_token");
     const hasCookie = document.cookie.includes("session_token=");
     if (!hasToken && !hasCookie) {
       setLoading(false);
@@ -36,14 +36,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
-    if (data.token) localStorage.setItem("cmrenov_token", data.token);
+    if (data.token) localStorage.setItem("construpilot_token", data.token);
     setUser(data.user);
     return data.user;
   };
 
   const register = async (name, email, password) => {
     const { data } = await api.post("/auth/register", { name, email, password });
-    if (data.token) localStorage.setItem("cmrenov_token", data.token);
+    if (data.token) localStorage.setItem("construpilot_token", data.token);
     setUser(data.user);
     return data.user;
   };
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await api.post("/auth/logout");
     } catch {}
-    localStorage.removeItem("cmrenov_token");
+    localStorage.removeItem("construpilot_token");
     setUser(null);
   };
 

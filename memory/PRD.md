@@ -1,12 +1,15 @@
-# CMRENOV Travaux AI — PRD
+# ConstruPilot — PRD
+
+> **Rebranding 12/02/2026** : l'app était initialement nommée « CMRENOV Travaux AI ». Elle a été renommée **ConstruPilot** — tagline : *Estimez. Comparez. Construisez.*
 
 ## 1. Problème & vision
 Application web (et mobile-ready) qui aide particuliers et pros du bâtiment à :
 - Décrire un projet en langage naturel et obtenir immédiatement une **estimation structurée** (lots, matériaux, main d'œuvre, coût total).
 - Utiliser des **calculateurs matériaux** professionnels (peinture, carrelage, placo, béton, isolation).
-- **Comparer les prix** des matériaux en temps réel (aujourd'hui mocké, prêt pour Tavily).
+- **Comparer les prix** des matériaux en temps réel via Tavily.
 - Obtenir des **guides DIY** et un **coach IA** pour les auto-constructeurs.
-- Générer des **PDF de devis** et des **leads qualifiés** pour CMRENOV.
+- Générer des **PDF de devis** (téléchargement + envoi email Resend) et des **leads qualifiés** ConstruPilot Pro.
+- **Documenter son chantier** : photos avant/après (Object Storage), timeline chronologique, alertes prix quotidiennes.
 
 Langue produit : **Français**.
 
@@ -47,45 +50,47 @@ Langue produit : **Français**.
 - **Leads** : `POST /api/leads`, admin `GET /api/admin/leads`, `GET /api/admin/stats`.
 - **Admin** : RBAC via `Depends(admin_user)` — user reçoit 403.
 
-## 4. État actuel (12/02/2026 — itération 2)
-### ✅ Implémenté & testé (Backend 36/36 pytest = 24 régression + 12 nouveaux, tous flows frontend OK)
+## 4. État actuel (12/02/2026 — itération 4)
+### ✅ Implémenté & testé (Backend 49/49 pytest cumulés, tous flows frontend OK)
 - Landing, formulaire Smart Project, catalogue travaux.
 - Auth email (register/login/logout/me) + Google Emergent.
-- Seed idempotent au démarrage : `admin@cmrenov.fr` / `Cmrenov2026!` et `demo@cmrenov.fr` / `Demo2026!`.
+- Seed idempotent au démarrage : `admin@construpilot.fr` / `Construpilot2026!` et `demo@construpilot.fr` / `Demo2026!`. Suppression automatique des anciens comptes `@cmrenov.fr`.
 - Smart Project IA (GPT via Emergent Universal LLM Key) → analyse projet en lots/matériaux/estimation.
 - Estimateur (wizard 3 étapes) + calcul montant global.
 - 5 calculateurs matériaux (peinture, carrelage, placo, béton, isolation).
-- **Recherche prix Tavily temps réel** (mode `web`) avec fallback intelligent : 1er appel filtré sur enseignes FR, 2e appel sans filtre si vide → 3/4 des requêtes en vrais prix web (Leroy Merlin, Bricoman, Castorama, ManoMano, Brico Dépôt, Point.P, Lapeyre…). Fallback demo automatique sinon.
-- Dashboard projets utilisateur.
-- Coach IA (streaming SSE).
-- Back-office admin (users, projets, leads, stats).
-- **Génération PDF de devis** : bouton "Télécharger le devis PDF" sur Estimator (route publique `/api/estimation/pdf`) ET sur ProjectDetail (route auth `/api/projects/{id}/pdf`).
-- **Photos avant/après** : nouveau tab dans ProjectDetail. Upload multi-photos (kind: before/after/progress, lot, caption), galerie 3 colonnes, slider comparateur avant/après horizontal, suppression par photo. Stockage via **Emergent Object Storage** persistant.
+- **Recherche prix Tavily temps réel** (mode `web`) avec fallback intelligent (2 appels + demo).
+- Dashboard projets utilisateur, Coach IA (streaming SSE), Back-office admin.
+- **PDF de devis** — bouton "Télécharger" ET "Envoyer par email" (via Resend) sur Estimator + ProjectDetail.
+- **Photos avant/après** — compression client Canvas (~150 Ko cible), galerie multi-photos, slider comparateur horizontal, Emergent Object Storage.
+- **Chantier Timeline** — frise chronologique mélangeant photos + dépenses + progression + leads, avec filtres.
+- **Alertes Prix** — création alertes, vérification quotidienne (APScheduler cron 08:00 UTC) + bouton "Vérifier maintenant" + notifications email Resend.
 - Thème clair/sombre.
+- **Rebranding ConstruPilot** — tagline "Estimez. Comparez. Construisez.", logo Constru+**Pilot**, PDF/emails/UI cohérents.
 
-### 🟡 Points d'attention identifiés par le testing agent
-- **(mineur)** Warning React `setState during render` (probablement dans Login/AuthContext, `navigate()` pendant render) — non bloquant.
-- **(mineur)** Tavily : ~25% des requêtes populaires (ex: "peinture") retournent 0 résultat même sans filtre de domaines → fallback demo. Comportement acceptable.
-- **(mineur)** Cookie `session_token` prime sur `Authorization: Bearer` dans `optional_user` — non bloquant.
+### 🟡 Points d'attention (non bloquants)
+- Warning React `setState during render` dans Login/AuthContext (identifié par testing agent iter 4).
+- Tavily : ~25% des requêtes populaires (ex: "peinture") en fallback demo.
+- Cookie `session_token` prime sur `Authorization: Bearer` dans `optional_user`.
 
 ## 5. Backlog priorisé
-### P1 — Fiabilité & complétude
-- Corriger le warning React `setState during render` (probablement dans Login/AuthContext).
-- Elargir la couverture Tavily : whitelist enrichie ou parseur prix plus robuste pour requêtes courantes.
+### P1 — Fiabilité
+- Corriger warning React `setState during render` dans Login/AuthContext.
+- Domaine Resend vérifié (au lieu de `onboarding@resend.dev` en sandbox) pour envoyer vers n'importe quel destinataire.
 
-### P2 — Enhancements
-- Export estimation → email + PDF signé.
+### P2 — Enhancements produit
+- Onboarding / tour produit interactif.
 - Historique versions d'un projet.
-- Compression client-side des photos avant upload (économie de bande passante + rapidité).
 - Analyse photo / scan de devis (pages présentes, à connecter à un modèle vision).
-- Onboarding et tour produit.
-- Alertes prix : quand un matériau descend sous le prix cible.
+- Whitelist Tavily élargie + parseur prix plus robuste.
+- App mobile PWA (installer + offline).
 
 ## 6. Intégrations 3rd-party
-- **Emergent Universal LLM Key** — GPT (Smart Project + Coach) + Object Storage (photos).
-- **Emergent-managed Google OAuth** — via `auth.emergentagent.com` + callback `/auth/google/session`.
-- **Tavily** — clé configurée, mode web opérationnel, fallback demo automatique.
-- **Emergent Object Storage** — bucket `cmrenov/projects/{project_id}/photos/*`.
+- **Emergent Universal LLM Key** — GPT (Smart Project + Coach) + Object Storage.
+- **Emergent-managed Google OAuth**.
+- **Tavily** — mode web opérationnel avec fallback demo.
+- **Resend** — envoi PDF + alertes prix (sandbox `onboarding@resend.dev`).
+- **Emergent Object Storage** — bucket `construpilot/projects/{project_id}/photos/*`.
+- **APScheduler** — cron quotidien 08:00 UTC pour les alertes prix.
 
 ## 7. Credentials de test
 Voir `/app/memory/test_credentials.md`.

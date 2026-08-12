@@ -160,4 +160,61 @@ async def project_pdf(project_id: str, user=Depends(current_user)):
     data = pdf.build_estimation_pdf(p, est, est.get("planning") or [], p.get("advice") or "", user)
     safe = "".join(c for c in p["name"] if c.isalnum() or c in " -_").strip() or "projet"
     return Response(content=data, media_type="application/pdf", headers={
-        "Content-Disposition": f'attachment; filename="Estimation-CMRENOV-{safe}.pdf"'})
+        "Content-Disposition": f'attachment; filename="Estimation-ConstruPilot-{safe}.pdf"'})
+
+
+PROGRESS_LABEL = {"todo": "à faire", "doing": "en cours", "done": "terminé"}
+
+
+@router.get("/{project_id}/timeline")
+async def project_timeline(project_id: str, user=Depends(current_user)):
+    """Frise chronologique : création + photos + dépenses + lots + leads."""
+    p = await _get(project_id, user)
+    events: list[dict] = []
+
+    events.append({
+        "type": "project", "kind": "created", "at": p.get("created_at"),
+        "title": "Projet créé", "detail": p.get("name"),
+        "amount": p.get("estimation", {}).get("total_avg"),
+    })
+
+    for ph in p.get("photos", []):
+        events.append({
+            "type": "photo", "kind": ph.get("kind"), "at": ph.get("created_at"),
+            "title": {"before": "Photo AVANT", "after": "Photo APRÈS",
+                      "progress": "Photo chantier"}.get(ph.get("kind"), "Photo"),
+            "detail": ph.get("caption") or ph.get("lot") or "",
+            "photo_id": ph.get("photo_id"), "lot": ph.get("lot"),
+        })
+
+    for e in p.get("expenses", []):
+        events.append({
+            "type": "expense", "kind": "spent", "at": e.get("date"),
+            "title": "Dépense", "detail": e.get("label"),
+            "amount": e.get("amount"), "lot": e.get("lot"),
+        })
+
+    lots_by_key = {l["key"]: l for l in p.get("estimation", {}).get("lots", [])}
+    for key, status in (p.get("progress") or {}).items():
+        if status and status != "todo":
+            lot_info = lots_by_key.get(key, {})
+            events.append({
+                "type": "progress", "kind": status,
+                "at": p.get("updated_at") or p.get("created_at"),
+                "title": f"Lot {PROGRESS_LABEL.get(status, status)}",
+                "detail": lot_info.get("name", key),
+                "amount": lot_info.get("total") if status == "done" else None,
+            })
+
+    leads = await db.leads.find({"project_id": project_id, "user_id": user["user_id"]},
+                                {"_id": 0}).to_list(100)
+    for l in leads:
+        events.append({
+            "type": "lead", "kind": l.get("status", "nouveau"),
+            "at": l.get("created_at"),
+            "title": "Demande ConstruPilot envoyée",
+            "detail": f"{l.get('name')} · {l.get('phone') or l.get('email')}",
+        })
+
+    events.sort(key=lambda x: x.get("at") or "", reverse=True)
+    return {"events": events, "count": len(events)}

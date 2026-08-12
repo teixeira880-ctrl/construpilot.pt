@@ -13,6 +13,7 @@ import {
 import { api } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
+import { EmailPdfDialog } from "@/components/EmailPdfDialog";
 import { SectionTitle } from "@/components/Bits";
 import { useAuth } from "@/context/AuthContext";
 
@@ -93,7 +94,7 @@ export default function Estimator() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Estimation-CMRENOV-${name || "projet"}.pdf`;
+      a.download = `Estimation-ConstruPilot-${name || "projet"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("PDF téléchargé");
@@ -273,6 +274,7 @@ export default function Estimator() {
             <Button variant="outline" onClick={downloadPdf} disabled={busy} data-testid="download-pdf-btn" className="rounded-sm gap-2">
               <Download className="h-4 w-4" /> Télécharger le devis PDF
             </Button>
+            <EmailPdfDialog project={{ name: name || "Mon projet", city: form.city, description: form.description }} estimation={est} />
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           <EstimationView est={est} />

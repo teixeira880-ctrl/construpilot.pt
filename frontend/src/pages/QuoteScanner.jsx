@@ -74,7 +74,7 @@ export default function QuoteScanner() {
   return (
     <div className="grid gap-10">
       <SectionTitle over="Scanner de factures et devis" title="Ce prix est-il correct ?">
-        L'IA lit le devis, extrait les lignes et compare avec la base de prix CMRENOV :
+        L'IA lit le devis, extrait les lignes et compare avec la base de prix ConstruPilot :
         prix bas, correct, élevé ou très élevé, avec les éléments potentiellement oubliés.
       </SectionTitle>
 
@@ -117,7 +117,7 @@ export default function QuoteScanner() {
             <p className="text-sm text-muted-foreground">{a.verdict_label}</p>
             {a.delta_vs_reference_pct !== undefined && a.delta_vs_reference_pct !== null && (
               <p className="num text-sm">
-                Écart vs prix de référence CMRENOV :{" "}
+                Écart vs prix de référence ConstruPilot :{" "}
                 <span className={a.delta_vs_reference_pct > 0 ? "text-red-500 font-semibold" : "text-emerald-500 font-semibold"}>
                   {a.delta_vs_reference_pct > 0 ? "+" : ""}{num(a.delta_vs_reference_pct, 1)} %
                 </span>
@@ -158,7 +158,7 @@ export default function QuoteScanner() {
                 </div>
               ) : null
             )}
-            <LeadDialog label="Comparer avec une proposition CMRENOV" budget={a.total_ttc || a.total_ht} />
+            <LeadDialog label="Comparer avec une proposition ConstruPilot" budget={a.total_ttc || a.total_ht} />
           </div>
         )}
       </div>
@@ -225,7 +225,7 @@ export default function QuoteScanner() {
                 ) : null)}
               {comparison.recommendation && (
                 <div className="p-4 rounded-sm border border-primary/40 bg-primary/5">
-                  <p className="overline">Recommandation CMRENOV</p>
+                  <p className="overline">Recommandation ConstruPilot</p>
                   <p className="mt-2 text-sm">{comparison.recommendation}</p>
                 </div>
               )}

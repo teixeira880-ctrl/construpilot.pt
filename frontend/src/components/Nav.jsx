@@ -28,7 +28,7 @@ export const Nav = () => {
   const toggleTheme = () => {
     document.documentElement.classList.toggle("dark");
     const isDark = document.documentElement.classList.contains("dark");
-    localStorage.setItem("cmrenov_theme", isDark ? "dark" : "light");
+    localStorage.setItem("construpilot_theme", isDark ? "dark" : "light");
     setDark(isDark);
   };
 
@@ -40,7 +40,7 @@ export const Nav = () => {
             <Hammer className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
           </span>
           <span className="font-display font-extrabold tracking-tight text-lg">
-            CMRENOV<span className="text-primary"> AI</span>
+            Constru<span className="text-primary">Pilot</span>
           </span>
         </Link>
 
@@ -125,7 +125,7 @@ export const Footer = () => (
   <footer className="border-t border-border mt-24">
     <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 flex flex-col md:flex-row gap-4 items-center justify-between">
       <p className="font-display font-bold tracking-tight">
-        CMRENOV<span className="text-primary"> AI</span>
+        Constru<span className="text-primary">Pilot</span>
         <span className="ml-3 text-sm font-sans font-normal text-muted-foreground">
           Estimez. Comparez. Construisez.
         </span>

@@ -14,11 +14,11 @@ const EXAMPLE =
 
 const STEPS = [
   { icon: MessageSquare, title: "Je décris mon projet", text: "En une phrase, comme à un artisan." },
-  { icon: Sparkles, title: "CMRENOV AI comprend", text: "Lots, surfaces, niveau de finition, risques." },
+  { icon: Sparkles, title: "ConstruPilot comprend", text: "Lots, surfaces, niveau de finition, risques." },
   { icon: Calculator, title: "Le moteur calcule", text: "Quantités et prix déterministes, vérifiables." },
   { icon: Search, title: "Je trouve les meilleurs prix", text: "Comparaison multi-fournisseurs et panier optimisé." },
   { icon: Wrench, title: "Je sais quoi faire moi-même", text: "Guides pas à pas et niveaux de difficulté." },
-  { icon: Hammer, title: "J'appelle CMRENOV si besoin", text: "Proposition professionnelle en 48 h." },
+  { icon: Hammer, title: "J'appelle un pro ConstruPilot si besoin", text: "Proposition professionnelle en 48 h." },
 ];
 
 const FEATURES = [
@@ -27,7 +27,7 @@ const FEATURES = [
   { icon: Wrench, title: "Mode « je le fais moi-même »", text: "Matériaux calculés + guide professionnel étape par étape.", to: "/diy" },
   { icon: Camera, title: "Estimation par photo", text: "L'IA identifie la pièce, son état et les travaux probables.", to: "/photo" },
   { icon: FileText, title: "Scanner de devis", text: "Prix bas, correct, élevé : l'IA analyse et compare vos devis.", to: "/devis" },
-  { icon: MessageSquare, title: "Coach IA CMRENOV", text: "Toutes vos questions travaux, réponses de professionnel.", to: "/coach" },
+  { icon: MessageSquare, title: "Coach IA ConstruPilot", text: "Toutes vos questions travaux, réponses de professionnel.", to: "/coach" },
 ];
 
 export default function Landing() {
@@ -41,7 +41,7 @@ export default function Landing() {
 
   const launch = () => {
     const text = description.trim() || EXAMPLE;
-    sessionStorage.setItem("cmrenov_description", text);
+    sessionStorage.setItem("construpilot_description", text);
     navigate("/smart-project");
   };
 
@@ -57,14 +57,14 @@ export default function Landing() {
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/40" />
         <div className="relative mx-auto max-w-[1500px] px-5 lg:px-8 py-20 lg:py-28">
           <div className="max-w-3xl">
-            <p className="overline animate-rise">CMRENOV Smart Project</p>
+            <p className="overline animate-rise">ConstruPilot Smart Project</p>
             <h1 className="mt-5 font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tighter animate-rise">
-              Votre expert travaux,<br />
-              <span className="text-primary">de l'idée au chantier.</span>
+              Estimez. Comparez.<br />
+              <span className="text-primary">Construisez.</span>
             </h1>
             <p className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl animate-rise">
               Des prix réels. Des conseils de pros. Un chantier mieux maîtrisé. Décrivez votre projet :
-              CMRENOV AI le décompose, l'estime, calcule les matériaux et trouve les meilleurs prix.
+              ConstruPilot le décompose, l'estime, calcule les matériaux et trouve les meilleurs prix.
             </p>
 
             <div className="mt-10 relative animate-rise">
@@ -142,7 +142,7 @@ export default function Landing() {
 
       <section className="border-y border-border bg-secondary/30">
         <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-20">
-          <p className="overline">Le parcours CMRENOV</p>
+          <p className="overline">Le parcours ConstruPilot</p>
           <h2 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight">
             Le copilote intelligent de vos travaux
           </h2>
@@ -195,7 +195,7 @@ export default function Landing() {
                 Voyez immédiatement ce que vous pouvez économiser
               </h2>
               <p className="mt-4 text-sm text-muted-foreground">
-                CMRENOV AI compare le coût professionnel et le coût en autonomie, le temps nécessaire,
+                ConstruPilot compare le coût professionnel et le coût en autonomie, le temps nécessaire,
                 la difficulté et le risque. Et vous alerte quand un professionnel est indispensable
                 (gaz, tableau électrique, mur porteur, structure, amiante).
               </p>

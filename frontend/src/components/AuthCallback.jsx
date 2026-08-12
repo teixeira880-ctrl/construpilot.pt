@@ -20,7 +20,7 @@ export default function AuthCallback() {
           headers: { "X-Session-ID": sessionId },
         });
         setUser(data.user);
-        if (data.session_token) localStorage.setItem("cmrenov_token", data.session_token);
+        if (data.session_token) localStorage.setItem("construpilot_token", data.session_token);
         window.history.replaceState({}, document.title, window.location.pathname);
         navigate("/dashboard", { replace: true, state: { user: data.user } });
       } catch (e) {
@@ -35,7 +35,7 @@ export default function AuthCallback() {
       <div className="text-center">
         <div className="h-10 w-10 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
         <p className="mt-6 text-sm text-muted-foreground">
-          {error || "Connexion à CMRENOV AI…"}
+          {error || "Connexion à ConstruPilot…"}
         </p>
       </div>
     </div>

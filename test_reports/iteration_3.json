@@ -1,0 +1,41 @@
+{
+  "summary": "Iter 3 — 4 features validées end-to-end. Backend: 9/9 pytest (PDF email Resend, timeline projet, alerts check-now, régression prices/PDF public/auth). Scheduler APScheduler loggé au startup ('Scheduler started (daily price alerts @ 08:00 UTC)'). Frontend: EmailPdfDialog fonctionnel sur Estimator (envoi delivered@resend.dev OK, dialog se ferme = success) et ProjectDetail (bouton présent), Timeline tab avec liste + 5 filtres tous rendus, PriceSearch check-alerts-now-btn cliquable. Compression photos client vérifiée: images <150KB passent inchangées (10KB→10KB, 114KB→114KB), grosse image bruitée 3357KB compressée à 236KB (14x). Un cas pathologique: image de bruit pur ~3MB → 236KB (au-dessus de la cible 150KB), mais photos réelles compressent bien mieux.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "console (persistant depuis iter1/iter2)", "issues": ["Warning React 'Cannot update a component (BrowserRouter) while rendering a different component (Login)' — non bloquant."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter3_new_features.py",
+    "/app/test_reports/pytest/iter3_results.xml"
+  ],
+  "action_items": [
+    "(optionnel) La compression client cible 150KB mais pour images très bruitées (haute entropie) le résultat peut dépasser (ex: 236KB pour une source 3.3MB de bruit random). Photos réelles compressent bien mieux. Si besoin strict, réduire quality min de 0.35 à 0.25 dans /app/frontend/src/lib/imageCompress.js."
+  ],
+  "critical_code_review_comments": [
+    "OK: /api/estimation/pdf/email est publique (pas de Depends), 400 si estimation vide, 502 si Resend échoue.",
+    "OK: /api/projects/{id}/timeline utilise _get (RBAC user_id), events triés desc par 'at', 5 types (project/photo/expense/progress/lead).",
+    "OK: /api/prices/alerts/check-now protégé par current_user, appelle alerting.check_user_alerts qui envoie via Resend avec dédup last_notified_price (évite spam si prix quasi identique).",
+    "OK: APScheduler AsyncIOScheduler(timezone='UTC') + CronTrigger 08:00 UTC, log INFO au startup vérifié dans /var/log/supervisor/backend.*.log.",
+    "OK: emailer.py utilise asyncio.to_thread pour le SDK Resend sync — correct pour ne pas bloquer l'event loop.",
+    "OK: compressImage.js — court-circuit si file.size <= 150KB && type=image/jpeg (pas de dégradation des petites images JPEG confirmé).",
+    "OK: EmailPdfDialog.jsx tous les data-testid présents (btn/dialog/to/message/send) + gestion busy state + toast.error sur détail backend.",
+    "OK: Timeline.jsx renderise les 5 filtres avec compteurs, timeline-list quand events présents, timeline-empty sinon.",
+    "Nit: alerting._notify_user ne re-vérifie pas 'active' dans user (juste dans query alerts) — OK actuellement, à surveiller si des users deviennent inactifs."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter3_new_features.py (nouveau)"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% des flows critiques"},
+  "test_credentials": "Admin: admin@cmrenov.fr / Cmrenov2026! — Demo: demo@cmrenov.fr / Demo2026!",
+  "seed_data_creation": "Projets TEST_ créés et supprimés en teardown. Un projet 'TEST_iter3_compress' créé pour test compression, supprimé en fin de test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter3 complet et validé. Tests réutilisables: /app/backend/tests/test_iter3_new_features.py (9 tests). Attention: le test send email hit Resend en réel, utiliser exclusivement 'delivered@resend.dev' comme destinataire sandbox. Le scheduler tourne mais son job cron ne peut être testé qu'à 08:00 UTC — utiliser /api/prices/alerts/check-now pour trigger manuel."
+}
