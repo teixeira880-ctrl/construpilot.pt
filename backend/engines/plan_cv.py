@@ -1,12 +1,12 @@
-"""Computer Vision Engine — Auto Wall Detection + Flood Fill Room Contour.
+"""Computer Vision Engine — Wall Detection + Room Auto Fill + Deskew photo.
 
-Deux pipelines :
-- **detect_walls(png_bytes)** : Hough Line Detection sur plan scanné / photo → segments de murs.
-- **flood_fill_room(png_bytes, seed_x, seed_y)** : à partir d'un point cliqué à l'intérieur
-  d'une pièce, extrait le contour polygonal fermé de la pièce.
+Trois pipelines :
+- **detect_walls** : Hough Line Detection sur plan scanné → segments de murs.
+- **flood_fill_room** : à partir d'un clic intérieur, extrait le contour polygonal fermé.
+- **deskew_photo** : détecte les 4 coins d'une feuille de plan photographiée
+  au smartphone, applique une correction de perspective (warp) puis renvoie l'image.
 
-Toutes les coordonnées retournées sont en pixels de l'image d'origine (post-Pillow resize).
-Le Geometry Engine se charge ensuite de convertir en mètres via la calibration.
+Toutes les coordonnées retournées sont en pixels de l'image d'origine.
 """
 from __future__ import annotations
 
@@ -172,3 +172,109 @@ def flood_fill_room(png_b64: str, seed_x: int, seed_y: int,
         "bounding_box": {"x": int(x), "y": int(y), "w": int(ww), "h": int(hh)},
         "params": {"tolerance": tolerance, "simplify_epsilon_px": simplify_epsilon_px},
     }
+
+
+# ============ DESKEW (perspective correction photo smartphone) ============
+
+def _order_corners(pts: np.ndarray) -> np.ndarray:
+    """Ordonne 4 coins : top-left, top-right, bottom-right, bottom-left."""
+    rect = np.zeros((4, 2), dtype=np.float32)
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]    # top-left = min sum
+    rect[2] = pts[np.argmax(s)]    # bottom-right = max sum
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]  # top-right = min diff
+    rect[3] = pts[np.argmax(diff)]  # bottom-left = max diff
+    return rect
+
+
+def deskew_photo(png_bytes: bytes) -> dict:
+    """Corrige la perspective d'une photo smartphone de plan/document.
+
+    Pipeline : grayscale → blur → Canny → contours → plus grand quadrilatère
+    → order corners → warpPerspective. Renvoie l'image corrigée en PNG bytes.
+
+    Si aucun quadrilatère fiable n'est trouvé, renvoie l'image originale avec
+    `applied: false` (l'utilisateur pourra quand même calibrer manuellement).
+    """
+    img_bytes = png_bytes
+    # Décodage direct via OpenCV (plus rapide que PIL)
+    arr = np.frombuffer(img_bytes, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("Image invalide")
+    h0, w0 = img.shape[:2]
+
+    # Redimensionne pour vitesse (facteur mémoire)
+    max_side = 1200
+    scale = max(w0, h0) / max_side if max(w0, h0) > max_side else 1.0
+    if scale > 1.0:
+        img_small = cv2.resize(img, (int(w0 / scale), int(h0 / scale)))
+    else:
+        img_small = img
+
+    gray = cv2.cvtColor(img_small, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(gray, 30, 120)
+    # Dilate pour combler
+    edges = cv2.dilate(edges, np.ones((3, 3), np.uint8), iterations=1)
+
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return _encode_png(img, applied=False, reason="Aucun contour détecté")
+
+    # Cherche le plus grand quadrilatère (approxPolyDP)
+    h_small, w_small = img_small.shape[:2]
+    total_area = h_small * w_small
+    quad = None
+    for c in sorted(contours, key=cv2.contourArea, reverse=True)[:8]:
+        area = cv2.contourArea(c)
+        if area < total_area * 0.15:   # ignore petites zones
+            break
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        if len(approx) == 4:
+            quad = approx.reshape(4, 2).astype(np.float32)
+            break
+
+    if quad is None:
+        return _encode_png(img, applied=False, reason="Aucun quadrilatère (feuille) détecté")
+
+    # Remise à l'échelle originale
+    quad *= scale
+    ordered = _order_corners(quad)
+
+    # Dimensions cible : min largeur / min hauteur → carte utile
+    (tl, tr, br, bl) = ordered
+    width_a = np.linalg.norm(br - bl)
+    width_b = np.linalg.norm(tr - tl)
+    height_a = np.linalg.norm(tr - br)
+    height_b = np.linalg.norm(tl - bl)
+    max_w = int(max(width_a, width_b))
+    max_h = int(max(height_a, height_b))
+    if max_w < 200 or max_h < 200:
+        return _encode_png(img, applied=False, reason="Quadrilatère trop petit")
+
+    dst = np.array([[0, 0], [max_w - 1, 0],
+                    [max_w - 1, max_h - 1], [0, max_h - 1]], dtype=np.float32)
+    M = cv2.getPerspectiveTransform(ordered, dst)
+    warped = cv2.warpPerspective(img, M, (max_w, max_h))
+
+    return _encode_png(warped, applied=True, reason="Perspective corrigée",
+                       corners=ordered.tolist(),
+                       original_size=[w0, h0], new_size=[max_w, max_h])
+
+
+def _encode_png(img_bgr: np.ndarray, applied: bool, reason: str, **extra) -> dict:
+    ok, buf = cv2.imencode(".png", img_bgr)
+    if not ok:
+        raise ValueError("Encodage PNG impossible")
+    return {
+        "applied": applied,
+        "reason": reason,
+        "image_png_b64": base64.b64encode(buf.tobytes()).decode("ascii"),
+        "width": int(img_bgr.shape[1]),
+        "height": int(img_bgr.shape[0]),
+        **extra,
+    }
+

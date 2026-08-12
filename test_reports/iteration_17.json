@@ -1,0 +1,24 @@
+{
+  "summary": "Iter17 backend + frontend validation. Created /app/backend/tests/test_iter17_multi_dxf_deskew.py with 16 pytest tests covering: DXF import (rectangle 10x8 + text SALON extracted with 4 lines + 1 text_block, image_png_b64 returned via GET /page/0), DWG rejection (422 + 'DWG'/'convert'/'cloudconvert.com' in detail), Level auto-detection PDF (RDC/R+1 regex on 2-page PDF), Level PATCH manual (set + clear + 404 on invalid page_index), Takeoff by level (2 pages calibrated + 1 room each, /takeoff returns levels[] sorted by level_index with correct totals + global totals = sum), Deskew photo (upload with deskew=true + skip=false), and non-regression (login admin+demo, /estimation/compute, /prices/optimize with quantity preserved, /plans, /takeoffs, /admin/revenue/kpis, /share/sms/config twilio_enabled=true, /push/public-key). ALL 16/16 PASS. Frontend: /plan landing verified (deskew-toggle checkbox present, accept='application/pdf,image/png,image/jpeg,image/webp,.dxf,.dwg', 'Multi-étages' card visible, 0 console errors).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter17_multi_dxf_deskew.py",
+    "/app/test_reports/pytest/iter17.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "plan_processor.py L38-52: _detect_level_from_text() returns first regex match — the LEVEL_PATTERNS order matters (sous-sol before RDC before R+X before combles). Works correctly for the tested cases.",
+    "plan_dxf.py process_dwg() raises ValueError → routes/plans.py wraps in HTTPException(422, str(e)). The message contains 'DWG', 'convertissez' and 'cloudconvert.com' → matches request spec.",
+    "plan_cv.deskew_photo() has proper fallback path: if no quadrilateral or too small → returns {applied: false} and process_upload keeps original bytes. Non-blocking design ✓.",
+    "routes/plans.py L437-439: PATCH set_page_level correctly sets $set on both level_index and level_label via dotted path — nulls clear properly.",
+    "routes/plans.py L482-484: levels_sorted key uses (None-last, index_asc) — correct behavior; global totals still computed on rooms array independent of level grouping."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter17_multi_dxf_deskew.py"],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% (landing checks all pass, no console errors)"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "In-memory fixtures only (ezdxf DXF, pymupdf 2-page PDF, opencv perspective PNG). No DB seed changes.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter17 100% green backend + verified frontend landing. Auth uses `token` (not access_token) in JSON response. /api/prices/optimize expects items with `query` (not `key`) and `quantity` (not `qty`). page-level-select-{i} testid exists inline at line 575 of PlanTakeoff.jsx and renders in the sidebar page-list loop for each uploaded page — only shown after upload."
+}

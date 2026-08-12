@@ -36,7 +36,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["plans"], prefix="/takeoffs")
 
 MAX_UPLOAD_MB = 20
-ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp"}
+ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp",
+                 "application/dxf", "image/vnd.dxf", "application/acad", "image/vnd.dwg"}
 
 
 def _now():
@@ -71,6 +72,7 @@ def _plan_summary(p: dict) -> dict:
 async def upload_plan(
     file: UploadFile = File(...),
     project_id: str | None = Form(None),
+    deskew: bool = Form(False),
     user=Depends(current_user),
 ):
     data = await file.read()
@@ -78,13 +80,14 @@ async def upload_plan(
         raise HTTPException(413, f"Fichier trop volumineux (>{MAX_UPLOAD_MB} Mo)")
 
     mime = (file.content_type or "").lower()
-    if mime and mime not in ALLOWED_MIMES:
-        # tolérance : certains browsers envoient application/octet-stream
+    lower_name = (file.filename or "").lower()
+    is_cad = lower_name.endswith((".dxf", ".dwg"))
+    if mime and mime not in ALLOWED_MIMES and not is_cad:
         if mime != "application/octet-stream":
             raise HTTPException(415, f"Format non supporté : {mime}")
 
     try:
-        parsed = process_upload(data, file.filename or "plan", mime)
+        parsed = process_upload(data, file.filename or "plan", mime, deskew=deskew)
     except Exception as e:
         logger.exception("plan process failed")
         raise HTTPException(422, f"Impossible de lire le fichier : {e}")
@@ -414,13 +417,72 @@ async def delete_room(plan_id: str, room_id: str, user=Depends(current_user)):
 
 # ============ TAKEOFF AGRÉGÉ ============
 
+class PageLevelIn(BaseModel):
+    level_index: int | None = None
+    level_label: str | None = None
+
+
+@router.patch("/{plan_id}/pages/{page_index}/level")
+async def set_page_level(plan_id: str, page_index: int, body: PageLevelIn,
+                        user=Depends(current_user)):
+    """Assigne un niveau (RDC / R+1 / R+2 / Sous-sol) à une page."""
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
+                                         {"_id": 0, "pages": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    if page_index < 0 or page_index >= len(p.get("pages") or []):
+        raise HTTPException(404, "Page inconnue")
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {f"pages.{page_index}.level_index": body.level_index,
+                  f"pages.{page_index}.level_label": body.level_label,
+                  "updated_at": _now()}}
+    )
+    return {"ok": True, "page_index": page_index,
+            "level_index": body.level_index, "level_label": body.level_label}
+
+
 @router.get("/{plan_id}/takeoff")
 async def takeoff(plan_id: str, user=Depends(current_user)):
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
-                                         {"_id": 0, "rooms": 1, "filename": 1})
+                                         {"_id": 0, "rooms": 1, "filename": 1, "pages": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
     rooms = p.get("rooms") or []
+    pages = p.get("pages") or []
+    # Map page_index -> level info
+    page_level = {pg["index"]: {"index": pg.get("level_index"),
+                                 "label": pg.get("level_label")}
+                  for pg in pages}
+
+    # Rooms enrichies avec info niveau (héritée de la page)
+    def _lvl(r):
+        info = page_level.get(r.get("page_index"), {"index": None, "label": None})
+        return info
+
+    # Grouped par niveau
+    by_level: dict = {}
+    for r in rooms:
+        info = _lvl(r)
+        key = f"{info['index'] if info['index'] is not None else 'none'}"
+        bucket = by_level.setdefault(key, {
+            "level_index": info["index"], "level_label": info["label"] or "Sans niveau",
+            "rooms": [], "totals": {"floor_m2": 0, "ceiling_m2": 0,
+                                     "walls_gross_m2": 0, "walls_net_m2": 0,
+                                     "perimeter_m": 0}})
+        bucket["rooms"].append(r)
+        bucket["totals"]["floor_m2"] += r.get("surface_m2", 0)
+        bucket["totals"]["ceiling_m2"] += r.get("ceiling_area_m2", 0)
+        bucket["totals"]["walls_gross_m2"] += r.get("wall_area_gross_m2", 0)
+        bucket["totals"]["walls_net_m2"] += r.get("wall_area_net_m2", 0)
+        bucket["totals"]["perimeter_m"] += r.get("perimeter_m", 0)
+    for b in by_level.values():
+        for k in b["totals"]:
+            b["totals"][k] = round(b["totals"][k], 2)
+    levels_sorted = sorted(by_level.values(),
+                           key=lambda x: (x["level_index"] is None,
+                                          x["level_index"] if x["level_index"] is not None else 99))
+
     total_floor = sum(r.get("surface_m2", 0) for r in rooms)
     total_ceiling = sum(r.get("ceiling_area_m2", 0) for r in rooms)
     total_walls_gross = sum(r.get("wall_area_gross_m2", 0) for r in rooms)
@@ -436,6 +498,7 @@ async def takeoff(plan_id: str, user=Depends(current_user)):
             "walls_net_m2": round(total_walls_net, 2),
             "perimeter_m": round(total_perim, 2),
         },
+        "levels": levels_sorted,
         "rooms": rooms,
     }
 

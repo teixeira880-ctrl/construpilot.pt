@@ -26,6 +26,31 @@ SCALE_PATTERNS = [
     re.compile(r"scale\s*[:.]?\s*1\s*[:/]\s*(\d{2,4})", re.IGNORECASE),
 ]
 
+# Détection de niveaux (RDC, R+1, R+2, sous-sol, combles) dans le texte d'une page
+LEVEL_PATTERNS = [
+    (re.compile(r"\bsous[\s-]?sol\b|\bcave\b|\bs[\s-]?sol\b", re.IGNORECASE), -1, "Sous-sol"),
+    (re.compile(r"\brdc\b|\brez[\s-]?de[\s-]?chauss[éeè]e?\b", re.IGNORECASE), 0, "RDC"),
+    (re.compile(r"\br\s*\+\s*(\d)\b|\b(\d)[eè]?[re]?\s*[eé]tage\b", re.IGNORECASE), None, None),
+    (re.compile(r"\bcombles?\b|\bgrenier\b", re.IGNORECASE), 99, "Combles"),
+]
+
+
+def _detect_level_from_text(text: str) -> tuple[int, str] | None:
+    """Renvoie (level_index, level_label) trouvé dans le texte de la page."""
+    if not text:
+        return None
+    for rx, lvl, label in LEVEL_PATTERNS:
+        m = rx.search(text)
+        if m:
+            if lvl is not None:
+                return (lvl, label)
+            # Cas R+X ou X étage
+            for g in m.groups():
+                if g and g.isdigit():
+                    n = int(g)
+                    return (n, f"R+{n}" if n > 0 else "RDC")
+    return None
+
 # Regex pour repérer des cotes (dimensions en m ou cm) — sans les extraire, juste pour comptage
 DIM_PATTERN = re.compile(r"\b\d{1,3}[.,]\d{1,2}\s*(?:m|cm|mm)\b", re.IGNORECASE)
 
@@ -122,6 +147,8 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 150) -> dict:
             "text_blocks": text_blocks[:2000],
             "dimensions_count": len(DIM_PATTERN.findall(text)),
             "raw_text_length": len(text),
+            "level_index": (_detect_level_from_text(text) or (None, None))[0],
+            "level_label": (_detect_level_from_text(text) or (None, None))[1],
         })
     doc.close()
     return {
@@ -162,13 +189,31 @@ def process_image(image_bytes: bytes, mime: str) -> dict:
     }
 
 
-def process_upload(data: bytes, filename: str, mime: str) -> dict:
-    """Point d'entrée : dispatch vers PDF ou image selon le mime type."""
+def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False) -> dict:
+    """Point d'entrée : dispatch vers PDF / DXF / image selon le mime type.
+    Si `deskew` est True et que c'est une image, tente une correction de perspective.
+    """
     lower = (filename or "").lower()
     if mime == "application/pdf" or lower.endswith(".pdf"):
         return process_pdf(data)
+    if lower.endswith(".dxf") or mime in ("application/dxf", "image/vnd.dxf"):
+        from engines.plan_dxf import process_dxf  # lazy import
+        return process_dxf(data, filename)
+    if lower.endswith(".dwg") or mime in ("application/acad", "image/vnd.dwg"):
+        from engines.plan_dxf import process_dwg
+        return process_dwg(data, filename)  # raises helpful ValueError
     if mime in ("image/png", "image/jpeg", "image/jpg", "image/webp") or \
        lower.endswith((".png", ".jpg", ".jpeg", ".webp")):
+        if deskew:
+            try:
+                from engines.plan_cv import deskew_photo
+                out = deskew_photo(data)
+                if out["applied"]:
+                    # Remplace les bytes par l'image warpée
+                    data = base64.b64decode(out["image_png_b64"])
+                    mime = "image/png"
+            except Exception:
+                pass  # si deskew échoue, on continue avec l'image originale
         return process_image(data, mime or "image/png")
     raise ValueError(f"Format non supporté : {mime or filename}")
 

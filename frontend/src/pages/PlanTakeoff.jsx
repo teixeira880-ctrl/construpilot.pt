@@ -222,6 +222,7 @@ export default function PlanTakeoff() {
   const [cvBusy, setCvBusy] = useState(false);
   const [detectedWalls, setDetectedWalls] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
+  const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [takeoff, setTakeoff] = useState(null);
   const [materials, setMaterials] = useState(null);
   const [floorMaterial, setFloorMaterial] = useState("parquet");
@@ -256,12 +257,14 @@ export default function PlanTakeoff() {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (deskewEnabled) fd.append("deskew", "true");
       const { data } = await api.post("/takeoffs/upload", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setPlan(data);
       setPageIndex(0);
-      toast.success(`Plan chargé (${data.page_count} page${data.page_count > 1 ? "s" : ""})`);
+      const kind = data.kind === "dxf" ? "DXF" : data.kind === "pdf" ? "PDF" : "image";
+      toast.success(`${kind} chargé (${data.page_count} page${data.page_count > 1 ? "s" : ""})`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Import impossible");
     } finally { setUploading(false); }
@@ -451,13 +454,13 @@ export default function PlanTakeoff() {
               {uploading ? "Import en cours…" : "Importer mon plan"}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              PDF · JPG · PNG · WEBP — jusqu'à 20 Mo — drag & drop ou clic
+              PDF · DXF · JPG · PNG · WEBP — jusqu'à 20 Mo — drag & drop ou clic
             </p>
           </div>
           <Input
             id="plan-upload-input"
             type="file"
-            accept="application/pdf,image/png,image/jpeg,image/webp"
+            accept="application/pdf,image/png,image/jpeg,image/webp,.dxf,.dwg"
             capture="environment"
             className="sr-only"
             onChange={(e) => uploadFile(e.target.files?.[0])}
@@ -465,11 +468,24 @@ export default function PlanTakeoff() {
           />
         </label>
 
+        <div className="flex items-center gap-3 justify-center">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={deskewEnabled}
+              onChange={(e) => setDeskewEnabled(e.target.checked)}
+              data-testid="deskew-toggle"
+              className="accent-primary h-4 w-4"
+            />
+            Corriger la perspective (photo smartphone inclinée)
+          </label>
+        </div>
+
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: Ruler, title: "Calibration précise", desc: "Auto échelle 1:X, cote connue, ou 2 points manuels" },
-            { icon: Wand2, title: "Détection auto", desc: "Murs détectés en 1 clic (OpenCV) · pièces auto-fill en 1 clic intérieur" },
-            { icon: Calculator, title: "Vers estimation", desc: "1 clic → estimation ConstruPilot + prix matériaux" },
+            { icon: Ruler, title: "Formats variés", desc: "PDF · DXF · JPG · PNG · WEBP — DWG à convertir en DXF" },
+            { icon: Wand2, title: "Détection auto", desc: "Murs (OpenCV) · pièces flood-fill · deskew photo inclinée" },
+            { icon: Calculator, title: "Multi-étages", desc: "RDC · R+1 · R+2 · combles — métré par niveau + total" },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="surface p-6">
               <Icon className="h-5 w-5 text-primary" />
@@ -523,18 +539,53 @@ export default function PlanTakeoff() {
           <p className="overline mb-3">Pages ({plan.page_count})</p>
           <div className="grid gap-2">
             {plan.pages.map((pg, i) => (
-              <button
-                key={i}
-                data-testid={`plan-page-${i}`}
-                onClick={() => setPageIndex(i)}
-                className={`border rounded-sm p-2 text-xs text-left transition-colors ${i === pageIndex ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-              >
-                <p className="font-bold">Page {i + 1}</p>
-                <p className="text-muted-foreground num">{pg.width_px}×{pg.height_px}</p>
-                {plan.calibrations?.[String(i)] && (
-                  <Badge variant="outline" className="mt-1 text-[10px] rounded-sm">Calibrée</Badge>
-                )}
-              </button>
+              <div key={i}>
+                <button
+                  data-testid={`plan-page-${i}`}
+                  onClick={() => setPageIndex(i)}
+                  className={`w-full border rounded-sm p-2 text-xs text-left transition-colors ${i === pageIndex ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-bold">Page {i + 1}</p>
+                    {pg.level_label && (
+                      <Badge variant="outline" className="text-[10px] rounded-sm num h-5">
+                        {pg.level_label}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground num">{pg.width_px}×{pg.height_px}</p>
+                  {plan.calibrations?.[String(i)] && (
+                    <Badge variant="outline" className="mt-1 text-[10px] rounded-sm">Calibrée</Badge>
+                  )}
+                </button>
+                <Select
+                  value={pg.level_index != null ? String(pg.level_index) : "none"}
+                  onValueChange={async (v) => {
+                    const payload = v === "none"
+                      ? { level_index: null, level_label: null }
+                      : v === "99" ? { level_index: 99, level_label: "Combles" }
+                      : v === "-1" ? { level_index: -1, level_label: "Sous-sol" }
+                      : v === "0" ? { level_index: 0, level_label: "RDC" }
+                      : { level_index: Number(v), level_label: `R+${v}` };
+                    await api.patch(`/takeoffs/${plan.plan_id}/pages/${i}/level`, payload);
+                    await refreshPlan();
+                    toast.success("Niveau mis à jour");
+                  }}
+                >
+                  <SelectTrigger className="rounded-sm h-6 text-[10px] mt-1" data-testid={`page-level-select-${i}`}>
+                    <SelectValue placeholder="Niveau…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sans niveau</SelectItem>
+                    <SelectItem value="-1">Sous-sol</SelectItem>
+                    <SelectItem value="0">RDC</SelectItem>
+                    <SelectItem value="1">R+1</SelectItem>
+                    <SelectItem value="2">R+2</SelectItem>
+                    <SelectItem value="3">R+3</SelectItem>
+                    <SelectItem value="99">Combles</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             ))}
           </div>
         </div>
@@ -647,6 +698,20 @@ export default function PlanTakeoff() {
                   <div className="flex justify-between"><span>Plafonds</span><b>{takeoff.totals.ceiling_m2} m²</b></div>
                   <div className="flex justify-between"><span>Murs nets</span><b>{takeoff.totals.walls_net_m2} m²</b></div>
                   <div className="flex justify-between"><span>Périmètre</span><b>{takeoff.totals.perimeter_m} m</b></div>
+
+                  {takeoff.levels?.length > 1 && (
+                    <div className="mt-3" data-testid="takeoff-by-level">
+                      <p className="overline mb-2">Par niveau</p>
+                      {takeoff.levels.map((lvl) => (
+                        <div key={String(lvl.level_index)} className="border-l-2 border-primary pl-2 mb-2">
+                          <p className="font-bold text-primary">{lvl.level_label} · {lvl.rooms.length} pièce{lvl.rooms.length > 1 ? "s" : ""}</p>
+                          <div className="flex justify-between"><span>Sol</span><span>{lvl.totals.floor_m2} m²</span></div>
+                          <div className="flex justify-between"><span>Murs nets</span><span>{lvl.totals.walls_net_m2} m²</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex gap-2 mt-3">
                     <Button size="sm" onClick={sendToEstimator} data-testid="send-to-estimator" className="flex-1 rounded-sm hover:bg-orange-600 hover:text-white">
                       <Calculator className="h-3 w-3 mr-1" /> Chiffrer
