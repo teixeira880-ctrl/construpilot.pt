@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
 import { EmailPdfDialog } from "@/components/EmailPdfDialog";
+import { WhatsAppShare } from "@/components/WhatsAppShare";
 import { SoftPaywall } from "@/components/SoftPaywall";
 import { SavingsCard } from "@/components/SavingsCard";
 import { SectionTitle } from "@/components/Bits";
@@ -279,6 +280,7 @@ export default function Estimator() {
               <Download className="h-4 w-4" /> Télécharger le devis PDF
             </Button>
             <EmailPdfDialog project={{ name: name || "Mon projet", city: form.city, description: form.description }} estimation={est} />
+            <WhatsAppShare project={{ name: name || "Mon projet", city: form.city, surface: Number(form.surface) }} estimation={est} />
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           <EstimationView est={est} />

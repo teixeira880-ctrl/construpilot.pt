@@ -11,6 +11,7 @@ import { api, eur, num, IMAGES } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import PushToggle from "@/components/PushToggle";
 import { Stat } from "@/components/Bits";
 
 const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
@@ -68,6 +69,7 @@ export default function Dashboard() {
                 Passer Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} j offerts` : ""}
               </Button>
             )}
+            <PushToggle />
             <Button onClick={() => navigate("/smart-project")} data-testid="new-smart-project-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <Sparkles className="h-4 w-4" /> Smart Project
             </Button>

@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 11 (Phase 7 finalization + pricing pro update) — All backend and frontend checks PASS. 9/9 pytest tests green. Pricing pro tab shows the 4 expected cards (99€/990€/199€/1990€). GET /api/plans?audience=pro returns amount_cents 9900/99000/19900/199000 (subset check). Push endpoints (/api/push/public-key, /subscribe, /unsubscribe, /test) all return 200 with expected payloads. Admin retention digest endpoint returns {ok:true, sent:N}. PUT /api/users/me/preferences updates weekly_digest correctly. Frontend Login → Dashboard redirect produces ZERO React setState-during-render warnings. Push toggle button present on Dashboard with data-testid='push-toggle-btn' (shown as 'Push bloqué' because Playwright headless denies Notification permission — expected). Nav 'Parrainer' link href='/inviter' and the new /inviter page renders invite-code (CP-M5H5HJ), filleuls (0), crédit accumulé (0.00 €), share card with 5 buttons (WhatsApp/Facebook/X/Email/Copier) and email invite input + Envoyer button — all with required data-testid attributes. Sanity: /api/ 200, /api/estimation/analyse 200, /api/prices/search (POST) 200, /sw.js served 200.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/push/unsubscribe", "issue": "Reuses PushSubIn model which requires 'keys' field. Semantically, unsubscribe should only need 'endpoint'. Not blocking (client sends full sub object), but consider a dedicated PushUnsubIn model with only endpoint required."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter11_phase7.py",
+    "/app/test_reports/pytest/iter11_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Push unsubscribe endpoint reuses PushSubIn requiring keys — cosmetic API contract issue only.",
+    "Test agent had to close an onboarding modal to interact with nav (modal not intercepting header links, so no functional bug — just noting)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter11_phase7.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026!  and  demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 7 fully validated on iter11. Push toggle in headless Playwright shows 'Push bloqué' because browser denies Notification permission — this is NOT a bug. To exercise real push flow, use a real browser with permissions granted. Login endpoint returns {token, session_token, user} — use 'token' key (not 'access_token'). /api/prices/search is POST with body {query, limit}."
+}

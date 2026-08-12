@@ -61,6 +61,15 @@ async def check_user_alerts(user_id: str) -> int:
             continue  # évite le spam si prix quasi identique au dernier envoi
         if await _notify_user(user, a, best):
             sent += 1
+            # Push notification (best effort)
+            try:
+                from routes.phase7 import notify_user as push_notify
+                await push_notify(user["user_id"],
+                                  f"💰 {a.get('product') or a.get('query')} : {best.get('price'):.2f} €",
+                                  f"Meilleure offre chez {best.get('supplier')} — cible {a.get('target_price'):.2f} €",
+                                  best.get("url") or "/prix")
+            except Exception as e:
+                logger.warning(f"Push notify failed: {e}")
     return sent
 
 

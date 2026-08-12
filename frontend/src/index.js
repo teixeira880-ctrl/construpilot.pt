@@ -22,8 +22,8 @@ root.render(
   </React.StrictMode>,
 );
 
-// PWA : enregistrement du service worker en production
-if ("serviceWorker" in navigator && window.location.protocol === "https:") {
+// PWA : enregistrement du service worker (requis pour les push notifications)
+if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });

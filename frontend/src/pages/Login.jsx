@@ -22,7 +22,9 @@ export default function Login() {
     if (refCodeFromUrl) sessionStorage.setItem("construpilot_ref", refCodeFromUrl.toUpperCase());
   }, [refCodeFromUrl]);
 
-  if (user) navigate("/dashboard", { replace: true });
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true });
+  }, [user, navigate]);
 
   const submit = (mode) => async (e) => {
     e.preventDefault();

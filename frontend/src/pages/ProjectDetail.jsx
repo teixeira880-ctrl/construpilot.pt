@@ -14,6 +14,7 @@ import { api, API, eur, eur2, num } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
 import { EmailPdfDialog } from "@/components/EmailPdfDialog";
+import { WhatsAppShare } from "@/components/WhatsAppShare";
 import { PhotosGallery } from "@/components/PhotosGallery";
 import { Timeline } from "@/components/Timeline";
 import { SavingsCard } from "@/components/SavingsCard";
@@ -120,6 +121,7 @@ export default function ProjectDetail() {
             <Download className="h-4 w-4" /> {busy === "pdf" ? "Génération…" : "Télécharger le PDF"}
           </Button>
           <EmailPdfDialog project={{ name: p.name, city: p.city, description: p.description }} estimation={p.estimation} advice={p.advice || ""} />
+          <WhatsAppShare project={{ name: p.name, city: p.city, surface: p.surface }} estimation={p.estimation} projectId={p.project_id} />
           <LeadDialog projectId={p.project_id} budget={p.estimation.total_avg} description={p.description} />
         </div>
       </div>

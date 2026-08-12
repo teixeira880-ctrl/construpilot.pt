@@ -14,7 +14,8 @@ from core.db import db, client  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
 from engines import storage, alerting  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
-                    ai_routes, leads, admin, photos, billing, revenue, phase4, phase5, phase6)  # noqa: E402
+                    ai_routes, leads, admin, photos, billing, revenue,
+                    phase4, phase5, phase6, phase7, share)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
@@ -43,6 +44,8 @@ api_router.include_router(revenue.router)
 api_router.include_router(phase4.router)
 api_router.include_router(phase5.router)
 api_router.include_router(phase6.router)
+api_router.include_router(phase7.router)
+api_router.include_router(share.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -95,6 +98,13 @@ async def seed():
         exists = await db.plans.find_one({"plan_id": plan["plan_id"]})
         if not exists:
             await db.plans.insert_one(plan)
+    # Migration prix pro (12/02/2026) : Pro 49→99€ · Pro Business 99→199€
+    PRICE_MIGRATION = {
+        "pro_monthly": 9900, "pro_yearly": 99000,
+        "pro_business_monthly": 19900, "pro_business_yearly": 199000,
+    }
+    for plan_id, cents in PRICE_MIGRATION.items():
+        await db.plans.update_one({"plan_id": plan_id}, {"$set": {"amount_cents": cents}})
     if not await db.feature_flags.find_one({"_id": "global"}):
         await db.feature_flags.insert_one({"_id": "global", **DEFAULT_FEATURE_FLAGS})
 
@@ -140,6 +150,11 @@ async def seed():
                 logger.warning(f"Snapshot failed for '{q}': {e}")
     scheduler.add_job(snapshot_watched, CronTrigger(hour=3, minute=0),
                       id="daily_price_snapshot", max_instances=1, coalesce=True)
+    # Digest hebdomadaire lundi 09:00 UTC
+    from engines import retention
+    scheduler.add_job(retention.send_weekly_digests,
+                      CronTrigger(day_of_week="mon", hour=9, minute=0),
+                      id="weekly_digest", max_instances=1, coalesce=True)
     scheduler.start()
     app.state.scheduler = scheduler
     logger.info("Scheduler started (daily price alerts @ 08:00 UTC)")

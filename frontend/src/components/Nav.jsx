@@ -73,7 +73,7 @@ export const Nav = () => {
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           {user && (
-            <Link to="/parrainage" data-testid="nav-link-referral" className="hidden md:inline-flex">
+            <Link to="/inviter" data-testid="nav-link-referral" className="hidden md:inline-flex">
               <Button variant="ghost" size="sm" className="rounded-sm gap-2">
                 <Sparkles className="h-4 w-4 text-primary" /> Parrainer
               </Button>

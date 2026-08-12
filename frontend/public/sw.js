@@ -41,3 +41,22 @@ self.addEventListener("fetch", (e) => {
     );
   }
 });
+
+// PUSH notifications
+self.addEventListener("push", (e) => {
+  let data = { title: "ConstruPilot", body: "Nouvelle notification", url: "/" };
+  try { data = { ...data, ...(e.data && e.data.json()) }; } catch {}
+  e.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body, icon: data.icon || "/logo192.png",
+    badge: "/logo192.png", data: { url: data.url }, tag: "construpilot",
+  }));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(self.clients.matchAll({ type: "window" }).then((list) => {
+    for (const c of list) { if (c.url.includes(url) && "focus" in c) return c.focus(); }
+    return self.clients.openWindow(url);
+  }));
+});
