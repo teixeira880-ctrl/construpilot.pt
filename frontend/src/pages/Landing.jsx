@@ -26,7 +26,7 @@ const FEATURES = [
   { icon: Search, title: "Comparateur de prix", text: "10 fournisseurs, livraison, stock, historique et alertes prix.", to: "/prix" },
   { icon: Wrench, title: "Mode « je le fais moi-même »", text: "Matériaux calculés + guide professionnel étape par étape.", to: "/diy" },
   { icon: Camera, title: "Estimation par photo", text: "L'IA identifie la pièce, son état et les travaux probables.", to: "/photo" },
-  { icon: FileText, title: "Scanner de devis", text: "Prix bas, correct, élevé : l'IA analyse et compare vos devis.", to: "/devis" },
+  { icon: FileText, title: "Scanner de devis", text: "Prix bas, correct, élevé : l'IA analyse et compare vos devis.", to: "/scanner-devis" },
   { icon: MessageSquare, title: "Coach IA ConstruPilot", text: "Toutes vos questions travaux, réponses de professionnel.", to: "/coach" },
 ];
 

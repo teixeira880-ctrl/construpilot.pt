@@ -2,10 +2,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
-  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, Users,
+  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, Users, LineChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { NotificationsBell } from "@/components/NotificationsBell";
 
 const LINKS = [
   { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, auth: true },
@@ -15,7 +16,7 @@ const LINKS = [
   { to: "/prix", label: "Prix matériaux", icon: Search },
   { to: "/diy", label: "Je le fais moi-même", icon: Wrench },
   { to: "/photo", label: "Analyse photo", icon: Camera },
-  { to: "/devis", label: "Scanner de devis", icon: FileSearch },
+  { to: "/scanner-devis", label: "Scanner de devis", icon: FileSearch },
   { to: "/coach", label: "Coach IA", icon: MessageSquare },
   { to: "/marketplace", label: "Trouver un pro", icon: Wrench },
   { to: "/pro", label: "Espace pro", icon: Handshake },
@@ -74,6 +75,13 @@ export const Nav = () => {
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           {user && (
+            <Link to="/devis" data-testid="nav-link-tracking" className="hidden md:inline-flex">
+              <Button variant="ghost" size="sm" className="rounded-sm gap-2">
+                <LineChart className="h-4 w-4 text-primary" /> Suivi devis
+              </Button>
+            </Link>
+          )}
+          {user && (
             <Link to="/equipe" data-testid="nav-link-team" className="hidden md:inline-flex">
               <Button variant="ghost" size="sm" className="rounded-sm gap-2">
                 <Users className="h-4 w-4 text-primary" /> Équipe
@@ -96,6 +104,7 @@ export const Nav = () => {
           )}
           {user ? (
             <>
+              <NotificationsBell />
               <span className="hidden md:block text-sm text-muted-foreground max-w-[140px] truncate">
                 {user.name}
               </span>

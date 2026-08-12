@@ -1399,6 +1399,47 @@ async def mark_notification_read(notif_id: str, user=Depends(current_user)):
     return {"ok": True}
 
 
+@quote_router.post("/notifications/read-all")
+async def mark_all_notifications_read(user=Depends(current_user)):
+    """Marque toutes les notifs comme lues."""
+    res = await db.notifications.update_many(
+        {"user_id": user["user_id"], "read": False},
+        {"$set": {"read": True, "read_at": _now()}}
+    )
+    return {"ok": True, "marked": res.modified_count}
+
+
+@quote_router.get("/sends/all")
+async def list_all_quote_sends(user=Depends(current_user)):
+    """Suivi Devis : tous les devis envoyés par l'utilisateur, plan_ids agrégés."""
+    docs = await db.quote_sends.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0, "signature_b64": 0}  # signature_b64 lourde, on ne l'envoie pas
+    ).sort("created_at", -1).limit(200).to_list(200)
+
+    # Attache le filename du plan associé (une seule requête agrégée)
+    plan_ids = list({d["plan_id"] for d in docs})
+    plans = await db.plans_takeoff.find(
+        {"plan_id": {"$in": plan_ids}, "user_id": user["user_id"]},
+        {"_id": 0, "plan_id": 1, "filename": 1}
+    ).to_list(500) if plan_ids else []
+    filenames = {p["plan_id"]: p.get("filename") for p in plans}
+    for d in docs:
+        d["plan_filename"] = filenames.get(d["plan_id"])
+
+    stats = {"sent": len(docs),
+             "opened": sum(1 for d in docs if d.get("opened")),
+             "signed": sum(1 for d in docs if d.get("signed")),
+             "not_opened": sum(1 for d in docs
+                                if not d.get("opened") and not d.get("signed"))}
+    stats["total_ttc_signed"] = round(sum(d.get("total_ttc", 0) for d in docs
+                                           if d.get("signed")), 2)
+    stats["total_ttc_pipeline"] = round(sum(d.get("total_ttc", 0) for d in docs
+                                              if not d.get("signed")), 2)
+    return {"sends": docs, "stats": stats}
+
+
+
 # ============ SIGNATURE CLIENT (Mode Signature) ============
 
 @router.post("/{plan_id}/quote-sends/{log_id}/signature-link")

@@ -150,7 +150,7 @@ export default function Dashboard() {
             <div className="surface p-12 text-center" data-testid="quotes-empty">
               <FileSearch className="h-8 w-8 mx-auto text-muted-foreground" />
               <p className="mt-4 text-sm text-muted-foreground">
-                Aucun devis analysé. <Link to="/devis" className="text-primary">Scanner un devis</Link>
+                Aucun devis analysé. <Link to="/scanner-devis" className="text-primary">Scanner un devis</Link>
               </p>
             </div>
           ) : (

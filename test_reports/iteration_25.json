@@ -1,0 +1,32 @@
+{
+  "summary": "Iter25 tested: Notifications Bell + Suivi Devis dashboard + backend endpoints. Backend: 5/5 pytest passed (GET /api/quotes/notifications/me, POST /api/quotes/notifications/read-all, GET /api/quotes/sends/all shape verification for _id/signature_b64 exclusion + plan_filename attach + stats keys, auth guard, POST signature-link). Frontend: /devis renders 4 KPIs (Envoyés 8, Ouverts 2 - 25%, Signés 3 - 23 423,4 € conclus, Pipeline 39 039 €), all 3 columns render (col-not-opened 3, col-opened 2, col-signed 3), 8 quote-cards rendered with client name/plan filename/amount TTC/'Envoyé aujourd'hui', quote-tracking-refresh triggers GET /quotes/sends/all -> 200, copy-sign-<id> triggers POST /takeoffs/{plan_id}/quote-sends/{log_id}/signature-link -> 200 and shows 'Lien de signature copié' toast. Bell renders, dropdown opens showing 5 notification items with notif-item-<id> testids and notif-see-all link. nav-link-tracking navigates to /devis, nav-link-team still works, /scanner-devis loads QuoteScanner (Ce prix est-il correct ?).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard top-right", "issues": ["The 'Bienvenue chez ConstruPilot' Sonner toast (top-right position) overlays the notifications bell button briefly after login. During the ~3.5s the toast is visible, clicking the bell hits the toast instead of the button. Consider position='top-center' for welcome toast OR ensure toast has pointer-events:none, OR use position 'bottom-right'."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter25_notifs_tracking.py",
+    "/app/test_reports/pytest/iter25.xml"
+  ],
+  "action_items": [
+    "OPTIONAL UX: relocate Sonner welcome toast so it doesn't temporarily block the notif-bell-btn top-right."
+  ],
+  "critical_code_review_comments": [
+    "NotificationsBell polling interval clears correctly on unmount (good). fetchNotifs silently swallows errors — consider surfacing 401 to trigger logout for expired sessions.",
+    "QuoteTracking copySignLink relies on navigator.clipboard.writeText which requires secure context/permissions in some browsers; toast success is only shown after clipboard write. Consider fallback to document.execCommand or showing the URL in a dialog if writeText rejects.",
+    "GET /api/quotes/sends/all limits to 200 sends without pagination — fine for now but note for scale.",
+    "Backend correctly excludes _id and signature_b64 from /sends/all response as required."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "100% functional (all critical flows work); minor toast-overlay UX note"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!",
+  "seed_data_creation": "None. Used existing 8 quote_sends and existing notifications from prior iterations. Note: test_read_all_notifications marks all notifs as read; subsequent runs will show unread=0 unless new notifications are created via open/sign events.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After running test_iter25_notifs_tracking.py once, unread=0 for pro@construpilot.fr. To re-observe the notif-badge, generate a new notification by opening or signing a quote (POST /api/quotes/public/track-open/{tracking_token} or /public/sign/{token}) as another user/session. The bell dropdown works but is briefly blocked by the login welcome toast — always wait ~3.5s after login before clicking the bell.",
+  "rca_of_the_issue": "N/A — no regressions found. Only observation: post-login Sonner toast at top-right transiently intercepts pointer events over the bell button; disappears after ~3.5s."
+}

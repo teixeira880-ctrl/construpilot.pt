@@ -304,3 +304,44 @@ Voir `/app/memory/test_credentials.md`.
 - `pyflakes` = **0 undefined variables** (la revue en signalait 18 mais elles
   étaient déjà corrigées lors du refactor précédent).
 
+
+## 12. Changelog Iter 25 (12/02/2026) — Bell + Suivi Devis Dashboard
+
+### Notifications Bell (top nav)
+- Nouveau composant `/app/frontend/src/components/NotificationsBell.jsx`.
+- Polling toutes les 30 s de `GET /api/quotes/notifications/me`.
+- Badge rouge avec compteur (max 9+) sur la cloche quand `unread > 0`.
+- Dropdown liste : ouverte/signée devis, marquage lu au clic, "Tout marquer lu",
+  lien vers `/devis`.
+- Nouvel endpoint `POST /api/quotes/notifications/read-all` (mark_many).
+
+### Suivi Devis Dashboard (`/devis`)
+- Nouvelle page `/app/frontend/src/pages/QuoteTracking.jsx`.
+- 4 KPIs : Envoyés / Ouverts (+ taux %) / Signés (+ € conclus) / Pipeline (€ à conclure).
+- Board 3 colonnes : Non ouverts (gris) / Ouverts à relancer (vert) / Signés (orange).
+- Chaque card : client, plan filename, TTC, dates relatives (aujourd'hui/hier/il y a X j),
+  compteur ouvertures.
+- Bouton "Lien signature" (crée + copie) pour relancer.
+- Endpoint agrégat `GET /api/quotes/sends/all` : jusqu'à 200 envois + attach `plan_filename`
+  via lookup + stats globales.
+
+### Routing
+- Conflit `/devis` : l'ancien `QuoteScanner` déplacé vers `/scanner-devis`.
+  Nav + Landing + Dashboard mis à jour en conséquence.
+
+### UX polish
+- Welcome toast Sonner déplacé de `top-right` vers `bottom-right` (durée 2.5 s) pour ne
+  plus bloquer la cloche de notif au chargement.
+
+### Actions plateforme (support agent)
+- **Deploy Now** : action manuelle via bouton Deploy dans l'UI Emergent → 10-15 min de
+  build → URL `*.emergent.host`. Vérifier que les 11 env vars sensibles sont bien
+  transférés en prod.
+- **Custom Domain** (`construpilot.fr`) : Link domain → Entri (retirer les A records
+  existants) → propagation 5-15 min → SSL Let's Encrypt automatique.
+
+### Tests
+- iter25 : 5/5 backend + frontend E2E complet (bell, dropdown, dashboard 3 colonnes,
+  KPIs, copy-sign, refresh) → **PASS**.
+- Régression totale : 51/51 tests précédents + 5/5 iter25 = **56/56 PASS**.
+

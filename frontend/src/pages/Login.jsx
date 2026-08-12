@@ -42,7 +42,7 @@ export default function Login() {
           } catch { /* silencieux */ }
         }
       }
-      toast.success("Bienvenue chez ConstruPilot");
+      toast.success("Bienvenue chez ConstruPilot", { position: "bottom-right", duration: 2500 });
       navigate("/dashboard");
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Échec de la connexion");

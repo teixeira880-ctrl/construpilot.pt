@@ -31,6 +31,7 @@ import SupplierPortal from "@/pages/SupplierPortal";
 import Invite from "@/pages/Invite";
 import Team from "@/pages/Team";
 import SignQuote from "@/pages/SignQuote";
+import QuoteTracking from "@/pages/QuoteTracking";
 import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
 import PlanCompare from "@/pages/PlanCompare";
@@ -72,11 +73,12 @@ function AppRouter() {
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
-      <Route path="/devis" element={<Shell><QuoteScanner /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
       <Route path="/equipe" element={<Protected><Shell><Team /></Shell></Protected>} />
+      <Route path="/devis" element={<Protected><Shell><QuoteTracking /></Shell></Protected>} />
+      <Route path="/scanner-devis" element={<Shell><QuoteScanner /></Shell>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/sign/:token" element={<SignQuote />} />
       <Route path="/plan" element={<Protected><Shell><PlanTakeoff /></Shell></Protected>} />
