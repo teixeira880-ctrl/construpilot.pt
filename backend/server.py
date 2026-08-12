@@ -49,6 +49,7 @@ api_router.include_router(phase7.router)
 api_router.include_router(share.router)
 api_router.include_router(admin_revenue.router)
 api_router.include_router(plans_routes.router)
+api_router.include_router(plans_routes.quote_router)
 app.include_router(api_router)
 
 app.add_middleware(

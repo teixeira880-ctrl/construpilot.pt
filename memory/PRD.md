@@ -200,3 +200,55 @@ Voir `/app/memory/test_credentials.md`.
 - Walls-summary : moyenne les scales sur plusieurs pages (imprécis multi-échelle).
 - Seed : le mot de passe demo est reset à chaque restart — OK pour démo, à isoler en prod.
 
+
+## 10. Changelog Iter 23 (12/02/2026) — Templates, Multi-Plans, Tracking, Signature
+
+### Devis Récurrents (Templates)
+- Nouveau collection `quote_templates` + sous-router `/api/quotes/*`.
+- `POST /api/quotes/templates`, `GET /api/quotes/templates`, `DELETE /api/quotes/templates/{id}`.
+- Templates partageables au niveau organisation (`is_shared=true` → visible par tous les
+  membres de la même org).
+- UI : picker de modèles dans le dialog Devis + zone « Enregistrer comme modèle » avec
+  case à cocher « Partager avec toute mon équipe ».
+
+### PDF Multi-Plans (Devis Projet Consolidé)
+- `POST /api/quotes/multi-pdf` — bundle jusqu'à 20 plans en un seul PDF projet.
+- Nouveau `build_project_quote_pdf` : header branding, surfaces totales, section détail
+  par plan, récap TTC projet.
+- UI : nouveau bouton « Multi-plans » dans le header PlanTakeoff → dialog avec
+  checkboxes sur tous les plans du user.
+
+### Alertes Devis (Email Open Tracking)
+- Pixel `<img>` invisible ajouté dans le HTML du mail devis (`/api/quotes/track/open/{log_id}`).
+- Marque `opened=true`, `open_count++`, `opened_at`, `last_opened_at` sur `quote_sends`.
+- Insère une notification `quote_opened` en base (visible via
+  `GET /api/quotes/notifications/me`).
+- UI : badge « Ouvert (N) » dans l'historique des envois du dialog Devis.
+
+### Mode Signature (Public Sign)
+- `POST /api/takeoffs/{plan_id}/quote-sends/{log_id}/signature-link` → génère un token.
+- Endpoints publics `/api/quotes/public/sign/{token}` (GET meta / POST signature /
+  GET pdf signé).
+- Signature validation Pydantic (image base64 min 100 chars).
+- Notification `quote_signed` insérée pour le sender à la réception.
+- Nouvelle page publique `/sign/:token` (canvas HTML5 dessinable au doigt/souris,
+  input nom, bouton « Bon pour accord »).
+- `build_quote_pdf(quote, signature=…)` : bloc « Bon pour accord » avec image signature +
+  nom + date, encart orange.
+
+### Env
+- Ajout `FRONTEND_URL` et `PUBLIC_BACKEND_URL` dans `backend/.env` — URL absolue utilisée
+  pour le tracking pixel et le lien signature.
+
+### Tests
+- iter23 : 11/11 backend + frontend E2E (SignQuote full flow, templates picker,
+  multi-quote-dialog, sends history badges).
+
+### Notes de revue
+- `PlanTakeoff.jsx` = 1 724 lignes → à découper en sous-composants (Devis dialog,
+  Multi dialog, Sends history) plus tard.
+- Notification bell en top-nav non implémentée — utilisateurs voient les badges
+  directement dans le dialog Devis.
+- Pixel tracking : `no-store` sur la réponse — précautions gmail proxy à vérifier
+  en prod (peut cacher les images = false positive « ouvert »).
+

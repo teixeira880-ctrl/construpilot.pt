@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import secrets
 from datetime import datetime, timezone
 from typing import Literal
@@ -35,6 +36,8 @@ from engines.pdf_takeoff import build_takeoff_pdf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["plans"], prefix="/takeoffs")
+# Sub-router for non-plan-scoped routes (templates, tracking, notifs, public sign, multi)
+quote_router = APIRouter(tags=["quotes"], prefix="/quotes")
 
 MAX_UPLOAD_MB = 20
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp",
@@ -1150,10 +1153,16 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
         body.finish, "Standard")
 
-    # Email HTML
+    # Email HTML (avec tracking pixel pour open notification)
     from engines.emailer import send_email_with_pdf, wrap_html
     hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
     custom = f"<p>{body.message}</p>" if body.message else ""
+    log_id = "qs_" + secrets.token_hex(6)
+    backend_public = os.getenv("PUBLIC_BACKEND_URL") or os.getenv("FRONTEND_URL") or ""
+    pixel_tag = ""
+    if backend_public:
+        pixel_tag = (f'<img src="{backend_public}/api/quotes/track/open/{log_id}" '
+                     f'width="1" height="1" alt="" style="display:block" />')
     inner = (
         f"<p>{hello}</p>"
         f"{custom}"
@@ -1167,6 +1176,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         f"pour toute question ou visite technique.</p>"
         f"<p style='color:#666;font-size:12px;margin-top:24px'>"
         f"{company}<br/>{contact}</p>"
+        f"{pixel_tag}"
     )
     html = wrap_html(f"Devis · {company}", inner)
 
@@ -1184,13 +1194,15 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
 
     # Log l'envoi en base
     log = {
-        "log_id": "qs_" + secrets.token_hex(6),
+        "log_id": log_id,
         "plan_id": plan_id, "user_id": user["user_id"],
         "client_email": body.client_email, "client_name": body.client_name,
         "cc": (sender_u or {}).get("email") if body.cc_self else None,
         "total_ttc": ttc, "finish": body.finish, "floor_material": body.floor_material,
         "email_status": email_status, "email_id": email_id, "error": error,
         "created_at": _now(),
+        "opened": False, "open_count": 0,
+        "signed": False,
     }
     await db.quote_sends.insert_one(log)
     return {"ok": email_status == "sent", "email_status": email_status,
@@ -1205,3 +1217,288 @@ async def list_quote_sends(plan_id: str, user=Depends(current_user)):
         {"_id": 0}
     ).sort("created_at", -1).limit(50).to_list(50)
     return {"plan_id": plan_id, "sends": docs}
+
+
+# ============ QUOTE TEMPLATES (Devis Récurrents) ============
+
+class QuoteTemplateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    finish: str = "std"
+    floor_material: str = "carrelage"
+    include_paint: bool = True
+    include_placo: bool = True
+    include_floor: bool = True
+    include_skirting: bool = True
+    is_shared: bool = False  # partagé au niveau organisation
+
+
+@quote_router.post("/templates")
+async def create_quote_template(body: QuoteTemplateIn, user=Depends(current_user)):
+    tpl_id = "qtpl_" + secrets.token_hex(5)
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "organization_id": 1}) or {}
+    org_id = u.get("organization_id") if body.is_shared else None
+    doc = {
+        "template_id": tpl_id, "user_id": user["user_id"],
+        "organization_id": org_id,
+        "name": body.name.strip()[:80],
+        "finish": body.finish, "floor_material": body.floor_material,
+        "include_paint": body.include_paint, "include_placo": body.include_placo,
+        "include_floor": body.include_floor, "include_skirting": body.include_skirting,
+        "created_at": _now(),
+    }
+    await db.quote_templates.insert_one(doc)
+    return {"ok": True, "template_id": tpl_id, **{k: v for k, v in doc.items() if k != "_id"}}
+
+
+@quote_router.get("/templates")
+async def list_quote_templates(user=Depends(current_user)):
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "organization_id": 1}) or {}
+    org_id = u.get("organization_id")
+    query = {"$or": [{"user_id": user["user_id"]}]}
+    if org_id:
+        query["$or"].append({"organization_id": org_id})
+    docs = await db.quote_templates.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"templates": docs}
+
+
+@quote_router.delete("/templates/{template_id}")
+async def delete_quote_template(template_id: str, user=Depends(current_user)):
+    tpl = await db.quote_templates.find_one({"template_id": template_id}, {"_id": 0})
+    if not tpl:
+        raise HTTPException(404, "Modèle introuvable")
+    # Seul le créateur peut supprimer (même si partagé)
+    if tpl.get("user_id") != user["user_id"]:
+        raise HTTPException(403, "Réservé au créateur du modèle")
+    await db.quote_templates.delete_one({"template_id": template_id})
+    return {"ok": True}
+
+
+# ============ MULTI-PLAN QUOTE PDF (Bundle) ============
+
+class MultiQuoteIn(BaseModel):
+    plan_ids: list[str] = Field(min_length=1, max_length=20)
+    project_name: str | None = None
+    finish: str = "std"
+    floor_material: str = "carrelage"
+    include_paint: bool = True
+    include_placo: bool = True
+    include_floor: bool = True
+    include_skirting: bool = True
+
+
+@quote_router.post("/multi-pdf")
+async def export_multi_quote_pdf(body: MultiQuoteIn, user=Depends(current_user)):
+    """Génère un PDF Devis projet consolidé pour plusieurs plans (multi-niveaux, extensions…)."""
+    from fastapi.responses import Response
+    from engines.pdf_takeoff import build_project_quote_pdf
+
+    sub_quotes = []
+    for pid in body.plan_ids:
+        try:
+            q, _pdf = await _build_quote_and_pdf(
+                pid, user["user_id"], body.finish, body.floor_material,
+                body.include_paint, body.include_placo,
+                body.include_floor, body.include_skirting,
+            )
+            sub_quotes.append(q)
+        except HTTPException as e:
+            # Ignore un plan sans pièce (400) mais lève les 404
+            if e.status_code == 400:
+                continue
+            raise
+    if not sub_quotes:
+        raise HTTPException(400, "Aucun plan n'a de pièce mesurée.")
+
+    # Agrégation
+    def _sum(key):
+        return round(sum(q.get(key, 0) for q in sub_quotes), 2)
+    project = {
+        "project_name": (body.project_name or "Projet ConstruPilot").strip(),
+        "plan_count": len(sub_quotes),
+        "sub_quotes": sub_quotes,
+        "totals": {
+            "floor_m2": round(sum(q["totals"]["floor_m2"] for q in sub_quotes), 2),
+            "ceiling_m2": round(sum(q["totals"]["ceiling_m2"] for q in sub_quotes), 2),
+            "walls_net_m2": round(sum(q["totals"]["walls_net_m2"] for q in sub_quotes), 2),
+            "perimeter_m": round(sum(q["totals"]["perimeter_m"] for q in sub_quotes), 2),
+        },
+        "subtotal_material": _sum("subtotal_material"),
+        "subtotal_labour": _sum("subtotal_labour"),
+        "subtotal_ht": _sum("subtotal_ht"),
+        "tva_rate": 0.10,
+        "tva": _sum("tva"),
+        "total_ttc": _sum("total_ttc"),
+        "finish": body.finish, "floor_material": body.floor_material,
+    }
+    branding = await _resolve_branding(user["user_id"])
+    pdf_bytes = build_project_quote_pdf(project, branding=branding)
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="devis-projet-{secrets.token_hex(3)}.pdf"'}
+    )
+
+
+# ============ EMAIL TRACKING (Alertes Devis) ============
+
+@quote_router.get("/track/open/{log_id}", include_in_schema=False)
+async def track_quote_open(log_id: str):
+    """Pixel de tracking : marque le devis comme ouvert (idempotent)."""
+    from fastapi.responses import Response
+    # 1x1 transparent GIF
+    pixel = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04" \
+            b"\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02" \
+            b"D\x01\x00;"
+    try:
+        log = await db.quote_sends.find_one({"log_id": log_id}, {"_id": 0, "opened": 1,
+                                                                    "user_id": 1, "client_email": 1})
+        if log and not log.get("opened"):
+            await db.quote_sends.update_one(
+                {"log_id": log_id},
+                {"$set": {"opened": True, "opened_at": _now()},
+                 "$inc": {"open_count": 1}}
+            )
+            # Notif in-app pour le sender
+            await db.notifications.insert_one({
+                "notif_id": "n_" + secrets.token_hex(5),
+                "user_id": log["user_id"],
+                "type": "quote_opened", "log_id": log_id,
+                "message": f"Le client ({log.get('client_email')}) a ouvert votre devis.",
+                "created_at": _now(), "read": False,
+            })
+        elif log:
+            await db.quote_sends.update_one({"log_id": log_id},
+                                             {"$inc": {"open_count": 1},
+                                              "$set": {"last_opened_at": _now()}})
+    except Exception as e:
+        logger.warning(f"tracking pixel fail {log_id}: {e}")
+    return Response(content=pixel, media_type="image/gif",
+                    headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
+
+
+@quote_router.get("/notifications/me")
+async def list_notifications(user=Depends(current_user)):
+    docs = await db.notifications.find(
+        {"user_id": user["user_id"]}, {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    unread = sum(1 for d in docs if not d.get("read"))
+    return {"unread": unread, "notifications": docs}
+
+
+@quote_router.post("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str, user=Depends(current_user)):
+    await db.notifications.update_one(
+        {"notif_id": notif_id, "user_id": user["user_id"]},
+        {"$set": {"read": True, "read_at": _now()}}
+    )
+    return {"ok": True}
+
+
+# ============ SIGNATURE CLIENT (Mode Signature) ============
+
+@router.post("/{plan_id}/quote-sends/{log_id}/signature-link")
+async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_user)):
+    """Génère un lien public unique pour que le client signe le devis."""
+    log = await db.quote_sends.find_one(
+        {"log_id": log_id, "plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0}
+    )
+    if not log:
+        raise HTTPException(404, "Envoi de devis introuvable")
+    token = "sig_" + secrets.token_urlsafe(18)
+    await db.quote_sends.update_one(
+        {"log_id": log_id},
+        {"$set": {"signature_token": token, "signature_token_created_at": _now()}}
+    )
+    frontend_url = os.getenv("FRONTEND_URL") or ""
+    return {"ok": True, "token": token,
+            "url": f"{frontend_url}/sign/{token}" if frontend_url else f"/sign/{token}"}
+
+
+@quote_router.get("/public/sign/{token}")
+async def get_signature_page_data(token: str):
+    """Endpoint public : récupère le résumé du devis à signer (sans exposer les données du sender)."""
+    log = await db.quote_sends.find_one(
+        {"signature_token": token},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "client_email": 1, "client_name": 1,
+         "total_ttc": 1, "finish": 1, "floor_material": 1, "log_id": 1,
+         "signed": 1, "signed_at": 1}
+    )
+    if not log:
+        raise HTTPException(404, "Lien invalide ou expiré")
+    branding = await _resolve_branding(log["user_id"]) or {}
+    return {
+        "log_id": log["log_id"], "plan_id": log["plan_id"],
+        "client_email": log.get("client_email"), "client_name": log.get("client_name"),
+        "total_ttc": log.get("total_ttc"),
+        "finish": log.get("finish"), "floor_material": log.get("floor_material"),
+        "signed": bool(log.get("signed")),
+        "signed_at": log.get("signed_at"),
+        "company_name": branding.get("company_name"),
+        "contact_line": branding.get("contact_line"),
+    }
+
+
+class SignatureIn(BaseModel):
+    signature_b64: str = Field(min_length=100, max_length=200_000)
+    signer_name: str = Field(min_length=2, max_length=120)
+
+
+@quote_router.post("/public/sign/{token}")
+async def submit_signature(token: str, body: SignatureIn):
+    """Endpoint public : le client soumet sa signature (image base64)."""
+    log = await db.quote_sends.find_one({"signature_token": token},
+                                          {"_id": 0, "log_id": 1, "user_id": 1,
+                                           "signed": 1, "client_email": 1})
+    if not log:
+        raise HTTPException(404, "Lien invalide")
+    if log.get("signed"):
+        raise HTTPException(400, "Ce devis a déjà été signé")
+    b64_clean = body.signature_b64.split(",")[-1]
+    await db.quote_sends.update_one(
+        {"log_id": log["log_id"]},
+        {"$set": {"signed": True, "signed_at": _now(),
+                   "signer_name": body.signer_name.strip()[:120],
+                   "signature_b64": b64_clean}}
+    )
+    # Notification au sender
+    await db.notifications.insert_one({
+        "notif_id": "n_" + secrets.token_hex(5),
+        "user_id": log["user_id"], "type": "quote_signed", "log_id": log["log_id"],
+        "message": f"{body.signer_name} a signé le devis ({log.get('client_email')}).",
+        "created_at": _now(), "read": False,
+    })
+    return {"ok": True, "signed_at": _now()}
+
+
+@quote_router.get("/public/sign/{token}/pdf")
+async def get_signed_quote_pdf(token: str):
+    """Renvoie le PDF Devis avec le bloc signature intégré."""
+    from fastapi.responses import Response
+    from engines.pdf_takeoff import build_quote_pdf
+    log = await db.quote_sends.find_one({"signature_token": token}, {"_id": 0})
+    if not log:
+        raise HTTPException(404, "Lien invalide")
+    plan_id = log["plan_id"]
+    user_id = log["user_id"]
+
+    quote, _pdf = await _build_quote_and_pdf(
+        plan_id, user_id, log.get("finish", "std"),
+        log.get("floor_material", "carrelage"),
+        True, True, True, True,
+    )
+    branding = await _resolve_branding(user_id)
+    signature = None
+    if log.get("signed"):
+        signature = {"b64": log.get("signature_b64"),
+                     "name": log.get("signer_name"),
+                     "at": log.get("signed_at"),
+                     "client_email": log.get("client_email")}
+    pdf_bytes = build_quote_pdf(quote, branding=branding, signature=signature)
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="devis-signe-{plan_id}.pdf"'}
+    )

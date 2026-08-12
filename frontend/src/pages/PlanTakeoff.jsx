@@ -251,6 +251,18 @@ export default function PlanTakeoff() {
   const [snapPickA, setSnapPickA] = useState(null);
   const [snapPickB, setSnapPickB] = useState(null);
   const [snapCompareResult, setSnapCompareResult] = useState(null);
+  // Templates
+  const [templates, setTemplates] = useState([]);
+  const [templateName, setTemplateName] = useState("");
+  const [templateShared, setTemplateShared] = useState(false);
+  // Multi-plan quote
+  const [multiDialog, setMultiDialog] = useState(false);
+  const [multiSelected, setMultiSelected] = useState([]);
+  const [multiProjectName, setMultiProjectName] = useState("");
+  const [multiBusy, setMultiBusy] = useState(false);
+  const [allPlans, setAllPlans] = useState([]);
+  // Quote sends (envois + tracking)
+  const [quoteSends, setQuoteSends] = useState([]);
   const fileRef = useRef(null);
 
   const currentCalib = plan?.calibrations?.[String(pageIndex)];
@@ -570,6 +582,7 @@ export default function PlanTakeoff() {
         toast.success(`Devis envoyé à ${quoteClientEmail} (${data.total_ttc?.toLocaleString("fr-FR")} € TTC)`);
         setQuoteDialog(false);
         setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
+        await loadQuoteSends();
       } else {
         toast.error("Envoi email échoué — vérifiez la clé Resend");
       }
@@ -584,6 +597,106 @@ export default function PlanTakeoff() {
       const { data } = await api.get(`/takeoffs/${plan.plan_id}/walls-summary`);
       setWallsSummary(data);
     } catch { /* ignore */ }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const { data } = await api.get("/quotes/templates");
+      setTemplates(data.templates || []);
+    } catch { /* ignore */ }
+  };
+
+  const applyTemplate = (t) => {
+    if (!t) return;
+    setQuoteFinish(t.finish || "std");
+    setQuoteFloor(t.floor_material || "carrelage");
+    toast.success(`Modèle « ${t.name} » appliqué`);
+  };
+
+  const saveTemplate = async () => {
+    if (templateName.trim().length < 2) return toast.error("Nom du modèle trop court");
+    try {
+      await api.post("/quotes/templates", {
+        name: templateName.trim(),
+        finish: quoteFinish, floor_material: quoteFloor,
+        is_shared: templateShared,
+      });
+      toast.success(`Modèle « ${templateName} » enregistré`);
+      setTemplateName(""); setTemplateShared(false);
+      await loadTemplates();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Enregistrement impossible");
+    }
+  };
+
+  const deleteTemplate = async (id) => {
+    if (!window.confirm("Supprimer ce modèle ?")) return;
+    try {
+      await api.delete(`/quotes/templates/${id}`);
+      await loadTemplates();
+      toast.success("Modèle supprimé");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Suppression impossible");
+    }
+  };
+
+  const loadQuoteSends = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/quote-sends`);
+      setQuoteSends(data.sends || []);
+    } catch { /* ignore */ }
+  };
+
+  const loadAllPlans = async () => {
+    try {
+      const { data } = await api.get("/takeoffs");
+      setAllPlans(data.plans || data || []);
+    } catch { /* ignore */ }
+  };
+
+  const downloadMultiQuote = async () => {
+    if (multiSelected.length === 0) return toast.error("Sélectionnez au moins 1 plan");
+    setMultiBusy(true);
+    try {
+      const backend = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("construpilot_token");
+      const res = await fetch(`${backend}/api/quotes/multi-pdf`, {
+        method: "POST", credentials: "include",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan_ids: multiSelected,
+          project_name: multiProjectName.trim() || null,
+          finish: quoteFinish, floor_material: quoteFloor,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "PDF Multi-Plans error");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `devis-projet.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Devis projet (${multiSelected.length} plans) téléchargé`);
+      setMultiDialog(false);
+    } catch (e) { toast.error(e.message || "Export impossible"); }
+    finally { setMultiBusy(false); }
+  };
+
+  const createSignatureLink = async (logId) => {
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/quote-sends/${logId}/signature-link`);
+      const fullUrl = data.url.startsWith("http") ? data.url
+        : `${window.location.origin}${data.url}`;
+      await navigator.clipboard.writeText(fullUrl);
+      toast.success("Lien de signature copié dans le presse-papier");
+      await loadQuoteSends();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Génération du lien impossible");
+    }
   };
 
   const reclassifyWall = async (segIndex) => {
@@ -729,9 +842,15 @@ export default function PlanTakeoff() {
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" /> Métré PDF
           </Button>
-          <Button variant="outline" onClick={() => setQuoteDialog(true)} data-testid="plan-quote-pdf-btn"
+          <Button variant="outline" onClick={() => { setQuoteDialog(true); loadTemplates(); loadQuoteSends(); }}
+                  data-testid="plan-quote-pdf-btn"
                   className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
             <FileDown className="h-4 w-4" /> Devis PDF
+          </Button>
+          <Button variant="outline" onClick={() => { setMultiDialog(true); loadAllPlans(); }}
+                  data-testid="plan-multi-quote-btn"
+                  className="rounded-sm gap-2">
+            <FileDown className="h-4 w-4" /> Multi-plans
           </Button>
           <BrandingDialog />
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
@@ -1297,6 +1416,36 @@ export default function PlanTakeoff() {
               Envoyer au client
             </Button>
           </div>
+
+          {/* Templates picker */}
+          {templates.length > 0 && (
+            <div className="border border-border rounded-sm p-3 bg-secondary/30" data-testid="templates-picker">
+              <p className="overline mb-2">Modèles de devis</p>
+              <div className="flex flex-wrap gap-1">
+                {templates.map(t => (
+                  <div key={t.template_id}
+                       className="flex items-center bg-background border border-border rounded-sm text-[10px]">
+                    <button onClick={() => applyTemplate(t)}
+                            data-testid={`apply-template-${t.template_id}`}
+                            className="px-2 py-1 hover:bg-primary/10 flex items-center gap-1">
+                      {t.organization_id && <span className="text-primary">◈</span>}
+                      {t.name}
+                      <span className="text-muted-foreground">
+                        · {t.finish} · {t.floor_material}
+                      </span>
+                    </button>
+                    {t.user_id && (
+                      <button onClick={() => deleteTemplate(t.template_id)}
+                              data-testid={`delete-template-${t.template_id}`}
+                              className="px-1.5 py-1 text-muted-foreground hover:text-destructive border-l border-border">
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label>Gamme de finition</Label>
@@ -1349,8 +1498,72 @@ export default function PlanTakeoff() {
                 <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm">
                   Une copie sera envoyée à votre adresse pour trace. L'envoi est loggé dans l'historique.
                 </p>
+
+                {/* Sends history with tracking */}
+                {quoteSends.length > 0 && (
+                  <div className="border border-border rounded-sm p-3" data-testid="sends-history">
+                    <p className="overline mb-2">Historique des envois ({quoteSends.length})</p>
+                    <div className="grid gap-1 max-h-40 overflow-y-auto">
+                      {quoteSends.map(s => (
+                        <div key={s.log_id}
+                             className="text-[10px] flex items-center justify-between border-b border-border py-1"
+                             data-testid={`send-log-${s.log_id}`}>
+                          <div className="min-w-0">
+                            <p className="font-bold truncate">{s.client_name || s.client_email}</p>
+                            <p className="num text-muted-foreground">
+                              {new Date(s.created_at).toLocaleDateString("fr-FR")} · {s.total_ttc?.toLocaleString("fr-FR")} € TTC
+                            </p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            {s.signed && (
+                              <span className="bg-primary text-white px-1.5 py-0.5 rounded-sm text-[9px]"
+                                    data-testid={`sign-badge-${s.log_id}`}>Signé</span>
+                            )}
+                            {!s.signed && s.opened && (
+                              <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-1.5 py-0.5 rounded-sm text-[9px]"
+                                    data-testid={`open-badge-${s.log_id}`}>
+                                Ouvert ({s.open_count || 1})
+                              </span>
+                            )}
+                            {!s.signed && (
+                              <button onClick={() => createSignatureLink(s.log_id)}
+                                      data-testid={`sign-link-${s.log_id}`}
+                                      className="text-primary hover:underline text-[10px]">
+                                Lien signature
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
+
+            {/* Save current config as template */}
+            <div className="border border-dashed border-border rounded-sm p-3">
+              <p className="overline mb-2">Enregistrer comme modèle</p>
+              <div className="flex gap-2 items-center">
+                <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)}
+                       placeholder="Ex : Rénovation T3 standard"
+                       maxLength={80}
+                       data-testid="template-name-input"
+                       className="rounded-sm h-9 text-xs" />
+                <Button size="sm" onClick={saveTemplate} disabled={!templateName.trim()}
+                        data-testid="template-save-btn"
+                        className="rounded-sm hover:bg-orange-600 hover:text-white">
+                  Enregistrer
+                </Button>
+              </div>
+              <label className="flex items-center gap-1 text-[10px] mt-2 cursor-pointer text-muted-foreground">
+                <input type="checkbox" checked={templateShared}
+                       onChange={(e) => setTemplateShared(e.target.checked)}
+                       data-testid="template-shared-checkbox"
+                       className="accent-primary h-3 w-3" />
+                Partager avec toute mon équipe (organisation)
+              </label>
+            </div>
 
             <p className="text-xs text-muted-foreground border border-border p-3 rounded-sm bg-secondary/30">
               Inclus par défaut : placo/plâtre, peinture, sol, plinthes. TVA à 10 %
@@ -1374,6 +1587,79 @@ export default function PlanTakeoff() {
                 {quoteBusy ? "Envoi…" : "Envoyer au client"}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MULTI-PLAN QUOTE DIALOG */}
+      <Dialog open={multiDialog} onOpenChange={setMultiDialog}>
+        <DialogContent className="rounded-sm max-w-lg" data-testid="multi-quote-dialog">
+          <DialogHeader>
+            <DialogTitle>Devis projet multi-plans</DialogTitle>
+            <DialogDescription>
+              Combinez plusieurs plans (RDC, étages, extensions…) en un seul devis projet.
+              Les surfaces et prix sont additionnés automatiquement.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1">
+              <Label className="text-xs">Nom du projet (optionnel)</Label>
+              <Input value={multiProjectName} onChange={(e) => setMultiProjectName(e.target.value)}
+                     placeholder="Ex : Maison Dupont — rénovation complète"
+                     maxLength={120}
+                     data-testid="multi-project-name" className="rounded-sm h-10" />
+            </div>
+            <div>
+              <p className="overline mb-2">Plans à inclure ({multiSelected.length} sélectionné{multiSelected.length > 1 ? "s" : ""})</p>
+              <div className="grid gap-1 max-h-60 overflow-y-auto border border-border rounded-sm p-2"
+                   data-testid="multi-plans-list">
+                {allPlans.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Aucun plan disponible. Uploadez au moins 2 plans depuis la page /plan.
+                  </p>
+                ) : allPlans.map(p => {
+                  const on = multiSelected.includes(p.plan_id);
+                  return (
+                    <label key={p.plan_id}
+                           className={`flex items-center gap-2 p-2 rounded-sm cursor-pointer border ${on ? "border-primary bg-primary/5" : "border-transparent hover:bg-secondary/40"}`}
+                           data-testid={`multi-plan-item-${p.plan_id}`}>
+                      <input type="checkbox" checked={on}
+                             onChange={(e) => {
+                               setMultiSelected(prev =>
+                                 e.target.checked ? [...prev, p.plan_id]
+                                                  : prev.filter(id => id !== p.plan_id));
+                             }}
+                             data-testid={`multi-plan-checkbox-${p.plan_id}`}
+                             className="accent-primary h-4 w-4" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold truncate">{p.filename || p.plan_id}</p>
+                        <p className="text-[10px] text-muted-foreground num">
+                          {p.rooms?.length || 0} pièces · {(p.rooms?.reduce((s, r) => s + (r.surface_m2 || 0), 0) || 0).toFixed(1)} m²
+                          {p.plan_id === plan?.plan_id && (
+                            <span className="text-primary ml-1">(en cours)</span>
+                          )}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground border border-border p-2 rounded-sm bg-secondary/30">
+              Gamme & sol utilisés : <b>{quoteFinish}</b> · <b>{quoteFloor}</b>. Modifiez-les
+              dans le dialog Devis principal si besoin.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMultiDialog(false)} className="rounded-sm">
+              Annuler
+            </Button>
+            <Button onClick={downloadMultiQuote} disabled={multiBusy || multiSelected.length === 0}
+                    data-testid="multi-quote-download-btn"
+                    className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+              <FileDown className="h-4 w-4" />
+              {multiBusy ? "Génération…" : `Télécharger (${multiSelected.length})`}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
