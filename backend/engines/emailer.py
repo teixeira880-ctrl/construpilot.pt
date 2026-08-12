@@ -39,17 +39,27 @@ async def send_email(to: str, subject: str, html: str) -> dict:
 
 async def send_email_with_pdf(to: str, subject: str, html: str,
                               pdf_bytes: bytes, filename: str = "devis.pdf",
-                              cc: str | None = None) -> dict:
+                              cc: str | None = None,
+                              extra_attachments: list[dict] | None = None) -> dict:
+    """Envoie un email avec un PDF principal + éventuellement d'autres pièces jointes.
+
+    extra_attachments : liste de dicts {filename, content (bytes)}.
+    """
     if not _configure():
         raise RuntimeError("RESEND_API_KEY manquant")
-    params = {
-        "from": _from(), "to": [to], "subject": subject, "html": html,
-        "attachments": [{
-            "filename": filename,
-            "content": base64.b64encode(pdf_bytes).decode("utf-8"),
-            "content_type": "application/pdf",
-        }],
-    }
+    attachments = [{
+        "filename": filename,
+        "content": base64.b64encode(pdf_bytes).decode("utf-8"),
+        "content_type": "application/pdf",
+    }]
+    for att in extra_attachments or []:
+        attachments.append({
+            "filename": att["filename"],
+            "content": base64.b64encode(att["content"]).decode("utf-8"),
+            "content_type": att.get("content_type", "application/pdf"),
+        })
+    params = {"from": _from(), "to": [to], "subject": subject, "html": html,
+              "attachments": attachments}
     if cc:
         params["cc"] = [cc]
     try:

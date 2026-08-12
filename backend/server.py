@@ -179,6 +179,11 @@ async def seed():
     scheduler.add_job(alerting.check_all_alerts,
                       CronTrigger(hour=8, minute=0),
                       id="daily_price_alerts", max_instances=1, coalesce=True)
+    # Rappel Auto Devis (toutes les 6 h) : envoie un rappel aux clients qui ont ouvert
+    # mais pas signé leur devis depuis > 5 j.
+    scheduler.add_job(plans_routes._run_reminders,
+                      "interval", hours=6, id="quote_reminders",
+                      max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

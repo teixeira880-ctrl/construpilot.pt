@@ -345,3 +345,66 @@ Voir `/app/memory/test_credentials.md`.
   KPIs, copy-sign, refresh) → **PASS**.
 - Régression totale : 51/51 tests précédents + 5/5 iter25 = **56/56 PASS**.
 
+
+## 13. Changelog Iter 26 (12/02/2026) — Workflow complet Métrage → Devis + TVA
+
+### Workflow Plan → Estimation → Devis (nouvelle demande utilisateur)
+- Nouvelle route `POST /api/takeoffs/{plan_id}/estimate-from-takeoff` : agrège les
+  surfaces mesurées du plan et appelle automatiquement le moteur `estimation.estimate()`.
+  Renvoie l'estimation complète + flag `is_renovation` (basé sur `project_type`).
+- Sauvegarde un `db.projects` (source `plan_takeoff`) pour reprise ultérieure.
+- Frontend PlanTakeoff : nouveau bouton **« Estimation »** ouvrant un dialog
+  (`estimate-dialog`) avec sélecteurs type de projet + finition, résultat cliquable
+  (surface / lots / total_avg / €/m²) et bouton **« Passer à la création du devis »**
+  qui bascule directement vers le dialog Devis en mode envoi.
+
+### Attestation TVA (art. 279-0 bis CGI) auto-jointe
+- Nouveau `engines.pdf_takeoff.build_tva_attestation_pdf(client, address, work_desc, ...)` :
+  PDF A4 formaté avec identification client, cases à cocher légales,
+  cadre signature, mentions réglementaires.
+- `SendQuoteIn` étendu : `client_address`, `work_address`, `include_tva_attestation`.
+- Backend `emailer.send_email_with_pdf` supporte désormais `extra_attachments` :
+  liste de PDF supplémentaires envoyés dans le même mail.
+- Si `include_tva_attestation=true` et TVA 10 % → 2ᵉ PDF joint automatiquement,
+  intro du mail enrichie ("Vous trouverez également l'attestation TVA à retourner
+  signée avant la facturation.").
+- Validation serveur : 400 si `include_tva_attestation=true` sans `client_address`.
+
+### Email personnalisé
+- `SendQuoteIn.subject` (fallback : « Devis · <société> », max 180 chars).
+- `SendQuoteIn.intro` : paragraphe HTML remplacé si fourni.
+- Persistance de `subject`, `intro`, `message`, `client_address`, `work_address` dans
+  `quote_sends` pour audit + réutilisation en rappel.
+- Frontend : 3 nouveaux inputs (`quote-subject-input`, `quote-intro-input`,
+  `quote-client-address`) + toggle `quote-tva-checkbox`.
+
+### Rappel Auto 5 jours (JOB scheduler)
+- `_run_reminders()` : parcourt les `quote_sends` où `opened=true`, `signed=false`,
+  `reminder_sent=false`, `opened_at ≤ now-5j`, `email_status='sent'`.
+- Génère un lien de signature si manquant, envoie un mail « Rappel : votre devis »
+  avec bouton CTA « Signer le devis » vers `/sign/{token}`.
+- Flip `reminder_sent=true` + `reminder_sent_at` + notif in-app `reminder_sent`
+  pour le sender (bell existante).
+- Endpoint admin `POST /api/quotes/reminders/run` (manuel + testing).
+- Scheduler APScheduler `quote_reminders` toutes les 6 h dans `server.py`.
+
+### Backlog (non livré ce round)
+- **Multi-langue FR/EN** : reporté (context i18n + traduction UI). Le workflow
+  demandé étant plus prioritaire, pas de session pour Multi-langue.
+- **Pro peut éditer prix/qté/description/TVA** sur l'Estimateur : reporté aussi.
+  Idée : passer l'estimation renvoyée par `/estimate-from-takeoff` dans un composant
+  éditable côté frontend, avec bouton « Sauver comme devis pro modifié ».
+
+### Notes revue de code (à traiter en refactor)
+- `PlanTakeoff.jsx` = 1 927 lignes — à découper (EstimateDialog, QuoteDialog,
+  MultiPlanPanel).
+- `estimate-from-takeoff` crée un projet à chaque appel → à upsert par
+  `(user_id, plan_id, source)`.
+- `_run_reminders` : comparaison ISO string, à basculer en datetime object.
+- Reminder failure : persister `last_reminder_error` pour debug.
+
+### Tests
+- iter26 : **10/10 backend + frontend E2E** (dialogs, sélecteurs, TVA toggle,
+  reminder flip) → **PASS**.
+- Régression : **56/56 tests précédents + 10/10 iter26 = 66/66 PASS**.
+

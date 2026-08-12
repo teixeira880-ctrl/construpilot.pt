@@ -519,3 +519,131 @@ def build_project_quote_pdf(project: dict, branding: dict | None = None) -> byte
 
     doc.build(story)
     return buf.getvalue()
+
+
+
+# ============ ATTESTATION TVA (Cerfa 1301-SD simplifié) ============
+
+def build_tva_attestation_pdf(
+    client_name: str,
+    client_address: str,
+    work_address: str,
+    work_description: str,
+    company_name: str = "",
+    company_address: str = "",
+    branding: dict | None = None,
+    tva_rate: float = 0.10,
+) -> bytes:
+    """Attestation simplifiée du client (art. 279-0 bis CGI) : logement > 2 ans.
+
+    À signer par le client puis à remettre à l'entreprise avant la facturation.
+    Format libre inspiré du Cerfa 1301-SD. Ne remplace pas l'original si le
+    client préfère.
+    """
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                             leftMargin=20*mm, rightMargin=20*mm,
+                             topMargin=20*mm, bottomMargin=20*mm)
+    S = _styles()
+    story = []
+
+    tva_pct = int(round(tva_rate * 100))
+    is_reduced = tva_pct == 10 or tva_pct == 5 or tva_pct == 55  # 5.5 arrondi
+    header_title = (f"ATTESTATION — TVA À TAUX RÉDUIT ({tva_pct} %)"
+                     if is_reduced else "ATTESTATION TRAVAUX")
+    story.append(Paragraph(header_title, S["kicker"]))
+    story.append(Paragraph("Article 279-0 bis du Code Général des Impôts", S["h1"]))
+    story.append(Paragraph(
+        "Certificat à remettre à l'entreprise pour bénéficier du taux réduit de TVA "
+        "sur les travaux réalisés dans un local à usage d'habitation achevé "
+        "depuis plus de deux ans.", S["muted"]))
+    story.append(Spacer(1, 12))
+
+    # Client info
+    story.append(Paragraph("Je soussigné(e)", S["h2"]))
+    client_rows = [
+        ["Nom / Prénom :", client_name or "………………………………………………"],
+        ["Adresse (client) :", client_address or "………………………………………………"],
+        ["Adresse des travaux :", work_address or "………………………………………………"],
+    ]
+    t = Table(client_rows, colWidths=[45*mm, 120*mm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 12))
+
+    # Déclarations
+    story.append(Paragraph("Certifie sur l'honneur que :", S["h2"]))
+    story.append(Paragraph(
+        "1. Le local dans lequel les travaux sont réalisés est <b>affecté à un "
+        "usage d'habitation</b> (résidence principale ou secondaire).",
+        S["body"]))
+    story.append(Paragraph(
+        "2. Le local est <b>achevé depuis plus de deux ans</b> à la date de "
+        "démarrage des travaux.",
+        S["body"]))
+    story.append(Paragraph(
+        "3. Les travaux réalisés ne concourent pas à la production d'un "
+        "immeuble neuf, ni à une élévation de plus de 10 % de la surface de "
+        "plancher.",
+        S["body"]))
+    story.append(Spacer(1, 12))
+
+    # Description travaux
+    story.append(Paragraph("Nature des travaux :", S["h2"]))
+    story.append(Paragraph(work_description or "………………………………………………",
+                            S["body"]))
+    story.append(Spacer(1, 20))
+
+    # Entreprise + Signature
+    story.append(Paragraph("Entreprise réalisant les travaux :", S["h2"]))
+    ent_rows = [
+        ["Raison sociale :", company_name or "………………………………………………"],
+        ["Adresse :", company_address or "………………………………………………"],
+    ]
+    t = Table(ent_rows, colWidths=[45*mm, 120*mm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 20))
+
+    story.append(Paragraph(
+        "Fait à …………………………………………… le ……… / ……… / ………………",
+        S["body"]))
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("Signature du client (précédée de « Bon pour accord ») :",
+                            S["body"]))
+    story.append(Spacer(1, 40))
+    # Cadre signature
+    sig_frame = Table([[""]], colWidths=[90*mm], rowHeights=[30*mm])
+    sig_frame.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.6, GREY)]))
+    story.append(sig_frame)
+    story.append(Spacer(1, 12))
+
+    # Footer légal
+    story.append(Paragraph(
+        "<b>Attention</b> : toute fausse déclaration engage la responsabilité du "
+        "client. L'administration peut demander le paiement du complément de TVA "
+        "correspondant à la différence entre le taux réduit et le taux normal. "
+        "Conservez ce document 5 ans.", S["muted"]))
+
+    doc.build(story)
+    return buf.getvalue()

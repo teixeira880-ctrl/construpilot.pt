@@ -26,7 +26,7 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import current_user
+from core.security import current_user, admin_user
 from engines import geometry as G
 from engines.plan_processor import process_upload, auto_calibration_from_pdf_scale
 from engines.plan_ai import analyze_plan_image
@@ -1124,7 +1124,11 @@ async def export_quote_pdf(plan_id: str, finish: str = "std",
 class SendQuoteIn(BaseModel):
     client_email: str
     client_name: str | None = None
+    client_address: str | None = None  # requis si include_tva_attestation
+    work_address: str | None = None    # adresse des travaux (fallback : client_address)
     message: str | None = None
+    subject: str | None = None
+    intro: str | None = None
     finish: str = "std"
     floor_material: str = "carrelage"
     include_paint: bool = True
@@ -1132,6 +1136,7 @@ class SendQuoteIn(BaseModel):
     include_floor: bool = True
     include_skirting: bool = True
     cc_self: bool = True
+    include_tva_attestation: bool = False  # ajoute l'attestation TVA 10 %
 
 
 @router.post("/{plan_id}/send-quote")
@@ -1144,6 +1149,12 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     quote, pdf_bytes = await _build_quote_and_pdf(
         plan_id, user["user_id"], body.finish, body.floor_material,
         body.include_paint, body.include_placo, body.include_floor, body.include_skirting)
+
+    if body.include_tva_attestation and not (body.client_address or "").strip():
+        raise HTTPException(
+            400,
+            "Adresse client requise pour joindre l'attestation TVA."
+        )
 
     # Récupère nom société pour email
     branding = await _resolve_branding(user["user_id"]) or {}
@@ -1159,6 +1170,9 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     # Email HTML (avec tracking pixel pour open notification)
     from engines.emailer import send_email_with_pdf, wrap_html
     hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
+    intro_html = (f"<p>{body.intro}</p>" if body.intro
+                   else "<p>Veuillez trouver ci-joint votre <b>devis estimatif</b>"
+                        f" ({finish_label}) élaboré depuis votre plan.</p>")
     custom = f"<p>{body.message}</p>" if body.message else ""
     log_id = QUOTE_SEND_PREFIX + secrets.token_hex(6)
     backend_public = os.getenv("PUBLIC_BACKEND_URL") or os.getenv("FRONTEND_URL") or ""
@@ -1168,9 +1182,8 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
                      f'width="1" height="1" alt="" style="display:block" />')
     inner = (
         f"<p>{hello}</p>"
+        f"{intro_html}"
         f"{custom}"
-        f"<p>Veuillez trouver ci-joint votre <b>devis estimatif</b> "
-        f"({finish_label}) élaboré depuis votre plan.</p>"
         f"<div style='background:#FF5A00;color:white;padding:16px 22px;border-radius:6px;"
         f"font-size:18px;font-weight:700;text-align:center;letter-spacing:1px'>"
         f"Total TTC : {ttc:,.2f} €</div>"
@@ -1181,15 +1194,50 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         f"{company}<br/>{contact}</p>"
         f"{pixel_tag}"
     )
-    html = wrap_html(f"Devis · {company}", inner)
+    subject = (body.subject or "").strip()[:180] or f"Devis · {company}"
+    html = wrap_html(subject, inner)
+
+    # ---- Attestation TVA optionnelle (rénovation logement > 2 ans) ----
+    extra_attachments = []
+    tva_pdf_bytes = None
+    if body.include_tva_attestation:
+        from engines.pdf_takeoff import build_tva_attestation_pdf
+        # Description travaux : reprend les postes sélectionnés
+        work_desc_parts = [li["name"] for li in quote.get("line_items", [])]
+        work_desc = " ; ".join(work_desc_parts) if work_desc_parts else "Travaux de rénovation"
+        client_addr = (body.client_address or "").strip()
+        work_addr = (body.work_address or client_addr or "").strip()
+        tva_pdf_bytes = build_tva_attestation_pdf(
+            client_name=body.client_name or "",
+            client_address=client_addr,
+            work_address=work_addr,
+            work_description=work_desc,
+            company_name=company,
+            company_address=contact or "",
+            branding=branding, tva_rate=quote.get("tva_rate", 0.10),
+        )
+        extra_attachments.append({
+            "filename": f"attestation-tva-{plan_id}.pdf",
+            "content": tva_pdf_bytes,
+            "content_type": "application/pdf",
+        })
+        # Mention supplémentaire dans le message
+        inner_with_att = inner.replace(
+            "Ce document est un devis estimatif indicatif",
+            "Vous trouverez également jointe l'<b>attestation TVA à taux réduit</b> "
+            "à nous retourner signée avant la facturation. Ce document est un "
+            "devis estimatif indicatif"
+        )
+        html = wrap_html(subject, inner_with_att)
 
     email_status = "sent"; email_id = None
     error = None
     try:
         cc = (sender_u or {}).get("email") if body.cc_self else None
-        res = await send_email_with_pdf(body.client_email, f"Devis · {company}",
+        res = await send_email_with_pdf(body.client_email, subject,
                                           html, pdf_bytes,
-                                          filename=f"devis-{plan_id}.pdf", cc=cc)
+                                          filename=f"devis-{plan_id}.pdf", cc=cc,
+                                          extra_attachments=extra_attachments)
         email_id = res.get("id")
     except Exception as e:
         logger.warning(f"Send quote email failed: {e}")
@@ -1200,12 +1248,16 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         "log_id": log_id,
         "plan_id": plan_id, "user_id": user["user_id"],
         "client_email": body.client_email, "client_name": body.client_name,
+        "client_address": body.client_address, "work_address": body.work_address,
         "cc": (sender_u or {}).get("email") if body.cc_self else None,
         "total_ttc": ttc, "finish": body.finish, "floor_material": body.floor_material,
+        "subject": subject, "intro": body.intro, "message": body.message,
+        "include_tva_attestation": body.include_tva_attestation,
         "email_status": email_status, "email_id": email_id, "error": error,
         "created_at": _now(),
         "opened": False, "open_count": 0,
         "signed": False,
+        "reminder_sent": False,
     }
     await db.quote_sends.insert_one(log)
     return {"ok": email_status == "sent", "email_status": email_status,
@@ -1220,6 +1272,155 @@ async def list_quote_sends(plan_id: str, user=Depends(current_user)):
         {"_id": 0}
     ).sort("created_at", -1).limit(50).to_list(50)
     return {"plan_id": plan_id, "sends": docs}
+
+
+# ============ WORKFLOW : Plan → Estimation → Devis ============
+
+class TakeoffEstimateIn(BaseModel):
+    project_type: str = "renovation_complete"
+    finish_level: str = "standard"
+    country: str = "FR"
+    region: str | None = "idf"
+    building_type: str = "maison"
+    condition: str = "bon"
+    construction_year: int | None = None
+
+
+@router.post("/{plan_id}/estimate-from-takeoff")
+async def estimate_from_takeoff(plan_id: str, body: TakeoffEstimateIn,
+                                 user=Depends(current_user)):
+    """Envoie automatiquement la surface mesurée du plan à l'estimateur.
+
+    Renvoie l'estimation complète (lots, prix, main d'œuvre) — prête à devenir
+    un devis via `send-quote`.
+    """
+    from engines.estimation import estimate as estim_run
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "rooms": 1, "filename": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    rooms = p.get("rooms") or []
+    if not rooms:
+        raise HTTPException(400, "Aucune pièce mesurée sur ce plan.")
+
+    surface = round(sum(r.get("surface_m2", 0) for r in rooms), 2)
+    if surface <= 0:
+        raise HTTPException(400, "Surface mesurée invalide.")
+
+    est = estim_run(
+        project_type=body.project_type, surface=surface,
+        finish=body.finish_level, country=body.country, region=body.region,
+        building_type=body.building_type, condition=body.condition,
+        construction_year=body.construction_year,
+    )
+
+    # Sauvegarde comme projet lié au plan (permet reprise ultérieure)
+    proj = {
+        "project_id": "proj_" + secrets.token_hex(6),
+        "user_id": user["user_id"], "plan_id": plan_id,
+        "name": p.get("filename") or "Projet depuis plan",
+        "source": "plan_takeoff",
+        "surface": surface, "room_count": len(rooms),
+        "estimation": est,
+        "created_at": _now(),
+    }
+    await db.projects.insert_one(proj)
+
+    return {"ok": True, "project_id": proj["project_id"],
+            "plan_id": plan_id, "surface_m2": surface,
+            "room_count": len(rooms),
+            "estimation": est,
+            "is_renovation": "renovation" in body.project_type.lower()}
+
+
+# ============ REMINDERS (Rappel Auto 5j) ============
+
+REMINDER_DELAY_DAYS = 5
+
+
+async def _run_reminders() -> dict:
+    """Envoie un rappel aux devis ouverts mais non signés depuis > 5 jours."""
+    from engines.emailer import send_email, wrap_html
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=REMINDER_DELAY_DAYS)).isoformat()
+    candidates = await db.quote_sends.find(
+        {"opened": True, "signed": False, "reminder_sent": {"$ne": True},
+         "opened_at": {"$lte": cutoff}, "email_status": "sent"},
+        {"_id": 0, "log_id": 1, "user_id": 1, "client_email": 1, "client_name": 1,
+         "total_ttc": 1, "signature_token": 1, "plan_id": 1, "subject": 1}
+    ).to_list(200)
+
+    sent, failed, skipped = 0, 0, 0
+    for c in candidates:
+        try:
+            branding = await _resolve_branding(c["user_id"]) or {}
+            company = branding.get("company_name") or "ConstruPilot"
+            hello = f"Bonjour {c['client_name']}," if c.get("client_name") else "Bonjour,"
+            # Assure un lien de signature (si pas déjà créé)
+            token = c.get("signature_token")
+            if not token:
+                token = SIG_TOKEN_PREFIX + secrets.token_urlsafe(18)
+                await db.quote_sends.update_one({"log_id": c["log_id"]},
+                    {"$set": {"signature_token": token,
+                              "signature_token_created_at": _now()}})
+            sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{token}"
+            inner = (
+                f"<p>{hello}</p>"
+                f"<p>Nous nous permettons un petit rappel : votre devis "
+                f"(<b>{c.get('total_ttc', 0):,.2f} € TTC</b>) est toujours disponible "
+                f"pour votre signature.</p>"
+                f"<p>Il vous suffit d'un clic pour valider :</p>"
+                f"<p style='text-align:center;margin:24px 0'>"
+                f"<a href='{sign_url}' style='background:#FF5A00;color:white;"
+                f"padding:14px 28px;border-radius:6px;text-decoration:none;"
+                f"font-weight:700;font-size:16px'>Signer le devis</a></p>"
+                f"<p>Nous restons à votre disposition pour toute question ou "
+                f"ajustement.</p>"
+                f"<p style='color:#666;font-size:12px;margin-top:24px'>"
+                f"Cordialement,<br/>{company}</p>"
+            )
+            await send_email(c["client_email"], f"Rappel : votre devis · {company}",
+                              wrap_html(f"Rappel devis · {company}", inner))
+            await db.quote_sends.update_one({"log_id": c["log_id"]},
+                {"$set": {"reminder_sent": True, "reminder_sent_at": _now()}})
+            await db.notifications.insert_one({
+                "notif_id": "n_" + secrets.token_hex(5),
+                "user_id": c["user_id"], "type": "reminder_sent",
+                "log_id": c["log_id"],
+                "message": f"Rappel envoyé à {c['client_email']} (devis non signé "
+                           f"depuis {REMINDER_DELAY_DAYS} j).",
+                "created_at": _now(), "read": False,
+            })
+            sent += 1
+        except Exception as e:
+            logger.warning(f"reminder for {c.get('log_id')} failed: {e}")
+            failed += 1
+    return {"sent": sent, "failed": failed, "skipped": skipped,
+            "candidates": len(candidates)}
+
+
+@quote_router.post("/reminders/run")
+async def trigger_reminders(user=Depends(admin_user)):
+    """Endpoint admin pour lancer manuellement le job de rappels."""
+    return await _run_reminders()
+
+
+async def _reminders_scheduler():
+    """Boucle asyncio interne : lance _run_reminders() toutes les 6 heures."""
+    import asyncio
+    await asyncio.sleep(600)  # ne démarre pas immédiatement au boot
+    while True:
+        try:
+            res = await _run_reminders()
+            if res["candidates"]:
+                logger.info(f"reminders: {res}")
+        except Exception as e:
+            logger.warning(f"reminders_scheduler error: {e}")
+        await asyncio.sleep(6 * 3600)  # toutes les 6 heures
+
 
 
 # ============ QUOTE TEMPLATES (Devis Récurrents) ============

@@ -1,0 +1,32 @@
+{
+  "summary": "Iter26 tested: (1) Plan→Estimation workflow via POST /api/takeoffs/{plan_id}/estimate-from-takeoff, (2) Email personalization (subject/intro/client_address/work_address), (3) TVA attestation PDF attachment, (4) Auto-Reminder 5j endpoint /api/quotes/reminders/run + candidate flip + notification + idempotence, (5) Frontend estimate dialog + button, (6) Frontend quote dialog send-mode new fields. Backend: 10/10 pytest passed. Frontend: plan-estimate-btn, estimate-dialog + estimate-project-type/estimate-finish/estimate-run-btn all render correctly (verified after uploading a test plan). Error toast 'Aucune pièce mesurée sur ce plan.' correctly displays when running estimation with no measured rooms. quote-subject-input/quote-intro-input/quote-client-address/quote-tva-checkbox all render inside quote dialog after switching to send mode. Backend send-quote persists subject, intro, message, client_address, work_address, include_tva_attestation fields in quote_sends log (verified). Fallback subject 'Devis · <company>' when body.subject not provided. build_tva_attestation_pdf produces valid PDF >2KB starting with %PDF-. Reminders endpoint: non-admin (collegue) gets 403; admin succeeds and returns {sent, failed, skipped, candidates}; when a quote_send doc is tampered to opened=True/opened_at=9d ago/signed=False, reminder gets sent, reminder_sent flips to True, reminder_sent_at set, and a notification of type 'reminder_sent' is created for user_id; second call is idempotent (log stays flipped). Scheduler quote_reminders job registered at 6h interval (no import errors in server.py).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter26_workflow_tva_reminders.py",
+    "/app/test_reports/pytest/iter26.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "SendQuoteIn: include_tva_attestation defaults to False; backend does not enforce that client_address is present when True (generates PDF with empty client field). Frontend correctly blocks the submit with toast 'Adresse client requise pour l'attestation TVA' — good UX. Consider adding server-side 400 guard for API clients that bypass the UI.",
+    "estimate-from-takeoff inserts a new db.projects doc each call with the same plan_id; this creates duplicate projects for the same plan across retries. Consider upsert on (user_id, plan_id, source='plan_takeoff') or return existing project if recent (< N minutes).",
+    "_run_reminders picks up candidates strictly by opened_at ISO-string lexicographic $lte comparison — works because backend always writes ISO-8601 UTC strings, but relying on string ordering is fragile. Prefer storing opened_at as datetime and comparing with datetime cutoff.",
+    "Reminders send_email failures increment 'failed' but do not retry nor set an error field on the quote_send doc — silent failure. Consider persisting last_reminder_error to help debugging.",
+    "PlanTakeoff.jsx is now 1927 lines — well over the 700-line guideline. Consider splitting into subcomponents (EstimateDialog, QuoteDialog, MultiPlanPanel, etc.) for maintainability.",
+    "Frontend uses window.localStorage token — token refresh not visible; if token expires during a long estimate flow the toast error won't distinguish 401 from other 4xx. Minor."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter26_workflow_tva_reminders.py (new)"
+  ],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100% (all new selectors present and dialog flows work)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! ; admin@construpilot.fr / Construpilot2026! ; collegue@construpilot.fr / Collegue2026!",
+  "seed_data_creation": "Created a few TEST quote_sends via /send-quote using Resend testing email 'delivered@resend.dev' (Resend rejects example.com in sandbox). One of them was tampered via pymongo to opened=True/opened_at=9d-ago to exercise the reminder path, then flipped by the reminder run. No dbdrops.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Use 'delivered@resend.dev' as client_email for send-quote tests — 'example.com' is rejected by Resend and causes email_status='failed', which also blocks the reminder path (opened emails with email_status!='sent' are ignored). Plan plan_d6e446d3a459 owned by pro user has measured rooms (~24 m²) and is used as the primary target for estimate-from-takeoff. To manipulate quote_sends state directly, load /app/backend/.env values (stripping quotes) and use pymongo. PlanTakeoff.jsx does not support loading an existing plan via URL — a small PNG upload is enough to reveal the plan-estimate-btn / plan-quote-pdf-btn UI for E2E tests.",
+  "rca_of_the_issue": "N/A — all Iter26 features work as specified."
+}

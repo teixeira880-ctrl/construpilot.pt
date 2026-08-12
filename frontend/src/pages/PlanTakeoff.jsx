@@ -246,6 +246,15 @@ export default function PlanTakeoff() {
   const [quoteClientEmail, setQuoteClientEmail] = useState("");
   const [quoteClientName, setQuoteClientName] = useState("");
   const [quoteMessage, setQuoteMessage] = useState("");
+  const [quoteSubject, setQuoteSubject] = useState("");
+  const [quoteIntro, setQuoteIntro] = useState("");
+  const [quoteClientAddress, setQuoteClientAddress] = useState("");
+  const [quoteIncludeTva, setQuoteIncludeTva] = useState(true);
+  const [estimateDialog, setEstimateDialog] = useState(false);
+  const [estimateResult, setEstimateResult] = useState(null);
+  const [estimateBusy, setEstimateBusy] = useState(false);
+  const [estProjectType, setEstProjectType] = useState("renovation_complete");
+  const [estFinishLevel, setEstFinishLevel] = useState("standard");
   const [wallsSummary, setWallsSummary] = useState(null);
   const [reclassifyMode, setReclassifyMode] = useState(false);
   const [snapPickA, setSnapPickA] = useState(null);
@@ -570,18 +579,27 @@ export default function PlanTakeoff() {
   const sendQuotePdf = async () => {
     if (!plan?.plan_id) return;
     if (!/@/.test(quoteClientEmail)) return toast.error("Email client invalide");
+    if (quoteIncludeTva && !quoteClientAddress.trim())
+      return toast.error("Adresse client requise pour l'attestation TVA");
     setQuoteBusy(true);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/send-quote`, {
         client_email: quoteClientEmail.trim(),
         client_name: quoteClientName.trim() || null,
+        client_address: quoteClientAddress.trim() || null,
+        work_address: quoteClientAddress.trim() || null,
+        subject: quoteSubject.trim() || null,
+        intro: quoteIntro.trim() || null,
         message: quoteMessage.trim() || null,
         finish: quoteFinish, floor_material: quoteFloor, cc_self: true,
+        include_tva_attestation: quoteIncludeTva,
       });
       if (data.email_status === "sent") {
-        toast.success(`Devis envoyé à ${quoteClientEmail} (${data.total_ttc?.toLocaleString("fr-FR")} € TTC)`);
+        const extra = quoteIncludeTva ? " + attestation TVA jointe" : "";
+        toast.success(`Devis envoyé à ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("fr-FR")} € TTC)`);
         setQuoteDialog(false);
         setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
+        setQuoteSubject(""); setQuoteIntro(""); setQuoteClientAddress("");
         await loadQuoteSends();
       } else {
         toast.error("Envoi email échoué — vérifiez la clé Resend");
@@ -589,6 +607,34 @@ export default function PlanTakeoff() {
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Envoi impossible");
     } finally { setQuoteBusy(false); }
+  };
+
+  const runEstimation = async () => {
+    if (!plan?.plan_id) return;
+    setEstimateBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/estimate-from-takeoff`, {
+        project_type: estProjectType, finish_level: estFinishLevel,
+      });
+      setEstimateResult(data);
+      // Si rénovation → coche automatiquement TVA
+      if (data.is_renovation) setQuoteIncludeTva(true);
+      toast.success(`Estimation générée : ${data.surface_m2} m² · ${data.estimation.total_avg?.toLocaleString("fr-FR")} €`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Estimation impossible");
+    } finally { setEstimateBusy(false); }
+  };
+
+  const proceedToDevis = () => {
+    if (!estimateResult) return;
+    // Reprend la finish choisie pour l'estimation dans le dialog devis
+    setQuoteFinish(estFinishLevel === "standard" ? "std"
+                    : estFinishLevel === "premium" ? "premium" : "eco");
+    setEstimateDialog(false);
+    setQuoteDialog(true);
+    setQuoteMode("send");
+    if (estimateResult.is_renovation) setQuoteIncludeTva(true);
+    loadTemplates(); loadQuoteSends();
   };
 
   const loadWallsSummary = async () => {
@@ -841,6 +887,12 @@ export default function PlanTakeoff() {
           <Button variant="outline" onClick={downloadPdf} data-testid="plan-pdf-export-btn"
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" /> Métré PDF
+          </Button>
+          <Button variant="outline"
+                  onClick={() => { setEstimateDialog(true); setEstimateResult(null); }}
+                  data-testid="plan-estimate-btn"
+                  className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
+            <Sparkles className="h-4 w-4" /> Estimation
           </Button>
           <Button variant="outline" onClick={() => { setQuoteDialog(true); loadTemplates(); loadQuoteSends(); }}
                   data-testid="plan-quote-pdf-btn"
@@ -1476,6 +1528,24 @@ export default function PlanTakeoff() {
             {quoteMode === "send" && (
               <>
                 <div className="grid gap-2">
+                  <Label>Objet email (optionnel)</Label>
+                  <Input value={quoteSubject} onChange={(e) => setQuoteSubject(e.target.value)}
+                         placeholder="Ex : Votre devis pour la rénovation appartement Paris 11"
+                         maxLength={180}
+                         data-testid="quote-subject-input" className="rounded-sm h-11" />
+                  <p className="text-[10px] text-muted-foreground">
+                    Vide → « Devis · {`{société}`} ». Personnalisez pour un rendu plus pro.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Introduction personnalisée (optionnel)</Label>
+                  <textarea value={quoteIntro} onChange={(e) => setQuoteIntro(e.target.value)}
+                         placeholder="Suite à notre échange téléphonique, voici notre proposition détaillée pour..."
+                         rows={2} maxLength={500}
+                         data-testid="quote-intro-input"
+                         className="rounded-sm text-sm p-2 border border-border bg-background" />
+                </div>
+                <div className="grid gap-2">
                   <Label>Email du client *</Label>
                   <Input value={quoteClientEmail} onChange={(e) => setQuoteClientEmail(e.target.value)}
                          placeholder="client@exemple.fr" type="email"
@@ -1488,13 +1558,38 @@ export default function PlanTakeoff() {
                          data-testid="quote-client-name" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Message personnalisé (optionnel)</Label>
+                  <Label>
+                    Adresse du client{quoteIncludeTva && <span className="text-primary"> *</span>}
+                  </Label>
+                  <textarea value={quoteClientAddress} onChange={(e) => setQuoteClientAddress(e.target.value)}
+                         placeholder="12 rue de la Paix — 75002 Paris"
+                         rows={2} maxLength={200}
+                         data-testid="quote-client-address"
+                         className="rounded-sm text-sm p-2 border border-border bg-background" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Message complémentaire (optionnel)</Label>
                   <textarea value={quoteMessage} onChange={(e) => setQuoteMessage(e.target.value)}
-                         placeholder="Suite à notre échange, veuillez trouver…"
-                         rows={3} maxLength={500}
+                         placeholder="Nous restons disponibles pour toute question..."
+                         rows={2} maxLength={500}
                          data-testid="quote-message"
                          className="rounded-sm text-sm p-2 border border-border bg-background" />
                 </div>
+                {/* TVA Attestation toggle */}
+                <label className="flex items-start gap-2 p-3 border border-primary/40 rounded-sm bg-primary/5 cursor-pointer"
+                       data-testid="quote-tva-toggle">
+                  <input type="checkbox" checked={quoteIncludeTva}
+                         onChange={(e) => setQuoteIncludeTva(e.target.checked)}
+                         data-testid="quote-tva-checkbox"
+                         className="accent-primary h-4 w-4 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold">Joindre l'attestation TVA à taux réduit (10 %)</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Requise pour bénéficier du taux 10 % en rénovation logement &gt; 2 ans
+                      (art. 279-0 bis CGI). Le client la signe et vous la retourne avant facturation.
+                    </p>
+                  </div>
+                </label>
                 <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm">
                   Une copie sera envoyée à votre adresse pour trace. L'envoi est loggé dans l'historique.
                 </p>
@@ -1591,9 +1686,117 @@ export default function PlanTakeoff() {
         </DialogContent>
       </Dialog>
 
+      {/* ESTIMATION FROM TAKEOFF DIALOG */}
+      <Dialog open={estimateDialog} onOpenChange={setEstimateDialog}>
+        <DialogContent className="rounded-sm max-w-lg" data-testid="estimate-dialog">
+          <DialogHeader>
+            <DialogTitle>Créer une estimation depuis le plan</DialogTitle>
+            <DialogDescription>
+              Envoie automatiquement les surfaces mesurées au service Estimateur.
+              Vous pourrez ensuite générer un devis client directement depuis ce résultat.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <Label className="text-xs">Type de projet</Label>
+                <Select value={estProjectType} onValueChange={setEstProjectType}>
+                  <SelectTrigger data-testid="estimate-project-type" className="rounded-sm h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="renovation_complete">Rénovation complète</SelectItem>
+                    <SelectItem value="renovation_partielle">Rénovation partielle</SelectItem>
+                    <SelectItem value="renovation_energetique">Rénovation énergétique</SelectItem>
+                    <SelectItem value="salle_de_bain">Salle de bain</SelectItem>
+                    <SelectItem value="cuisine">Cuisine</SelectItem>
+                    <SelectItem value="construction_neuve">Construction neuve</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Gamme finition</Label>
+                <Select value={estFinishLevel} onValueChange={setEstFinishLevel}>
+                  <SelectTrigger data-testid="estimate-finish" className="rounded-sm h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="eco">Éco</SelectItem>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {!estimateResult && (
+              <Button onClick={runEstimation} disabled={estimateBusy}
+                      data-testid="estimate-run-btn"
+                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                <Sparkles className="h-4 w-4" />
+                {estimateBusy ? "Estimation en cours…" : "Lancer l'estimation"}
+              </Button>
+            )}
+            {estimateResult && (
+              <div className="border border-primary/40 bg-primary/5 rounded-sm p-4 space-y-2"
+                   data-testid="estimate-result">
+                <div className="flex items-center justify-between">
+                  <p className="overline text-primary">Résultat</p>
+                  {estimateResult.is_renovation && (
+                    <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-sm">
+                      Rénovation · TVA 10 %
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Surface totale</p>
+                    <p className="num font-display text-2xl font-extrabold">
+                      {estimateResult.surface_m2} <span className="text-sm">m²</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Lots</p>
+                    <p className="num font-display text-2xl font-extrabold">
+                      {estimateResult.estimation.lots?.length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Estimation moyenne</p>
+                    <p className="num font-display text-xl font-extrabold text-primary">
+                      {estimateResult.estimation.total_avg?.toLocaleString("fr-FR")} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">€ / m²</p>
+                    <p className="num font-display text-xl font-extrabold">
+                      {estimateResult.estimation.price_per_sqm?.toLocaleString("fr-FR")} €
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
+                  Fourchette : {estimateResult.estimation.total_min?.toLocaleString("fr-FR")} €
+                  → {estimateResult.estimation.total_max?.toLocaleString("fr-FR")} € · Durée
+                  estimée : {estimateResult.estimation.duration_weeks} semaine(s)
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEstimateDialog(false)} className="rounded-sm">
+              Fermer
+            </Button>
+            {estimateResult && (
+              <Button onClick={proceedToDevis} data-testid="estimate-to-devis-btn"
+                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                <FileDown className="h-4 w-4" /> Passer à la création du devis
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* MULTI-PLAN QUOTE DIALOG */}
-      <Dialog open={multiDialog} onOpenChange={setMultiDialog}>
-        <DialogContent className="rounded-sm max-w-lg" data-testid="multi-quote-dialog">
+      <Dialog open={multiDialog} onOpenChange={setMultiDialog}>        <DialogContent className="rounded-sm max-w-lg" data-testid="multi-quote-dialog">
           <DialogHeader>
             <DialogTitle>Devis projet multi-plans</DialogTitle>
             <DialogDescription>
