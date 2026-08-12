@@ -33,7 +33,10 @@ def _iso(dt=None):
 
 
 def _public_url(token: str) -> str:
-    base = os.environ.get("PUBLIC_APP_URL") or "https://cmrenov-ai.preview.emergentagent.com"
+    base = (os.environ.get("PUBLIC_APP_URL")
+            or os.environ.get("FRONTEND_URL")
+            or os.environ.get("PUBLIC_BACKEND_URL")
+            or "")
     return f"{base.rstrip('/')}/e/{token}"
 
 

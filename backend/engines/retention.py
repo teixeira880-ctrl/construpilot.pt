@@ -4,6 +4,7 @@ Contenu : alertes déclenchées, top matériaux surveillés, suggestion d'écono
 pour les projets récents.
 """
 import logging
+import os
 from datetime import datetime, timezone
 
 from core.db import db
@@ -74,8 +75,9 @@ def _fmt_digest_html(digest: dict) -> str:
                      f" d'économies (ROI ~{x['roi']}× le Project Pass)</li>")
         body += "</ul>"
     body = body.replace(",", " ")
+    frontend = os.environ.get("FRONTEND_URL", "")
     return emailer.wrap_html("Votre récap hebdo ConstruPilot", body,
-                             cta_url="https://cmrenov-ai.preview.emergentagent.com/dashboard",
+                             cta_url=f"{frontend}/dashboard" if frontend else None,
                              cta_label="Ouvrir mon tableau de bord")
 
 

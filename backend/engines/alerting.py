@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
     if not user or not user.get("email"):
         return False
-    frontend = os.environ.get("FRONTEND_URL") or "https://cmrenov-ai.preview.emergentagent.com"
+    frontend = os.environ.get("FRONTEND_URL", "")
     html = emailer.wrap_html(
         "Un matériau vient d'atteindre votre prix cible",
         f"""<p>Bonjour {user.get("name") or ""},</p>
