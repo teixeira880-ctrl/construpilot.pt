@@ -7,9 +7,7 @@ Covers:
 - POST/GET /api/quotes/notifications
 - Signature flow: signature-link + public GET/POST/PDF + already-signed 400
 """
-import base64
 import os
-import pytest
 import requests
 
 

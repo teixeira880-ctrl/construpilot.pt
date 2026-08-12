@@ -35,6 +35,99 @@ def budget_tier(budget: float | None) -> str:
     return "grand"
 
 
+def _score_budget(lead: dict, add):
+    b = lead.get("budget") or 0
+    if b <= 0:
+        return
+    add("Budget renseigné", 10, f"{b} €")
+    if b >= 5000:
+        add("Budget significatif", 5, ">= 5 000 €")
+    if b >= 20000:
+        add("Budget premium", 5, ">= 20 000 €")
+
+
+def _score_address(lead: dict, add):
+    addr = (lead.get("address") or "").strip()
+    if not addr:
+        return
+    if re.search(r"\b\d{5}\b", addr):
+        add("Adresse complète", 10, "code postal détecté")
+    else:
+        add("Adresse partielle", 5, "sans code postal")
+
+
+def _score_description(lead: dict, add):
+    desc = (lead.get("description") or "").strip()
+    if len(desc) >= 100:
+        add("Description détaillée", 10, f"{len(desc)} caractères")
+    elif len(desc) >= 30:
+        add("Description sommaire", 5, f"{len(desc)} caractères")
+
+
+def _score_surface(lead: dict, add):
+    if lead.get("surface"):
+        add("Surface indiquée", 10, f"{lead['surface']} m²")
+
+
+def _score_delay(lead: dict, add):
+    d = lead.get("delay_days")
+    if d is None:
+        return
+    if d <= 90:
+        add("Démarrage rapide", 10, "≤ 3 mois")
+    elif d <= 180:
+        add("Démarrage court terme", 5, "≤ 6 mois")
+
+
+def _score_phone(lead: dict, add):
+    phone = (lead.get("phone") or "").strip()
+    if phone and len(re.sub(r"\D", "", phone)) >= 9:
+        add("Téléphone présent", 10, phone)
+        if lead.get("phone_verified"):
+            add("Téléphone vérifié", 5)
+
+
+def _score_email(lead: dict, add):
+    email = (lead.get("email") or "").strip()
+    if "@" in email:
+        add("Email présent", 10)
+        if lead.get("email_verified"):
+            add("Email vérifié", 5)
+
+
+def _score_photos(lead: dict, add):
+    photos = lead.get("photos_count", 0) or 0
+    if photos:
+        add("Photos jointes", min(15, photos * 5), f"{photos} photo(s)")
+
+
+def _score_keywords(lead: dict, add):
+    low = (lead.get("description") or "").lower()
+    matched = [kw for kw in LOT_KEYWORDS if kw in low]
+    if matched:
+        add("Type de travaux détaillé", min(10, len(matched) * 3),
+            ", ".join(matched[:4]))
+    if any(kw in low for kw in ("urgent", "cette année", "asap", "au plus vite")):
+        add("Intention forte", 5, "mots-clés d'urgence")
+
+
+# Pipeline de règles — ajouter/retirer une règle = 1 ligne
+_SCORING_RULES = (
+    _score_budget, _score_address, _score_description, _score_surface,
+    _score_delay, _score_phone, _score_email, _score_photos, _score_keywords,
+)
+
+
+def _rating(total: int) -> str:
+    if total >= 75:
+        return "excellent"
+    if total >= 55:
+        return "bon"
+    if total >= 35:
+        return "moyen"
+    return "faible"
+
+
 def score(lead: dict) -> dict:
     detail: list[dict] = []
     pts = 0
@@ -44,74 +137,12 @@ def score(lead: dict) -> dict:
         pts += value
         detail.append({"label": label, "points": value, "reason": reason})
 
-    budget = lead.get("budget") or 0
-    if budget > 0:
-        add("Budget renseigné", 10, f"{budget} €")
-        if budget >= 5000:
-            add("Budget significatif", 5, ">= 5 000 €")
-        if budget >= 20000:
-            add("Budget premium", 5, ">= 20 000 €")
-
-    address = (lead.get("address") or "").strip()
-    if address:
-        if re.search(r"\b\d{5}\b", address):
-            add("Adresse complète", 10, "code postal détecté")
-        else:
-            add("Adresse partielle", 5, "sans code postal")
-
-    desc = (lead.get("description") or "").strip()
-    if len(desc) >= 100:
-        add("Description détaillée", 10, f"{len(desc)} caractères")
-    elif len(desc) >= 30:
-        add("Description sommaire", 5, f"{len(desc)} caractères")
-
-    if lead.get("surface"):
-        add("Surface indiquée", 10, f"{lead['surface']} m²")
-
-    delay_days = lead.get("delay_days")
-    if delay_days is not None:
-        if delay_days <= 90:
-            add("Démarrage rapide", 10, "≤ 3 mois")
-        elif delay_days <= 180:
-            add("Démarrage court terme", 5, "≤ 6 mois")
-
-    phone = (lead.get("phone") or "").strip()
-    if phone and len(re.sub(r"\D", "", phone)) >= 9:
-        add("Téléphone présent", 10, phone)
-        if lead.get("phone_verified"):
-            add("Téléphone vérifié", 5)
-
-    email = (lead.get("email") or "").strip()
-    if "@" in email:
-        add("Email présent", 10)
-        if lead.get("email_verified"):
-            add("Email vérifié", 5)
-
-    photos = lead.get("photos_count", 0) or 0
-    if photos:
-        pt = min(15, photos * 5)
-        add("Photos jointes", pt, f"{photos} photo(s)")
-
-    low = desc.lower()
-    matched = [kw for kw in LOT_KEYWORDS if kw in low]
-    if matched:
-        pt = min(10, len(matched) * 3)
-        add("Type de travaux détaillé", pt, ", ".join(matched[:4]))
-
-    if any(kw in low for kw in ("urgent", "cette année", "asap", "au plus vite")):
-        add("Intention forte", 5, "mots-clés d'urgence")
+    for rule in _SCORING_RULES:
+        rule(lead, add)
 
     total = min(100, pts)
-    if total >= 75:
-        rating = "excellent"
-    elif total >= 55:
-        rating = "bon"
-    elif total >= 35:
-        rating = "moyen"
-    else:
-        rating = "faible"
-    return {"score": total, "rating": rating, "tier": budget_tier(budget),
-            "detail": detail}
+    return {"score": total, "rating": _rating(total),
+            "tier": budget_tier(lead.get("budget") or 0), "detail": detail}
 
 
 LEAD_PRICE_CENTS_BY_TIER = {"petit": 2000, "standard": 4500,

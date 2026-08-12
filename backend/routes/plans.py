@@ -16,7 +16,6 @@
 """
 from __future__ import annotations
 
-import base64
 import logging
 import os
 import secrets
@@ -42,6 +41,10 @@ quote_router = APIRouter(tags=["quotes"], prefix="/quotes")
 MAX_UPLOAD_MB = 20
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp",
                  "application/dxf", "image/vnd.dxf", "application/acad", "image/vnd.dwg"}
+
+# ID prefixes (not secrets — pass through to caller for prefix-based routing)
+SIG_TOKEN_PREFIX = "sig_"  # noqa: S105  identifier prefix, entropy provided by token_urlsafe
+QUOTE_SEND_PREFIX = "qs_"  # noqa: S105  identifier prefix, entropy provided by token_hex
 
 
 def _now():
@@ -1157,7 +1160,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     from engines.emailer import send_email_with_pdf, wrap_html
     hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
     custom = f"<p>{body.message}</p>" if body.message else ""
-    log_id = "qs_" + secrets.token_hex(6)
+    log_id = QUOTE_SEND_PREFIX + secrets.token_hex(6)
     backend_public = os.getenv("PUBLIC_BACKEND_URL") or os.getenv("FRONTEND_URL") or ""
     pixel_tag = ""
     if backend_public:
@@ -1407,7 +1410,7 @@ async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_
     )
     if not log:
         raise HTTPException(404, "Envoi de devis introuvable")
-    token = "sig_" + secrets.token_urlsafe(18)
+    token = SIG_TOKEN_PREFIX + secrets.token_urlsafe(18)
     await db.quote_sends.update_one(
         {"log_id": log_id},
         {"$set": {"signature_token": token, "signature_token_created_at": _now()}}

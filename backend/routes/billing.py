@@ -1,12 +1,11 @@
 """Routes monétisation ConstruPilot : plans publics, checkout, webhook, statut, mon abo."""
-import os
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from core.db import db
-from core.security import current_user, optional_user
+from core.security import current_user
 from engines import monetization
 
 logger = logging.getLogger(__name__)

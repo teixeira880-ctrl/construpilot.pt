@@ -1,6 +1,5 @@
 """Iter 9 Phase 5 tests: WhiteLabel + Suppliers + Enterprise + non-regression."""
 import os
-import time
 import requests
 import pytest
 

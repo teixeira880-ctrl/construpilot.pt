@@ -2,7 +2,6 @@
 takeoff by level, deskew photo + skip, non-regression."""
 import io
 import os
-import base64
 import pytest
 import requests
 import numpy as np

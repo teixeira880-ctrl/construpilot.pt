@@ -12,7 +12,6 @@ import io
 import base64
 import logging
 import re
-from typing import Iterable
 
 import pymupdf  # PyMuPDF
 from PIL import Image

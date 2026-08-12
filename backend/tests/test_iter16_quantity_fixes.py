@@ -9,7 +9,6 @@ Vérifie :
 """
 import os
 import sys
-import pytest
 import requests
 
 def _load_frontend_env():

@@ -2,8 +2,6 @@
 import os
 import json
 import uuid
-import base64
-import tempfile
 
 from emergentintegrations.llm.chat import (LlmChat, UserMessage, ImageContent,
                                           TextDelta, StreamDone)

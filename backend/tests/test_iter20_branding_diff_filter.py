@@ -1,6 +1,5 @@
 """Iter20 — PDF branding, non-régression on iter19 endpoints, and endpoint healthchecks."""
 import os
-import base64
 import pytest
 import requests
 
@@ -195,7 +194,7 @@ class TestNonRegression:
     def test_takeoffs_full_pipeline(self, auth):
         plan_id = _upload_plan(auth)
         _calibrate(plan_id, auth)
-        rid = _add_room(plan_id, auth, "Salon", 5, 4)
+        _add_room(plan_id, auth, "Salon", 5, 4)
 
         # measure
         r = requests.post(f"{API}/takeoffs/{plan_id}/measure",

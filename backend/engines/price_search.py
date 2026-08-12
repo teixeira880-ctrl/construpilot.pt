@@ -94,7 +94,8 @@ def _match_catalog(query: str):
 
 
 def _seeded(query: str, supplier_key: str) -> float:
-    h = hashlib.md5(f"{query.lower()}|{supplier_key}".encode()).hexdigest()
+    """Pseudo-aléa déterministe pour la démo (non sécurité) — sha256 court."""
+    h = hashlib.sha256(f"{query.lower()}|{supplier_key}".encode()).hexdigest()
     return int(h[:6], 16) / 0xFFFFFF
 
 
@@ -278,7 +279,9 @@ def optimize_cart(items: list[dict]) -> dict:
 
 
 def stores_nearby(lat: float, lng: float, radius_km: int = 20) -> list[dict]:
-    rnd = random.Random(int(lat * 1000) + int(lng * 1000) + radius_km)
+    # rnd volontairement déterministe (seed lat/lng/radius) : garantit des résultats
+    # stables pour la démo — pas d'usage sécurité, `random` est OK ici.
+    rnd = random.Random(int(lat * 1000) + int(lng * 1000) + radius_km)  # noqa: S311
     out = []
     for s in SUPPLIERS:
         if s["stores"] == 0:

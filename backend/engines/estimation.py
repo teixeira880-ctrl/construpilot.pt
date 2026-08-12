@@ -33,6 +33,46 @@ def year_coef(year: int | None) -> float:
     return 0.96
 
 
+def _resolve_lots(tpl: dict, lot_keys: list[str] | None) -> dict:
+    """Résout les lots à estimer (template + fallbacks pour lots additionnels)."""
+    if not lot_keys:
+        return tpl["lots"]
+    selected = {k: v for k, v in tpl["lots"].items() if k in lot_keys}
+    for k in lot_keys:
+        if k not in selected and k in LOTS_BY_KEY:
+            selected[k] = DEFAULT_LOT_FACTORS.get(k, 1.0)
+    return selected
+
+
+def _compute_lot(key: str, factor: float, surface: float,
+                 finish_cfg: dict, global_coef: float, rc: float) -> dict | None:
+    """Calcule le détail d'un lot (qty, prix unitaire, total)."""
+    lot = LOTS_BY_KEY.get(key)
+    if not lot:
+        return None
+    qty = round(surface * factor, 2)
+    if lot["unit"] == "u":
+        qty = max(1, round(qty))
+    mp = _mat_price(lot, finish_cfg["key"])
+    mat_unit = round(mp * rc * 0.6 + mp * 0.4, 2)
+    labour_unit = round(lot["labour"] * global_coef * finish_cfg["coef"] ** 0.4, 2)
+    materials = round(qty * mat_unit, 2)
+    labour = round(qty * labour_unit, 2)
+    hours = round(qty * lot["hours"], 1)
+    return {
+        "key": key, "name": lot["name"], "unit": lot["unit"], "quantity": qty,
+        "material_unit_price": mat_unit, "labour_unit_price": labour_unit,
+        "material_cost": materials, "labour_cost": labour,
+        "price_per_unit": round(mat_unit + labour_unit, 2),
+        "total": round(materials + labour, 2),
+        "hours": hours, "days": round(hours / 7, 1),
+        "difficulty": lot["difficulty"],
+        "difficulty_label": DIFFICULTY[lot["difficulty"]]["label"],
+        "diy_possible": lot["diy_possible"], "tools": lot["tools"],
+        "pro_recommended": key in HIGH_RISK_LOTS,
+    }
+
+
 def estimate(project_type: str, surface: float, finish: str = "standard", country: str = "FR",
              region: str | None = None, building_type: str = "maison", condition: str = "bon",
              construction_year: int | None = None, lot_keys: list[str] | None = None) -> dict:
@@ -44,40 +84,9 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
     yc = year_coef(construction_year)
     global_coef = rc * cc * bc * yc
 
-    selected = tpl["lots"]
-    if lot_keys:
-        selected = {k: v for k, v in tpl["lots"].items() if k in lot_keys}
-        for k in lot_keys:
-            if k not in selected and k in LOTS_BY_KEY:
-                # Fallback : facteur réaliste par lot (au lieu de 1.0 uniforme)
-                selected[k] = DEFAULT_LOT_FACTORS.get(k, 1.0)
-
-    lots = []
-    for key, factor in selected.items():
-        lot = LOTS_BY_KEY.get(key)
-        if not lot:
-            continue
-        qty = round(surface * factor, 2)
-        if lot["unit"] == "u":
-            qty = max(1, round(qty))
-        mat_unit = _mat_price(lot, finish_cfg["key"]) * rc * 0.6 + _mat_price(lot, finish_cfg["key"]) * 0.4
-        mat_unit = round(mat_unit, 2)
-        labour_unit = round(lot["labour"] * global_coef * finish_cfg["coef"] ** 0.4, 2)
-        materials = round(qty * mat_unit, 2)
-        labour = round(qty * labour_unit, 2)
-        hours = round(qty * lot["hours"], 1)
-        lots.append({
-            "key": key, "name": lot["name"], "unit": lot["unit"], "quantity": qty,
-            "material_unit_price": mat_unit, "labour_unit_price": labour_unit,
-            "material_cost": materials, "labour_cost": labour,
-            "price_per_unit": round(mat_unit + labour_unit, 2),
-            "total": round(materials + labour, 2),
-            "hours": hours, "days": round(hours / 7, 1),
-            "difficulty": lot["difficulty"], "difficulty_label": DIFFICULTY[lot["difficulty"]]["label"],
-            "diy_possible": lot["diy_possible"], "tools": lot["tools"],
-            "pro_recommended": key in HIGH_RISK_LOTS,
-        })
-
+    selected = _resolve_lots(tpl, lot_keys)
+    lots = [lot for key, factor in selected.items()
+            if (lot := _compute_lot(key, factor, surface, finish_cfg, global_coef, rc))]
     lots.sort(key=lambda l: EXECUTION_ORDER.index(l["key"]) if l["key"] in EXECUTION_ORDER else 99)
 
     materials_total = round(sum(l["material_cost"] for l in lots), 2)
@@ -89,14 +98,6 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
     contingency = round(subtotal * 0.10, 2)
     total_avg = round(subtotal + contingency, 2)
 
-    breakdown = {
-        "materials": materials_total,
-        "labour": labour_total,
-        "equipment_rental": equipment,
-        "waste_disposal": waste,
-        "contingency_rate": 0.10,
-        "contingency": contingency,
-    }
     return {
         "project_type": tpl["key"], "project_type_name": tpl["name"], "surface": surface,
         "finish_level": finish_cfg["key"], "finish_level_name": finish_cfg["name"],
@@ -104,7 +105,12 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
         "condition": condition, "construction_year": construction_year,
         "coefficients": {"region": rc, "condition": cc, "building": bc, "year": yc,
                          "finish": finish_cfg["coef"]},
-        "lots": lots, "breakdown": breakdown,
+        "lots": lots,
+        "breakdown": {
+            "materials": materials_total, "labour": labour_total,
+            "equipment_rental": equipment, "waste_disposal": waste,
+            "contingency_rate": 0.10, "contingency": contingency,
+        },
         "total_min": round(total_avg * 0.88, 2),
         "total_avg": total_avg,
         "total_max": round(total_avg * 1.16, 2),

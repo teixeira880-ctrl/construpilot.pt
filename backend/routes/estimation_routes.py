@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
 from core.db import db
-from core.security import current_user
 from engines import estimation, ai, pdf
 from engines.catalog import (PROJECT_TYPES, LOTS, FINISH_LEVELS, REGIONS, DIFFICULTY,
                             CONDITION_COEF)

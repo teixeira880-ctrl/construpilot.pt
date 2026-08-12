@@ -4,7 +4,7 @@ Contenu : alertes déclenchées, top matériaux surveillés, suggestion d'écono
 pour les projets récents.
 """
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from core.db import db
 from engines import emailer, price_search, savings
@@ -17,7 +17,6 @@ def _now():
 
 
 async def build_digest(user: dict) -> dict:
-    since = (_now() - timedelta(days=7)).isoformat()
     # Alertes actives + best price actuel
     alerts = await db.price_alerts.find({"user_id": user["user_id"], "active": True},
                                         {"_id": 0}).to_list(20)

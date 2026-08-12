@@ -9,7 +9,6 @@ Covers:
 - Backward compat: /takeoffs/compare, /quote-pdf, snapshot label
 """
 import os
-import secrets
 import pytest
 import requests
 

@@ -56,7 +56,7 @@ def _send_push(sub: dict, payload: dict) -> bool:
     if not VAPID_PRIVATE:
         return False
     try:
-        from pywebpush import webpush, WebPushException
+        from pywebpush import webpush
         webpush(subscription_info={"endpoint": sub["endpoint"], "keys": sub["keys"]},
                 data=json.dumps(payload),
                 vapid_private_key=VAPID_PRIVATE,
@@ -202,10 +202,9 @@ class OrgInviteIn(BaseModel):
 
 
 def _new_org_code() -> str:
-    """Code humain simple : 4 lettres + 4 chiffres, ex CPLT-4821."""
-    import random
+    """Code humain simple : 4 lettres + 4 chiffres, ex CPLT-4821 (non-prédictible)."""
     letters = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ") for _ in range(4))
-    digits = "".join(str(random.randint(0, 9)) for _ in range(4))
+    digits = "".join(str(secrets.randbelow(10)) for _ in range(4))
     return f"{letters}-{digits}"
 
 

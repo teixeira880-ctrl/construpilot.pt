@@ -8,7 +8,6 @@ Covers:
 - PDF Devis via GET /api/takeoffs/{plan_id}/quote-pdf
 """
 import os
-import time
 import secrets
 import pytest
 import requests
@@ -28,8 +27,11 @@ def _load_backend_url():
 BASE_URL = _load_backend_url()
 API = f"{BASE_URL}/api"
 
-DEMO = {"email": "demo@construpilot.fr", "password": "Demo2026!"}
-ADMIN = {"email": "admin@construpilot.fr", "password": "Construpilot2026!"}
+DEMO = {"email": os.environ.get("DEMO_EMAIL", "demo@construpilot.fr"),
+        "password": os.environ.get("DEMO_PASSWORD", "Demo2026!")}
+ADMIN = {"email": os.environ.get("ADMIN_EMAIL", "admin@construpilot.fr"),
+         "password": os.environ.get("ADMIN_PASSWORD", "Construpilot2026!")}
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "TestPass2026!")  # noqa: S105  test fixture only
 
 
 # ---------- Fixtures ----------
@@ -40,7 +42,7 @@ def _login(creds):
     return {"Authorization": f"Bearer {r.json()['token']}"}
 
 
-def _register(email, name="Test User", password="TestPass2026!"):
+def _register(email, name="Test User", password=TEST_PASSWORD):
     r = requests.post(
         f"{API}/auth/register",
         json={"email": email, "name": name, "password": password},

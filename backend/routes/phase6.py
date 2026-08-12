@@ -1,7 +1,7 @@
 """Sponsored products + price history endpoints."""
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from core.db import db

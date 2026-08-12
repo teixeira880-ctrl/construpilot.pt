@@ -3,7 +3,7 @@
 Chaque économie est CALCULÉE à partir de données réelles (catalogue matériaux,
 niveaux de finition, catégories DIY). Aucune valeur inventée.
 """
-from engines.catalog import LOTS_BY_KEY, FINISH_BY_KEY
+from engines.catalog import LOTS_BY_KEY
 
 
 def _finish_key(est: dict) -> str:
@@ -119,6 +119,6 @@ def compute(est: dict) -> dict:
         "project_pass_price": project_pass_price,
         "roi_multiplier": roi_multiplier,
         "message": (f"ConstruPilot a identifié {total:,.0f} €".replace(",", " ")
-                    + f" d'économies potentielles sur votre projet"
+                    + " d'économies potentielles sur votre projet"
                     + (f", soit {roi_multiplier}× le prix du Project Pass." if roi_multiplier else ".")),
     }

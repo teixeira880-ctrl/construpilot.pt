@@ -1,8 +1,6 @@
 """Iter18 tests — Plan Compare + Roof/Facade calculator + non-regressions."""
 import math
 import os
-import io
-import time
 import pytest
 import requests
 

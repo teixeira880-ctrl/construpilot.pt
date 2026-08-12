@@ -7,7 +7,6 @@ Verifies:
 - PDF contains 'ConstruPilot'
 """
 import os
-import io
 import pytest
 import requests
 

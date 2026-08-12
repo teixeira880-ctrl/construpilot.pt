@@ -1,6 +1,5 @@
 """Iter 3 tests: PDF email, timeline, alerts check-now, scheduler."""
 import os
-import time
 import base64
 import requests
 import pytest

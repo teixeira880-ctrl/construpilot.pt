@@ -1,6 +1,5 @@
 """Iter19 — PDF export, auto-history snapshots, restore, compare visual backing."""
 import os
-import base64
 import pytest
 import requests
 

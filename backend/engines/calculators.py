@@ -239,8 +239,6 @@ def roof_facade(projected_m2: float = 100.0, pitch_deg: float | None = 30,
     facade_gross = round(wall_perimeter_m * wall_height_m, 2)
     facade_net = round(max(0.0, facade_gross - openings_m2), 2)
 
-    # ITE : épaisseur pilote la quantité de panneaux
-    ite_panels = _ceil(facade_net * (ite_thickness_mm / 140))  # référence 140mm
     return {
         "inputs": {
             "projected_m2": projected_m2, "pitch_deg": pitch_deg, "rampant_m": rampant_m,

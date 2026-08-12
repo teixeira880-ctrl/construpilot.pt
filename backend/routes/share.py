@@ -185,7 +185,6 @@ async def send_sms(project_id: str, body: SmsShareIn, user=Depends(current_user)
 
     try:
         from twilio.rest import Client
-        from twilio.base.exceptions import TwilioRestException
         client = Client(TWILIO_SID, TWILIO_TOKEN)
         msg = client.messages.create(to=to, from_=TWILIO_FROM, body=body.message)
         # log analytics

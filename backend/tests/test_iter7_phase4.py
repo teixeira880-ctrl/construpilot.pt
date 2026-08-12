@@ -1,7 +1,6 @@
 """Iter 7 (Phase 4) — API commerciale, KYC pros, Portail pro, Affiliation."""
 import os
 import uuid
-import time
 import pytest
 import requests
 

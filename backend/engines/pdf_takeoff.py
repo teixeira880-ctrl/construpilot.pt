@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-                               KeepTogether, PageBreak)
+                               PageBreak)
 
 ORANGE = colors.HexColor('#FF5A00')
 DARK = colors.HexColor('#0A0D14')
@@ -390,7 +390,7 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
 
 def build_project_quote_pdf(project: dict, branding: dict | None = None) -> bytes:
     """PDF Devis Projet consolidant plusieurs plans (multi-niveaux, extensions…)."""
-    from reportlab.platypus import Image as RLImage, PageBreak
+    from reportlab.platypus import Image as RLImage
     import base64 as b64lib
     from io import BytesIO as BIO
     buf = BytesIO()

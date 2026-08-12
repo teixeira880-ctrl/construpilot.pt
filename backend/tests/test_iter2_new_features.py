@@ -3,7 +3,6 @@
 2. Public /api/estimation/pdf (no-auth PDF generation)
 3. Photos before/after (upload, list, download, delete, RBAC, validation)
 """
-import io
 import os
 import uuid
 import pytest

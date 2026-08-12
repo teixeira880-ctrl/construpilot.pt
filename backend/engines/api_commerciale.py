@@ -4,7 +4,6 @@
 - Rate limiting simple sur DB (fenêtre glissante mensuelle par clé)
 - Middleware `require_api_key` pour les endpoints /api/v1/public/*
 """
-import os
 import secrets
 import logging
 from datetime import datetime, timezone
