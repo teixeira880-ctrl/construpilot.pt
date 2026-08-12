@@ -1,0 +1,54 @@
+{
+  "summary": "Iter13 — Module PLAN (takeoff 2D) : 34/35 tests backend PASS (1 skipped à cause d'une collision de route). UI /plan complètement fonctionnelle : dropzone, canvas, sidebar pages, toolbar (5 outils avec disabled correct sans calibration), tab-materials + floor-material-select, bouton AI. Sanity OK (login, /auth/me, /estimation compute, /admin/revenue/kpis, /estimation?surface=80 prefill). Twilio SMS config renvoie bien from_configured=false, twilio_enabled=false ; POST share/sms renvoie 404 avant 503 (project bogus).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/plans",
+        "issue": "ROUTE COLLISION — billing.router expose déjà GET /plans (subscription plans) et est enregistré AVANT plans_routes dans server.py (L43 avant L51). Résultat : GET /api/plans renvoie la liste des offres d'abonnement Free/Pro/Business (avec 'code','tagline','features'…), pas les takeoff plans utilisateur. Le frontend PlanTakeoff.jsx qui appelle /api/plans pour lister les plans utilisateur reçoit les mauvaises données. Fix : soit renommer une route (ex: GET /api/plans/list → mieux GET /api/takeoffs, ou billing route en /billing/plans), soit changer l'ordre d'enregistrement — mais FastAPI ne dédoublonne pas les paths, seule la première déclarée gagne.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Plan list on /plan page",
+        "issue": "Si PlanTakeoff.jsx appelle GET /api/plans pour lister les plans existants, il va recevoir les abonnements — même cause que le bug backend ci-dessus. À vérifier après le fix backend.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Nav bar (desktop 1440px)",
+        "issues": ["Trop d'items dans la nav — 'Je le fais moi-même' wrap sur 3 lignes, l'utilisateur 'Parrainer' est presque coupé, 'Coach IA'/'Trouver un pro'/'Espace pro' wrap sur 2 lignes chacun. Le layout serait à repenser (menu hamburger secondaire ou dropdown 'Plus')."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter13_plan.py",
+    "/app/test_reports/pytest/iter13.xml"
+  ],
+  "action_items": [
+    "CRITIQUE : Résoudre la collision de route GET /api/plans entre billing.py (subscription tiers) et plans.py (takeoff). Recommandation : renommer la route de plans.py en GET /api/takeoffs (et cascade sur les autres endpoints /plans/{id}/…) OU renommer billing en /billing/plans. Le frontend devra être aligné.",
+    "MINEUR (design) : améliorer la Nav bar qui est saturée sur 1440px — envisager un menu dropdown 'Plus' pour regrouper Coach IA / Trouver un pro / Espace pro / API & Développeurs / Parrainer.",
+    "MINEUR : pymupdf lance un warning `import fitz` deprecated — envisager `import pymupdf as fitz` dans plan_processor.py."
+  ],
+  "critical_code_review_comments": [
+    "Route collision GET /api/plans (voir ci-dessus).",
+    "plans.py L91 `secrets.token_hex(6)` génère 12 chars — OK, mais aucune vérification d'unicité en base (extrêmement improbable de collision mais possible).",
+    "plans.py `/plans/{plan_id}/page/{page_index}` renvoie l'image PNG b64 complète (500ko-2Mo) — envisager cache HTTP ou streaming pour améliorer performances.",
+    "plan_ai.py utilise GPT-4o Vision → coût token élevé, prévoir un rate-limit ou cache par plan_id."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter13_plan.py (nouveau)"
+  ],
+  "success_rate": {"backend": "97% (34/35, 1 skip pour bug de route)", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "Un plan takeoff PNG synthétique est créé puis nettoyé par le test. Aucune donnée persistante à la fin.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Le seul point rouge est la collision route GET /api/plans (billing shadow plans_routes). Après fix de la main agent, relancer `pytest tests/test_iter13_plan.py::TestPlanFlow::test_02_list_plans` en enlevant le pytest.skip conditionnel. Tous les autres endpoints du module Plan (upload PNG/PDF, calibrate, calibrate/check, measure, rooms upsert/delete, takeoff, materials parquet & carrelage, refus 400/404/422) sont VERTS. Geometry engine unitaire 9/9. UI /plan tous data-testid présents (canvas, pages, tools, tab-materials, floor-material-select, plan-ai-btn). Twilio config correct (from_configured=false).",
+  "rca of the issue": "Cause racine collision route : dans /app/backend/server.py, `billing.router` est inclus L43 avec `@router.get('/plans')` (subscription plans catalog) alors que `plans_routes.router` (takeoff) est inclus L51 avec la même route `@router.get('/plans')`. FastAPI utilise la première route matchante, donc /api/plans → billing. Reproduction : `curl -H 'Authorization: Bearer <token>' https://…/api/plans` → renvoie {plans: [{code:'free', tagline:…}]} au lieu de la liste des plans takeoff. Mitigation immédiate : renommer le prefix de plans_routes (ex. `router = APIRouter(prefix='/takeoffs', tags=['plans'])`) et adapter le frontend PlanTakeoff.jsx en conséquence."
+}

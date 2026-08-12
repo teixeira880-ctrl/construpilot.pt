@@ -30,6 +30,7 @@ import Enterprise from "@/pages/Enterprise";
 import SupplierPortal from "@/pages/SupplierPortal";
 import Invite from "@/pages/Invite";
 import PublicEstimation from "@/pages/PublicEstimation";
+import PlanTakeoff from "@/pages/PlanTakeoff";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 
 const Protected = ({ children, admin }) => {
@@ -73,6 +74,7 @@ function AppRouter() {
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
+      <Route path="/plan" element={<Protected><Shell><PlanTakeoff /></Shell></Protected>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />
       <Route path="/pro/paiement/succes" element={<Protected><Shell><PaymentSuccess /></Shell></Protected>} />

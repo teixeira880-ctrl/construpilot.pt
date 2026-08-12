@@ -1,0 +1,39 @@
+{
+  "summary": "Iter14 — Collision route /api/plans FIXÉE. Le prefix backend a été renommé en /api/takeoffs (routes/plans.py L35 router = APIRouter(prefix='/takeoffs')) et le frontend PlanTakeoff.jsx est aligné (11 appels /takeoffs/...). Backend : 39/39 tests PASS (test_iter14_takeoffs.py). GET /api/plans renvoie bien le catalogue billing (11 offres: FREE, PROJECT_PASS, PREMIUM_MONTHLY/YEARLY, PRO_MONTHLY/YEARLY, PRO_BUSINESS_*, API_STARTER/BUSINESS/SCALE). GET /api/takeoffs renvoie {plans: [...]} avec les plans takeoff utilisateur (sans clé 'code' billing). Les deux endpoints coexistent proprement. UI /plan : upload PNG → canvas visible, aucune 404, aucun appel résiduel /api/plans/upload. Twilio config: sid+token configured, from=false, twilio_enabled=false — conforme.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Nav bar 1440px",
+        "issues": ["Toujours saturée — 'Je le fais moi-même' wrap sur 3 lignes, 'Parrainer' presque hors écran. (Même remarque qu'iter13, non lié à ce fix.)"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter14_takeoffs.py",
+    "/app/test_reports/pytest/iter14.xml"
+  ],
+  "action_items": [
+    "MINEUR (design, hérité) : améliorer la Nav bar (menu 'Plus' dropdown).",
+    "MINEUR : pymupdf `import fitz` toujours deprecated — envisager `import pymupdf as fitz` dans plan_processor.py."
+  ],
+  "critical_code_review_comments": [
+    "Fix collision route validé : prefix='/takeoffs' propre, pas de shadow avec billing /api/plans.",
+    "Frontend PlanTakeoff.jsx: 11 appels vers /takeoffs/... cohérents.",
+    "Note pour l'avenir : documenter dans README que /api/plans = billing catalogue (public) et /api/takeoffs = plans takeoff utilisateur (auth requis)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter14_takeoffs.py (nouveau, adapté de test_iter13_plan.py)"
+  ],
+  "success_rate": {"backend": "100% (39/39)", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "Plans takeoff PNG et PDF créés puis nettoyés par les tests. Aucune donnée persistante.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Fix collision GET /api/plans validé. Prefix /takeoffs = takeoff plans (auth user), /plans = billing subscription catalogue. test_iter14_takeoffs.py est le nouveau standard, remplace test_iter13_plan.py (qui reste fonctionnel car test_02_list_plans y skip proprement). Twilio: sid+token configured, from=false, enabled=false. Aucun endpoint bloquant. Push public-key OK, revenue kpis OK, estimation compute OK."
+}

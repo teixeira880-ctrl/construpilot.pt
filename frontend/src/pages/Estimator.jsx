@@ -39,7 +39,8 @@ export default function Estimator() {
 
   const [form, setForm] = useState({
     project_type: params.get("type") || "renovation_complete",
-    country: "FR", region: "Île-de-France", city: "", surface: 100,
+    country: "FR", region: "Île-de-France", city: "",
+    surface: Number(params.get("surface")) || 100,
     building_type: "maison", construction_year: 1990, condition: "bon",
     finish_level: "standard", description: "", lots: [],
   });

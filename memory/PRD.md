@@ -42,12 +42,20 @@ Langue produit : **Français**.
 - **PHASE 7** ✅ (iter11) : Push Notifications VAPID + Retention Weekly Digest + Referral Landing riche + fix warning React.
 - **PRICING PRO — 12/02/2026** : Pro 49→99€/mois (990€/an), Pro Business 99→199€/mois (1990€/an) — migration DB idempotente.
 - **WHATSAPP SHARE — 13/02/2026** ✅ : dialog + lien public /e/:token + message éditable Markdown WA.
-- **ITER 12 — 13/02/2026** ✅ 4 features additionnelles :
-  - **Revenue Cockpit admin** (`/api/admin/revenue/{kpis,timeseries}`) : MRR/ARR/ARPU/LTV/CAC/LTV·CAC/Trials/Revenu mois + MRR par plan + funnel 30j (signups→trials→paid + leads) + graph recharts quotidien 30/90/180/365j.
-  - **Share Analytics** : compteur `share_opens` + `share_last_open_at` + `share_events` (rolling 100 avec UA/IP) sur chaque `GET /public/estimation/{token}`. Endpoint dédié `GET /api/projects/{id}/share/stats`.
-  - **Sharing Expiry** : POST `/api/projects/{id}/share` accepte `{expires_in_days: 1|7|30|null}` ; réponse `410 Gone` sur token expiré ; UI select "Sans expiration / 24h / 7j / 30j".
-  - **SMS Sharing** : bouton natif `sms:` (mobile) + endpoint `POST /api/projects/{id}/share/sms` Twilio (503 propre si non configuré). `GET /api/share/sms/config` expose l'état sans révéler les clés.
-- ENV Twilio prêts (`TWILIO_ACCOUNT_SID` renseigné, TOKEN + FROM à compléter).
+- **ITER 12 — 13/02/2026** ✅ Revenue Cockpit admin + Share Analytics + Sharing Expiry + SMS Sharing (native + Twilio stub).
+- **ITER 13/14 — 13/02/2026** ✅ **CONSTRUPILOT PLAN — Phase A (Takeoff 2D)** — 39/39 pytest :
+  - **Import** PDF/PDF multipage/JPG/PNG/WEBP (drag & drop + `capture=environment` mobile).
+  - **Viewer canvas** HTML5 : zoom, pan, rotation, sidebar pages, undo, snap visuel.
+  - **Extraction PDF vectorielle** (pymupdf) : lignes, rectangles, textes localisés, échelle auto détectée depuis "1:100" etc.
+  - **3 méthodes de calibration** : auto échelle 1:X (PDF), cote connue, 2 points manuels — + endpoint `/calibrate/check` pour vérifier la cohérence (delta_pct < 2%).
+  - **Geometry Engine** mathématique pur (`engines/geometry.py`) : Shoelace, distance euclidienne, périmètre, `room_measurements`, `subtract_openings`, `paint_liters`, `placo_quantity`, `floor_quantity` (pertes par matériau), `skirting_length_m`, `calibration_check`.
+  - **IA Vision** (`engines/plan_ai.py`) — GPT-4o : détecte pièces, ouvertures, échelle, surface écrite avec score de confiance.
+  - **Tableau de métré** par pièce (surface / périmètre / murs bruts / murs nets) + totaux.
+  - **Calculateurs matériaux** : sol (parquet/carrelage/stratifié/vinyle/moquette/béton), peinture (2 couches, marge 15%), placo BA13 (plaques 3 m², pertes 5%), plinthes.
+  - **Boutons "Chiffrer"** → prérempli `/estimation?surface=X` et **"Trouver les matériaux"** → `/prix?q=...`.
+  - **Route backend** : `/api/takeoffs` (renommée depuis `/api/plans` pour éviter collision avec billing).
+  - Frontend : nouvelle page `/plan` + lien Nav "Plan 2D".
+- **Twilio partial** : SID + AUTH_TOKEN configurés dans `.env`, il ne manque plus que `TWILIO_FROM_NUMBER`.
 
 ### 🟡 Points d'attention (non bloquants)
 - Tavily ~25% fallback demo.
@@ -58,20 +66,26 @@ Langue produit : **Français**.
 ## 5. Backlog priorisé
 
 ### P0 — Compléter Twilio
-- Ajouter `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER` dans `.env` puis vérifier `POST /api/projects/{id}/share/sms`.
+- Ajouter `TWILIO_FROM_NUMBER` dans `.env` puis re-tester `POST /api/projects/{id}/share/sms`.
 
-### P1 — Fiabilité
+### P1 — Phase B ConstruPilot PLAN
+- Détection auto CV (OpenCV Hough) : murs, cloisons, portes, fenêtres.
+- Deskew + perspective correction pour photos smartphone.
+- OCR (Tesseract ou GPT-Vision) : cotes, noms de pièces, échelles écrites.
+- "Click intérieur pièce → flood fill du contour".
+- Multi-étages (RDC/R+1) avec regroupement par niveau.
+- Comparaison Plan Avant/Après.
 - Vérification email/téléphone (+5pts lead scoring chacun).
-- Domaine Resend vérifié (au-delà de la sandbox).
-- Remplacer `window.confirm()` par shadcn AlertDialog dans ApiKeys.jsx.
-- Historique de churn réel (au lieu de 5%/mois hardcodé) pour la LTV.
-- CAC via input admin manuel ou via CampaignSpend collection.
 
 ### P2 — Enrichissements
-- Emails de notification quand un lien de partage est ouvert (opt-in).
-- Analytics : ouvertures /e/:token par jour dans un mini-chart sur ProjectDetail.
-- Expiration granulaire (heures/date custom via calendar picker).
-- A/B testing sur les prix (99€ vs 79€).
+- Phase C : DWG/DXF via `ezdxf`, IFC/BIM via `ifcopenshell`.
+- Façades + Toitures inclinées (surface réelle vs projetée).
+- Shopping Optimizer multi-fournisseurs sur les quantités calculées.
+- Historique churn réel → LTV mieux calibrée.
+- CAC via input admin manuel dans Revenue Cockpit.
+- A/B testing pricing (79€ vs 99€).
+- Nav bar dropdown "Plus" pour désaturer sur 1440px.
+- `import pymupdf as fitz` pour retirer le warning deprecated.
 
 ## 6. Intégrations 3rd-party
 - **Emergent Universal LLM Key** — GPT (Smart Project + Coach) + Object Storage + Nano Banana.

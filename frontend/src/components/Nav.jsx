@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
-  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake,
+  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 const LINKS = [
   { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, auth: true },
   { to: "/estimation", label: "Estimateur", icon: Hammer },
+  { to: "/plan", label: "Plan 2D", icon: Ruler, auth: true },
   { to: "/calculateurs", label: "Calculateurs", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", icon: Search },
   { to: "/diy", label: "Je le fais moi-même", icon: Wrench },
