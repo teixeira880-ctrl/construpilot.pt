@@ -1,0 +1,24 @@
+{
+  "summary": "Iteration 12 (Revenue Cockpit admin + Share Analytics + Share Expiry + SMS native/Twilio stub) — ALL PASS. 13/13 pytest tests green. Backend: GET /api/admin/revenue/kpis returns mrr_eur/arr_eur/arpu_eur/ltv_eur/cac_eur/funnel_30d with signups>0 and leads>0; forbidden (403) for non-admin. GET /api/admin/revenue/timeseries?days=30 returns exactly 31 daily buckets. POST /api/projects/{id}/share with empty body returns token+url+expires_at=null; with {expires_in_days:7} returns ISO date ~7d out (delta 6.5<x<7.5). Public opens (3× different UA) increment share_opens to 3 and populate recent_events with at/ua/ip. Simulated expired share_expires_at=2020 → GET /api/public/estimation/{token} → 410. GET /api/share/sms/config → {twilio_enabled:false, sid_configured:true, token_configured:false, from_configured:false, native_fallback_available:true}. POST /api/projects/{id}/share/sms with valid body → 503 detail 'Twilio non configuré : utilisez le lien SMS natif'. Non-reg: GET /api/ 200, plans pro=9900 & pro_business=19900 (via plan_ids pro_monthly / pro_business_monthly), /api/push/public-key 200. Frontend admin: /admin → onglet Revenue Cockpit visible; revenue-tab + les 8 cartes KPI + mrr-per-plan + funnel-30d + 4 stats funnel tous rendus. Les 4 boutons revenue-range-30/90/180/365 rechargent la série (1 recharts SVG rendu). Funnel signups=10 (>0). Frontend user: création rapide d'un projet via API, dialog WhatsApp ouvre, générer un lien 'never' OK (data-testid=whatsapp-share-link visible), révoquer + choisir 7 jours + regénérer → badge 'Expire le 19/08/2026' visible dans share-analytics. Onglet SMS: sms-native-btn visible, sms-twilio-btn visible ET disabled (twilio_enabled=false). ZÉRO warning React setState-during-render au login.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter12_share_revenue.py",
+    "/app/test_reports/pytest/iter12_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "share.py L107: expiry compared as ISO strings ('expires_at < now_iso') — works because ISO 8601 UTC is lexicographically ordered, but explicit datetime parse would be safer if timezones ever drift.",
+    "admin_revenue.py: churn assumé hardcodé à 5% et CAC=0 — documenté dans la réponse (assumed_monthly_churn), pas un bug mais à surveiller quand un vrai historique de churn sera disponible.",
+    "share.py L200-204: catch générique any Exception → renvoie 502; en pratique le path Twilio non-configuré s'arrête avant (503), donc le 502 ne se déclenche que sur crédentials présents mais erreur runtime (comportement correct)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter12_share_revenue.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026!  and  demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "Test-created projects prefixed TEST_ITER12_* and UI_ITER12 via demo user (not cleaned — negligible volume).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login response has key 'token' (not access_token). GET /api/plans returns {plans:[...]} wrapper with plan_ids 'pro_monthly' / 'pro_business_monthly' (not 'pro' / 'pro_business'). urllib from testing container gets 403 on preview URL — use page.request or requests library (with default UA) which works fine. localStorage token key is 'construpilot_token'. Share expiry ISO string comparison works because timestamps are Z-normalized UTC ISO 8601."
+}

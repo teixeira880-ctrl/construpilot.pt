@@ -31,7 +31,7 @@ Langue produit : **Français**.
 
 ## 4. État actuel (13/02/2026 — itération 12)
 
-### ✅ Implémenté & testé (Backend 155+/155+ pytest · Frontend 100%)
+### ✅ Implémenté & testé (Backend 168/168 pytest · Frontend 100%)
 - Fondations MVP complètes.
 - **PHASE 1** — Stripe subscriptions + 10 plans + trial 7j + paywall.
 - **PHASE 2** — Savings Engine + Codes promo admin.
@@ -39,42 +39,39 @@ Langue produit : **Français**.
 - **PHASE 4** — API commerciale + KYC pros + Portail Pro + Affiliation.
 - **PHASE 5** — White Label + Portail Fournisseurs + Enterprise + /docs.
 - **PHASE 6** — Onboarding Tour + PWA + Sponsored Products + Historique Prix.
-- **PHASE 7** ✅ (iter11) :
-  - Push Notifications VAPID : hook `usePushNotifications`, composant `PushToggle` sur Dashboard, endpoints `/api/push/{public-key,subscribe,unsubscribe,test}`.
-  - Retention Weekly Digest : `engines/retention.py` + APScheduler CronTrigger lundi 09:00 UTC + admin trigger manuel `/api/admin/retention/send-digests`.
-  - Referral Landing riche : nouvelle page `/inviter` (Invite.jsx) avec 5 canaux de partage (WhatsApp/Facebook/X/Email/Copier).
-  - Warning React setState-during-render corrigé (Login `useEffect` around navigate).
-  - Nav "Parrainer" pointe désormais sur `/inviter`.
-- **PRICING PRO — 12/02/2026** :
-  - Pro : 49€ → **99€/mois** · 490€/an → **990€/an**
-  - Pro Business : 99€ → **199€/mois** · 990€/an → **1990€/an**
-  - Migration DB au startup (`server.py` — PRICE_MIGRATION dict).
-- **WHATSAPP SHARE — 13/02/2026** ✅ :
-  - Backend `routes/share.py` : `POST /api/projects/{id}/share` (auth) génère un token URL-safe + persiste `share_token`. `DELETE` révoque. `GET /api/public/estimation/{token}` renvoie une vue lecture seule.
-  - Frontend `components/WhatsAppShare.jsx` : dialog avec téléphone optionnel, message éditable pré-rempli en Markdown WhatsApp (`*gras*`, `_italique_`) + lien public.
-  - Page publique `PublicEstimation.jsx` route `/e/:token` : header sobre ConstruPilot, 3 KPIs (min/avg/max), détail par lot, CTA d'acquisition.
-  - Intégration boutons vert émeraude : Estimator (texte simple sans lien) + ProjectDetail (avec génération de lien public).
+- **PHASE 7** ✅ (iter11) : Push Notifications VAPID + Retention Weekly Digest + Referral Landing riche + fix warning React.
+- **PRICING PRO — 12/02/2026** : Pro 49→99€/mois (990€/an), Pro Business 99→199€/mois (1990€/an) — migration DB idempotente.
+- **WHATSAPP SHARE — 13/02/2026** ✅ : dialog + lien public /e/:token + message éditable Markdown WA.
+- **ITER 12 — 13/02/2026** ✅ 4 features additionnelles :
+  - **Revenue Cockpit admin** (`/api/admin/revenue/{kpis,timeseries}`) : MRR/ARR/ARPU/LTV/CAC/LTV·CAC/Trials/Revenu mois + MRR par plan + funnel 30j (signups→trials→paid + leads) + graph recharts quotidien 30/90/180/365j.
+  - **Share Analytics** : compteur `share_opens` + `share_last_open_at` + `share_events` (rolling 100 avec UA/IP) sur chaque `GET /public/estimation/{token}`. Endpoint dédié `GET /api/projects/{id}/share/stats`.
+  - **Sharing Expiry** : POST `/api/projects/{id}/share` accepte `{expires_in_days: 1|7|30|null}` ; réponse `410 Gone` sur token expiré ; UI select "Sans expiration / 24h / 7j / 30j".
+  - **SMS Sharing** : bouton natif `sms:` (mobile) + endpoint `POST /api/projects/{id}/share/sms` Twilio (503 propre si non configuré). `GET /api/share/sms/config` expose l'état sans révéler les clés.
+- ENV Twilio prêts (`TWILIO_ACCOUNT_SID` renseigné, TOKEN + FROM à compléter).
 
 ### 🟡 Points d'attention (non bloquants)
 - Tavily ~25% fallback demo.
 - Webhook Stripe non testable en preview.
 - Push non testable en Playwright headless (permissions bloquées).
+- Twilio SMS : SID configuré, `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER` à ajouter dans `.env` pour activer l'envoi serveur (fallback natif `sms:` opérationnel).
 
 ## 5. Backlog priorisé
 
-### P0 — Revenue avancé
-- Revenue Dashboard admin (MRR/ARR/ARPU/LTV/CAC/funnel/A/B testing).
+### P0 — Compléter Twilio
+- Ajouter `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER` dans `.env` puis vérifier `POST /api/projects/{id}/share/sms`.
 
 ### P1 — Fiabilité
 - Vérification email/téléphone (+5pts lead scoring chacun).
 - Domaine Resend vérifié (au-delà de la sandbox).
 - Remplacer `window.confirm()` par shadcn AlertDialog dans ApiKeys.jsx.
-- Modèle `PushUnsubIn` dédié (endpoint seul) au lieu de réutiliser `PushSubIn`.
+- Historique de churn réel (au lieu de 5%/mois hardcodé) pour la LTV.
+- CAC via input admin manuel ou via CampaignSpend collection.
 
-### P2 — Enrichissements sharing
-- Sharing via SMS natif (Twilio) — pour compléter WhatsApp.
-- Expiration configurable du token de partage (par défaut : perpétuel).
-- Analytics du sharing : nb d'ouvertures du lien public par projet.
+### P2 — Enrichissements
+- Emails de notification quand un lien de partage est ouvert (opt-in).
+- Analytics : ouvertures /e/:token par jour dans un mini-chart sur ProjectDetail.
+- Expiration granulaire (heures/date custom via calendar picker).
+- A/B testing sur les prix (99€ vs 79€).
 
 ## 6. Intégrations 3rd-party
 - **Emergent Universal LLM Key** — GPT (Smart Project + Coach) + Object Storage + Nano Banana.

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { api, eur, num } from "@/lib/api";
 import { Stat, SectionTitle } from "@/components/Bits";
+import RevenueTab from "@/components/RevenueTab";
 
 export default function Admin() {
   const [stats, setStats] = useState(null);
@@ -91,6 +92,7 @@ export default function Admin() {
           <TabsTrigger value="kyc" className="rounded-sm" data-testid="admin-tab-kyc">KYC pros</TabsTrigger>
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">Affiliation</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">Plans & Revenu</TabsTrigger>
+          <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">Revenue Cockpit</TabsTrigger>
         </TabsList>
 
         <TabsContent value="prices" className="mt-6">
@@ -345,6 +347,9 @@ export default function Admin() {
 
         <TabsContent value="plans" className="mt-6">
           <PlansRevenuePanel />
+        </TabsContent>
+        <TabsContent value="revenue" className="mt-6">
+          <RevenueTab />
         </TabsContent>
       </Tabs>
     </div>
