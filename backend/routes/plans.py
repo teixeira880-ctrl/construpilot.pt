@@ -384,6 +384,148 @@ async def walls_summary(plan_id: str, user=Depends(current_user)):
     return {"plan_id": plan_id, "scale_m_per_px": scale, "totals": totals}
 
 
+# ============ AI 3D RENDER (Nano Banana / Gemini image-to-image) ============
+
+class Render3DIn(BaseModel):
+    page_index: int = 0
+    style: str = "photoreal"  # photoreal | isometric | axonometric | interior
+    include_furniture: bool = True
+    extra_prompt: str | None = None
+
+
+_STYLE_PROMPTS = {
+    "photoreal": "photorealistic 3D architectural render, natural daylight, "
+                  "realistic materials (wood floor, painted walls, ceramic tiles), "
+                  "shallow depth of field, high detail",
+    "isometric": "clean isometric 3D architectural rendering, 45° angle, no "
+                  "perspective distortion, soft ambient lighting, colored floors "
+                  "per room type, blueprint aesthetic",
+    "axonometric": "axonometric cutaway 3D render showing walls in section, "
+                    "colored floor tiles per room, precise architectural style, "
+                    "white walls, cool ambient lighting",
+    "interior": "photorealistic interior view of the largest living room in this "
+                 "floor plan, modern French residential style, warm daylight through "
+                 "windows, natural materials",
+}
+
+
+@router.post("/{plan_id}/render-3d")
+async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
+    """Convertit la page du plan 2D en rendu 3D via Gemini Nano Banana.
+
+    Retourne une image PNG base64 stockée sur le plan (permet re-render sans coût).
+    """
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+
+    api_key = os.getenv("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(500, "EMERGENT_LLM_KEY manquant")
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages": 1, "filename": 1, "rooms": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if body.page_index < 0 or body.page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    img_b64 = pages[body.page_index].get("image_png_b64")
+    if not img_b64:
+        raise HTTPException(500, "Image du plan manquante")
+
+    # Build prompt
+    style_prompt = _STYLE_PROMPTS.get(body.style, _STYLE_PROMPTS["photoreal"])
+    rooms = p.get("rooms") or []
+    room_hint = ""
+    if rooms:
+        room_labels = ", ".join(sorted({r.get("name", "") for r in rooms if r.get("name")}))
+        if room_labels:
+            room_hint = f"\nDetected room labels: {room_labels}."
+    furniture = ("with realistic furniture" if body.include_furniture
+                  else "empty, no furniture")
+    extra = f"\nAdditional instructions: {body.extra_prompt}" if body.extra_prompt else ""
+    prompt = (
+        f"Convert this 2D architectural floor plan into a {style_prompt}, "
+        f"{furniture}. Preserve the room layout, walls, doors and windows exactly "
+        f"as shown. Do NOT return a 2D plan — generate a full 3D visualization."
+        f"{room_hint}{extra}"
+    )
+
+    try:
+        chat = (LlmChat(api_key=api_key,
+                        session_id=f"render3d_{plan_id}_{body.page_index}",
+                        system_message="You are an architectural visualization AI.")
+                .with_model("gemini", "gemini-2.5-flash-image"))
+        message = UserMessage(text=prompt,
+                              file_contents=[ImageContent(image_base64=img_b64)])
+        text_out, images = await chat.send_message_multimodal_response(message)
+    except Exception as e:
+        logger.error(f"render_3d LLM error: {type(e).__name__} {e}")
+        raise HTTPException(502, f"Génération 3D échouée : {type(e).__name__}")
+
+    if not images:
+        raise HTTPException(502,
+            "Le modèle n'a pas renvoyé d'image (essayez un autre style).")
+    generated_b64 = images[0].get("data")
+    mime = images[0].get("mime_type", "image/png")
+
+    render_id = "r3d_" + secrets.token_hex(5)
+    render_doc = {
+        "render_id": render_id, "style": body.style,
+        "include_furniture": body.include_furniture,
+        "page_index": body.page_index,
+        "created_at": _now(),
+        "image_b64": generated_b64, "mime_type": mime,
+        "prompt": prompt[:800],
+    }
+    # Append to plan.renders_3d (cap 10 dernières)
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$push": {"renders_3d": {"$each": [render_doc], "$slice": -10}}}
+    )
+    return {"ok": True, "render_id": render_id, "style": body.style,
+            "mime_type": mime, "image_b64": generated_b64,
+            "prompt_used": prompt[:400]}
+
+
+@router.get("/{plan_id}/renders-3d")
+async def list_renders_3d(plan_id: str, user=Depends(current_user)):
+    """Liste les rendus 3D déjà générés pour ce plan (sans les images b64 pour rester léger)."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "renders_3d": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    renders = p.get("renders_3d") or []
+    # Renvoie meta uniquement (pas image_b64 lourd)
+    return {"plan_id": plan_id, "renders": [
+        {"render_id": r.get("render_id"), "style": r.get("style"),
+         "page_index": r.get("page_index"), "created_at": r.get("created_at"),
+         "include_furniture": r.get("include_furniture")}
+        for r in renders
+    ]}
+
+
+@router.get("/{plan_id}/renders-3d/{render_id}")
+async def get_render_3d(plan_id: str, render_id: str, user=Depends(current_user)):
+    """Récupère l'image d'un rendu 3D précédemment généré."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "renders_3d": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    for r in p.get("renders_3d") or []:
+        if r.get("render_id") == render_id:
+            return {"render_id": render_id, "style": r.get("style"),
+                    "mime_type": r.get("mime_type", "image/png"),
+                    "image_b64": r.get("image_b64"),
+                    "created_at": r.get("created_at")}
+    raise HTTPException(404, "Rendu 3D introuvable")
+
+
 @router.post("/{plan_id}/room-autofill")
 async def room_autofill(plan_id: str, body: RoomAutofillIn, user=Depends(current_user)):
     """À partir d'un point cliqué à l'intérieur d'une pièce, extrait le polygone

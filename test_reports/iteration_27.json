@@ -1,0 +1,33 @@
+{
+  "summary": "Iter27 3D Render feature fully tested. Backend: 8/8 pytest cases PASS including one real Gemini Nano Banana image generation on plan_d6e446d3a459 (isometric). Frontend: 'Voir en 3D' button appears next to Estimation, dialog opens correctly with style select, furniture toggle and run button — all data-testids present and functional. Security scoping verified (non-owner → 404). No blocking issues.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter27_render3d.py",
+    "/app/test_reports/pytest/iter27.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx is now ~2087 lines — well beyond the 700-line guideline. Should be split into subcomponents (Render3DDialog, MultiPlanDialog, EstimateDialog, etc.) for maintainability. Not blocking but tech-debt.",
+    "Style select options display French labels ('Isométrique (dessus, coloré)') but stateful value uses English keys — consistent with backend, OK. Confirmed working end-to-end.",
+    "In /render-3d, on Gemini exception the error is returned as HTTP 502 with type name only — for debugging, exposing (safely) a short message might help user support, but acceptable for now.",
+    "renders_3d cap uses $push+$slice=-10 correctly (keeps 10 most recent). Verified in test."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter27_render3d.py"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% (all data-testids resolved, dialog opens, controls present)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! (owner) and client@construpilot.fr / Client2026! (non-owner) — used from /app/memory/test_credentials.md",
+  "seed_data_creation": "One real Gemini render (isometric, page 0) generated on plan_d6e446d3a459 during the fixture. Persisted in plans_takeoff.renders_3d — usable by main agent and next iteration.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Real Gemini render was executed once (~30-60s). To avoid extra cost, next testing agent can reuse GET /api/takeoffs/plan_d6e446d3a459/renders-3d to list existing renders and GET a specific one instead of re-triggering /render-3d. Login token JSON key is 'token' (NOT 'access_token'). Frontend requires uploading a plan before the 'Voir en 3D' button appears — there is no route /plans/{id} to jump directly to an existing plan (potential UX improvement to feed back to E1 later if desired).",
+  "rca of the issue": "N/A — all tests passed."
+}

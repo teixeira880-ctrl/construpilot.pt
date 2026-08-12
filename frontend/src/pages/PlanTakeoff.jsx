@@ -255,6 +255,13 @@ export default function PlanTakeoff() {
   const [estimateBusy, setEstimateBusy] = useState(false);
   const [estProjectType, setEstProjectType] = useState("renovation_complete");
   const [estFinishLevel, setEstFinishLevel] = useState("standard");
+  // 3D render
+  const [render3dDialog, setRender3dDialog] = useState(false);
+  const [render3dStyle, setRender3dStyle] = useState("isometric");
+  const [render3dFurniture, setRender3dFurniture] = useState(true);
+  const [render3dBusy, setRender3dBusy] = useState(false);
+  const [render3dImg, setRender3dImg] = useState(null);
+  const [render3dHistory, setRender3dHistory] = useState([]);
   const [wallsSummary, setWallsSummary] = useState(null);
   const [reclassifyMode, setReclassifyMode] = useState(false);
   const [snapPickA, setSnapPickA] = useState(null);
@@ -637,6 +644,48 @@ export default function PlanTakeoff() {
     loadTemplates(); loadQuoteSends();
   };
 
+  const loadRender3dHistory = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/renders-3d`);
+      setRender3dHistory(data.renders || []);
+    } catch { /* ignore */ }
+  };
+
+  const runRender3d = async () => {
+    if (!plan?.plan_id) return;
+    setRender3dBusy(true); setRender3dImg(null);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/render-3d`, {
+        page_index: pageIndex,
+        style: render3dStyle,
+        include_furniture: render3dFurniture,
+      }, { timeout: 120000 });
+      setRender3dImg(`data:${data.mime_type};base64,${data.image_b64}`);
+      toast.success("Rendu 3D généré !");
+      await loadRender3dHistory();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Génération 3D échouée (réessayez)");
+    } finally { setRender3dBusy(false); }
+  };
+
+  const openRender3dHistory = async (renderId) => {
+    try {
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/renders-3d/${renderId}`);
+      setRender3dImg(`data:${data.mime_type};base64,${data.image_b64}`);
+      setRender3dStyle(data.style);
+    } catch { toast.error("Chargement impossible"); }
+  };
+
+  const downloadRender3d = () => {
+    if (!render3dImg) return;
+    const a = document.createElement("a");
+    a.href = render3dImg;
+    a.download = `rendu-3d-${plan.plan_id}-${render3dStyle}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+
   const loadWallsSummary = async () => {
     if (!plan?.plan_id) return;
     try {
@@ -893,6 +942,12 @@ export default function PlanTakeoff() {
                   data-testid="plan-estimate-btn"
                   className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
             <Sparkles className="h-4 w-4" /> Estimation
+          </Button>
+          <Button variant="outline"
+                  onClick={() => { setRender3dDialog(true); setRender3dImg(null); loadRender3dHistory(); }}
+                  data-testid="plan-render-3d-btn"
+                  className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
+            <Sparkles className="h-4 w-4" /> Voir en 3D
           </Button>
           <Button variant="outline" onClick={() => { setQuoteDialog(true); loadTemplates(); loadQuoteSends(); }}
                   data-testid="plan-quote-pdf-btn"
@@ -1682,6 +1737,111 @@ export default function PlanTakeoff() {
                 {quoteBusy ? "Envoi…" : "Envoyer au client"}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 3D RENDER DIALOG (Nano Banana) */}
+      <Dialog open={render3dDialog} onOpenChange={setRender3dDialog}>
+        <DialogContent className="rounded-sm max-w-4xl max-h-[90vh] overflow-y-auto"
+                        data-testid="render-3d-dialog">
+          <DialogHeader>
+            <DialogTitle>Convertir le plan 2D en rendu 3D IA</DialogTitle>
+            <DialogDescription>
+              L'IA (Gemini Nano Banana) transforme votre plan 2D en visualisation 3D
+              réaliste. Idéal pour présenter à un client avant travaux.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <Label className="text-xs">Style de rendu</Label>
+                <Select value={render3dStyle} onValueChange={setRender3dStyle}>
+                  <SelectTrigger data-testid="render-3d-style" className="rounded-sm h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="isometric">Isométrique (dessus, coloré)</SelectItem>
+                    <SelectItem value="photoreal">Photoréaliste (rendu matériaux)</SelectItem>
+                    <SelectItem value="axonometric">Axonométrique (murs en coupe)</SelectItem>
+                    <SelectItem value="interior">Vue intérieur (salon principal)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs opacity-0">.</Label>
+                <label className="flex items-center gap-2 h-10 px-3 border border-border rounded-sm cursor-pointer bg-secondary/30"
+                       data-testid="render-3d-furniture-toggle">
+                  <input type="checkbox" checked={render3dFurniture}
+                         onChange={(e) => setRender3dFurniture(e.target.checked)}
+                         className="accent-primary h-4 w-4" />
+                  <span className="text-sm">Ajouter du mobilier</span>
+                </label>
+              </div>
+            </div>
+
+            {!render3dImg && !render3dBusy && (
+              <Button onClick={runRender3d} disabled={render3dBusy}
+                      data-testid="render-3d-run-btn"
+                      className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                <Sparkles className="h-4 w-4" />
+                Générer le rendu 3D
+              </Button>
+            )}
+            {render3dBusy && (
+              <div className="border border-primary/40 bg-primary/5 rounded-sm p-8 text-center space-y-3">
+                <Sparkles className="h-10 w-10 mx-auto text-primary animate-pulse" />
+                <p className="font-display font-bold">L'IA génère votre rendu 3D…</p>
+                <p className="text-xs text-muted-foreground">
+                  Cela prend 30-60 secondes. Ne fermez pas la fenêtre.
+                </p>
+              </div>
+            )}
+            {render3dImg && !render3dBusy && (
+              <div className="space-y-3" data-testid="render-3d-result">
+                <img src={render3dImg} alt="Rendu 3D"
+                     className="w-full rounded-sm border border-border" />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={runRender3d} disabled={render3dBusy}
+                          data-testid="render-3d-redo-btn"
+                          className="rounded-sm gap-2">
+                    <Sparkles className="h-3 w-3" /> Régénérer
+                  </Button>
+                  <Button onClick={downloadRender3d} data-testid="render-3d-download-btn"
+                          className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                    <FileDown className="h-4 w-4" /> Télécharger
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* History */}
+            {render3dHistory.length > 0 && (
+              <div className="border border-border rounded-sm p-3">
+                <p className="overline mb-2">Rendus précédents ({render3dHistory.length})</p>
+                <div className="flex flex-wrap gap-1">
+                  {render3dHistory.slice().reverse().map(r => (
+                    <button key={r.render_id}
+                            onClick={() => openRender3dHistory(r.render_id)}
+                            data-testid={`render-3d-history-${r.render_id}`}
+                            className="text-[10px] px-2 py-1 border border-border rounded-sm
+                                       hover:bg-primary/10 hover:border-primary">
+                      {r.style} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm bg-secondary/30">
+              💡 Astuce : essayez d'abord <b>Isométrique</b> pour un rendu global,
+              puis <b>Vue intérieur</b> pour immerger votre client dans le salon.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRender3dDialog(false)} className="rounded-sm">
+              Fermer
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

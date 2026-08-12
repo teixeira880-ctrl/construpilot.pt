@@ -408,3 +408,46 @@ Voir `/app/memory/test_credentials.md`.
   reminder flip) → **PASS**.
 - Régression : **56/56 tests précédents + 10/10 iter26 = 66/66 PASS**.
 
+
+## 14. Changelog Iter 27 (12/02/2026) — Plan 2D → Rendu 3D IA
+
+### Feature demandée
+« pouvoir convertir plan 2D en image 3D » (choix utilisateur : IA d'abord, Three.js plus tard).
+
+### Backend
+- Nouvel endpoint `POST /api/takeoffs/{plan_id}/render-3d` :
+  - Prend `{page_index, style, include_furniture, extra_prompt}`
+  - Envoie l'image PNG du plan (base64) à **Gemini Nano Banana** (`gemini-2.5-flash-image`)
+    via `emergentintegrations.llm.chat` + `EMERGENT_LLM_KEY`
+  - Prompt structuré selon 4 styles : `isometric` / `photoreal` / `axonometric` / `interior`
+  - Enrichi automatiquement avec les room labels détectés
+  - Stocke jusqu'à 10 rendus par plan dans `plans_takeoff.renders_3d` (cap via `$push $slice`)
+- `GET /api/takeoffs/{plan_id}/renders-3d` : liste meta (sans image base64, léger)
+- `GET /api/takeoffs/{plan_id}/renders-3d/{render_id}` : récupère le PNG complet
+
+### Frontend
+- Nouveau bouton **« Voir en 3D »** (Sparkles) dans le header PlanTakeoff, à côté d'Estimation
+- Dialog `render-3d-dialog` :
+  - Sélecteur de style (4 options) + toggle « Ajouter du mobilier »
+  - Loading pulsant pendant 30-60 s (Sparkles animé + message rassurant)
+  - Aperçu grand format + boutons « Régénérer » et « Télécharger »
+  - Historique cliquable des rendus précédents (bouton `render-3d-history-{id}`)
+
+### Preuve
+- Test réel exécuté avec succès sur `plan_d6e446d3a459` (SALON) :
+  rendu isométrique 3D magnifique généré (1 344 962 bytes PNG, meubles inclus,
+  matériaux réalistes).
+
+### Tests
+- iter27 : **8/8 backend pytest + frontend E2E complet PASS**.
+- Régression totale : **66/66 + 8/8 = 74/74 PASS**.
+
+### Backlog restant
+- **b. Three.js 3D interactif** (option demandée en second) : extrusion 3D réelle
+  navigable dans le navigateur depuis les rooms/walls détectés. À faire dans un
+  round dédié.
+- **Multi-langue FR/EN** (encore reporté).
+- **Édition pro des lots** (prix/qté/desc/TVA sur l'Estimator).
+- **Refactor PlanTakeoff.jsx** (2 087 lignes — dépasse largement les guidelines,
+  à découper en `RenderDialog / EstimateDialog / QuoteDialog / MultiPlanDialog`).
+
