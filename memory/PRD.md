@@ -1307,3 +1307,50 @@ Le fichier historique (48+ imports) a été découpé en 5 modules focalisés :
 - End-to-end curl `POST /api/prices/search` sur 4 requêtes → mode "web" confirmé,
   0 résultat en mode "demo" pour les termes usuels.
 - Screenshot UI `/prix` → badge "Recherche web temps réel" affiché.
+
+## 41. Changelog Iter 55 (13/02/2026) — Plan Duplication + SMS Alerts + Freshness Badge
+
+### 📋 Plan Duplication (`POST /api/takeoffs/{plan_id}/duplicate`)
+- Nouveau endpoint dans `routes/plans_crud.py` : clone un plan complet (pages avec image_png_b64,
+  rooms, ouvertures, calibrations, plan_defaults, walls_detected, ai_analysis) sous un
+  nouveau `plan_id`.
+- Reset des snapshots d'historique / rendus 3D / vidéos — le duplicata démarre propre.
+- Helper `_duplicate_filename(name)` : suffixe `(copie)` → `(copie 2)` si déjà copié.
+- Gate `require_pro_business` (comme upload). Admin bypass conservé.
+- Frontend PlanTakeoff : nouveau bouton **« Dupliquer »** (icône Copy) à côté de « Nouveau plan »
+  dans le header du viewer. Recharge automatiquement le duplicata après création.
+- `data-testid="plan-duplicate-btn"`.
+
+### 📱 Price Alerts by SMS (Twilio)
+- Champ `channels: list[str]` (défaut `["email"]`) + `phone: str | None` ajoutés à `AlertIn`
+  (`routes/prices.py`).
+- Validation 422 si `sms` sans phone ou phone mal formé (doit commencer par `+`).
+- `engines/alerting._send_sms(to, body)` — envoi Twilio best-effort via `twilio.rest.Client`
+  avec `TWILIO_ACCOUNT_SID`/`AUTH_TOKEN`/`FROM_NUMBER`. Renvoie `False` en dégradation gracieuse.
+- Nouveau dispatch `_notify_channels(user, alert, best)` : orchestre email + SMS selon
+  `alert.channels`. Log `last_sms_at` sur succès.
+- `check_user_alerts` migré vers `_notify_channels` — l'ancien `_notify_user` reste utilisé
+  pour l'email seul.
+- Frontend PriceSearch : toggle **« Aussi par SMS »** + input téléphone conditionnel dans la
+  card Alerte prix. `data-testid`s : `alert-sms-toggle`, `alert-sms-phone`.
+
+### ⏱️ Supplier Price Freshness Badge
+- Backend renvoyait déjà `checked_at` par ligne — juste inexploité côté UI.
+- Nouveau helper JS `relativeAge(iso)` : « à l'instant », « il y a X min », « il y a X h »,
+  « il y a X j ».
+- Badge muet ajouté à côté du nom produit dans le tableau des prix avec tooltip absolu
+  (« Vérifié le 13/08/2026 19:33:50 »). `data-testid="price-freshness-{supplier_key}"`.
+
+### 🧪 Tests
+- Nouveau `/app/backend/tests/test_iter55_duplicate_and_sms_alerts.py` — **12/12 PASSED**
+  (unit filename helper + endpoint registration + AlertIn schema + `_send_sms` fallback +
+  dispatch `_notify_channels` email-only vs email+sms).
+- Régression Iter 53 & 54 : **21/21 + 5/5 = 26/26 PASSED**.
+- End-to-end curl :
+  - `POST /api/takeoffs/{id}/duplicate` → `{ok:true, plan_id, filename:"... (copie).pdf"}`.
+  - `POST /api/prices/alerts` avec channels=[email,sms] + phone → 200 alert créée.
+  - `POST /api/prices/alerts` avec channels=[sms] sans phone → 422 « Numéro requis ».
+  - `POST /api/prices/alerts` sans channels → défaut email-only.
+- Screenshot UI `/prix?q=BA13+hydrofuge` → 5 freshness badges visibles, toggle SMS + phone
+  input opérationnels, Point.P Meilleur prix 11,95€ (Tavily temps réel).
+

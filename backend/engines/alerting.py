@@ -1,4 +1,4 @@
-"""Alertes prix : vérification (manuelle + quotidienne) + envoi email Resend."""
+"""Alertes prix : vérification (manuelle + quotidienne) + envoi email Resend + SMS Twilio."""
 import os
 import logging
 from datetime import datetime, timezone
@@ -7,6 +7,22 @@ from core.db import db
 from engines import price_search, emailer
 
 logger = logging.getLogger(__name__)
+
+
+def _send_sms(to: str, body: str) -> bool:
+    """Envoi SMS Twilio best-effort. Renvoie True si envoyé, False sinon (log warning)."""
+    sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    from_ = os.environ.get("TWILIO_FROM_NUMBER", "")
+    if not (sid and token and from_ and to):
+        return False
+    try:
+        from twilio.rest import Client
+        Client(sid, token).messages.create(to=to, from_=from_, body=body[:320])
+        return True
+    except Exception as e:
+        logger.warning(f"SMS alert failed to={to[:-4] + '…' if len(to) > 6 else to}: {e}")
+        return False
 
 
 async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
@@ -69,8 +85,32 @@ async def _push_alert(user_id: str, alert: dict, best: dict) -> None:
         logger.warning(f"Push notify failed: {e}")
 
 
+async def _notify_channels(user: dict, alert: dict, best: dict) -> bool:
+    """Envoie email et/ou SMS selon les canaux configurés sur l'alerte.
+
+    Renvoie True si au moins un canal a réussi.
+    """
+    channels = alert.get("channels") or ["email"]
+    sent_any = False
+    if "email" in channels:
+        sent_any = await _notify_user(user, alert, best) or sent_any
+    if "sms" in channels and alert.get("phone"):
+        price_txt = f"{best.get('price'):.2f} €" if best.get("price") is not None else "meilleur prix"
+        sms_body = (f"ConstruPilot alerte : {alert.get('product') or alert.get('query')} "
+                    f"à {price_txt} chez {best.get('supplier')} "
+                    f"(cible {alert['target_price']:.2f} €). {best.get('url', '')}")
+        ok = _send_sms(alert["phone"], sms_body)
+        if ok:
+            await db.price_alerts.update_one(
+                {"alert_id": alert["alert_id"]},
+                {"$set": {"last_sms_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            sent_any = True
+    return sent_any
+
+
 async def check_user_alerts(user_id: str) -> int:
-    """Check a user's active alerts, notify (email + push) when triggered."""
+    """Check a user's active alerts, notify (email + push + sms) when triggered."""
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not user:
         return 0
@@ -84,7 +124,7 @@ async def check_user_alerts(user_id: str) -> int:
         best = _best_offer(result.get("results", []))
         if not best or not _should_notify(a, best["price"]):
             continue
-        if await _notify_user(user, a, best):
+        if await _notify_channels(user, a, best):
             sent += 1
             await _push_alert(user_id, a, best)
     return sent

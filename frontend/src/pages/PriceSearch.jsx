@@ -28,6 +28,16 @@ const SORTS = {
 const SUGGESTIONS = ["BA13 hydrofuge 250 x 120", "carrelage 60x60", "laine de verre 200mm",
   "peinture murale mate", "colle carrelage 25kg", "parquet stratifié"];
 
+function relativeAge(iso) {
+  if (!iso) return null;
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (Number.isNaN(diff) || diff < 0) return null;
+  if (diff < 60) return "à l'instant";
+  if (diff < 3600) return `il y a ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+  return `il y a ${Math.floor(diff / 86400)} j`;
+}
+
 export default function PriceSearch() {
   const [query, setQuery] = useState("BA13 hydrofuge 250 x 120");
   const [data, setData] = useState(null);
@@ -37,6 +47,8 @@ export default function PriceSearch() {
   const [radius, setRadius] = useState("20");
   const [busy, setBusy] = useState(false);
   const [target, setTarget] = useState("");
+  const [smsChannel, setSmsChannel] = useState(false);
+  const [smsPhone, setSmsPhone] = useState("");
   const { user } = useAuth();
 
   const search = async (q = query) => {
@@ -69,9 +81,24 @@ export default function PriceSearch() {
   const createAlert = async () => {
     if (!user) return toast.error("Connectez-vous pour créer une alerte prix");
     if (!target) return toast.error("Indiquez un prix cible");
-    await api.post("/prices/alerts", { query, target_price: Number(target), product: query });
-    toast.success(`Alerte créée : nous vous avertirons sous ${eur2(Number(target))}`);
-    setTarget("");
+    const channels = ["email"];
+    if (smsChannel) {
+      if (!smsPhone || !smsPhone.trim().startsWith("+")) {
+        return toast.error("Numéro requis pour le SMS (format +33…)");
+      }
+      channels.push("sms");
+    }
+    try {
+      await api.post("/prices/alerts", {
+        query, target_price: Number(target), product: query,
+        channels, phone: smsChannel ? smsPhone.trim() : null,
+      });
+      const canaux = smsChannel ? "email + SMS" : "email";
+      toast.success(`Alerte créée : ${canaux} dès que ${eur2(Number(target))} atteint`);
+      setTarget("");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Création impossible");
+    }
   };
 
   const checkAlertsNow = async () => {
@@ -170,7 +197,16 @@ export default function PriceSearch() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-[280px] truncate">{r.product}</TableCell>
+                    <TableCell className="max-w-[280px] truncate">
+                      {r.product}
+                      {r.checked_at && (
+                        <span className="ml-2 text-[10px] text-muted-foreground align-middle"
+                              title={`Vérifié le ${new Date(r.checked_at).toLocaleString("fr-FR")}`}
+                              data-testid={`price-freshness-${r.supplier_key}`}>
+                          · {relativeAge(r.checked_at)}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="num text-right font-semibold">{r.price ? eur2(r.price) : "—"}</TableCell>
                     <TableCell className="num text-right text-muted-foreground">
                       {r.shipping === 0 ? "Offerte" : eur2(r.shipping)}
@@ -228,6 +264,26 @@ export default function PriceSearch() {
                 <Input type="number" placeholder="Prix cible €" value={target} onChange={(e) => setTarget(e.target.value)} data-testid="alert-target-input" className="rounded-sm num" />
                 <Button variant="outline" onClick={createAlert} data-testid="create-alert-btn" className="rounded-sm">Créer</Button>
               </div>
+              <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={smsChannel}
+                  onChange={(e) => setSmsChannel(e.target.checked)}
+                  data-testid="alert-sms-toggle"
+                  className="accent-primary h-3.5 w-3.5"
+                />
+                Aussi par SMS
+              </label>
+              {smsChannel && (
+                <Input
+                  type="tel"
+                  placeholder="+33612345678"
+                  value={smsPhone}
+                  onChange={(e) => setSmsPhone(e.target.value)}
+                  data-testid="alert-sms-phone"
+                  className="mt-2 rounded-sm num h-9 text-xs"
+                />
+              )}
               <Button variant="ghost" size="sm" onClick={checkAlertsNow} data-testid="check-alerts-now-btn" className="mt-3 rounded-sm gap-2 w-full text-xs">
                 <Bell className="h-3 w-3" /> Vérifier mes alertes maintenant
               </Button>

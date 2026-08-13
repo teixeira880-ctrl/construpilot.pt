@@ -138,6 +138,58 @@ async def delete_plan(plan_id: str, user=Depends(current_user)):
     return {"ok": True}
 
 
+def _duplicate_filename(name: str) -> str:
+    """Ajoute un suffixe '(copie)' avant l'extension, ou '(copie N)' si déjà présent."""
+    base = name or "plan"
+    dot = base.rfind(".")
+    stem, ext = (base[:dot], base[dot:]) if dot > 0 else (base, "")
+    if "(copie" in stem:
+        return f"{stem.rsplit('(copie', 1)[0].rstrip()} (copie 2){ext}"
+    return f"{stem} (copie){ext}"
+
+
+@router.post("/{plan_id}/duplicate")
+async def duplicate_plan(plan_id: str, user=Depends(current_user)):
+    """Clone un plan (pages, rooms, ouvertures, calibrations, defaults) sous un
+    nouveau plan_id. Utile pour tester des variantes (finitions, cloisons différentes).
+
+    Ne copie PAS : les rendus 3D, les vidéos, les snapshots d'historique — le duplicata
+    démarre propre. Le fichier PDF/image d'origine (pages avec image_png_b64) est bien
+    conservé pour que le duplicata soit exploitable sans réimport.
+    """
+    await require_pro_business(user)
+    src = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0}
+    )
+    if not src:
+        raise HTTPException(404, "Plan introuvable")
+
+    new_id = "plan_" + secrets.token_hex(6)
+    dup = {
+        "plan_id": new_id,
+        "user_id": user["user_id"],
+        "project_id": src.get("project_id"),
+        "filename": _duplicate_filename(src.get("filename") or "plan"),
+        "size_bytes": src.get("size_bytes"),
+        "kind": src.get("kind"),
+        "page_count": src.get("page_count"),
+        "detected_scale_denominator": src.get("detected_scale_denominator"),
+        "pages": src.get("pages") or [],
+        "calibrations": dict(src.get("calibrations") or {}),
+        "rooms": [dict(r) for r in (src.get("rooms") or [])],
+        "measurements": list(src.get("measurements") or []),
+        "ai_analysis": src.get("ai_analysis"),
+        "plan_defaults": src.get("plan_defaults"),
+        "walls_detected": src.get("walls_detected"),
+        "created_at": _now(),
+        "updated_at": _now(),
+        "duplicated_from": plan_id,
+    }
+    await db.plans_takeoff.insert_one(dup)
+    return {"ok": True, "plan_id": new_id, "duplicated_from": plan_id,
+            "filename": dup["filename"], "rooms": len(dup["rooms"])}
+
+
 # ============ CALIBRATION ============
 
 class CalibIn(BaseModel):

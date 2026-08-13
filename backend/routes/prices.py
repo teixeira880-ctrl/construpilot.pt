@@ -61,13 +61,27 @@ class AlertIn(BaseModel):
     query: str
     target_price: float
     product: str | None = None
+    channels: list[str] = ["email"]  # "email" et/ou "sms"
+    phone: str | None = None  # requis si "sms" dans channels (format E.164 +33…)
 
 
 @router.post("/alerts")
 async def create_alert(body: AlertIn, user=Depends(current_user)):
+    channels = [c for c in (body.channels or ["email"]) if c in ("email", "sms")]
+    if not channels:
+        channels = ["email"]
+    if "sms" in channels:
+        if not body.phone:
+            raise HTTPException(422, "Numéro requis pour recevoir les alertes SMS")
+        normalized = "".join(ch for ch in body.phone if ch.isdigit() or ch == "+")
+        if not normalized.startswith("+") or len(normalized) < 8:
+            raise HTTPException(422, "Numéro invalide : utilisez le format +33…")
     doc = {"alert_id": f"al_{datetime.now(timezone.utc).timestamp():.0f}",
            "user_id": user["user_id"], "query": body.query, "target_price": body.target_price,
            "product": body.product or body.query, "active": True,
+           "channels": channels,
+           "phone": ("".join(ch for ch in body.phone if ch.isdigit() or ch == "+")
+                     if "sms" in channels and body.phone else None),
            "created_at": datetime.now(timezone.utc).isoformat()}
     await db.price_alerts.insert_one(doc)
     doc.pop("_id", None)

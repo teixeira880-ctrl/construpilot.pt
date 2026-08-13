@@ -12,7 +12,7 @@ import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
-  Wand2, Zap, FileDown, History, Film, DoorOpen,
+  Wand2, Zap, FileDown, History, Film, DoorOpen, Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1148,6 +1148,19 @@ export default function PlanTakeoff() {
     } catch { /* ignore */ }
   };
 
+  const duplicatePlan = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/duplicate`);
+      toast.success(`Plan dupliqué — ${data.rooms} pièce${data.rooms > 1 ? "s" : ""} copiée${data.rooms > 1 ? "s" : ""}`);
+      const { data: full } = await api.get(`/takeoffs/${data.plan_id}`);
+      setPlan(full);
+      setPageIndex(0);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Duplication impossible");
+    }
+  };
+
   const downloadMultiQuote = async () => {
     if (multiSelected.length === 0) return toast.error("Sélectionnez au moins 1 plan");
     setMultiBusy(true);
@@ -1395,6 +1408,10 @@ export default function PlanTakeoff() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setPlan(null)} data-testid="plan-back-btn" className="rounded-sm gap-2">
             <Home className="h-4 w-4" /> Nouveau plan
+          </Button>
+          <Button variant="outline" onClick={duplicatePlan} data-testid="plan-duplicate-btn" className="rounded-sm gap-2"
+                  title="Créer une copie de ce plan (pièces, ouvertures, calibrations)">
+            <Copy className="h-4 w-4" /> Dupliquer
           </Button>
           <Button variant="outline" onClick={detectWalls} disabled={cvBusy} data-testid="plan-detect-walls-btn"
                   className="rounded-sm gap-2 border-cyan-500/50 text-cyan-500 hover:bg-cyan-500 hover:text-white">
