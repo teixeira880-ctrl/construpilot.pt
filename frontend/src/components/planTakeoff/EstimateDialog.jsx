@@ -70,7 +70,7 @@ export function EstimateDialog({
                  data-testid="estimate-result">
               <div className="flex items-center justify-between">
                 <p className="overline text-primary">Résultat</p>
-                {estimateResult.is_renovation && (
+                {estimateResult?.is_renovation && (
                   <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-sm">
                     Rénovation · TVA 10 %
                   </span>
@@ -80,32 +80,32 @@ export function EstimateDialog({
                 <div>
                   <p className="text-[10px] text-muted-foreground">Surface totale</p>
                   <p className="num font-display text-2xl font-extrabold">
-                    {estimateResult.surface_m2} <span className="text-sm">m²</span>
+                    {estimateResult?.surface_m2 ?? "—"} <span className="text-sm">m²</span>
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground">Lots</p>
                   <p className="num font-display text-2xl font-extrabold">
-                    {estimateResult.estimation.lots?.length}
+                    {estimateResult?.estimation?.lots?.length ?? 0}
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground">Estimation moyenne</p>
                   <p className="num font-display text-xl font-extrabold text-primary">
-                    {estimateResult.estimation.total_avg?.toLocaleString("fr-FR")} €
+                    {estimateResult?.estimation?.total_avg?.toLocaleString("fr-FR") ?? "—"} €
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground">€ / m²</p>
                   <p className="num font-display text-xl font-extrabold">
-                    {estimateResult.estimation.price_per_sqm?.toLocaleString("fr-FR")} €
+                    {estimateResult?.estimation?.price_per_sqm?.toLocaleString("fr-FR") ?? "—"} €
                   </p>
                 </div>
               </div>
               <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
-                Fourchette : {estimateResult.estimation.total_min?.toLocaleString("fr-FR")} €
-                → {estimateResult.estimation.total_max?.toLocaleString("fr-FR")} € · Durée
-                estimée : {estimateResult.estimation.duration_weeks} semaine(s)
+                Fourchette : {estimateResult?.estimation?.total_min?.toLocaleString("fr-FR") ?? "—"} €
+                → {estimateResult?.estimation?.total_max?.toLocaleString("fr-FR") ?? "—"} € · Durée
+                estimée : {estimateResult?.estimation?.duration_weeks ?? "—"} semaine(s)
               </p>
             </div>
           )}

@@ -830,6 +830,24 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 27. Changelog Iter 41 (13/02/2026) — ErrorBoundary global + optional chaining EstimateDialog
+
+### 🛡️ ErrorBoundary global
+- Nouveau composant `/app/frontend/src/components/ErrorBoundary.jsx` (classe React).
+- Wrappé au-dessus de `BrowserRouter` dans `App.js` → intercepte tout crash de render en amont et remplace l'écran blanc par un fallback branded (icône AlertTriangle + snippet d'erreur tronqué à 220 chars + boutons Recharger/Accueil).
+- Log console propre + state reset avant `window.location.reload()`.
+- Data-testids : `error-boundary-fallback` / `error-boundary-reload-btn` / `error-boundary-home-btn`.
+
+### 🔒 Optional chaining EstimateDialog
+- `EstimateDialog.jsx` : toutes les lectures `estimateResult.estimation.X` remplacées par `estimateResult?.estimation?.X ?? "—"`.
+- Champs sécurisés : `is_renovation`, `surface_m2`, `lots.length`, `total_avg`, `price_per_sqm`, `total_min`, `total_max`, `duration_weeks`.
+- Plus de crash « Cannot read properties of undefined » si le backend renvoie un shape partiel ou si `estimation` est encore null pendant un état de chargement asynchrone.
+
+### 🧪 Vérifs
+- Landing rend normalement (pas de faux positif du boundary).
+- Redirect `/plan → /login` sans crash.
+- EstimateDialog robuste aux réponses partielles (affiche « — » au lieu de crasher).
+
 ## 26. Changelog Iter 40 (13/02/2026) — UX Analyse IA + Métré PDF débloqués
 
 ### 🐛 Problème utilisateur : « Analyse IA et Métré du plan ne fonctionnent pas »
