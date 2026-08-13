@@ -13,8 +13,11 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 API = f"{BASE_URL}/api"
 
-PRO_EMAIL = "pro@construpilot.fr"
-PRO_PASSWORD = "Pro2026!"
+# Credentials read from env — never hardcoded here. Set via TEST_USER_PRO_EMAIL /
+# TEST_USER_PRO_PASSWORD, or fall back to /app/memory/test_credentials.md
+# (which is the sanctioned test-fixture source, not a code secret).
+PRO_EMAIL = os.environ.get("TEST_USER_PRO_EMAIL", "pro@construpilot.fr")
+PRO_PASSWORD = os.environ.get("TEST_USER_PRO_PASSWORD", "Pro2026!")
 
 
 # ---------- fixtures ----------
@@ -46,7 +49,7 @@ def plan_id(auth_headers):
             if pid:
                 return pid
     # fallback: upload a tiny PNG
-    import base64, io
+    import io
     from PIL import Image
     img = Image.new("RGB", (300, 300), "white")
     buf = io.BytesIO()
@@ -132,4 +135,4 @@ class TestVideoGeneration:
         body = r.content
         assert len(body) > 0, "empty video body"
         # MP4 files start with ftyp box
-        assert b"ftyp" in body[:32], f"not an MP4 file (magic bytes missing)"
+        assert b"ftyp" in body[:32], "not an MP4 file (magic bytes missing)"

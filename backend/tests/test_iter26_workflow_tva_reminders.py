@@ -1,7 +1,6 @@
 """Iter26 tests: Plan→Estimation workflow, TVA attestation, Email personalization,
 Reminder Auto 5j.
 """
-import os
 import pytest
 import requests
 from datetime import datetime, timezone, timedelta
@@ -262,7 +261,7 @@ class TestReminders:
         # 6) idempotence
         r2 = requests.post(f"{PUBLIC_URL}/api/quotes/reminders/run",
                            headers=admin_headers, timeout=30)
-        d2 = r2.json()
+        assert r2.status_code == 200
         # This particular log should not be re-picked
         # Other new candidates could theoretically exist; but our log is flipped
         lst2 = requests.get(

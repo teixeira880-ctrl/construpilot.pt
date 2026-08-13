@@ -641,10 +641,50 @@ Voir `/app/memory/test_credentials.md`.
   90+ après re-crawl.
 - SEO audit Semrush timeout à page_limit≥25 — rester à 10 pages max pour éviter.
 
-### Backlog SEO restant
-- **P2** : SSR ou pre-rendering (react-snap) pour améliorer le ratio texte/HTML
-  (actuellement 2-4 % sur les SPA React — normal mais peut être amélioré).
-- **P2** : llms.txt formatting fix (fichier créé par une itération précédente ?
-  à vérifier).
-- **P3** : ajouter plus d'articles blog chaque semaine pour "fresh content" boost.
+## 19. Changelog Iter 33 (13/02/2026) — Code Quality fixes (rapport externe)
+
+### 🔒 Sécurité
+- **Secrets hardcodés dans tests** → `os.environ.get()` avec fallback documenté.
+  Concerné : `tests/test_iter29_video_tour.py`, `tests/test_iter30_video_extras.py`.
+  Env vars supportées : `TEST_USER_PRO_EMAIL`, `TEST_USER_PRO_PASSWORD`.
+- **Insecure Random** (`price_search.py:284`) → remplacé par un générateur
+  déterministe basé sur **SHA-256** (`hashlib`). Zéro `random` module, résultats
+  toujours reproductibles pour un même triplet (lat, lng, radius). Module
+  `random` retiré des imports.
+
+### 🧹 Ruff clean
+- Fixé automatiquement : F401 (imports inutilisés), F541 (f-strings vides),
+  F841 (variables assignées mais jamais utilisées).
+- 0 warning restant sur les règles critiques (F, S311).
+
+### 📄 Refactor PDF — `pdf_takeoff.py`
+- **`build_takeoff_pdf`** : 169 lignes / complexité 21 / nesting 6 → **~20 lignes** /
+  complexité < 5 / nesting 1. Extraction de 8 helpers privés :
+  - `_table(rows, col_widths, extras, repeat_rows)` — factory tables ReportLab
+  - `_decode_brand_logo(b64_str)` — décodage sûr du logo branding
+  - `_story_header_branding(story, branding, S)` — Section 1
+  - `_story_takeoff_title(story, plan, takeoff, S)` — Section 2
+  - `_story_totals_global(story, totals, S)` — Section 3
+  - `_story_totals_per_level(story, levels, S)` — Section 4
+  - `_story_rooms_detail(story, rooms, S)` — Section 5
+  - `_material_row(section, meta)` + `_story_materials(story, materials, S)` — 6
+  - `_story_footer(story, S)` — Section 7
+- **`build_quote_pdf`** et **`build_project_quote_pdf`** : bloc branding
+  dupliqué (~30 lignes chacun) → remplacé par appel unique à
+  `_story_header_branding`. **~60 lignes de duplication éliminées.**
+- Tests d'intégration locaux OK : takeoff (2.6 KB), quote (3.1 KB), project
+  (3 KB), TVA attestation (3.6 KB) — aucun régression sur la sortie PDF.
+
+### ⏭️ Reporté (P2 backlog)
+- `is` → `==` : 100 cas détectés mais tous sont `is None/True/False` (**idiomes
+  Python corrects**, pas un anti-pattern). Non appliqué → aurait introduit des bugs.
+- Refactor `build_estimation_pdf` (118 lignes / complexité 13) — même pattern
+  d'extraction à appliquer, en attente.
+- Refactor `engines/monetization.py` (`ensure_stripe_catalog`, `create_checkout`,
+  `handle_webhook`) — complexité 14/14/6.
+- Refactor calculators (`paint()`, `tile()`) et `estimate()` — trop de
+  paramètres → dataclasses de config.
+- Type hints coverage (server.py 0 % → cible 80 %).
+- Split `routes/plans.py` (38 imports, ~2000 lignes) → CRUD, analytics,
+  exports séparés.
 

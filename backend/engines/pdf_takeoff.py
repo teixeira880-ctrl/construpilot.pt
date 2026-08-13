@@ -39,173 +39,200 @@ def _styles():
     }
 
 
-def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
-                       branding: dict | None = None) -> bytes:
-    """Rend un PDF de métré à partir d'un plan (rooms + totals + levels).
+# ============ TAKEOFF PDF HELPERS ============
+# Each helper appends to `story` (mutates in place) — keeps the main builder flat.
 
-    `branding` optionnel : {"company_name": str, "contact_line": str, "logo_b64": str}
-    """
+def _table(rows, col_widths, style_extras=None, repeat_rows=0):
+    """Small helper: build a Table with default border style + optional extras."""
+    t = Table(rows, colWidths=col_widths,
+              repeatRows=repeat_rows) if repeat_rows else Table(rows, colWidths=col_widths)
+    base_style = [
+        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]
+    t.setStyle(TableStyle(base_style + (style_extras or [])))
+    return t
+
+
+def _decode_brand_logo(logo_b64_str: str, size_mm: float = 32):
+    """Try to decode a b64 logo into a ReportLab Image; return None on failure."""
     from reportlab.platypus import Image as RLImage
     import base64 as b64lib
     from io import BytesIO as BIO
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                            leftMargin=18*mm, rightMargin=18*mm,
-                            topMargin=18*mm, bottomMargin=18*mm)
-    S = _styles()
-    story = []
+    try:
+        logo_bytes = b64lib.b64decode(logo_b64_str.split(",")[-1])
+        return RLImage(BIO(logo_bytes), width=size_mm * mm, height=size_mm * mm,
+                       kind="proportional")
+    except Exception:
+        return None
 
-    # ---- Header branding (logo + société) ----
-    if branding and (branding.get("company_name") or branding.get("logo_b64")):
-        header_cells = []
-        if branding.get("logo_b64"):
-            try:
-                logo_bytes = b64lib.b64decode(branding["logo_b64"].split(",")[-1])
-                logo_img = RLImage(BIO(logo_bytes), width=32*mm, height=32*mm,
-                                    kind="proportional")
-                header_cells.append(logo_img)
-            except Exception:
-                header_cells.append("")
-        else:
-            header_cells.append("")
-        info_lines = []
-        if branding.get("company_name"):
-            info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>",
-                                         S["body"]))
-        if branding.get("contact_line"):
-            info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
-        header_cells.append(info_lines)
-        t = Table([header_cells], colWidths=[35*mm, None])
-        t.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        story.append(t)
-        story.append(Spacer(1, 6))
 
-    # ---- Header ConstruPilot ----
+def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
+    """Section 1 — logo + company + contact line."""
+    if not branding or not (branding.get("company_name") or branding.get("logo_b64")):
+        return
+    logo_cell = _decode_brand_logo(branding["logo_b64"]) if branding.get("logo_b64") else None
+    info_lines = []
+    if branding.get("company_name"):
+        info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
+    if branding.get("contact_line"):
+        info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
+    t = Table([[logo_cell or "", info_lines]], colWidths=[35 * mm, None])
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 6))
+
+
+def _story_takeoff_title(story: list, plan: dict, takeoff: dict, S: dict) -> None:
+    """Section 2 — main title + subtitle line."""
     story.append(Paragraph("MÉTRÉ CONSTRUPILOT", S["kicker"]))
-    title = plan.get("filename") or "Plan"
-    story.append(Paragraph(title, S["h1"]))
+    story.append(Paragraph(plan.get("filename") or "Plan", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     story.append(Paragraph(
-        f"Plan ID <b>{plan.get('plan_id','?')}</b> · {plan.get('page_count', 1)} page(s) · "
+        f"Plan ID <b>{plan.get('plan_id', '?')}</b> · {plan.get('page_count', 1)} page(s) · "
         f"{takeoff.get('room_count', 0)} pièces · généré le {date_str}", S["muted"]))
     story.append(Spacer(1, 10))
 
-    # ---- Totaux globaux ----
-    tots = takeoff.get("totals", {})
+
+def _story_totals_global(story: list, totals: dict, S: dict) -> None:
+    """Section 3 — global totals two-column table."""
     story.append(Paragraph("Totaux globaux", S["h2"]))
     data = [
-        ["Sol", _fmt(tots.get("floor_m2", 0), "m²")],
-        ["Plafonds", _fmt(tots.get("ceiling_m2", 0), "m²")],
-        ["Murs bruts", _fmt(tots.get("walls_gross_m2", 0), "m²")],
-        ["Murs nets", _fmt(tots.get("walls_net_m2", 0), "m²")],
-        ["Périmètre total", _fmt(tots.get("perimeter_m", 0), "m")],
+        ["Sol", _fmt(totals.get("floor_m2", 0), "m²")],
+        ["Plafonds", _fmt(totals.get("ceiling_m2", 0), "m²")],
+        ["Murs bruts", _fmt(totals.get("walls_gross_m2", 0), "m²")],
+        ["Murs nets", _fmt(totals.get("walls_net_m2", 0), "m²")],
+        ["Périmètre total", _fmt(totals.get("perimeter_m", 0), "m")],
     ]
-    t = Table(data, colWidths=[60*mm, 40*mm])
-    t.setStyle(TableStyle([
+    story.append(_table(data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("TEXTCOLOR", (0, 0), (-1, -1), DARK),
         ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
-        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
     ]))
-    story.append(t)
 
-    # ---- Par niveau ----
-    levels = takeoff.get("levels", [])
-    if len(levels) > 1:
-        story.append(Paragraph("Totaux par niveau", S["h2"]))
-        rows = [["Niveau", "Pièces", "Sol", "Murs nets", "Périmètre"]]
-        for lvl in levels:
-            lt = lvl.get("totals", {})
-            rows.append([lvl.get("level_label", "—"),
-                         str(len(lvl.get("rooms", []))),
-                         _fmt(lt.get("floor_m2", 0), "m²"),
-                         _fmt(lt.get("walls_net_m2", 0), "m²"),
-                         _fmt(lt.get("perimeter_m", 0), "m")])
-        t = Table(rows, colWidths=[35*mm, 20*mm, 30*mm, 30*mm, 30*mm])
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-            ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-            ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
-        ]))
-        story.append(t)
 
-    # ---- Détail pièces ----
-    rooms = takeoff.get("rooms", [])
-    if rooms:
-        story.append(Paragraph("Détail par pièce", S["h2"]))
-        rows = [["Pièce", "Surface", "Périmètre", "Murs bruts", "Murs nets", "H."]]
-        for r in rooms:
-            rows.append([r.get("name", "—"),
-                         _fmt(r.get("surface_m2", 0), "m²"),
-                         _fmt(r.get("perimeter_m", 0), "m"),
-                         _fmt(r.get("wall_area_gross_m2", 0), "m²"),
-                         _fmt(r.get("wall_area_net_m2", 0), "m²"),
-                         _fmt(r.get("ceiling_height_m", 2.5), "m")])
-        t = Table(rows, colWidths=[45*mm, 24*mm, 24*mm, 27*mm, 27*mm, 15*mm], repeatRows=1)
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), DARK),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-            ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-            ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
-        ]))
-        story.append(t)
+def _story_totals_per_level(story: list, levels: list, S: dict) -> None:
+    """Section 4 — per-level breakdown (only if >1 level)."""
+    if len(levels) <= 1:
+        return
+    story.append(Paragraph("Totaux par niveau", S["h2"]))
+    rows = [["Niveau", "Pièces", "Sol", "Murs nets", "Périmètre"]]
+    for lvl in levels:
+        lt = lvl.get("totals", {})
+        rows.append([lvl.get("level_label", "—"),
+                     str(len(lvl.get("rooms", []))),
+                     _fmt(lt.get("floor_m2", 0), "m²"),
+                     _fmt(lt.get("walls_net_m2", 0), "m²"),
+                     _fmt(lt.get("perimeter_m", 0), "m")])
+    story.append(_table(rows, [35 * mm, 20 * mm, 30 * mm, 30 * mm, 30 * mm], style_extras=[
+        ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+    ]))
 
-    # ---- Matériaux (optionnel) ----
-    if materials:
-        story.append(PageBreak())
-        story.append(Paragraph("Quantitatif matériaux", S["h2"]))
-        rows = [["Matériau", "Quantité"]]
-        for section in ("floor", "paint", "placo", "skirting"):
-            m = materials.get(section)
-            if not m:
-                continue
-            if section == "floor":
-                rows.append([f"Sol ({m.get('material','?')}) — surface + pertes",
-                             _fmt(m.get("quantity_m2", 0), "m²")])
-            elif section == "paint":
-                rows.append([f"Peinture ({m.get('coats',2)} couches, marge {m.get('margin_pct',15)}%)",
-                             _fmt(m.get("liters_recommended", 0), "L")])
-            elif section == "placo":
-                rows.append(["Plaques BA13 (pertes 5%)",
-                             _fmt(m.get("plates", 0), "plaques")])
-            elif section == "skirting":
-                rows.append(["Plinthes (périmètre - portes + pertes)",
-                             _fmt(m.get("quantity_m", 0), "m")])
-        if len(rows) > 1:
-            t = Table(rows, colWidths=[110*mm, 45*mm], repeatRows=1)
-            t.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-                ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-                ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
-            ]))
-            story.append(t)
 
-    # ---- Footer ----
+def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
+    """Section 5 — one-row-per-room detail table."""
+    if not rooms:
+        return
+    story.append(Paragraph("Détail par pièce", S["h2"]))
+    rows = [["Pièce", "Surface", "Périmètre", "Murs bruts", "Murs nets", "H."]]
+    for r in rooms:
+        rows.append([r.get("name", "—"),
+                     _fmt(r.get("surface_m2", 0), "m²"),
+                     _fmt(r.get("perimeter_m", 0), "m"),
+                     _fmt(r.get("wall_area_gross_m2", 0), "m²"),
+                     _fmt(r.get("wall_area_net_m2", 0), "m²"),
+                     _fmt(r.get("ceiling_height_m", 2.5), "m")])
+    story.append(_table(rows, [45 * mm, 24 * mm, 24 * mm, 27 * mm, 27 * mm, 15 * mm],
+                        style_extras=[
+                            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+                        ], repeat_rows=1))
+
+
+def _material_row(section: str, m: dict) -> list[str] | None:
+    """Map (section, material meta) to a printable table row, or None to skip."""
+    if section == "floor":
+        return [f"Sol ({m.get('material', '?')}) — surface + pertes",
+                _fmt(m.get("quantity_m2", 0), "m²")]
+    if section == "paint":
+        return [f"Peinture ({m.get('coats', 2)} couches, marge {m.get('margin_pct', 15)}%)",
+                _fmt(m.get("liters_recommended", 0), "L")]
+    if section == "placo":
+        return ["Plaques BA13 (pertes 5%)", _fmt(m.get("plates", 0), "plaques")]
+    if section == "skirting":
+        return ["Plinthes (périmètre - portes + pertes)",
+                _fmt(m.get("quantity_m", 0), "m")]
+    return None
+
+
+def _story_materials(story: list, materials: dict | None, S: dict) -> None:
+    """Section 6 — materials breakdown (on a new page)."""
+    if not materials:
+        return
+    story.append(PageBreak())
+    story.append(Paragraph("Quantitatif matériaux", S["h2"]))
+    rows = [["Matériau", "Quantité"]]
+    for section in ("floor", "paint", "placo", "skirting"):
+        row = _material_row(section, materials.get(section) or {})
+        if row and materials.get(section):
+            rows.append(row)
+    if len(rows) == 1:
+        return
+    story.append(_table(rows, [110 * mm, 45 * mm], style_extras=[
+        ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+    ], repeat_rows=1))
+
+
+def _story_footer(story: list, S: dict) -> None:
+    """Section 7 — small legal disclaimer footer."""
     story.append(Spacer(1, 20))
     story.append(Paragraph(
         "Métré généré par <b>ConstruPilot</b> — Estimez. Comparez. Construisez. "
         "<br/>Estimations indicatives — ne constituent pas un devis contractuel.",
         S["muted"]))
+
+
+def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
+                       branding: dict | None = None) -> bytes:
+    """Rend un PDF de métré à partir d'un plan (rooms + totals + levels).
+
+    `branding` optionnel : {"company_name": str, "contact_line": str, "logo_b64": str}
+
+    Complexité maîtrisée : chaque section est déléguée à un helper `_story_*`.
+    """
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=18 * mm, bottomMargin=18 * mm)
+    S = _styles()
+    story: list = []
+
+    _story_header_branding(story, branding, S)
+    _story_takeoff_title(story, plan, takeoff, S)
+    _story_totals_global(story, takeoff.get("totals", {}), S)
+    _story_totals_per_level(story, takeoff.get("levels", []), S)
+    _story_rooms_detail(story, takeoff.get("rooms", []), S)
+    _story_materials(story, materials, S)
+    _story_footer(story, S)
 
     doc.build(story)
     return buf.getvalue()
@@ -216,41 +243,15 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
 def build_quote_pdf(quote: dict, branding: dict | None = None,
                     signature: dict | None = None) -> bytes:
     """Rend un PDF Devis à partir d'un quote (line_items + totaux)."""
-    from reportlab.platypus import Image as RLImage
-    import base64 as b64lib
-    from io import BytesIO as BIO
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                              leftMargin=18*mm, rightMargin=18*mm,
                              topMargin=18*mm, bottomMargin=18*mm)
     S = _styles()
-    story = []
+    story: list = []
 
-    # ---- Header branding ----
-    if branding and (branding.get("company_name") or branding.get("logo_b64")):
-        header_cells = []
-        if branding.get("logo_b64"):
-            try:
-                logo_bytes = b64lib.b64decode(branding["logo_b64"].split(",")[-1])
-                logo_img = RLImage(BIO(logo_bytes), width=32*mm, height=32*mm,
-                                    kind="proportional")
-                header_cells.append(logo_img)
-            except Exception:
-                header_cells.append("")
-        else:
-            header_cells.append("")
-        info_lines = []
-        if branding.get("company_name"):
-            info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
-        if branding.get("contact_line"):
-            info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
-        header_cells.append(info_lines)
-        t = Table([header_cells], colWidths=[35*mm, None])
-        t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
-                                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                                ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
-        story.append(t)
-        story.append(Spacer(1, 6))
+    # ---- Header branding (shared helper) ----
+    _story_header_branding(story, branding, S)
 
     # ---- Title ----
     story.append(Paragraph("DEVIS ESTIMATIF CONSTRUPILOT", S["kicker"]))
@@ -390,40 +391,15 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
 
 def build_project_quote_pdf(project: dict, branding: dict | None = None) -> bytes:
     """PDF Devis Projet consolidant plusieurs plans (multi-niveaux, extensions…)."""
-    from reportlab.platypus import Image as RLImage
-    import base64 as b64lib
-    from io import BytesIO as BIO
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                              leftMargin=18*mm, rightMargin=18*mm,
                              topMargin=18*mm, bottomMargin=18*mm)
     S = _styles()
-    story = []
+    story: list = []
 
-    # ---- Header branding ----
-    if branding and (branding.get("company_name") or branding.get("logo_b64")):
-        header_cells = []
-        if branding.get("logo_b64"):
-            try:
-                logo_bytes = b64lib.b64decode(branding["logo_b64"].split(",")[-1])
-                header_cells.append(RLImage(BIO(logo_bytes), width=32*mm, height=32*mm,
-                                             kind="proportional"))
-            except Exception:
-                header_cells.append("")
-        else:
-            header_cells.append("")
-        info_lines = []
-        if branding.get("company_name"):
-            info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
-        if branding.get("contact_line"):
-            info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
-        header_cells.append(info_lines)
-        t = Table([header_cells], colWidths=[35*mm, None])
-        t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
-                                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                                ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
-        story.append(t)
-        story.append(Spacer(1, 6))
+    # ---- Header branding (shared helper) ----
+    _story_header_branding(story, branding, S)
 
     # ---- Title ----
     story.append(Paragraph("DEVIS PROJET CONSOLIDÉ", S["kicker"]))

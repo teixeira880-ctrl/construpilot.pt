@@ -20,8 +20,9 @@ from PIL import Image
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 API = f"{BASE_URL}/api"
 
-PRO_EMAIL = "pro@construpilot.fr"
-PRO_PASSWORD = "Pro2026!"
+# Credentials read from env — never hardcoded. See test_iter29_video_tour.py.
+PRO_EMAIL = os.environ.get("TEST_USER_PRO_EMAIL", "pro@construpilot.fr")
+PRO_PASSWORD = os.environ.get("TEST_USER_PRO_PASSWORD", "Pro2026!")
 
 
 # ---------- fixtures ----------

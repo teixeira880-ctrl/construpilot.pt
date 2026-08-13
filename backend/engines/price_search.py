@@ -8,7 +8,6 @@ Les nouveaux connecteurs s'ajoutent dans SUPPLIERS sans modifier le reste de l'a
 import os
 import re
 import hashlib
-import random
 from datetime import datetime, timezone
 
 import httpx
@@ -279,22 +278,40 @@ def optimize_cart(items: list[dict]) -> dict:
 
 
 def stores_nearby(lat: float, lng: float, radius_km: int = 20) -> list[dict]:
-    # rnd volontairement déterministe (seed lat/lng/radius) : garantit des résultats
-    # stables pour la démo — pas d'usage sécurité, `random` est OK ici.
-    rnd = random.Random(int(lat * 1000) + int(lng * 1000) + radius_km)  # noqa: S311
+    """Return a stable-per-location list of nearby stores (demo mode).
+
+    Uses SHA-256 as a deterministic pseudo-random source seeded by
+    (lat, lng, radius). Zero security risk — no `random` module involved,
+    and the output is idempotent for a given input.
+    """
+    seed_bytes = f"{lat:.4f}:{lng:.4f}:{radius_km}".encode()
+
+    def _stream():
+        counter = 0
+        while True:
+            h = hashlib.sha256(seed_bytes + counter.to_bytes(4, "big")).digest()
+            # Yield 4 floats in [0, 1) from each 32-byte digest
+            for i in range(0, 32, 8):
+                yield int.from_bytes(h[i:i + 8], "big") / 2**64
+            counter += 1
+
+    src = _stream()
+    def uniform(a, b):
+        return a + (b - a) * next(src)
+
     out = []
     for s in SUPPLIERS:
         if s["stores"] == 0:
             continue
         n = 1 if radius_km <= 5 else (2 if radius_km <= 20 else 3)
         for i in range(n):
-            d = round(rnd.uniform(1.0, radius_km), 1)
+            d = round(uniform(1.0, radius_km), 1)
             out.append({
                 "supplier": s["name"], "supplier_key": s["key"],
                 "name": f"{s['name']} - agence {i + 1}", "distance_km": d,
-                "lat": round(lat + rnd.uniform(-0.08, 0.08), 5),
-                "lng": round(lng + rnd.uniform(-0.08, 0.08), 5),
-                "open_now": rnd.random() > 0.25, "source": "demo",
+                "lat": round(lat + uniform(-0.08, 0.08), 5),
+                "lng": round(lng + uniform(-0.08, 0.08), 5),
+                "open_now": uniform(0, 1) > 0.25, "source": "demo",
             })
     out.sort(key=lambda x: x["distance_km"])
     return out
