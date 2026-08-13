@@ -10,7 +10,7 @@ import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
-  Wand2, Zap, FileDown, History, Film,
+  Wand2, Zap, FileDown, History, Film, DoorOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import { api, eur, num } from "@/lib/api";
 const TOOLS = {
   SELECT: "select", DIST: "distance", POLY: "polyline",
   ROOM: "room", CALIB: "calibrate", AUTOROOM: "autoroom",
+  OPENING: "opening",
 };
 
 const ROOM_COLORS = [
@@ -170,7 +171,7 @@ function PlanCanvas({
     if (points.length > 0) {
       const ppm = pixelsPerMeter || 0;
       // If we're drawing a distance/calib/polyline : render each segment with dim lines
-      const showDimLines = tool === TOOLS.DIST || tool === TOOLS.CALIB || tool === TOOLS.POLY;
+      const showDimLines = tool === TOOLS.DIST || tool === TOOLS.CALIB || tool === TOOLS.POLY || tool === TOOLS.OPENING;
       ctx.strokeStyle = "hsl(24, 96%, 55%)";
       ctx.fillStyle = "hsl(24, 96%, 55%)";
       ctx.lineWidth = 2 / zoom;
@@ -518,6 +519,40 @@ export default function PlanTakeoff() {
       setPoints([...points, pt]);
     } else if (tool === TOOLS.POLY || tool === TOOLS.ROOM) {
       setPoints([...points, pt]);
+    } else if (tool === TOOLS.OPENING) {
+      const next = [...points, pt];
+      if (next.length === 2) {
+        // Width computed from click distance in meters, opening dialog for kind + height
+        const ppm = currentCalib?.pixels_per_meter || 60;
+        const px_dist = Math.hypot(next[1][0] - next[0][0], next[1][1] - next[0][1]);
+        const width_m = Math.max(0.05, Math.round((px_dist / ppm) * 100) / 100);
+        // Find the closest room to the midpoint
+        const mid = [(next[0][0] + next[1][0]) / 2, (next[0][1] + next[1][1]) / 2];
+        let bestRoom = null, bestDist = Infinity;
+        for (const r of rooms) {
+          if (r.page_index !== pageIndex) continue;
+          const cx = r.points.reduce((a, p) => a + p[0], 0) / r.points.length;
+          const cy = r.points.reduce((a, p) => a + p[1], 0) / r.points.length;
+          const d = Math.hypot(mid[0] - cx, mid[1] - cy);
+          if (d < bestDist) { bestDist = d; bestRoom = r; }
+        }
+        if (!bestRoom) {
+          toast.error("Aucune pièce à proximité — tracez d'abord une pièce");
+          setPoints([]);
+          return;
+        }
+        setOpeningsDialog({ room_id: bestRoom.room_id, room_name: bestRoom.name });
+        setPendingOpening({
+          kind: "fenetre",
+          width_m,
+          height_m: 1.2,
+          count: 1,
+          label: "",
+        });
+        setPoints(next);
+        return;
+      }
+      setPoints(next);
     }
   };
 
@@ -536,6 +571,39 @@ export default function PlanTakeoff() {
       await refreshPlan();
       setTool(TOOLS.SELECT);
     } catch (e) { toast.error(e?.response?.data?.detail || "Calibration échouée"); }
+  };
+
+  const submitOpening = async () => {
+    if (!openingsDialog) return;
+    const w = parseFloat(pendingOpening.width_m);
+    const h = parseFloat(pendingOpening.height_m);
+    if (!(w > 0) || !(h > 0)) return toast.error("Dimensions invalides");
+    try {
+      await api.post(
+        `/takeoffs/${plan.plan_id}/rooms/${openingsDialog.room_id}/openings`,
+        {
+          kind: pendingOpening.kind,
+          width_m: w, height_m: h,
+          count: Math.max(1, parseInt(pendingOpening.count) || 1),
+          label: pendingOpening.label || null,
+        }
+      );
+      toast.success(
+        `${pendingOpening.kind === "porte" ? "Porte" : pendingOpening.kind === "baie" ? "Baie" : "Fenêtre"} `
+        + `${w}×${h} m ajoutée à ${openingsDialog.room_name}`
+      );
+      setOpeningsDialog(null);
+      setPoints([]);
+      await refreshPlan();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Ajout impossible"); }
+  };
+
+  const deleteOpening = async (room_id, opening_id) => {
+    try {
+      await api.delete(`/takeoffs/${plan.plan_id}/rooms/${room_id}/openings/${opening_id}`);
+      toast.success("Ouverture supprimée");
+      await refreshPlan();
+    } catch { toast.error("Suppression impossible"); }
   };
 
   const finishPolyline = async () => {
@@ -1412,6 +1480,7 @@ export default function PlanTakeoff() {
             <ToolButton icon={Layers} label="Polyligne" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Square} label="Pièce" testId="tool-room" active={tool === TOOLS.ROOM} onClick={() => { setTool(TOOLS.ROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Wand2} label="Auto-pièce" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={DoorOpen} label="Ouverture" testId="tool-opening" active={tool === TOOLS.OPENING} onClick={() => { setTool(TOOLS.OPENING); setPoints([]); }} disabled={!currentCalib || rooms.length === 0} />
             <div className="flex-1" />
             {detectedWalls && (
               <>
@@ -1539,8 +1608,31 @@ export default function PlanTakeoff() {
                     <span>Surface</span><span className="text-right font-bold">{r.surface_m2} m²</span>
                     <span>Périmètre</span><span className="text-right">{r.perimeter_m} m</span>
                     <span>Murs bruts</span><span className="text-right">{r.wall_area_gross_m2} m²</span>
-                    <span>Murs nets</span><span className="text-right">{r.wall_area_net_m2} m²</span>
+                    <span>Ouvertures</span><span className="text-right text-destructive">-{r.openings_area_m2 || 0} m²</span>
+                    <span>Murs nets</span><span className="text-right font-bold">{r.wall_area_net_m2} m²</span>
+                    {r.volume_m3 != null && (<><span>Volume</span><span className="text-right">{r.volume_m3} m³</span></>)}
                   </div>
+                  {(r.openings || []).length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-border/60 space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Ouvertures ({r.openings.length})</p>
+                      {r.openings.map((o) => (
+                        <div key={o.opening_id} className="flex items-center justify-between text-xs">
+                          <span className="truncate">
+                            <span className="text-primary font-semibold capitalize">{o.kind}</span>
+                            {o.label ? ` · ${o.label}` : ""} · <span className="num">{o.width_m}×{o.height_m}m{o.count > 1 ? ` ×${o.count}` : ""}</span>
+                          </span>
+                          <button
+                            onClick={() => deleteOpening(r.room_id, o.opening_id)}
+                            className="text-destructive hover:text-red-600 ml-2"
+                            title="Supprimer"
+                            data-testid={`delete-opening-${o.opening_id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
               {rooms.length > 0 && (
@@ -1926,6 +2018,85 @@ export default function PlanTakeoff() {
             <Button variant="outline" onClick={() => { setCalibDialog(false); setPoints([]); }} className="rounded-sm">Annuler</Button>
             <Button onClick={applyCalibration} data-testid="calib-confirm-btn"
                     className="rounded-sm hover:bg-orange-600 hover:text-white">Calibrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* OPENING DIALOG */}
+      <Dialog open={!!openingsDialog} onOpenChange={(o) => { if (!o) { setOpeningsDialog(null); setPoints([]); } }}>
+        <DialogContent className="rounded-sm" data-testid="opening-dialog">
+          <DialogHeader>
+            <DialogTitle>Ouverture sur {openingsDialog?.room_name}</DialogTitle>
+            <DialogDescription>
+              Largeur mesurée depuis vos 2 clics. Ajustez le type et la hauteur ci-dessous.
+              La surface sera automatiquement déduite des murs nets.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-3 gap-2">
+              {[["porte", "Porte"], ["fenetre", "Fenêtre"], ["baie", "Baie"]].map(([k, l]) => (
+                <Button
+                  key={k}
+                  variant={pendingOpening.kind === k ? "default" : "outline"}
+                  onClick={() => setPendingOpening((o) => ({ ...o, kind: k }))}
+                  className="rounded-sm h-9"
+                  data-testid={`opening-kind-${k}`}
+                >{l}</Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-[10px] uppercase">Largeur (m)</Label>
+                <Input
+                  type="number" step="0.05" min="0.05" max="10"
+                  value={pendingOpening.width_m}
+                  onChange={(e) => setPendingOpening((o) => ({ ...o, width_m: parseFloat(e.target.value) || 0 }))}
+                  className="rounded-sm num h-10"
+                  data-testid="opening-width"
+                />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase">Hauteur (m)</Label>
+                <Input
+                  type="number" step="0.05" min="0.05" max="6"
+                  value={pendingOpening.height_m}
+                  onChange={(e) => setPendingOpening((o) => ({ ...o, height_m: parseFloat(e.target.value) || 0 }))}
+                  className="rounded-sm num h-10"
+                  data-testid="opening-height"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase">Nombre</Label>
+                <Input
+                  type="number" step="1" min="1" max="100"
+                  value={pendingOpening.count}
+                  onChange={(e) => setPendingOpening((o) => ({ ...o, count: parseInt(e.target.value) || 1 }))}
+                  className="rounded-sm num h-10"
+                  data-testid="opening-count"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[10px] uppercase">Libellé (optionnel)</Label>
+              <Input
+                value={pendingOpening.label}
+                onChange={(e) => setPendingOpening((o) => ({ ...o, label: e.target.value }))}
+                placeholder="Porte d'entrée sud"
+                className="rounded-sm h-10"
+                data-testid="opening-label"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground border border-border rounded-sm p-2 bg-secondary/30">
+              Surface totale déduite : <b className="text-primary num">
+                {(pendingOpening.width_m * pendingOpening.height_m * (pendingOpening.count || 1)).toFixed(2)} m²
+              </b>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setOpeningsDialog(null); setPoints([]); }} className="rounded-sm">Annuler</Button>
+            <Button onClick={submitOpening} data-testid="opening-submit-btn"
+                    className="rounded-sm">Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

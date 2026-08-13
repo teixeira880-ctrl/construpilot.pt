@@ -830,6 +830,37 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 34. Changelog Iter 48 (13/02/2026) — PDF détaillé + Outil Ouvertures + i18n étendu
+
+### 📄 PDF Métré Détaillé (vérifié)
+- L'export `GET /api/takeoffs/{id}/pdf` génère bien un tableau complet par pièce :
+  Pièce · Sol · Périmètre · Murs bruts · **Ouvertures déduites** · Murs nets · **Volume** · **Épaisseur plancher** · Hauteur.
+- Section additionnelle « Ouvertures détaillées » listant chaque porte/fenêtre/baie avec libellé, largeur, hauteur, count et surface.
+- Test end-to-end confirmé : PDF 2 pages, tous les tags présents (`Détail par pièce`, `Ouvertures détaillées`, `Volume`, `Ép. plancher`, libellé « Porte entrée » retrouvé).
+
+### 🚪 Outil Ouvertures Canvas
+- Nouveau outil `TOOLS.OPENING` dans la toolbar (icône `DoorOpen`, disabled si pas de pièce ou pas de calibration).
+- Flow : 2 clics sur un mur → calcul auto de la largeur (distance en mètres via calibration) + détection auto de la pièce la plus proche du milieu → ouverture d'un dialog.
+- **Dialog `data-testid="opening-dialog"`** avec :
+  - 3 boutons type (Porte / Fenêtre / Baie)
+  - 3 champs Largeur / Hauteur / Nombre
+  - Champ Libellé optionnel
+  - Preview « Surface totale déduite : X.XX m² » en temps réel
+- Backend : `POST /api/takeoffs/{id}/rooms/{room_id}/openings` (déjà en place iter 43) + `DELETE /...openings/{opening_id}`.
+- **Carte pièce enrichie** : affiche les ouvertures avec `type · label · dimensions × count`, bouton Trash icon par ouverture, ligne « Ouvertures -X.XX m² » + « Volume X.XX m³ » ajoutées aux stats.
+- Le rendu canvas affiche la ligne + badge live pendant le placement (comme les tools Distance/Calib).
+
+### 🌍 i18n étendu — Landing FR/EN/ES
+- **25+ nouvelles clés** ajoutées à `I18nContext.jsx` couvrant : badge, hero H1/subtitle/placeholder/CTAs, trust signals, social proof, features overline, audiences.
+- Traductions complètes en **français**, **anglais** et **espagnol**.
+- `Landing.jsx` : hero + CTAs + audiences passés par `t("key", fallback)`.
+- Testé : switch FR/EN/ES sur `/` — H1 s'adapte, textarea placeholder, CTA button et trust badge tous traduits correctement.
+
+### ⚠️ Reste à faire pour i18n complet
+- Nav items du header (`Estimateur`, `Calculateurs`, `Prix matériaux`, `Je le fais moi-même`, `Analyse photo`, etc.) : encore hardcodés.
+- Sections `Features` (bento grid), `Testimonials`, `Blog`, `Footer` : encore hardcodés.
+- Infrastructure prête, il ne manque que le peuplement des dictionnaires.
+
 ## 33. Changelog Iter 47 (13/02/2026) — Landing 3D vision + Palette calme + Espagnol
 
 ### 🌍 i18n multilingue FR / EN / ES

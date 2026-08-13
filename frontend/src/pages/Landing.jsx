@@ -54,8 +54,8 @@ const FEATURES = [
 ];
 
 const AUDIENCES = [
-  { icon: HardHat, title: "Artisans BTP", text: "Générez vos devis client en 30 s avec attestation TVA 10 %, signature électronique et suivi ouverture." },
-  { icon: HomeIcon, title: "Particuliers", text: "Estimez votre rénovation avant de contacter un pro. Comparez les devis reçus." },
+  { icon: HardHat, key: "landing.for_pro", title: "Artisans BTP", textKey: "landing.for_pro_text", text: "Générez vos devis client en 30 s avec attestation TVA 10 %, signature électronique et suivi ouverture." },
+  { icon: HomeIcon, key: "landing.for_particulier", title: "Particuliers", textKey: "landing.for_particulier_text", text: "Estimez votre rénovation avant de contacter un pro. Comparez les devis reçus." },
   { icon: Building2, title: "Architectes", text: "Métré 2D auto depuis vos plans PDF/DXF, chiffrage instantané par lot, rendu 3D pour vos clients." },
   { icon: Store, title: "Marchands", text: "Vos prix, comparés en temps réel. Générez la liste de courses depuis un plan." },
   { icon: GraduationCap, title: "Écoles BTP", text: "Un terrain de jeu pédagogique : IA, calculateurs et guides métier accessibles gratuitement." },
@@ -139,12 +139,12 @@ export default function Landing() {
               </div>
               
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-tighter leading-[1.05]">
-                Estimez, chiffrez et <br className="hidden sm:block" />
-                <span className="text-primary italic">visualisez en 3D.</span>
+                {t("landing.hero.h1a", "Estimez, chiffrez et")} <br className="hidden sm:block" />
+                <span className="text-primary italic">{t("landing.hero.h1b", "visualisez en 3D.")}</span>
               </h1>
               
               <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
-                Décrivez votre projet travaux. ConstruPilot génère instantanément l'estimation, les quantités, les prix fournisseurs exacts, et <strong className="text-foreground">le plan 3D interactif</strong> pour vos clients.
+                {t("landing.hero.subtitle", "Décrivez votre projet travaux. ConstruPilot génère instantanément l'estimation, les quantités, les prix fournisseurs exacts, et le plan 3D interactif pour vos clients.")}
               </p>
 
               <div className="mt-10 w-full max-w-xl relative">
@@ -154,7 +154,7 @@ export default function Landing() {
                     data-testid="hero-ai-input"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder={`Décrivez votre projet — ex : « ${EXAMPLE} »`}
+                    placeholder={t("landing.hero.placeholder", `Décrivez votre projet — ex : « ${EXAMPLE} »`)}
                     rows={4}
                     className="resize-none border-0 bg-transparent text-base focus-visible:ring-0 rounded-lg"
                   />
@@ -163,13 +163,13 @@ export default function Landing() {
                       onClick={() => setDescription(EXAMPLE)} data-testid="hero-example-btn"
                       className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
                     >
-                      Utiliser l'exemple
+                      {t("landing.hero.example_btn", "Utiliser l'exemple")}
                     </button>
                     <Button
                       onClick={launch} data-testid="hero-submit-btn"
                       className="rounded-lg gap-2 shadow-md hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
                     >
-                      <Sparkles className="h-4 w-4" /> Générer mon estimation
+                      <Sparkles className="h-4 w-4" /> {t("landing.hero.submit", "Générer mon estimation")}
                     </Button>
                   </div>
                 </div>
@@ -184,8 +184,8 @@ export default function Landing() {
                   ))}
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-foreground">Rejoignez 10 000+ pros</span>
-                  <span className="text-xs">Artisans & Architectes équipés</span>
+                  <span className="font-bold text-foreground">{t("landing.hero.trust_title", "Rejoignez 10 000+ pros")}</span>
+                  <span className="text-xs">{t("landing.hero.trust_subtitle", "Artisans & Architectes équipés")}</span>
                 </div>
               </div>
             </motion.div>
@@ -403,9 +403,9 @@ export default function Landing() {
                 <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center shadow-sm">
                   <a.icon className="h-5 w-5 text-primary" aria-hidden="true" />
                 </div>
-                <h3 className="font-display text-xl font-semibold">{a.title}</h3>
+                <h3 className="font-display text-xl font-semibold">{a.key ? t(a.key, a.title) : a.title}</h3>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{a.text}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{a.textKey ? t(a.textKey, a.text) : a.text}</p>
             </motion.div>
           ))}
         </motion.div>
