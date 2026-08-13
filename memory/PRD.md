@@ -830,14 +830,49 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
-### ⏭️ Rapport externe : items déjà résolus ou faux positifs (4ᵉ round)
-- « 19 undefined variables » — 4ᵉ mention. Ruff/pyflakes/pylint confirment **0**.
-- « 153 anti-patterns `is` » — encore signalés. Tous sont `is None/True/False`
-  (idiomes Python 3 corrects).
-- `estimate()` 9 args — la dataclass `PricingRequest` a été livrée iter36 mais
-  l'outil externe ne détecte pas la variante `estimate_from_request()`.
-- `build_tva_attestation_pdf` — body toujours long (139 lignes). Args déjà
-  refactorés en dataclass. Corps sera sectionalisé dans un round dédié.
-- `create_checkout`, `ensure_stripe_catalog`, `paint()`, `tile()`, `roof_facade`
-  — **backlog P2** (code paiement/calcul sensible, à faire avec tests dédiés).
+## 24. Changelog Iter 38 (13/02/2026) — More Cities (10 total) + Code Quality Round 5
+
+### 🌍 Landing Pages Locales — +4 villes (10 au total)
+- Ajout de **Nice, Strasbourg, Rennes, Montpellier** dans `/frontend/src/lib/cities.js`
+  avec toutes les data géo-ciblées : prix moyen m² 2026, artisans région, surface,
+  projet type, prix moyen, 3 tips locaux calibrés.
+- Auto-routing : `App.js` génère les 10 routes depuis `CITY_LIST.map`, aucune
+  intervention manuelle.
+- Sidebar « Autres villes couvertes » : liens croisés auto-mis-à-jour dans
+  `LocalLanding.jsx` (bootstrap SEO interne — chaque ville pointe vers les 9
+  autres).
+- Sitemap.xml : +4 URLs indexables (`/devis-travaux-nice`, `-strasbourg`,
+  `-rennes`, `-montpellier`), priority 0.9.
+- Smoke test : les 4 nouvelles pages ont **title/H1/tips uniques** vérifiés en
+  Playwright (Montpellier screenshot inline validé).
+
+### 🔧 Code Quality Round 5
+- **`_compute_bounds`** (`plan_dxf.py`) : dispatch inline `if t == "LINE": elif …`
+  extrait dans un helper module-level `_bounds_from_entity(e, upd)` — plus
+  testable indépendamment, cyclomatic complexity divisée par 2, nesting
+  ramené de 3 à 1 dans la boucle principale.
+
+### 5ᵉ rapport — items déjà résolus ou faux positifs
+- « 19 undefined vars » (5ᵉ mention) — 0 réel selon ruff/pyflakes/pylint.
+- « 153 anti-patterns `is` » — tous `is None/True/False` (Python idiomatique).
+- `estimate()` 9 args — dataclass `PricingRequest` livrée iter36, tool externe
+  ne détecte pas la variante `estimate_from_request()`.
+- `build_tva_attestation_pdf` body 138 lignes — args refactorés en dataclass
+  iter35, body sectionalisation reportée (P2).
+- `create_checkout`/`ensure_stripe_catalog` (cyclo 14) — payment code sensible,
+  refactor P2 avec tests dédiés préalables.
+- `paint()`/`tile()`/`_price_model()`/`_sample_thickness()` — grouper params en
+  dataclass, P2.
+- `deskew_photo` 74 lignes — helpers à extraire, P2.
+- `analyze_plan_image` 51 lignes — helpers à extraire, P2.
+- `check_user_alerts` cyclo 12 — strategy pattern, P2.
+- `roof_facade` 75 lignes — split par facade type, P2.
+- `plans.py` 38 imports — split multi-modules, refactor lourd P2.
+
+### 📈 Bilan cumulatif SEO
+- **10 villes** locales indexables (Paris, Lyon, Marseille, Toulouse, Bordeaux,
+  Nantes, Nice, Strasbourg, Rennes, Montpellier).
+- **9 articles** blog long-form SEO.
+- **~30 URLs uniques** dans sitemap.xml.
+- Toutes avec title/description/H1/canonical/JSON-LD uniques.
 

@@ -47,6 +47,26 @@ def _points_from_polyline(entity) -> list[tuple[float, float]]:
     return pts
 
 
+def _bounds_from_entity(e, upd) -> None:
+    """Feed the per-type extents of entity `e` into `upd(x, y)`.
+    Silent no-op if the entity has an unsupported type or bad geometry."""
+    t = e.dxftype()
+    if t == "LINE":
+        upd(e.dxf.start.x, e.dxf.start.y)
+        upd(e.dxf.end.x, e.dxf.end.y)
+    elif t in ("LWPOLYLINE", "POLYLINE"):
+        for p in _points_from_polyline(e):
+            upd(p[0], p[1])
+    elif t == "CIRCLE":
+        c, r = e.dxf.center, e.dxf.radius
+        upd(c.x - r, c.y - r)
+        upd(c.x + r, c.y + r)
+    elif t in ("TEXT", "MTEXT"):
+        pos = e.dxf.insert if hasattr(e.dxf, "insert") else None
+        if pos:
+            upd(pos.x, pos.y)
+
+
 def _compute_bounds(entities) -> tuple[float, float, float, float]:
     """Renvoie (min_x, min_y, max_x, max_y) sur toutes les entités."""
     min_x = min_y = float("inf")
@@ -60,20 +80,8 @@ def _compute_bounds(entities) -> tuple[float, float, float, float]:
         if y > max_y: max_y = y
 
     for e in entities:
-        t = e.dxftype()
         try:
-            if t == "LINE":
-                upd(e.dxf.start.x, e.dxf.start.y)
-                upd(e.dxf.end.x, e.dxf.end.y)
-            elif t in ("LWPOLYLINE", "POLYLINE"):
-                for p in _points_from_polyline(e):
-                    upd(p[0], p[1])
-            elif t == "CIRCLE":
-                c = e.dxf.center; r = e.dxf.radius
-                upd(c.x - r, c.y - r); upd(c.x + r, c.y + r)
-            elif t in ("TEXT", "MTEXT"):
-                pos = e.dxf.insert if hasattr(e.dxf, "insert") else None
-                if pos: upd(pos.x, pos.y)
+            _bounds_from_entity(e, upd)
         except Exception:
             continue
 

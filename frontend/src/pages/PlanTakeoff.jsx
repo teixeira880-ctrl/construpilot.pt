@@ -124,8 +124,8 @@ function PlanCanvas({
         ctx.fill();
       });
     }
-    // CALIB visualization
-    if (calibration) {
+    // CALIB visualization (only for manual 2-points calibration — auto_pdf_scale has no p1/p2)
+    if (calibration?.p1 && calibration?.p2) {
       ctx.strokeStyle = "rgba(0,180,140,0.9)";
       ctx.lineWidth = 2 / zoom;
       ctx.setLineDash([6 / zoom, 4 / zoom]);
@@ -910,6 +910,13 @@ export default function PlanTakeoff() {
           htmlFor="plan-upload-input"
           className="surface p-16 grid place-items-center gap-4 cursor-pointer hover:border-primary transition-colors"
           data-testid="plan-upload-dropzone"
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDrop={(e) => {
+            e.preventDefault(); e.stopPropagation();
+            const f = e.dataTransfer?.files?.[0];
+            if (f) uploadFile(f);
+          }}
         >
           <div className="h-16 w-16 grid place-items-center bg-primary/10 rounded-sm">
             <Upload className="h-8 w-8 text-primary" />
