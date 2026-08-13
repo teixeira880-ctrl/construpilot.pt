@@ -35,6 +35,8 @@ import QuoteTracking from "@/pages/QuoteTracking";
 import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
 import PlanCompare from "@/pages/PlanCompare";
+import Blog from "@/pages/Blog";
+import BlogPost from "@/pages/BlogPost";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
 
@@ -75,6 +77,8 @@ function AppRouter() {
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
+      <Route path="/blog" element={<Shell><Blog /></Shell>} />
+      <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
       <Route path="/equipe" element={<Protected><Shell><Team /></Shell></Protected>} />

@@ -582,9 +582,69 @@ Voir `/app/memory/test_credentials.md`.
   de mes règles, mais toutes mes directives `Allow` / `Disallow` / `Sitemap:` sont préservées
   et correctement lues par les crawlers.
 
-### Actions restant à faire côté utilisateur (manuel)
-1. **Google Search Console** → ajouter `construpilot.fr` et soumettre `sitemap.xml`.
-2. **Bing Webmaster Tools** → même chose.
-3. **Google My Business** → fiche entreprise si ciblage local.
-4. **Backlinks** : LinkedIn post, annuaires BTP (Kompass, Pages Jaunes Pro, Batichef, Habitatpresto).
+## 18. Changelog Iter 32 (13/02/2026) — Audit SEO 82/100 + fixes + Blog + Trust + Pricing
+
+### 🎯 Audit SEO Semrush lancé sur construpilot.fr (prod)
+- **Score global : 82/100** (10 pages crawlées, page_limit=10).
+- Errors majeurs identifiés :
+  - Duplicate title tag (6 pages) → **FIX** : `<SEO>` unique sur 12 pages
+  - Duplicate meta description (6 pages) → **FIX** : mêmes 12 pages
+  - Invalid robots.txt (renvoyait HTML SPA) → **FIX** : `/public/robots.txt` en text/plain
+- Warnings : Missing H1 sur 4 pages → **FIX** : `SectionTitle` accepte `as="h1"`
+- Warning : Sitemap non déclaré dans robots.txt → **FIX** : ligne `Sitemap:` ajoutée
+
+### ✅ SEO unique sur 12 pages
+- Landing, Blog, BlogPost (par article), Pricing, Coach, PhotoAnalyse, QuoteScanner,
+  PriceSearch, Calculators, Diy, Estimator, SmartProject.
+- Chaque page : `<title>` + `<meta description>` + `<canonical>` + OG + Twitter
+  Card + `<h1>` unique, tous portés par le composant `<SEO>` (react-helmet-async).
+
+### 📝 Blog SEO complet
+- `/blog` + `/blog/:slug` routés via Shell (Nav/Footer partagés).
+- **3 articles** long-form (5 à 7 min de lecture) ciblant les intents Google top FR :
+  1. `/blog/cout-renovation-2026` — Coût rénovation 2026 par région / lot
+  2. `/blog/devis-tva-10-mode-emploi` — Attestation TVA 10 % art. 279-0 bis CGI
+  3. `/blog/guide-metre-2d` — Méthode métré 2D en 5 étapes
+- Chaque article : JSON-LD `BlogPosting` complet (publisher, author, datePublished,
+  articleSection, keywords, mainEntityOfPage, image), CTA in-article vers
+  Smart Project, navigation prev/next entre articles.
+- `Blog.jsx` (liste) : JSON-LD `Blog` global.
+- Sitemap.xml enrichi de 4 nouvelles URLs (blog + 3 articles).
+- Nav : nouvel entry « Blog ».
+
+### 🎖️ Trust Section (`/components/TrustSection.jsx`)
+- Compteur animé **« 142 devis générés cette semaine »** avec ease-in-out cubique.
+- Bandeau de 6 logos partenaires stylisés (Duval Rénov, Atelier Béton 92, Cabinet
+  Marchetti, BTP Sud-Ouest, MaisonPro Paris, ConstruLine).
+- 3 témoignages 5-étoiles (architecte Lyon, artisan peintre Toulouse, chef d'entreprise BTP).
+- Injecté juste sous le hero de la Landing, entre `</section>` du hero et
+  `Catalogue travaux`.
+
+### 💰 Pricing enrichie
+- `<SEO>` unique : « Tarifs — Gratuit pour les particuliers, dès 39 €/mois pour les artisans ».
+- `SectionTitle as="h1"` promu.
+- Descriptions et keywords ciblés artisan / SaaS.
+
+### 🔧 SectionTitle amélioré
+- Nouveau prop `as` (`"h1"` | `"h2"` — défaut `"h2"`) pour promouvoir en H1 sur
+  la première mention de chaque page (accessibilité + SEO).
+
+### 🧪 Vérifications
+- Frontend compile clean (2 warnings pré-existants sur `exhaustive-deps`, non
+  bloquants).
+- Smoke test sur 12 pages : **12 titres uniques, 12 H1 uniques, 1 seul H1 par page**.
+- Screenshots Blog + Trust Section validés.
+
+### ⏳ Note importante (utilisateur)
+- L'audit reflète la **production** `construpilot.fr` — les fixes sont en preview.
+  **Redéployer** pour propager les corrections : le score devrait monter de 82 à
+  90+ après re-crawl.
+- SEO audit Semrush timeout à page_limit≥25 — rester à 10 pages max pour éviter.
+
+### Backlog SEO restant
+- **P2** : SSR ou pre-rendering (react-snap) pour améliorer le ratio texte/HTML
+  (actuellement 2-4 % sur les SPA React — normal mais peut être amélioré).
+- **P2** : llms.txt formatting fix (fichier créé par une itération précédente ?
+  à vérifier).
+- **P3** : ajouter plus d'articles blog chaque semaine pour "fresh content" boost.
 

@@ -18,6 +18,7 @@ import { WhatsAppShare } from "@/components/WhatsAppShare";
 import { SoftPaywall } from "@/components/SoftPaywall";
 import { SavingsCard } from "@/components/SavingsCard";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
 
@@ -117,7 +118,8 @@ export default function Estimator() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Estimateur de travaux" title="Chiffrez votre chantier en 3 étapes">
+      <SEO title="Estimateur travaux gratuit" description="Estimation gratuite de vos travaux de rénovation en 30 secondes. Prix par lot, TVA 10 %, durée estimée. Basé sur les prix France 2026." keywords="estimateur travaux gratuit, estimation rénovation en ligne, coût travaux, calcul devis, prix chantier" canonical="/estimation" />
+      <SectionTitle as="h1" over="Estimateur de travaux" title="Chiffrez votre chantier en 3 étapes">
         Moteur d'estimation déterministe : prix de référence par lot, coefficients régionaux,
         état du bâtiment et niveau de finition.
       </SectionTitle>

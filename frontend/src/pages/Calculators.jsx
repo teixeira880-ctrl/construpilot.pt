@@ -11,6 +11,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, eur, eur2, num } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 
 export default function Calculators() {
   const [calcs, setCalcs] = useState([]);
@@ -61,7 +62,8 @@ export default function Calculators() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Calculateur de matériaux" title="Les quantités exactes, marges incluses">
+      <SEO title="Calculateurs matériaux BTP" description="Calculez les quantités exactes de peinture, carrelage, placo, béton et isolation pour vos chantiers. Marges de sécurité incluses. Génère la liste de courses matériaux." keywords="calculateur peinture, calculateur carrelage, calculateur placo, calculateur béton, calculateur isolation, quantité matériaux" canonical="/calculateurs" />
+      <SectionTitle as="h1" over="Calculateur de matériaux" title="Les quantités exactes, marges incluses">
         Calculs déterministes et vérifiables : surfaces, volumes, pertes de pose et conditionnements.
       </SectionTitle>
 

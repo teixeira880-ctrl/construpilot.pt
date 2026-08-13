@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Nav, Footer } from "@/components/Nav";
 import { SEO } from "@/components/SEO";
+import { TrustSection } from "@/components/TrustSection";
 import { api, IMAGES, eur } from "@/lib/api";
 
 const EXAMPLE =
@@ -169,6 +170,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── Trust Bar (logos + counter + testimonials) ────────────── */}
+      <TrustSection />
 
       <section className="mx-auto max-w-[1500px] px-5 lg:px-8 py-20">
         <p className="overline">Catalogue travaux</p>

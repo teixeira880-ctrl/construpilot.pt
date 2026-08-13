@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, eur, eur2, num } from "@/lib/api";
 import { DifficultyBadge, SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 import { LeadDialog } from "@/components/LeadDialog";
 
 export default function Diy() {
@@ -182,7 +183,8 @@ export default function Diy() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="DIY — Je réalise les travaux moi-même" title="Matériaux calculés, guide de professionnel">
+      <SEO title="Guide DIY travaux — Je le fais moi-même" description="Vous voulez faire les travaux vous-même ? ConstruPilot vous calcule les matériaux exacts et vous donne le guide étape par étape pour peindre, poser du carrelage, isoler, etc." keywords="DIY travaux, guide bricolage, faire ses travaux soi-même, poser carrelage soi-même, peindre soi-même" canonical="/diy" />
+      <SectionTitle as="h1" over="DIY — Je réalise les travaux moi-même" title="Matériaux calculés, guide de professionnel">
         Choisissez un travail : ConstruPilot calcule les quantités (marges incluses), détaille chaque étape,
         les conseils, les erreurs à éviter et vous alerte quand un professionnel est nécessaire.
       </SectionTitle>

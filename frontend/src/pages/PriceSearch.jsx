@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { api, eur2, num } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 import { PriceHistoryChart } from "@/components/PriceHistoryChart";
 import { useAuth } from "@/context/AuthContext";
 
@@ -89,7 +90,8 @@ export default function PriceSearch() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Navigateur de prix" title="Comparez les prix matériaux en temps réel">
+      <SEO title="Comparateur prix matériaux BTP" description="Comparez les prix des matériaux de construction chez Point.P, Leroy Merlin, Castorama, Brico Dépôt et 6 autres enseignes. Historique 12 mois et alertes prix." keywords="comparateur prix matériaux, prix Point.P, prix Leroy Merlin, prix carrelage, prix placo, prix bois construction" canonical="/prix" />
+      <SectionTitle as="h1" over="Navigateur de prix" title="Comparez les prix matériaux en temps réel">
         10 fournisseurs interrogés, frais de livraison et stock inclus. Le connecteur est standardisé :
         les API officielles se branchent sans modifier l'application.
       </SectionTitle>

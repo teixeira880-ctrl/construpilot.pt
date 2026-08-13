@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { API } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 
 const EXAMPLES = [
   "Combien coûte la rénovation d'un appartement de 70 m² ?",
@@ -103,7 +104,8 @@ export default function Coach() {
 
   return (
     <div className="grid gap-8">
-      <SectionTitle over="Coach IA ConstruPilot" title="Votre copilote travaux, à la voix ou au clavier">
+      <SEO title="Coach IA travaux" description="Posez vos questions travaux, rénovation, matériaux, TVA, permis à l'IA ConstruPilot. Réponse chiffrée en 30 secondes, à la voix ou au clavier. Gratuit." keywords="coach travaux, chatbot BTP, IA rénovation, aide artisan, questions travaux" canonical="/coach" />
+      <SectionTitle as="h1" over="Coach IA ConstruPilot" title="Votre copilote travaux, à la voix ou au clavier">
         Explications, ordres de grandeur, matériaux, étapes et recommandations professionnelles.
         Les chiffrages définitifs passent toujours par le moteur de calcul.
       </SectionTitle>

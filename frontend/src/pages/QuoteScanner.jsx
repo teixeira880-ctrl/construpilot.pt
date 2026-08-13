@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, eur, eur2, num } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 import { LeadDialog } from "@/components/LeadDialog";
 import { useAuth } from "@/context/AuthContext";
 
@@ -98,7 +99,8 @@ export default function QuoteScanner() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Scanner de factures et devis" title="Ce prix est-il correct ?">
+      <SEO title="Scanner de devis travaux IA" description="Uploadez votre devis PDF : ConstruPilot compare chaque ligne aux prix France 2026 et vous dit si le devis est bas, correct ou trop élevé. Gratuit et sans inscription." keywords="analyse devis travaux, vérifier prix devis, comparateur devis, devis trop cher, IA analyse devis" canonical="/scanner-devis" />
+      <SectionTitle as="h1" over="Scanner de factures et devis" title="Ce prix est-il correct ?">
         L'IA lit le devis, extrait les lignes et compare avec la base de prix ConstruPilot :
         prix bas, correct, élevé ou très élevé, avec les éléments potentiellement oubliés.
       </SectionTitle>

@@ -19,10 +19,15 @@ export const Stat = ({ label, value, sub, testId, accent }) => (
   </div>
 );
 
-export const SectionTitle = ({ over, title, children }) => (
-  <div className="mb-8">
-    {over && <p className="overline">{over}</p>}
-    <h2 className="mt-2 font-display text-2xl lg:text-3xl font-bold tracking-tight">{title}</h2>
-    {children && <p className="mt-2 text-base text-muted-foreground max-w-2xl">{children}</p>}
-  </div>
-);
+export const SectionTitle = ({ over, title, children, as = "h2" }) => {
+  const H = as === "h1" ? "h1" : "h2";
+  return (
+    <div className="mb-8">
+      {over && <p className="overline">{over}</p>}
+      <H className={`mt-2 font-display font-bold tracking-tight ${as === "h1" ? "text-3xl lg:text-4xl" : "text-2xl lg:text-3xl"}`}>
+        {title}
+      </H>
+      {children && <p className="mt-2 text-base text-muted-foreground max-w-2xl">{children}</p>}
+    </div>
+  );
+};

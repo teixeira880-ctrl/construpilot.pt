@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { api, num } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 
 export default function PhotoAnalyse() {
   const [preview, setPreview] = useState(null);
@@ -69,7 +70,8 @@ export default function PhotoAnalyse() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Estimation par IA à partir de photos" title="Photographiez, l'IA identifie les travaux">
+      <SEO title="Analyse photo chantier IA" description="Prenez une photo de votre pièce : l'IA ConstruPilot identifie l'état, les travaux nécessaires et chiffre la rénovation en 30 secondes. Gratuit." keywords="analyse photo travaux, estimation par photo, IA rénovation photo, chantier photo estimation" canonical="/photo" />
+      <SectionTitle as="h1" over="Estimation par IA à partir de photos" title="Photographiez, l'IA identifie les travaux">
         Murs, sols, plafonds, ouvertures, sanitaires, état général : l'IA propose les travaux probables.
         Les mesures sont approximatives — confirmez-les avant tout calcul définitif.
       </SectionTitle>

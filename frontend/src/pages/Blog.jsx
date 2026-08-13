@@ -1,0 +1,82 @@
+import { Link } from "react-router-dom";
+import { Clock, ArrowRight } from "lucide-react";
+import { SEO } from "@/components/SEO";
+import { BLOG_ARTICLES } from "@/lib/blogArticles";
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "name": "Blog ConstruPilot — Devis travaux, rénovation & BTP",
+  "url": "https://construpilot.fr/blog",
+  "blogPost": BLOG_ARTICLES.map((a) => ({
+    "@type": "BlogPosting",
+    "headline": a.title,
+    "url": `https://construpilot.fr/blog/${a.slug}`,
+    "datePublished": a.published,
+    "dateModified": a.updated,
+    "image": a.cover,
+  })),
+};
+
+export default function Blog() {
+  return (
+    <>
+      <SEO
+        title="Blog"
+        description="Guides, astuces et actualités BTP par ConstruPilot : coût rénovation 2026, TVA à 10 %, métré 2D, comparateur de prix matériaux, devis client, plans 3D."
+        keywords="blog BTP, coût rénovation, TVA 10 pourcent, métré 2D, devis travaux, prix matériaux"
+        canonical="/blog"
+        jsonLd={JSON_LD}
+      />
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16 lg:py-20">
+          <p className="overline">Le journal</p>
+          <h1 className="mt-3 font-display text-4xl lg:text-5xl font-extrabold tracking-tighter">
+            Guides & actualités <span className="text-primary">BTP 2026</span>
+          </h1>
+          <p className="mt-4 text-sm md:text-base text-muted-foreground max-w-2xl">
+            Prix travaux, méthodes de métré, fiscalité rénovation, comparatifs matériaux : le journal
+            de ConstruPilot vous donne les réponses concrètes du terrain, actualisées chaque semaine.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="blog-list">
+          {BLOG_ARTICLES.map((a) => (
+            <Link
+              key={a.slug}
+              to={`/blog/${a.slug}`}
+              data-testid={`blog-card-${a.slug}`}
+              className="surface overflow-hidden group hover:-translate-y-1 transition-transform"
+            >
+              <div className="aspect-[16/9] overflow-hidden">
+                <img
+                  src={a.cover} alt={a.title}
+                  loading="lazy"
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="p-5 grid gap-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest">
+                  <span className="text-primary font-bold">{a.category}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-muted-foreground inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {a.readingMinutes} min
+                  </span>
+                </div>
+                <h2 className="font-display text-lg font-bold leading-snug group-hover:text-primary transition-colors">
+                  {a.title}
+                </h2>
+                <p className="text-sm text-muted-foreground line-clamp-3">{a.excerpt}</p>
+                <span className="text-primary text-sm font-semibold inline-flex items-center gap-1 mt-1">
+                  Lire l'article <ArrowRight className="h-3 w-3" />
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}

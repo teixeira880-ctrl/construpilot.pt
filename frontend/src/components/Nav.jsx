@@ -22,6 +22,7 @@ const LINKS = [
   { to: "/marketplace", label: "Trouver un pro", icon: Wrench },
   { to: "/pro", label: "Espace pro", icon: Handshake },
   { to: "/docs", label: "API & Développeurs", icon: FileSearch },
+  { to: "/blog", label: "Blog", icon: FileSearch },
   { to: "/tarifs", label: "Tarifs", icon: Sparkles },
 ];
 

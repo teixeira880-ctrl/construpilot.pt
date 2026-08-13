@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 
 const ICON = {
   FREE: Sparkles, PROJECT_PASS: Zap,
@@ -133,7 +134,13 @@ export default function Pricing() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Tarifs ConstruPilot" title="Choisissez la formule adaptée à votre projet">
+      <SEO
+        title="Tarifs — Gratuit pour les particuliers, dès 39 €/mois pour les artisans"
+        description="Estimation, calculateurs, comparateur de prix et coach IA : GRATUITS pour les particuliers. Devis PDF illimités, TVA 10 % auto, rendu 3D, signature client : dès 39 €/mois pour les pros. Sans engagement."
+        keywords="prix logiciel devis, tarif construpilot, abonnement artisan, logiciel BTP gratuit, prix outil estimation travaux"
+        canonical="/tarifs"
+      />
+      <SectionTitle as="h1" over="Tarifs ConstruPilot" title="Choisissez la formule adaptée à votre projet">
         Payez seulement pour ce dont vous avez besoin — un projet ponctuel ou un accès continu.
         Toutes les formules incluent le moteur d'estimation, les calculateurs, la comparaison
         de prix et l'export PDF de base. Le premium débloque l'analyse d'économies, les alertes

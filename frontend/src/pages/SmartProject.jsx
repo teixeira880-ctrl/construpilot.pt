@@ -10,6 +10,7 @@ import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
 import { useAuth } from "@/context/AuthContext";
 import { SectionTitle } from "@/components/Bits";
+import { SEO } from "@/components/SEO";
 
 export default function SmartProject() {
   const [description, setDescription] = useState(sessionStorage.getItem("construpilot_description") || "");
@@ -73,7 +74,8 @@ export default function SmartProject() {
   return (
     <div className="grid gap-12">
       <div>
-        <SectionTitle over="ConstruPilot Smart Project" title="Décrivez votre projet, l'IA fait le reste">
+        <SEO title="Smart Project IA — Devis chiffré en 30 s" description="Décrivez votre projet en 2 lignes : ConstruPilot le décompose en lots, calcule les surfaces, chiffre chaque poste et trouve les meilleurs prix matériaux. Gratuit." keywords="devis IA, smart project BTP, estimation automatique, projet rénovation IA, chiffrage instantané" canonical="/smart-project" />
+        <SectionTitle as="h1" over="ConstruPilot Smart Project" title="Décrivez votre projet, l'IA fait le reste">
           Liste des travaux, ordre d'exécution, budget, quantités, durée, ce que vous pouvez faire
           vous-même, risques et économies possibles.
         </SectionTitle>
