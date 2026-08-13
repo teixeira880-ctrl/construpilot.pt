@@ -9,6 +9,12 @@ from engines.catalog import (PROJECT_TYPES, LOTS, FINISH_LEVELS, REGIONS, DIFFIC
 router = APIRouter(prefix="/estimation", tags=["estimation"])
 
 
+class LevelHeightSpec(BaseModel):
+    label: str  # RDC, R+1, R-1, combles, ...
+    surface_m2: float
+    ceiling_height_m: float
+
+
 class EstimateIn(BaseModel):
     project_type: str = "renovation_complete"
     surface: float = 100
@@ -21,6 +27,7 @@ class EstimateIn(BaseModel):
     construction_year: int | None = None
     lots: list[str] | None = None
     ceiling_height_m: float = 2.5
+    levels: list[LevelHeightSpec] | None = None  # Iter 61 — hauteurs par étage
 
 
 class DescribeIn(BaseModel):
@@ -59,7 +66,8 @@ async def compute(body: EstimateIn):
     est = estimation.estimate(
         body.project_type, body.surface, body.finish_level, body.country, body.region,
         body.building_type, body.condition, body.construction_year, body.lots,
-        body.ceiling_height_m)
+        body.ceiling_height_m,
+        [l.model_dump() for l in body.levels] if body.levels else None)
     est["planning"] = estimation.planning(est["lots"])
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)
     est["safety_alerts"] = estimation.safety_check("", [l["key"] for l in est["lots"]])
@@ -71,21 +79,24 @@ async def analyse(body: DescribeIn):
     """Smart Project : IA comprend -> moteur déterministe estime.
 
     Priorité pour la hauteur sous plafond : override utilisateur > détection IA > 2.5m.
+    Si l'IA détecte plusieurs niveaux (`levels`), la hauteur retenue est la moyenne
+    pondérée par surface.
     """
     analysis = await ai.analyse_description(body.description)
     overrides = {d["key"]: d async for d in db.price_reference.find({}, {"_id": 0})}
     _apply_overrides(overrides)
     ceiling_h = body.ceiling_height_m or analysis.get("ceiling_height_m") or 2.5
+    ai_levels = analysis.get("levels") or None
     est = estimation.estimate(
         analysis["project_type"], analysis["surface"], analysis["finish_level"],
         "FR", None, analysis["building_type"], analysis["condition"], None,
-        analysis.get("lots") or None, ceiling_h)
+        analysis.get("lots") or None, ceiling_h, ai_levels)
     est["planning"] = estimation.planning(est["lots"])
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)
     est["safety_alerts"] = estimation.safety_check(body.description,
                                                    [l["key"] for l in est["lots"]])
     # Enrichit l'analyse avec la hauteur effectivement utilisée
-    analysis["ceiling_height_m"] = ceiling_h
+    analysis["ceiling_height_m"] = est["ceiling_height_m"]  # weighted-avg si multi-niveaux
     return {"analysis": analysis, "estimation": est}
 
 

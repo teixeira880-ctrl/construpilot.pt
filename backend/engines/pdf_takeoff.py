@@ -9,6 +9,41 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
                                PageBreak)
+from reportlab.graphics.shapes import Drawing, Circle, String
+from reportlab.graphics import renderPDF
+
+
+# Iter 61 — icônes visuelles par catégorie pour la table des modèles.
+# Chaque catégorie a une couleur + une lettre (initiale) affichée dans un cercle.
+PRESET_KIND_ICONS = {
+    "wall":       {"color": colors.HexColor("#0ea5e9"), "letter": "M", "label": "Mur"},
+    "opening":    {"color": colors.HexColor("#a855f7"), "letter": "O", "label": "Ouvert."},
+    "floor":      {"color": colors.HexColor("#f97316"), "letter": "S", "label": "Sol"},
+    "ceiling":    {"color": colors.HexColor("#8b5cf6"), "letter": "P", "label": "Plafond"},
+    "paint":      {"color": colors.HexColor("#eab308"), "letter": "PEI", "label": "Peint."},
+    "insulation": {"color": colors.HexColor("#22c55e"), "letter": "I", "label": "Isol."},
+    "counter":    {"color": colors.HexColor("#ec4899"), "letter": "#", "label": "Cptr."},
+    "roof":       {"color": colors.HexColor("#3b82f6"), "letter": "T", "label": "Toit."},
+    "note":       {"color": colors.HexColor("#64748b"), "letter": "N", "label": "Note"},
+    "other":      {"color": colors.HexColor("#64748b"), "letter": "?", "label": "Autre"},
+}
+
+
+def _preset_icon_drawing(kind: str) -> Drawing:
+    """Retourne un petit dessin (cercle coloré + initiale blanche) pour une catégorie
+    de modèle — remplace la colonne 'Type' texte par une pastille visuelle."""
+    icon = PRESET_KIND_ICONS.get(kind, PRESET_KIND_ICONS["other"])
+    size = 14
+    d = Drawing(size, size)
+    d.add(Circle(size / 2, size / 2, size / 2 - 0.5,
+                 fillColor=icon["color"], strokeColor=colors.white, strokeWidth=0.5))
+    # Lettre blanche centrée
+    letter = icon["letter"]
+    font_size = 7 if len(letter) > 1 else 8
+    d.add(String(size / 2, size / 2 - 2.2, letter,
+                 fillColor=colors.white,
+                 fontName="Helvetica-Bold", fontSize=font_size, textAnchor="middle"))
+    return d
 
 ORANGE = colors.HexColor('#FF5A00')
 DARK = colors.HexColor('#0A0D14')
@@ -250,6 +285,9 @@ def _story_room_presets(story: list, rooms: list, presets_by_id: dict, S: dict) 
 
     Pour chaque pièce ayant un `preset_id`, affiche le modèle appliqué (nom, catégorie,
     prix unitaire, notes techniques) — visible pour le client sur le PDF.
+
+    Iter 61 : la colonne 'Type' est remplacée par une icône colorée (Drawing ReportLab)
+    permettant au client de repérer les catégories en un coup d'œil.
     """
     rooms_with_preset = [
         (r, presets_by_id[r["preset_id"]])
@@ -259,23 +297,25 @@ def _story_room_presets(story: list, rooms: list, presets_by_id: dict, S: dict) 
     if not rooms_with_preset:
         return
     story.append(Paragraph("Modèles d'ouvrages appliqués", S["h2"]))
-    rows = [["Pièce", "Modèle", "Type", "Unité", "Prix", "Notes"]]
+    rows = [["Pièce", "Modèle", "Cat.", "Unité", "Prix", "Notes"]]
     for r, p in rooms_with_preset:
         rows.append([
             r.get("name", "—"),
             p.get("name", "—"),
-            p.get("kind", "other").replace("_", " ").capitalize(),
+            _preset_icon_drawing(p.get("kind", "other")),
             p.get("unit", "u"),
             f"{p['price_per_unit']:.2f} €" if p.get("price_per_unit") is not None else "—",
             (p.get("notes") or "").strip()[:60] or "—",
         ])
-    story.append(_table(rows, [30 * mm, 45 * mm, 20 * mm, 15 * mm, 18 * mm, 42 * mm],
+    story.append(_table(rows, [30 * mm, 45 * mm, 14 * mm, 18 * mm, 20 * mm, 42 * mm],
                         style_extras=[
                             ("BACKGROUND", (0, 0), (-1, 0), DARK),
                             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                             ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("ALIGN", (2, 1), (2, -1), "CENTER"),  # icône centrée
                             ("ALIGN", (3, 1), (4, -1), "RIGHT"),
+                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
                         ], repeat_rows=1))
     story.append(Spacer(1, 4 * mm))

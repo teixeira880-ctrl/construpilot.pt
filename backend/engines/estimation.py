@@ -18,6 +18,28 @@ DEFAULT_CEILING_HEIGHT_M = 2.5
 WALL_HEIGHT_SENSITIVE_LOTS = {"peinture", "placo", "isolation", "facade", "maconnerie"}
 
 
+def _weighted_avg_height(levels: list[dict] | None,
+                          default_height: float) -> float:
+    """Retourne la hauteur moyenne PONDÉRÉE PAR SURFACE quand plusieurs étages
+    ont des HSP différents (ex : maison ancienne RDC 2.60m + R+1 2.20m + combles 1.80m).
+
+    Chaque item : {"label": str, "surface_m2": float, "ceiling_height_m": float}
+    - Si liste vide ou None → renvoie `default_height`.
+    - Si un item n'a pas surface_m2 → il est ignoré.
+    - Si somme des surfaces = 0 → renvoie `default_height`.
+    """
+    if not levels:
+        return default_height
+    total_area = sum(float(l.get("surface_m2") or 0) for l in levels)
+    if total_area <= 0:
+        return default_height
+    weighted = sum(
+        float(l.get("surface_m2") or 0) * float(l.get("ceiling_height_m") or default_height)
+        for l in levels
+    )
+    return round(weighted / total_area, 3)
+
+
 @dataclass
 class PricingRequest:
     """Groupe les 10 paramètres de `estimate()` en un objet unique — plus lisible
@@ -127,7 +149,12 @@ def _compute_lot(key: str, factor: float, surface: float,
 def estimate(project_type: str, surface: float, finish: str = "standard", country: str = "FR",
              region: str | None = None, building_type: str = "maison", condition: str = "bon",
              construction_year: int | None = None, lot_keys: list[str] | None = None,
-             ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M) -> dict:
+             ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M,
+             levels: list[dict] | None = None) -> dict:
+    """Moteur d'estimation. Si `levels` est fourni ([{label, surface_m2, ceiling_height_m}]),
+    la hauteur retenue pour les lots muraux est la moyenne pondérée par surface,
+    permettant de bien chiffrer les bâtiments à HSP mixtes (RDC 2.60 + R+1 2.20 + combles 1.80).
+    """
     tpl = PROJECT_TYPES_BY_KEY.get(project_type) or PROJECT_TYPES_BY_KEY["renovation_complete"]
     finish_cfg = FINISH_BY_KEY.get(finish) or FINISH_BY_KEY["standard"]
     rc = region_coef(country, region)
@@ -136,10 +163,12 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
     yc = year_coef(construction_year)
     global_coef = rc * cc * bc * yc
 
+    effective_height = _weighted_avg_height(levels, ceiling_height_m)
+
     selected = _resolve_lots(tpl, lot_keys)
     lots = [lot for key, factor in selected.items()
             if (lot := _compute_lot(key, factor, surface, finish_cfg, global_coef, rc,
-                                     ceiling_height_m))]
+                                     effective_height))]
     lots.sort(key=lambda l: EXECUTION_ORDER.index(l["key"]) if l["key"] in EXECUTION_ORDER else 99)
 
     materials_total = round(sum(l["material_cost"] for l in lots), 2)
@@ -153,7 +182,8 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
 
     return {
         "project_type": tpl["key"], "project_type_name": tpl["name"], "surface": surface,
-        "ceiling_height_m": ceiling_height_m,
+        "ceiling_height_m": effective_height,
+        "levels": levels or [],
         "finish_level": finish_cfg["key"], "finish_level_name": finish_cfg["name"],
         "country": country, "region": region, "building_type": building_type,
         "condition": condition, "construction_year": construction_year,

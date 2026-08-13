@@ -82,6 +82,12 @@ async def analyse_description(description: str) -> dict:
  "project_type": "un de: {types}",
  "surface": nombre en m² (estime si absent),
  "ceiling_height_m": nombre en mètres (hauteur sous plafond ; si mentionnée dans la description utilise-la, sinon 2.5 par défaut pour une maison moderne, 2.7 pour un pavillon années 70+, 3.0 pour Haussmannien),
+ "levels": [
+    // Détail par étage SEULEMENT si le bâtiment a plusieurs niveaux avec HSP différentes
+    // (ex : maison ancienne RDC 2.60m + R+1 2.30m + combles 1.80m).
+    // Sinon renvoyer une liste vide ou omettre.
+    {{"label": "RDC" | "R+1" | "R-1" | "combles" | "sous-sol", "surface_m2": nombre, "ceiling_height_m": nombre}}
+ ],
  "building_type": "maison|appartement|commerce",
  "finish_level": "un de: {finishes}",
  "condition": "neuf|bon|moyen|vetuste|a_renover_totalement",
@@ -98,6 +104,7 @@ Description : {description}"""
     data.setdefault("project_type", "renovation_complete")
     data.setdefault("surface", 100)
     data.setdefault("ceiling_height_m", 2.5)
+    data.setdefault("levels", [])
     data.setdefault("building_type", "maison")
     data.setdefault("finish_level", "standard")
     data.setdefault("condition", "moyen")
@@ -115,6 +122,23 @@ Description : {description}"""
         data["ceiling_height_m"] = max(2.0, min(5.0, h))  # bornes réalistes
     except Exception:
         data["ceiling_height_m"] = 2.5
+    # Nettoie levels : garde uniquement les entrées bien formées et bornées
+    cleaned_levels = []
+    for lvl in (data.get("levels") or []):
+        if not isinstance(lvl, dict):
+            continue
+        try:
+            s = float(lvl.get("surface_m2") or 0)
+            h = float(lvl.get("ceiling_height_m") or 0)
+            if s > 0 and 1.5 <= h <= 5.0:
+                cleaned_levels.append({
+                    "label": str(lvl.get("label") or "niveau")[:20],
+                    "surface_m2": round(s, 2),
+                    "ceiling_height_m": round(h, 2),
+                })
+        except (TypeError, ValueError):
+            continue
+    data["levels"] = cleaned_levels
     return data
 
 

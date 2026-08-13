@@ -1,0 +1,39 @@
+{
+  "summary": "Iter61 validated end-to-end. Backend: 20/20 new iter61 unit tests pass (test_iter61_level_aware_and_pdf_icons.py) covering _weighted_avg_height edge cases, estimate() levels support, EstimateIn.levels schema, AI prompt cleaned_levels, PRESET_KIND_ICONS 10 kinds, _preset_icon_drawing Drawing generation, PDF build with icons >2KB, LiveTotalBar compare-prices chip + materialsByRoom + pill/scroll listener, SmartProject.jsx analysis-levels + analysis-level-i chips + hauteur pondérée. Added 5 iter61 HTTP E2E tests (test_iter61_http_e2e.py, 5/5 pass): (a) /api/estimation/analyse multi-storey description 'RDC 100m² 2.60m R+1 60m² 2.30m combles 30m² 1.80m' → AI returns 3 levels + weighted h=2.379 matching (100*2.6+60*2.3+30*1.8)/190 ✓; (b) simple 'maison 100m²' → levels=[] and h=2.5 default ✓; (c) /api/estimation/compute with 2 levels → weighted h=2.684 = (100*2.7+90*2.3)/190 ✓; (d) compute no levels → h=2.5 backward compat ✓; (e) GET /api/takeoffs/plan_32cdb0ca6e66/pdf (demo account) → 200 with 4158 bytes starting %PDF-1.4 ✓. Frontend UI: /smart-project confirmed end-to-end — description multi-étages → 'Niveaux détectés (hauteur pondérée: 2.38 m)' block appears with 3 chips [RDC 100 m² · 2.6 m], [R+1 60 m² · 2.3 m], [combles 30 m² · 1.8 m] and smart-project-height-input auto-populated to 2.379. Points de vigilance dynamically mentions 'Hauteur sous plafond des combles limitée à 1,80 m'. Regression: iter52-iter61 full suite: 209 passed, 1 pre-existing failure unrelated to iter61 (test_iter6_revenue_phase23.py::test_marketplace_pros_list — stale seed assertion 'count==0' but 4 verified pros exist).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/marketplace/pros", "issue": "Test test_iter6_revenue_phase23.py::test_marketplace_pros_list asserts count==0 but seed contains 4 verified pros (pre-existing test staleness, not an iter61 regression)"}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter61_level_aware_and_pdf_icons.py",
+    "/app/backend/tests/test_iter61_http_e2e.py",
+    "/app/test_reports/pytest/iter61_unit.xml",
+    "/app/test_reports/pytest/iter61_all.xml"
+  ],
+  "action_items": [
+    "Optional: update tests/test_iter6_revenue_phase23.py::test_marketplace_pros_list to match current seed (count>=0 instead of ==0)."
+  ],
+  "critical_code_review_comments": [
+    "engines/estimation.py _weighted_avg_height correctly handles None/empty/zero-surface/missing-fields edge cases → falls back to default. estimate() surface parameter kept for backward compat, levels optional.",
+    "routes/estimation_routes.py — LevelHeightSpec + EstimateIn.levels optional maintains API compat with existing clients.",
+    "engines/ai.py — cleaned_levels validation (surface>0, 1.5<=h<=5.0) prevents AI hallucination poisoning the estimator. Prompt explicitly lists RDC/R+1/combles examples for FR context.",
+    "engines/pdf_takeoff.py — PRESET_KIND_ICONS covers all 10 kinds with color+letter+label; _preset_icon_drawing returns valid Drawing (Circle+String) even for unknown kinds. PDF generation is 4158 bytes for a single-room demo plan, well above minimum.",
+    "Frontend LiveTotalBar.jsx — testids live-total-compare-prices/live-total-bar-pill/live-total-pill-value all present, scroll listener wired via useEffect+addEventListener('scroll'), materialsByRoom aggregation state added. Runtime pill/scroll not exercised (requires seeded rooms) but source-inspection tests cover the wiring.",
+    "SmartProject.jsx analysis-levels + analysis-level-i chips render correctly; smart-project-height-input auto-syncs to weighted average (verified live: 2.379 for user's example). Excellent UX with 'hauteur pondérée' label."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter61_http_e2e.py (new — 5 HTTP E2E tests)"
+  ],
+  "success_rate": {
+    "backend": "100% for iter61 (20/20 unit + 5/5 HTTP E2E). Full regression iter52-iter61: 209/210 pass (99.5%), the 1 failure is pre-existing stale seed assertion unrelated to iter61.",
+    "frontend": "100% for iter61 Smart Project level-aware UI. LiveTotalBar runtime pill/scroll covered by source-inspection tests (needs seeded rooms to exercise live)."
+  },
+  "test_credentials": "admin@construpilot.fr / Construpilot2026!, demo@construpilot.fr / Demo2026!",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: `REACT_APP_BACKEND_URL=<url> pytest tests/test_iter5[2-9]*.py tests/test_iter6*.py -q` from /app/backend → expect 209 pass, 1 known-failure (test_marketplace_pros_list stale). Iter61 delivered: (1) Level-Aware Height — engines.estimation._weighted_avg_height + estimate(levels=[...]), routes.estimation_routes EstimateIn.levels, ai.py cleaned_levels; (2) LiveTotalBar 'Voir vainqueur prix' chip (data-testid live-total-compare-prices) + materialsByRoom state; (3) PDF Icons — PRESET_KIND_ICONS/_preset_icon_drawing in engines.pdf_takeoff; (4) Pill on scroll — data-testid live-total-bar-pill/live-total-pill-value + collapsed state. Level-aware UI on /smart-project runs end-to-end with AI extracting 3 levels from multi-storey French descriptions. Demo plan_32cdb0ca6e66 serves valid takeoff PDF."
+}

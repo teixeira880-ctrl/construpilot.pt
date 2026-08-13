@@ -1725,3 +1725,92 @@ les matériaux du projet.
 - End-to-end Compare Prix : 12 chips affichés, auto-search retourne 7 suppliers avec
   vrais prix Tavily
 
+
+## 47. Changelog Iter 61 (14/02/2026) — Level-Aware Height + Compare Prix + PDF Icons + Sticky Pill
+
+### 🏢 Level-Aware Height (chiffrage multi-étages avec HSP mixtes)
+
+**Contexte** : bâtiments anciens (Haussmannien, pavillons années 30-70, fermes rénovées) ont
+souvent des HSP différentes par étage : RDC 2.60m, R+1 2.20m, combles 1.80m. Iter60 avait
+une hauteur globale unique — insuffisant pour ces cas.
+
+**Backend** :
+- Nouveau `engines/estimation._weighted_avg_height(levels, default)` — retourne la moyenne
+  pondérée par surface : `Σ(s_i × h_i) / Σ(s_i)`
+- Gère les cas dégénérés : `None`/`[]`/surfaces nulles → renvoie `default`
+- Items sans `surface_m2` ou hors bornes ignorés
+- `engines/estimation.estimate()` accepte param optionnel `levels=[{label, surface_m2, ceiling_height_m}]`
+  — si fourni, la hauteur effective est la moyenne pondérée (utilisée pour scaler les lots muraux)
+- Nouveau `LevelHeightSpec` Pydantic dans `routes/estimation_routes.py`
+- `EstimateIn.levels: list[LevelHeightSpec] | None` (optionnel, backward compat)
+- Réponse `est["levels"]` (echo) + `est["ceiling_height_m"]` = weighted avg
+
+**AI extraction** :
+- Prompt enrichi dans `engines/ai.analyse_description` : demande à GPT de détecter les
+  niveaux et leurs HSP séparément (avec exemples RDC/R+1/combles)
+- Post-processing `cleaned_levels` filtre les entrées invalides (surface>0, 1.5≤h≤5.0)
+  pour éviter les hallucinations qui pollueraient le calcul
+
+**Frontend** :
+- `/smart-project` affiche un bloc `analysis-levels` sous le résumé IA quand
+  `analysis.levels.length > 0`
+- Chips `analysis-level-{i}` par niveau avec label + surface + HSP
+- Le champ `smart-project-height-input` se met automatiquement à jour avec la moyenne
+  pondérée retournée par l'estimation
+- Point de vigilance dynamique mentionne la hauteur limitée des combles quand détectée
+
+**Cas utilisateur validé E2E** : « Rénovation maison ancienne 190m² : RDC 100m² 2.60m,
+R+1 60m² 2.30m, combles 30m² 1.80m » → l'IA détecte les 3 niveaux + hauteur pondérée
+`(100×2.60 + 60×2.30 + 30×1.80) / 190 = 2.379 m` visible dans l'UI ✅
+
+### 🏆 Compare on Room Estimate — « Voir vainqueur prix »
+
+**Frontend LiveTotalBar** :
+- Nouveau state `materialsByRoom` collecté pendant `computeAll()` (agrège tous les métiers
+  par pièce)
+- Nouveau chip `live-total-compare-prices` (icône Trophy) qui apparaît quand
+  `hasEstimates === true`
+- Sur clic : agrège TOUS les matériaux de toutes les pièces estimées + écrit dans
+  `sessionStorage.construpilot_price_search_batch` avec `source: "plan_total"` + navigue
+  `/prix?from=plan-total`
+- PriceSearch reprend le batch et affiche les chips pour recherche de prix
+
+### 🎨 Preset PDF Section Icons
+
+**Backend `engines/pdf_takeoff.py`** :
+- Nouvelle constante `PRESET_KIND_ICONS` : dict de 10 catégories (wall/opening/floor/
+  ceiling/paint/insulation/counter/roof/note/other) avec `{color: HexColor, letter: str,
+  label: str}`
+- Nouveau helper `_preset_icon_drawing(kind)` — retourne un `reportlab.graphics.shapes.Drawing`
+  avec un cercle coloré + initiale blanche centrée (fallback "other" pour kinds inconnus)
+- `_story_room_presets` remplace la colonne « Type » texte par la colonne « Cat. » avec
+  l'icône Drawing centrée (VALIGN MIDDLE, ALIGN CENTER)
+- Le PDF conserve un format A4 standard, taille passe de ~3.5KB à ~4.2KB (icônes vectorielles)
+
+### 📌 Live Total Sticky on Scroll
+
+**Frontend `LiveTotalBar.jsx`** :
+- Nouveau state `collapsed: boolean`
+- useEffect ajoute un `addEventListener('scroll', ...)` sur le canvas parent OU window
+  (throttle 150ms + auto-restore après 2s d'inactivité)
+- Quand `collapsed && hasEstimates` : rendu en mode pill (rond, background orange plein,
+  `live-total-bar-pill` + `live-total-pill-value` avec le total en gros)
+- Clic sur la pill → `setCollapsed(false)` pour développer
+- Le mode complet réapparaît automatiquement 2s après la fin du scroll
+
+### 🧪 Tests (209/210 iter52-61 PASSED — 99.5%)
+- Nouveau `/app/backend/tests/test_iter61_level_aware_and_pdf_icons.py` — **20/20 PASSED**
+  (weighted avg edge cases + estimate levels support + EstimateIn.levels + AI prompt
+  cleaned_levels + PRESET_KIND_ICONS 10 kinds + _preset_icon_drawing valid + PDF build
+  > 2KB with icons + LiveTotalBar compare-prices/materialsByRoom/pill/scroll listener +
+  SmartProject.jsx analysis-levels/chips/hauteur pondérée)
+- Nouveau `/app/backend/tests/test_iter61_http_e2e.py` créé par testing agent —
+  **5/5 PASSED** (E2E HTTP: analyse multi-étages → 3 levels + h=2.379 ; simple → h=2.5 ;
+  compute avec levels → h weighted ; compute sans levels → h=2.5 ; PDF demo plan =
+  4158 bytes valides)
+- Rapport `/app/test_reports/iteration_59.json` : **0 critical / 0 UI bugs / 0 integration
+  issues / 0 design issues**, `retest_needed: false`
+- Le seul failure de la régression iter52 est un test préexistant sans lien avec iter61
+  (`test_iter6_revenue_phase23.py::test_marketplace_pros_list` — assertion `count==0` mais
+  seed contient 4 pros vérifiés)
+

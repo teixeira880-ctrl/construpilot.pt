@@ -135,6 +135,28 @@ export default function SmartProject() {
                   {result.analysis.diy_advice}
                 </p>
               )}
+              {result.analysis.levels?.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border" data-testid="analysis-levels">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Niveaux détectés (hauteur pondérée : <span className="num font-medium">
+                    {result.estimation.ceiling_height_m?.toFixed(2)} m</span>)
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {result.analysis.levels.map((lvl, i) => (
+                      <span
+                        key={i}
+                        data-testid={`analysis-level-${i}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm border border-border text-xs"
+                      >
+                        <span className="font-medium">{lvl.label}</span>
+                        <span className="num text-muted-foreground">
+                          {lvl.surface_m2} m² · {lvl.ceiling_height_m} m
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="surface p-6">
               <p className="overline flex items-center gap-2"><HelpCircle className="h-4 w-4" /> Questions à préciser</p>
