@@ -16,6 +16,7 @@ class RegisterIn(BaseModel):
     name: str
     email: EmailStr
     password: str
+    referred_by_code: str | None = None
 
 
 class LoginIn(BaseModel):
@@ -50,9 +51,17 @@ async def register(body: RegisterIn, response: Response):
         "user_id": new_user_id(), "email": email, "name": body.name,
         "password_hash": hash_password(body.password), "picture": None,
         "role": "user", "plan": "free", "auth_provider": "password",
+        "referred_by": (body.referred_by_code or "").upper().strip() or None,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(user)
+    # Credit the referrer (silent no-op if code invalid) — routed via referrals module
+    if body.referred_by_code:
+        from routes.referrals import credit_referrer
+        try:
+            await credit_referrer(body.referred_by_code)
+        except Exception:
+            pass  # never break signup on a bonus-credit error
     token = await _set_session(response, user["user_id"])
     return {"user": _public(user), "token": make_jwt(user["user_id"]), "session_token": token}
 

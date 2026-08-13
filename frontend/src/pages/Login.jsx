@@ -50,14 +50,11 @@ export default function Login() {
     try {
       if (mode === "login") await login(form.email, form.password);
       else {
-        await register(form.name, form.email, form.password);
         const ref = (form.ref || sessionStorage.getItem("construpilot_ref") || "").trim();
+        await register(form.name, form.email, form.password, ref || null);
         if (ref) {
-          try {
-            await api.post("/referral/apply", { code: ref });
-            toast.success("Code parrainage appliqué — 5 € offerts sur votre premier achat");
-            sessionStorage.removeItem("construpilot_ref");
-          } catch { /* silencieux */ }
+          toast.success(`Code parrainage ${ref.toUpperCase()} appliqué — bienvenue !`);
+          sessionStorage.removeItem("construpilot_ref");
         }
       }
       toast.success("Bienvenue chez ConstruPilot", { position: "bottom-right", duration: 2500 });

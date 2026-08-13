@@ -675,16 +675,74 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux OK : takeoff (2.6 KB), quote (3.1 KB), project
   (3 KB), TVA attestation (3.6 KB) — aucun régression sur la sortie PDF.
 
-### ⏭️ Reporté (P2 backlog)
-- `is` → `==` : 100 cas détectés mais tous sont `is None/True/False` (**idiomes
-  Python corrects**, pas un anti-pattern). Non appliqué → aurait introduit des bugs.
-- Refactor `build_estimation_pdf` (118 lignes / complexité 13) — même pattern
-  d'extraction à appliquer, en attente.
-- Refactor `engines/monetization.py` (`ensure_stripe_catalog`, `create_checkout`,
-  `handle_webhook`) — complexité 14/14/6.
-- Refactor calculators (`paint()`, `tile()`) et `estimate()` — trop de
-  paramètres → dataclasses de config.
-- Type hints coverage (server.py 0 % → cible 80 %).
-- Split `routes/plans.py` (38 imports, ~2000 lignes) → CRUD, analytics,
-  exports séparés.
+## 20. Changelog Iter 34 (13/02/2026) — Blog x3 + Local Landing x6 + Referral
+
+### 📝 Blog SEO — 3 nouveaux articles (total 6)
+- `/blog/abattre-mur-porteur-reglementation` — 8 min · Structure. Cible : « abattre
+  mur porteur », « prix ouverture mur porteur », « bureau d'études copropriété ».
+- `/blog/permis-construire-2026` — 7 min · Administratif. Cible : « permis
+  construire 2026 », « déclaration préalable travaux », « délai permis ».
+- `/blog/re2020-renovation-guide` — 6 min · Énergie. Cible : « RE2020 rénovation »,
+  « Bbio », « Cep », « isolation RE2020 ».
+- Sitemap.xml mis à jour, JSON-LD BlogPosting complet par article.
+
+### 🌍 Local Landing Pages — 6 villes
+- Routes : `/devis-travaux-paris`, `/lyon`, `/marseille`, `/toulouse`,
+  `/bordeaux`, `/nantes` (routes React Router statiques générées depuis
+  `CITY_LIST`, permet le paramètre partiel `-{slug}` sans hack).
+- Page `LocalLanding.jsx` : hero personnalisé par ville + 4 stats (prix m²,
+  artisans région, surface, délai devis) + contexte local détaillé + 3 tips
+  spécifiques (copropriété/ABF Paris, traboules Lyon, enduits chaux Marseille,
+  briques foraines Toulouse, ravalement Bordeaux, VMC humidité Nantes) + tous
+  les codes postaux + sidebar CTA + liens croisés.
+- **JSON-LD `ProfessionalService`** par ville avec `areaServed`, `geo`
+  (lat/lng), `priceRange`, `aggregateRating` calibré, `hasOfferCatalog`.
+- SEO complet : title, description, keywords, canonical, og:image par ville.
+- Data source : `/frontend/src/lib/cities.js` — 6 villes calibrées prix
+  réels Feb 2026, top codes postaux, projets types.
+
+### 🎁 Programme de parrainage complet
+- **Backend** (`/routes/referrals.py`) :
+  - `GET /api/referrals/me` → code + share_url + stats (filleuls masqués GDPR,
+    bonus_days, cap 360).
+  - `GET /api/referrals/lookup/{code}` → validation publique + prénom du
+    parrain pour l'écran signup.
+  - `credit_referrer(code)` → fonction utilitaire appelée depuis
+    `/api/auth/register`.
+  - Format code : `{PRÉFIX-NOM}-{HEX}` (ex : `MARC-B3DA`), auto-généré au
+    premier appel, unicité vérifiée sur 5 tentatives + fallback `REF-XXX`.
+- **Auth** : `RegisterIn.referred_by_code: str | None` optionnel. À
+  l'inscription, `referred_by` est stocké sur le user + `+30 jours Pro`
+  crédités au parrain (cap 360 jours = 12 mois).
+- **Frontend** :
+  - `/parrainage` — page complète : code + copie + partage WhatsApp/Email +
+    stats (filleuls, jours gagnés, restants), progress bar visuelle, liste
+    filleuls (emails masqués GDPR), section « Comment ça marche ».
+  - Landing capture `?ref=CODE` en query et le stocke en `sessionStorage`.
+  - Login `?ref=CODE` : champ pré-rempli + validation lookup + passage au
+    register avec `referred_by_code`.
+  - `AuthContext.register(name, email, password, referredByCode?)` — nouvelle
+    signature.
+- **Flow validé end-to-end** :
+  1. Pro se connecte, va sur `/parrainage`, code créé = `MARC-B3DA`
+  2. Nouveau user s'inscrit avec `referred_by_code: MARC-B3DA`
+  3. Marc voit `total_referrals: 1`, `bonus_days_earned: 30`,
+     email filleul masqué `r***@example.com`
+
+### Fichiers créés / modifiés
+- **Créés** : `pages/LocalLanding.jsx` (170 lignes), `pages/Referrals.jsx`
+  (200 lignes), `lib/cities.js` (150 lignes), `routes/referrals.py` (140 lignes).
+- **Modifiés** : `App.js` (routes), `AuthContext.jsx` (signature register),
+  `Login.jsx` (flow ref simplifié), `routes/auth.py` (referred_by_code),
+  `server.py` (include router), `lib/blogArticles.js` (+3), `lib/blogBodies.jsx`
+  (+3 articles), `public/sitemap.xml` (+10 URLs), `pages/Landing.jsx`
+  (capture ?ref=).
+
+### Backlog restant
+- **P2** : brancher `referral_bonus_days` sur la vérification Stripe / plan
+  pour vraiment offrir les jours Pro (actuellement compteur affiché mais pas
+  encore décompté sur la facturation).
+- **P2** : ajouter la page /parrainage au Nav (currently in Nav.jsx `NAV_ITEMS`
+  or via user menu ?).
+- **P3** : notifications email au parrain quand un filleul s'inscrit.
 

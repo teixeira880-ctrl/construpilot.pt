@@ -177,4 +177,191 @@ export const ARTICLE_BODIES = {
       </p>
     </>
   ),
+
+  "abattre-mur-porteur-reglementation": (
+    <>
+      <p className="lead">
+        Ouvrir un mur porteur, c'est le rêve de tous les propriétaires qui veulent une pièce à vivre
+        décloisonnée. C'est aussi <strong>l'un des chantiers les plus encadrés légalement</strong>. Voici
+        la procédure complète 2026, le prix moyen, et les 3 pièges qui font capoter 1 chantier sur 4
+        en copropriété.
+      </p>
+
+      <h2>Comment savoir si un mur est porteur ?</h2>
+      <p>
+        Trois indices concordants : (1) épaisseur supérieure à <strong>15 cm</strong>, (2) situé au
+        droit d'une fondation ou d'un mur du dessous (relever le plan), (3) sonorité mate au marteau.
+        En doute → <strong>bureau d'études structure obligatoire</strong>. Coût : 350 à 900 € pour un
+        rapport de sondage.
+      </p>
+
+      <h2>Les 5 étapes légales obligatoires</h2>
+      <ol>
+        <li><strong>Diagnostic structure</strong> par bureau d'études (BE) : 500 à 1 200 €.</li>
+        <li><strong>Note de calcul</strong> validant la section d'IPN ou HEA. Le BE dimensionne
+        la poutre nécessaire selon la portée et les charges.</li>
+        <li><strong>Autorisation copropriété</strong> (AG obligatoire, majorité art. 25 loi 1965).
+        Sans elle, vous êtes exposé à démolition + dommages-intérêts.</li>
+        <li><strong>Déclaration préalable de travaux</strong> en mairie (aucun permis nécessaire
+        si façade non modifiée). Délai 1 mois.</li>
+        <li><strong>Réalisation par entreprise assurée décennale</strong>. La décennale du BE ne
+        couvre PAS l'exécution.</li>
+      </ol>
+
+      <h2>Prix moyens 2026 en France</h2>
+      <ul>
+        <li>Ouverture <strong>2 mètres</strong> (IPN) : <strong>3 500 à 6 000 €</strong> TTC.</li>
+        <li>Ouverture <strong>3 à 4 mètres</strong> (HEA 200) : <strong>7 000 à 12 000 €</strong> TTC.</li>
+        <li>Ouverture <strong>&gt; 4 mètres</strong> (double HEA) : à partir de <strong>15 000 €</strong>.</li>
+        <li>Habillage / placo / peinture (finition) : <strong>+ 800 à 1 500 €</strong>.</li>
+      </ul>
+
+      <h2>Les 3 pièges à éviter</h2>
+      <p>
+        <strong>Piège 1 :</strong> croire qu'un mur de refend n'est pas porteur. En copropriété
+        ancienne (Haussmann, brique), 70 % des refends portent des solives.
+      </p>
+      <p>
+        <strong>Piège 2 :</strong> zapper l'AG copropriété « parce que c'est chez moi ». Un syndic peut
+        engager une action en démolition sous 10 ans (prescription trentenaire pour les modifications
+        structurelles). Coût du redressement moyen : <strong>25 000 €</strong>.
+      </p>
+      <p>
+        <strong>Piège 3 :</strong> prendre une entreprise sans <strong>décennale spécifique
+        « gros œuvre + structure »</strong>. Une décennale « peinture-plâtrerie » ne couvre PAS une
+        ouverture d'IPN.
+      </p>
+
+      <h2>Chiffrez en 30 secondes avec ConstruPilot</h2>
+      <p>
+        Ajoutez « ouverture mur porteur 3m » à votre description sur{" "}
+        <a href="/smart-project" className="text-primary underline">Smart Project</a> : l'IA détecte
+        automatiquement la nécessité d'un BE, le lot IPN, et vous chiffre à ± 15 % — coach IA compris
+        pour vous alerter sur les obligations légales.
+      </p>
+    </>
+  ),
+
+  "permis-construire-2026": (
+    <>
+      <p className="lead">
+        En 2026, les seuils d'obligation du permis de construire ont légèrement bougé avec la loi
+        Climat & Résilience et la simplification des procédures d'urbanisme. Voici les cas clairs pour
+        savoir <strong>qui doit déposer un permis (PC), une déclaration préalable (DP), ou rien
+        du tout</strong>, avec les délais réels observés en préfecture.
+      </p>
+
+      <h2>Extension : DP jusqu'à 40 m², PC au-delà</h2>
+      <ul>
+        <li><strong>≤ 5 m² d'emprise au sol</strong> : aucune formalité (garage à vélo, abri de
+        jardin).</li>
+        <li><strong>5 à 20 m²</strong> (hors zones U du PLU) : <strong>déclaration préalable</strong>.</li>
+        <li><strong>5 à 40 m²</strong> (en zone U du PLU) : <strong>déclaration préalable</strong>.</li>
+        <li><strong>Au-delà de 40 m² OU si la surface totale dépasse 150 m²</strong>{" "}
+        (recours obligatoire à l'architecte) : <strong>permis de construire</strong>.</li>
+      </ul>
+
+      <h2>Surélévation, garage, piscine, ravalement</h2>
+      <ul>
+        <li><strong>Surélévation créant de la surface</strong> : PC si &gt; 20 m² (40 m² en zone U).</li>
+        <li><strong>Garage attenant</strong> : DP jusqu'à 20 m², PC au-delà.</li>
+        <li><strong>Piscine enterrée</strong> : DP pour un bassin ≤ 100 m² sans abri fixe. PC si abri
+        fixe &gt; 1,80 m.</li>
+        <li><strong>Ravalement de façade + changement d'aspect</strong> : DP (couleur, matériau).</li>
+        <li><strong>Changement de destination</strong> (garage → chambre, commerce → logement) :
+        DP obligatoire même sans travaux visibles.</li>
+      </ul>
+
+      <h2>Délais réels 2026 (préfectures)</h2>
+      <ul>
+        <li><strong>Déclaration préalable</strong> : 1 mois d'instruction (2 mois si zone protégée
+        ABF). Silence = accord tacite.</li>
+        <li><strong>Permis de construire maison individuelle</strong> : 2 mois. En pratique 8 à
+        14 semaines avec compléments.</li>
+        <li><strong>Permis de construire lotissement / ERP</strong> : 3 mois, souvent prolongé à 6.</li>
+      </ul>
+
+      <h2>Pièces à fournir</h2>
+      <p>Cerfa 13703 (DP) ou 13406 (PC) + plan de situation + plan de masse + plan de coupe + plan
+      des façades + notice descriptive + photos. Total : <strong>8 à 12 pièces</strong> selon le projet.
+      Un géomètre pour le plan de masse coûte 300 à 700 € ; un architecte 3 à 8 % du montant travaux.</p>
+
+      <h2>Coût moyen constitution dossier</h2>
+      <ul>
+        <li>DP en autonomie : <strong>0 €</strong> (à part le géomètre éventuel).</li>
+        <li>DP par architecte : <strong>500 à 1 500 €</strong>.</li>
+        <li>PC maison individuelle par architecte : <strong>3 000 à 8 000 €</strong>.</li>
+      </ul>
+
+      <h2>Astuce ConstruPilot</h2>
+      <p>
+        Quand vous décrivez votre projet sur{" "}
+        <a href="/smart-project" className="text-primary underline">Smart Project</a>, notre coach IA
+        détecte si vos travaux nécessitent DP ou PC, et vous alerte AVANT de commencer — évitant
+        redressement (mise en conformité rétroactive : 15 000 à 50 000 €).
+      </p>
+    </>
+  ),
+
+  "re2020-renovation-guide": (
+    <>
+      <p className="lead">
+        La <strong>Réglementation Environnementale 2020 (RE2020)</strong> a d'abord ciblé la
+        construction neuve depuis 2022. En 2026, elle s'étend progressivement à la{" "}
+        <strong>rénovation d'ampleur</strong>. Voici ce que tout artisan et particulier doit connaître
+        pour rester dans les clous — et transformer la contrainte en argument commercial.
+      </p>
+
+      <h2>Quand la RE2020 s'applique-t-elle en rénovation ?</h2>
+      <p>
+        Depuis 2024, la RE2020 s'applique à toute <strong>rénovation lourde qui touche plus de 25 %
+        des parois de l'enveloppe</strong> (murs extérieurs, toiture, ouvertures) ou dont le coût
+        dépasse <strong>25 % de la valeur du bien</strong>. Le seuil sera abaissé à 20 % en 2027.
+      </p>
+
+      <h2>Les 3 indicateurs à respecter</h2>
+      <ol>
+        <li><strong>Bbio (Besoin bioclimatique)</strong> : mesure l'efficacité passive du bâtiment
+        (orientation, inertie, ouvertures). Seuil rénovation lourde : <strong>Bbio_max × 1,3</strong>.</li>
+        <li><strong>Cep (Consommation énergétique primaire)</strong> : ≤ <strong>70 kWh/m²/an</strong>
+        après travaux (contre 50 en neuf). Chauffage, ECS, refroidissement, éclairage inclus.</li>
+        <li><strong>Ic Énergie + Ic Construction</strong> (empreinte carbone) : plafond
+        <strong> 1 800 kgCO₂/m²</strong> sur 50 ans en rénovation d'ampleur.</li>
+      </ol>
+
+      <h2>Isolation minimale imposée</h2>
+      <ul>
+        <li><strong>Murs extérieurs</strong> : R ≥ <strong>4,4 m².K/W</strong> (soit 14 cm laine
+        de verre ou 12 cm biosourcée).</li>
+        <li><strong>Toiture / combles</strong> : R ≥ <strong>7,0 m².K/W</strong> (24 cm minimum).</li>
+        <li><strong>Planchers bas</strong> : R ≥ <strong>3,0 m².K/W</strong>.</li>
+        <li><strong>Menuiseries</strong> : Uw ≤ 1,3 W/m².K (double vitrage argon obligatoire, triple
+        recommandé au Nord).</li>
+      </ul>
+
+      <h2>Matériaux à privilégier pour le carbone</h2>
+      <p>
+        Béton bas carbone (CEM III, laitier), ossature bois, isolants biosourcés (chanvre, ouate de
+        cellulose, laine de bois). Un DPE en RE2020 valorise ces matériaux : compter un bonus de
+        <strong> 30 à 60 kgCO₂/m²</strong> économisés vs équivalents traditionnels.
+      </p>
+
+      <h2>Aides financières 2026</h2>
+      <ul>
+        <li>MaPrimeRénov' : jusqu'à <strong>63 000 €</strong> pour une rénovation performante,
+        forfait bonus RE2020.</li>
+        <li>Éco-PTZ : <strong>50 000 €</strong> sans intérêts sur 20 ans.</li>
+        <li>TVA à 5,5 % sur les travaux d'amélioration énergétique performants.</li>
+        <li>CEE (Certificats d'économie d'énergie) : cumulables avec les aides publiques.</li>
+      </ul>
+
+      <h2>ConstruPilot vous alerte automatiquement</h2>
+      <p>
+        Quand votre estimation dépasse 25 % de valeur du bien ou touche l'enveloppe, le coach IA
+        vous notifie de l'obligation RE2020 dans le devis, calcule les Bbio/Cep prévisionnels et
+        vous rappelle les aides disponibles pour chaque poste. Un{" "}
+        <strong>argument commercial imparable</strong> face à un particulier qui hésite.
+      </p>
+    </>
+  ),
 };

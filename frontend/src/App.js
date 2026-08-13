@@ -37,6 +37,9 @@ import PlanTakeoff from "@/pages/PlanTakeoff";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
+import LocalLanding from "@/pages/LocalLanding";
+import Referrals from "@/pages/Referrals";
+import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
 
@@ -79,6 +82,12 @@ function AppRouter() {
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
       <Route path="/blog" element={<Shell><Blog /></Shell>} />
       <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />
+      <Route path="/devis-travaux-:city" element={<Shell><LocalLanding /></Shell>} />
+      {CITY_LIST.map((c) => (
+        <Route key={c.slug} path={`/devis-travaux-${c.slug}`}
+               element={<Shell><LocalLanding /></Shell>} />
+      ))}
+      <Route path="/parrainage" element={<Protected><Shell><Referrals /></Shell></Protected>} />
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
       <Route path="/equipe" element={<Protected><Shell><Team /></Shell></Protected>} />

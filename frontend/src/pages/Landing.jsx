@@ -89,6 +89,9 @@ export default function Landing() {
 
   useEffect(() => {
     api.get("/estimation/catalog").then(({ data }) => setTypes(data.project_types)).catch(() => {});
+    // Capture ?ref=CODE from landing URL — persists into signup flow
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) sessionStorage.setItem("construpilot_ref", ref.toUpperCase());
   }, []);
 
   const launch = () => {
