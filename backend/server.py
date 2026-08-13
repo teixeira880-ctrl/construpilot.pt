@@ -19,7 +19,8 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     referrals as referrals_routes,
                     errors as errors_routes,
                     emails as emails_routes,
-                    plans as plans_routes)  # noqa: E402
+                    plans as plans_routes,
+                    tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
@@ -53,6 +54,7 @@ api_router.include_router(share.router)
 api_router.include_router(admin_revenue.router)
 api_router.include_router(plans_routes.router)
 api_router.include_router(plans_routes.quote_router)
+api_router.include_router(tool_presets_routes.router)
 api_router.include_router(referrals_routes.router)
 api_router.include_router(errors_routes.router)
 api_router.include_router(emails_routes.router)

@@ -380,6 +380,41 @@ async def delete_room(plan_id: str, room_id: str, user=Depends(current_user)):
     return {"ok": True}
 
 
+class RoomUpdateIn(BaseModel):
+    name: str | None = None
+    height_m: float | None = None
+    preset_id: str | None = None  # référence à un modèle appliqué (Vague B)
+
+
+@router.patch("/{plan_id}/rooms/{room_id}")
+async def update_room(plan_id: str, room_id: str, body: RoomUpdateIn,
+                      user=Depends(current_user)):
+    """Édition inline d'une pièce depuis le Volet Objets (Vague B)."""
+    updates = {}
+    if body.name is not None:
+        cleaned = body.name.strip()
+        if not cleaned:
+            raise HTTPException(422, "Nom invalide")
+        updates["rooms.$.name"] = cleaned[:60]
+    if body.height_m is not None:
+        if body.height_m <= 0 or body.height_m > 20:
+            raise HTTPException(422, "Hauteur invalide")
+        updates["rooms.$.height_m"] = float(body.height_m)
+    if body.preset_id is not None:
+        updates["rooms.$.preset_id"] = body.preset_id or None
+    if not updates:
+        raise HTTPException(422, "Aucun champ à mettre à jour")
+    updates["updated_at"] = _now()
+    res = await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"], "rooms.room_id": room_id},
+        {"$set": updates},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Pièce introuvable")
+    return {"ok": True, "updated": list(updates.keys())}
+
+
+
 # ============ COMPARE / WALLS DIFF ============
 
 class CompareIn(BaseModel):

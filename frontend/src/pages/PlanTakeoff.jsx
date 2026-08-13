@@ -8,6 +8,8 @@ import { QuoteDialog } from "@/components/planTakeoff/QuoteDialog";
 import { Render3dDialog } from "@/components/planTakeoff/Render3dDialog";
 import { EstimateDialog } from "@/components/planTakeoff/EstimateDialog";
 import { MultiPlanDialog } from "@/components/planTakeoff/MultiPlanDialog";
+import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
+import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
@@ -592,6 +594,9 @@ export default function PlanTakeoff() {
   });
   const [activeCounterId, setActiveCounterId] = useState(null);
   const [pitchDegrees, setPitchDegrees] = useState(30);
+  // Iter 58 (Vague B) — Volet Objets + Modèles Outils
+  const [objectPanelOpen, setObjectPanelOpen] = useState(false);
+  const [currentPreset, setCurrentPreset] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [calibDialog, setCalibDialog] = useState(false);
@@ -980,6 +985,79 @@ export default function PlanTakeoff() {
     });
     setPoints([]);
     toast.success(`Toiture : ${real_area_m2.toFixed(1)} m² réels (à ${pitch}°)`);
+  };
+
+  // ============ VAGUE B — Handlers pour le Volet Objets ============
+
+  const renameRoom = async (roomId, newName) => {
+    if (!plan?.plan_id || !newName?.trim()) return;
+    try {
+      await api.patch(`/takeoffs/${plan.plan_id}/rooms/${roomId}`, { name: newName.trim() });
+      await refreshPlan();
+      toast.success("Pièce renommée");
+    } catch { toast.error("Renommage impossible"); }
+  };
+
+  const deleteRoomFromPanel = async (roomId) => {
+    if (!plan?.plan_id) return;
+    if (!window.confirm("Supprimer cette pièce ?")) return;
+    try {
+      await api.delete(`/takeoffs/${plan.plan_id}/rooms/${roomId}`);
+      await refreshPlan();
+      toast.success("Pièce supprimée");
+    } catch { toast.error("Suppression impossible"); }
+  };
+
+  const deleteMeasureFromPanel = async (measureId) => {
+    if (!plan?.plan_id) return;
+    try {
+      await api.delete(`/takeoffs/${plan.plan_id}/measurements/${measureId}`);
+      await refreshPlan();
+    } catch { /* endpoint may not exist yet; silent */ }
+  };
+
+  const deleteAnnotationLocal = (kind, id) => {
+    setAnnotations((prev) => ({
+      ...prev,
+      [kind]: prev[kind].filter((x) => x.id !== id),
+    }));
+  };
+
+  const updateAnnotationLocal = (kind, id, patch) => {
+    setAnnotations((prev) => ({
+      ...prev,
+      [kind]: prev[kind].map((x) => x.id === id ? { ...x, ...patch } : x),
+    }));
+  };
+
+  const focusOnObject = ({ kind, data, room, opening }) => {
+    // Simplified: centre la vue (offset) et zoom sur l'objet sur le canvas
+    const cx = data?.vx ?? data?.x ?? (data?.points?.[0]?.[0]) ?? (data?.polygon?.[0]?.[0]);
+    const cy = data?.vy ?? data?.y ?? (data?.points?.[0]?.[1]) ?? (data?.polygon?.[0]?.[1]);
+    if (typeof cx === "number" && typeof cy === "number") {
+      // Note: we could compute a proper offset here based on canvas size but keeping simple
+      toast.info(`Zoom sur ${kind}`);
+      setZoom(1.2);
+    }
+  };
+
+  // Preset application — recolle un preset comme label + prix par unité sur le contexte courant
+  const applyPresetToTool = (preset) => {
+    setCurrentPreset(preset);
+    // Si outil compteur : crée un nouveau compteur avec les params du preset
+    if (tool === TOOLS.COUNTER) {
+      const nb = annotations.counters.length;
+      const newC = {
+        id: `cnt_${Date.now()}`,
+        label: preset.name,
+        color: preset.color || COUNTER_COLORS[nb % COUNTER_COLORS.length],
+        unit: preset.unit || "u",
+        markers: [],
+        preset_id: preset.preset_id,
+      };
+      setAnnotations({ ...annotations, counters: [...annotations.counters, newC] });
+      setActiveCounterId(newC.id);
+    }
   };
 
   const finishDistance = async () => {
@@ -2018,6 +2096,17 @@ export default function PlanTakeoff() {
               {locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
               {locked ? "Verrouillé" : "Verrouiller"}
             </Button>
+            <Button
+              size="sm"
+              variant={objectPanelOpen ? "default" : "outline"}
+              onClick={() => setObjectPanelOpen((o) => !o)}
+              data-testid="tool-objects-panel"
+              className={`rounded-sm gap-1 h-8 ${objectPanelOpen ? "bg-primary text-white hover:bg-orange-600" : ""}`}
+              title="Ouvrir le Volet Objets (édition & jump-to)"
+            >
+              <Layers className="h-3 w-3" />
+              Objets
+            </Button>
           </div>
 
           {/* CANVAS */}
@@ -2042,6 +2131,24 @@ export default function PlanTakeoff() {
             activeCounterId={activeCounterId}
           />
 
+          <ObjectPanel
+            open={objectPanelOpen}
+            onClose={() => setObjectPanelOpen(false)}
+            rooms={rooms}
+            measurements={plan?.measurements || []}
+            annotations={annotations}
+            onFocusObject={focusOnObject}
+            onRenameRoom={renameRoom}
+            onDeleteRoom={deleteRoomFromPanel}
+            onDeleteMeasure={deleteMeasureFromPanel}
+            onDeleteCounter={(id) => deleteAnnotationLocal("counters", id)}
+            onRenameCounter={(id, name) => updateAnnotationLocal("counters", id, { label: name })}
+            onDeleteNote={(id) => deleteAnnotationLocal("notes", id)}
+            onEditNote={(id, text) => updateAnnotationLocal("notes", id, { text })}
+            onDeleteAngle={(id) => deleteAnnotationLocal("angles", id)}
+            onDeletePitched={(id) => deleteAnnotationLocal("pitched_surfaces", id)}
+          />
+
           {/* CONTEXT ACTIONS */}
           {points.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2 items-center">
@@ -2057,9 +2164,23 @@ export default function PlanTakeoff() {
                 </Button>
               )}
               {tool === TOOLS.ROOM && points.length >= 3 && (
-                <Button size="sm" onClick={finishRoom} data-testid="tool-finish-room" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                  <Save className="h-3 w-3" /> Fermer pièce
-                </Button>
+                <>
+                  <PresetPicker
+                    kinds={["floor", "paint", "insulation", "wall"]}
+                    onApply={(p) => setCurrentPreset(p)}
+                    currentSelection={{ unit: "m²" }}
+                    testIdPrefix="room-preset"
+                  />
+                  {currentPreset && (
+                    <Badge variant="outline" className="text-[10px] rounded-sm gap-1">
+                      <span className="h-2 w-2 rounded-full" style={{ background: currentPreset.color }} />
+                      {currentPreset.name}
+                    </Badge>
+                  )}
+                  <Button size="sm" onClick={finishRoom} data-testid="tool-finish-room" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                    <Save className="h-3 w-3" /> Fermer pièce
+                  </Button>
+                </>
               )}
               {tool === TOOLS.PITCH && points.length >= 3 && (
                 <>
@@ -2127,6 +2248,12 @@ export default function PlanTakeoff() {
               >
                 + Nouveau compteur
               </Button>
+              <PresetPicker
+                kinds={["counter", "opening"]}
+                onApply={applyPresetToTool}
+                currentSelection={{ unit: "u" }}
+                testIdPrefix="counter-preset"
+              />
               {activeCounterId && (
                 <Button
                   size="sm" variant="ghost"

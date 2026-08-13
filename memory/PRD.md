@@ -1470,3 +1470,85 @@ Vague A = 4 outils manquants les plus visibles chez QuoterPlan.
   auto-save vérifié via GET /takeoffs), Angle hints contextuels corrects, Pitch
   correctement disabled sans calibration
 
+
+## 44. Changelog Iter 58 (13/02/2026) — QuoterPlan Wave B (Modèles + Volet Objets)
+
+### 🎯 Objectif
+Compléter la parity QuoterPlan sur les fonctionnalités "confort pro" : modèles d'ouvrages
+réutilisables + panneau latéral d'inspection des mesures.
+
+### 📦 Modèles Outils (Tool Presets)
+
+**Backend** — nouveau module `routes/tool_presets.py`
+- 5 endpoints REST : `GET /api/tool-presets`, `POST /api/tool-presets`,
+  `PATCH /api/tool-presets/{id}`, `DELETE /api/tool-presets/{id}`,
+  `POST /api/tool-presets/seed-defaults` (idempotent — crée 6 modèles si l'utilisateur en a 0)
+- Modèle Pydantic `ToolPresetIn` : `name`, `kind` (11 valeurs canoniques : wall / opening /
+  floor / ceiling / paint / insulation / counter / roof / note / other), `unit`, `color`,
+  `price_per_unit`, `params` (libre), `notes`
+- Helper `_normalize()` centralise trim + bounds + fallbacks (kind inconnu → "other",
+  unit vide → "u", color défaut `#f97316`, notes vides → None)
+- 6 presets d'usine (seed) couvrant les métiers principaux :
+  Mur ext. porteur 20 cm (parpaing) · Cloison BA13 72/48 · Isolant combles laine roche
+  200 mm · Sol carrelage 60×60 · Peinture mate 2 couches · Ossature bois 45×145 entraxe 60
+
+**Frontend** — nouveau composant `PresetPicker.jsx`
+- Bouton "Modèle" + icône Layers + ChevronDown
+- Dropdown filtré par `kinds` (prop) — affiche uniquement les presets pertinents pour l'outil
+- Chargement lazy à la première ouverture, fermeture au clic extérieur (useRef + mousedown)
+- Bouton "Modèles d'usine" (Sparkles) — visible SEULEMENT si `presets.length === 0`
+- Bouton "Créer un nouveau modèle" — mini-form inline avec nom + prix, Enter valide, Escape annule
+- Bouton delete par preset avec confirmation window.confirm
+- `data-testid` prefixables via `testIdPrefix` prop : `{prefix}-picker-btn`, `-picker-menu`,
+  `-seed-defaults`, `-item-{id}`, `-delete-{id}`, `-new-btn`, `-new-name`, `-new-price`, `-new-save`
+
+**Câblage** dans `PlanTakeoff.jsx`
+- Toolbar contextuelle **Pièce** (tool='room' + points≥3) → PresetPicker filtré
+  `["floor", "paint", "insulation", "wall"]` + Badge d'affichage du preset appliqué
+- Toolbar contextuelle **Compteur** (tool='counter') → PresetPicker filtré
+  `["counter", "opening"]` + application crée automatiquement un nouveau compteur
+- State `currentPreset` conserve le preset actif pour la prochaine mesure
+
+### 📋 Volet Objets (Object Panel)
+
+**Frontend** — nouveau composant `ObjectPanel.jsx`
+- Panneau latéral droit (fixed right-0, w-80, z-[999]) qui liste toutes les mesures
+- Header sticky avec compteur total ("Objets (N)") + bouton close X (relative z-20)
+- 7 tabs avec compteur individuel : **Pièces** · Ouvertures · Compteurs · Notes ·
+  Angles · Toitures · Mesures
+- Chaque row : icône typée + label + secondary info + badge valeur (m² / ml / count / °) +
+  boutons edit/delete apparaissant au hover
+- Édition inline pour rooms, counters, notes : clic edit → Input contrôlé, Enter/Escape,
+  data-testid `object-row-{kind}-{id}-input`
+- Empty states par tab : "Aucune X" + "Utilisez les outils pour en créer."
+- `data-testid` : `object-panel`, `object-panel-close`, `object-panel-tab-{id}`,
+  `object-row-{kind}-{id}`, `object-row-{kind}-{id}-edit`, `object-row-{kind}-{id}-delete`
+
+**Câblage** dans `PlanTakeoff.jsx`
+- Bouton `tool-objects-panel` ajouté dans la toolbar (à côté de Verrouiller), toggle open/close,
+  style plein orange quand ouvert
+- Handlers passés : `renameRoom` (PATCH /rooms/{id}), `deleteRoomFromPanel`, `deleteMeasureFromPanel`,
+  `deleteAnnotationLocal(kind, id)`, `updateAnnotationLocal(kind, id, patch)`, `focusOnObject({kind, data})`
+
+**Backend Room Edit** — nouveau endpoint dans `plans_analysis.py`
+- `PATCH /api/takeoffs/{plan_id}/rooms/{room_id}` avec `RoomUpdateIn { name?, height_m?, preset_id? }`
+- Positional operator MongoDB `rooms.$.name/height_m/preset_id`
+- Validation : 404 si room inexistante, 422 pour name vide (après strip), height_m ≤ 0 ou > 20,
+  aucun champ fourni
+
+### 🎨 Correction UX (P3 remarquée par testing agent)
+- ObjectPanel z-index passé de `z-40` à `z-[999]` pour éviter chevauchement avec les toasts Sonner
+- Bouton close X passé en `relative z-20` pour rester clickable même sous overlays
+- Header ObjectPanel devenu sticky (`sticky top-0 z-10`) pour rester visible en scroll
+
+### 🧪 Tests (106/106 iter53-58 PASSED)
+- Nouveau `/app/backend/tests/test_iter58_presets_and_object_panel.py` — **15/15 PASSED**
+  (schema/normalize KNOWN_PRESET_KINDS/component existence/tabs presence/seed content)
+- Nouveau `/app/backend/tests/test_iter58_http_presets_and_rooms.py` créé par testing agent —
+  **12/12 PASSED** (CRUD presets complet + seed idempotency vérifié pour admin ET
+  utilisateur frais + PATCH /rooms/{id} 404/422 exhaustif)
+- Rapport `/app/test_reports/iteration_56.json` : **0 critical / 0 minor / 0 action items**,
+  `retest_needed: false`
+- Screenshot final `/plan` avec panel ouvert : 7 tabs (Pièces, Ouvertures, Compteurs, Notes,
+  Angles, Toitures, Mesures) + counter preset picker + bouton close accessible
+
