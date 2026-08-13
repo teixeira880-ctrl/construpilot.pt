@@ -14,7 +14,6 @@ New endpoints:
 The auth register handler is extended to accept an optional `referred_by_code`.
 """
 import secrets
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException

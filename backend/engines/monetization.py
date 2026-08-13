@@ -223,28 +223,52 @@ async def revoke_entitlement(subscription_id: str, reason: str = "cancelled"):
         {"$set": {"status": reason, "revoked_at": now_iso()}})
 
 
+async def _webhook_mark_paid(obj: dict) -> None:
+    await _mark_paid(obj["id"], obj)
+
+
+async def _webhook_subscription_ended(obj: dict) -> None:
+    await revoke_entitlement(obj["id"], "cancelled")
+
+
+async def _webhook_subscription_updated(obj: dict) -> None:
+    status = obj.get("status")
+    if status in ("canceled", "unpaid", "incomplete_expired"):
+        await revoke_entitlement(obj["id"], status)
+
+
+async def _webhook_invoice_failed(obj: dict) -> None:
+    sub = obj.get("subscription")
+    if not sub:
+        return
+    await db.entitlements.update_many(
+        {"stripe_subscription_id": sub},
+        {"$set": {"status": "past_due", "updated_at": now_iso()}})
+
+
+# Dispatch table : {event_type: handler}. Nesting depth 1 in `handle_webhook`.
+_WEBHOOK_HANDLERS = {
+    "checkout.session.completed": _webhook_mark_paid,
+    "checkout.session.async_payment_succeeded": _webhook_mark_paid,
+    "customer.subscription.deleted": _webhook_subscription_ended,
+    "customer.subscription.paused": _webhook_subscription_ended,
+    "customer.subscription.updated": _webhook_subscription_updated,
+    "invoice.payment_failed": _webhook_invoice_failed,
+}
+
+
 async def handle_webhook(payload: bytes, sig: str) -> dict:
-    """Gère les événements Stripe."""
+    """Gère les événements Stripe.
+
+    Nesting depth ramené à 1 via une dispatch table `_WEBHOOK_HANDLERS`.
+    Événements inconnus sont acceptés silencieusement (retourne `received: True`).
+    """
     event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
-    obj = event["data"]["object"]
-    t = event["type"]
-    if t == "checkout.session.completed":
-        await _mark_paid(obj["id"], obj)
-    elif t == "checkout.session.async_payment_succeeded":
-        await _mark_paid(obj["id"], obj)
-    elif t in ("customer.subscription.deleted", "customer.subscription.paused"):
-        await revoke_entitlement(obj["id"], "cancelled")
-    elif t == "customer.subscription.updated":
-        status = obj.get("status")
-        if status in ("canceled", "unpaid", "incomplete_expired"):
-            await revoke_entitlement(obj["id"], status)
-    elif t == "invoice.payment_failed":
-        sub = obj.get("subscription")
-        if sub:
-            await db.entitlements.update_many(
-                {"stripe_subscription_id": sub},
-                {"$set": {"status": "past_due", "updated_at": now_iso()}})
-    return {"received": True, "type": t}
+    event_type = event["type"]
+    handler = _WEBHOOK_HANDLERS.get(event_type)
+    if handler:
+        await handler(event["data"]["object"])
+    return {"received": True, "type": event_type}
 
 
 # ---------- Entitlements resolution ----------

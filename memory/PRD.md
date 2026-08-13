@@ -738,11 +738,54 @@ Voir `/app/memory/test_credentials.md`.
   (+3 articles), `public/sitemap.xml` (+10 URLs), `pages/Landing.jsx`
   (capture ?ref=).
 
-### Backlog restant
-- **P2** : brancher `referral_bonus_days` sur la vérification Stripe / plan
-  pour vraiment offrir les jours Pro (actuellement compteur affiché mais pas
-  encore décompté sur la facturation).
-- **P2** : ajouter la page /parrainage au Nav (currently in Nav.jsx `NAV_ITEMS`
-  or via user menu ?).
-- **P3** : notifications email au parrain quand un filleul s'inscrit.
+## 21. Changelog Iter 35 (13/02/2026) — Code Quality Round 2 (rapport externe)
+
+### 📄 PDF Refactoring — round 2
+- **`build_quote_pdf`** (144 lignes / 18 vars) → **~20 lignes** via 6 nouveaux
+  helpers extraits :
+  - `_story_quote_title` — titre + sous-titre
+  - `_story_quote_surfaces` — table surfaces mesurées
+  - `_story_quote_line_items` — détail lots (6 colonnes)
+  - `_story_quote_recap` — sous-totaux / TVA / TTC
+  - `_decode_signature_image` + `_story_quote_signature` — bloc signature
+  - `_story_quote_footer` — mentions légales
+- **`build_tva_attestation_pdf`** (8 arguments → dataclass) : nouveau
+  `TvaAttestationInput` regroupe les 8 champs. Signature simplifiée en
+  `build_tva_attestation_pdf(data: TvaAttestationInput)`. Backward-compat
+  intégral pour les appelants legacy (kwargs individuels toujours acceptés,
+  test PDF-byte-identical avant/après).
+- **`is_reduced`** : `tva_pct == 10 or tva_pct == 5 or tva_pct == 55` → `in (10, 5, 55)`.
+
+### 🔀 Webhook Stripe refactoring
+- `handle_webhook` (`engines/monetization.py`) : nesting depth 6 → **1**.
+- Extraction de 4 handlers dédiés : `_webhook_mark_paid`,
+  `_webhook_subscription_ended`, `_webhook_subscription_updated`,
+  `_webhook_invoice_failed`.
+- **Dispatch table** `_WEBHOOK_HANDLERS = {event_type: handler}` — événement
+  inconnu = no-op silencieux (retour `{received: True}` conservé pour Stripe).
+- Comportement fonctionnel strictement identique, testé via imports smoke.
+
+### ✅ Ruff scan final
+- **0 warning** sur `F` (undefined/unused/anti-patterns), **0** sur `S311`
+  (insecure random). Les 12 C901 restants sont sur des fonctions non-critiques
+  (calculators.paint/tile, estimation.estimate, plan_ai) → **backlog P2**.
+
+### ⏭️ Non-corrigé (rapport erroné ou hors scope)
+- **19 undefined variables** — ruff, pyflakes et pylint (F821/E0602) confirment
+  **0 cas réel**. Le rapport surestime systématiquement, ignoré à raison.
+- **152 anti-patterns `is` vs `==` en tests** — grep confirme 100 cas mais tous
+  sont `is None/True/False` (**idiomes Python 3 corrects**). Corriger aurait
+  introduit des bugs (E711 par ruff).
+- **Type hints coverage** — objectif 80 %, actuellement 40 %. Incrémental.
+- **Split `routes/plans.py`** (38 imports) — grosse migration, planifié en
+  itération dédiée.
+
+### Tests locaux d'intégration
+- `build_takeoff_pdf(...)` : ✅ (2 632 bytes)
+- `build_quote_pdf(...)` : ✅ (3 082 bytes)
+- `build_project_quote_pdf(...)` : ✅
+- `build_tva_attestation_pdf(kwargs)` : ✅ (3 578 bytes)
+- `build_tva_attestation_pdf(TvaAttestationInput)` : ✅ (3 578 bytes, **identique**)
+- `_WEBHOOK_HANDLERS` : ✅ 6 events registrés
+- Backend redémarré, `GET /api/estimation/catalog` → HTTP 200
 

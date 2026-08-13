@@ -1,4 +1,5 @@
 """Génération du PDF de MÉTRÉ ConstruPilot PLAN."""
+from dataclasses import dataclass
 from io import BytesIO
 from datetime import datetime, timezone
 
@@ -240,78 +241,62 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
 
 # ============ DEVIS (Full quote PDF) ============
 
-def build_quote_pdf(quote: dict, branding: dict | None = None,
-                    signature: dict | None = None) -> bytes:
-    """Rend un PDF Devis à partir d'un quote (line_items + totaux)."""
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                             leftMargin=18*mm, rightMargin=18*mm,
-                             topMargin=18*mm, bottomMargin=18*mm)
-    S = _styles()
-    story: list = []
-
-    # ---- Header branding (shared helper) ----
-    _story_header_branding(story, branding, S)
-
-    # ---- Title ----
+def _story_quote_title(story: list, quote: dict, S: dict) -> None:
+    """Devis title + subtitle line."""
     story.append(Paragraph("DEVIS ESTIMATIF CONSTRUPILOT", S["kicker"]))
     story.append(Paragraph(quote.get("filename") or "Devis travaux", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
         quote.get("finish", "std"), "Standard")
     story.append(Paragraph(
-        f"Plan <b>{quote.get('plan_id','?')}</b> · Gamme <b>{finish_label}</b> · "
-        f"Sol : <b>{quote.get('floor_material','').capitalize()}</b> · généré le {date_str}",
+        f"Plan <b>{quote.get('plan_id', '?')}</b> · Gamme <b>{finish_label}</b> · "
+        f"Sol : <b>{quote.get('floor_material', '').capitalize()}</b> · généré le {date_str}",
         S["muted"]))
     story.append(Spacer(1, 10))
 
-    # ---- Totaux surfaces ----
-    tots = quote.get("totals", {})
+
+def _story_quote_surfaces(story: list, totals: dict, S: dict) -> None:
+    """Surfaces mesurées section."""
     story.append(Paragraph("Surfaces mesurées", S["h2"]))
     surf_data = [
-        ["Sol", _fmt(tots.get("floor_m2", 0), "m²")],
-        ["Plafonds", _fmt(tots.get("ceiling_m2", 0), "m²")],
-        ["Murs nets", _fmt(tots.get("walls_net_m2", 0), "m²")],
-        ["Périmètre", _fmt(tots.get("perimeter_m", 0), "m")],
+        ["Sol", _fmt(totals.get("floor_m2", 0), "m²")],
+        ["Plafonds", _fmt(totals.get("ceiling_m2", 0), "m²")],
+        ["Murs nets", _fmt(totals.get("walls_net_m2", 0), "m²")],
+        ["Périmètre", _fmt(totals.get("perimeter_m", 0), "m")],
     ]
-    t = Table(surf_data, colWidths=[60*mm, 40*mm])
-    t.setStyle(TableStyle([
+    story.append(_table(surf_data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
-        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
     ]))
-    story.append(t)
 
-    # ---- Detail lignes ----
+
+def _story_quote_line_items(story: list, line_items: list, S: dict) -> None:
+    """Detail table (one row per lot)."""
     story.append(Paragraph("Détail des postes", S["h2"]))
     rows = [["Désignation", "Qté", "Unit.", "Matériaux", "M.O.", "Total HT"]]
-    for li in quote.get("line_items", []):
+    for li in line_items:
         rows.append([
-            li["name"],
-            _fmt(li["quantity"]),
-            li["unit"],
+            li["name"], _fmt(li["quantity"]), li["unit"],
             _fmt(li["material_total"], "€"),
             _fmt(li["labour_total"], "€"),
             _fmt(li["total"], "€"),
         ])
-    t = Table(rows, colWidths=[70*mm, 18*mm, 14*mm, 25*mm, 22*mm, 25*mm], repeatRows=1)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), DARK),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
-    ]))
-    story.append(t)
+    story.append(_table(rows,
+        [70 * mm, 18 * mm, 14 * mm, 25 * mm, 22 * mm, 25 * mm],
+        style_extras=[
+            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+        ], repeat_rows=1))
 
-    # ---- Totaux ----
+
+def _story_quote_recap(story: list, quote: dict, S: dict) -> None:
+    """Recap : sous-totaux, TVA, total TTC."""
     story.append(Spacer(1, 12))
     story.append(Paragraph("Récapitulatif", S["h2"]))
     tva_pct = int(round(quote.get("tva_rate", 0.10) * 100))
@@ -322,8 +307,7 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
         [f"TVA {tva_pct} %", _fmt(quote.get("tva", 0), "€")],
         ["TOTAL TTC", _fmt(quote.get("total_ttc", 0), "€")],
     ]
-    t = Table(tot_rows, colWidths=[110*mm, 45*mm])
-    t.setStyle(TableStyle([
+    story.append(_table(tot_rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("BACKGROUND", (0, -1), (-1, -1), ORANGE),
         ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
@@ -332,49 +316,53 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
         ("FONTSIZE", (0, 0), (-1, -1), 9.5),
         ("FONTSIZE", (0, -1), (-1, -1), 12),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
         ("TOPPADDING", (0, 0), (-1, -1), 6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
-    story.append(t)
 
-    # ---- Signature block (si présent) ----
-    if signature and signature.get("b64"):
-        from reportlab.platypus import Image as RLImage
-        from io import BytesIO as BIO
-        import base64 as b64lib
-        story.append(Spacer(1, 18))
-        story.append(Paragraph("Bon pour accord — Signature client", S["h2"]))
-        sig_img = None
-        try:
-            sig_bytes = b64lib.b64decode(signature["b64"])
-            sig_img = RLImage(BIO(sig_bytes), width=60*mm, height=25*mm,
-                              kind="proportional")
-        except Exception:
-            sig_img = ""
-        signed_at = signature.get("at") or ""
-        signed_date = signed_at[:10] if signed_at else ""
-        info = [
-            Paragraph(f"<b>Signataire :</b> {signature.get('name') or ''}", S["body"]),
-            Paragraph(f"<b>Email :</b> {signature.get('client_email') or ''}", S["body"]),
-            Paragraph(f"<b>Signé le :</b> {signed_date}", S["body"]),
-        ]
-        sig_table = Table([[sig_img, info]], colWidths=[70*mm, None])
-        sig_table.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("BOX", (0, 0), (-1, -1), 0.6, ORANGE),
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FFF7EC")),
-            ("TOPPADDING", (0, 0), (-1, -1), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-            ("LEFTPADDING", (0, 0), (-1, -1), 12),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
-        ]))
-        story.append(sig_table)
 
-    # ---- Footer ----
+def _decode_signature_image(sig_b64: str, width_mm: float = 60, height_mm: float = 25):
+    """Return an RLImage or empty string if decoding fails."""
+    from reportlab.platypus import Image as RLImage
+    from io import BytesIO as BIO
+    import base64 as b64lib
+    try:
+        sig_bytes = b64lib.b64decode(sig_b64)
+        return RLImage(BIO(sig_bytes), width=width_mm * mm, height=height_mm * mm,
+                       kind="proportional")
+    except Exception:
+        return ""
+
+
+def _story_quote_signature(story: list, signature: dict | None, S: dict) -> None:
+    """Optional Bon-pour-accord signature block."""
+    if not signature or not signature.get("b64"):
+        return
+    story.append(Spacer(1, 18))
+    story.append(Paragraph("Bon pour accord — Signature client", S["h2"]))
+    sig_img = _decode_signature_image(signature["b64"])
+    signed_date = (signature.get("at") or "")[:10]
+    info = [
+        Paragraph(f"<b>Signataire :</b> {signature.get('name') or ''}", S["body"]),
+        Paragraph(f"<b>Email :</b> {signature.get('client_email') or ''}", S["body"]),
+        Paragraph(f"<b>Signé le :</b> {signed_date}", S["body"]),
+    ]
+    sig_table = Table([[sig_img, info]], colWidths=[70 * mm, None])
+    sig_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOX", (0, 0), (-1, -1), 0.6, ORANGE),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FFF7EC")),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    story.append(sig_table)
+
+
+def _story_quote_footer(story: list, S: dict) -> None:
     story.append(Spacer(1, 18))
     story.append(Paragraph(
         "Devis <b>estimatif</b> généré par ConstruPilot à partir de votre plan métré. "
@@ -382,6 +370,28 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
         "TVA à 10 % applicable en rénovation logement de plus de 2 ans. "
         "Ce document ne constitue pas un devis contractuel : demandez plusieurs devis "
         "artisans pour comparer.", S["muted"]))
+
+
+def build_quote_pdf(quote: dict, branding: dict | None = None,
+                    signature: dict | None = None) -> bytes:
+    """Rend un PDF Devis à partir d'un quote (line_items + totaux).
+
+    Complexité maîtrisée : chaque section est déléguée à un helper `_story_quote_*`.
+    """
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                             leftMargin=18 * mm, rightMargin=18 * mm,
+                             topMargin=18 * mm, bottomMargin=18 * mm)
+    S = _styles()
+    story: list = []
+
+    _story_header_branding(story, branding, S)
+    _story_quote_title(story, quote, S)
+    _story_quote_surfaces(story, quote.get("totals", {}), S)
+    _story_quote_line_items(story, quote.get("line_items", []), S)
+    _story_quote_recap(story, quote, S)
+    _story_quote_signature(story, signature, S)
+    _story_quote_footer(story, S)
 
     doc.build(story)
     return buf.getvalue()
@@ -500,11 +510,28 @@ def build_project_quote_pdf(project: dict, branding: dict | None = None) -> byte
 
 # ============ ATTESTATION TVA (Cerfa 1301-SD simplifié) ============
 
+@dataclass
+class TvaAttestationInput:
+    """Input container for `build_tva_attestation_pdf` — groups the 8 fields
+    the caller must provide, so the function signature stays short and typed."""
+    client_name: str
+    client_address: str
+    work_address: str
+    work_description: str
+    company_name: str = ""
+    company_address: str = ""
+    branding: dict | None = None
+    tva_rate: float = 0.10
+
+
 def build_tva_attestation_pdf(
-    client_name: str,
-    client_address: str,
-    work_address: str,
-    work_description: str,
+    data: "TvaAttestationInput | None" = None,
+    /,
+    # Backwards-compat kwargs — legacy callers can still pass positional args.
+    client_name: str | None = None,
+    client_address: str | None = None,
+    work_address: str | None = None,
+    work_description: str | None = None,
     company_name: str = "",
     company_address: str = "",
     branding: dict | None = None,
@@ -515,16 +542,29 @@ def build_tva_attestation_pdf(
     À signer par le client puis à remettre à l'entreprise avant la facturation.
     Format libre inspiré du Cerfa 1301-SD. Ne remplace pas l'original si le
     client préfère.
+
+    Accepte soit un `TvaAttestationInput` (préféré), soit les 8 kwargs legacy.
     """
+    if data is None:
+        data = TvaAttestationInput(
+            client_name=client_name or "",
+            client_address=client_address or "",
+            work_address=work_address or "",
+            work_description=work_description or "",
+            company_name=company_name,
+            company_address=company_address,
+            branding=branding,
+            tva_rate=tva_rate,
+        )
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
-                             leftMargin=20*mm, rightMargin=20*mm,
-                             topMargin=20*mm, bottomMargin=20*mm)
+                             leftMargin=20 * mm, rightMargin=20 * mm,
+                             topMargin=20 * mm, bottomMargin=20 * mm)
     S = _styles()
     story = []
 
-    tva_pct = int(round(tva_rate * 100))
-    is_reduced = tva_pct == 10 or tva_pct == 5 or tva_pct == 55  # 5.5 arrondi
+    tva_pct = int(round(data.tva_rate * 100))
+    is_reduced = tva_pct in (10, 5, 55)  # 5.5 arrondi
     header_title = (f"ATTESTATION — TVA À TAUX RÉDUIT ({tva_pct} %)"
                      if is_reduced else "ATTESTATION TRAVAUX")
     story.append(Paragraph(header_title, S["kicker"]))
@@ -538,9 +578,9 @@ def build_tva_attestation_pdf(
     # Client info
     story.append(Paragraph("Je soussigné(e)", S["h2"]))
     client_rows = [
-        ["Nom / Prénom :", client_name or "………………………………………………"],
-        ["Adresse (client) :", client_address or "………………………………………………"],
-        ["Adresse des travaux :", work_address or "………………………………………………"],
+        ["Nom / Prénom :", data.client_name or "………………………………………………"],
+        ["Adresse (client) :", data.client_address or "………………………………………………"],
+        ["Adresse des travaux :", data.work_address or "………………………………………………"],
     ]
     t = Table(client_rows, colWidths=[45*mm, 120*mm])
     t.setStyle(TableStyle([
@@ -576,15 +616,15 @@ def build_tva_attestation_pdf(
 
     # Description travaux
     story.append(Paragraph("Nature des travaux :", S["h2"]))
-    story.append(Paragraph(work_description or "………………………………………………",
+    story.append(Paragraph(data.work_description or "………………………………………………",
                             S["body"]))
     story.append(Spacer(1, 20))
 
     # Entreprise + Signature
     story.append(Paragraph("Entreprise réalisant les travaux :", S["h2"]))
     ent_rows = [
-        ["Raison sociale :", company_name or "………………………………………………"],
-        ["Adresse :", company_address or "………………………………………………"],
+        ["Raison sociale :", data.company_name or "………………………………………………"],
+        ["Adresse :", data.company_address or "………………………………………………"],
     ]
     t = Table(ent_rows, colWidths=[45*mm, 120*mm])
     t.setStyle(TableStyle([
