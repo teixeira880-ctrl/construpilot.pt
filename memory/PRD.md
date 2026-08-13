@@ -830,6 +830,32 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 33. Changelog Iter 47 (13/02/2026) — Landing 3D vision + Palette calme + Espagnol
+
+### 🌍 i18n multilingue FR / EN / ES
+- Nouveau bloc `es` dans `context/I18nContext.jsx` — 30+ clés traduites en espagnol (nav, common, quote.dashboard, team).
+- `LangToggle` réécrit en `<select>` dropdown avec 3 options (FR/EN/ES). Data-testid inchangé pour rétro-compat des tests.
+- Le stockage `localStorage[construpilot_lang]` reste identique (fallback FR).
+
+### 🎨 Landing redesign — vision 3D + palette calme
+- Refonte totale via `design_agent_full_stack` :
+  - **Palette** : passage de l'orange agressif `hsl(24, 96%, 55%)` à un **vert sauge/mousse** `hsl(140 25% 42%)` — calme, moderne, cohérent avec le domaine BTP/architecture.
+  - **Fond** : deep slate en dark (par défaut) + off-white chaud en light. Nouveau `--background` / `--foreground` / `--muted` dans `index.css`.
+  - **Hero split** asymétrique : à gauche H1 « Estimez, chiffrez et **visualisez en 3D.** » avec la partie 3D en italique vert sauge + textarea "Décrivez votre projet" + CTA « Générer mon estimation ». À droite : **preview 3D interactif live** (Three.js) avec slider hauteur murs 2.5 m + boutons Reset & Vue dessus.
+  - **Bento grid** pour les features (« Tetris mode ») avec staggered reveal via framer-motion.
+  - **Social proof** : "142 devis générés cette semaine" + logos clients (Duval Rénov, Cabinet Marchetti, BTP Sud-Ouest…) + testimonials 5⭐ (Julien Marchetti architecte Lyon, Fatima B. peintre Toulouse, Éric Duval BTP).
+  - **Section « L'ARSENAL COMPLET · Des outils de professionnel, repensés pour l'efficacité. »** avec accent italique vert sauge.
+- `/app/design_guidelines.json` mis à jour avec les tokens, layout et typography rules.
+
+### 🧪 Vérifs
+- Landing rend proprement, canvas 3D visible dans le hero.
+- Dropdown lang toggle : 3 options (fr, en, es) présentes et fonctionnelles.
+- `/plan` continue de rediriger proprement vers `/login` (aucune régression).
+- Aucun runtime error.
+
+### ⚠️ Point d'attention
+- Le contenu de la landing (nav items, hero, features, testimonials, footer) reste largement en FR hardcodé. L'infrastructure i18n est en place, mais un travail de peuplement des dictionnaires reste à faire pour une couverture complète en EN et ES.
+
 ## 32. Changelog Iter 46 (13/02/2026) — Réglages Plan + Précision Quoterplan + 3D fidèle
 
 ### ⚙️ Panneau Réglages du plan (top bar)

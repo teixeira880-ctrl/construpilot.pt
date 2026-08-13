@@ -69,6 +69,39 @@ const TRANSLATIONS = {
     "team.leave": "Leave",
     "team.transfer": "Transfer",
   },
+  es: {
+    "nav.dashboard": "Panel",
+    "nav.team": "Equipo",
+    "nav.tracking": "Seguimiento presupuestos",
+    "nav.referral": "Recomendar",
+    "nav.login": "Iniciar sesión",
+    "nav.logout": "Cerrar sesión",
+    "nav.pro": "Espacio pro",
+    "common.loading": "Cargando…",
+    "common.cancel": "Cancelar",
+    "common.save": "Guardar",
+    "common.delete": "Eliminar",
+    "common.close": "Cerrar",
+    "common.refresh": "Actualizar",
+    "common.confirm": "Confirmar",
+    "common.download": "Descargar",
+    "common.language": "Idioma",
+    "quote.dashboard.title": "¿En qué punto están sus presupuestos enviados?",
+    "quote.dashboard.subtitle": "Todas las propuestas enviadas a sus clientes, organizadas por estado. Haga seguimiento en el momento adecuado gracias al rastreo de apertura y firma.",
+    "quote.kpi.sent": "Enviados",
+    "quote.kpi.opened": "Abiertos",
+    "quote.kpi.signed": "Firmados",
+    "quote.kpi.pipeline": "Cartera",
+    "quote.col.notopened": "No abiertos",
+    "quote.col.opened": "Abiertos (recordar)",
+    "quote.col.signed": "Firmados",
+    "team.title": "Su equipo",
+    "team.create": "Crear una organización",
+    "team.join": "Unirse a un equipo",
+    "team.invite": "Invitar",
+    "team.leave": "Salir",
+    "team.transfer": "Transferir",
+  },
 };
 
 const STORAGE_KEY = "construpilot_lang";
@@ -104,14 +137,29 @@ export function useI18n() {
 
 export function LangToggle() {
   const { lang, setLang } = useI18n();
+  const LANGS = [
+    { code: "fr", label: "FR", full: "Français" },
+    { code: "en", label: "EN", full: "English" },
+    { code: "es", label: "ES", full: "Español" },
+  ];
   return (
-    <button
-      onClick={() => setLang(lang === "fr" ? "en" : "fr")}
-      data-testid="lang-toggle"
-      className="rounded-sm border border-border px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest hover:bg-primary hover:text-white hover:border-primary transition"
-      title={lang === "fr" ? "Switch to English" : "Passer en français"}
-    >
-      {lang}
-    </button>
+    <div className="relative inline-block" data-testid="lang-toggle-wrapper">
+      <select
+        value={lang}
+        onChange={(e) => setLang(e.target.value)}
+        data-testid="lang-toggle"
+        aria-label="Language"
+        className="rounded-sm border border-border bg-transparent px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest hover:bg-primary hover:text-white hover:border-primary transition cursor-pointer appearance-none pr-6"
+        style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6' fill='none'%3e%3cpath d='M1 1l3 3 3-3' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e\")",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 6px center" }}
+      >
+        {LANGS.map((l) => (
+          <option key={l.code} value={l.code} className="bg-background text-foreground">
+            {l.label}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
