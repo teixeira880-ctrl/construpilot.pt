@@ -118,10 +118,22 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
                   "lookup_key": lookup},
         allow_promotion_codes=True,
     )
-    if is_sub and trial_enabled and trial_days > 0:
-        kwargs["subscription_data"] = {"trial_period_days": trial_days,
-                                       "metadata": {"user_id": user["user_id"],
-                                                    "plan_id": plan["plan_id"]}}
+    # Referral bonus : add user's earned free Pro days on top of the plan's trial.
+    # Only for Pro/Pro Business subscriptions (referral is a Pro-artisan reward).
+    bonus_days_consumed = 0
+    if is_sub:
+        bonus_days = int(user.get("referral_bonus_days", 0) or 0)
+        if bonus_days > 0 and (plan.get("audience") == "pro"
+                               or plan["plan_id"].startswith("pro")):
+            bonus_days_consumed = bonus_days
+    total_trial_days = (trial_days if is_sub and trial_enabled else 0) + bonus_days_consumed
+    if is_sub and total_trial_days > 0:
+        kwargs["subscription_data"] = {
+            "trial_period_days": total_trial_days,
+            "metadata": {"user_id": user["user_id"],
+                         "plan_id": plan["plan_id"],
+                         "bonus_days_consumed": str(bonus_days_consumed)},
+        }
     if promo_code:
         # promo_code = code humain; on résout en promotion_code Stripe
         promos = stripe.PromotionCode.list(code=promo_code, active=True, limit=1).data
@@ -136,9 +148,11 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
         "plan_id": plan["plan_id"], "lookup_key": lookup,
         "amount_cents": price.unit_amount, "currency": price.currency,
         "mode": kwargs["mode"], "status": "initiated", "payment_status": "pending",
+        "bonus_days_consumed": bonus_days_consumed,
         "created_at": now_iso(), "updated_at": now_iso(),
     })
-    return {"url": session.url, "session_id": session.id}
+    return {"url": session.url, "session_id": session.id,
+            "bonus_days_applied": bonus_days_consumed}
 
 
 async def sync_status(session_id: str) -> dict:
@@ -183,6 +197,15 @@ async def _mark_paid(session_id: str, s):
     if not plan:
         return
     await grant_entitlement(rec["user_id"], plan, rec)
+    # Consommer les jours de parrainage utilisés dans cette session
+    consumed = int(rec.get("bonus_days_consumed", 0) or 0)
+    if consumed > 0:
+        await db.users.update_one(
+            {"user_id": rec["user_id"], "referral_bonus_days": {"$gte": consumed}},
+            {"$inc": {"referral_bonus_days": -consumed},
+             "$set": {"referral_bonus_last_consumed_at": now_iso()}},
+        )
+        logger.info(f"Referral bonus consumed: user={rec['user_id']} days=-{consumed}")
     # Créditer le parrain si c'est le 1er paiement du filleul
     try:
         from engines import referral

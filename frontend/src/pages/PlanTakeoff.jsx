@@ -225,6 +225,7 @@ export default function PlanTakeoff() {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [calibDialog, setCalibDialog] = useState(false);
   const [calibDist, setCalibDist] = useState("");
   const [pendingRoomName, setPendingRoomName] = useState("");
@@ -908,22 +909,30 @@ export default function PlanTakeoff() {
 
         <label
           htmlFor="plan-upload-input"
-          className="surface p-16 grid place-items-center gap-4 cursor-pointer hover:border-primary transition-colors"
+          className={`surface p-16 grid place-items-center gap-4 cursor-pointer transition-all border-2 ${
+            dragActive
+              ? "border-primary bg-primary/5 scale-[1.01] shadow-lg"
+              : "border-transparent hover:border-primary"
+          }`}
           data-testid="plan-upload-dropzone"
-          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
+          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
+          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); }}
           onDrop={(e) => {
             e.preventDefault(); e.stopPropagation();
+            setDragActive(false);
             const f = e.dataTransfer?.files?.[0];
             if (f) uploadFile(f);
           }}
         >
-          <div className="h-16 w-16 grid place-items-center bg-primary/10 rounded-sm">
-            <Upload className="h-8 w-8 text-primary" />
+          <div className={`h-16 w-16 grid place-items-center rounded-sm transition-colors ${
+            dragActive ? "bg-primary/25" : "bg-primary/10"
+          }`}>
+            <Upload className={`h-8 w-8 text-primary ${dragActive ? "animate-bounce" : ""}`} />
           </div>
           <div className="text-center">
             <p className="font-display text-xl font-bold">
-              {uploading ? "Import en cours…" : "Importer mon plan"}
+              {uploading ? "Import en cours…" : dragActive ? "Relâchez pour importer" : "Importer mon plan"}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
               PDF · DXF · JPG · PNG · WEBP — jusqu'à 20 Mo — drag & drop ou clic

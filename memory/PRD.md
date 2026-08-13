@@ -830,6 +830,33 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 25. Changelog Iter 39 (13/02/2026) — Bug fix upload plan + Referral billing + Refactor deskew
+
+### 🐛 Bug critique — Import PDF cassé
+- **Symptôme** : `/plan` affichait un écran blanc en production (et un runtime error overlay en dev) après upload d'un PDF avec échelle écrite (« 1:100 »).
+- **Cause** : le backend créait une auto-calibration `auto_pdf_scale` sans les champs `p1`/`p2`, et le canvas React tentait de lire `calibration.p1[0]` → `TypeError: Cannot read properties of undefined (reading '0')`.
+- **Fix** (`pages/PlanTakeoff.jsx`) : guard `calibration?.p1 && calibration?.p2` avant de dessiner la ligne de calibration. Le rendu Canvas + sidebar + toolbar re-fonctionnent normalement post-upload.
+
+### 🎯 Zone Drop Visuelle
+- State `dragActive` sur PlanTakeoff, handlers `onDragOver` / `onDragEnter` / `onDragLeave` / `onDrop` sur la zone d'upload.
+- Feedback visuel actif : bordure `border-primary`, background `bg-primary/5`, scale 1.01, shadow-lg, icône `Upload` avec `animate-bounce`, texte remplacé par « Relâchez pour importer ».
+- Bug additionnel corrigé : avant ce fix, seul le clic marchait — le drag & drop natif était ignoré.
+
+### 💰 Facturation Parrainage câblée à Stripe
+- `create_checkout` (`engines/monetization.py`) lit désormais `user.referral_bonus_days` et l'ajoute à `subscription_data.trial_period_days` pour les plans **Pro / Pro Business** uniquement (le bénéfice reste dédié aux artisans, comme prévu).
+- Test unitaire vérifié : un utilisateur Pro avec 90 jours de bonus reçoit un `trial_period_days = 7 (plan) + 90 (bonus) = 97 jours`.
+- Le montant consommé est stocké dans `payment_transactions.bonus_days_consumed` puis décrémenté atomiquement (`$inc: -N`) sur le compte utilisateur au moment du paiement réussi (`_mark_paid`), avec garde `referral_bonus_days: {$gte: N}` pour éviter les négatifs.
+- Retour API `POST /api/subscriptions/checkout` enrichi de `bonus_days_applied`.
+
+### 🔧 Refactor deskew_photo (Code Quality Round 6)
+- `deskew_photo` (`engines/plan_cv.py`) : 74 lignes → **~28 lignes**. 3 helpers extraits : `_decode_and_resize`, `_find_page_quadrilateral`, `_warp_to_rect`.
+- Test intégration : image synthétique 1000×800 avec feuille en perspective → `applied: True`, `Perspective corrigée`, sortie 762×582. OK.
+
+### Tests
+- Backend redémarré sans erreur, Stripe catalog toujours sync.
+- Frontend Playwright : login pro + upload PDF + affichage canvas + drag hover visuel — **tous OK**.
+- Régression `_find_page_quadrilateral` / `_warp_to_rect` vérifiée fonctionnellement.
+
 ## 24. Changelog Iter 38 (13/02/2026) — More Cities (10 total) + Code Quality Round 5
 
 ### 🌍 Landing Pages Locales — +4 villes (10 au total)
