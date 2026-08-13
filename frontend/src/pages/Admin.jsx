@@ -93,6 +93,7 @@ export default function Admin() {
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">Affiliation</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">Plans & Revenu</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">Revenue Cockpit</TabsTrigger>
+          <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">Erreurs client</TabsTrigger>
         </TabsList>
 
         <TabsContent value="prices" className="mt-6">
@@ -350,6 +351,9 @@ export default function Admin() {
         </TabsContent>
         <TabsContent value="revenue" className="mt-6">
           <RevenueTab />
+        </TabsContent>
+        <TabsContent value="errors" className="mt-6">
+          <ClientErrorsPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -632,6 +636,129 @@ function KycPanel() {
           </TableBody>
         </Table>
       </div>
+    </div>
+  );
+}
+
+/* ---------- Client Errors (ErrorBoundary reports) ---------- */
+function ClientErrorsPanel() {
+  const [hours, setHours] = useState(24);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState({});
+
+  const load = () => {
+    setLoading(true);
+    api.get(`/errors/admin/list?hours=${hours}&limit=200`)
+      .then(({ data }) => setData(data))
+      .catch(() => toast.error("Chargement impossible"))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
+
+  return (
+    <div className="grid gap-6" data-testid="admin-client-errors-panel">
+      <div className="flex items-center justify-between">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+          <Stat label="Erreurs totales" value={num(data?.total || 0)} accent={(data?.total || 0) > 0} />
+          <Stat label="Messages uniques" value={num(data?.top_messages?.length || 0)} />
+          <Stat label="Fenêtre" value={`${hours}h`} />
+          <Stat label="Utilisateurs touchés" value={num(
+            new Set((data?.items || []).map((i) => i.user_id).filter(Boolean)).size)} />
+        </div>
+      </div>
+      <div className="surface p-4 flex gap-2 items-center">
+        <span className="text-xs text-muted-foreground mr-2">Fenêtre :</span>
+        {[1, 24, 168, 720].map((h) => (
+          <Button
+            key={h}
+            size="sm"
+            variant={hours === h ? "default" : "outline"}
+            onClick={() => setHours(h)}
+            data-testid={`errors-window-${h}h`}
+            className="rounded-sm"
+          >
+            {h === 1 ? "1h" : h === 24 ? "24h" : h === 168 ? "7j" : "30j"}
+          </Button>
+        ))}
+        <div className="flex-1" />
+        <Button size="sm" variant="outline" onClick={load} className="rounded-sm"
+                data-testid="errors-refresh-btn">Actualiser</Button>
+      </div>
+
+      {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+
+      {!loading && data && (
+        <>
+          <div className="surface p-6">
+            <p className="overline mb-4">Top 10 des messages (regroupés)</p>
+            {(data.top_messages || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Aucune erreur sur la période — tout va bien.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Message</TableHead>
+                  <TableHead className="w-24 text-right">Occurrences</TableHead>
+                  <TableHead className="w-24 text-right">Utilisateurs</TableHead>
+                  <TableHead className="w-40">Dernière fois</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {data.top_messages.map((t, i) => (
+                    <TableRow key={i} data-testid={`error-top-row-${i}`}>
+                      <TableCell className="text-xs font-mono break-all">{t.message}</TableCell>
+                      <TableCell className="num text-right font-bold text-destructive">{t.count}</TableCell>
+                      <TableCell className="num text-right">{t.affected_users}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {t.last_seen?.slice(0, 16).replace("T", " ")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+
+          <div className="surface p-6">
+            <p className="overline mb-4">Événements bruts ({data.items?.length || 0})</p>
+            {(data.items || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Rien à afficher.</p>
+            ) : (
+              <div className="grid gap-2">
+                {data.items.map((it, i) => (
+                  <div key={i} className="border border-border rounded-sm p-3 text-xs"
+                       data-testid={`error-item-${i}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-mono break-all font-semibold">{it.message}</p>
+                        <p className="text-muted-foreground mt-1">
+                          {it.created_at?.slice(0, 19).replace("T", " ")}
+                          {it.url && <> · <span className="break-all">{it.url}</span></>}
+                          {it.user_id && <> · user <code>{it.user_id}</code></>}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setExpanded((e) => ({ ...e, [i]: !e[i] }))}
+                        className="text-primary text-[11px] whitespace-nowrap"
+                        data-testid={`error-toggle-${i}`}
+                      >
+                        {expanded[i] ? "Masquer" : "Stack"}
+                      </button>
+                    </div>
+                    {expanded[i] && it.stack && (
+                      <pre className="mt-2 p-2 bg-secondary/30 rounded-sm text-[10px]
+                                       overflow-x-auto whitespace-pre-wrap break-all">
+                        {it.stack}
+                      </pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

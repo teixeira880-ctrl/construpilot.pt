@@ -830,6 +830,38 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 29. Changelog Iter 43 (13/02/2026) — Footer email pro + Dashboard Erreurs
+
+### 📧 Footer email professionnel
+- `engines/emailer.py` : nouveau helper `_footer()` intégré à `wrap_html()`.
+- Contenu du footer :
+  - **Logo carré orange** avec initiale "C" (inline CSS, aucune image externe pour éviter le blocage Outlook/Gmail)
+  - **Nom société** en gras + **adresse postale** (env `COMPANY_POSTAL_ADDRESS`, fallback "ConstruPilot · France")
+  - Lien vers construpilot.fr + **Mentions légales** + **Confidentialité**
+  - Ligne « Estimation indicative — vous recevez cet email car vous utilisez ConstruPilot »
+  - Lien discret **« Se désinscrire des emails marketing »** (uniquement si un `unsubscribe_url` est passé)
+- Le paramètre `unsubscribe_url` est optionnel — les emails transactionnels (devis signé, magic link) restent sans lien de désinscription pour rester en conformité RGPD/CAN-SPAM (les emails transactionnels essentiels n'ont pas besoin d'opt-out).
+- Nouveau module `routes/emails.py` :
+  - `build_unsubscribe_url(user_id)` : génère une URL signée HMAC-SHA256 (24 chars) sans nécessité de stockage DB
+  - `GET /api/emails/unsubscribe/{token}` : vérifie la signature, met `email_marketing_opt_out=True` sur l'utilisateur, retourne une page HTML branded (succès/erreur)
+
+### 🚨 Dashboard admin — Erreurs client
+- Nouveau endpoint `GET /api/errors/admin/list?hours=N&limit=N` (protégé `admin_user`) : renvoie `{total, top_messages: [{message, count, last_seen, urls, affected_users}], items}`. Aggregation MongoDB `$group` pour le top 10 des messages regroupés.
+- Persistance MongoDB : `POST /api/errors/client-log` écrit désormais dans la collection `client_errors` (en plus du log). **Index TTL 30 jours** créé au startup.
+- Nouveau panneau `ClientErrorsPanel` dans `/admin` (`data-testid="admin-tab-errors"`) :
+  - 4 stats en tête : Erreurs totales, Messages uniques, Fenêtre, Utilisateurs touchés
+  - Boutons fenêtre glissante 1h / 24h / 7j / 30j
+  - Table **Top 10 des messages** avec occurrences, utilisateurs touchés, dernière occurrence
+  - Liste chronologique des événements bruts avec URL, timestamp, user_id, et **stack trace repliable** au clic
+
+### 🧪 Tests
+- Backend redémarré sans erreur, endpoints validés en curl :
+  - `/emails/unsubscribe/badtoken` → HTTP 400 avec page HTML « Lien invalide » ✅
+  - `/errors/admin/list?hours=24` (admin auth) → HTTP 200 avec structure attendue ✅
+  - POST `/errors/client-log` → persisté dans `client_errors` → réapparaît dans le top 10 ✅
+- Mail réel envoyé via Resend depuis `info@construpilot.fr` (ID `424e72d7-...`) avec le nouveau footer.
+- Frontend Playwright : onglet Erreurs client s'affiche correctement, TestUiError remonte, switch de fenêtre fonctionne.
+
 ## 28. Changelog Iter 42 (13/02/2026) — Log central + Auto Trace CV + Alertes signature
 
 ### 📡 Log central des erreurs client

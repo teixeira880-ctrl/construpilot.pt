@@ -18,6 +18,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     phase4, phase5, phase6, phase7, share, admin_revenue,
                     referrals as referrals_routes,
                     errors as errors_routes,
+                    emails as emails_routes,
                     plans as plans_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -54,6 +55,7 @@ api_router.include_router(plans_routes.router)
 api_router.include_router(plans_routes.quote_router)
 api_router.include_router(referrals_routes.router)
 api_router.include_router(errors_routes.router)
+api_router.include_router(emails_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -143,6 +145,12 @@ async def seed():
     await db.users.create_index("organization_id")
     await db.org_invites.create_index("invite_id", unique=True)
     await db.org_invites.create_index("email")
+    # TTL 30 jours sur les erreurs client remontées par l'ErrorBoundary
+    try:
+        await db.client_errors.create_index("created_at",
+                                              expireAfterSeconds=60 * 60 * 24 * 30)
+    except Exception as e:
+        logger.warning(f"client_errors TTL index skipped: {e}")
     try:
         storage.init_storage()
     except Exception as e:

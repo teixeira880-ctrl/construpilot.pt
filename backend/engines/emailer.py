@@ -71,9 +71,54 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
 
 
 BRAND = "#FF5A00"
+COMPANY_NAME = "ConstruPilot"
+COMPANY_ADDRESS = "ConstruPilot · France"  # override via env in prod
+COMPANY_WEBSITE = "https://construpilot.fr"
 
 
-def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str | None = None) -> str:
+def _footer(unsubscribe_url: str | None = None) -> str:
+    """Pied de mail pro : logo, adresse postale, liens légaux, désinscription."""
+    company_addr = os.environ.get("COMPANY_POSTAL_ADDRESS") or COMPANY_ADDRESS
+    unsub_row = ""
+    if unsubscribe_url:
+        unsub_row = (
+            f'<tr><td style="padding:8px 24px 20px;background:#f8fafc;text-align:center">'
+            f'<a href="{unsubscribe_url}" style="color:#94A3B8;font-size:11px;'
+            f'text-decoration:underline">Se désinscrire des emails marketing</a>'
+            f'</td></tr>'
+        )
+    # SVG logo inline (small brand mark)
+    logo_svg = (
+        '<div style="display:inline-block;vertical-align:middle;margin-right:8px;'
+        'width:24px;height:24px;background:' + BRAND + ';border-radius:4px;'
+        'color:#fff;font-weight:800;font-size:14px;line-height:24px;text-align:center;'
+        'font-family:Arial,sans-serif">C</div>'
+    )
+    return (
+        '<tr><td style="padding:20px 24px 12px;background:#f8fafc;'
+        'border-top:1px solid #e2e8f0">'
+        + logo_svg +
+        f'<span style="font-size:13px;font-weight:700;color:#334155;vertical-align:middle">'
+        f'{COMPANY_NAME}</span>'
+        '<div style="font-size:11px;color:#64748B;margin-top:8px;line-height:1.5">'
+        f'{company_addr}<br/>'
+        f'<a href="{COMPANY_WEBSITE}" style="color:#64748B;text-decoration:none">'
+        f'{COMPANY_WEBSITE.replace("https://","")}</a> · '
+        '<a href="' + COMPANY_WEBSITE + '/mentions-legales" '
+        'style="color:#64748B;text-decoration:none">Mentions légales</a> · '
+        '<a href="' + COMPANY_WEBSITE + '/confidentialite" '
+        'style="color:#64748B;text-decoration:none">Confidentialité</a>'
+        '</div>'
+        '<div style="font-size:11px;color:#94A3B8;margin-top:8px">'
+        'Estimation indicative — ne constitue pas un devis contractuel. '
+        'Vous recevez cet email car vous utilisez ConstruPilot.'
+        '</div>'
+        '</td></tr>' + unsub_row
+    )
+
+
+def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str | None = None,
+              unsubscribe_url: str | None = None) -> str:
     """Template email ConstruPilot — inline CSS, tables, français."""
     cta = ""
     if cta_url and cta_label:
@@ -98,9 +143,5 @@ def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str 
   <div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>
   {cta}
 </td></tr>
-<tr><td style="padding:16px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;
-              font-size:11px;color:#64748B">
-  Estimation indicative — ne constitue pas un devis contractuel. Vous recevez cet email car vous
-  utilisez ConstruPilot.
-</td></tr>
+{_footer(unsubscribe_url)}
 </table></td></tr></table></body></html>"""
