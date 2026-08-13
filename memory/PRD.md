@@ -1354,3 +1354,53 @@ Le fichier historique (48+ imports) a été découpé en 5 modules focalisés :
 - Screenshot UI `/prix?q=BA13+hydrofuge` → 5 freshness badges visibles, toggle SMS + phone
   input opérationnels, Point.P Meilleur prix 11,95€ (Tavily temps réel).
 
+
+## 42. Changelog Iter 56 (13/02/2026) — Plan 2D UX + IA symboles/matériaux
+
+### 🧠 IA enrichie (distinction traits de cote / murs / réservations / matériaux)
+Le prompt de `engines/plan_ai.py` demande désormais à GPT-4o de **distinguer visuellement** :
+- **`dimension_lines`** : traits de cotes (fins, avec flèches et valeur numérique) — NE PAS
+  confondre avec les murs. Champ dédié `{value_m, location, orientation, confidence}`.
+- **`wall_types`** : classification `porteur` (trait épais plein) / `cloison` (trait fin) /
+  `doublage` (double trait). Champs `hatching_present` (béton, parpaing, brique, pierre),
+  `insulation_layer_visible`.
+- **`openings.reservations_visible`** : trémies escalier, gaines VMC / plomberie — sépare
+  des portes/fenêtres. Chaque entrée `openings.details[i]` peut avoir `kind="reservation"` +
+  `symbol_note` verbatim.
+- **`materials_notes`** : citations verbatim de tout texte matériau/spec inscrit sur le plan
+  (« Carrelage grès cérame 60x60 antidérapant », « isolation laine roche 200 mm ») avec
+  `category` (revêtement_sol, isolation, menuiserie, peinture…) et `location_on_plan`.
+- **`rooms[i].floor_material` / `floor_note_text`** : revêtement de sol par pièce si inscrit.
+- `_normalize_analysis` initialise ces nouveaux champs à `[]` / `{}` / `0` pour garantir
+  la stabilité du contrat côté front.
+
+### 📐 PlanTakeoff.jsx — 4 améliorations UX critiques
+1. **Auto-orientation paysage** — Quand l'image chargée a `height > width * 1.1`,
+   `PlanCanvas` déclenche `onAutoRotate()` qui applique `rotation=90°` une seule fois
+   (state `autoRotated`). Toast « Plan pivoté en paysage pour faciliter les mesures ».
+2. **Bouton Verrouiller** (`data-testid="tool-lock"`) — Toggle Lock/Unlock dans la toolbar.
+   Quand verrouillé, `handleWheel` et `handleMouseDown` returnent immédiatement — plus de
+   zoom molette ni de pan par erreur pendant qu'on clique pour mesurer. Style plein orange
+   quand actif. Toast confirme l'état.
+3. **Affichage m² live (QuoterPlan-like)** — Pour les outils `TOOLS.ROOM` et `TOOLS.POLY`,
+   pendant la saisie, un **badge orange en temps réel** au centroïde du polygone affiche
+   la surface calculée (Shoelace + `hoverPoint` en preview). Se met à jour à chaque clic
+   et pendant le mouvement du curseur.
+4. **Liste "Mes plans récents"** (`data-testid="recent-plans-list"`) — Sur l'écran d'accueil
+   `/plan`, affiche jusqu'à 6 plans récents en cards cliquables
+   (`data-testid="recent-plan-<plan_id>"`). Clic → charge le plan et bascule vers le viewer.
+   `loadAllPlans()` est appelé automatiquement à chaque retour en état idle (dans le
+   `useEffect` de chargement de page). Permet aux utilisateurs de redécouvrir les nouveaux
+   boutons Lock/Duplicate sans re-uploader.
+
+### 🧪 Tests (65/65 iter53-56 PASSED, 1 skip attendu Stripe)
+- Nouveau `/app/backend/tests/test_iter56_ai_symbols_analysis.py` — **7/7 PASSED**
+  (prompt keywords + normalize dimension_lines/wall_types/materials_notes + openings
+  reservations_visible default).
+- Nouveau `/app/backend/tests/test_iter56_http_endpoints.py` créé par testing agent —
+  **6/6 PASSED** (HTTP contracts analyze/duplicate/alerts/prices-search).
+- Rapport testing agent `/app/test_reports/iteration_54.json` : **0 critical / 0 minor**,
+  toutes features vérifiées en bundle JS + HTTP.
+- Screenshot `/plan` idle : bloc « Mes plans récents » avec 11 plans dont "test (copie).pdf"
+  (validation e2e du duplicate iter55) — cards cliquables ouvrent le viewer.
+

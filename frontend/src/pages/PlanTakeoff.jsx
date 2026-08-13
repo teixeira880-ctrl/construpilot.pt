@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BrandingDialog } from "@/components/BrandingDialog";
 import { useBilling } from "@/context/BillingContext";
-import { Lock } from "lucide-react";
+import { Lock, Unlock } from "lucide-react";
 import { QuoteDialog } from "@/components/planTakeoff/QuoteDialog";
 import { Render3dDialog } from "@/components/planTakeoff/Render3dDialog";
 import { EstimateDialog } from "@/components/planTakeoff/EstimateDialog";
@@ -40,8 +40,8 @@ const ROOM_COLORS = [
 
 function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
-  onCanvasClick, onZoomChange, onOffsetChange,
-  detectedWalls, showWalls, pixelsPerMeter, orthoSnap = true,
+  onCanvasClick, onZoomChange, onOffsetChange, onAutoRotate,
+  detectedWalls, showWalls, pixelsPerMeter, orthoSnap = true, locked = false,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -83,11 +83,18 @@ function PlanCanvas({
     return [x, y];
   };
 
-  // Charge l'image une fois par page
+  // Charge l'image une fois par page + auto-rotation paysage si portrait
   useEffect(() => {
     if (!pageData?.image_png_b64) return;
     const img = new Image();
-    img.onload = () => { imgRef.current = img; redraw(); };
+    img.onload = () => {
+      imgRef.current = img;
+      // Auto-rotate 90° so plan displays in landscape when source is portrait
+      if (onAutoRotate && img.height > img.width * 1.1) {
+        onAutoRotate();
+      }
+      redraw();
+    };
     img.src = `data:image/png;base64,${pageData.image_png_b64}`;
     // eslint-disable-next-line
   }, [pageData?.image_png_b64]);
@@ -226,6 +233,37 @@ function PlanCanvas({
         ctx.stroke();
         ctx.strokeStyle = "hsl(24, 96%, 55%)";
       });
+
+      // LIVE AREA readout (QuoterPlan-like) — pour outils polygone/pièce
+      const isAreaTool = tool === TOOLS.ROOM || tool === TOOLS.POLY;
+      if (isAreaTool && ppm && points.length >= 2) {
+        // Polygon area via Shoelace (using current points + hoverPoint as preview)
+        const preview = hoverPoint && points.length >= 2 ? [...points, hoverPoint] : points;
+        if (preview.length >= 3) {
+          let sum = 0;
+          for (let i = 0; i < preview.length; i++) {
+            const [x1, y1] = preview[i];
+            const [x2, y2] = preview[(i + 1) % preview.length];
+            sum += x1 * y2 - x2 * y1;
+          }
+          const area_px2 = Math.abs(sum) / 2;
+          const area_m2 = area_px2 / (ppm * ppm);
+          // Compute centroid for label placement
+          const cx = preview.reduce((s, p) => s + p[0], 0) / preview.length;
+          const cy = preview.reduce((s, p) => s + p[1], 0) / preview.length;
+          const txt = `${area_m2.toFixed(2)} m²`;
+          ctx.font = `bold ${16 / zoom}px system-ui`;
+          const w = ctx.measureText(txt).width + 14 / zoom;
+          const h = 22 / zoom;
+          ctx.fillStyle = "hsl(24, 96%, 55%)";
+          ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+          ctx.fillStyle = "#fff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(txt, cx, cy);
+          ctx.textBaseline = "alphabetic";
+        }
+      }
     }
     // CALIB visualization (only for manual 2-points calibration — auto_pdf_scale has no p1/p2)
     if (calibration?.p1 && calibration?.p2) {
@@ -299,12 +337,14 @@ function PlanCanvas({
   };
 
   const handleWheel = (e) => {
+    if (locked) return;
     e.preventDefault();
     const delta = e.deltaY < 0 ? 1.15 : 1 / 1.15;
     onZoomChange(Math.max(0.15, Math.min(6, zoom * delta)));
   };
 
   const handleMouseDown = (e) => {
+    if (locked) return;
     if (tool !== TOOLS.SELECT && e.button !== 1) return;
     dragRef.current = { sx: e.clientX, sy: e.clientY, ox: offset.x, oy: offset.y };
   };
@@ -370,6 +410,8 @@ export default function PlanTakeoff() {
   const [zoom, setZoom] = useState(0.5);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
+  const [locked, setLocked] = useState(false);
+  const [autoRotated, setAutoRotated] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [calibDialog, setCalibDialog] = useState(false);
@@ -455,12 +497,18 @@ export default function PlanTakeoff() {
 
   // Load page image on demand
   useEffect(() => {
-    if (!plan?.plan_id) return;
+    if (!plan?.plan_id) {
+      // Idle state — charger la liste des plans récents pour permettre de rouvrir
+      loadAllPlans();
+      return;
+    }
     api.get(`/takeoffs/${plan.plan_id}/page/${pageIndex}`).then(({ data }) => {
       setPageData(data);
       setPoints([]);
       setOffset({ x: 0, y: 0 });
       setZoom(0.5);
+      setRotation(0);
+      setAutoRotated(false);
       setDetectedWalls(null);
     });
   }, [plan?.plan_id, pageIndex]);
@@ -1382,6 +1430,57 @@ export default function PlanTakeoff() {
             </div>
           ))}
         </div>
+
+        {allPlans.length > 0 && (
+          <div className="surface p-6" data-testid="recent-plans-list">
+            <div className="flex items-center justify-between mb-4">
+              <p className="overline flex items-center gap-2">
+                <History className="h-4 w-4" /> Mes plans récents
+              </p>
+              <span className="text-xs text-muted-foreground">
+                {allPlans.length} plan{allPlans.length > 1 ? "s" : ""} enregistré{allPlans.length > 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {allPlans.slice(0, 6).map((p) => (
+                <button
+                  key={p.plan_id}
+                  onClick={async () => {
+                    try {
+                      const { data } = await api.get(`/takeoffs/${p.plan_id}`);
+                      setPlan(data);
+                      setPageIndex(0);
+                    } catch {
+                      toast.error("Impossible d'ouvrir ce plan");
+                    }
+                  }}
+                  data-testid={`recent-plan-${p.plan_id}`}
+                  className="text-left surface p-4 hover:border-primary transition-colors group"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-display font-bold text-sm truncate flex-1 group-hover:text-primary">
+                      {p.filename || "Plan sans nom"}
+                    </p>
+                    <Badge variant="outline" className="text-[10px] rounded-sm shrink-0">
+                      {p.rooms_count || 0} pce
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {p.page_count || 1} page{p.page_count > 1 ? "s" : ""}
+                    {p.created_at && (
+                      <span> · {new Date(p.created_at).toLocaleDateString("fr-FR")}</span>
+                    )}
+                  </p>
+                </button>
+              ))}
+            </div>
+            {allPlans.length > 6 && (
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                + {allPlans.length - 6} autres — utilisez « Comparer 2 plans » pour tout voir
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -1603,8 +1702,24 @@ export default function PlanTakeoff() {
             <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.min(6, z * 1.2))} className="rounded-sm">
               <ZoomIn className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setRotation((r) => (r + 90) % 360)} className="rounded-sm">
+            <Button size="sm" variant="ghost" onClick={() => setRotation((r) => (r + 90) % 360)} className="rounded-sm" data-testid="tool-rotate">
               <RotateCw className="h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant={locked ? "default" : "outline"}
+              onClick={() => {
+                setLocked(l => !l);
+                toast.info(locked ? "Plan déverrouillé — zoom & déplacement actifs"
+                                  : "Plan verrouillé — mesures précises garanties");
+              }}
+              data-testid="tool-lock"
+              className={`rounded-sm gap-1 h-8 ${locked ? "bg-primary text-white hover:bg-orange-600" : ""}`}
+              title={locked ? "Déverrouiller (autoriser zoom + déplacement)"
+                            : "Verrouiller le plan (bloquer zoom + déplacement pour des clics précis)"}
+            >
+              {locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+              {locked ? "Verrouillé" : "Verrouiller"}
             </Button>
           </div>
 
@@ -1613,9 +1728,17 @@ export default function PlanTakeoff() {
             pageData={pageData} tool={tool} points={points} rooms={rooms}
             calibration={currentCalib} zoom={zoom} offset={offset} rotation={rotation}
             onCanvasClick={onCanvasClick} onZoomChange={setZoom} onOffsetChange={setOffset}
+            onAutoRotate={() => {
+              if (!autoRotated) {
+                setRotation(90);
+                setAutoRotated(true);
+                toast.success("Plan pivoté en paysage pour faciliter les mesures");
+              }
+            }}
             detectedWalls={detectedWalls} showWalls={showWalls}
             pixelsPerMeter={currentCalib?.pixels_per_meter || 0}
             orthoSnap={true}
+            locked={locked}
           />
 
           {/* CONTEXT ACTIONS */}

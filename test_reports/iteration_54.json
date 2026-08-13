@@ -1,0 +1,38 @@
+{
+  "summary": "Iter 56 review — backend + frontend validation. Ran 65 backend tests total (iter53 refactor regression 18, iter53 endpoint coverage 20, iter54 tavily parser 5, iter55 duplicate+SMS 12, iter56 AI symbols 7, iter56 HTTP endpoints 6). 64 passed, 1 skipped (expected — Stripe seed-guarded), 0 failed. Verified new HTTP contracts: POST /takeoffs/{id}/analyze returns dimension_lines/wall_types/materials_notes/openings.reservations_visible; POST /takeoffs/{id}/duplicate returns new plan_id + filename with '(copie)'; POST /prices/alerts rejects sms without phone (422) and accepts email+sms with phone (200); POST /prices/search returns mode='web' from Tavily with checked_at on each row. Frontend /prix?q=BA13+hydrofuge shows 10 freshness badges (data-testid=price-freshness-<supplier>), SMS toggle (alert-sms-toggle) and conditional phone input (alert-sms-phone) — all working. Bundle.js confirmed to contain drawDimLine, LIVE AREA, tool-lock, plan-duplicate-btn, tool-rotate, tool-room, tool-polyline, alert-sms-toggle, price-freshness. Note: on first Tavily call there was a transient 'mode=demo' fallback; on retry it returned mode='web' correctly — Tavily degrades gracefully to demo when API is unreachable.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/plan (PlanTakeoff)", "issues": ["allPlans state is loaded via loadAllPlans() but never rendered as a selectable list on the /plan landing view — user must re-upload or use MultiPlanDialog to see existing plans. This limits ability to reopen a saved plan directly from /plan. New iter56 buttons (tool-lock, plan-duplicate-btn) only appear once a plan is loaded, so this UX gap indirectly blocks their discoverability. Recommendation to E1: add a 'Mes plans récents' list on /plan idle state."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter56_ai_symbols_analysis.py",
+    "/app/backend/tests/test_iter56_http_endpoints.py",
+    "/app/backend/tests/test_iter55_duplicate_and_sms_alerts.py",
+    "/app/backend/tests/test_iter54_tavily_price_parser.py",
+    "/app/test_reports/pytest/iter56_all.xml"
+  ],
+  "action_items": [
+    "(P3 UX) Add a 'Mes plans' list on /plan idle screen so users can reopen existing takeoffs and access the new Lock/Duplicate buttons without uploading again."
+  ],
+  "critical_code_review_comments": [
+    "engines/plan_ai.py PROMPT correctly includes 'traits de cote', 'porteur', 'cloison', 'doublage', 'hachures', 'trémie', 'materials_notes', 'text_verbatim' — normalizer defaults dimension_lines=[], wall_types={}, materials_notes=[], openings.reservations_visible=0 (all covered by unit tests).",
+    "engines/price_search.py: _pick_plausible_price correctly filters <3€ and >3000€, picks min plausible; mode='web' when Tavily returns hits, 'demo' fallback otherwise — Tavily is called with domain whitelist first, then unfiltered — good coverage.",
+    "routes/plans_crud.py _duplicate_filename handles no-ext / already-copie / empty cases idempotently (4 unit tests).",
+    "engines/alerting.py _send_sms degrades gracefully when Twilio env missing; _notify_channels dispatches email + SMS as expected (2 async tests via monkeypatch).",
+    "PlanTakeoff.jsx: tool-lock at L1661, plan-duplicate-btn at L1456, drawDimLine at L159, 'LIVE AREA readout' at L237 — all present in the served bundle.js (10.2 MB)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter56_http_endpoints.py (new — HTTP-level checks for analyze/duplicate/alerts/prices-search)"
+  ],
+  "success_rate": {"backend": "100% (64/64 passing, 1 expected-skip)", "frontend": "100% on the 3 verified surfaces (/prix badges + SMS, /plan buttons via bundle inspection)"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! (used)",
+  "seed_data_creation": "None — used existing seeded admin plans (>10 plans in /api/takeoffs).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Combined pytest command: `cd /app/backend && python -m pytest tests/test_iter53_refactor_regression.py tests/test_iter53_endpoint_coverage.py tests/test_iter54_tavily_price_parser.py tests/test_iter55_duplicate_and_sms_alerts.py tests/test_iter56_ai_symbols_analysis.py tests/test_iter56_http_endpoints.py -v`. GET /api/takeoffs returns {plans: [...]}, not a bare list. Price search may transiently return mode='demo' if Tavily is rate-limited — retry once. To fully e2e-test tool-lock/plan-duplicate-btn/LIVE AREA in the DOM you must first upload a plan (no reopen-existing UI on /plan idle screen); the current test verifies presence in the JS bundle instead.",
+  "rca of the issue": "No bugs. The 4 review-request features are implemented correctly. Only UX suggestion is adding a 'Mes plans' list on /plan idle state."
+}

@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 
 PROMPT = """Tu es un **expert en gros œuvre et métré du bâtiment** avec 25 ans d'expérience
 (maçonnerie, charpente, ouvertures, escaliers). Tu analyses un plan d'architecture 2D et
-tu produis un **relevé de métré exhaustif prêt à chiffrer**.
+tu produis un **relevé de métré exhaustif prêt à chiffrer** en distinguant clairement :
+- les **traits de cotes** (lignes fines avec flèches + valeur numérique) — NE PAS les compter comme des murs
+- les **dessins de murs** (traits épais, hachures pleines, remplissage béton/parpaing)
+- les **ouvertures / réservations** (portes, fenêtres, baies, trémies escaliers, gaines techniques)
+- les **matériaux et spécifications** inscrits en texte (revêtements sols, isolants, finitions, DPE, RE2020)
 
 Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE structure :
 
@@ -38,9 +42,27 @@ Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE s
       "perimeter_estimated_m": 22.8,    // périmètre estimé (mètres linéaires)
       "ceiling_height_m": 2.50,         // hauteur sous plafond si indiquée
       "level": "RDC" | "R+1" | "R-1" | "combles" | null,
-      "notes": "traversant sud-nord, exposition principale sud"
+      "notes": "traversant sud-nord, exposition principale sud",
+      "floor_material": "carrelage" | "parquet" | "béton" | "moquette" | "vinyle" | null,
+      "floor_note_text": "citation textuelle du plan si présente (ex: 'Carrelage 60x60 gris')"
     }
   ],
+
+  "dimension_lines": [
+    // Traits de cote lus sur le plan (lignes fines + flèches + valeur)
+    // Ne PAS confondre avec les murs !
+    {"value_m": 3.42, "location": "façade sud", "orientation": "horizontale" | "verticale" | "oblique",
+     "confidence": 0.0-1.0}
+  ],
+
+  "wall_types": {
+    // Distinction visuelle : trait épais = mur, hachures = béton/parpaing, double-trait = doublage
+    "load_bearing_visible": true,       // murs porteurs identifiés (traits pleins épais)
+    "partition_visible": true,          // cloisons (traits fins pleins)
+    "insulation_layer_visible": false,  // doublage / isolation représenté (double trait)
+    "hatching_present": "béton" | "parpaing" | "brique" | "pierre" | "aucun",
+    "notes": "légende à interpréter si présente"
+  },
 
   "facade_walls": [
     // Murs extérieurs (façades) : chaque orientation ou pan
@@ -64,14 +86,17 @@ Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE s
   },
 
   "openings": {
+    // Ouvertures RÉSERVÉES dans les murs (portes, fenêtres, baies, trémies, gaines VMC/plomberie)
     "doors_visible": 5,
     "windows_visible": 8,
     "bays_visible": 2,
+    "reservations_visible": 0,            // trémies gaines techniques ≠ portes/fenêtres
     "details": [
-      {"kind": "porte" | "fenetre" | "baie" | "porte-fenetre" | "velux",
+      {"kind": "porte" | "fenetre" | "baie" | "porte-fenetre" | "velux" | "reservation",
        "location": "salon-sud" | "cuisine-est" | "escalier" | ...,
        "width_m": 0.90, "height_m": 2.10, "count": 1,
-       "area_m2": 1.89}
+       "area_m2": 1.89,
+       "symbol_note": "arc de porte 90° / vitrage double / linteau BA / ..."}
     ],
     "total_openings_area_m2": 24.5
   },
@@ -94,6 +119,15 @@ Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE s
     "floor_type": "béton-plein" | "hourdis" | "poutres-bois" | "unknown"
   },
 
+  "materials_notes": [
+    // Textes/légendes lus sur le plan qui décrivent des matériaux ou spécifications
+    {"text_verbatim": "Carrelage grès cérame 60x60 antidérapant",
+     "category": "revêtement_sol" | "isolation" | "menuiserie" | "peinture" | "cloison" |
+                 "toiture" | "façade" | "réglementaire" | "autre",
+     "location_on_plan": "salle de bain" | "légende bas-droit" | ...,
+     "quantity_hint": "42 m²" | null}
+  ],
+
   "totals_gros_oeuvre": {
     "linear_walls_m": 92.5,              // TOTAL linéaire murs (façades + intérieurs)
     "facade_walls_area_net_m2": 145.0,   // TOTAL m² murs extérieurs à ravaler/isoler
@@ -109,6 +143,14 @@ Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE s
 }
 
 RÈGLES CRITIQUES :
+- **NE JAMAIS confondre traits de cote et murs.** Les traits de cote sont fins, ont des flèches
+  ou des tirets aux extrémités et portent une valeur numérique (« 3.42 », « 342 » cm). Les murs
+  sont dessinés en trait épais plein, souvent avec hachures ou remplissage.
+- **Distingue les ouvertures/réservations** : arc de porte = porte ; rectangle vitré dans un
+  mur = fenêtre/baie ; grand trou dans le plancher = trémie escalier ; petit carré étiqueté
+  « VMC / gaine » = réservation technique.
+- **Recopie les textes verbatim** dans `materials_notes` pour tout ce qui décrit un matériau
+  ou une spécification (« isolation laine roche 200 mm », « peinture mate blanche », etc.).
 - Tu es EXPERT — utilise des ordres de grandeur réalistes (hauteur sous plafond 2.50m
   par défaut, épaisseur dalle 0.20m, porte 0.90×2.10, fenêtre 1.20×1.20…).
 - Si l'échelle est écrite (« 1:100 ») utilise-la pour affiner les longueurs.
@@ -163,8 +205,12 @@ def _normalize_analysis(data: dict) -> dict:
     data.setdefault("stairwells", [])
     data.setdefault("floors", {})
     data.setdefault("totals_gros_oeuvre", {})
+    data.setdefault("dimension_lines", [])
+    data.setdefault("wall_types", {})
+    data.setdefault("materials_notes", [])
     if isinstance(data.get("openings"), dict):
         data["openings"].setdefault("details", [])
+        data["openings"].setdefault("reservations_visible", 0)
     return data
 
 
