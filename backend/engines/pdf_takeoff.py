@@ -557,46 +557,7 @@ class TvaAttestationInput:
     tva_rate: float = 0.10
 
 
-def build_tva_attestation_pdf(
-    data: "TvaAttestationInput | None" = None,
-    /,
-    # Backwards-compat kwargs — legacy callers can still pass positional args.
-    client_name: str | None = None,
-    client_address: str | None = None,
-    work_address: str | None = None,
-    work_description: str | None = None,
-    company_name: str = "",
-    company_address: str = "",
-    branding: dict | None = None,
-    tva_rate: float = 0.10,
-) -> bytes:
-    """Attestation simplifiée du client (art. 279-0 bis CGI) : logement > 2 ans.
-
-    À signer par le client puis à remettre à l'entreprise avant la facturation.
-    Format libre inspiré du Cerfa 1301-SD. Ne remplace pas l'original si le
-    client préfère.
-
-    Accepte soit un `TvaAttestationInput` (préféré), soit les 8 kwargs legacy.
-    """
-    if data is None:
-        data = TvaAttestationInput(
-            client_name=client_name or "",
-            client_address=client_address or "",
-            work_address=work_address or "",
-            work_description=work_description or "",
-            company_name=company_name,
-            company_address=company_address,
-            branding=branding,
-            tva_rate=tva_rate,
-        )
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                             leftMargin=20 * mm, rightMargin=20 * mm,
-                             topMargin=20 * mm, bottomMargin=20 * mm)
-    S = _styles()
-    story = []
-
-    tva_pct = int(round(data.tva_rate * 100))
+def _tva_header_and_intro(story: list, tva_pct: int, S: dict) -> None:
     is_reduced = tva_pct in (10, 5, 55)  # 5.5 arrondi
     header_title = (f"ATTESTATION — TVA À TAUX RÉDUIT ({tva_pct} %)"
                      if is_reduced else "ATTESTATION TRAVAUX")
@@ -608,14 +569,11 @@ def build_tva_attestation_pdf(
         "depuis plus de deux ans.", S["muted"]))
     story.append(Spacer(1, 12))
 
-    # Client info
-    story.append(Paragraph("Je soussigné(e)", S["h2"]))
-    client_rows = [
-        ["Nom / Prénom :", data.client_name or "………………………………………………"],
-        ["Adresse (client) :", data.client_address or "………………………………………………"],
-        ["Adresse des travaux :", data.work_address or "………………………………………………"],
-    ]
-    t = Table(client_rows, colWidths=[45*mm, 120*mm])
+
+def _tva_labelled_block(story: list, title: str, rows: list, S: dict) -> None:
+    """Render a title + 2-col labelled table (client info / company info)."""
+    story.append(Paragraph(title, S["h2"]))
+    t = Table(rows, colWidths=[45 * mm, 120 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
@@ -630,7 +588,8 @@ def build_tva_attestation_pdf(
     story.append(t)
     story.append(Spacer(1, 12))
 
-    # Déclarations
+
+def _tva_declarations(story: list, S: dict) -> None:
     story.append(Paragraph("Certifie sur l'honneur que :", S["h2"]))
     story.append(Paragraph(
         "1. Le local dans lequel les travaux sont réalisés est <b>affecté à un "
@@ -647,33 +606,8 @@ def build_tva_attestation_pdf(
         S["body"]))
     story.append(Spacer(1, 12))
 
-    # Description travaux
-    story.append(Paragraph("Nature des travaux :", S["h2"]))
-    story.append(Paragraph(data.work_description or "………………………………………………",
-                            S["body"]))
-    story.append(Spacer(1, 20))
 
-    # Entreprise + Signature
-    story.append(Paragraph("Entreprise réalisant les travaux :", S["h2"]))
-    ent_rows = [
-        ["Raison sociale :", data.company_name or "………………………………………………"],
-        ["Adresse :", data.company_address or "………………………………………………"],
-    ]
-    t = Table(ent_rows, colWidths=[45*mm, 120*mm])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 10),
-        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-    ]))
-    story.append(t)
-    story.append(Spacer(1, 20))
-
+def _tva_signature_and_footer(story: list, S: dict) -> None:
     story.append(Paragraph(
         "Fait à …………………………………………… le ……… / ……… / ………………",
         S["body"]))
@@ -681,18 +615,75 @@ def build_tva_attestation_pdf(
     story.append(Paragraph("Signature du client (précédée de « Bon pour accord ») :",
                             S["body"]))
     story.append(Spacer(1, 40))
-    # Cadre signature
-    sig_frame = Table([[""]], colWidths=[90*mm], rowHeights=[30*mm])
+    sig_frame = Table([[""]], colWidths=[90 * mm], rowHeights=[30 * mm])
     sig_frame.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.6, GREY)]))
     story.append(sig_frame)
     story.append(Spacer(1, 12))
-
-    # Footer légal
     story.append(Paragraph(
         "<b>Attention</b> : toute fausse déclaration engage la responsabilité du "
         "client. L'administration peut demander le paiement du complément de TVA "
         "correspondant à la différence entre le taux réduit et le taux normal. "
         "Conservez ce document 5 ans.", S["muted"]))
+
+
+def _coalesce_tva_input(data, kw) -> "TvaAttestationInput":
+    """Normalize legacy kwargs into a `TvaAttestationInput`."""
+    if data is not None:
+        return data
+    return TvaAttestationInput(
+        client_name=kw.get("client_name") or "",
+        client_address=kw.get("client_address") or "",
+        work_address=kw.get("work_address") or "",
+        work_description=kw.get("work_description") or "",
+        company_name=kw.get("company_name", ""),
+        company_address=kw.get("company_address", ""),
+        branding=kw.get("branding"),
+        tva_rate=kw.get("tva_rate", 0.10),
+    )
+
+
+def build_tva_attestation_pdf(
+    data: "TvaAttestationInput | None" = None,
+    /,
+    # Backwards-compat kwargs — legacy callers can still pass positional args.
+    client_name: str | None = None,
+    client_address: str | None = None,
+    work_address: str | None = None,
+    work_description: str | None = None,
+    company_name: str = "",
+    company_address: str = "",
+    branding: dict | None = None,
+    tva_rate: float = 0.10,
+) -> bytes:
+    """Attestation simplifiée du client (art. 279-0 bis CGI) : logement > 2 ans.
+
+    Refactor iter53 : orchestration only — chaque section déléguée à un helper `_tva_*`.
+    """
+    data = _coalesce_tva_input(data, locals())
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                             leftMargin=20 * mm, rightMargin=20 * mm,
+                             topMargin=20 * mm, bottomMargin=20 * mm)
+    S = _styles()
+    story: list = []
+    tva_pct = int(round(data.tva_rate * 100))
+
+    _tva_header_and_intro(story, tva_pct, S)
+    _tva_labelled_block(story, "Je soussigné(e)", [
+        ["Nom / Prénom :", data.client_name or "………………………………………………"],
+        ["Adresse (client) :", data.client_address or "………………………………………………"],
+        ["Adresse des travaux :", data.work_address or "………………………………………………"],
+    ], S)
+    _tva_declarations(story, S)
+    story.append(Paragraph("Nature des travaux :", S["h2"]))
+    story.append(Paragraph(data.work_description or "………………………………………………", S["body"]))
+    story.append(Spacer(1, 20))
+    _tva_labelled_block(story, "Entreprise réalisant les travaux :", [
+        ["Raison sociale :", data.company_name or "………………………………………………"],
+        ["Adresse :", data.company_address or "………………………………………………"],
+    ], S)
+    story.append(Spacer(1, 8))
+    _tva_signature_and_footer(story, S)
 
     doc.build(story)
     return buf.getvalue()

@@ -2,12 +2,16 @@
 
 - Setup catalog idempotent (Products + Prices via lookup_key)
 - Checkout Session (subscription + one-time)
-- Webhook handler
+- Webhook handler (dispatch table)
 - Entitlement resolution : quel plan l'utilisateur possède ?
+
+Refactor iter53 : `ensure_stripe_catalog` et `create_checkout` explosées en
+helpers privés pour ramener la complexité cyclomatique < 10 et éliminer les
+nesting depth > 2.
 """
 import os
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import stripe
 
@@ -18,9 +22,75 @@ logger = logging.getLogger(__name__)
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
+PARTICULIER_PAID = {"project_pass", "premium_monthly", "premium_yearly"}
+PRO_PAID = {"pro_monthly", "pro_yearly", "pro_business_monthly", "pro_business_yearly"}
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ---------- Stripe catalog sync (idempotent) ----------
+
+def _index_existing_products() -> dict:
+    """Return {plan_id: Product} using Stripe metadata; one API round-trip."""
+    products = {}
+    for prod in stripe.Product.list(limit=100).auto_paging_iter():
+        pid = (prod.get("metadata") or {}).get("plan_id")
+        if pid:
+            products[pid] = prod
+    return products
+
+
+def _upsert_product(plan: dict, existing: dict):
+    """Get existing Stripe Product for plan or create a new one."""
+    prod = existing.get(plan["plan_id"])
+    if prod:
+        return prod
+    prod = stripe.Product.create(
+        name=f"ConstruPilot {plan['name']}",
+        metadata={"managed_by": "construpilot", "plan_id": plan["plan_id"]},
+        tax_code="txcd_10103001",
+    )
+    existing[plan["plan_id"]] = prod
+    return prod
+
+
+def _price_matches(price, plan: dict) -> bool:
+    return (price.unit_amount == plan["amount_cents"]
+            and price.currency == plan["currency"])
+
+
+def _upsert_price(plan: dict, prod):
+    """Ensure the Price for `plan` exists & is active with correct amount."""
+    lookup = plan["lookup_key"]
+    prices = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
+    price = prices[0] if prices else None
+    if price and not _price_matches(price, plan):
+        stripe.Price.modify(price.id, active=False)
+        price = None
+    if price:
+        return price
+    kwargs = {
+        "product": prod.id,
+        "unit_amount": plan["amount_cents"],
+        "currency": plan["currency"],
+        "lookup_key": lookup,
+        "transfer_lookup_key": True,
+        "metadata": {"plan_id": plan["plan_id"]},
+    }
+    if plan.get("interval"):
+        kwargs["recurring"] = {"interval": plan["interval"]}
+    return stripe.Price.create(**kwargs)
+
+
+async def _persist_stripe_ids(plan: dict, prod, price) -> None:
+    await db.plans.update_one(
+        {"plan_id": plan["plan_id"]},
+        {"$set": {"stripe_product_id": prod.id,
+                  "stripe_price_id": price.id,
+                  "synced_at": now_iso()}},
+    )
 
 
 async def ensure_stripe_catalog():
@@ -29,49 +99,22 @@ async def ensure_stripe_catalog():
         logger.warning("STRIPE_SECRET_KEY manquant — Stripe désactivé")
         return
 
-    plans = await db.plans.find({"active": True,
-                                 "kind": {"$in": ["subscription", "one_time"]}},
-                                {"_id": 0}).to_list(50)
-    # Charger les produits Stripe existants UNE fois (indexés par plan_id metadata)
-    existing_products = {}
-    for prod in stripe.Product.list(limit=100).auto_paging_iter():
-        pid = (prod.get("metadata") or {}).get("plan_id")
-        if pid:
-            existing_products[pid] = prod
+    plans = await db.plans.find(
+        {"active": True, "kind": {"$in": ["subscription", "one_time"]}},
+        {"_id": 0},
+    ).to_list(50)
+    existing = _index_existing_products()
 
     for plan in plans:
-        lookup = plan.get("lookup_key")
-        if not lookup:
+        if not plan.get("lookup_key"):
             continue
-        prod = existing_products.get(plan["plan_id"])
-        if not prod:
-            prod = stripe.Product.create(
-                name=f"ConstruPilot {plan['name']}",
-                metadata={"managed_by": "construpilot", "plan_id": plan["plan_id"]},
-                tax_code="txcd_10103001",
-            )
-            existing_products[plan["plan_id"]] = prod
-        prices = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
-        p = prices[0] if prices else None
-        if p and (p.unit_amount != plan["amount_cents"] or p.currency != plan["currency"]):
-            stripe.Price.modify(p.id, active=False)
-            p = None
-        if not p:
-            kwargs = dict(product=prod.id,
-                          unit_amount=plan["amount_cents"],
-                          currency=plan["currency"],
-                          lookup_key=lookup,
-                          transfer_lookup_key=True,
-                          metadata={"plan_id": plan["plan_id"]})
-            if plan.get("interval"):
-                kwargs["recurring"] = {"interval": plan["interval"]}
-            p = stripe.Price.create(**kwargs)
-        await db.plans.update_one({"plan_id": plan["plan_id"]},
-                                  {"$set": {"stripe_product_id": prod.id,
-                                            "stripe_price_id": p.id,
-                                            "synced_at": now_iso()}})
+        prod = _upsert_product(plan, existing)
+        price = _upsert_price(plan, prod)
+        await _persist_stripe_ids(plan, prod, price)
     logger.info(f"Stripe catalog synced ({len(plans)} plans)")
 
+
+# ---------- Customer & Checkout ----------
 
 async def get_or_create_customer(user: dict) -> str:
     if user.get("stripe_customer_id"):
@@ -84,49 +127,60 @@ async def get_or_create_customer(user: dict) -> str:
     return cust.id
 
 
-async def create_checkout(user: dict, plan: dict, origin_url: str,
-                          promo_code: str | None = None) -> dict:
-    """Crée une Checkout Session Stripe pour le plan donné."""
-    if not stripe.api_key:
-        raise RuntimeError("Stripe non configuré")
-    lookup = plan.get("lookup_key")
-    if not lookup:
-        raise ValueError(f"Plan {plan.get('plan_id')} sans lookup_key")
-
+async def _resolve_price(lookup: str):
+    """Fetch active Price for `lookup`; sync catalog once on cache miss."""
+    prices = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
+    if prices:
+        return prices[0]
+    await ensure_stripe_catalog()
     prices = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
     if not prices:
-        await ensure_stripe_catalog()
-        prices = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
-    if not prices:
         raise RuntimeError(f"Prix Stripe introuvable pour {lookup}")
-    price = prices[0]
+    return prices[0]
 
-    customer_id = await get_or_create_customer(user)
-    is_sub = plan["kind"] == "subscription"
 
+def _plan_is_pro_tier(plan: dict) -> bool:
+    return plan.get("audience") == "pro" or plan["plan_id"].startswith("pro")
+
+
+async def _compute_trial_days(user: dict, plan: dict, is_sub: bool) -> tuple[int, int]:
+    """Return (total_trial_days, bonus_days_consumed)."""
+    if not is_sub:
+        return 0, 0
     flags = await db.feature_flags.find_one({"_id": "global"}, {"_id": 0}) or {}
-    trial_enabled = flags.get("trial_enabled", True)
-    trial_days = plan.get("trial_days") or flags.get("trial_days") or 0
+    base_days = plan.get("trial_days") or flags.get("trial_days") or 0
+    base = base_days if flags.get("trial_enabled", True) else 0
+    bonus = 0
+    user_bonus = int(user.get("referral_bonus_days", 0) or 0)
+    if user_bonus > 0 and _plan_is_pro_tier(plan):
+        bonus = user_bonus
+    return base + bonus, bonus
 
-    kwargs = dict(
-        customer=customer_id,
-        line_items=[{"price": price.id, "quantity": 1}],
-        mode="subscription" if is_sub else "payment",
-        success_url=f"{origin_url}/paiement/succes?session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"{origin_url}/paiement/annule",
-        metadata={"user_id": user["user_id"], "plan_id": plan["plan_id"],
-                  "lookup_key": lookup},
-        allow_promotion_codes=True,
-    )
-    # Referral bonus : add user's earned free Pro days on top of the plan's trial.
-    # Only for Pro/Pro Business subscriptions (referral is a Pro-artisan reward).
-    bonus_days_consumed = 0
-    if is_sub:
-        bonus_days = int(user.get("referral_bonus_days", 0) or 0)
-        if bonus_days > 0 and (plan.get("audience") == "pro"
-                               or plan["plan_id"].startswith("pro")):
-            bonus_days_consumed = bonus_days
-    total_trial_days = (trial_days if is_sub and trial_enabled else 0) + bonus_days_consumed
+
+def _resolve_promo_discount(promo_code: str | None) -> list | None:
+    """Return Stripe `discounts` payload for a human-friendly code, or None."""
+    if not promo_code:
+        return None
+    promos = stripe.PromotionCode.list(code=promo_code, active=True, limit=1).data
+    if not promos:
+        return None
+    return [{"promotion_code": promos[0].id}]
+
+
+def _build_checkout_kwargs(*, user: dict, plan: dict, price, customer_id: str,
+                           origin_url: str, is_sub: bool,
+                           total_trial_days: int, bonus_days_consumed: int,
+                           promo_discount: list | None) -> dict:
+    kwargs = {
+        "customer": customer_id,
+        "line_items": [{"price": price.id, "quantity": 1}],
+        "mode": "subscription" if is_sub else "payment",
+        "success_url": f"{origin_url}/paiement/succes?session_id={{CHECKOUT_SESSION_ID}}",
+        "cancel_url": f"{origin_url}/paiement/annule",
+        "metadata": {"user_id": user["user_id"], "plan_id": plan["plan_id"],
+                     "lookup_key": plan["lookup_key"]},
+        "allow_promotion_codes": True,
+    }
     if is_sub and total_trial_days > 0:
         kwargs["subscription_data"] = {
             "trial_period_days": total_trial_days,
@@ -134,23 +188,51 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
                          "plan_id": plan["plan_id"],
                          "bonus_days_consumed": str(bonus_days_consumed)},
         }
-    if promo_code:
-        # promo_code = code humain; on résout en promotion_code Stripe
-        promos = stripe.PromotionCode.list(code=promo_code, active=True, limit=1).data
-        if promos:
-            kwargs.pop("allow_promotion_codes", None)
-            kwargs["discounts"] = [{"promotion_code": promos[0].id}]
+    if promo_discount is not None:
+        kwargs.pop("allow_promotion_codes", None)
+        kwargs["discounts"] = promo_discount
+    return kwargs
 
-    session = stripe.checkout.Session.create(**kwargs)
 
+async def _record_payment_transaction(session, price, plan: dict, user: dict,
+                                       mode: str, bonus_days_consumed: int) -> None:
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": user["user_id"],
-        "plan_id": plan["plan_id"], "lookup_key": lookup,
+        "plan_id": plan["plan_id"], "lookup_key": plan["lookup_key"],
         "amount_cents": price.unit_amount, "currency": price.currency,
-        "mode": kwargs["mode"], "status": "initiated", "payment_status": "pending",
+        "mode": mode, "status": "initiated", "payment_status": "pending",
         "bonus_days_consumed": bonus_days_consumed,
         "created_at": now_iso(), "updated_at": now_iso(),
     })
+
+
+async def create_checkout(user: dict, plan: dict, origin_url: str,
+                          promo_code: str | None = None) -> dict:
+    """Crée une Checkout Session Stripe pour le plan donné.
+
+    Refactor iter53 : orchestration only — logique déléguée à des helpers.
+    """
+    if not stripe.api_key:
+        raise RuntimeError("Stripe non configuré")
+    if not plan.get("lookup_key"):
+        raise ValueError(f"Plan {plan.get('plan_id')} sans lookup_key")
+
+    price = await _resolve_price(plan["lookup_key"])
+    customer_id = await get_or_create_customer(user)
+    is_sub = plan["kind"] == "subscription"
+    total_trial_days, bonus_days_consumed = await _compute_trial_days(user, plan, is_sub)
+    promo_discount = _resolve_promo_discount(promo_code)
+
+    kwargs = _build_checkout_kwargs(
+        user=user, plan=plan, price=price, customer_id=customer_id,
+        origin_url=origin_url, is_sub=is_sub,
+        total_trial_days=total_trial_days,
+        bonus_days_consumed=bonus_days_consumed,
+        promo_discount=promo_discount,
+    )
+    session = stripe.checkout.Session.create(**kwargs)
+    await _record_payment_transaction(session, price, plan, user,
+                                       kwargs["mode"], bonus_days_consumed)
     return {"url": session.url, "session_id": session.id,
             "bonus_days_applied": bonus_days_consumed}
 
@@ -173,6 +255,35 @@ async def sync_status(session_id: str) -> dict:
     return await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
 
 
+async def _consume_referral_bonus(user_id: str, consumed: int) -> None:
+    if consumed <= 0:
+        return
+    await db.users.update_one(
+        {"user_id": user_id, "referral_bonus_days": {"$gte": consumed}},
+        {"$inc": {"referral_bonus_days": -consumed},
+         "$set": {"referral_bonus_last_consumed_at": now_iso()}},
+    )
+    logger.info(f"Referral bonus consumed: user={user_id} days=-{consumed}")
+
+
+async def _credit_referrer_safe(user_id: str) -> None:
+    """Fire-and-forget referral credit — never propagate errors upstream."""
+    try:
+        from engines import referral
+        await referral.credit_referrer_on_first_payment(user_id)
+    except Exception as e:
+        logger.warning(f"Referral credit failed: {e}")
+
+
+async def _apply_pro_credit_topup(rec: dict) -> None:
+    total = rec.get("amount_cents", 0) + rec.get("bonus_cents", 0)
+    await db.marketplace_pros.update_one(
+        {"user_id": rec["user_id"]},
+        {"$inc": {"credits_cents": total}},
+    )
+    logger.info(f"Pro credits +{total} cents pour {rec['user_id']}")
+
+
 async def _mark_paid(session_id: str, s):
     upd = await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
@@ -184,34 +295,17 @@ async def _mark_paid(session_id: str, s):
         return
     rec = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
 
-    # Cas 1 : recharge de crédits pro
     if rec.get("type") == "pro_credit_topup":
-        total = rec.get("amount_cents", 0) + rec.get("bonus_cents", 0)
-        await db.marketplace_pros.update_one({"user_id": rec["user_id"]},
-                                             {"$inc": {"credits_cents": total}})
-        logger.info(f"Pro credits +{total} cents pour {rec['user_id']}")
+        await _apply_pro_credit_topup(rec)
         return
 
-    # Cas 2 : subscription/one_time — entitlement
     plan = await db.plans.find_one({"plan_id": rec["plan_id"]}, {"_id": 0})
     if not plan:
         return
     await grant_entitlement(rec["user_id"], plan, rec)
-    # Consommer les jours de parrainage utilisés dans cette session
-    consumed = int(rec.get("bonus_days_consumed", 0) or 0)
-    if consumed > 0:
-        await db.users.update_one(
-            {"user_id": rec["user_id"], "referral_bonus_days": {"$gte": consumed}},
-            {"$inc": {"referral_bonus_days": -consumed},
-             "$set": {"referral_bonus_last_consumed_at": now_iso()}},
-        )
-        logger.info(f"Referral bonus consumed: user={rec['user_id']} days=-{consumed}")
-    # Créditer le parrain si c'est le 1er paiement du filleul
-    try:
-        from engines import referral
-        await referral.credit_referrer_on_first_payment(rec["user_id"])
-    except Exception as e:
-        logger.warning(f"Referral credit failed: {e}")
+    await _consume_referral_bonus(rec["user_id"],
+                                   int(rec.get("bonus_days_consumed", 0) or 0))
+    await _credit_referrer_safe(rec["user_id"])
 
 
 async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict):
@@ -227,9 +321,7 @@ async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict):
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     doc["stripe_customer_id"] = user.get("stripe_customer_id") if user else None
     if plan["kind"] == "one_time":
-        # Project Pass : validité en jours (quotas.duration_days) — par défaut 90j
         days = plan.get("quotas", {}).get("duration_days", 90)
-        from datetime import timedelta
         doc["expires_at"] = (now + timedelta(days=days)).isoformat()
     await db.entitlements.update_one(
         {"user_id": user_id, "plan_id": plan["plan_id"]},
@@ -245,6 +337,8 @@ async def revoke_entitlement(subscription_id: str, reason: str = "cancelled"):
         {"stripe_subscription_id": subscription_id},
         {"$set": {"status": reason, "revoked_at": now_iso()}})
 
+
+# ---------- Webhook dispatch (nesting depth 1 in `handle_webhook`) ----------
 
 async def _webhook_mark_paid(obj: dict) -> None:
     await _mark_paid(obj["id"], obj)
@@ -269,7 +363,6 @@ async def _webhook_invoice_failed(obj: dict) -> None:
         {"$set": {"status": "past_due", "updated_at": now_iso()}})
 
 
-# Dispatch table : {event_type: handler}. Nesting depth 1 in `handle_webhook`.
 _WEBHOOK_HANDLERS = {
     "checkout.session.completed": _webhook_mark_paid,
     "checkout.session.async_payment_succeeded": _webhook_mark_paid,
@@ -281,11 +374,7 @@ _WEBHOOK_HANDLERS = {
 
 
 async def handle_webhook(payload: bytes, sig: str) -> dict:
-    """Gère les événements Stripe.
-
-    Nesting depth ramené à 1 via une dispatch table `_WEBHOOK_HANDLERS`.
-    Événements inconnus sont acceptés silencieusement (retourne `received: True`).
-    """
+    """Gère les événements Stripe via dispatch table."""
     event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
     event_type = event["type"]
     handler = _WEBHOOK_HANDLERS.get(event_type)
@@ -318,18 +407,13 @@ async def user_has_feature(user_id: str | None, feature: str) -> bool:
     if not active or not active.get("plan"):
         return False
     quotas = active["plan"].get("quotas", {})
-    # Mapping simple
     mapping = {
         "unlimited_projects": quotas.get("projects") == -1,
         "unlimited_estimations": quotas.get("estimations_monthly") == -1,
         "ai_advisor_full": quotas.get("ai_advisor") == "full",
         "price_search_full": quotas.get("price_search") == "full",
     }
-    return bool(mapping.get(feature, True))  # par défaut, les payants ont tout
-
-
-PARTICULIER_PAID = {"project_pass", "premium_monthly", "premium_yearly"}
-PRO_PAID = {"pro_monthly", "pro_yearly", "pro_business_monthly", "pro_business_yearly"}
+    return bool(mapping.get(feature, True))
 
 
 async def user_tier(user_id: str | None) -> str:
@@ -352,11 +436,7 @@ async def user_tier(user_id: str | None) -> str:
 
 
 async def require_pro_business(user: dict) -> None:
-    """Guarantee the user has a Pro Business subscription — otherwise raise 402.
-
-    Used to gate the plan takeoff (2D measures) and the 3D/video rendering
-    endpoints. Admins keep full access.
-    """
+    """Guarantee the user has a Pro Business subscription — otherwise raise 402."""
     from fastapi import HTTPException
     if (user or {}).get("role") == "admin":
         return

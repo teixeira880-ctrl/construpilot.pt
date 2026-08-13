@@ -122,54 +122,39 @@ RÈGLES CRITIQUES :
 """
 
 
-async def analyze_plan_image(image_b64_png: str) -> dict:
-    """Envoie une image PNG (base64) à GPT-Vision et parse le JSON retourné.
+async def _call_gpt_vision(image_b64_png: str, api_key: str) -> str:
+    """Send the plan image to GPT-4o Vision and return raw text response."""
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    chat = LlmChat(
+        api_key=api_key,
+        session_id="plan-analyze",
+        system_message="Tu réponds toujours en JSON strict, sans markdown.",
+    ).with_model("openai", "gpt-4o")
+    msg = UserMessage(
+        text=PROMPT,
+        file_contents=[ImageContent(image_base64=image_b64_png)],
+    )
+    return await chat.send_message(msg)
 
-    Retourne un dict même en cas d'erreur (avec `error` renseigné).
-    """
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
-    if not api_key:
-        return {"error": "EMERGENT_LLM_KEY absent", "confidence": 0.0}
 
+def _parse_json_response(raw: str) -> dict:
+    """Extract & parse JSON from a GPT text response (strips markdown fences)."""
+    txt = re.sub(r"^```(?:json)?\s*|\s*```$", "", (raw or "").strip(), flags=re.MULTILINE).strip()
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
-    except ImportError:
-        logger.error("emergentintegrations not installed")
-        return {"error": "AI unavailable", "confidence": 0.0}
-
-    try:
-        chat = LlmChat(
-            api_key=api_key,
-            session_id="plan-analyze",
-            system_message="Tu réponds toujours en JSON strict, sans markdown.",
-        ).with_model("openai", "gpt-4o")  # vision-capable
-
-        msg = UserMessage(
-            text=PROMPT,
-            file_contents=[ImageContent(image_base64=image_b64_png)],
-        )
-        raw = await chat.send_message(msg)
-    except Exception as e:
-        logger.warning(f"AI plan analysis failed: {e}")
-        return {"error": f"AI call failed: {type(e).__name__}", "confidence": 0.0}
-
-    # Parse strict JSON
-    txt = (raw or "").strip()
-    # Retire fences éventuelles ```json ... ```
-    txt = re.sub(r"^```(?:json)?\s*|\s*```$", "", txt, flags=re.MULTILINE).strip()
-    try:
-        data = json.loads(txt)
+        return json.loads(txt)
     except Exception:
-        # Cherche 1er { … } dans la réponse
+        # Fallback : find first {...} block in the response
         m = re.search(r"\{[\s\S]*\}", txt)
         if not m:
             return {"error": "AI response not JSON", "raw": txt[:200], "confidence": 0.0}
         try:
-            data = json.loads(m.group(0))
+            return json.loads(m.group(0))
         except Exception as e:
             return {"error": f"JSON parse: {e}", "raw": txt[:200], "confidence": 0.0}
 
-    # Normalisation — garantit tous les champs de gros œuvre pour le front
+
+def _normalize_analysis(data: dict) -> dict:
+    """Ensure all gros-œuvre fields exist so the front never crashes on undefined."""
     data.setdefault("rooms", [])
     data.setdefault("openings", {})
     data.setdefault("warnings", [])
@@ -178,7 +163,25 @@ async def analyze_plan_image(image_b64_png: str) -> dict:
     data.setdefault("stairwells", [])
     data.setdefault("floors", {})
     data.setdefault("totals_gros_oeuvre", {})
-    # Coerce openings.details to a list even if the model omits it
     if isinstance(data.get("openings"), dict):
         data["openings"].setdefault("details", [])
     return data
+
+
+async def analyze_plan_image(image_b64_png: str) -> dict:
+    """Send a PNG plan image to GPT-Vision and return the parsed gros-œuvre JSON.
+
+    Always returns a dict — errors are surfaced via the `error` key.
+    """
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        return {"error": "EMERGENT_LLM_KEY absent", "confidence": 0.0}
+    try:
+        raw = await _call_gpt_vision(image_b64_png, api_key)
+    except ImportError:
+        logger.error("emergentintegrations not installed")
+        return {"error": "AI unavailable", "confidence": 0.0}
+    except Exception as e:
+        logger.warning(f"AI plan analysis failed: {e}")
+        return {"error": f"AI call failed: {type(e).__name__}", "confidence": 0.0}
+    return _normalize_analysis(_parse_json_response(raw))

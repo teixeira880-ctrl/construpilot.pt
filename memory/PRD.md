@@ -80,7 +80,7 @@ Langue produit : **Français**.
   - **Historique Diff** : fonction `computeSnapshotDiff()` compare snapshot précédent → actuel (par room_id) et affiche un résumé compact sous chaque item (`+2 (Salon, Cuisine)` / `−1 (SDB)` / `~1 (Chambre 12→14 m²)` / `+1 calibration`). Tooltip HTML title identique.
 
 ### 🟡 Points d'attention (non bloquants)
-- Tavily ~25% fallback demo.
+- **Tavily ✅ opérationnel (iter 54 — 13/02/2026)** : mode "web" temps réel, parseur de prix avec bornes de plausibilité (3€ ≤ prix ≤ 3000€).
 - Webhook Stripe non testable en preview.
 - Push non testable en Playwright headless (permissions bloquées).
 - Twilio SMS : SID configuré, `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER` à ajouter dans `.env` pour activer l'envoi serveur (fallback natif `sms:` opérationnel).
@@ -830,6 +830,60 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 39. Changelog Iter 53 (13/02/2026) — Code Quality Refactor Round 8 (P1 complet)
+
+### 🧹 Engines refactorés
+- **`engines/monetization.py`** (369 lignes → 355) :
+  - `ensure_stripe_catalog` (complexity 14 → ~4) découpée en `_index_existing_products`, `_upsert_product`, `_upsert_price`, `_persist_stripe_ids`.
+  - `create_checkout` (complexity 20 → ~6, params 3 → 4 mais orchestration only) découpée en `_resolve_price`, `_compute_trial_days`, `_resolve_promo_discount`, `_build_checkout_kwargs`, `_record_payment_transaction`.
+  - `_mark_paid` (nesting 4 → 2) découpé : `_consume_referral_bonus`, `_credit_referrer_safe`, `_apply_pro_credit_topup`.
+  - `handle_webhook` migré en dispatch table (`_WEBHOOK_HANDLERS = {...}`).
+- **`engines/calculators.py`** :
+  - Dataclasses ajoutées : `PaintParams`, `TileParams`, `RoofFacadeParams`. Compatibilité kwargs préservée pour les call sites existants (aucune modification requise).
+  - `roof_facade` (params 7 → 1 dataclass) découpé en `_roof_slope`, `_roof_facade_warnings`, `_roof_facade_materials`.
+- **`engines/pdf_takeoff.py`** :
+  - `build_tva_attestation_pdf` (complexity 13, 9 params → orchestration only) découpée en `_tva_header_and_intro`, `_tva_labelled_block`, `_tva_declarations`, `_tva_signature_and_footer`, `_coalesce_tva_input`. Accepte dataclass OU kwargs legacy.
+
+### 🗂️ `routes/plans.py` split (2384 lignes → 28 lignes)
+Le fichier historique (48+ imports) a été découpé en 5 modules focalisés :
+- **`plans_common.py`** (243 l., 6 imports) — routers `router` + `quote_router`, helpers partagés : `_now`, `_snapshot`, `_plan_summary`, `_resolve_branding`, `_build_quote_and_pdf`, `_diff_rooms`, `build_client_portal_token`.
+- **`plans_crud.py`** (218 l., 8 imports) — upload / list / get / delete / calibrate / calibrate-check / plan-defaults / page-level.
+- **`plans_analysis.py`** (697 l., 8 imports) — analyze IA / detect-walls / walls-summary / detect-all-rooms / room-autofill / measure / rooms CRUD / openings CRUD / takeoff / materials / compare plans + snapshots / history.
+- **`plans_render.py`** (322 l., 10 imports) — render-3d Nano Banana + video tour MP4.
+- **`plans_export.py`** (909 l., 12 imports) — PDF métré, PDF devis, send-quote, TVA attestation, estimate-from-takeoff, reminders scheduler, quote templates, multi-pdf, tracking pixel, notifications, signature client, portail client.
+- **`plans.py`** (28 l.) — simple aggregateur qui réimporte les 5 sous-modules et réexporte `router`, `quote_router`, `_run_reminders`, `build_client_portal_token` pour la rétro-compatibilité avec `server.py`.
+
+### 🧪 Testing agent v3 (backend only)
+- Nouveau suite : `/app/backend/tests/test_iter53_refactor_regression.py` (16 tests unit + endpoint coverage).
+- Testing agent a exécuté **55 tests backend au total** (iter52 regression + iter53 unit + endpoint coverage) → **55/55 PASSED** en ~9 s parallel.
+- Rapport complet : `/app/test_reports/iteration_53.json`.
+- Aucune régression sur les 38 routes `/api/takeoffs` et 14 routes `/api/quotes` (validation via `openapi.json` diff).
+- Stripe catalog sync (10 plans) → OK au boot.
+
+### 📊 Impact quantitatif
+- Cyclomatic complexity max sur les 4 fichiers cibles : de **14/20/13** à **≤6** (orchestration seule dans les fonctions publiques).
+- `routes/plans.py` : **2384 → 28 lignes** (98,8 % de réduction) ; imports **48 → 7**.
+- Aucun endpoint perdu : les 38 + 14 routes sont préservées (validation via `/openapi.json`).
+
+## 38. Changelog Iter 52 (13/02/2026) — Code Quality Refactor Round 7
+
+### 🧹 Refactors sans impact fonctionnel (testing agent validé)
+- **`engines/alerting.py`** : `check_user_alerts` (complexity 12 → ~5). Nouveaux helpers privés : `_best_offer(offers)`, `_should_notify(alert, price)`, `_push_alert(user_id, alert, best)`.
+- **`engines/plan_ai.py`** : `analyze_plan_image` (59 lignes → ~15). Split en 3 helpers : `_call_gpt_vision(img, key)`, `_parse_json_response(raw)`, `_normalize_analysis(data)`. Toutes les 6 clés racine du contrat de sortie préservées.
+- **`engines/plan_cv.py`** : `detect_all_rooms` (complexity 15 → ~4). Split en `_binarize_and_close(png_b64)`, `_is_valid_room_contour(c, total_area, min)`, `_contour_to_room(c, area, bbox, epsilon)`. Contrat `{image_width, image_height, rooms:[…]}` intact.
+- **`routes/plans.py`** : retrait import inutilisé `_secret` (ruff F401 clean).
+
+### 📊 Constats sur le rapport de qualité de code externe
+- Le rapport annonçait **21 undefined variables** — pyflakes + ruff (F821/F823) → **0 détecté** (faux positifs de l'outil externe).
+- Le rapport annonçait **157 `is` vs `==`** dans les tests — ruff F632 → **0 détecté** (les 100 occurrences trouvées sont toutes des `is True/False/None` valides PEP 8).
+- Complexités restantes non refactorées (à faire ultérieurement) : `create_checkout` (20 — critique paiement, à isoler), `ensure_stripe_catalog` (14), `build_tva_attestation_pdf` (13, 9 params), `_render_preview` (16), `paint/tile/roof_facade` (dataclass à créer — nombreux call sites).
+
+### 🧪 Testing agent v3 (backend only)
+- Nouveau suite : `/app/backend/tests/test_iter52_refactor_regression.py` (19 tests, ~7.7 s parallel).
+- **18 PASSED · 1 SKIPPED** (test client-portal token skippé par env, validé manuellement en curl → 200).
+- Rapport complet : `/app/test_reports/iteration_52.json`.
+- Aucune régression sur les 8 surfaces testées : Auth, Analyze IA, detect-all-rooms, gate Pro Business, alerting, client-log, unsubscribe, admin inbox + leads.
+
 ## 37. Changelog Iter 51 (13/02/2026) — Client portal link injecté + Actions leads
 
 ### 📧 Link portail client dans emails devis
@@ -1212,3 +1266,44 @@ Voir `/app/memory/test_credentials.md`.
 - **~30 URLs uniques** dans sitemap.xml.
 - Toutes avec title/description/H1/canonical/JSON-LD uniques.
 
+
+
+## 40. Changelog Iter 54 (13/02/2026) — Tavily réel activé + parseur prix durci
+
+### 🌐 Tavily Search API activée
+- Clé `TAVILY_API_KEY=tvly-dev-...` déjà présente dans `backend/.env` (fournie par l'utilisateur).
+- L'endpoint `POST /api/prices/search` renvoie désormais `mode: "web"` par défaut (Tavily
+  temps réel) au lieu de `mode: "demo"`. Bascule sur demo uniquement si Tavily ne retourne
+  aucun résultat après double appel (avec puis sans `include_domains`).
+- Domaines whitelistés : 10 enseignes FR (Leroy Merlin, Castorama, Brico Dépôt, Point.P,
+  Gedimat, BigMat, Lapeyre, ManoMano, Bricoman, Amazon).
+
+### 🧮 Parseur de prix durci (`engines/price_search.py`)
+- **Ancien comportement** : `_parse_price()` prenait le premier prix `€` trouvé dans le
+  snippet — souvent une note (4,5), un prix unitaire hors-sujet (2,70 €/plaque au lieu
+  de 3,24 € TTC), ou un prix "à partir de" aberrant (2 740,54 € sur ManoMano).
+- **Nouveau** : deux helpers dédiés
+  - `_parse_all_prices(text)` — capture TOUS les prix visibles.
+  - `_pick_plausible_price(prices)` — filtre par bornes `PRICE_MIN_EUR=3` et
+    `PRICE_MAX_EUR=3000`, renvoie le plus bas plausible.
+- Résultat : les prix affichés sont désormais réalistes (BA13 hydrofuge 4,60-4,99 €,
+  laine verre 200mm 4,79-7,99 €, carrelage 60x60 grès cérame 26,90 €/m²). Quand aucun
+  prix crédible n'est extrait, le champ est laissé à `null` et l'UI affiche `—` +
+  le lien direct vers la fiche produit du commerçant (transparence utilisateur).
+
+### 🔍 Logs Tavily visibles
+- Le `try/except` silencieux du connecteur est remplacé par des `log.warning` structurés
+  (`tavily_http_error status=... body=...` / `tavily_call_failed err=...`) pour tracer
+  les 401/429/500 en production sans casser le fallback.
+
+### 🧪 Tests
+- Nouveau `/app/backend/tests/test_iter54_tavily_price_parser.py` — **5/5 PASSED** :
+  - `test_parse_all_prices_multi` — extraction multi-prix depuis un snippet.
+  - `test_pick_plausible_filters_micro_and_aberrant` — filtrage <3 € et >3000 €.
+  - `test_parse_price_end_to_end` — cas réel BA13.
+  - `test_parse_price_no_valid` — snippet sans prix / vide / None.
+  - `test_parse_price_range_boundaries` — bornes inclusives.
+- Régression Iter 53 : **21/21 PASSED** (16 refactor + 5 iter54).
+- End-to-end curl `POST /api/prices/search` sur 4 requêtes → mode "web" confirmé,
+  0 résultat en mode "demo" pour les termes usuels.
+- Screenshot UI `/prix` → badge "Recherche web temps réel" affiché.

@@ -1,0 +1,24 @@
+{
+  "summary": "Iter52 refactor regression — backend-only. Created /app/backend/tests/test_iter52_refactor_regression.py (19 tests). Result: 18 PASSED + 1 SKIPPED (client-portal valid-token test skipped because JWT_SECRET is not available in the pytest env; manually verified via curl → returns 200 with {email, count:0, quotes:[]}). All refactored code paths validated: (1) engines/plan_ai.py analyze returns full expected structure (rooms, facade_walls, stairwells, totals_gros_oeuvre, floors, interior_walls); (2) engines/plan_cv.py detect_all_rooms returns {image_width, image_height, rooms:[…]}; (3) engines/alerting.py check-now + list alerts exercises _best_offer/_should_notify/_push_alert helpers without regression; (4) routes/plans.py Pro Business gate returns 402 for free/client user on /upload, /render-3d, /render-video and 200 for admin (bypass) — confirmed the admin bypass via successful upload; (5) routes/errors.py client-log persists to MongoDB and shows up in admin/list; (6) routes/emails.py unsubscribe/badtoken returns 400 with branded HTML; (7) routes/admin.py inbox returns all 5 keys (counts, leads, new_users, recent_sends, recent_errors) and PUT /admin/leads/{id} updates status to 'handled'; (8) auth login for pro@ and admin@ returns valid JWT, wrong password → 401; (9) landing page returns 200. Total runtime ~7.7s (parallel workers).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter52_refactor_regression.py",
+    "/app/test_reports/pytest/iter52.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Refactor is clean: _best_offer / _should_notify / _push_alert in engines/alerting.py have single responsibilities and check_user_alerts is now trivially readable.",
+    "engines/plan_ai.py split into _call_gpt_vision + _parse_json_response + _normalize_analysis preserves the output contract — all 6 top-level keys still present.",
+    "engines/plan_cv.py detect_all_rooms split into _binarize_and_close / _is_valid_room_contour / _contour_to_room keeps the {image_width,image_height,rooms} contract intact.",
+    "routes/plans.py: removed unused _secret import — no regression detected. Pro Business gate correctly returns 402 for free users on /upload, /render-3d, /render-video and admin bypasses via require_pro_business.",
+    "No behavioural change detected on any of the 8 tested surfaces."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter52_refactor_regression.py (new)"],
+  "success_rate": {"backend": "100% (18/18 executed, 1 skipped due to env, manually verified 200)", "frontend": "not tested (per request)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! ; admin@construpilot.fr / Construpilot2026! ; client@construpilot.fr / Client2026!",
+  "seed_data_creation": "TEST_lead via POST /api/leads (cleaned via update status); TEST_placo BA13 price alert (deleted after test); unique TEST_iter52_<ts> client error log entries (kept, TTL 30d).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && export REACT_APP_BACKEND_URL=https://pilot-build-demo.preview.emergentagent.com && python -m pytest tests/test_iter52_refactor_regression.py -v (~8s). Client-portal valid-token test auto-skips outside the backend container because JWT_SECRET is not exposed; to run it inline, either mount the same JWT_SECRET env var or compute the token via: `python -c 'from routes.plans import build_client_portal_token; print(build_client_portal_token(\"email@x.fr\"))'` from /app/backend. AI analyze test uses a real Gemini/GPT-Vision call — expect ~5-15s; if EMERGENT_LLM_KEY quota is exhausted it will fail with 502 (not a refactor bug)."
+}

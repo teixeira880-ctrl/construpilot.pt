@@ -152,7 +152,7 @@ export default function ApiKeys() {
 
       <div className="surface p-6 grid gap-3">
         <div className="flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /><p className="overline">Exemple d'appel</p></div>
-        <pre className="text-xs bg-secondary/40 p-4 rounded-sm overflow-x-auto"><code>{`curl -X POST https://cmrenov-ai.preview.emergentagent.com/api/v1/public/estimation \\
+        <pre className="text-xs bg-secondary/40 p-4 rounded-sm overflow-x-auto"><code>{`curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/estimation \\
   -H "X-API-Key: ckp_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{"project_type":"renovation_partielle","surface":40,"finish_level":"standard"}'`}</code></pre>

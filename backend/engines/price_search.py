@@ -8,11 +8,19 @@ Les nouveaux connecteurs s'ajoutent dans SUPPLIERS sans modifier le reste de l'a
 import os
 import re
 import hashlib
+import logging
 from datetime import datetime, timezone
 
 import httpx
 
 from core.db import db
+
+log = logging.getLogger(__name__)
+
+# Bornes de plausibilité pour les prix matériaux BTP (EUR).
+# Rejette les micro-prix (unitaires vs pot 10L, croisillons vs sacs) et les paniers "totaux".
+PRICE_MIN_EUR = 3.0
+PRICE_MAX_EUR = 3000.0
 
 SUPPLIERS = [
     {"key": "leroymerlin", "name": "Leroy Merlin", "domain": "leroymerlin.fr", "shipping": 29.9,
@@ -122,16 +130,34 @@ def demo_search(query: str, limit: int = 8) -> list[dict]:
 PRICE_RE = [r"(\d{1,5}(?:[ .]\d{3})?[,.]\d{2})\s*€", r"€\s*(\d{1,5}(?:[ .]\d{3})?[,.]\d{2})"]
 
 
-def _parse_price(text: str):
+def _parse_all_prices(text: str) -> list[float]:
+    """Extrait TOUS les prix trouvés (€), pour pouvoir choisir le plus plausible."""
+    seen = []
     for pat in PRICE_RE:
-        m = re.search(pat, text or "", re.I)
-        if m:
-            v = m.group(1).replace(" ", "").replace(".", "").replace(",", ".")
+        for m in re.finditer(pat, text or "", re.I):
+            raw = m.group(1).replace(" ", "").replace(".", "").replace(",", ".")
             try:
-                return float(v)
+                seen.append(float(raw))
             except ValueError:
-                pass
-    return None
+                continue
+    return seen
+
+
+def _pick_plausible_price(prices: list[float]) -> float | None:
+    """Choisit un prix crédible : le plus petit >= PRICE_MIN_EUR et <= PRICE_MAX_EUR.
+
+    Filtre les micro-prix (croisillons/vis, prix TTC/HT confondus) et les paniers
+    "à partir de X €" invraisemblables. En cas d'ambiguïté, on privilégie le plus bas
+    dans la plage — heuristique cohérente avec un comparateur de prix unitaire.
+    """
+    plausible = [p for p in prices if PRICE_MIN_EUR <= p <= PRICE_MAX_EUR]
+    if not plausible:
+        return None
+    return min(plausible)
+
+
+def _parse_price(text: str) -> float | None:
+    return _pick_plausible_price(_parse_all_prices(text))
 
 
 async def tavily_search(query: str, limit: int = 10) -> list[dict]:
@@ -144,6 +170,7 @@ async def tavily_search(query: str, limit: int = 10) -> list[dict]:
         "country": "france",
     }
     domains = [s["domain"] for s in SUPPLIERS]
+
     async def _call(payload: dict):
         try:
             async with httpx.AsyncClient(timeout=20) as client:
@@ -151,7 +178,12 @@ async def tavily_search(query: str, limit: int = 10) -> list[dict]:
                                       headers={"Authorization": f"Bearer {key}"}, json=payload)
                 r.raise_for_status()
                 return r.json()
-        except Exception:
+        except httpx.HTTPStatusError as e:
+            log.warning("tavily_http_error status=%s body=%s",
+                        e.response.status_code, e.response.text[:200])
+            return {"results": []}
+        except Exception as e:
+            log.warning("tavily_call_failed err=%s", str(e)[:200])
             return {"results": []}
     # 1er appel filtré sur les enseignes whitelistées
     data = await _call({**base_payload, "include_domains": domains})

@@ -1,0 +1,37 @@
+{
+  "summary": "Iter53 refactor regression: routes/plans.py split into 5 sub-modules (crud/analysis/render/export/common) + engines refactorings (calculators dataclasses, monetization helpers, pdf_takeoff TVA helpers). Ran 55 backend tests total (iter52 regression 18, iter53 unit 17, iter53 endpoint HTTP coverage 20). All 55 tests pass. No 500 regression detected. Stripe catalog syncs (10 plans) at boot. Router prefixes and endpoint counts preserved (>=30 takeoffs routes, >=10 quotes routes via openapi.json).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter53_refactor_regression.py",
+    "/app/backend/tests/test_iter53_endpoint_coverage.py",
+    "/app/backend/tests/test_iter52_refactor_regression.py",
+    "/app/test_reports/pytest/iter53_all.xml",
+    "/app/test_reports/pytest/iter53_endpoints.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/plans.py aggregator (28 lines) cleanly re-exports router/quote_router/_run_reminders/build_client_portal_token; server.py compatibility preserved.",
+    "engines/calculators.py: dataclasses (PaintParams/TileParams/RoofFacadeParams) coexist with legacy kwargs — backward compatibility verified.",
+    "engines/monetization.py: all 10 new helpers exposed at module level; _plan_is_pro_tier and _price_matches semantics preserved.",
+    "engines/pdf_takeoff.py: build_tva_attestation_pdf accepts both TvaAttestationInput dataclass and legacy kwargs — produces valid PDF (>500 bytes, starts with %PDF).",
+    "OpenAPI reflects 38+ /takeoffs paths and 14+ /quotes paths after the split (no route lost)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter53_endpoint_coverage.py (new — HTTP-level coverage for review-request endpoints)"
+  ],
+  "success_rate": {"backend": "100% (55/55)", "frontend": "N/A (skipped per request)"},
+  "test_credentials": "Admin admin@construpilot.fr / Construpilot2026! and Pro pro@construpilot.fr / Pro2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None — used seeded demo accounts.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Refactor P1 (iter53) fully validated. Combined pytest command: `cd /app/backend && REACT_APP_BACKEND_URL=<preview_url> python -m pytest tests/test_iter52_refactor_regression.py tests/test_iter53_refactor_regression.py tests/test_iter53_endpoint_coverage.py -v`. Note: /api/tools/calculators/{key} route is actually mounted at /api/calculators/{key} (tools router prefix is empty). Login response uses `token` key, not `access_token`. Compare endpoint checks plan existence before same-id validation → returns 404 for nonexistent identical IDs (test accepts both 400 and 404).",
+  "rca of the issue": "No bugs found. Refactor is behaviour-preserving."
+}

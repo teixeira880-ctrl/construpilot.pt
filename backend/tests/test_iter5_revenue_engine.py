@@ -19,7 +19,7 @@ from pypdf import PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cmrenov-ai.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://pilot-build-demo.preview.emergentagent.com").rstrip("/")
 
 ADMIN = {"email": "admin@construpilot.fr", "password": "Construpilot2026!"}
 DEMO = {"email": "demo@construpilot.fr", "password": "Demo2026!"}

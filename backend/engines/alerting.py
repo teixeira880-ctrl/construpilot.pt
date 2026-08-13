@@ -40,36 +40,53 @@ async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
         return False
 
 
+def _best_offer(offers: list) -> dict | None:
+    """Return the cheapest offer with a real price (or None)."""
+    valid = [o for o in offers if o.get("price") is not None]
+    return min(valid, key=lambda o: o["price"]) if valid else None
+
+
+def _should_notify(alert: dict, best_price: float) -> bool:
+    """Decide whether the best offer justifies sending a new notification."""
+    if best_price > alert["target_price"]:
+        return False
+    last = alert.get("last_notified_price")
+    # Skip if price hasn't dropped by at least 2% since last notification
+    return last is None or best_price < last * 0.98
+
+
+async def _push_alert(user_id: str, alert: dict, best: dict) -> None:
+    """Best-effort push notification (never blocks the email flow)."""
+    try:
+        from routes.phase7 import notify_user as push_notify
+        await push_notify(
+            user_id,
+            f"💰 {alert.get('product') or alert.get('query')} : {best['price']:.2f} €",
+            f"Meilleure offre chez {best.get('supplier')} — cible {alert['target_price']:.2f} €",
+            best.get("url") or "/prix",
+        )
+    except Exception as e:
+        logger.warning(f"Push notify failed: {e}")
+
+
 async def check_user_alerts(user_id: str) -> int:
-    """Vérifie les alertes actives d'un user, notifie si triggered depuis dernier envoi."""
+    """Check a user's active alerts, notify (email + push) when triggered."""
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not user:
         return 0
-    alerts = await db.price_alerts.find({"user_id": user_id, "active": True},
-                                        {"_id": 0}).to_list(200)
+    alerts = await db.price_alerts.find(
+        {"user_id": user_id, "active": True}, {"_id": 0}
+    ).to_list(200)
+
     sent = 0
     for a in alerts:
         result = await price_search.search(a["query"], 10)
-        offers = [o for o in result.get("results", []) if o.get("price") is not None]
-        if not offers:
+        best = _best_offer(result.get("results", []))
+        if not best or not _should_notify(a, best["price"]):
             continue
-        best = min(offers, key=lambda o: o["price"])
-        if best["price"] > a["target_price"]:
-            continue
-        last_price = a.get("last_notified_price")
-        if last_price is not None and best["price"] >= last_price * 0.98:
-            continue  # évite le spam si prix quasi identique au dernier envoi
         if await _notify_user(user, a, best):
             sent += 1
-            # Push notification (best effort)
-            try:
-                from routes.phase7 import notify_user as push_notify
-                await push_notify(user["user_id"],
-                                  f"💰 {a.get('product') or a.get('query')} : {best.get('price'):.2f} €",
-                                  f"Meilleure offre chez {best.get('supplier')} — cible {a.get('target_price'):.2f} €",
-                                  best.get("url") or "/prix")
-            except Exception as e:
-                logger.warning(f"Push notify failed: {e}")
+            await _push_alert(user_id, a, best)
     return sent
 
 

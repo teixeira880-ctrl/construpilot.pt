@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { SectionTitle } from "@/components/Bits";
 
-const CURL_EST = `curl -X POST https://cmrenov-ai.preview.emergentagent.com/api/v1/public/estimation \\
+const CURL_EST = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/estimation \\
   -H "X-API-Key: ckp_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -19,12 +19,12 @@ const CURL_EST = `curl -X POST https://cmrenov-ai.preview.emergentagent.com/api/
     "condition": "bon"
   }'`;
 
-const CURL_PRICES = `curl -X POST https://cmrenov-ai.preview.emergentagent.com/api/v1/public/prices \\
+const CURL_PRICES = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/prices \\
   -H "X-API-Key: ckp_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{"query":"carrelage 60x60","limit":10}'`;
 
-const CURL_CALC = `curl -X POST https://cmrenov-ai.preview.emergentagent.com/api/v1/public/calculators \\
+const CURL_CALC = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/calculators \\
   -H "X-API-Key: ckp_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -34,7 +34,7 @@ const CURL_CALC = `curl -X POST https://cmrenov-ai.preview.emergentagent.com/api
 
 const JS_SNIPPET = `import axios from "axios";
 const api = axios.create({
-  baseURL: "https://cmrenov-ai.preview.emergentagent.com/api/v1/public",
+  baseURL: "https://pilot-build-demo.preview.emergentagent.com/api/v1/public",
   headers: { "X-API-Key": process.env.CONSTRUPILOT_KEY },
 });
 

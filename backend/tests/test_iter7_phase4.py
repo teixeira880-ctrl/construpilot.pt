@@ -5,7 +5,7 @@ import pytest
 import requests
 
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL")
-            or "https://cmrenov-ai.preview.emergentagent.com").rstrip("/")
+            or "https://pilot-build-demo.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
 ADMIN = {"email": "admin@construpilot.fr", "password": "Construpilot2026!"}
