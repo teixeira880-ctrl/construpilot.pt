@@ -237,6 +237,12 @@ export default function PlanTakeoff() {
   const [showWalls, setShowWalls] = useState(true);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
+  const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openingsDialog, setOpeningsDialog] = useState(null); // room_id
+  const [pendingOpening, setPendingOpening] = useState({
+    kind: "fenetre", width_m: 1.2, height_m: 1.0, count: 1, label: "",
+  });
   const [takeoff, setTakeoff] = useState(null);
   const [materials, setMaterials] = useState(null);
   const [floorMaterial, setFloorMaterial] = useState("parquet");
@@ -1424,21 +1430,119 @@ export default function PlanTakeoff() {
                 <div className="grid gap-3 text-xs" data-testid="ai-analysis-result">
                   {plan.ai_analysis.error && <p className="text-destructive">{plan.ai_analysis.error}</p>}
                   {plan.ai_analysis.plan_type && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Badge variant="outline" className="rounded-sm">{plan.ai_analysis.plan_type}</Badge>
                       {plan.ai_analysis.quality && <Badge variant="outline" className="rounded-sm">{plan.ai_analysis.quality}</Badge>}
                       {plan.ai_analysis.detected_scale && <Badge variant="outline" className="rounded-sm num">{plan.ai_analysis.detected_scale}</Badge>}
+                      {plan.ai_analysis.confidence !== undefined && (
+                        <Badge variant="outline" className="rounded-sm num">
+                          conf. {Math.round((plan.ai_analysis.confidence || 0) * 100)}%
+                        </Badge>
+                      )}
                     </div>
                   )}
-                  {(plan.ai_analysis.rooms || []).map((r, i) => (
-                    <div key={i} className="border border-border p-2 rounded-sm flex justify-between">
-                      <span>{r.name}</span>
-                      <span className="num">{r.surface_written_m2 ? `${r.surface_written_m2} m²` : "—"}</span>
+
+                  {/* --- TOTAUX GROS ŒUVRE --- */}
+                  {plan.ai_analysis.totals_gros_oeuvre && Object.keys(plan.ai_analysis.totals_gros_oeuvre).length > 0 && (
+                    <div className="border-2 border-primary/40 bg-primary/5 p-3 rounded-sm space-y-1"
+                         data-testid="ai-gros-oeuvre-totals">
+                      <p className="overline text-primary">Totaux gros œuvre</p>
+                      {plan.ai_analysis.totals_gros_oeuvre.linear_walls_m != null && (
+                        <div className="flex justify-between"><span>Linéaire murs total</span>
+                          <b className="num">{plan.ai_analysis.totals_gros_oeuvre.linear_walls_m} ml</b></div>
+                      )}
+                      {plan.ai_analysis.totals_gros_oeuvre.facade_walls_area_net_m2 != null && (
+                        <div className="flex justify-between"><span>Façades (net)</span>
+                          <b className="num">{plan.ai_analysis.totals_gros_oeuvre.facade_walls_area_net_m2} m²</b></div>
+                      )}
+                      {plan.ai_analysis.totals_gros_oeuvre.interior_walls_area_m2 != null && (
+                        <div className="flex justify-between"><span>Cloisons intérieures</span>
+                          <b className="num">{plan.ai_analysis.totals_gros_oeuvre.interior_walls_area_m2} m²</b></div>
+                      )}
+                      {plan.ai_analysis.totals_gros_oeuvre.openings_area_m2 != null && (
+                        <div className="flex justify-between"><span>Ouvertures</span>
+                          <b className="num text-destructive">-{plan.ai_analysis.totals_gros_oeuvre.openings_area_m2} m²</b></div>
+                      )}
+                      {plan.ai_analysis.totals_gros_oeuvre.floor_slab_area_m2 != null && (
+                        <div className="flex justify-between"><span>Planchers/dalles</span>
+                          <b className="num">{plan.ai_analysis.totals_gros_oeuvre.floor_slab_area_m2} m²</b></div>
+                      )}
+                      {plan.ai_analysis.totals_gros_oeuvre.concrete_volume_m3_estimated != null && (
+                        <div className="flex justify-between"><span>Volume béton estimé</span>
+                          <b className="num">{plan.ai_analysis.totals_gros_oeuvre.concrete_volume_m3_estimated} m³</b></div>
+                      )}
                     </div>
-                  ))}
+                  )}
+
+                  {/* --- PIÈCES --- */}
+                  {(plan.ai_analysis.rooms || []).length > 0 && (
+                    <div className="border border-border p-2 rounded-sm">
+                      <p className="overline mb-2">Pièces ({plan.ai_analysis.rooms.length})</p>
+                      {plan.ai_analysis.rooms.map((r, i) => (
+                        <div key={i} className="flex justify-between border-b last:border-b-0 border-border/50 py-1">
+                          <span>{r.name}{r.level ? <span className="text-muted-foreground"> · {r.level}</span> : null}</span>
+                          <span className="num">{r.surface_written_m2 ?? r.estimated_surface_m2 ?? "—"} m²</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* --- FAÇADES --- */}
+                  {(plan.ai_analysis.facade_walls || []).length > 0 && (
+                    <div className="border border-border p-2 rounded-sm" data-testid="ai-facades">
+                      <p className="overline mb-2">Façades ({plan.ai_analysis.facade_walls.length})</p>
+                      {plan.ai_analysis.facade_walls.map((f, i) => (
+                        <div key={i} className="text-xs py-1 border-b last:border-b-0 border-border/50">
+                          <div className="flex justify-between">
+                            <span><b className="uppercase">{f.orientation || "?"}</b> · {f.material_guess || "?"} · {f.wall_type || "?"}</span>
+                            <span className="num">{f.area_net_m2 ?? f.area_gross_m2} m²</span>
+                          </div>
+                          {(f.length_m || f.height_m) && (
+                            <div className="text-muted-foreground text-[10px] num">
+                              {f.length_m} × {f.height_m} m {f.openings_area_m2 ? `· -${f.openings_area_m2} m² ouv.` : ""}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* --- ESCALIERS --- */}
+                  {(plan.ai_analysis.stairwells || []).length > 0 && (
+                    <div className="border border-border p-2 rounded-sm" data-testid="ai-stairwells">
+                      <p className="overline mb-2">Escaliers ({plan.ai_analysis.stairwells.length})</p>
+                      {plan.ai_analysis.stairwells.map((s, i) => (
+                        <div key={i} className="text-xs py-1 border-b last:border-b-0 border-border/50">
+                          <div className="flex justify-between">
+                            <span>{s.type || "?"} · {(s.connects_levels || []).join(" → ") || "?"}</span>
+                            <span className="num">{s.footprint_m2} m²</span>
+                          </div>
+                          {s.steps && (
+                            <div className="text-muted-foreground text-[10px] num">
+                              {s.steps} marches · trémie {s.trémie_area_m2 || "?"} m²
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* --- OUVERTURES DÉTAIL --- */}
+                  {plan.ai_analysis.openings?.details?.length > 0 && (
+                    <div className="border border-border p-2 rounded-sm">
+                      <p className="overline mb-2">Ouvertures détaillées ({plan.ai_analysis.openings.details.length})</p>
+                      {plan.ai_analysis.openings.details.map((o, i) => (
+                        <div key={i} className="flex justify-between text-xs py-0.5">
+                          <span>{o.kind}{o.location ? ` · ${o.location}` : ""}</span>
+                          <span className="num">{o.width_m}×{o.height_m}m × {o.count || 1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {plan.ai_analysis.total_surface_written_m2 && (
                     <div className="border-t border-border pt-2 flex justify-between font-bold">
-                      <span>Total surfaces écrites</span>
+                      <span>Total surfaces habitables</span>
                       <span className="num text-primary">{plan.ai_analysis.total_surface_written_m2} m²</span>
                     </div>
                   )}
@@ -1447,7 +1551,7 @@ export default function PlanTakeoff() {
                       ⚠ {plan.ai_analysis.warnings.join(" · ")}
                     </div>
                   )}
-                  {(plan.ai_analysis.rooms || []).some((r) => r.surface_written_m2) && (
+                  {(plan.ai_analysis.rooms || []).some((r) => r.surface_written_m2 || r.estimated_surface_m2) && (
                     <Button
                       size="sm"
                       className="w-full mt-1"

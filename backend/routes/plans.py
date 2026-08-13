@@ -779,8 +779,102 @@ class RoomIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     points: list[tuple[float, float]] = Field(min_length=3)
     ceiling_height_m: float | None = Field(default=2.5, ge=1.5, le=6.0)
+    floor_thickness_m: float | None = Field(default=0.15, ge=0.02, le=1.0)
     openings: list[dict] = Field(default_factory=list)
     room_id: str | None = None
+
+
+class PlanDefaultsIn(BaseModel):
+    ceiling_h_m: float = Field(ge=1.5, le=6.0)
+    floor_thickness_m: float = Field(ge=0.02, le=1.0)
+
+
+class OpeningIn(BaseModel):
+    kind: str = Field(default="fenetre", max_length=20)   # porte / fenetre / baie
+    width_m: float = Field(ge=0.05, le=10.0)
+    height_m: float = Field(ge=0.05, le=6.0)
+    count: int = Field(default=1, ge=1, le=100)
+    label: str | None = Field(default=None, max_length=40)
+
+
+@router.patch("/{plan_id}/defaults")
+async def update_plan_defaults(plan_id: str, body: PlanDefaultsIn, user=Depends(current_user)):
+    """Défauts globaux du plan (hauteur murs, épaisseur plancher).
+
+    Appliqués à toutes les futures pièces créées via le canvas / auto-import IA.
+    """
+    res = await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$set": {"plan_defaults": {"ceiling_h_m": body.ceiling_h_m,
+                                     "floor_thickness_m": body.floor_thickness_m},
+                   "updated_at": _now()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Plan introuvable")
+    return {"ok": True,
+            "plan_defaults": {"ceiling_h_m": body.ceiling_h_m,
+                              "floor_thickness_m": body.floor_thickness_m}}
+
+
+@router.post("/{plan_id}/rooms/{room_id}/openings")
+async def add_opening(plan_id: str, room_id: str, body: OpeningIn, user=Depends(current_user)):
+    """Ajoute une ouverture (porte/fenêtre/baie) à une pièce.
+
+    La surface (width × height × count) est déduite des murs nets automatiquement.
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "rooms": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    rooms = p.get("rooms") or []
+    room = next((r for r in rooms if r["room_id"] == room_id), None)
+    if not room:
+        raise HTTPException(404, "Pièce introuvable")
+    opening = {"opening_id": "op_" + secrets.token_hex(4),
+               "kind": body.kind.lower().strip() or "fenetre",
+               "width_m": body.width_m, "height_m": body.height_m,
+               "count": body.count,
+               "label": (body.label or "").strip() or None,
+               "area_m2": round(body.width_m * body.height_m * body.count, 3),
+               "created_at": _now()}
+    new_openings = list(room.get("openings") or []) + [opening]
+    net = G.subtract_openings(room["wall_area_gross_m2"], new_openings)
+    room["openings"] = net["openings"]
+    room["openings_area_m2"] = net["openings_area_m2"]
+    room["wall_area_net_m2"] = net["wall_area_net_m2"]
+    rooms = [r if r["room_id"] != room_id else room for r in rooms]
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}}
+    )
+    await _snapshot(plan_id, user["user_id"], "opening_add",
+                    {"room_name": room["name"], "kind": opening["kind"],
+                     "area_m2": opening["area_m2"]})
+    return room
+
+
+@router.delete("/{plan_id}/rooms/{room_id}/openings/{opening_id}")
+async def delete_opening(plan_id: str, room_id: str, opening_id: str,
+                          user=Depends(current_user)):
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "rooms": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    rooms = p.get("rooms") or []
+    room = next((r for r in rooms if r["room_id"] == room_id), None)
+    if not room:
+        raise HTTPException(404, "Pièce introuvable")
+    new_openings = [o for o in (room.get("openings") or []) if o.get("opening_id") != opening_id]
+    net = G.subtract_openings(room["wall_area_gross_m2"], new_openings)
+    room["openings"] = net["openings"]
+    room["openings_area_m2"] = net["openings_area_m2"]
+    room["wall_area_net_m2"] = net["wall_area_net_m2"]
+    rooms = [r if r["room_id"] != room_id else room for r in rooms]
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}}
+    )
+    return {"ok": True, "room": room}
 
 
 @router.post("/{plan_id}/rooms")
@@ -795,6 +889,8 @@ async def upsert_room(plan_id: str, body: RoomIn, user=Depends(current_user)):
 
     m = G.room_measurements(body.points, calib["pixels_per_meter"], body.ceiling_height_m or 2.5)
     net = G.subtract_openings(m["wall_area_gross_m2"], body.openings)
+    floor_th = body.floor_thickness_m if body.floor_thickness_m is not None else 0.15
+    volume_m3 = round(m["surface_m2"] * (body.ceiling_height_m or 2.5), 3)
 
     room = {
         "room_id": body.room_id or ("room_" + secrets.token_hex(4)),
@@ -806,6 +902,8 @@ async def upsert_room(plan_id: str, body: RoomIn, user=Depends(current_user)):
         "perimeter_m": m["perimeter_m"],
         "ceiling_area_m2": m["ceiling_area_m2"],
         "ceiling_height_m": m["ceiling_height_m"],
+        "floor_thickness_m": round(floor_th, 3),
+        "volume_m3": volume_m3,
         "wall_area_gross_m2": m["wall_area_gross_m2"],
         "wall_area_net_m2": net["wall_area_net_m2"],
         "openings_area_m2": net["openings_area_m2"],

@@ -16,9 +16,10 @@ GREY = colors.HexColor('#64748B')
 LIGHT_GREY = colors.HexColor('#F1F5F9')
 
 
-def _fmt(v, unit=""):
+def _fmt(v, unit="", digits=2):
     if isinstance(v, (int, float)):
-        return f"{v:,.2f} {unit}".replace(",", " ").replace(".", ",").strip()
+        fmt = f"{{:,.{digits}f}} {{}}".format(v, unit)
+        return fmt.replace(",", " ").replace(".", ",").strip()
     return str(v)
 
 
@@ -146,23 +147,55 @@ def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
     if not rooms:
         return
     story.append(Paragraph("Détail par pièce", S["h2"]))
-    rows = [["Pièce", "Surface", "Périmètre", "Murs bruts", "Murs nets", "H."]]
+    rows = [["Pièce", "Sol", "Périm.", "Murs bruts", "Ouvert.", "Murs nets",
+             "Volume", "Ép. plancher", "H."]]
     for r in rooms:
         rows.append([r.get("name", "—"),
                      _fmt(r.get("surface_m2", 0), "m²"),
                      _fmt(r.get("perimeter_m", 0), "m"),
                      _fmt(r.get("wall_area_gross_m2", 0), "m²"),
+                     _fmt(r.get("openings_area_m2", 0), "m²"),
                      _fmt(r.get("wall_area_net_m2", 0), "m²"),
+                     _fmt(r.get("volume_m3",
+                                round(r.get("surface_m2", 0) * r.get("ceiling_height_m", 2.5), 2)),
+                          "m³"),
+                     _fmt(r.get("floor_thickness_m", 0.15), "m", digits=2),
                      _fmt(r.get("ceiling_height_m", 2.5), "m")])
-    story.append(_table(rows, [45 * mm, 24 * mm, 24 * mm, 27 * mm, 27 * mm, 15 * mm],
+    story.append(_table(rows, [30 * mm, 18 * mm, 15 * mm, 20 * mm, 15 * mm,
+                                20 * mm, 18 * mm, 18 * mm, 12 * mm],
                         style_extras=[
                             ("BACKGROUND", (0, 0), (-1, 0), DARK),
                             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                            ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
                             ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
                             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
                         ], repeat_rows=1))
+    # Optional openings sub-section : list all openings across rooms
+    all_openings = []
+    for r in rooms:
+        for o in (r.get("openings") or []):
+            all_openings.append([r.get("name", "—"),
+                                  (o.get("kind") or "—").capitalize(),
+                                  (o.get("label") or "—"),
+                                  _fmt(o.get("width_m", 0), "m", digits=2),
+                                  _fmt(o.get("height_m", 0), "m", digits=2),
+                                  str(o.get("count", 1)),
+                                  _fmt(o.get("area_m2", 0), "m²")])
+    if all_openings:
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph("Ouvertures détaillées", S["h2"]))
+        story.append(_table(
+            [["Pièce", "Type", "Libellé", "Larg.", "Haut.", "Nb", "Surface"]] + all_openings,
+            [40 * mm, 22 * mm, 30 * mm, 18 * mm, 18 * mm, 12 * mm, 22 * mm],
+            style_extras=[
+                ("BACKGROUND", (0, 0), (-1, 0), DARK),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+            ], repeat_rows=1))
 
 
 def _material_row(section: str, m: dict) -> list[str] | None:

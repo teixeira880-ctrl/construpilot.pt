@@ -830,6 +830,33 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 31. Changelog Iter 45 (13/02/2026) — IA expert Gros Œuvre
+
+### 🧠 Refonte totale du prompt Analyse IA (`engines/plan_ai.py`)
+- L'IA est désormais présentée comme **expert 25 ans en gros œuvre et métré du bâtiment**.
+- Nouveau schéma JSON complet exigé du modèle GPT-4o Vision :
+  - **`rooms`** : ajoute `estimated_surface_m2`, `perimeter_estimated_m`, `ceiling_height_m`, `level` (RDC/R+1/R-1/combles)
+  - **`facade_walls`** : liste des façades avec orientation (sud/nord/est/ouest), longueur, hauteur, `area_gross_m2` / `openings_area_m2` / `area_net_m2`, `wall_type` (porteur/cloison/doublage), `material_guess` (parpaing/béton/brique/bois/pierre)
+  - **`interior_walls`** : totaux linéaire cloisons + porteurs internes + surface brute
+  - **`openings.details`** : liste détaillée type/localisation/dimensions/count/surface
+  - **`stairwells`** : liste des escaliers avec trémie, emprise, marches, type, niveaux reliés
+  - **`floors`** : dalles RDC + planchers intermédiaires + épaisseur + type (béton/hourdis/bois)
+  - **`totals_gros_oeuvre`** : linéaire murs total · façades net · cloisons · ouvertures · dalles · **volume béton estimé m³** · confidence
+- Normalisation stricte au retour : tous les champs sont défaultés à `[]`/`{}` pour ne jamais crasher le front.
+
+### 🎨 Panneau IA frontend enrichi (`PlanTakeoff.jsx`)
+- Bloc **TOTAUX GROS ŒUVRE** mis en évidence (bordure orange, background primary/5) — le pro voit d'un coup d'œil : linéaire, façades net, cloisons, ouvertures, dalles, volume béton.
+- Section **Pièces** avec niveau (RDC/R+1) + surface écrite ou estimée.
+- Section **Façades** avec orientation en gras, matériau, type mur, dimensions et déduction ouvertures.
+- Section **Escaliers** avec type, niveaux reliés, marches, trémie.
+- Section **Ouvertures détaillées** avec localisation + w×h × count.
+- Badge confiance affiché (`conf. 80%`) pour aider le pro à évaluer la fiabilité.
+
+### 🧪 Test end-to-end
+- POST `/api/takeoffs/{plan_id}/analyze` renvoie toutes les nouvelles clés (13 clés au niveau racine).
+- Plan test simple → IA a détecté 3 pièces + 57 m² dalle + hauteur 2.5m + volume béton 11.4 m³ + linéaire 64 ml + 1 façade.
+- Panneau UI validé Playwright : `[data-testid="ai-gros-oeuvre-totals"]` présent + 3 sections dépliées (TOTAUX + PIÈCES + FAÇADES).
+
 ## 30. Changelog Iter 44 (13/02/2026) — Adresse postale + Alertes admin
 
 ### 📍 Adresse postale société
