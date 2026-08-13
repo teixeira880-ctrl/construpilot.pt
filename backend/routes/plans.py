@@ -30,6 +30,7 @@ from core.security import current_user, admin_user
 from engines import geometry as G
 from engines.plan_processor import process_upload, auto_calibration_from_pdf_scale
 from engines.plan_ai import analyze_plan_image
+from engines.monetization import require_pro_business
 from engines.plan_cv import detect_walls, flood_fill_room, detect_all_rooms
 from engines.pdf_takeoff import build_takeoff_pdf
 
@@ -113,6 +114,7 @@ async def upload_plan(
     deskew: bool = Form(False),
     user=Depends(current_user),
 ):
+    await require_pro_business(user)
     data = await file.read()
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f"Fichier trop volumineux (>{MAX_UPLOAD_MB} Mo)")
@@ -415,6 +417,7 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
 
     Retourne une image PNG base64 stockée sur le plan (permet re-render sans coût).
     """
+    await require_pro_business(user)
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "pages": 1, "filename": 1, "rooms": 1, "ai_analysis": 1}
@@ -615,6 +618,7 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
 
     Réutilise `_gemini_render_3d` pour chaque style. Prévoir 60-180s d'exécution.
     """
+    await require_pro_business(user)
     import base64 as _b64
     from engines.video_tour import build_video_tour, VIDEO_CACHE_DIR  # noqa: F401
 
@@ -2174,6 +2178,61 @@ async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_
     frontend_url = os.getenv("FRONTEND_URL") or ""
     return {"ok": True, "token": token,
             "url": f"{frontend_url}/sign/{token}" if frontend_url else f"/sign/{token}"}
+
+
+@quote_router.get("/client-portal/{token}")
+async def client_portal(token: str):
+    """Portail public client — liste tous les devis reçus pour un email donné.
+
+    Token = `<email_b64>.<hmac-sha256[:24]>` généré via `build_client_portal_token`.
+    Aucune authentification requise : le token seul suffit (envoyé par email).
+    """
+    from routes.emails import _sign, _secret
+    import hmac, base64
+    if "." not in token:
+        raise HTTPException(400, "Lien invalide")
+    email_b64, sig = token.rsplit(".", 1)
+    try:
+        email = base64.urlsafe_b64decode(email_b64.encode()).decode()
+    except Exception:
+        raise HTTPException(400, "Lien invalide")
+    if not hmac.compare_digest(sig, _sign(email.lower())):
+        raise HTTPException(400, "Lien invalide ou expiré")
+
+    # Fetch all devis sends for this email across all pros
+    cursor = db.quote_sends.find(
+        {"client_email": email.lower()},
+        {"_id": 0, "log_id": 1, "plan_id": 1, "user_id": 1,
+         "client_name": 1, "total_ttc": 1, "sent_at": 1, "signed": 1,
+         "signed_at": 1, "opened_at": 1, "signature_token": 1, "finish": 1,
+         "floor_material": 1, "company_snapshot": 1}
+    ).sort("sent_at", -1).limit(200)
+    docs = await cursor.to_list(200)
+
+    # Enrich each entry with the sender's branding (company name)
+    for d in docs:
+        pro = await db.users.find_one({"user_id": d["user_id"]},
+                                       {"_id": 0, "name": 1, "email": 1})
+        b = await _resolve_branding(d["user_id"]) or {}
+        d["pro_name"] = b.get("company_name") or (pro or {}).get("name") or "ConstruPilot Pro"
+        d["pro_email"] = (pro or {}).get("email")
+        # Hide anything internal
+        d.pop("user_id", None)
+        d.pop("company_snapshot", None)
+
+    return {
+        "email": email,
+        "count": len(docs),
+        "quotes": docs,
+    }
+
+
+def build_client_portal_token(email: str) -> str:
+    """Génère un token portail signé pour cet email (à envoyer dans les emails devis)."""
+    from routes.emails import _sign
+    import base64
+    email_b64 = base64.urlsafe_b64encode(email.lower().encode()).decode()
+    return f"{email_b64}.{_sign(email.lower())}"
 
 
 @quote_router.get("/public/sign/{token}")

@@ -830,6 +830,36 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 36. Changelog Iter 50 (13/02/2026) — Pro Business gate + Marketing teaser + Client Portal + Admin Inbox
+
+### 💰 Feature gate Pro Business (+100 €)
+- **Prix ProBusiness** : 199 € → **299 €** mensuel, 1990 € → **2990 €** annuel (`monetization_catalog.py`).
+- Features enrichies : "Plan 2D takeoff (mesures pro)" et "Rendu 3D interactif + vidéo 3D" ajoutés au plan Pro Business.
+- Nouveau helper `require_pro_business(user)` dans `engines/monetization.py` : raise HTTP 402 pour tout tier < pro_business (admins conservent l'accès).
+- Backend gates : `/api/takeoffs/upload`, `/api/takeoffs/{id}/render-3d`, `/api/takeoffs/{id}/render-video`.
+- Frontend gate : `useBilling().has("plan_takeoff")` + `has("render_3d")` — nouvelle page paywall `data-testid="plan-paywall"` avec CTA « Passer sur Pro Business » vers `/tarifs`.
+
+### 🎬 Marketing teaser 20 s
+- Nouveau composant `MarketingTeaser.jsx` inséré après le hero.
+- Mockup mobile 280×570 (dark frame + encoche iPhone) avec `<video autoplay loop muted playsinline>`.
+- Source : `/marketing-teaser.mp4` (env `REACT_APP_MARKETING_VIDEO_URL` overridable).
+- Fallback élégant si la vidéo n'existe pas : gradient primary + icône Play + hint « Ajoutez la vidéo teaser dans public/marketing-teaser.mp4 ».
+- Copy côté gauche : « Chiffrez un chantier depuis le chantier. » + 3 bullets features.
+
+### 📊 Client Portal (`/mes-devis?token=…`)
+- Backend : `GET /api/quotes/client-portal/{token}` — token HMAC-SHA256 signé par email (`build_client_portal_token`), retourne tous les devis reçus tous pros confondus pour cette adresse.
+- Frontend `ClientPortal.jsx` : KPIs (reçus / signés / en attente / total montant) + liste de devis avec statuts (signé/ouvert/envoyé) + boutons PDF & Signer.
+- Portail sécurisé, aucune auth requise, lien à intégrer dans les emails devis (helper `build_client_portal_token` prêt à câbler).
+
+### 🛠️ Admin — Onglet « Demandes »
+- Nouveau endpoint `GET /api/admin/inbox?hours=N` : renvoie leads récents + nouveaux users + devis envoyés + erreurs client, tout depuis une seule requête.
+- Nouvel onglet `data-testid="admin-tab-inbox"` avec 6 KPIs (leads, users, devis envoyés/signés/ouverts, erreurs) + fenêtres 24h/7j/30j + 4 sections listées.
+- Un seul écran pour tout monitorer : demandes clients, nouveaux inscrits, activité des pros, incidents.
+
+### ⚠️ Attention
+- Vidéo teaser : fichier `/app/frontend/public/marketing-teaser.mp4` **à fournir par l'utilisateur** (le fallback élégant se déclenche automatiquement en son absence).
+- Le gate Pro Business est **strict** — les utilisateurs non ProBusiness ne pourront plus uploader de nouveaux plans (les plans existants restent consultables).
+
 ## 35. Changelog Iter 49 (13/02/2026) — Nav i18n + Snap murs + Ouvertures 3D
 
 ### 🌍 Nav complètement traduit FR/EN/ES

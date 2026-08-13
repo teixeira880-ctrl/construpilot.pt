@@ -93,6 +93,7 @@ export default function Admin() {
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">Affiliation</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">Plans & Revenu</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">Revenue Cockpit</TabsTrigger>
+          <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">Demandes</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">Erreurs client</TabsTrigger>
         </TabsList>
 
@@ -351,6 +352,9 @@ export default function Admin() {
         </TabsContent>
         <TabsContent value="revenue" className="mt-6">
           <RevenueTab />
+        </TabsContent>
+        <TabsContent value="inbox" className="mt-6">
+          <InboxPanel />
         </TabsContent>
         <TabsContent value="errors" className="mt-6">
           <ClientErrorsPanel />
@@ -636,6 +640,141 @@ function KycPanel() {
           </TableBody>
         </Table>
       </div>
+    </div>
+  );
+}
+
+/* ---------- Inbox — Demandes & activité ---------- */
+function InboxPanel() {
+  const [hours, setHours] = useState(168);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    api.get(`/admin/inbox?hours=${hours}`)
+      .then(({ data }) => setData(data))
+      .catch(() => toast.error("Chargement impossible"))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
+
+  return (
+    <div className="grid gap-6" data-testid="admin-inbox-panel">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <Stat label="Nouveaux leads" value={num(data?.counts?.new_leads || 0)} accent={data?.counts?.new_leads > 0} />
+        <Stat label="Nouveaux users" value={num(data?.counts?.new_users || 0)} />
+        <Stat label="Devis envoyés" value={num(data?.counts?.quotes_sent || 0)} />
+        <Stat label="Devis signés" value={num(data?.counts?.quotes_signed || 0)} accent />
+        <Stat label="Devis ouverts" value={num(data?.counts?.quotes_opened || 0)} />
+        <Stat label="Erreurs client" value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} />
+      </div>
+
+      <div className="surface p-4 flex gap-2 items-center flex-wrap">
+        <span className="text-xs text-muted-foreground mr-2">Fenêtre :</span>
+        {[24, 168, 720].map((h) => (
+          <Button
+            key={h}
+            size="sm"
+            variant={hours === h ? "default" : "outline"}
+            onClick={() => setHours(h)}
+            data-testid={`inbox-window-${h}h`}
+            className="rounded-sm"
+          >
+            {h === 24 ? "24h" : h === 168 ? "7 jours" : "30 jours"}
+          </Button>
+        ))}
+        <div className="flex-1" />
+        <Button size="sm" variant="outline" onClick={load} className="rounded-sm"
+                data-testid="inbox-refresh-btn">Actualiser</Button>
+      </div>
+
+      {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+
+      {data && (
+        <>
+          <InboxSection title="Leads reçus" items={data.leads || []} empty="Aucun lead sur la période.">
+            {(l) => (
+              <div className="flex items-center justify-between text-xs">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold truncate">{l.name || l.email || "—"}</p>
+                  <p className="text-muted-foreground truncate">
+                    {l.email || "—"}{l.phone ? ` · ${l.phone}` : ""} · {l.status || "nouveau"}
+                  </p>
+                </div>
+                {l.budget && <span className="num font-bold text-primary ml-2">{l.budget} €</span>}
+              </div>
+            )}
+          </InboxSection>
+
+          <InboxSection title="Nouveaux comptes" items={data.new_users || []} empty="Aucun nouvel utilisateur.">
+            {(u) => (
+              <div className="flex items-center justify-between text-xs">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold truncate">{u.name || u.email}</p>
+                  <p className="text-muted-foreground truncate">
+                    {u.email} · rôle <b>{u.role || "user"}</b> · plan {u.plan || "free"}
+                  </p>
+                </div>
+                <span className="text-[10px] text-muted-foreground ml-2">
+                  {u.created_at?.slice(0, 10)}
+                </span>
+              </div>
+            )}
+          </InboxSection>
+
+          <InboxSection title="Devis récents (activité pros)" items={data.recent_sends || []} empty="Aucun devis envoyé sur la période.">
+            {(s) => (
+              <div className="flex items-center justify-between text-xs">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold truncate">→ {s.client_email}</p>
+                  <p className="text-muted-foreground truncate">
+                    {s.client_name || "—"} · <span className="num">{(s.total_ttc || 0).toLocaleString("fr-FR")} €</span>
+                  </p>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-sm border ml-2 whitespace-nowrap
+                  ${s.signed ? "bg-green-500/15 text-green-600 border-green-500/40"
+                             : s.opened_at ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
+                                            : "bg-secondary text-muted-foreground border-border"}`}>
+                  {s.signed ? "signé" : s.opened_at ? "ouvert" : "envoyé"}
+                </span>
+              </div>
+            )}
+          </InboxSection>
+
+          <InboxSection title="Erreurs client (extrait)" items={(data.recent_errors || []).slice(0, 10)} empty="Aucune erreur sur la période.">
+            {(e) => (
+              <div className="text-xs">
+                <p className="font-mono font-semibold break-all">{e.message}</p>
+                <p className="text-muted-foreground">
+                  {e.created_at?.slice(0, 19).replace("T", " ")}
+                  {e.url ? ` · ${e.url}` : ""}
+                  {e.user_id ? ` · user ${e.user_id}` : ""}
+                </p>
+              </div>
+            )}
+          </InboxSection>
+        </>
+      )}
+    </div>
+  );
+}
+
+function InboxSection({ title, items, empty, children }) {
+  return (
+    <div className="surface p-5">
+      <p className="overline mb-3">{title} ({items.length})</p>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-2">{empty}</p>
+      ) : (
+        <div className="grid gap-2">
+          {items.map((it, i) => (
+            <div key={i} className="border border-border rounded-sm p-3">
+              {children(it)}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

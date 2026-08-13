@@ -11,6 +11,71 @@ from engines import price_search
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(admin_user)])
 
 
+@router.get("/inbox")
+async def admin_inbox(hours: int = 168):
+    """Boîte de réception admin — vue consolidée des demandes et incidents récents.
+
+    Renvoie leads récents + nouveaux users + devis envoyés + erreurs client
+    pour permettre à l'équipe de tout suivre depuis une seule page.
+    """
+    from datetime import timedelta
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since_iso = since.isoformat()
+
+    # Leads (contact form / lead gen)
+    leads_cur = db.leads.find({"created_at": {"$gte": since_iso}},
+                                {"_id": 0}).sort("created_at", -1).limit(50)
+    leads = await leads_cur.to_list(50)
+
+    # Nouveaux utilisateurs (>= depuis N heures)
+    users_cur = db.users.find({"created_at": {"$gte": since_iso}},
+                                {"_id": 0, "user_id": 1, "email": 1, "name": 1,
+                                 "role": 1, "plan": 1, "created_at": 1}
+                                ).sort("created_at", -1).limit(50)
+    new_users = await users_cur.to_list(50)
+
+    # Devis envoyés (activité pros)
+    sends_cur = db.quote_sends.find({"sent_at": {"$gte": since_iso}},
+                                     {"_id": 0, "log_id": 1, "user_id": 1,
+                                      "client_email": 1, "client_name": 1,
+                                      "total_ttc": 1, "sent_at": 1,
+                                      "signed": 1, "opened_at": 1}
+                                     ).sort("sent_at", -1).limit(50)
+    sends = await sends_cur.to_list(50)
+
+    # Erreurs client
+    errs_cur = db.client_errors.find({"created_at": {"$gte": since}},
+                                       {"_id": 0}).sort("created_at", -1).limit(30)
+    errs = await errs_cur.to_list(30)
+
+    # Devis signés dans la fenêtre (à célébrer)
+    signed_count = sum(1 for s in sends if s.get("signed"))
+    open_count = sum(1 for s in sends if s.get("opened_at") and not s.get("signed"))
+
+    return {
+        "hours": hours,
+        "counts": {
+            "new_leads": len(leads),
+            "new_users": len(new_users),
+            "quotes_sent": len(sends),
+            "quotes_signed": signed_count,
+            "quotes_opened": open_count,
+            "client_errors": len(errs),
+        },
+        "leads": leads,
+        "new_users": new_users,
+        "recent_sends": sends,
+        "recent_errors": [
+            {"created_at": (e.get("created_at").isoformat()
+                             if hasattr(e.get("created_at"), "isoformat")
+                             else e.get("created_at_iso")),
+             "message": e.get("message"), "url": e.get("url"),
+             "user_id": e.get("user_id")}
+            for e in errs
+        ],
+    }
+
+
 @router.get("/stats")
 async def stats():
     users = await db.users.count_documents({})

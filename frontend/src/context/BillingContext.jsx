@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 const BillingContext = createContext(null);
 
 const PREMIUM_TIERS = new Set(["project_pass", "premium", "pro", "pro_business"]);
+const PRO_BUSINESS_ONLY = new Set(["pro_business"]);
 
 const FEATURE_TIER = {
   unlimited_projects: PREMIUM_TIERS,
@@ -24,6 +25,8 @@ const FEATURE_TIER = {
   quote_analysis: PREMIUM_TIERS,
   savings_details: PREMIUM_TIERS,
   advanced_pdf: PREMIUM_TIERS,
+  plan_takeoff: PRO_BUSINESS_ONLY,   // Plan 2D upload + calibration + mesures
+  render_3d: PRO_BUSINESS_ONLY,       // Rendu 3D + Vidéo 3D
 };
 
 export const BillingProvider = ({ children }) => {

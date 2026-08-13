@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Nav, Footer } from "@/components/Nav";
 import { SEO } from "@/components/SEO";
 import { TrustSection } from "@/components/TrustSection";
+import { MarketingTeaser } from "@/components/MarketingTeaser";
 import { Interactive3D } from "@/components/Interactive3D";
 import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
@@ -218,6 +219,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── MARKETING TEASER (mobile mockup) ─────────────── */}
+      <MarketingTeaser />
 
       {/* ── TRUST & LOGOS ───────────────────────────────── */}
       <TrustSection />

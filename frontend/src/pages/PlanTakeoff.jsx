@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BrandingDialog } from "@/components/BrandingDialog";
+import { useBilling } from "@/context/BillingContext";
+import { Lock } from "lucide-react";
 import { QuoteDialog } from "@/components/planTakeoff/QuoteDialog";
 import { Render3dDialog } from "@/components/planTakeoff/Render3dDialog";
 import { EstimateDialog } from "@/components/planTakeoff/EstimateDialog";
@@ -359,6 +361,7 @@ function PlanCanvas({
 
 export default function PlanTakeoff() {
   const nav = useNavigate();
+  const { tier, has, loading: billingLoading } = useBilling();
   const [plan, setPlan] = useState(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageData, setPageData] = useState(null);
@@ -1221,6 +1224,61 @@ export default function PlanTakeoff() {
   };
 
   // ---------- RENDER ----------
+
+  // Gate : Plan 2D + 3D reserved to Pro Business
+  if (!billingLoading && !has("plan_takeoff")) {
+    return (
+      <div className="mx-auto max-w-[900px] px-5 py-16" data-testid="plan-paywall">
+        <div className="surface p-10 grid gap-6 text-center">
+          <div className="h-16 w-16 grid place-items-center bg-primary/15 rounded-full mx-auto">
+            <Lock className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <p className="overline text-primary">Fonctionnalité Pro Business</p>
+            <h1 className="font-display text-3xl lg:text-4xl font-bold tracking-tight mt-3">
+              Plan 2D takeoff + Rendu 3D
+            </h1>
+            <p className="text-sm text-muted-foreground mt-3 max-w-lg mx-auto">
+              L'import de plans, la mesure automatique des surfaces, le takeoff calibré et
+              la génération de rendus 3D / vidéos 3D sont réservés au plan
+              <b className="text-foreground"> Pro Business</b>.
+              Passez sur ce plan pour débloquer ces outils métier.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3 max-w-xl mx-auto">
+            {[
+              "Import PDF/DXF/photo",
+              "Calibration + mesures pro",
+              "Rendu 3D + vidéo",
+            ].map((f) => (
+              <div key={f} className="border border-border rounded-sm p-3 text-xs">
+                {f}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Button
+              onClick={() => nav("/tarifs")}
+              data-testid="plan-paywall-upgrade"
+              className="rounded-sm h-11 px-6"
+            >
+              Passer sur Pro Business
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => nav("/dashboard")}
+              className="rounded-sm h-11 px-6"
+            >
+              Retour tableau de bord
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Votre plan actuel : <b>{tier || "free"}</b>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!plan) {
     return (

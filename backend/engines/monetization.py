@@ -349,3 +349,21 @@ async def user_tier(user_id: str | None) -> str:
     if pid.startswith("pro"):
         return "pro"
     return "free"
+
+
+async def require_pro_business(user: dict) -> None:
+    """Guarantee the user has a Pro Business subscription — otherwise raise 402.
+
+    Used to gate the plan takeoff (2D measures) and the 3D/video rendering
+    endpoints. Admins keep full access.
+    """
+    from fastapi import HTTPException
+    if (user or {}).get("role") == "admin":
+        return
+    tier = await user_tier(user.get("user_id"))
+    if tier != "pro_business":
+        raise HTTPException(
+            402,
+            "Cette fonctionnalité (Plan 2D takeoff + rendu 3D) est réservée au plan "
+            "Pro Business. Passez sur le plan Pro Business pour débloquer.",
+        )
