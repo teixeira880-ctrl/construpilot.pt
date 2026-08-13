@@ -364,4 +364,211 @@ export const ARTICLE_BODIES = {
       </p>
     </>
   ),
+
+  "chauffage-re2020-quel-choix": (
+    <>
+      <p className="lead">
+        En rénovation 2026, le choix du chauffage détermine à la fois la <strong>facture
+        énergie</strong> de votre client (jusqu'à 60 % du DPE) et son <strong>éligibilité aux aides</strong>
+        (MaPrimeRénov', CEE, éco-PTZ). Voici les 5 options à comparer, avec prix installés,
+        primes 2026 et cas d'usage.
+      </p>
+
+      <h2>Pompe à chaleur air-eau : la reine 2026</h2>
+      <p>
+        Rendement (COP) 3 à 4,5, compatible plancher chauffant et radiateurs basse température.
+        Idéale pour remplacer une chaudière fioul/gaz.
+      </p>
+      <ul>
+        <li>Prix installé : <strong>10 000 à 16 000 €</strong> (12 kW pour 100 m² isolés).</li>
+        <li>MaPrimeRénov' 2026 : <strong>jusqu'à 5 000 €</strong> (revenus très modestes).</li>
+        <li>CEE Coup de Pouce Chauffage : <strong>+ 4 000 €</strong>.</li>
+        <li>TVA à 5,5 %. Éco-PTZ possible jusqu'à 30 000 €.</li>
+      </ul>
+
+      <h2>Pompe à chaleur air-air : l'entrée de gamme</h2>
+      <p>
+        Split muraux, monobloc ou multi-split — climatisation réversible. Ne rentre PAS dans les
+        aides MaPrimeRénov' (pas considérée comme chauffage principal en 2026), mais reste éligible
+        aux CEE pour la partie froid + chaud jusqu'à 800 €.
+      </p>
+      <ul>
+        <li>Prix installé : <strong>3 500 à 8 000 €</strong> (bi-split 5 kW).</li>
+        <li>À éviter en habitat mal isolé (rendement chute quand il fait très froid).</li>
+      </ul>
+
+      <h2>Poêle ou chaudière à granulés bois</h2>
+      <p>
+        Le meilleur choix carbone (bois = ressource renouvelable) + économique en fonctionnement
+        (granulés ≈ 6 c€/kWh vs 15 c€/kWh élec).
+      </p>
+      <ul>
+        <li>Poêle granulés : <strong>4 000 à 6 000 €</strong>, MaPrimeRénov' + CEE = <strong>3 400 €</strong>.</li>
+        <li>Chaudière granulés : <strong>15 000 à 22 000 €</strong>, aides cumulées <strong>10 000 à 12 000 €</strong>.</li>
+        <li>Prévoir espace stockage silo (2-3 m³) — souvent bloquant en appartement.</li>
+      </ul>
+
+      <h2>Chaudière gaz THPE (très haute performance)</h2>
+      <p>
+        <strong>Attention piège :</strong> depuis le 1<sup>er</sup> janvier 2025, les chaudières gaz
+        neuves ne sont <strong>plus éligibles à MaPrimeRénov'</strong>. Seul le remplacement d'un
+        ancien modèle par un THPE dans le même logement reste possible via CEE (~500 €).
+      </p>
+
+      <h2>Radiateurs à inertie électrique</h2>
+      <p>
+        Pour les petites surfaces (studios, chambres isolées) ou en complément. Prix : 400-800 €
+        par radiateur posé. CEE possible pour le pilotage intelligent (~50 €/pièce).
+      </p>
+
+      <h2>Notre reco par profil de projet</h2>
+      <ul>
+        <li>Maison T5 rénovation lourde (RE2020 obligatoire) → <strong>PAC air-eau</strong> + plancher
+        chauffant + PV toit.</li>
+        <li>Appartement T3 rénovation standard → <strong>PAC air-air</strong> multi-split ou radiateurs
+        inertie pilotés.</li>
+        <li>Rurale + terrain → <strong>chaudière granulés</strong> + silo.</li>
+        <li>Copropriété (pas de gros travaux) → <strong>radiateurs inertie</strong> pilotés + thermostat
+        connecté.</li>
+      </ul>
+    </>
+  ),
+
+  "prime-cee-2026-guide": (
+    <>
+      <p className="lead">
+        Les <strong>Certificats d'Économie d'Énergie (CEE)</strong> sont l'aide la plus mal connue
+        des propriétaires — pourtant <strong>obligatoirement cumulables avec MaPrimeRénov'</strong>{" "}
+        et versés par les fournisseurs d'énergie (EDF, TotalEnergies, ENGIE…) sur simple demande.
+        En 2026, ils rapportent jusqu'à <strong>4 000 €/logement</strong>. Voici le guide complet.
+      </p>
+
+      <h2>Comment fonctionne le mécanisme CEE ?</h2>
+      <p>
+        L'État impose aux fournisseurs d'énergie de financer des travaux d'économies d'énergie chez
+        les particuliers. En échange, ils reçoivent des « certificats ». Pour vous, c'est une
+        <strong> prime en euros versée sous 3 à 6 semaines</strong> après achèvement des travaux.
+      </p>
+
+      <h2>Les 5 Coups de Pouce 2026 (barème 1<sup>er</sup> janvier)</h2>
+      <ul>
+        <li><strong>Coup de pouce Chauffage</strong> : jusqu'à <strong>4 000 €</strong> pour remplacer
+        chaudière fioul/gaz/charbon par PAC ou chaudière biomasse.</li>
+        <li><strong>Coup de pouce Isolation combles</strong> : <strong>10 à 12 €/m²</strong> isolé
+        (jusqu'à 15 €/m² pour ménages modestes).</li>
+        <li><strong>Coup de pouce Isolation planchers bas</strong> : <strong>20 à 30 €/m²</strong>.</li>
+        <li><strong>Coup de pouce Ventilation</strong> : jusqu'à <strong>800 €</strong> pour installer
+        une VMC double flux.</li>
+        <li><strong>Coup de pouce Thermostat</strong> : <strong>150 €</strong> pour un thermostat
+        connecté programmable.</li>
+      </ul>
+
+      <h2>Cumul avec MaPrimeRénov'</h2>
+      <p>
+        Contrairement à ce qu'on croit, les CEE se cumulent <strong>systématiquement</strong> avec
+        MaPrimeRénov'. Exemple concret sur une PAC air-eau à 14 000 € (revenus intermédiaires) :
+      </p>
+      <ul>
+        <li>Prix installé : <strong>14 000 €</strong></li>
+        <li>MaPrimeRénov' : <strong>– 3 000 €</strong></li>
+        <li>Prime CEE Coup de pouce Chauffage : <strong>– 4 000 €</strong></li>
+        <li>TVA à 5,5 % appliquée sur solde : économie <strong>– 1 300 €</strong></li>
+        <li><strong>Reste à charge : ~5 700 €</strong> sur un chantier facturé 14 000 €</li>
+      </ul>
+
+      <h2>Comment demander votre prime CEE ?</h2>
+      <ol>
+        <li><strong>AVANT signature du devis</strong> : choisissez un obligé (EDF, TotalEnergies,
+        ENGIE, Bonus Écologique…) sur <a href="https://www.selectra.info/energie/guides/prime-energie" className="text-primary underline">Selectra</a>. C'est le montant le plus élevé qui gagne.</li>
+        <li>Signez le formulaire d'engagement AVANT que l'artisan commence.</li>
+        <li>À la fin du chantier, envoyez facture + attestation RGE de l'artisan.</li>
+        <li>Prime versée sous <strong>3 à 6 semaines</strong> (chèque ou virement).</li>
+      </ol>
+
+      <h2>Attention aux arnaques CEE 2026</h2>
+      <p>
+        Les démarchages « isolation à 1 euro » n'existent plus depuis 2021. Fuyez tout appel
+        téléphonique ou SMS proposant une aide gratuite non sollicitée — c'est illégal (art. L34-5-1
+        Code des postes). Un professionnel <strong>ne peut pas</strong> vous démarcher par téléphone
+        pour vendre des travaux depuis 2020.
+      </p>
+
+      <h2>ConstruPilot calcule tout automatiquement</h2>
+      <p>
+        Quand vous générez un devis sur <a href="/smart-project" className="text-primary underline">
+        Smart Project</a>, ConstruPilot identifie chaque poste éligible CEE, calcule le montant
+        prime, et vous affiche le <strong>reste à charge net</strong>. Vous ne laissez plus d'argent
+        sur la table.
+      </p>
+    </>
+  ),
+
+  "dpe-obligatoire-2026": (
+    <>
+      <p className="lead">
+        Le DPE (Diagnostic de Performance Énergétique) a été refondu en 2021 et devient de plus en
+        plus contraignant chaque année. En 2026, trois nouveautés majeures impactent{" "}
+        <strong>propriétaires bailleurs, particuliers vendeurs et artisans</strong>. Voici ce qu'il
+        faut savoir pour anticiper — et transformer la contrainte en argument business.
+      </p>
+
+      <h2>Ce qui change au 1<sup>er</sup> janvier 2026</h2>
+      <ol>
+        <li><strong>Interdiction totale de location classe G</strong> depuis le 1<sup>er</sup> janvier
+        2025 pour les nouvelles locations. En 2026, cela s'étend aux renouvellements de bail :
+        <strong> le bailleur ne peut plus renouveler tacitement un bail G</strong>.</li>
+        <li><strong>DPE opposable</strong> : sa valeur juridique s'est renforcée. Un DPE erroné
+        engage la responsabilité civile du diagnostiqueur ET du vendeur/bailleur (dommages-intérêts
+        jusqu'à 10 000 €).</li>
+        <li><strong>Bilan carbone obligatoire</strong> pour les DPE des logements &gt; 150 m² : la
+        classe globale intègre désormais 50 % énergie + 50 % carbone.</li>
+      </ol>
+
+      <h2>Le calendrier restrictif jusqu'en 2034</h2>
+      <ul>
+        <li>2025 : interdiction location classe G (~600 000 logements).</li>
+        <li><strong>2028</strong> : interdiction location classe F (~1,2 M logements).</li>
+        <li><strong>2034</strong> : interdiction location classe E (~2,4 M logements).</li>
+      </ul>
+      <p>
+        Autrement dit, <strong>tout logement locatif classé E, F ou G aujourd'hui devra faire des
+        travaux avant 2034</strong> sous peine d'être retiré du marché locatif.
+      </p>
+
+      <h2>Combien coûte un DPE en 2026 ?</h2>
+      <ul>
+        <li>Appartement studio/T2 : <strong>100 à 150 €</strong></li>
+        <li>Appartement T3/T4 : <strong>150 à 220 €</strong></li>
+        <li>Maison individuelle : <strong>200 à 350 €</strong></li>
+        <li>Durée de validité : <strong>10 ans</strong> (sauf refonte règlementaire).</li>
+      </ul>
+
+      <h2>Comment améliorer un DPE d'une classe ?</h2>
+      <p>
+        En moyenne, on passe d'une classe à la classe supérieure avec :
+      </p>
+      <ul>
+        <li><strong>Isolation combles</strong> (R ≥ 7) : + 1 à 2 classes (top ROI, 3 000 à 6 000 € HT).</li>
+        <li><strong>Changement de chaudière fioul → PAC</strong> : + 1 à 2 classes.</li>
+        <li><strong>Fenêtres double vitrage argon</strong> : + 0,5 classe (impact modéré vs coût).</li>
+        <li><strong>Isolation murs par l'extérieur</strong> : + 1,5 classe (mais 100-180 €/m²).</li>
+      </ul>
+
+      <h2>ConstruPilot vous simule le nouveau DPE</h2>
+      <p>
+        Le module <a href="/coach" className="text-primary underline">Coach IA</a> peut calculer la
+        classe DPE cible <strong>avant travaux</strong> à partir de vos choix de matériaux et
+        équipements. Idéal pour rassurer un client bailleur qui hésite : « avec ces travaux, votre
+        appartement passera de F à C — location autorisée jusqu'en 2050 minimum. »
+      </p>
+
+      <h2>Argument commercial imparable pour les artisans</h2>
+      <p>
+        Face à un particulier qui hésite sur des travaux d'isolation en 2026, le raisonnement change
+        totalement : ce n'est plus « je fais des travaux » mais « je sauve la valeur locative de mon
+        bien avant 2028 ». Un logement E dévalué de 15-25 % à la revente selon les études notariales
+        Perval 2025 — chiffres qu'un devis ConstruPilot inclut désormais automatiquement.
+      </p>
+    </>
+  ),
 };

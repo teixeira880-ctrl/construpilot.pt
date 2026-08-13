@@ -399,19 +399,7 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
 
 # ============ MULTI-PLAN PROJECT PDF ============
 
-def build_project_quote_pdf(project: dict, branding: dict | None = None) -> bytes:
-    """PDF Devis Projet consolidant plusieurs plans (multi-niveaux, extensions…)."""
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                             leftMargin=18*mm, rightMargin=18*mm,
-                             topMargin=18*mm, bottomMargin=18*mm)
-    S = _styles()
-    story: list = []
-
-    # ---- Header branding (shared helper) ----
-    _story_header_branding(story, branding, S)
-
-    # ---- Title ----
+def _pq_title(story: list, project: dict, S: dict) -> None:
     story.append(Paragraph("DEVIS PROJET CONSOLIDÉ", S["kicker"]))
     story.append(Paragraph(project.get("project_name") or "Projet ConstruPilot", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
@@ -422,66 +410,57 @@ def build_project_quote_pdf(project: dict, branding: dict | None = None) -> byte
         f"généré le {date_str}", S["muted"]))
     story.append(Spacer(1, 12))
 
-    # ---- Surfaces globales ----
-    tots = project.get("totals", {})
+
+def _pq_totals(story: list, totals: dict, S: dict) -> None:
     story.append(Paragraph("Surfaces totales du projet", S["h2"]))
-    surf_data = [
-        ["Sol total", _fmt(tots.get("floor_m2", 0), "m²")],
-        ["Plafonds total", _fmt(tots.get("ceiling_m2", 0), "m²")],
-        ["Murs nets total", _fmt(tots.get("walls_net_m2", 0), "m²")],
-        ["Périmètre total", _fmt(tots.get("perimeter_m", 0), "m")],
+    data = [
+        ["Sol total", _fmt(totals.get("floor_m2", 0), "m²")],
+        ["Plafonds total", _fmt(totals.get("ceiling_m2", 0), "m²")],
+        ["Murs nets total", _fmt(totals.get("walls_net_m2", 0), "m²")],
+        ["Périmètre total", _fmt(totals.get("perimeter_m", 0), "m")],
     ]
-    t = Table(surf_data, colWidths=[60*mm, 40*mm])
-    t.setStyle(TableStyle([
+    story.append(_table(data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
-        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
     ]))
-    story.append(t)
     story.append(Spacer(1, 14))
 
-    # ---- Détail par plan ----
-    for i, sq in enumerate(project.get("sub_quotes", []), 1):
-        story.append(Paragraph(f"Plan {i} : {sq.get('filename', 'Sans nom')}", S["h2"]))
-        story.append(Paragraph(
-            f"Sol {sq['totals']['floor_m2']} m² · Murs nets "
-            f"{sq['totals']['walls_net_m2']} m² · Périmètre "
-            f"{sq['totals']['perimeter_m']} m", S["muted"]))
-        rows = [["Désignation", "Qté", "Unit.", "Total HT"]]
-        for li in sq.get("line_items", []):
-            rows.append([li["name"], _fmt(li["quantity"]), li["unit"],
-                         _fmt(li["total"], "€")])
-        rows.append(["", "", "TOTAL HT plan", _fmt(sq.get("subtotal_ht", 0), "€")])
-        t = Table(rows, colWidths=[85*mm, 20*mm, 20*mm, 30*mm], repeatRows=1)
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), DARK),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTNAME", (2, -1), (-1, -1), "Helvetica-Bold"),
-            ("BACKGROUND", (0, -1), (-1, -1), LIGHT_GREY),
-            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-            ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-            ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
-        ]))
-        story.append(t)
-        story.append(Spacer(1, 10))
 
-    # ---- Récap projet ----
+def _pq_sub_quote(story: list, sq: dict, index: int, S: dict) -> None:
+    """Render one sub-quote block (per-plan detail table)."""
+    story.append(Paragraph(f"Plan {index} : {sq.get('filename', 'Sans nom')}", S["h2"]))
+    story.append(Paragraph(
+        f"Sol {sq['totals']['floor_m2']} m² · Murs nets {sq['totals']['walls_net_m2']} m² · "
+        f"Périmètre {sq['totals']['perimeter_m']} m", S["muted"]))
+    rows = [["Désignation", "Qté", "Unit.", "Total HT"]]
+    for li in sq.get("line_items", []):
+        rows.append([li["name"], _fmt(li["quantity"]), li["unit"], _fmt(li["total"], "€")])
+    rows.append(["", "", "TOTAL HT plan", _fmt(sq.get("subtotal_ht", 0), "€")])
+    story.append(_table(rows, [85 * mm, 20 * mm, 20 * mm, 30 * mm], style_extras=[
+        ("BACKGROUND", (0, 0), (-1, 0), DARK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (2, -1), (-1, -1), "Helvetica-Bold"),
+        ("BACKGROUND", (0, -1), (-1, -1), LIGHT_GREY),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+    ], repeat_rows=1))
+    story.append(Spacer(1, 10))
+
+
+def _pq_recap(story: list, project: dict, S: dict) -> None:
     story.append(Spacer(1, 8))
     story.append(Paragraph("Récapitulatif projet", S["h2"]))
     tva_pct = int(round(project.get("tva_rate", 0.10) * 100))
-    tot_rows = [
+    rows = [
         ["Sous-total matériaux", _fmt(project.get("subtotal_material", 0), "€")],
         ["Sous-total main d'œuvre", _fmt(project.get("subtotal_labour", 0), "€")],
         ["Sous-total HT", _fmt(project.get("subtotal_ht", 0), "€")],
         [f"TVA {tva_pct} %", _fmt(project.get("tva", 0), "€")],
         ["TOTAL PROJET TTC", _fmt(project.get("total_ttc", 0), "€")],
     ]
-    t = Table(tot_rows, colWidths=[110*mm, 45*mm])
-    t.setStyle(TableStyle([
+    story.append(_table(rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("BACKGROUND", (0, -1), (-1, -1), ORANGE),
         ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
@@ -490,18 +469,39 @@ def build_project_quote_pdf(project: dict, branding: dict | None = None) -> byte
         ("FONTSIZE", (0, 0), (-1, -1), 9.5),
         ("FONTSIZE", (0, -1), (-1, -1), 12),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("BOX", (0, 0), (-1, -1), 0.4, GREY),
-        ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
         ("TOPPADDING", (0, 0), (-1, -1), 6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
-    story.append(t)
 
+
+def _pq_footer(story: list, S: dict) -> None:
     story.append(Spacer(1, 18))
     story.append(Paragraph(
         "Devis <b>projet consolidé</b> généré par ConstruPilot à partir de plusieurs "
         "plans mesurés. Prix moyens France 2026. TVA à 10 % applicable en rénovation "
         "logement de plus de 2 ans. Document estimatif non contractuel.", S["muted"]))
+
+
+def build_project_quote_pdf(project: dict, branding: dict | None = None) -> bytes:
+    """PDF Devis Projet consolidant plusieurs plans (multi-niveaux, extensions…).
+
+    Complexité maîtrisée : 5 helpers `_pq_*` extraits — le corps de la fonction
+    ne dépasse plus 20 lignes.
+    """
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                             leftMargin=18 * mm, rightMargin=18 * mm,
+                             topMargin=18 * mm, bottomMargin=18 * mm)
+    S = _styles()
+    story: list = []
+
+    _story_header_branding(story, branding, S)
+    _pq_title(story, project, S)
+    _pq_totals(story, project.get("totals", {}), S)
+    for i, sq in enumerate(project.get("sub_quotes", []), 1):
+        _pq_sub_quote(story, sq, i, S)
+    _pq_recap(story, project, S)
+    _pq_footer(story, S)
 
     doc.build(story)
     return buf.getvalue()

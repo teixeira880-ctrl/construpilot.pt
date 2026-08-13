@@ -804,9 +804,40 @@ Voir `/app/memory/test_credentials.md`.
 - **« 19 undefined variables »** — 3ᵉ mention consécutive. Ruff/pyflakes/pylint confirment tous **0** cas réel. Le linter externe utilise une heuristique flow-sensitive fausse.
 - **« 153 anti-patterns `is` »** — recount = 100 occurrences, TOUTES sont `is None/True/False` (idiomes Python 3 corrects). Corriger déclencherait E711 côté ruff.
 
-### 📊 Progression globale du score qualité
-- **Iter 33** : refactor `build_takeoff_pdf` (169 → 20 lignes), fix secrets tests + SHA-256 random.
-- **Iter 35** : refactor `build_quote_pdf` (144 → 23), `handle_webhook` (nesting 6 → 1), dataclass `TvaAttestationInput`.
-- **Iter 36** (aujourd'hui) : refactor `build_estimation_pdf` (119 → 26), `detect_walls` (90 → 40), dataclass `PricingRequest`.
-- **Trois plus grosses fonctions PDF et CV toutes ramenées à moins de 30 lignes.**
+## 23. Changelog Iter 37 (13/02/2026) — Weekly Blog + Code Quality Round 4
+
+### 📝 Blog SEO — 3 nouveaux articles (total 9)
+- `/blog/chauffage-re2020-quel-choix` — 7 min · Énergie. Compare PAC air-eau, air-air,
+  granulés, chaudière THPE, radiateurs inertie. Prix installés + primes MaPrimeRénov'
+  + CEE 2026 + reco par profil.
+- `/blog/prime-cee-2026-guide` — 8 min · Aides. Guide complet CEE 2026 (5 Coups de
+  Pouce), cumul MaPrimeRénov', démarches, arnaques à éviter, cas concret PAC 14 000 €
+  avec reste à charge net.
+- `/blog/dpe-obligatoire-2026` — 6 min · Réglementation. Interdiction location G 2025
+  → F 2028 → E 2034, DPE opposable, bilan carbone > 150m², prix DPE, comment améliorer
+  d'une classe, argument commercial artisan.
+- Sitemap.xml : +3 URLs indexables (total 30+ URLs sur le sitemap).
+- Chaque article : JSON-LD BlogPosting, CTA in-article vers Smart Project, navigation
+  prev/next chain.
+
+### 🔧 Code Quality Round 4
+- **`flood_fill_room`** (`plan_cv.py`) : 79 lignes / cyclo 18 / nesting 5 →
+  **~30 lignes / cyclo 5 / nesting 2**. Extraction de 3 helpers privés :
+  `_binarize_plan`, `_snap_seed_to_interior`, `_extract_largest_contour`.
+- **`build_project_quote_pdf`** (`pdf_takeoff.py`) : 105 lignes → **~20 lignes**
+  via 5 helpers `_pq_*` (title, totals, sub_quote, recap, footer). Réutilise
+  `_story_header_branding` et `_table` (helpers partagés iter33/35).
+- Tests d'intégration locaux : `flood_fill_room` importable OK,
+  `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
+
+### ⏭️ Rapport externe : items déjà résolus ou faux positifs (4ᵉ round)
+- « 19 undefined variables » — 4ᵉ mention. Ruff/pyflakes/pylint confirment **0**.
+- « 153 anti-patterns `is` » — encore signalés. Tous sont `is None/True/False`
+  (idiomes Python 3 corrects).
+- `estimate()` 9 args — la dataclass `PricingRequest` a été livrée iter36 mais
+  l'outil externe ne détecte pas la variante `estimate_from_request()`.
+- `build_tva_attestation_pdf` — body toujours long (139 lignes). Args déjà
+  refactorés en dataclass. Corps sera sectionalisé dans un round dédié.
+- `create_checkout`, `ensure_stripe_catalog`, `paint()`, `tile()`, `roof_facade`
+  — **backlog P2** (code paiement/calcul sensible, à faire avec tests dédiés).
 

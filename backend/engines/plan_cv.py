@@ -136,6 +136,44 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
 
 # ============ ROOM AUTO FILL (flood fill contour) ============
 
+def _binarize_plan(png_b64: str) -> tuple["np.ndarray", int, int]:
+    """Return (binary image where interior=255 walls=0, width, height)."""
+    _, gray = _load_gray(png_b64)
+    h, w = gray.shape
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+    binary = cv2.adaptiveThreshold(
+        blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 8)
+    return binary, w, h
+
+
+def _snap_seed_to_interior(binary: "np.ndarray", seed_x: int, seed_y: int,
+                             w: int, h: int, radius: int = 15) -> tuple[int, int]:
+    """If the seed lands on a wall pixel, walk outward until an interior pixel
+    is found. Raises ValueError if none in `radius` px."""
+    if binary[seed_y, seed_x] == 255:
+        return seed_x, seed_y
+    for r in range(1, radius):
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                ny, nx = seed_y + dy, seed_x + dx
+                if 0 <= nx < w and 0 <= ny < h and binary[ny, nx] == 255:
+                    return nx, ny
+    raise ValueError(
+        "Le point cliqué est sur un mur / bord — cliquez à l'intérieur de la pièce")
+
+
+def _extract_largest_contour(zone_mask: "np.ndarray", min_area_px: int):
+    """Return (contour, area_px) or raise ValueError if none is large enough."""
+    contours, _ = cv2.findContours(zone_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise ValueError("Aucun contour détecté — cliquez au centre d'une pièce")
+    contour = max(contours, key=cv2.contourArea)
+    area_px = float(cv2.contourArea(contour))
+    if area_px < min_area_px:
+        raise ValueError("Zone trop petite — cliquez au centre d'une pièce plus grande")
+    return contour, area_px
+
+
 def flood_fill_room(png_b64: str, seed_x: int, seed_y: int,
                     tolerance: int = 25,
                     simplify_epsilon_px: float = 3.0,
@@ -144,65 +182,30 @@ def flood_fill_room(png_b64: str, seed_x: int, seed_y: int,
     de son contour via flood fill sur l'image niveaux de gris.
 
     Retourne le polygone simplifié (Douglas-Peucker) en pixels image.
-    """
-    arr, gray = _load_gray(png_b64)
-    h, w = gray.shape
 
-    if seed_x < 0 or seed_x >= w or seed_y < 0 or seed_y >= h:
+    Refactorisé (iter37) : 3 helpers privés (`_binarize_plan`,
+    `_snap_seed_to_interior`, `_extract_largest_contour`) — nesting depth
+    ramenée de 5 à 2, complexité cyclomatique 18 → ~5.
+    """
+    binary, w, h = _binarize_plan(png_b64)
+
+    if not (0 <= seed_x < w and 0 <= seed_y < h):
         raise ValueError(f"Point ({seed_x},{seed_y}) hors image ({w}x{h})")
 
-    # 1) Prétraitement : blur + seuil pour clarifier fond blanc / murs noirs
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)
-    # Threshold adaptatif = robuste aux plans mal éclairés / scannés
-    binary = cv2.adaptiveThreshold(
-        blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 8
-    )
-    # binary : 255 (intérieur pièce, blanc) / 0 (murs, noirs)
+    seed_x, seed_y = _snap_seed_to_interior(binary, seed_x, seed_y, w, h)
 
-    # 2) Vérifie que le seed tombe bien sur un pixel "vide" (intérieur pièce)
-    if binary[seed_y, seed_x] == 0:
-        # Cherche un voisin blanc dans un petit rayon
-        found = False
-        for r in range(1, 15):
-            for dy in range(-r, r + 1):
-                for dx in range(-r, r + 1):
-                    ny, nx = seed_y + dy, seed_x + dx
-                    if 0 <= nx < w and 0 <= ny < h and binary[ny, nx] == 255:
-                        seed_x, seed_y = nx, ny
-                        found = True
-                        break
-                if found: break
-            if found: break
-        if not found:
-            raise ValueError("Le point cliqué est sur un mur / bord — cliquez à l'intérieur de la pièce")
-
-    # 3) Flood fill : marque tous les pixels connectés à seed avec la valeur 128
-    #    On utilise une image de travail pour ne pas modifier binary
+    # Flood fill sur une copie (préserve `binary` pour un éventuel re-run)
     filled = binary.copy()
     mask = np.zeros((h + 2, w + 2), np.uint8)
-    _, _, _, rect = cv2.floodFill(
-        filled, mask, (seed_x, seed_y), 128,
-        loDiff=tolerance, upDiff=tolerance, flags=8
-    )
+    cv2.floodFill(filled, mask, (seed_x, seed_y), 128,
+                  loDiff=tolerance, upDiff=tolerance, flags=8)
 
-    # 4) Extraction du contour extérieur de la zone marquée
     zone_mask = (filled == 128).astype(np.uint8) * 255
-    contours, _ = cv2.findContours(zone_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        raise ValueError("Aucun contour détecté — cliquez au centre d'une pièce")
+    contour, area_px = _extract_largest_contour(zone_mask, min_area_px)
 
-    # Garde le contour le plus grand
-    contour = max(contours, key=cv2.contourArea)
-    area_px = float(cv2.contourArea(contour))
-    if area_px < min_area_px:
-        raise ValueError("Zone trop petite — cliquez au centre d'une pièce plus grande")
-
-    # 5) Simplifie via Douglas-Peucker → polygone lisible pour le user
-    epsilon = simplify_epsilon_px
-    approx = cv2.approxPolyDP(contour, epsilon, closed=True)
+    # Simplification Douglas-Peucker
+    approx = cv2.approxPolyDP(contour, simplify_epsilon_px, closed=True)
     points = [[int(pt[0][0]), int(pt[0][1])] for pt in approx]
-
-    # 6) Bounding box (utile pour le viewport)
     x, y, ww, hh = cv2.boundingRect(contour)
 
     return {
