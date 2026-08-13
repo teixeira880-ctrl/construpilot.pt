@@ -780,12 +780,33 @@ Voir `/app/memory/test_credentials.md`.
 - **Split `routes/plans.py`** (38 imports) — grosse migration, planifié en
   itération dédiée.
 
-### Tests locaux d'intégration
-- `build_takeoff_pdf(...)` : ✅ (2 632 bytes)
-- `build_quote_pdf(...)` : ✅ (3 082 bytes)
-- `build_project_quote_pdf(...)` : ✅
-- `build_tva_attestation_pdf(kwargs)` : ✅ (3 578 bytes)
-- `build_tva_attestation_pdf(TvaAttestationInput)` : ✅ (3 578 bytes, **identique**)
-- `_WEBHOOK_HANDLERS` : ✅ 6 events registrés
-- Backend redémarré, `GET /api/estimation/catalog` → HTTP 200
+## 22. Changelog Iter 36 (13/02/2026) — Code Quality Round 3
+
+### 📄 PDF & CV refactorings
+| Fonction | Avant | Après | Helpers extraits |
+|---|---|---|---|
+| `build_estimation_pdf` (`pdf.py`) | 119 lignes / cyclo 13 / 19 vars | **26 lignes** | `_esti_header`, `_project_meta`, `_description`, `_totals`, `_breakdown`, `_lots`, `_planning`, `_advice`, `_footer` (+ `_styles`) |
+| `detect_walls` (`plan_cv.py`) | 90 lignes / 17 vars | **40 lignes** | `_cv_preprocess`, `_cv_distance_transform`, `_wall_type_from_thickness` (module-level), `_sample_thickness`, `_build_segment` |
+| `estimate` (`estimation.py`) | 9 args, 17 vars | Nouvelle **`PricingRequest`** dataclass + wrapper `estimate_from_request(req)`, signature legacy conservée pour rétro-compat |
+
+### ✅ Tests d'intégration locaux
+- `estimate_from_request(PricingRequest(...))` retourne **exactement** le même `total_avg` (53 439 €) que `estimate(**kwargs)` — parité prouvée.
+- `build_estimation_pdf(...)` : 6 049 bytes générés.
+- `detect_walls(b64)` sur une image test 4-murs 600×400 → 16 segments détectés, tous classés `cloison` (correct pour width=6px).
+- Backend redémarré, `GET /api/estimation/catalog` → **HTTP 200**.
+
+### ✅ Ruff scan final
+- **0 F*** (undefined vars, unused imports, F-strings vides, anti-patterns).
+- **0 S311** (insecure random).
+- **12 C901** restants sur : `calculators.paint`/`tile`/`roof_facade`, `estimation._compute_lot`, `monetization.ensure_stripe_catalog`/`create_checkout` → **backlog P2**.
+
+### ⏭️ Non-corrigé (rapport toujours erroné sur ces points)
+- **« 19 undefined variables »** — 3ᵉ mention consécutive. Ruff/pyflakes/pylint confirment tous **0** cas réel. Le linter externe utilise une heuristique flow-sensitive fausse.
+- **« 153 anti-patterns `is` »** — recount = 100 occurrences, TOUTES sont `is None/True/False` (idiomes Python 3 corrects). Corriger déclencherait E711 côté ruff.
+
+### 📊 Progression globale du score qualité
+- **Iter 33** : refactor `build_takeoff_pdf` (169 → 20 lignes), fix secrets tests + SHA-256 random.
+- **Iter 35** : refactor `build_quote_pdf` (144 → 23), `handle_webhook` (nesting 6 → 1), dataclass `TvaAttestationInput`.
+- **Iter 36** (aujourd'hui) : refactor `build_estimation_pdf` (119 → 26), `detect_walls` (90 → 40), dataclass `PricingRequest`.
+- **Trois plus grosses fonctions PDF et CV toutes ramenées à moins de 30 lignes.**
 

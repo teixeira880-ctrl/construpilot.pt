@@ -34,6 +34,64 @@ def _load_gray(png_b64: str) -> tuple[np.ndarray, np.ndarray]:
 
 # ============ WALL DETECTION ============
 
+def _cv_preprocess(gray: "np.ndarray", canny_low: int, canny_high: int) -> "np.ndarray":
+    """Blur + Canny edge detection + dilate — returns binary edges image."""
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+    edges = cv2.Canny(blur, canny_low, canny_high, apertureSize=3)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    return cv2.dilate(edges, kernel, iterations=1)
+
+
+def _cv_distance_transform(gray: "np.ndarray") -> "np.ndarray":
+    """Otsu-inverted binary + distanceTransform — used to sample wall thickness."""
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+    _, bin_inv = cv2.threshold(blur, 0, 255,
+                                cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    return cv2.distanceTransform(bin_inv, cv2.DIST_L2, 3)
+
+
+def _wall_type_from_thickness(t: float) -> str:
+    """Classify a wall segment by pixel thickness (150 dpi baseline)."""
+    if t >= 8.0:
+        return "porteur"
+    if t >= 3.5:
+        return "cloison"
+    return "doublage"
+
+
+def _sample_thickness(dist: "np.ndarray", x1: int, y1: int, x2: int, y2: int,
+                      w: int, h: int, n_samples: int = 5) -> float:
+    """Sample `n_samples` points along the segment, return median * 2 (px thickness)."""
+    thicknesses: list[float] = []
+    for k in range(n_samples):
+        ratio = (k + 1) / (n_samples + 1)
+        sx = int(x1 + (x2 - x1) * ratio)
+        sy = int(y1 + (y2 - y1) * ratio)
+        x0, xn = max(0, sx - 3), min(w, sx + 4)
+        y0, yn = max(0, sy - 3), min(h, sy + 4)
+        patch = dist[y0:yn, x0:xn]
+        if patch.size:
+            thicknesses.append(float(patch.max()))
+    return round(2.0 * float(np.median(thicknesses)) if thicknesses else 0.0, 1)
+
+
+def _build_segment(line, dist: "np.ndarray", w: int, h: int, token_hex) -> dict:
+    """Turn a single OpenCV Hough line into a full segment dict."""
+    coords = line[0] if hasattr(line[0], "__len__") and len(line[0]) == 4 else line
+    x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
+    length = float(np.hypot(x2 - x1, y2 - y1))
+    angle = float(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
+    thickness_px = _sample_thickness(dist, x1, y1, x2, y2, w, h)
+    return {
+        "wall_id": "w_" + token_hex(3),
+        "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+        "length_px": round(length, 1),
+        "angle_deg": round(angle, 1),
+        "thickness_px": thickness_px,
+        "wall_type": _wall_type_from_thickness(thickness_px),
+    }
+
+
 def detect_walls(png_b64: str, min_length_px: int = 60,
                  max_line_gap_px: int = 15, canny_low: int = 50,
                  canny_high: int = 150) -> dict:
@@ -42,75 +100,25 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
     Retourne une liste de segments {x1, y1, x2, y2, length_px, angle_deg,
     thickness_px, wall_type} où wall_type ∈ {porteur, cloison, doublage}
     est déterminé par l'épaisseur via distance transform.
+
+    Refactorisé (iter36) : 4 helpers privés (`_cv_preprocess`,
+    `_cv_distance_transform`, `_sample_thickness`, `_build_segment`) ramènent
+    le corps de `detect_walls` à ~25 lignes.
     """
     import secrets as _sec
-    arr, gray = _load_gray(png_b64)
+    _, gray = _load_gray(png_b64)
     h, w = gray.shape
 
-    # Préprocess : blur léger + Canny edge detection
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)
-    edges = cv2.Canny(blur, canny_low, canny_high, apertureSize=3)
+    edges = _cv_preprocess(gray, canny_low, canny_high)
+    dist = _cv_distance_transform(gray)
 
-    # Dilate pour combler les micro-ruptures des traits
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    edges = cv2.dilate(edges, kernel, iterations=1)
-
-    # Hough transform probabiliste
     lines = cv2.HoughLinesP(
         edges, rho=1, theta=np.pi / 180, threshold=80,
         minLineLength=min_length_px, maxLineGap=max_line_gap_px,
     )
+    segments = [_build_segment(line, dist, w, h, _sec.token_hex)
+                for line in (lines if lines is not None else [])]
 
-    # ---- Binarisation pour estimer l'épaisseur des murs ----
-    # Otsu inversé : les traits (noir) deviennent blancs (255)
-    _, bin_inv = cv2.threshold(blur, 0, 255,
-                                 cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-    # Distance transform : pour chaque pixel blanc (=intérieur du trait), distance au pixel noir
-    dist = cv2.distanceTransform(bin_inv, cv2.DIST_L2, 3)
-
-    def _wall_type_from_thickness(t: float) -> str:
-        # px @ 150 dpi ; ces seuils correspondent à une échelle typique de plan A3 architecte
-        if t >= 8.0:
-            return "porteur"
-        if t >= 3.5:
-            return "cloison"
-        return "doublage"
-
-    segments = []
-    if lines is not None:
-        for line in lines:
-            coords = line[0] if hasattr(line[0], "__len__") and len(line[0]) == 4 else line
-            x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
-            length = float(np.hypot(x2 - x1, y2 - y1))
-            angle = float(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
-
-            # Sample 5 points along the segment → mean thickness via distance transform
-            thicknesses = []
-            n_samples = 5
-            for k in range(n_samples):
-                t_ratio = (k + 1) / (n_samples + 1)
-                sx = int(x1 + (x2 - x1) * t_ratio)
-                sy = int(y1 + (y2 - y1) * t_ratio)
-                # Search in a 3px neighbourhood for the max distance value (avoid edge picking)
-                x0, x1n = max(0, sx - 3), min(w, sx + 4)
-                y0, y1n = max(0, sy - 3), min(h, sy + 4)
-                patch = dist[y0:y1n, x0:x1n]
-                if patch.size:
-                    thicknesses.append(float(patch.max()))
-            median_thick = float(np.median(thicknesses)) if thicknesses else 0.0
-            # px_thickness = 2 × distance (rayon → épaisseur)
-            thickness_px = round(2.0 * median_thick, 1)
-
-            segments.append({
-                "wall_id": "w_" + _sec.token_hex(3),
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                "length_px": round(length, 1),
-                "angle_deg": round(angle, 1),
-                "thickness_px": thickness_px,
-                "wall_type": _wall_type_from_thickness(thickness_px),
-            })
-
-    # Trie par longueur décroissante et cap
     segments.sort(key=lambda s: -s["length_px"])
     segments = segments[:500]
 

@@ -1,8 +1,37 @@
 """Moteur d'estimation déterministe : aucun prix ne vient du LLM."""
 import math
+from dataclasses import dataclass, asdict, field
 from engines.catalog import (LOTS_BY_KEY, PROJECT_TYPES_BY_KEY, FINISH_BY_KEY, REGIONS,
                             CONDITION_COEF, BUILDING_COEF, DIFFICULTY, EXECUTION_ORDER,
                             HIGH_RISK_LOTS, RISK_KEYWORDS, DEFAULT_LOT_FACTORS)
+
+
+@dataclass
+class PricingRequest:
+    """Groupe les 9 paramètres de `estimate()` en un objet unique — plus lisible
+    à l'appel, plus facile à tester et à sérialiser.
+
+    Callers historiques peuvent continuer à utiliser `estimate(...)` avec les
+    kwargs individuels — la fonction n'a pas changé de signature (backward-compat).
+    Usage recommandé pour le nouveau code :
+
+        estimate_from_request(PricingRequest(
+            project_type='renovation_complete', surface=80.0, finish='standard'))
+    """
+    project_type: str
+    surface: float
+    finish: str = "standard"
+    country: str = "FR"
+    region: str | None = None
+    building_type: str = "maison"
+    condition: str = "bon"
+    construction_year: int | None = None
+    lot_keys: list[str] | None = field(default=None)
+
+
+def estimate_from_request(req: PricingRequest) -> dict:
+    """Wrapper autour de `estimate()` acceptant un `PricingRequest`."""
+    return estimate(**asdict(req))
 
 
 def region_coef(country: str, region: str | None) -> float:
