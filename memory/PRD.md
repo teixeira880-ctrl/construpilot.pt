@@ -830,6 +830,39 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 32. Changelog Iter 46 (13/02/2026) — Réglages Plan + Précision Quoterplan + 3D fidèle
+
+### ⚙️ Panneau Réglages du plan (top bar)
+- Nouveau `<div data-testid="plan-settings-bar">` juste sous le header du plan avec 2 defaults éditables : **hauteur murs (m)** et **épaisseur plancher (cm)**.
+- Toggle « Modifier / Masquer » compact — les valeurs restent visibles en permanence.
+- Backend : nouveau endpoint `PATCH /api/takeoffs/{plan_id}/defaults` stocke `plan_defaults: {ceiling_h_m, floor_thickness_m}` sur le plan et Renvoie 200 avec les valeurs. Ces defaults sont appliqués à **toutes les nouvelles pièces** créées via l'outil Pièce ou l'import IA.
+- Nouveau `RoomIn.floor_thickness_m` + `RoomIn.ceiling_height_m` + `volume_m3` auto-calculé (surface × hauteur).
+
+### 📐 Précision & rendu style Quoterplan
+- **Snap orthogonal automatique** dans `PlanCanvas` : si l'angle du segment courant est < 5° de l'horizontale ou de la verticale, snap force la ligne parfaitement droite (`applyOrthoSnap`).
+- **Dimension lines pro** pour les outils Distance / Calibrer / Polyligne :
+  - Ligne + flèches aux 2 extrémités
+  - **Badge orange central** avec la distance en mètres (2 décimales) — recalculé en direct pendant le déplacement de la souris
+  - Petit tick perpendiculaire aux points d'ancrage pour lisibilité
+- **Calibration visualisation refaite** : couleur teal `rgba(0,180,140,0.95)`, ticks perpendiculaires aux bornes, badge avec « X.XX m (calib.) ».
+- Nouveaux props `pixelsPerMeter` et `orthoSnap` sur `PlanCanvas`.
+- Anchors des points : cercle plein orange + anneau blanc pour rester visible sur fond clair et foncé.
+
+### 🎨 Rendu 3D fidèle (Gemini Nano Banana)
+- `_gemini_render_3d` reçoit désormais `ai_analysis` en paramètre et injecte dans le prompt Gemini :
+  - **Facades** : orientation + type mur (porteur/cloison) + matériau (parpaing/béton/…)
+  - **Escaliers** : type (droit/hélicoïdal/…) + nombre de marches + niveaux reliés
+  - **Ouvertures** : count portes/fenêtres/baies
+  - **Structure plancher** : type (béton-plein/hourdis/bois) + épaisseur dalle
+- Prompt renforcé : « Preserve the room layout, walls, doors, windows and staircases EXACTLY as shown — do not invent structure ».
+- Câblé aussi dans le endpoint vidéo multi-styles → les 4 rendus PNG du tour vidéo bénéficient tous du contexte IA.
+
+### 🧪 Tests
+- Backend restart OK, endpoints validés.
+- Playwright : upload PDF → panneau Réglages édité (2.60 m / 20 cm) → toast confirmé.
+- Distance tool → **badge orange live « 10.35 m »** avec flèches visible sur le screenshot.
+- Aucune régression sur les autres outils (Pièce, Auto-pièce, Polyligne).
+
 ## 31. Changelog Iter 45 (13/02/2026) — IA expert Gros Œuvre
 
 ### 🧠 Refonte totale du prompt Analyse IA (`engines/plan_ai.py`)

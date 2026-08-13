@@ -417,7 +417,7 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
     """
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "pages": 1, "filename": 1, "rooms": 1}
+        {"_id": 0, "pages": 1, "filename": 1, "rooms": 1, "ai_analysis": 1}
     )
     if not p:
         raise HTTPException(404, "Plan introuvable")
@@ -430,7 +430,8 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
 
     generated_b64, mime, prompt = await _gemini_render_3d(
         plan_id=plan_id, page_index=body.page_index, page_img_b64=img_b64,
-        rooms=p.get("rooms") or [], style=body.style,
+        rooms=p.get("rooms") or [], ai_analysis=p.get("ai_analysis") or {},
+        style=body.style,
         include_furniture=body.include_furniture, extra_prompt=body.extra_prompt,
     )
 
@@ -455,6 +456,7 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
 
 async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
                              rooms: list, style: str, include_furniture: bool,
+                             ai_analysis: dict | None = None,
                              extra_prompt: str | None = None) -> tuple[str, str, str]:
     """Core Gemini Nano Banana call — returns (b64_out, mime, prompt_used).
 
@@ -472,14 +474,51 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
         room_labels = ", ".join(sorted({r.get("name", "") for r in rooms if r.get("name")}))
         if room_labels:
             room_hint = f"\nDetected room labels: {room_labels}."
+
+    # Inject AI gros œuvre analysis for a more faithful 3D render
+    ai_hint = ""
+    ai = ai_analysis or {}
+    ai_bits: list[str] = []
+    facades = ai.get("facade_walls") or []
+    if facades:
+        f_parts = []
+        for f in facades[:6]:
+            orient = f.get("orientation") or "?"
+            mat = f.get("material_guess") or "?"
+            wt = f.get("wall_type") or "?"
+            f_parts.append(f"{orient} facade ({wt} {mat} wall)")
+        ai_bits.append("Facades: " + ", ".join(f_parts))
+    stairs = ai.get("stairwells") or []
+    if stairs:
+        s_parts = []
+        for s in stairs[:3]:
+            typ = s.get("type") or "straight"
+            steps = s.get("steps") or "?"
+            lvls = " to ".join(s.get("connects_levels") or [])
+            s_parts.append(f"{typ} staircase {steps} steps {lvls}")
+        ai_bits.append("Stairs: " + "; ".join(s_parts))
+    op = ai.get("openings") or {}
+    if op.get("doors_visible") or op.get("windows_visible") or op.get("bays_visible"):
+        ai_bits.append(
+            f"Openings: {op.get('doors_visible', 0)} doors, "
+            f"{op.get('windows_visible', 0)} windows, {op.get('bays_visible', 0)} bay windows"
+        )
+    floors = ai.get("floors") or {}
+    if floors.get("floor_type"):
+        ai_bits.append(f"Floor structure: {floors['floor_type']} "
+                       f"(slab {floors.get('slab_thickness_m', 0.2)}m thick)")
+    if ai_bits:
+        ai_hint = "\nDetailed gros-œuvre context (respect exactly): " + " · ".join(ai_bits)
+
     furniture = ("with realistic furniture" if include_furniture
                   else "empty, no furniture")
     extra = f"\nAdditional instructions: {extra_prompt}" if extra_prompt else ""
     prompt = (
         f"Convert this 2D architectural floor plan into a {style_prompt}, "
-        f"{furniture}. Preserve the room layout, walls, doors and windows exactly "
-        f"as shown. Do NOT return a 2D plan — generate a full 3D visualization."
-        f"{room_hint}{extra}"
+        f"{furniture}. Preserve the room layout, walls, doors, windows and "
+        f"staircases EXACTLY as shown — do not invent structure. Do NOT return "
+        f"a 2D plan — generate a full 3D visualization."
+        f"{room_hint}{ai_hint}{extra}"
     )
 
     try:
@@ -572,7 +611,7 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
 
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "pages": 1, "rooms": 1}
+        {"_id": 0, "pages": 1, "rooms": 1, "ai_analysis": 1}
     )
     if not p:
         raise HTTPException(404, "Plan introuvable")
@@ -583,13 +622,15 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
     if not img_b64:
         raise HTTPException(500, "Image du plan manquante")
     rooms = p.get("rooms") or []
+    ai_analysis = p.get("ai_analysis") or {}
 
     # 1) Generate one PNG per style (sequential — Gemini rate limits)
     frames_b64: list[str] = []
     for style in body.styles:
         b64_out, _mime, _prompt = await _gemini_render_3d(
             plan_id=plan_id, page_index=body.page_index, page_img_b64=img_b64,
-            rooms=rooms, style=style, include_furniture=body.include_furniture,
+            rooms=rooms, ai_analysis=ai_analysis,
+            style=style, include_furniture=body.include_furniture,
         )
         frames_b64.append(b64_out)
 

@@ -37,12 +37,27 @@ const ROOM_COLORS = [
 
 function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
-  onCanvasClick, onZoomChange, onOffsetChange, hoverPoint,
-  detectedWalls, showWalls,
+  onCanvasClick, onZoomChange, onOffsetChange,
+  detectedWalls, showWalls, pixelsPerMeter, orthoSnap = true,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
   const dragRef = useRef(null);
+  const [hoverPoint, setHoverPoint] = useState(null);
+
+  // Ortho snap : if the segment from lastPoint to (x,y) is within 5° of horizontal/vertical,
+  // snap to that axis so the user gets a perfectly straight measurement.
+  const applyOrthoSnap = (x, y) => {
+    if (!orthoSnap || points.length === 0) return [x, y];
+    const [lx, ly] = points[points.length - 1];
+    const dx = x - lx, dy = y - ly;
+    const abs_dx = Math.abs(dx), abs_dy = Math.abs(dy);
+    const ORTHO_DEG = 5;
+    const TAN_TOL = Math.tan((ORTHO_DEG * Math.PI) / 180);
+    if (abs_dx > 0 && abs_dy / abs_dx < TAN_TOL) return [x, ly]; // horizontal snap
+    if (abs_dy > 0 && abs_dx / abs_dy < TAN_TOL) return [lx, y]; // vertical snap
+    return [x, y];
+  };
 
   // Charge l'image une fois par page
   useEffect(() => {
@@ -109,34 +124,132 @@ function PlanCanvas({
       ctx.fillText(`${r.surface_m2} m²`, cx, cy + 16 / zoom);
     });
 
-    // ACTIVE POINTS
+    // ACTIVE POINTS with QUOTERPLAN-style dimension lines
+    const drawDimLine = (x1, y1, x2, y2, meters) => {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.5) return;
+      const nx = -dy / len, ny = dx / len;
+      const off = 14 / zoom;   // perpendicular offset for the dim line
+      // Line
+      ctx.strokeStyle = "hsl(24, 96%, 55%)";
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      // Arrow heads
+      const arr = 8 / zoom;
+      const ang = Math.atan2(dy, dx);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 + arr * Math.cos(ang - Math.PI / 6), y1 + arr * Math.sin(ang - Math.PI / 6));
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 + arr * Math.cos(ang + Math.PI / 6), y1 + arr * Math.sin(ang + Math.PI / 6));
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - arr * Math.cos(ang - Math.PI / 6), y2 - arr * Math.sin(ang - Math.PI / 6));
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - arr * Math.cos(ang + Math.PI / 6), y2 - arr * Math.sin(ang + Math.PI / 6));
+      ctx.stroke();
+      // Mid label with background
+      if (meters != null) {
+        const mx = (x1 + x2) / 2 + nx * off;
+        const my = (y1 + y2) / 2 + ny * off;
+        const txt = `${meters.toFixed(2)} m`;
+        ctx.font = `bold ${12 / zoom}px system-ui`;
+        const w = ctx.measureText(txt).width + 8 / zoom;
+        const h = 16 / zoom;
+        ctx.fillStyle = "hsl(24, 96%, 55%)";
+        ctx.fillRect(mx - w / 2, my - h / 2, w, h);
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(txt, mx, my);
+        ctx.textBaseline = "alphabetic";
+      }
+    };
+
     if (points.length > 0) {
+      const ppm = pixelsPerMeter || 0;
+      // If we're drawing a distance/calib/polyline : render each segment with dim lines
+      const showDimLines = tool === TOOLS.DIST || tool === TOOLS.CALIB || tool === TOOLS.POLY;
       ctx.strokeStyle = "hsl(24, 96%, 55%)";
       ctx.fillStyle = "hsl(24, 96%, 55%)";
       ctx.lineWidth = 2 / zoom;
-      ctx.beginPath();
-      points.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
-      if (hoverPoint && tool !== TOOLS.SELECT) ctx.lineTo(hoverPoint[0], hoverPoint[1]);
-      ctx.stroke();
+      if (!showDimLines) {
+        ctx.beginPath();
+        points.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+        if (hoverPoint && tool !== TOOLS.SELECT) ctx.lineTo(hoverPoint[0], hoverPoint[1]);
+        ctx.stroke();
+      } else {
+        // Segment-by-segment with dim lines
+        for (let i = 1; i < points.length; i++) {
+          const p1 = points[i - 1], p2 = points[i];
+          const px = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+          drawDimLine(p1[0], p1[1], p2[0], p2[1], ppm ? px / ppm : null);
+        }
+        if (hoverPoint && points.length > 0) {
+          const p1 = points[points.length - 1];
+          const px = Math.hypot(hoverPoint[0] - p1[0], hoverPoint[1] - p1[1]);
+          drawDimLine(p1[0], p1[1], hoverPoint[0], hoverPoint[1], ppm ? px / ppm : null);
+        }
+      }
       points.forEach((p) => {
         ctx.beginPath();
         ctx.arc(p[0], p[1], 4 / zoom, 0, Math.PI * 2);
         ctx.fill();
+        // White ring around each anchor for legibility
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.stroke();
+        ctx.strokeStyle = "hsl(24, 96%, 55%)";
       });
     }
     // CALIB visualization (only for manual 2-points calibration — auto_pdf_scale has no p1/p2)
     if (calibration?.p1 && calibration?.p2) {
-      ctx.strokeStyle = "rgba(0,180,140,0.9)";
-      ctx.lineWidth = 2 / zoom;
-      ctx.setLineDash([6 / zoom, 4 / zoom]);
-      ctx.beginPath();
-      ctx.moveTo(calibration.p1[0], calibration.p1[1]);
-      ctx.lineTo(calibration.p2[0], calibration.p2[1]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      const dist_m = calibration.distance_m ||
+        (pixelsPerMeter ? Math.hypot(
+          calibration.p2[0] - calibration.p1[0],
+          calibration.p2[1] - calibration.p1[1]
+        ) / pixelsPerMeter : null);
+      // Reuse the same drawDimLine helper for consistency
+      const dx = calibration.p2[0] - calibration.p1[0];
+      const dy = calibration.p2[1] - calibration.p1[1];
+      const len = Math.hypot(dx, dy);
+      if (len > 0.5) {
+        const nx = -dy / len, ny = dx / len;
+        const off = 14 / zoom;
+        ctx.strokeStyle = "rgba(0,180,140,0.95)";
+        ctx.lineWidth = 2 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(calibration.p1[0], calibration.p1[1]);
+        ctx.lineTo(calibration.p2[0], calibration.p2[1]);
+        ctx.stroke();
+        // Small perpendicular ticks at each end
+        ctx.beginPath();
+        [calibration.p1, calibration.p2].forEach((p) => {
+          ctx.moveTo(p[0] - nx * 6 / zoom, p[1] - ny * 6 / zoom);
+          ctx.lineTo(p[0] + nx * 6 / zoom, p[1] + ny * 6 / zoom);
+        });
+        ctx.stroke();
+        if (dist_m != null) {
+          const mx = (calibration.p1[0] + calibration.p2[0]) / 2 + nx * off;
+          const my = (calibration.p1[1] + calibration.p2[1]) / 2 + ny * off;
+          const txt = `${dist_m.toFixed(2)} m (calib.)`;
+          ctx.font = `bold ${12 / zoom}px system-ui`;
+          const w = ctx.measureText(txt).width + 8 / zoom;
+          const h = 16 / zoom;
+          ctx.fillStyle = "rgba(0,180,140,0.95)";
+          ctx.fillRect(mx - w / 2, my - h / 2, w, h);
+          ctx.fillStyle = "#fff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(txt, mx, my);
+          ctx.textBaseline = "alphabetic";
+        }
+      }
     }
     ctx.restore();
-  }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool, calibration, detectedWalls, showWalls]);
+  }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
+       calibration, detectedWalls, showWalls, pixelsPerMeter]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -156,7 +269,8 @@ function PlanCanvas({
   const handleClick = (e) => {
     if (tool === TOOLS.SELECT) return;
     if (dragRef.current) return;
-    const [ix, iy] = screenToImage(e.clientX, e.clientY);
+    const [rx, ry] = screenToImage(e.clientX, e.clientY);
+    const [ix, iy] = applyOrthoSnap(rx, ry);
     onCanvasClick([ix, iy]);
   };
 
@@ -174,8 +288,15 @@ function PlanCanvas({
     if (dragRef.current) {
       onOffsetChange({ x: dragRef.current.ox + (e.clientX - dragRef.current.sx),
                        y: dragRef.current.oy + (e.clientY - dragRef.current.sy) });
+      return;
+    }
+    if (tool !== TOOLS.SELECT) {
+      const [rx, ry] = screenToImage(e.clientX, e.clientY);
+      const [ix, iy] = applyOrthoSnap(rx, ry);
+      setHoverPoint([ix, iy]);
     }
   };
+  const handleMouseLeave = () => { setHoverPoint(null); };
   const handleMouseUp = () => { dragRef.current = null; };
 
   // Auto-size to container
@@ -204,7 +325,7 @@ function PlanCanvas({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseLeave={() => { handleMouseUp(); handleMouseLeave(); }}
       className={`w-full block bg-secondary/30 ${cursorClass} touch-none select-none`}
       style={{ minHeight: 500 }}
       data-testid="plan-canvas"
@@ -323,7 +444,22 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     const { data } = await api.get(`/takeoffs/${plan.plan_id}`);
     setPlan(data);
+    if (data.plan_defaults) {
+      setPlanDefaults({
+        ceiling_h_m: data.plan_defaults.ceiling_h_m ?? 2.5,
+        floor_thickness_m: data.plan_defaults.floor_thickness_m ?? 0.15,
+      });
+    }
   }, [plan?.plan_id]);
+
+  const savePlanDefaults = async (next) => {
+    if (!plan?.plan_id) return;
+    try {
+      await api.patch(`/takeoffs/${plan.plan_id}/defaults`, next);
+      setPlanDefaults(next);
+      toast.success(`Réglages : mur ${next.ceiling_h_m} m · plancher ${(next.floor_thickness_m * 100).toFixed(0)} cm`);
+    } catch { toast.error("Sauvegarde impossible"); }
+  };
 
   const uploadFile = async (file) => {
     if (!file) return;
@@ -437,7 +573,10 @@ export default function PlanTakeoff() {
     try {
       await api.post(`/takeoffs/${plan.plan_id}/rooms`, {
         page_index: pageIndex, name: pendingRoomName,
-        points, ceiling_height_m: parseFloat(ceilingH) || 2.5, openings: [],
+        points,
+        ceiling_height_m: parseFloat(ceilingH) || planDefaults.ceiling_h_m || 2.5,
+        floor_thickness_m: planDefaults.floor_thickness_m || 0.15,
+        openings: [],
       });
       toast.success("Pièce enregistrée");
       setRoomDialog(false);
@@ -514,7 +653,8 @@ export default function PlanTakeoff() {
           page_index: pageIndex,
           name: ai.name || `Pièce ${imported + 1}`,
           points,
-          ceiling_h_m: 2.5,
+          ceiling_height_m: ai.ceiling_height_m || planDefaults.ceiling_h_m || 2.5,
+          floor_thickness_m: planDefaults.floor_thickness_m || 0.15,
         });
         imported++;
       } catch (e) { /* keep going */ }
@@ -1148,6 +1288,63 @@ export default function PlanTakeoff() {
         </div>
       </div>
 
+      {/* Réglages du plan — hauteur murs + épaisseur plancher */}
+      <div className="surface p-3 flex items-center gap-4 flex-wrap" data-testid="plan-settings-bar">
+        <div className="flex items-center gap-2">
+          <span className="text-xs overline">Réglages du plan</span>
+          <button
+            onClick={() => setSettingsOpen((v) => !v)}
+            className="text-primary text-xs hover:underline"
+            data-testid="toggle-plan-settings"
+          >
+            {settingsOpen ? "Masquer" : "Modifier"}
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground">Hauteur murs</span>
+          <b className="num text-primary">{planDefaults.ceiling_h_m} m</b>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground">Épaisseur plancher</span>
+          <b className="num text-primary">{(planDefaults.floor_thickness_m * 100).toFixed(0)} cm</b>
+        </div>
+        {settingsOpen && (
+          <div className="flex items-center gap-3 flex-1 justify-end flex-wrap">
+            <label className="flex items-center gap-2 text-xs">
+              <span>Hauteur murs (m) :</span>
+              <Input
+                type="number" step="0.05" min="1.5" max="6"
+                value={planDefaults.ceiling_h_m}
+                onChange={(e) => setPlanDefaults((d) => ({ ...d, ceiling_h_m: parseFloat(e.target.value) || 2.5 }))}
+                className="h-8 w-20 text-xs num"
+                data-testid="settings-ceiling-h"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <span>Épaisseur plancher (cm) :</span>
+              <Input
+                type="number" step="1" min="2" max="100"
+                value={Math.round(planDefaults.floor_thickness_m * 100)}
+                onChange={(e) => setPlanDefaults((d) => ({ ...d, floor_thickness_m: (parseFloat(e.target.value) || 15) / 100 }))}
+                className="h-8 w-20 text-xs num"
+                data-testid="settings-floor-thickness"
+              />
+            </label>
+            <Button
+              size="sm"
+              onClick={() => savePlanDefaults(planDefaults)}
+              className="rounded-sm h-8"
+              data-testid="settings-save-btn"
+            >
+              Enregistrer
+            </Button>
+          </div>
+        )}
+        <p className="text-[10px] text-muted-foreground w-full">
+          Ces valeurs s'appliquent aux nouvelles pièces créées ou importées via l'IA (peuvent être ajustées par pièce).
+        </p>
+      </div>
+
       <div className="grid lg:grid-cols-[240px_1fr_360px] gap-4">
         {/* SIDEBAR PAGES */}
         <div className="surface p-3 max-h-[80vh] overflow-auto">
@@ -1252,6 +1449,8 @@ export default function PlanTakeoff() {
             calibration={currentCalib} zoom={zoom} offset={offset} rotation={rotation}
             onCanvasClick={onCanvasClick} onZoomChange={setZoom} onOffsetChange={setOffset}
             detectedWalls={detectedWalls} showWalls={showWalls}
+            pixelsPerMeter={currentCalib?.pixels_per_meter || 0}
+            orthoSnap={true}
           />
 
           {/* CONTEXT ACTIONS */}
