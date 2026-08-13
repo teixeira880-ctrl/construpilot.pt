@@ -830,6 +830,26 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 26. Changelog Iter 40 (13/02/2026) — UX Analyse IA + Métré PDF débloqués
+
+### 🐛 Problème utilisateur : « Analyse IA et Métré du plan ne fonctionnent pas »
+- **Diagnostic** : les 2 endpoints backend retournaient HTTP 200 correctement, mais côté UI, les résultats étaient **invisibles** :
+  - Après clic sur *Analyse IA du plan*, le résultat s'affichait uniquement dans l'onglet latéral **« IA »** que l'utilisateur ne pensait pas à ouvrir.
+  - *Métré PDF* générait un PDF vide silencieux quand aucune pièce n'était tracée sur le plan → l'utilisateur pensait que ça n'avait pas fonctionné.
+
+### ✨ Corrections
+- **Auto-switch vers l'onglet IA** après `runAI()` réussi + toast enrichi (« 3 pièces détectées · 62 m² » avec durée 6 s au lieu de 4 s).
+- **Nouveau bouton « Importer ces pièces dans le métré → »** dans le panneau IA : convertit automatiquement les pièces IA en pièces mesurées (approx. carré parfait dispatché sur une grille), puis bascule vers l'onglet Pièces avec un toast de confirmation. Élimine l'étape manuelle de traçage de contour.
+- **Guard Métré PDF** : si `rooms.length === 0`, un toast d'erreur explicite s'affiche (« Ajoutez d'abord une pièce (outil Pièce ou Auto-pièce) pour générer un métré. ») + auto-scroll vers l'onglet Pièces. Plus de téléchargement fantôme.
+- Contrôle de l'onglet droit via un state `rightTab` (`useState("rooms")`) au lieu de `defaultValue` non contrôlé.
+
+### 🧪 Test end-to-end (Playwright, `pro@construpilot.fr`)
+- Upload plan PDF 1:100 → OK
+- Métré PDF (0 pièce) → toast d'erreur affiché, aucun téléchargement ✅
+- Analyse IA → bascule vers onglet IA, résultat visible, bouton importer présent ✅
+- Import IA → 1 pièce « Salon 20 m² » créée, onglet Pièces actif ✅
+- Métré PDF (1 pièce) → toast « Métré PDF téléchargé » ✅
+
 ## 25. Changelog Iter 39 (13/02/2026) — Bug fix upload plan + Referral billing + Refactor deskew
 
 ### 🐛 Bug critique — Import PDF cassé

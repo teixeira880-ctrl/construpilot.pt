@@ -236,6 +236,7 @@ export default function PlanTakeoff() {
   const [detectedWalls, setDetectedWalls] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
+  const [rightTab, setRightTab] = useState("rooms");
   const [takeoff, setTakeoff] = useState(null);
   const [materials, setMaterials] = useState(null);
   const [floorMaterial, setFloorMaterial] = useState("parquet");
@@ -446,13 +447,60 @@ export default function PlanTakeoff() {
     toast.success("Pièce supprimée");
   };
 
+  const importAiRooms = async () => {
+    const aiRooms = plan?.ai_analysis?.rooms || [];
+    if (!aiRooms.length) return toast.error("Aucune pièce IA à importer");
+    let imported = 0;
+    for (const r of aiRooms) {
+      const surf = Number(r.surface_written_m2) || 0;
+      if (!surf) continue;
+      // Approxime un carré parfait dans l'espace image (côté = √surface × ppm),
+      // puis dispose les carrés sur une grille pour éviter les superpositions.
+      const ppm = currentCalib?.pixels_per_meter || 60;
+      const sidePx = Math.sqrt(surf) * ppm;
+      const cols = Math.ceil(Math.sqrt(aiRooms.length));
+      const gap = sidePx * 0.15;
+      const col = imported % cols;
+      const row = Math.floor(imported / cols);
+      const x0 = 200 + col * (sidePx + gap);
+      const y0 = 200 + row * (sidePx + gap);
+      const points = [
+        [x0, y0], [x0 + sidePx, y0],
+        [x0 + sidePx, y0 + sidePx], [x0, y0 + sidePx],
+      ];
+      try {
+        await api.post(`/takeoffs/${plan.plan_id}/rooms`, {
+          page_index: pageIndex,
+          name: r.name || `Pièce ${imported + 1}`,
+          points,
+          ceiling_h_m: 2.5,
+        });
+        imported++;
+      } catch (e) { /* keep going */ }
+    }
+    await refreshPlan();
+    setRightTab("rooms");
+    if (imported > 0) toast.success(`${imported} pièces IA importées — vérifiez les positions sur le canvas`);
+    else toast.error("Aucune pièce importable (surfaces IA manquantes)");
+  };
+
   const runAI = async () => {
     setAiBusy(true);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/analyze?page_index=${pageIndex}`);
       await refreshPlan();
+      // Switch to IA tab so the user sees the result immediately
+      setRightTab("ai");
       if (data.error) toast.warning("IA : " + data.error);
-      else toast.success(`Analyse IA — ${data.rooms?.length || 0} pièces détectées`);
+      else {
+        const n = data.rooms?.length || 0;
+        const surf = data.total_surface_written_m2;
+        toast.success(
+          `Analyse IA — ${n} pièce${n > 1 ? "s" : ""} détectée${n > 1 ? "s" : ""}` +
+          (surf ? ` · ${surf} m²` : ""),
+          { duration: 6000 }
+        );
+      }
     } catch (e) { toast.error("Analyse IA impossible"); }
     finally { setAiBusy(false); }
   };
@@ -516,6 +564,12 @@ export default function PlanTakeoff() {
 
   const downloadPdf = async () => {
     if (!plan?.plan_id) return;
+    // Guard : PDF vide si aucune pièce tracée
+    if (!rooms.length) {
+      toast.error("Ajoutez d'abord une pièce (outil Pièce ou Auto-pièce) pour générer un métré.", { duration: 5000 });
+      setRightTab("rooms");
+      return;
+    }
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
       const token = localStorage.getItem("construpilot_token");
@@ -530,7 +584,7 @@ export default function PlanTakeoff() {
       a.href = url; a.download = `metre-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      toast.success("PDF téléchargé");
+      toast.success("Métré PDF téléchargé");
     } catch { toast.error("Export PDF impossible"); }
   };
 
@@ -1212,7 +1266,7 @@ export default function PlanTakeoff() {
 
         {/* RIGHT PANEL — Métré */}
         <div className="surface p-4 max-h-[80vh] overflow-auto">
-          <Tabs defaultValue="rooms">
+          <Tabs value={rightTab} onValueChange={setRightTab}>
             <TabsList className="w-full rounded-sm">
               <TabsTrigger value="rooms" className="flex-1 rounded-sm" data-testid="tab-rooms">Pièces</TabsTrigger>
               <TabsTrigger value="materials" className="flex-1 rounded-sm" data-testid="tab-materials">Matériaux</TabsTrigger>
@@ -1352,6 +1406,16 @@ export default function PlanTakeoff() {
                     <div className="text-amber-500 text-xs">
                       ⚠ {plan.ai_analysis.warnings.join(" · ")}
                     </div>
+                  )}
+                  {(plan.ai_analysis.rooms || []).some((r) => r.surface_written_m2) && (
+                    <Button
+                      size="sm"
+                      className="w-full mt-1"
+                      onClick={importAiRooms}
+                      data-testid="import-ai-rooms-btn"
+                    >
+                      Importer ces pièces dans le métré →
+                    </Button>
                   )}
                 </div>
               )}
