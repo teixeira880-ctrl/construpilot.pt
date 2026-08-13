@@ -20,10 +20,12 @@ class EstimateIn(BaseModel):
     condition: str = "bon"
     construction_year: int | None = None
     lots: list[str] | None = None
+    ceiling_height_m: float = 2.5
 
 
 class DescribeIn(BaseModel):
     description: str
+    ceiling_height_m: float | None = None  # override manuel si présent
 
 
 @router.get("/catalog")
@@ -56,7 +58,8 @@ async def compute(body: EstimateIn):
     _apply_overrides(overrides)
     est = estimation.estimate(
         body.project_type, body.surface, body.finish_level, body.country, body.region,
-        body.building_type, body.condition, body.construction_year, body.lots)
+        body.building_type, body.condition, body.construction_year, body.lots,
+        body.ceiling_height_m)
     est["planning"] = estimation.planning(est["lots"])
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)
     est["safety_alerts"] = estimation.safety_check("", [l["key"] for l in est["lots"]])
@@ -65,18 +68,24 @@ async def compute(body: EstimateIn):
 
 @router.post("/analyse")
 async def analyse(body: DescribeIn):
-    """Smart Project : IA comprend -> moteur déterministe estime."""
+    """Smart Project : IA comprend -> moteur déterministe estime.
+
+    Priorité pour la hauteur sous plafond : override utilisateur > détection IA > 2.5m.
+    """
     analysis = await ai.analyse_description(body.description)
     overrides = {d["key"]: d async for d in db.price_reference.find({}, {"_id": 0})}
     _apply_overrides(overrides)
+    ceiling_h = body.ceiling_height_m or analysis.get("ceiling_height_m") or 2.5
     est = estimation.estimate(
         analysis["project_type"], analysis["surface"], analysis["finish_level"],
         "FR", None, analysis["building_type"], analysis["condition"], None,
-        analysis.get("lots") or None)
+        analysis.get("lots") or None, ceiling_h)
     est["planning"] = estimation.planning(est["lots"])
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)
     est["safety_alerts"] = estimation.safety_check(body.description,
                                                    [l["key"] for l in est["lots"]])
+    # Enrichit l'analyse avec la hauteur effectivement utilisée
+    analysis["ceiling_height_m"] = ceiling_h
     return {"analysis": analysis, "estimation": est}
 
 

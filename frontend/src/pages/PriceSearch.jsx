@@ -49,10 +49,13 @@ export default function PriceSearch() {
   const [target, setTarget] = useState("");
   const [smsChannel, setSmsChannel] = useState(false);
   const [smsPhone, setSmsPhone] = useState("");
+  // Batch d'estimations depuis Smart Project (fix bug "Comparer prix matériaux")
+  const [estimationBatch, setEstimationBatch] = useState(null);
   const { user } = useAuth();
 
   const search = async (q = query) => {
     if (q.trim().length < 2) return;
+    setQuery(q);
     setBusy(true);
     try {
       const { data: res } = await api.post("/prices/search", { query: q, limit: 10 });
@@ -63,7 +66,25 @@ export default function PriceSearch() {
     finally { setBusy(false); }
   };
 
-  useEffect(() => { search("BA13 hydrofuge 250 x 120"); }, []);
+  useEffect(() => {
+    // Récupère le batch de Smart Project s'il existe (moins de 30 min)
+    const raw = sessionStorage.getItem("construpilot_price_search_batch");
+    if (raw) {
+      try {
+        const batch = JSON.parse(raw);
+        if (batch.ts && Date.now() - batch.ts < 30 * 60 * 1000) {
+          setEstimationBatch(batch);
+          // Lance la première recherche automatiquement sur le 1er item
+          if (batch.items?.length > 0) {
+            search(batch.items[0].search || batch.items[0].name);
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    search("BA13 hydrofuge 250 x 120");
+    // eslint-disable-next-line
+  }, []);
 
   const locate = () => {
     if (!navigator.geolocation) return toast.error("Géolocalisation non disponible");
@@ -135,6 +156,55 @@ export default function PriceSearch() {
           <Search className="h-4 w-4" /> {busy ? "Recherche…" : "Comparer"}
         </Button>
       </div>
+
+      {estimationBatch && estimationBatch.items?.length > 0 && (
+        <div className="surface p-5 border-primary/40 -mt-6" data-testid="estimation-batch-panel">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="overline">Matériaux de votre estimation</p>
+              <p className="text-sm mt-1">
+                <span className="font-medium">{estimationBatch.project_name}</span>
+                {estimationBatch.total_avg > 0 && (
+                  <span className="text-muted-foreground"> · Budget moyen <span className="num">{eur2(estimationBatch.total_avg)}</span></span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => { sessionStorage.removeItem("construpilot_price_search_batch"); setEstimationBatch(null); }}
+              data-testid="estimation-batch-clear"
+              className="text-xs text-muted-foreground hover:text-destructive underline-offset-2 hover:underline"
+            >
+              Effacer ce lot
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {estimationBatch.items.slice(0, 12).map((it, i) => {
+              const q = it.search || it.name;
+              return (
+                <button
+                  key={i}
+                  onClick={() => search(q)}
+                  data-testid={`batch-item-${i}`}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-sm border text-xs transition-colors ${
+                    query === q ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary"
+                  }`}
+                  title={`${it.quantity} ${it.unit} — ${it.name}`}
+                >
+                  <span className="font-medium">{it.name}</span>
+                  <Badge variant="outline" className="text-[10px] rounded-sm num shrink-0">
+                    {it.quantity} {it.unit}
+                  </Badge>
+                </button>
+              );
+            })}
+            {estimationBatch.items.length > 12 && (
+              <span className="text-xs text-muted-foreground self-center">
+                + {estimationBatch.items.length - 12} autres…
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 -mt-6">
         {SUGGESTIONS.map((s) => (

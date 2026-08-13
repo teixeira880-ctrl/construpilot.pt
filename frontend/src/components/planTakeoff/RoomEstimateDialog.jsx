@@ -18,7 +18,7 @@ const TRADE_META = {
   plinths:    { icon: Ruler,      label: "Plinthes",  color: "#3b82f6" },
 };
 
-export default function RoomEstimateDialog({ open, estimate, onClose }) {
+export default function RoomEstimateDialog({ open, estimate, planId, onClose, onAddToQuote }) {
   if (!open || !estimate) return null;
 
   const room = estimate.room || {};
@@ -108,6 +108,16 @@ export default function RoomEstimateDialog({ open, estimate, onClose }) {
             </p>
           </div>
           <div className="flex gap-2">
+            {onAddToQuote && (
+              <Button
+                size="sm"
+                onClick={() => onAddToQuote(estimate)}
+                data-testid="room-estimate-add-to-quote"
+                className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
+              >
+                <Calculator className="h-4 w-4" /> Ajouter au devis
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={onClose} className="rounded-sm">
               Fermer
             </Button>

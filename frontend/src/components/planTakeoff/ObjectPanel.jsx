@@ -12,8 +12,9 @@
  * Chaque ligne : icône type + label + valeur + bouton édition + bouton supprimer.
  * Clic sur une ligne : centre la vue sur l'objet (via onFocus callback).
  */
-import React, { useState, useMemo } from "react";
-import { Square, DoorOpen, Hash, StickyNote, Triangle, MountainSnow, Ruler, Trash2, Edit3, X, Calculator } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Square, DoorOpen, Hash, StickyNote, Triangle, MountainSnow, Ruler, Trash2, Edit3, X, Calculator, Layers } from "lucide-react";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -76,7 +77,7 @@ export default function ObjectPanel({
   open, onClose,
   rooms = [], measurements = [], annotations = {},
   onFocusObject,
-  onRenameRoom, onDeleteRoom, onEstimateRoom,
+  onRenameRoom, onDeleteRoom, onEstimateRoom, onAttachPreset,
   onDeleteMeasure,
   onDeleteCounter, onRenameCounter,
   onDeleteNote, onEditNote,
@@ -86,6 +87,15 @@ export default function ObjectPanel({
   const [tab, setTab] = useState("rooms");
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [presetPickerRoomId, setPresetPickerRoomId] = useState(null);
+  const [presets, setPresets] = useState([]);
+
+  // Charge les presets user à l'ouverture (pour l'attach inline)
+  useEffect(() => {
+    if (!open) return;
+    api.get("/tool-presets").then(({ data }) => setPresets(data.presets || []))
+      .catch(() => { /* silent */ });
+  }, [open]);
 
   const counts = useMemo(() => ({
     rooms: rooms.length,
@@ -147,7 +157,9 @@ export default function ObjectPanel({
         {tab === "rooms" && (
           <>
             {rooms.length === 0 && <EmptyState label="Aucune pièce" />}
-            {rooms.map((r) => (
+            {rooms.map((r) => {
+              const attachedPreset = presets.find((p) => p.preset_id === r.preset_id);
+              return (
               <div key={r.room_id || r.name} data-testid={`object-row-room-${r.room_id}`}>
                 {editingId === r.room_id ? (
                   <div className="px-3 py-2 flex items-center gap-2">
@@ -162,23 +174,81 @@ export default function ObjectPanel({
                             className="h-7 text-xs">OK</Button>
                   </div>
                 ) : (
-                  <Row
-                    icon={Square}
-                    testId={`object-row-room-${r.room_id}`}
-                    primary={r.name || "Pièce"}
-                    secondary={`${r.perimeter_m || 0} m linéaires · ${r.height_m || 2.5} m HSP`}
-                    badge={`${r.surface_m2 ?? 0} m²`}
-                    badgeColor="#f97316"
-                    onFocus={() => onFocusObject?.({ kind: "room", data: r })}
-                    onExtra={onEstimateRoom ? () => onEstimateRoom(r.room_id) : null}
-                    extraIcon={Calculator}
-                    extraLabel="Générer devis pièce"
-                    onEdit={onRenameRoom ? () => startEdit(r.room_id, r.name) : null}
-                    onDelete={onDeleteRoom ? () => onDeleteRoom(r.room_id) : null}
-                  />
+                  <>
+                    <Row
+                      icon={Square}
+                      testId={`object-row-room-${r.room_id}`}
+                      primary={r.name || "Pièce"}
+                      secondary={
+                        attachedPreset
+                          ? `Modèle : ${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
+                          : `${r.perimeter_m || 0} m linéaires · ${r.height_m || 2.5} m HSP`
+                      }
+                      badge={`${r.surface_m2 ?? 0} m²`}
+                      badgeColor={attachedPreset ? attachedPreset.color : "#f97316"}
+                      onFocus={() => onFocusObject?.({ kind: "room", data: r })}
+                      onExtra={onEstimateRoom ? () => onEstimateRoom(r.room_id) : null}
+                      extraIcon={Calculator}
+                      extraLabel="Générer devis pièce"
+                      onEdit={onRenameRoom ? () => startEdit(r.room_id, r.name) : null}
+                      onDelete={onDeleteRoom ? () => onDeleteRoom(r.room_id) : null}
+                    />
+                    {onAttachPreset && (
+                      <div className="px-6 pb-2 -mt-1 flex items-center gap-1.5 flex-wrap"
+                           data-testid={`room-preset-attach-${r.room_id}`}>
+                        <button
+                          onClick={() => setPresetPickerRoomId(
+                            presetPickerRoomId === r.room_id ? null : r.room_id
+                          )}
+                          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition"
+                          data-testid={`room-preset-toggle-${r.room_id}`}
+                        >
+                          <Layers className="h-3 w-3" />
+                          {attachedPreset ? "Changer modèle" : "Attacher un modèle"}
+                        </button>
+                        {attachedPreset && (
+                          <button
+                            onClick={() => onAttachPreset(r.room_id, null)}
+                            className="text-[10px] text-destructive hover:underline"
+                            data-testid={`room-preset-detach-${r.room_id}`}
+                          >
+                            Retirer
+                          </button>
+                        )}
+                        {presetPickerRoomId === r.room_id && (
+                          <div className="w-full mt-1 grid gap-1 max-h-40 overflow-y-auto border border-border rounded-sm p-1">
+                            {presets.length === 0 && (
+                              <p className="text-[10px] text-muted-foreground text-center py-2">
+                                Aucun modèle. Créez-en depuis la toolbar Pièce.
+                              </p>
+                            )}
+                            {presets.map((p) => (
+                              <button
+                                key={p.preset_id}
+                                onClick={() => {
+                                  onAttachPreset(r.room_id, p.preset_id);
+                                  setPresetPickerRoomId(null);
+                                }}
+                                data-testid={`room-preset-option-${r.room_id}-${p.preset_id}`}
+                                className={`flex items-center gap-2 px-2 py-1 rounded-sm hover:bg-muted text-xs text-left ${
+                                  r.preset_id === p.preset_id ? "bg-primary/10" : ""
+                                }`}
+                              >
+                                <span className="h-2 w-2 rounded-full shrink-0" style={{ background: p.color }} />
+                                <span className="truncate flex-1">{p.name}</span>
+                                <span className="text-[9px] text-muted-foreground shrink-0">
+                                  {p.kind}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-            ))}
+            );})}
           </>
         )}
 

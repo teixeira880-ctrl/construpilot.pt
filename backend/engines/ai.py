@@ -81,6 +81,7 @@ async def analyse_description(description: str) -> dict:
 {{
  "project_type": "un de: {types}",
  "surface": nombre en m² (estime si absent),
+ "ceiling_height_m": nombre en mètres (hauteur sous plafond ; si mentionnée dans la description utilise-la, sinon 2.5 par défaut pour une maison moderne, 2.7 pour un pavillon années 70+, 3.0 pour Haussmannien),
  "building_type": "maison|appartement|commerce",
  "finish_level": "un de: {finishes}",
  "condition": "neuf|bon|moyen|vetuste|a_renover_totalement",
@@ -96,6 +97,7 @@ Description : {description}"""
     data = _json(raw, {})
     data.setdefault("project_type", "renovation_complete")
     data.setdefault("surface", 100)
+    data.setdefault("ceiling_height_m", 2.5)
     data.setdefault("building_type", "maison")
     data.setdefault("finish_level", "standard")
     data.setdefault("condition", "moyen")
@@ -108,6 +110,11 @@ Description : {description}"""
         data["surface"] = float(data["surface"])
     except Exception:
         data["surface"] = 100.0
+    try:
+        h = float(data["ceiling_height_m"])
+        data["ceiling_height_m"] = max(2.0, min(5.0, h))  # bornes réalistes
+    except Exception:
+        data["ceiling_height_m"] = 2.5
     return data
 
 

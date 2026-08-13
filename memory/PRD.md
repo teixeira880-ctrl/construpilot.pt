@@ -1634,3 +1634,94 @@ Terminer la parity QuoterPlan sur les 3 features "haute valeur" restantes.
 - Minor notes non-bloquantes : chemin PDF route est `/pdf` (pas `takeoff.pdf` comme dans
   ma spec initiale — feature fonctionne) ; PDF ~4.1KB pour 1 room (petite mais valide)
 
+
+## 46. Changelog Iter 60 (14/02/2026) — Bug fix Smart Project 190m² + Vague D features
+
+### 🐛 Bug Fix 1 — Smart Project ignorait la hauteur sous plafond
+**Symptôme utilisateur** : « estimation maison 190m² : les calculs ne prennent pas en compte
+la hauteur des murs (moyenne 2.70m à considérer) ».
+
+**Cause racine** : `engines/estimation._compute_lot()` calculait `qty = surface × factor` sans
+scaler par la hauteur, or le catalog utilise des facteurs calibrés pour 2.5m de HSP.
+Pour une maison 190m² à 2.70m, la peinture était sous-estimée de ~8%.
+
+**Fix** :
+- Nouvelle constante `REFERENCE_CEILING_HEIGHT_M = 2.5` + `WALL_HEIGHT_SENSITIVE_LOTS = {
+  "peinture", "placo", "isolation", "facade", "maconnerie"}`
+- `_compute_lot(key, factor, surface, ..., ceiling_height_m)` scale la quantité par
+  `ratio = ceiling_height_m / REFERENCE_CEILING_HEIGHT_M` UNIQUEMENT pour les lots muraux
+- Backward-compat : à 2.5m, ratio=1.0 → aucune régression (tests iter52-59 tous verts)
+- `EstimateIn.ceiling_height_m` (défaut 2.5) exposé dans `/api/estimation/compute`
+- `DescribeIn.ceiling_height_m` optionnel dans `/api/estimation/analyse` — override utilisateur > détection IA > 2.5
+- `engines/ai.analyse_description` prompt enrichi : demande `ceiling_height_m` à GPT
+  + bornes `max(2.0, min(5.0, h))` pour éviter les valeurs aberrantes
+- Réponse de `/analyse` retourne `analysis.ceiling_height_m` (transparence)
+
+**Frontend SmartProject** :
+- Nouveau input `smart-project-height-input` (2.0-5.0m, défaut 2.5) à côté du bouton Analyser
+- Payload `POST /analyse` inclut `ceiling_height_m` si > 0
+- Après analyse, le champ est mis à jour avec la valeur retenue (feedback visuel)
+
+**Résultat vérifié** : maison 190m² à 2.70m → **227 375€ - 299 721€** (vs ~210k€ à 2.5m).
+L'IA mentionne explicitement dans les points de vigilance : « La hauteur sous plafond de
+2,70 m augmente les surfaces murales à peindre » ✅
+
+### 🐛 Bug Fix 2 — « Comparer prix matériaux » naviguait à blanc
+**Symptôme** : cliquer sur le bouton après une estimation ouvrait `/prix` sans lien avec
+les matériaux du projet.
+
+**Fix** :
+- SmartProject `goto-prices-btn` appelle `POST /api/estimation/materials` avec les lots
+  résultants, écrit le batch dans `sessionStorage.construpilot_price_search_batch` (items,
+  source, project_name, total_avg, timestamp), puis navigue `/prix?from=smart-project`
+- PriceSearch lit ce batch au mount (TTL 30 min), affiche un panneau `estimation-batch-panel`
+  au-dessus des résultats avec chips cliquables `batch-item-{n}` → chaque clic lance une
+  recherche prix sur ce matériau spécifique
+- Bouton `estimation-batch-clear` pour effacer le batch
+
+### 🎯 Vague D — 3 features UX + upload vidéo
+
+**1. Preset Attach depuis Object Panel**
+- ObjectPanel charge les presets user via `GET /tool-presets` à l'ouverture
+- Chaque room row expose un toggle `room-preset-toggle-{room_id}` qui ouvre un mini-picker
+  inline avec options `room-preset-option-{room_id}-{preset_id}`
+- Application appelle `PATCH /takeoffs/{plan_id}/rooms/{room_id}` avec `{preset_id}`
+- Badge secondary de la row change en « Modèle : XXX » quand attaché, couleur du preset
+- Bouton `room-preset-detach-{room_id}` retire le preset (envoi `preset_id: null`)
+
+**2. Estimate to Quote (RoomEstimateDialog)**
+- Nouveau bouton `room-estimate-add-to-quote` dans le footer du dialog devis pièce
+- Injecte tous les matériaux des 5 métiers (peinture + carrelage + placo + isolation + plinthes)
+  dans le batch `sessionStorage.construpilot_price_search_batch`
+- Hard nav `/prix?from=room-estimate` pour garantir la persistance du batch
+- Toast confirme le nombre de matériaux ajoutés
+
+**3. Live Total Bar**
+- Nouveau composant `LiveTotalBar.jsx` : barre flottante bottom-center (rounded-full,
+  shadow-xl) affichant « Coût total plan (N/M pièces) : XXXXX € »
+- Bouton `live-total-compute-btn` déclenche N appels parallèles à `/estimate` (Promise.all)
+  et somme les `total_budget`
+- Bouton `live-total-open-biggest` ouvre le RoomEstimateDialog sur la pièce la plus coûteuse
+- Se cache si `rooms.length === 0` (pas de bruit visuel)
+
+**4. Marketing Teaser Video**
+- Fichier `/app/frontend/public/marketing-teaser.mp4` uploadé (8.0 Mo, MP4 mp42 valide)
+- Fourni par l'utilisateur via URL WhatsApp Video
+- `MarketingTeaser.jsx` détecte automatiquement le fichier et affiche la vidéo au lieu
+  du fallback gradient
+- Servi avec content-type `video/mp4` valide (testing agent HTTP E2E vérifié)
+
+### 🧪 Tests (172/172 iter52-60 PASSED — 100%)
+- Nouveau `/app/backend/tests/test_iter60_height_bugfix_and_vague_d.py` — **21/21 PASSED**
+  (constants + wall-sensitive lots + scaling math + backward-compat + AI bounds +
+  schemas EstimateIn/DescribeIn + component existence + testids + video header valide)
+- Nouveau `/app/backend/tests/test_iter60_http_height_and_video.py` créé par testing agent
+  — **5/5 PASSED** (E2E HTTP compute default vs 2.70m, 190m² total budget compare,
+  /analyse override, teaser MP4 served)
+- Rapport `/app/test_reports/iteration_58.json` : **0 critical / 0 minor / 0 UI bugs /
+  0 action items**, `retest_needed: false`
+- Screenshot Smart Project confirme UI : champ hauteur 2.70m + résumé IA mentionnant
+  la hauteur + point de vigilance dynamique + budget 227 375€ - 299 721€
+- End-to-end Compare Prix : 12 chips affichés, auto-search retourne 7 suppliers avec
+  vrais prix Tavily
+

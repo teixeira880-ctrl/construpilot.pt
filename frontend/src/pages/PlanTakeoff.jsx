@@ -11,6 +11,7 @@ import { MultiPlanDialog } from "@/components/planTakeoff/MultiPlanDialog";
 import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
+import { LiveTotalBar } from "@/components/planTakeoff/LiveTotalBar";
 import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
@@ -1021,6 +1022,15 @@ export default function PlanTakeoff() {
       await refreshPlan();
       toast.success("Pièce renommée");
     } catch { toast.error("Renommage impossible"); }
+  };
+
+  const attachPresetToRoom = async (roomId, presetId) => {
+    if (!plan?.plan_id) return;
+    try {
+      await api.patch(`/takeoffs/${plan.plan_id}/rooms/${roomId}`, { preset_id: presetId });
+      await refreshPlan();
+      toast.success(presetId ? "Modèle attaché à la pièce" : "Modèle retiré");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Attachement impossible"); }
   };
 
   const deleteRoomFromPanel = async (roomId) => {
@@ -2205,6 +2215,7 @@ export default function PlanTakeoff() {
             onRenameRoom={renameRoom}
             onDeleteRoom={deleteRoomFromPanel}
             onEstimateRoom={generateRoomEstimate}
+            onAttachPreset={attachPresetToRoom}
             onDeleteMeasure={deleteMeasureFromPanel}
             onDeleteCounter={(id) => deleteAnnotationLocal("counters", id)}
             onRenameCounter={(id, name) => updateAnnotationLocal("counters", id, { label: name })}
@@ -2217,7 +2228,33 @@ export default function PlanTakeoff() {
           <RoomEstimateDialog
             open={roomEstimate !== null}
             estimate={roomEstimate}
+            planId={plan?.plan_id}
             onClose={() => setRoomEstimate(null)}
+            onAddToQuote={(est) => {
+              // Injecte tous les matériaux des métiers dans le batch PriceSearch
+              const items = [];
+              Object.values(est.trades || {}).forEach((t) => {
+                (t.materials || []).forEach((m) => items.push(m));
+              });
+              if (items.length === 0) return toast.info("Aucun matériau à comparer");
+              sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
+                items,
+                source: "room_estimate",
+                project_name: `Pièce ${est.room?.name || "-"} — ${plan?.filename || "Plan"}`,
+                total_avg: est.total_budget || 0,
+                ts: Date.now(),
+              }));
+              toast.success(`${items.length} matériau${items.length > 1 ? "x" : ""} ajouté${items.length > 1 ? "s" : ""} au devis`);
+              setRoomEstimate(null);
+              // Navigate to /prix
+              window.location.href = "/prix?from=room-estimate";
+            }}
+          />
+
+          <LiveTotalBar
+            planId={plan?.plan_id}
+            rooms={rooms}
+            onOpenEstimate={generateRoomEstimate}
           />
 
           {/* CONTEXT ACTIONS */}

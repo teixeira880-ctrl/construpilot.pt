@@ -1,0 +1,27 @@
+{
+  "summary": "Iter60 validated end-to-end. Backend: 167/167 unit tests pass (all iter52–iter60 including 21 new iter60 tests). Added 5 new HTTP E2E tests (test_iter60_http_height_and_video.py) covering: (a) /api/estimation/compute default height=2.5 backward compat (peinture=290 for 100m² ✓), (b) /compute at 2.70m scales wall lots (peinture 313.2, carrelage untouched at 35.0 ✓), (c) 190m² total at 2.70m > 2.5m (227k>210k ✓), (d) /api/estimation/analyse with ceiling_height_m override forces height even if AI detects other value ✓, (e) marketing-teaser.mp4 served via public URL with valid ftyp MP4 header ✓. Frontend UI: Smart Project /smart-project end-to-end flow confirmed with admin. Entered '2.70' in smart-project-height-input + descr 'Rénovation maison 190m² hauteur 2.70m...' → AI analysis correctly mentions 'hauteur sous plafond de 2,70 m' in résumé AND 'La hauteur sous plafond de 2,70 m augmente les surfaces murales à peindre' in points de vigilance (bug fix 1 UI confirmed). goto-prices-btn navigates to /prix?from=smart-project → estimation-batch-panel visible with 12 batch-item-{n} chips → auto-search on 'Laine de verre 200 mm' returns 7 suppliers with prices 9.43€–13.80€ (bug fix 2 confirmed). All iter60 code (Preset Attach, Estimate→Quote, LiveTotalBar, video teaser) validated via source-inspection unit tests (data-testids, props, sessionStorage keys, endpoint references, MP4 header).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter60_height_bugfix_and_vague_d.py",
+    "/app/backend/tests/test_iter60_http_height_and_video.py",
+    "/app/test_reports/pytest/iter60_all.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "engines/estimation.py — clean separation: REFERENCE_CEILING_HEIGHT_M=2.5 constant, WALL_HEIGHT_SENSITIVE_LOTS set correctly excludes floor lots (carrelage/parquet/menuiseries). _compute_lot scales qty by ratio (h/2.5) only for wall-sensitive lots — architecturally sound and backward-compat verified (peinture=290 at h=2.5 unchanged).",
+    "routes/estimation_routes.py — /analyse priorises override > AI > default 2.5, matching spec. EstimateIn.ceiling_height_m default 2.5 keeps existing clients working. DescribeIn.ceiling_height_m optional (None) so absence doesn't override AI detection.",
+    "engines/ai.py — analyse_description prompt includes ceiling_height_m ask + bounds max(2.0,min(5.0,...)) validation — good guard against hallucinated values.",
+    "Frontend Smart Project — 'Points de vigilance' now dynamically mentions high ceiling impact; excellent UX confirming to user that the height was used in the estimation.",
+    "LiveTotalBar and Preset Attach features validated via JSX source inspection (all data-testids present, correct wiring in PlanTakeoff.jsx). Runtime UI cannot be exercised on admin (0 rooms) without seeding — main agent may seed rooms if manual runtime QA desired."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter60_http_height_and_video.py (new — 5 HTTP E2E tests)"
+  ],
+  "success_rate": {"backend": "100% (167/167 unit + 5/5 new HTTP E2E)", "frontend": "100% for Smart Project bug fixes (height + Compare Prix batch). Other iter60 UI features covered by JSX-inspection unit tests (rooms required to exercise at runtime — admin has 0)."},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: `REACT_APP_BACKEND_URL=<url> pytest tests/test_iter5[2-9]*.py tests/test_iter60*.py -v` from /app/backend → 172 tests (167 unit + 5 HTTP E2E). Height bug fix: engines.estimation.estimate(project, surface, ceiling_height_m=X) scales wall lots (peinture/placo/isolation/facade/maconnerie) by X/2.5 ratio; other lots (carrelage/parquet/menuiseries) untouched. Smart Project UI: data-testid smart-project-height-input for user override, goto-prices-btn writes sessionStorage 'construpilot_price_search_batch' then navigates /prix?from=smart-project where estimation-batch-panel renders 12 batch-item-{n} chips. To exercise LiveTotalBar/Preset Attach/RoomEstimateDialog at runtime, seed rooms on admin plan or use demo (paywall-gated /plan)."
+}

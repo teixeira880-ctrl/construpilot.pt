@@ -14,6 +14,7 @@ import { SEO } from "@/components/SEO";
 
 export default function SmartProject() {
   const [description, setDescription] = useState(sessionStorage.getItem("construpilot_description") || "");
+  const [ceilingHeight, setCeilingHeight] = useState(2.5);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [name, setName] = useState("");
@@ -21,7 +22,7 @@ export default function SmartProject() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const run = useCallback(async (text) => {
+  const run = useCallback(async (text, height) => {
     if (!text || text.trim().length < 10) {
       toast.error("Décrivez votre projet en quelques mots (10 caractères minimum)");
       return;
@@ -29,8 +30,12 @@ export default function SmartProject() {
     setLoading(true);
     setResult(null);
     try {
-      const { data } = await api.post("/estimation/analyse", { description: text });
+      const body = { description: text };
+      if (height && height > 0) body.ceiling_height_m = height;
+      const { data } = await api.post("/estimation/analyse", body);
       setResult(data);
+      // Sync le champ hauteur avec ce que l'IA a détecté (ou reçu en override)
+      if (data.analysis?.ceiling_height_m) setCeilingHeight(data.analysis.ceiling_height_m);
       setName(data.analysis?.summary?.slice(0, 48) || "Mon projet");
     } catch (e) {
       toast.error("L'analyse IA a échoué. Réessayez.");
@@ -43,7 +48,7 @@ export default function SmartProject() {
     const stored = sessionStorage.getItem("construpilot_description");
     if (stored) {
       sessionStorage.removeItem("construpilot_description");
-      run(stored);
+      run(stored, ceilingHeight);
     }
   }, [run]);
 
@@ -86,14 +91,25 @@ export default function SmartProject() {
             placeholder="Ex : Je veux rénover complètement cette maison de 120 m²…"
             className="resize-none border-0 bg-transparent focus-visible:ring-0 text-base"
           />
-          <div className="p-2 pt-0 flex gap-3">
+          <div className="p-2 pt-0 flex gap-3 items-center flex-wrap">
             <Button
-              onClick={() => run(description)} disabled={loading} data-testid="smart-project-submit-btn"
+              onClick={() => run(description, ceilingHeight)} disabled={loading} data-testid="smart-project-submit-btn"
               className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
             >
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {loading ? "Analyse en cours…" : "Analyser mon projet"}
             </Button>
+            <div className="inline-flex items-center gap-2 rounded-sm border border-border px-3 py-1.5 bg-background">
+              <span className="text-xs text-muted-foreground">Hauteur sous plafond</span>
+              <Input
+                type="number" step="0.05" min="2.0" max="5.0"
+                value={ceilingHeight}
+                onChange={(e) => setCeilingHeight(Math.max(2.0, Math.min(5.0, Number(e.target.value) || 2.5)))}
+                data-testid="smart-project-height-input"
+                className="w-20 h-7 text-xs num text-center border-0 shadow-none"
+              />
+              <span className="text-xs text-muted-foreground">m</span>
+            </div>
           </div>
         </div>
       </div>
@@ -152,7 +168,35 @@ export default function SmartProject() {
               <Button onClick={save} disabled={saving} data-testid="save-project-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
                 <Save className="h-4 w-4" /> {user ? "Enregistrer mon projet" : "Se connecter et enregistrer"}
               </Button>
-              <Button variant="outline" className="rounded-sm gap-2" data-testid="goto-prices-btn" onClick={() => navigate("/prix")}>
+              <Button
+                variant="outline"
+                className="rounded-sm gap-2"
+                data-testid="goto-prices-btn"
+                onClick={async () => {
+                  try {
+                    // Récupérer les matériaux liés à l'estimation en cours
+                    const lots = (result?.estimation?.lots || [])
+                      .map((l) => ({ key: l.key, quantity: l.quantity }));
+                    if (lots.length === 0) { navigate("/prix"); return; }
+                    const { data } = await api.post("/estimation/materials", { lots });
+                    // Empiler les termes de recherche pour PriceSearch
+                    sessionStorage.setItem(
+                      "construpilot_price_search_batch",
+                      JSON.stringify({
+                        items: data.items || [],
+                        source: "smart_project",
+                        project_name: name || result?.analysis?.summary?.slice(0, 40) || "Mon projet",
+                        total_avg: result?.estimation?.total_avg || 0,
+                        ts: Date.now(),
+                      })
+                    );
+                    navigate("/prix?from=smart-project");
+                  } catch (e) {
+                    toast.error("Impossible de récupérer les matériaux");
+                    navigate("/prix");
+                  }
+                }}
+              >
                 <ShoppingCart className="h-4 w-4" /> Comparer les prix matériaux
               </Button>
               <LeadDialog budget={result.estimation.total_avg} description={description} />
