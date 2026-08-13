@@ -103,7 +103,17 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
                   "page_count": p.get("page_count", 1)}
     branding = await _resolve_branding(user["user_id"])
 
-    pdf_bytes = build_takeoff_pdf(plan_light, takeoff, materials, branding=branding)
+    # Vague B (iter58) — enrichir le PDF avec les modèles appliqués aux pièces
+    preset_ids = list({r.get("preset_id") for r in rooms if r.get("preset_id")})
+    presets_by_id: dict = {}
+    if preset_ids:
+        async for preset in db.tool_presets.find(
+            {"preset_id": {"$in": preset_ids}, "user_id": user["user_id"]}, {"_id": 0}
+        ):
+            presets_by_id[preset["preset_id"]] = preset
+
+    pdf_bytes = build_takeoff_pdf(plan_light, takeoff, materials,
+                                   branding=branding, presets_by_id=presets_by_id)
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":

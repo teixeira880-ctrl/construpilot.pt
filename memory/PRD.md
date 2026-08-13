@@ -1552,3 +1552,85 @@ réutilisables + panneau latéral d'inspection des mesures.
 - Screenshot final `/plan` avec panel ouvert : 7 tabs (Pièces, Ouvertures, Compteurs, Notes,
   Angles, Toitures, Mesures) + counter preset picker + bouton close accessible
 
+
+## 45. Changelog Iter 59 (13/02/2026) — QuoterPlan Wave C (Devis pièce + PDF presets + Focus zoom)
+
+### 🎯 Objectif
+Terminer la parity QuoterPlan sur les 3 features "haute valeur" restantes.
+
+### 💰 Vague C — Extensions Métier (Devis auto pièce)
+
+**Backend** — nouveau endpoint dans `plans_analysis.py`
+- `POST /api/takeoffs/{plan_id}/rooms/{room_id}/estimate` avec `RoomEstimateIn`
+  { trades?: list, override_height_m?, doors=1, windows=1 }
+- 5 métiers déclenchés par défaut : `paint`, `floor_tile`, `drywall`, `insulation`, `plinths`
+- Chaque métier appelle la fonction correspondante de `engines/calculators.py`
+  (paint / tile / drywall / insulation) + un calcul dédié pour les plinthes
+  (périmètre net - ouvertures × 10% chutes)
+- Helper `_room_dimensions_for_estimator(room, override_height)` :
+  résolution du système `L+W=P/2, L×W=S` (formule quadratique avec discriminant)
+  puis fallback carré √S puis fallback 4×4 par défaut
+- Réponse : `{room, trades: {trade: {inputs, results, materials, estimated_budget}}, total_budget}`
+- Testé E2E : demo Salon 24 m² → **1885.99 €** (peinture 125.65 + carrelage 855.76 +
+  plâtrerie 658.90 + isolation 152.64 + plinthes 93.04)
+
+**Frontend** — nouveau composant `RoomEstimateDialog.jsx`
+- Dialog modal (`z-[1000]`, backdrop blur) déclenché depuis le bouton Calculator
+  ajouté à chaque row Pièce du Volet Objets
+- Header dégradé orange avec dimensions détaillées (L×l×H · surface · périmètre)
+- Corps : 1 card par métier avec 2 colonnes (Résultats · Matériaux) + budget métier
+- Footer : Budget total en 2xl + gradient orange + bouton fermer
+- `data-testid` : `room-estimate-dialog`, `room-estimate-close`, `room-estimate-total`,
+  `estimate-trade-{key}` (paint, floor_tile, drywall, insulation, plinths)
+
+**Câblage** dans `ObjectPanel.jsx`
+- `Row` étendu avec `onExtra`, `extraIcon`, `extraLabel` props
+- Sur chaque row Pièce : bouton `Calculator` (icône) qui apparaît au hover, testid `-extra`
+
+### 📄 Preset dans le PDF de métré
+
+**Backend** — enrichi `engines/pdf_takeoff.py`
+- Nouveau `_story_room_presets(story, rooms, presets_by_id, S)` :
+  - Skip si aucune pièce n'a de `preset_id` référencé dans `presets_by_id`
+  - Sinon : Paragraph titre "Modèles d'ouvrages appliqués" + Table 6 colonnes
+    (Pièce · Modèle · Type · Unité · Prix · Notes)
+  - Style aligné avec les autres tables : entête foncé, alternance de couleurs
+- Signature `build_takeoff_pdf()` étendue avec paramètre optionnel
+  `presets_by_id: dict | None = None` (backward compatible — anciens appels sans crash)
+
+**Backend** — enrichi `plans_export.py`
+- Avant l'appel `build_takeoff_pdf`, collecte les `preset_ids` uniques utilisés par les rooms
+- Query optimisée `db.tool_presets.find({preset_id: {$in: ids}})` (une seule requête)
+- Passe le dict `{preset_id: preset_doc}` à `build_takeoff_pdf` via `presets_by_id`
+
+### 🔍 Focus Zoom on Canvas
+
+**Frontend** — pattern imperative via prop état
+- Nouveau state `focusRequest = {px, py, zoom, ts}` dans PlanTakeoff
+- Passé à `PlanCanvas` en prop — `useEffect` dépend de `focusRequest.ts` (Date.now())
+  déclenche le recalcul offset + zoom :
+  ```
+  offset.x = canvas.getBoundingClientRect().width / 2 - px * zoom
+  ```
+- `focusOnObject({kind, data})` calcule le centroïde correct selon le type :
+  - `room` → moyenne des points du polygon
+  - `counter` → moyenne des markers
+  - `note` → x, y (top-left du post-it)
+  - `angle` → vx, vy (sommet)
+  - `pitched` → moyenne du polygone
+  - `measure` → moyenne des points de la mesure
+- Zoom cappé à [1.0, 2.5] pour éviter les zoom extremes
+- Toast confirmation "Zoom sur {kind}"
+
+### 🧪 Tests (140/140 iter52-59 PASSED — 100 %)
+- Nouveau `/app/backend/tests/test_iter59_vague_c_estimator_pdf_focus.py` — **14/14 PASSED**
+  (schema + dimensions math + PDF signature + _story_room_presets skip/render + E2E PDF
+  build + component existence + testids present)
+- Nouveau `/app/backend/tests/test_iter59_http_estimate.py` créé par testing agent —
+  **6/6 PASSED** (HTTP E2E /estimate avec demo, 404 exhaustif, filtres trades, override
+  height, PDF route validation)
+- Rapport `/app/test_reports/iteration_57.json` : **0 critical / 0 UI bugs**,
+  `retest_needed: false`
+- Minor notes non-bloquantes : chemin PDF route est `/pdf` (pas `takeoff.pdf` comme dans
+  ma spec initiale — feature fonctionne) ; PDF ~4.1KB pour 1 room (petite mais valide)
+

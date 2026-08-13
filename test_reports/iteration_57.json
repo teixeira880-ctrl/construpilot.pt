@@ -1,0 +1,32 @@
+{
+  "summary": "Iter59 Vague C (QuoterPlan: Room estimator + Preset in PDF + Focus zoom) validated. Backend: 140/140 pytest passing across iter52-59 (incl. 14 new iter59 unit tests: schema RoomEstimateIn defaults doors=1/windows=1/trades=None + override; _room_dimensions_for_estimator math — S=24,P=20 → L=6,W=4 ; fallback square √S ; default 4x4 ; height override; build_takeoff_pdf signature accepts presets_by_id (default None → backward compat); _story_room_presets skips when no preset attached, renders Paragraph+Table when preset attached; E2E PDF build with presets returns valid %PDF-1.4 bytes; RoomEstimateDialog.jsx exists and contains all 5 trade keys + all data-testids). Also added 6 new HTTP E2E tests (test_iter59_http_estimate.py) that hit the real deployed API via REACT_APP_BACKEND_URL: /api/takeoffs/plan_32cdb0ca6e66/rooms/room_577309f1/estimate returns {room, trades, total_budget} with 5 trades (paint 125.65 + floor_tile 855.76 + drywall 658.90 + insulation 152.64 + plinths 93.04 = total 1885.99€ ≈ spec 1886€ ✓), trades=['paint'] filter returns only paint, override_height_m + doors accepted, 404 for unknown plan & unknown room, /api/takeoffs/{pid}/pdf returns valid PDF > 2KB starting with %PDF-. Frontend: verified /plan opens with admin, tool-objects-panel button toggles ObjectPanel, Rooms tab renders correctly with empty state 'Aucune pièce / Utilisez les outils pour en créer.' (admin has 15 plans but 0 rooms per task note, so the calculator/-extra button + RoomEstimateDialog + focus zoom cannot be exercised at runtime in this env — they are covered by the 14 unit tests which inspect the JSX source for testids and structure, and by the successful HTTP E2E on the /estimate endpoint with real demo data). No console errors during UI test.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "/api/takeoffs/{plan_id}/pdf", "issue": "Spec says the route is takeoff.pdf but actual route is /pdf — minor doc drift (feature works correctly). Also PDF size ~4.1KB for a 1-room plan (spec suggested >5KB) — PDF is valid ReportLab output, size is proportional to content."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter59_vague_c_estimator_pdf_focus.py",
+    "/app/backend/tests/test_iter59_http_estimate.py",
+    "/app/test_reports/pytest/iter59_all.xml"
+  ],
+  "action_items": [
+    "(Optional) Align spec doc: PDF route is /api/takeoffs/{plan_id}/pdf (not takeoff.pdf).",
+    "(Optional) Manual UI verification of Room-Estimate button + focus-zoom requires a plan with rooms on an admin-accessible account. Admin currently has 0 rooms; demo has rooms but /plan is paywall-gated. Consider seeding at least one calibrated plan with rooms on the admin account for future automated UI tests."
+  ],
+  "critical_code_review_comments": [
+    "routes/plans_analysis.py _room_dimensions_for_estimator — clean math: quadratic solve L+W=P/2, L*W=S using discriminant with guard against negative disc (falls back to sqrt(S)). Good defaults (4x4, H=2.5).",
+    "engines/pdf_takeoff.py build_takeoff_pdf(presets_by_id=None) — backward compatible signature; _story_room_presets correctly guards with `if not presets_by_id: return` and iterates only rooms whose preset_id exists in the dict. Unit-tested.",
+    "routes/plans_export.py — fetches presets_by_id from db.tool_presets before build_takeoff_pdf call; only pulls the ids actually referenced by rooms (efficient).",
+    "RoomEstimateDialog.jsx — all 5 trades exposed with data-testid=estimate-trade-{key} + room-estimate-dialog / -close / -total testids as spec'd.",
+    "ObjectPanel Row onExtra + Calculator icon — properly gated per row kind (rooms only)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter59_http_estimate.py (new — 6 HTTP E2E tests)"
+  ],
+  "success_rate": {"backend": "100% (140/140 unit + integration + 6/6 new HTTP E2E)", "frontend": "N/A for extra-button/focus-zoom (no rooms available on non-paywalled account); ObjectPanel + Rooms-tab + empty-state confirmed"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; demo@construpilot.fr / Demo2026! (used for HTTP E2E; plan_32cdb0ca6e66 room_577309f1 Salon 24m² → total 1885.99€)",
+  "seed_data_creation": "None (used existing demo seeded plan).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run all: `REACT_APP_BACKEND_URL=<url> pytest tests/test_iter5[2-9]*.py -v` from /app/backend → 140 tests. Add tests/test_iter59_http_estimate.py for E2E of /estimate + /pdf. The known demo plan with rooms is plan_32cdb0ca6e66 room_577309f1 (Salon 24m², expected total_budget ~1886€). The PDF route is /api/takeoffs/{plan_id}/pdf (not takeoff.pdf). Login response uses key 'token' (not 'access_token'). Demo cannot reach /plan/{id} directly (redirected to '/' by paywall middleware); admin can access /plan but has 0 rooms so the RoomEstimateDialog cannot be triggered in the browser without seeding — code path validated via 14 unit tests inspecting the JSX source for required data-testids and 5 trade keys."
+}

@@ -245,11 +245,51 @@ def _story_footer(story: list, S: dict) -> None:
         S["muted"]))
 
 
+def _story_room_presets(story: list, rooms: list, presets_by_id: dict, S: dict) -> None:
+    """Section — Modèles d'ouvrages appliqués (Vague B, PDF export).
+
+    Pour chaque pièce ayant un `preset_id`, affiche le modèle appliqué (nom, catégorie,
+    prix unitaire, notes techniques) — visible pour le client sur le PDF.
+    """
+    rooms_with_preset = [
+        (r, presets_by_id[r["preset_id"]])
+        for r in (rooms or [])
+        if r.get("preset_id") and r["preset_id"] in presets_by_id
+    ]
+    if not rooms_with_preset:
+        return
+    story.append(Paragraph("Modèles d'ouvrages appliqués", S["h2"]))
+    rows = [["Pièce", "Modèle", "Type", "Unité", "Prix", "Notes"]]
+    for r, p in rooms_with_preset:
+        rows.append([
+            r.get("name", "—"),
+            p.get("name", "—"),
+            p.get("kind", "other").replace("_", " ").capitalize(),
+            p.get("unit", "u"),
+            f"{p['price_per_unit']:.2f} €" if p.get("price_per_unit") is not None else "—",
+            (p.get("notes") or "").strip()[:60] or "—",
+        ])
+    story.append(_table(rows, [30 * mm, 45 * mm, 20 * mm, 15 * mm, 18 * mm, 42 * mm],
+                        style_extras=[
+                            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("ALIGN", (3, 1), (4, -1), "RIGHT"),
+                            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+                        ], repeat_rows=1))
+    story.append(Spacer(1, 4 * mm))
+
+
 def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
-                       branding: dict | None = None) -> bytes:
+                       branding: dict | None = None,
+                       presets_by_id: dict | None = None) -> bytes:
     """Rend un PDF de métré à partir d'un plan (rooms + totals + levels).
 
     `branding` optionnel : {"company_name": str, "contact_line": str, "logo_b64": str}
+    `presets_by_id` optionnel : dict{preset_id: preset_doc} — si fourni, une section
+        "Modèles d'ouvrages appliqués" est ajoutée pour montrer au client les specs
+        techniques des matériaux choisis par pièce.
 
     Complexité maîtrisée : chaque section est déléguée à un helper `_story_*`.
     """
@@ -265,6 +305,7 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
     _story_totals_global(story, takeoff.get("totals", {}), S)
     _story_totals_per_level(story, takeoff.get("levels", []), S)
     _story_rooms_detail(story, takeoff.get("rooms", []), S)
+    _story_room_presets(story, takeoff.get("rooms", []), presets_by_id or {}, S)
     _story_materials(story, materials, S)
     _story_footer(story, S)
 

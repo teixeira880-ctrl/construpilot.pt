@@ -10,6 +10,7 @@ import { EstimateDialog } from "@/components/planTakeoff/EstimateDialog";
 import { MultiPlanDialog } from "@/components/planTakeoff/MultiPlanDialog";
 import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
+import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
 import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
@@ -60,6 +61,7 @@ function PlanCanvas({
   dimensionLines = [], showDimensionLines = false,
   annotations = { counters: [], notes: [], angles: [], pitched_surfaces: [] },
   activeCounterId = null,
+  focusRequest = null,  // {px, py, ts} — quand ts change, centrer sur (px, py)
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -116,6 +118,25 @@ function PlanCanvas({
     img.src = `data:image/png;base64,${pageData.image_png_b64}`;
     // eslint-disable-next-line
   }, [pageData?.image_png_b64]);
+
+  // Focus request (Vague C — zoom & centre sur un objet depuis le Volet Objets)
+  useEffect(() => {
+    if (!focusRequest || focusRequest.ts == null) return;
+    const c = canvasRef.current;
+    if (!c) return;
+    const rect = c.getBoundingClientRect();
+    const targetZoom = Math.max(1.0, Math.min(2.5, focusRequest.zoom ?? 1.5));
+    const cx = focusRequest.px ?? 0;
+    const cy = focusRequest.py ?? 0;
+    // (px*zoom + offset.x) = rect.width/2 => offset.x = rect.width/2 - px*zoom
+    const newOffset = {
+      x: rect.width / 2 - cx * targetZoom,
+      y: rect.height / 2 - cy * targetZoom,
+    };
+    onZoomChange(targetZoom);
+    onOffsetChange(newOffset);
+    // eslint-disable-next-line
+  }, [focusRequest?.ts]);
 
   const redraw = useCallback(() => {
     const c = canvasRef.current;
@@ -597,6 +618,10 @@ export default function PlanTakeoff() {
   // Iter 58 (Vague B) — Volet Objets + Modèles Outils
   const [objectPanelOpen, setObjectPanelOpen] = useState(false);
   const [currentPreset, setCurrentPreset] = useState(null);
+  // Iter 59 (Vague C) — Focus zoom + Devis pièce
+  const [focusRequest, setFocusRequest] = useState(null);
+  const [roomEstimate, setRoomEstimate] = useState(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [calibDialog, setCalibDialog] = useState(false);
@@ -1031,13 +1056,51 @@ export default function PlanTakeoff() {
   };
 
   const focusOnObject = ({ kind, data, room, opening }) => {
-    // Simplified: centre la vue (offset) et zoom sur l'objet sur le canvas
-    const cx = data?.vx ?? data?.x ?? (data?.points?.[0]?.[0]) ?? (data?.polygon?.[0]?.[0]);
-    const cy = data?.vy ?? data?.y ?? (data?.points?.[0]?.[1]) ?? (data?.polygon?.[0]?.[1]);
-    if (typeof cx === "number" && typeof cy === "number") {
-      // Note: we could compute a proper offset here based on canvas size but keeping simple
-      toast.info(`Zoom sur ${kind}`);
-      setZoom(1.2);
+    // Compute the object's center in image pixel space, then set focusRequest
+    // so PlanCanvas can centre & zoom (Vague C — Focus Zoom on Canvas).
+    let cx = null, cy = null;
+    if (kind === "room" && data?.polygon?.length) {
+      cx = data.polygon.reduce((s, p) => s + p[0], 0) / data.polygon.length;
+      cy = data.polygon.reduce((s, p) => s + p[1], 0) / data.polygon.length;
+    } else if (kind === "counter" && data?.markers?.length) {
+      cx = data.markers.reduce((s, m) => s + m.x, 0) / data.markers.length;
+      cy = data.markers.reduce((s, m) => s + m.y, 0) / data.markers.length;
+    } else if (kind === "note" && data) {
+      cx = data.x; cy = data.y;
+    } else if (kind === "angle" && data) {
+      cx = data.vx; cy = data.vy;
+    } else if (kind === "pitched" && data?.points?.length) {
+      cx = data.points.reduce((s, p) => s + p[0], 0) / data.points.length;
+      cy = data.points.reduce((s, p) => s + p[1], 0) / data.points.length;
+    } else if (kind === "opening" && opening?.position) {
+      cx = opening.position[0]; cy = opening.position[1];
+    } else if (kind === "measure" && data?.points?.length) {
+      cx = data.points.reduce((s, p) => s + p[0], 0) / data.points.length;
+      cy = data.points.reduce((s, p) => s + p[1], 0) / data.points.length;
+    }
+    if (cx != null && cy != null) {
+      setFocusRequest({ px: cx, py: cy, zoom: 1.5, ts: Date.now() });
+      toast.success(`Zoom sur ${kind}`);
+    } else {
+      toast.info("Position non disponible pour cet objet");
+    }
+  };
+
+  // Vague C — Génération devis pièce (calculators.py)
+  const generateRoomEstimate = async (roomId) => {
+    if (!plan?.plan_id) return;
+    setEstimateLoading(true);
+    try {
+      const { data } = await api.post(
+        `/takeoffs/${plan.plan_id}/rooms/${roomId}/estimate`,
+        {}
+      );
+      setRoomEstimate(data);
+      toast.success(`Devis pièce généré : ${data.total_budget?.toFixed(2)} €`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Génération impossible");
+    } finally {
+      setEstimateLoading(false);
     }
   };
 
@@ -2129,6 +2192,7 @@ export default function PlanTakeoff() {
             showDimensionLines={showDimensionLines}
             annotations={annotations}
             activeCounterId={activeCounterId}
+            focusRequest={focusRequest}
           />
 
           <ObjectPanel
@@ -2140,6 +2204,7 @@ export default function PlanTakeoff() {
             onFocusObject={focusOnObject}
             onRenameRoom={renameRoom}
             onDeleteRoom={deleteRoomFromPanel}
+            onEstimateRoom={generateRoomEstimate}
             onDeleteMeasure={deleteMeasureFromPanel}
             onDeleteCounter={(id) => deleteAnnotationLocal("counters", id)}
             onRenameCounter={(id, name) => updateAnnotationLocal("counters", id, { label: name })}
@@ -2147,6 +2212,12 @@ export default function PlanTakeoff() {
             onEditNote={(id, text) => updateAnnotationLocal("notes", id, { text })}
             onDeleteAngle={(id) => deleteAnnotationLocal("angles", id)}
             onDeletePitched={(id) => deleteAnnotationLocal("pitched_surfaces", id)}
+          />
+
+          <RoomEstimateDialog
+            open={roomEstimate !== null}
+            estimate={roomEstimate}
+            onClose={() => setRoomEstimate(null)}
           />
 
           {/* CONTEXT ACTIONS */}

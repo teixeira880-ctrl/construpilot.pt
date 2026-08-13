@@ -414,6 +414,118 @@ async def update_room(plan_id: str, room_id: str, body: RoomUpdateIn,
     return {"ok": True, "updated": list(updates.keys())}
 
 
+# ============ VAGUE C — Estimation par métier depuis une pièce ============
+
+class RoomEstimateIn(BaseModel):
+    trades: list[str] | None = None  # None = tous les métiers pertinents
+    override_height_m: float | None = None
+    doors: int = 1
+    windows: int = 1
+
+
+def _room_dimensions_for_estimator(room: dict, override_height: float | None) -> tuple[float, float, float]:
+    """Derive length, width, height depuis les données d'une pièce.
+
+    Si la pièce a un polygone fermé, on estime L/l via la bounding box du polygone
+    dans l'espace pixel → conversion en mètres via `pixels_per_meter` (fourni par le plan).
+    Si `surface_m2` est disponible mais pas de polygone, on approxime en carré (√S × √S).
+    """
+    height = override_height or float(room.get("height_m") or 2.5)
+    surf = float(room.get("surface_m2") or 0)
+    # Si pas de surface, impossible d'estimer
+    if surf <= 0:
+        return (4.0, 4.0, height)  # défaut raisonnable pièce moyenne
+    perimeter = float(room.get("perimeter_m") or 0)
+    if perimeter > 0:
+        # Résolution système L+W = P/2, L×W = S : équation quadratique
+        half = perimeter / 2
+        disc = max(0.0, half * half - 4 * surf)
+        length = (half + disc ** 0.5) / 2
+        width = surf / length if length > 0 else half / 2
+        return (round(length, 2), round(width, 2), height)
+    # Fallback : carré
+    side = surf ** 0.5
+    return (round(side, 2), round(side, 2), height)
+
+
+@router.post("/{plan_id}/rooms/{room_id}/estimate")
+async def estimate_room(plan_id: str, room_id: str, body: RoomEstimateIn,
+                        user=Depends(current_user)):
+    """Génère les quantités par métier pour une pièce depuis calculators.py.
+
+    Utile pour la Vague C QuoterPlan : un clic sur une pièce → devis multi-métiers.
+    Résultat : dict par métier avec {results, materials, estimated_budget}.
+    """
+    from engines import calculators as C
+
+    plan = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "rooms": 1}
+    )
+    if not plan:
+        raise HTTPException(404, "Plan introuvable")
+    room = next((r for r in plan.get("rooms", []) if r.get("room_id") == room_id), None)
+    if not room:
+        raise HTTPException(404, "Pièce introuvable")
+
+    length, width, height = _room_dimensions_for_estimator(room, body.override_height_m)
+    surface = float(room.get("surface_m2") or (length * width))
+    perimeter = float(room.get("perimeter_m") or 2 * (length + width))
+
+    # Métiers disponibles + fonction déclenchante
+    trades = body.trades or ["paint", "floor_tile", "drywall", "insulation", "plinths"]
+    out: dict = {"room": {"room_id": room_id, "name": room.get("name"),
+                          "length_m": length, "width_m": width, "height_m": height,
+                          "surface_m2": surface, "perimeter_m": perimeter},
+                 "trades": {}, "total_budget": 0.0}
+
+    if "paint" in trades:
+        r = C.paint(length=length, width=width, height=height,
+                    doors=body.doors, windows=body.windows, coats=2)
+        out["trades"]["paint"] = r
+        out["total_budget"] += r.get("estimated_budget") or 0
+
+    if "floor_tile" in trades:
+        r = C.tile(area=surface, pose="droite")
+        out["trades"]["floor_tile"] = r
+        out["total_budget"] += r.get("estimated_budget") or 0
+
+    if "drywall" in trades:
+        # Cloisons intérieures : surface = perimeter × height, hors ouvertures
+        wall_area = max(0.0, perimeter * height - body.doors * 2.0 - body.windows * 1.5)
+        r = C.drywall(area=wall_area)
+        out["trades"]["drywall"] = r
+        out["total_budget"] += r.get("estimated_budget") or 0
+
+    if "insulation" in trades:
+        r = C.insulation(area=surface, material="laine_de_verre", thickness_mm=100)
+        out["trades"]["insulation"] = r
+        out["total_budget"] += r.get("estimated_budget") or 0
+
+    if "plinths" in trades:
+        # Plinthes = périmètre - largeur des ouvertures (portes uniquement, fenêtres au-dessus)
+        plinth_length = max(0.0, perimeter - body.doors * 0.9)
+        loss = 1.10  # 10% de chutes
+        with_margin = plinth_length * loss
+        out["trades"]["plinths"] = {
+            "inputs": {"perimeter_m": perimeter, "doors": body.doors},
+            "results": [
+                {"label": "Périmètre net", "value": round(plinth_length, 2), "unit": "m"},
+                {"label": "Plinthes (+10% chutes)", "value": round(with_margin, 2), "unit": "ml"},
+            ],
+            "materials": [
+                {"name": "Plinthe MDF blanche 2.4m", "quantity": max(1, int(with_margin / 2.4) + 1),
+                 "unit": "u", "search": "plinthe mdf blanche 2.4m"},
+                {"name": "Colle plinthe cartouche", "quantity": max(1, int(with_margin / 8) + 1),
+                 "unit": "u", "search": "colle plinthes cartouche"},
+            ],
+            "estimated_budget": round(with_margin * 3.5 + max(1, int(with_margin / 8) + 1) * 6.5, 2),
+        }
+        out["total_budget"] += out["trades"]["plinths"]["estimated_budget"]
+
+    out["total_budget"] = round(out["total_budget"], 2)
+    return out
+
+
 
 # ============ COMPARE / WALLS DIFF ============
 

@@ -13,7 +13,7 @@
  * Clic sur une ligne : centre la vue sur l'objet (via onFocus callback).
  */
 import React, { useState, useMemo } from "react";
-import { Square, DoorOpen, Hash, StickyNote, Triangle, MountainSnow, Ruler, Trash2, Edit3, X } from "lucide-react";
+import { Square, DoorOpen, Hash, StickyNote, Triangle, MountainSnow, Ruler, Trash2, Edit3, X, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ const TABS = [
   { id: "measures", label: "Mesures", icon: Ruler },
 ];
 
-function Row({ icon: Icon, testId, primary, secondary, badge, onFocus, onEdit, onDelete, badgeColor }) {
+function Row({ icon: Icon, testId, primary, secondary, badge, onFocus, onEdit, onDelete, onExtra, extraLabel, extraIcon: ExtraIcon, badgeColor }) {
   return (
     <div
       data-testid={testId}
@@ -45,6 +45,14 @@ function Row({ icon: Icon, testId, primary, secondary, badge, onFocus, onEdit, o
                style={{ borderColor: badgeColor, color: badgeColor }}>
           {badge}
         </Badge>
+      )}
+      {onExtra && ExtraIcon && (
+        <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onExtra(); }}
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition text-primary"
+                data-testid={`${testId}-extra`}
+                title={extraLabel}>
+          <ExtraIcon className="h-3 w-3" />
+        </Button>
       )}
       {onEdit && (
         <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -68,7 +76,7 @@ export default function ObjectPanel({
   open, onClose,
   rooms = [], measurements = [], annotations = {},
   onFocusObject,
-  onRenameRoom, onDeleteRoom,
+  onRenameRoom, onDeleteRoom, onEstimateRoom,
   onDeleteMeasure,
   onDeleteCounter, onRenameCounter,
   onDeleteNote, onEditNote,
@@ -162,6 +170,9 @@ export default function ObjectPanel({
                     badge={`${r.surface_m2 ?? 0} m²`}
                     badgeColor="#f97316"
                     onFocus={() => onFocusObject?.({ kind: "room", data: r })}
+                    onExtra={onEstimateRoom ? () => onEstimateRoom(r.room_id) : null}
+                    extraIcon={Calculator}
+                    extraLabel="Générer devis pièce"
                     onEdit={onRenameRoom ? () => startEdit(r.room_id, r.name) : null}
                     onDelete={onDeleteRoom ? () => onDeleteRoom(r.room_id) : null}
                   />
