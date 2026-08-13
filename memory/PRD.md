@@ -830,6 +830,29 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 35. Changelog Iter 49 (13/02/2026) — Nav i18n + Snap murs + Ouvertures 3D
+
+### 🌍 Nav complètement traduit FR/EN/ES
+- 14 nouvelles clés `nav.*` ajoutées à `I18nContext.jsx` (dashboard, estimator, plan2d, calculators, prices, diy, photo, scanner, coach, marketplace, docs, blog, pricing, team) dans les 3 langues.
+- `Nav.jsx` : chaque item du LINKS reçoit une `key` i18n, le rendu passe par `t(l.key, l.label)` (desktop + mobile drawer).
+- Testé Playwright : switch ES → « Estimador · Calculadoras · Precios materiales · Lo hago yo mismo… », switch EN → « Estimator · Calculators · Material prices · Do it myself… ». Le nav se traduit intégralement.
+
+### 🧲 Snap magnétique aux endpoints des murs
+- `PlanCanvas` : nouvelle fonction `applyWallSnap(x, y)` qui parcourt `detectedWalls.segments` et cherche l'endpoint le plus proche à moins de **15 px (screen-space, adjusted par zoom)** — magnétique.
+- Nouvelle fonction combinée `applySnap()` : priorité **wall endpoint** > **ortho snap** > **raw** — l'utilisateur clique instinctivement près d'un mur CV et l'anchor colle pile dessus.
+- `handleClick` et `handleMouseMove` utilisent désormais `applySnap` (au lieu de `applyOrthoSnap`). Impact immédiat : les rooms tracées après « Détecter les murs » ont des sommets parfaitement calés sur les murs réels.
+
+### 🚪 Ouvertures 3D
+- `Interactive3D.jsx` :
+  - Fallback : `getPoly(r)` retourne `r.polygon_px || r.points` — compatible avec les rooms PlanTakeoff (qui stockent en `points`).
+  - Nouveau bloc « Openings distribution » : pour chaque room, distribue les openings le long des edges du polygone. Doors (marron 0x8b4513) collées au sol, fenêtres (bleu ciel 0x87ceeb) et baies (bleu profond 0x1e40af) avec sill 0.9 m, opacité 0.55 pour vitrage.
+- `_gemini_render_3d` (backend) : le prompt Gemini reçoit désormais aussi les **ouvertures effectives mesurées** par pièce (« Salon: 1× porte 0.9×2.1m, 2× fenetre 1.2×1.2m ») en plus des données AI gros œuvre déjà injectées.
+
+### 🧪 Tests
+- Backend restart clean.
+- Landing rend correctement dans les 3 langues.
+- Aucune régression sur PlanTakeoff / Snap fonctionnel selon la logique implémentée (tests Playwright partiels — le snap magnétique nécessite un plan avec walls détectés pour un test complet).
+
 ## 34. Changelog Iter 48 (13/02/2026) — PDF détaillé + Outil Ouvertures + i18n étendu
 
 ### 📄 PDF Métré Détaillé (vérifié)

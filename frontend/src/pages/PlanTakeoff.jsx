@@ -46,6 +46,27 @@ function PlanCanvas({
   const dragRef = useRef(null);
   const [hoverPoint, setHoverPoint] = useState(null);
 
+  // Wall endpoint snap : magnetic attraction to detected wall endpoints (within 15px screen)
+  const applyWallSnap = (x, y) => {
+    if (!detectedWalls?.segments?.length) return null;
+    const R = 15 / zoom;    // 15px screen radius, image-space adjusted
+    let best = null, bestD = Infinity;
+    for (const s of detectedWalls.segments) {
+      for (const [ex, ey] of [[s.x1, s.y1], [s.x2, s.y2]]) {
+        const d = Math.hypot(x - ex, y - ey);
+        if (d < R && d < bestD) { best = [ex, ey]; bestD = d; }
+      }
+    }
+    return best;
+  };
+
+  // Combined snap : wall endpoint first (magnetic), then ortho for continued draw
+  const applySnap = (x, y) => {
+    const wall = applyWallSnap(x, y);
+    if (wall) return wall;
+    return applyOrthoSnap(x, y);
+  };
+
   // Ortho snap : if the segment from lastPoint to (x,y) is within 5° of horizontal/vertical,
   // snap to that axis so the user gets a perfectly straight measurement.
   const applyOrthoSnap = (x, y) => {
@@ -271,7 +292,7 @@ function PlanCanvas({
     if (tool === TOOLS.SELECT) return;
     if (dragRef.current) return;
     const [rx, ry] = screenToImage(e.clientX, e.clientY);
-    const [ix, iy] = applyOrthoSnap(rx, ry);
+    const [ix, iy] = applySnap(rx, ry);
     onCanvasClick([ix, iy]);
   };
 
@@ -293,7 +314,7 @@ function PlanCanvas({
     }
     if (tool !== TOOLS.SELECT) {
       const [rx, ry] = screenToImage(e.clientX, e.clientY);
-      const [ix, iy] = applyOrthoSnap(rx, ry);
+      const [ix, iy] = applySnap(rx, ry);
       setHoverPoint([ix, iy]);
     }
   };

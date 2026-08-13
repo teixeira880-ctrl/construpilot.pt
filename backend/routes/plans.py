@@ -474,6 +474,23 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
         room_labels = ", ".join(sorted({r.get("name", "") for r in rooms if r.get("name")}))
         if room_labels:
             room_hint = f"\nDetected room labels: {room_labels}."
+        # Add measured openings per room (from the takeoff data)
+        room_ops = []
+        for r in rooms:
+            ops = r.get("openings") or []
+            if not ops:
+                continue
+            parts = []
+            for op in ops[:5]:
+                w = op.get("width_m")
+                h = op.get("height_m")
+                cnt = op.get("count", 1)
+                kind = op.get("kind", "opening")
+                parts.append(f"{cnt}× {kind} {w}×{h}m")
+            if parts:
+                room_ops.append(f"{r.get('name', 'room')}: " + ", ".join(parts))
+        if room_ops:
+            room_hint += "\nRoom openings measured: " + " | ".join(room_ops)
 
     # Inject AI gros œuvre analysis for a more faithful 3D render
     ai_hint = ""

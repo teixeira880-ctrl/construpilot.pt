@@ -7,27 +7,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { LangToggle } from "@/context/I18nContext";
+import { LangToggle, useI18n } from "@/context/I18nContext";
 
 const LINKS = [
-  { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, auth: true },
-  { to: "/estimation", label: "Estimateur", icon: Hammer },
-  { to: "/plan", label: "Plan 2D", icon: Ruler, auth: true },
-  { to: "/calculateurs", label: "Calculateurs", icon: Calculator },
-  { to: "/prix", label: "Prix matériaux", icon: Search },
-  { to: "/diy", label: "Je le fais moi-même", icon: Wrench },
-  { to: "/photo", label: "Analyse photo", icon: Camera },
-  { to: "/scanner-devis", label: "Scanner de devis", icon: FileSearch },
-  { to: "/coach", label: "Coach IA", icon: MessageSquare },
-  { to: "/marketplace", label: "Trouver un pro", icon: Wrench },
-  { to: "/pro", label: "Espace pro", icon: Handshake },
-  { to: "/docs", label: "API & Développeurs", icon: FileSearch },
-  { to: "/blog", label: "Blog", icon: FileSearch },
-  { to: "/tarifs", label: "Tarifs", icon: Sparkles },
+  { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
+  { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
+  { to: "/plan", label: "Plan 2D", key: "nav.plan2d", icon: Ruler, auth: true },
+  { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
+  { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
+  { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
+  { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
+  { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
+  { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
+  { to: "/marketplace", label: "Trouver un pro", key: "nav.marketplace", icon: Wrench },
+  { to: "/pro", label: "Espace pro", key: "nav.pro", icon: Handshake },
+  { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch },
+  { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
+  { to: "/tarifs", label: "Tarifs", key: "nav.pricing", icon: Sparkles },
 ];
 
 export const Nav = () => {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const location = useLocation();
@@ -62,7 +63,7 @@ export const Nav = () => {
                 location.pathname === l.to ? "text-primary font-semibold" : "text-muted-foreground"
               }`}
             >
-              {l.label}
+              {t(l.key, l.label)}
             </Link>
           ))}
         </nav>
@@ -146,7 +147,7 @@ export const Nav = () => {
               key={l.to} to={l.to} onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-3 py-3 text-sm rounded-sm hover:bg-secondary transition-colors"
             >
-              <l.icon className="h-4 w-4 text-primary" /> {l.label}
+              <l.icon className="h-4 w-4 text-primary" /> {t(l.key, l.label)}
             </Link>
           ))}
         </div>

@@ -48,9 +48,10 @@ export function Interactive3D({ rooms = [], walls = [], scaleMperPx = 0.01,
     mount.innerHTML = "";
     mount.appendChild(renderer.domElement);
 
-    // ===== Compute bounding box for centering =====
+    // ===== Bounding box computation (rooms polygons, fallback to points) =====
+    const getPoly = (r) => r.polygon_px || r.points || [];
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    rooms.forEach((r) => (r.polygon_px || []).forEach(([x, y]) => {
+    rooms.forEach((r) => getPoly(r).forEach(([x, y]) => {
       if (x < minX) minX = x; if (x > maxX) maxX = x;
       if (y < minY) minY = y; if (y > maxY) maxY = y;
     }));
@@ -64,7 +65,7 @@ export function Interactive3D({ rooms = [], walls = [], scaleMperPx = 0.01,
     // ===== Room floors =====
     const roomColors = [0xffd7a8, 0xa8d8ff, 0xd8ffa8, 0xffa8d8, 0xd8a8ff, 0xffe8a8];
     rooms.forEach((r, i) => {
-      const poly = r.polygon_px || [];
+      const poly = getPoly(r);
       if (poly.length < 3) return;
       const shape = new THREE.Shape();
       poly.forEach(([px, py], k) => {
@@ -116,6 +117,54 @@ export function Interactive3D({ rooms = [], walls = [], scaleMperPx = 0.01,
       mesh.position.set((x1 + x2) / 2, wallHeight / 2, (z1 + z2) / 2);
       mesh.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
       scene.add(mesh);
+    });
+
+    // ===== Openings (portes / fenêtres / baies) =====
+    // Distribute each room's openings along the perimeter edges. Doors go
+    // from floor up; windows/bays have a 0.9 m sill. Colors : brown door,
+    // sky-blue window, deep blue bay.
+    const OPENING_COLORS = { porte: 0x8b4513, fenetre: 0x87ceeb, baie: 0x1e40af };
+    rooms.forEach((r) => {
+      const openings = r.openings || [];
+      const poly = getPoly(r);
+      if (!openings.length || poly.length < 3) return;
+      // Compute edges + lengths
+      const edges = [];
+      for (let i = 0; i < poly.length; i++) {
+        const [ax, ay] = poly[i];
+        const [bx, by] = poly[(i + 1) % poly.length];
+        const [wx1, wz1] = toWorld(ax, ay);
+        const [wx2, wz2] = toWorld(bx, by);
+        const len = Math.hypot(wx2 - wx1, wz2 - wz1);
+        edges.push({ x1: wx1, z1: wz1, x2: wx2, z2: wz2, len });
+      }
+      // Flatten count for multi-openings
+      const items = [];
+      openings.forEach((op) => {
+        for (let k = 0; k < (op.count || 1); k++) items.push(op);
+      });
+      items.forEach((op, idx) => {
+        const edge = edges[idx % edges.length];
+        if (edge.len < op.width_m + 0.2) return;    // skip too-short walls
+        // t = fractional position along the edge (spread openings across)
+        const inEdge = Math.floor(idx / edges.length);
+        const inEdgeCount = Math.ceil(items.length / edges.length) || 1;
+        const t = (inEdge + 1) / (inEdgeCount + 1);
+        const mx = edge.x1 + (edge.x2 - edge.x1) * t;
+        const mz = edge.z1 + (edge.z2 - edge.z1) * t;
+        const angle = -Math.atan2(edge.z2 - edge.z1, edge.x2 - edge.x1);
+        const w = op.width_m, h = op.height_m;
+        const sill = op.kind === "porte" ? 0 : 0.9;
+        const geom = new THREE.BoxGeometry(w, h, 0.14);
+        const mat = new THREE.MeshLambertMaterial({
+          color: OPENING_COLORS[op.kind] || 0x87ceeb,
+          transparent: op.kind !== "porte", opacity: op.kind === "porte" ? 1 : 0.55,
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(mx, sill + h / 2, mz);
+        mesh.rotation.y = angle;
+        scene.add(mesh);
+      });
     });
 
     // ===== Simple manual orbit controls (drag = orbit, wheel = zoom) =====
