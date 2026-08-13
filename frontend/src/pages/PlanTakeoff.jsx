@@ -13,6 +13,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, FileDown, History, Film, DoorOpen, Copy,
+  Hash, StickyNote, Triangle, MountainSnow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,19 @@ const TOOLS = {
   SELECT: "select", DIST: "distance", POLY: "polyline",
   ROOM: "room", CALIB: "calibrate", AUTOROOM: "autoroom",
   OPENING: "opening",
+  // Iter 57 — QuoterPlan-like tools
+  COUNTER: "counter", NOTE: "note", ANGLE: "angle", PITCH: "pitch",
 };
+
+const COUNTER_COLORS = [
+  "#f97316", // orange
+  "#22c55e", // green
+  "#3b82f6", // blue
+  "#a855f7", // purple
+  "#ec4899", // pink
+  "#eab308", // yellow
+  "#06b6d4", // cyan
+];
 
 const ROOM_COLORS = [
   "rgba(255,140,0,0.22)", "rgba(0,180,140,0.22)", "rgba(80,120,255,0.22)",
@@ -42,6 +55,9 @@ function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
   onCanvasClick, onZoomChange, onOffsetChange, onAutoRotate,
   detectedWalls, showWalls, pixelsPerMeter, orthoSnap = true, locked = false,
+  dimensionLines = [], showDimensionLines = false,
+  annotations = { counters: [], notes: [], angles: [], pitched_surfaces: [] },
+  activeCounterId = null,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -131,6 +147,57 @@ function PlanCanvas({
       });
     }
 
+    // AI DIMENSION LINES OVERLAY (traits de cote détectés par l'IA)
+    // Coordonnées normalisées 0-1 → converties dans l'espace image
+    if (showDimensionLines && dimensionLines?.length && img) {
+      const W = img.naturalWidth;
+      const H = img.naturalHeight;
+      ctx.save();
+      dimensionLines.forEach((d) => {
+        const bb = d.bbox_norm;
+        if (!Array.isArray(bb) || bb.length !== 4) return;
+        const x1 = bb[0] * W, y1 = bb[1] * H;
+        const x2 = bb[2] * W, y2 = bb[3] * H;
+        // Trait de cote — magenta pour se distinguer clairement des murs et pièces
+        ctx.strokeStyle = "rgba(217, 70, 239, 0.9)";
+        ctx.fillStyle = "rgba(217, 70, 239, 0.95)";
+        ctx.lineWidth = 2 / zoom;
+        ctx.setLineDash([8 / zoom, 4 / zoom]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Tirets aux extrémités (comme une cote architecte)
+        const tick = 6 / zoom;
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len, ny = dx / len;
+        [[x1, y1], [x2, y2]].forEach(([x, y]) => {
+          ctx.beginPath();
+          ctx.moveTo(x + nx * tick, y + ny * tick);
+          ctx.lineTo(x - nx * tick, y - ny * tick);
+          ctx.stroke();
+        });
+        // Étiquette valeur (si présente)
+        if (d.value_m != null) {
+          const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+          const label = `${Number(d.value_m).toFixed(2)} m`;
+          ctx.font = `bold ${13 / zoom}px system-ui`;
+          const w = ctx.measureText(label).width + 10 / zoom;
+          const h = 18 / zoom;
+          ctx.fillStyle = "rgba(217, 70, 239, 0.95)";
+          ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+          ctx.fillStyle = "#fff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(label, cx, cy);
+          ctx.textBaseline = "alphabetic";
+        }
+      });
+      ctx.restore();
+    }
+
     // ROOMS overlays
     rooms.forEach((r, i) => {
       if (!r.points || r.points.length < 3) return;
@@ -153,6 +220,111 @@ function PlanCanvas({
       ctx.fillText(r.name, cx, cy);
       ctx.font = `${12 / zoom}px system-ui`;
       ctx.fillText(`${r.surface_m2} m²`, cx, cy + 16 / zoom);
+    });
+
+    // ============ QUOTERPLAN-LIKE ANNOTATIONS ============
+
+    // 1) PITCHED SURFACES (toitures avec facteur de pente)
+    (annotations.pitched_surfaces || []).forEach((s) => {
+      if (!s.points || s.points.length < 3) return;
+      ctx.beginPath();
+      s.points.forEach((p, idx) => {
+        idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]);
+      });
+      ctx.closePath();
+      ctx.fillStyle = "rgba(59, 130, 246, 0.18)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(59, 130, 246, 0.95)";
+      ctx.lineWidth = 2 / zoom;
+      ctx.setLineDash([6 / zoom, 4 / zoom]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const cx = s.points.reduce((a, p) => a + p[0], 0) / s.points.length;
+      const cy = s.points.reduce((a, p) => a + p[1], 0) / s.points.length;
+      const label = `${s.real_area_m2.toFixed(1)} m² · ${s.pitch_degrees}°`;
+      ctx.font = `bold ${13 / zoom}px system-ui`;
+      const w = ctx.measureText(label).width + 10 / zoom;
+      ctx.fillStyle = "rgba(59, 130, 246, 0.95)";
+      ctx.fillRect(cx - w / 2, cy - 9 / zoom, w, 18 / zoom);
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, cx, cy);
+      ctx.textBaseline = "alphabetic";
+    });
+
+    // 2) COUNTERS (chaque compteur = liste de pastilles de couleur)
+    (annotations.counters || []).forEach((c) => {
+      const active = c.id === activeCounterId;
+      (c.markers || []).forEach((m, idx) => {
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, (active ? 8 : 6) / zoom, 0, Math.PI * 2);
+        ctx.fillStyle = c.color;
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+        // Number badge on first marker only (compact)
+        if (idx === 0 && c.markers.length > 1) {
+          ctx.fillStyle = "#111";
+          ctx.font = `bold ${11 / zoom}px system-ui`;
+          ctx.textAlign = "left";
+          ctx.fillText(`×${c.markers.length}`, m.x + 10 / zoom, m.y - 8 / zoom);
+        }
+      });
+    });
+
+    // 3) NOTES (post-it jaunes déplaçables)
+    (annotations.notes || []).forEach((n) => {
+      const pad = 6 / zoom;
+      ctx.font = `${12 / zoom}px system-ui`;
+      const txt = (n.text || "Note vide").slice(0, 60);
+      const w = Math.max(ctx.measureText(txt).width + pad * 2, 40 / zoom);
+      const h = 22 / zoom;
+      // Yellow sticky
+      ctx.fillStyle = "rgba(250, 204, 21, 0.95)";
+      ctx.fillRect(n.x, n.y, w, h);
+      ctx.strokeStyle = "rgba(202, 138, 4, 0.9)";
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(n.x, n.y, w, h);
+      ctx.fillStyle = "#111";
+      ctx.textBaseline = "middle";
+      ctx.fillText(txt, n.x + pad, n.y + h / 2);
+      ctx.textBaseline = "alphabetic";
+    });
+
+    // 4) ANGLES (sommet + 2 branches + arc)
+    (annotations.angles || []).forEach((a) => {
+      ctx.strokeStyle = "rgba(168, 85, 247, 0.95)";
+      ctx.fillStyle = "rgba(168, 85, 247, 0.95)";
+      ctx.lineWidth = 2 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(a.ax, a.ay);
+      ctx.lineTo(a.vx, a.vy);
+      ctx.lineTo(a.bx, a.by);
+      ctx.stroke();
+      // Arc between the two branches
+      const arm1 = Math.atan2(a.ay - a.vy, a.ax - a.vx);
+      const arm2 = Math.atan2(a.by - a.vy, a.bx - a.vx);
+      ctx.beginPath();
+      ctx.arc(a.vx, a.vy, 20 / zoom, arm1, arm2);
+      ctx.stroke();
+      // Label with degrees + x/12 for roof pitch reading
+      const midAng = (arm1 + arm2) / 2;
+      const lx = a.vx + Math.cos(midAng) * 40 / zoom;
+      const ly = a.vy + Math.sin(midAng) * 40 / zoom;
+      const deg = Number(a.degrees).toFixed(1);
+      const rise = (Math.tan((a.degrees * Math.PI) / 180) * 12).toFixed(1);
+      const label = `${deg}° · ${rise}/12`;
+      ctx.font = `bold ${12 / zoom}px system-ui`;
+      const w = ctx.measureText(label).width + 8 / zoom;
+      ctx.fillStyle = "rgba(168, 85, 247, 0.95)";
+      ctx.fillRect(lx - w / 2, ly - 9 / zoom, w, 18 / zoom);
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, lx, ly);
+      ctx.textBaseline = "alphabetic";
     });
 
     // ACTIVE POINTS with QUOTERPLAN-style dimension lines
@@ -311,7 +483,8 @@ function PlanCanvas({
     }
     ctx.restore();
   }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
-       calibration, detectedWalls, showWalls, pixelsPerMeter]);
+       calibration, detectedWalls, showWalls, pixelsPerMeter,
+       dimensionLines, showDimensionLines, annotations, activeCounterId]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -412,6 +585,13 @@ export default function PlanTakeoff() {
   const [rotation, setRotation] = useState(0);
   const [locked, setLocked] = useState(false);
   const [autoRotated, setAutoRotated] = useState(false);
+  const [showDimensionLines, setShowDimensionLines] = useState(true);
+  // Iter 57 — QuoterPlan-like annotations (par page)
+  const [annotations, setAnnotations] = useState({
+    counters: [], notes: [], angles: [], pitched_surfaces: [],
+  });
+  const [activeCounterId, setActiveCounterId] = useState(null);
+  const [pitchDegrees, setPitchDegrees] = useState(30);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [calibDialog, setCalibDialog] = useState(false);
@@ -510,8 +690,31 @@ export default function PlanTakeoff() {
       setRotation(0);
       setAutoRotated(false);
       setDetectedWalls(null);
+      // Load annotations for this page (QuoterPlan-like tools)
+      const pageAnnotations = plan.annotations?.[String(pageIndex)] || {};
+      setAnnotations({
+        counters: pageAnnotations.counters || [],
+        notes: pageAnnotations.notes || [],
+        angles: pageAnnotations.angles || [],
+        pitched_surfaces: pageAnnotations.pitched_surfaces || [],
+      });
+      setActiveCounterId(null);
     });
   }, [plan?.plan_id, pageIndex]);
+
+  // Auto-save annotations (debounced) whenever they change
+  useEffect(() => {
+    if (!plan?.plan_id || !pageData) return;
+    const total = annotations.counters.length + annotations.notes.length
+                + annotations.angles.length + annotations.pitched_surfaces.length;
+    if (total === 0) return;
+    const t = setTimeout(() => {
+      api.patch(`/takeoffs/${plan.plan_id}/annotations`, {
+        page_index: pageIndex, ...annotations,
+      }).catch(() => { /* silent */ });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [annotations, plan?.plan_id, pageIndex, pageData]);
 
   const refreshPlan = useCallback(async () => {
     if (!plan?.plan_id) return;
@@ -625,6 +828,67 @@ export default function PlanTakeoff() {
         return;
       }
       setPoints(next);
+    } else if (tool === TOOLS.COUNTER) {
+      // Ajoute un marqueur au compteur actif (créer un compteur par défaut si aucun)
+      let counterId = activeCounterId;
+      let list = annotations.counters;
+      if (!counterId || !list.find(c => c.id === counterId)) {
+        const nb = list.length;
+        const newC = {
+          id: `cnt_${Date.now()}`,
+          label: `Compteur ${nb + 1}`,
+          color: COUNTER_COLORS[nb % COUNTER_COLORS.length],
+          unit: "u",
+          markers: [],
+        };
+        list = [...list, newC];
+        counterId = newC.id;
+        setActiveCounterId(counterId);
+      }
+      const updated = list.map(c =>
+        c.id === counterId
+          ? { ...c, markers: [...c.markers, { x: pt[0], y: pt[1] }] }
+          : c
+      );
+      setAnnotations({ ...annotations, counters: updated });
+    } else if (tool === TOOLS.NOTE) {
+      const text = window.prompt("Note (max 60 caractères) :", "");
+      if (text === null) return;
+      const trimmed = (text || "").slice(0, 60);
+      setAnnotations({
+        ...annotations,
+        notes: [...annotations.notes, {
+          id: `nt_${Date.now()}`, x: pt[0], y: pt[1], text: trimmed || "Note"
+        }],
+      });
+      toast.success("Note ajoutée");
+    } else if (tool === TOOLS.ANGLE) {
+      const next = [...points, pt];
+      if (next.length === 3) {
+        // Vertex = 2nd click, arms = 1st and 3rd
+        const [a, v, b] = next;
+        const v1 = [a[0] - v[0], a[1] - v[1]];
+        const v2 = [b[0] - v[0], b[1] - v[1]];
+        const dot = v1[0] * v2[0] + v1[1] * v2[1];
+        const m1 = Math.hypot(...v1), m2 = Math.hypot(...v2);
+        const cosT = Math.max(-1, Math.min(1, dot / (m1 * m2 || 1)));
+        const deg = (Math.acos(cosT) * 180) / Math.PI;
+        setAnnotations({
+          ...annotations,
+          angles: [...annotations.angles, {
+            id: `ang_${Date.now()}`,
+            vx: v[0], vy: v[1], ax: a[0], ay: a[1], bx: b[0], by: b[1],
+            degrees: deg,
+          }],
+        });
+        toast.success(`Angle : ${deg.toFixed(1)}° · pente ${(Math.tan(deg * Math.PI / 180) * 12).toFixed(1)}/12`);
+        setPoints([]);
+      } else {
+        setPoints(next);
+      }
+    } else if (tool === TOOLS.PITCH) {
+      // Same polygon logic as ROOM but applies a pitch factor
+      setPoints([...points, pt]);
     }
   };
 
@@ -688,6 +952,34 @@ export default function PlanTakeoff() {
       toast.success(`Longueur : ${data.length_m} m`);
       setPoints([]);
     } catch (e) { toast.error("Mesure échouée"); }
+  };
+
+  const finishPitchSurface = () => {
+    if (points.length < 3) return toast.error("Cliquez au moins 3 points");
+    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    const ppm = currentCalib.pixels_per_meter;
+    // Shoelace formula in pixel space
+    let sum = 0;
+    for (let i = 0; i < points.length; i++) {
+      const [x1, y1] = points[i];
+      const [x2, y2] = points[(i + 1) % points.length];
+      sum += x1 * y2 - x2 * y1;
+    }
+    const projected_area_m2 = Math.abs(sum) / (2 * ppm * ppm);
+    const pitch = Math.max(0, Math.min(80, pitchDegrees));
+    const real_area_m2 = projected_area_m2 / Math.max(0.05, Math.cos((pitch * Math.PI) / 180));
+    setAnnotations({
+      ...annotations,
+      pitched_surfaces: [...annotations.pitched_surfaces, {
+        id: `pit_${Date.now()}`,
+        points: [...points],
+        projected_area_m2: Math.round(projected_area_m2 * 100) / 100,
+        pitch_degrees: pitch,
+        real_area_m2: Math.round(real_area_m2 * 100) / 100,
+      }],
+    });
+    setPoints([]);
+    toast.success(`Toiture : ${real_area_m2.toFixed(1)} m² réels (à ${pitch}°)`);
   };
 
   const finishDistance = async () => {
@@ -1676,6 +1968,11 @@ export default function PlanTakeoff() {
             <ToolButton icon={Square} label="Pièce" testId="tool-room" active={tool === TOOLS.ROOM} onClick={() => { setTool(TOOLS.ROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Wand2} label="Auto-pièce" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={DoorOpen} label="Ouverture" testId="tool-opening" active={tool === TOOLS.OPENING} onClick={() => { setTool(TOOLS.OPENING); setPoints([]); }} disabled={!currentCalib || rooms.length === 0} />
+            {/* Iter 57 — QuoterPlan-like tools */}
+            <ToolButton icon={Hash} label="Compteur" testId="tool-counter" active={tool === TOOLS.COUNTER} onClick={() => { setTool(TOOLS.COUNTER); setPoints([]); }} />
+            <ToolButton icon={StickyNote} label="Note" testId="tool-note" active={tool === TOOLS.NOTE} onClick={() => { setTool(TOOLS.NOTE); setPoints([]); }} />
+            <ToolButton icon={Triangle} label="Angle" testId="tool-angle" active={tool === TOOLS.ANGLE} onClick={() => { setTool(TOOLS.ANGLE); setPoints([]); }} />
+            <ToolButton icon={MountainSnow} label="Pente toit" testId="tool-pitch" active={tool === TOOLS.PITCH} onClick={() => { setTool(TOOLS.PITCH); setPoints([]); }} disabled={!currentCalib} />
             <div className="flex-1" />
             {detectedWalls && (
               <>
@@ -1739,6 +2036,10 @@ export default function PlanTakeoff() {
             pixelsPerMeter={currentCalib?.pixels_per_meter || 0}
             orthoSnap={true}
             locked={locked}
+            dimensionLines={plan?.ai_analysis?.dimension_lines || []}
+            showDimensionLines={showDimensionLines}
+            annotations={annotations}
+            activeCounterId={activeCounterId}
           />
 
           {/* CONTEXT ACTIONS */}
@@ -1760,7 +2061,89 @@ export default function PlanTakeoff() {
                   <Save className="h-3 w-3" /> Fermer pièce
                 </Button>
               )}
+              {tool === TOOLS.PITCH && points.length >= 3 && (
+                <>
+                  <Input
+                    type="number" min={0} max={80} step={1}
+                    value={pitchDegrees}
+                    onChange={(e) => setPitchDegrees(Math.max(0, Math.min(80, Number(e.target.value) || 0)))}
+                    data-testid="pitch-degrees-input"
+                    className="rounded-sm num h-8 w-20 text-xs"
+                    title="Angle de pente en degrés (0° = plat)"
+                  />
+                  <span className="text-xs text-muted-foreground">°</span>
+                  <Button size="sm" onClick={finishPitchSurface} data-testid="tool-finish-pitch"
+                          className="rounded-sm gap-2 hover:bg-blue-600 hover:text-white">
+                    <Save className="h-3 w-3" /> Fermer toiture
+                  </Button>
+                </>
+              )}
+              {tool === TOOLS.ANGLE && points.length < 3 && (
+                <span className="text-xs text-muted-foreground">
+                  {points.length === 0 && "Cliquez sur la 1ʳᵉ branche de l'angle"}
+                  {points.length === 1 && "Cliquez sur le sommet de l'angle"}
+                  {points.length === 2 && "Cliquez sur la 2ᵉ branche"}
+                </span>
+              )}
               <Button size="sm" variant="ghost" onClick={() => setPoints([])} className="rounded-sm">Annuler</Button>
+            </div>
+          )}
+
+          {/* COUNTER ACTIVE PANEL (chip per counter with markers total) */}
+          {tool === TOOLS.COUNTER && (
+            <div className="mt-3 flex flex-wrap gap-2 items-center" data-testid="counter-panel">
+              {annotations.counters.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCounterId(c.id)}
+                  data-testid={`counter-chip-${c.id}`}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs ${
+                    activeCounterId === c.id ? "border-primary bg-primary/10" : "border-border"
+                  }`}
+                  style={{ borderColor: activeCounterId === c.id ? c.color : undefined }}
+                >
+                  <span className="h-3 w-3 rounded-full" style={{ background: c.color }} />
+                  <span className="font-medium">{c.label}</span>
+                  <Badge variant="outline" className="text-[10px] rounded-sm num">{c.markers.length}</Badge>
+                </button>
+              ))}
+              <Button
+                size="sm" variant="outline" onClick={() => {
+                  const nb = annotations.counters.length;
+                  const label = window.prompt(`Nom du compteur ${nb + 1} (ex: Prises, Spots, Radiateurs) :`, `Compteur ${nb + 1}`);
+                  if (!label) return;
+                  const newC = {
+                    id: `cnt_${Date.now()}`,
+                    label,
+                    color: COUNTER_COLORS[nb % COUNTER_COLORS.length],
+                    unit: "u",
+                    markers: [],
+                  };
+                  setAnnotations({ ...annotations, counters: [...annotations.counters, newC] });
+                  setActiveCounterId(newC.id);
+                }}
+                data-testid="counter-add-new"
+                className="rounded-sm gap-1 h-8 text-xs"
+              >
+                + Nouveau compteur
+              </Button>
+              {activeCounterId && (
+                <Button
+                  size="sm" variant="ghost"
+                  onClick={() => {
+                    if (!window.confirm("Supprimer ce compteur et ses marqueurs ?")) return;
+                    setAnnotations({
+                      ...annotations,
+                      counters: annotations.counters.filter(c => c.id !== activeCounterId),
+                    });
+                    setActiveCounterId(null);
+                  }}
+                  data-testid="counter-delete-active"
+                  className="rounded-sm text-destructive text-xs"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           )}
 

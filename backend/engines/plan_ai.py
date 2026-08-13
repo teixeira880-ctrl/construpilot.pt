@@ -51,7 +51,12 @@ Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE s
   "dimension_lines": [
     // Traits de cote lus sur le plan (lignes fines + flèches + valeur)
     // Ne PAS confondre avec les murs !
-    {"value_m": 3.42, "location": "façade sud", "orientation": "horizontale" | "verticale" | "oblique",
+    // bbox_norm = coordonnées NORMALISÉES 0-1 de la ligne de cote sur l'image
+    //   [x1, y1, x2, y2] où (x1,y1) et (x2,y2) sont les extrémités du trait de cote.
+    //   x=0 = bord gauche, x=1 = bord droit ; y=0 = haut, y=1 = bas.
+    {"value_m": 3.42, "location": "façade sud",
+     "orientation": "horizontale" | "verticale" | "oblique",
+     "bbox_norm": [0.12, 0.34, 0.48, 0.34],
      "confidence": 0.0-1.0}
   ],
 
@@ -195,6 +200,26 @@ def _parse_json_response(raw: str) -> dict:
             return {"error": f"JSON parse: {e}", "raw": txt[:200], "confidence": 0.0}
 
 
+def _clean_dimension_lines(items: list) -> list:
+    """Valide et normalise les traits de cote : garde `bbox_norm` si présent et bien formé."""
+    out = []
+    for it in items or []:
+        if not isinstance(it, dict):
+            continue
+        bbox = it.get("bbox_norm")
+        # Un bbox_norm valide = liste/tuple de 4 floats dans [0, 1]
+        if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+            try:
+                bbox = [max(0.0, min(1.0, float(v))) for v in bbox]
+                it["bbox_norm"] = bbox
+            except (TypeError, ValueError):
+                it.pop("bbox_norm", None)
+        else:
+            it.pop("bbox_norm", None)
+        out.append(it)
+    return out
+
+
 def _normalize_analysis(data: dict) -> dict:
     """Ensure all gros-œuvre fields exist so the front never crashes on undefined."""
     data.setdefault("rooms", [])
@@ -205,7 +230,7 @@ def _normalize_analysis(data: dict) -> dict:
     data.setdefault("stairwells", [])
     data.setdefault("floors", {})
     data.setdefault("totals_gros_oeuvre", {})
-    data.setdefault("dimension_lines", [])
+    data["dimension_lines"] = _clean_dimension_lines(data.get("dimension_lines") or [])
     data.setdefault("wall_types", {})
     data.setdefault("materials_notes", [])
     if isinstance(data.get("openings"), dict):

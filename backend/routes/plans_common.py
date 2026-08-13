@@ -91,6 +91,7 @@ def _plan_summary(p: dict) -> dict:
         "ai_analysis": p.get("ai_analysis"),
         "project_id": p.get("project_id"),
         "pages": pages_light,
+        "annotations": p.get("annotations", {}),
         "created_at": p.get("created_at"),
         "updated_at": p.get("updated_at"),
     }

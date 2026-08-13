@@ -287,3 +287,90 @@ async def set_page_level(plan_id: str, page_index: int, body: PageLevelIn,
     )
     return {"ok": True, "page_index": page_index,
             "level_index": body.level_index, "level_label": body.level_label}
+
+
+# ============ ANNOTATIONS (Counter / Notes / Angles / Roof pitch surfaces) ============
+# Inspiré de QuoterPlan : outils de traçage plan persistés par page dans plan.annotations
+
+class CounterMarker(BaseModel):
+    x: float
+    y: float
+
+
+class CounterAnnotation(BaseModel):
+    id: str
+    label: str = "Compteur"
+    color: str = "#f97316"  # orange par défaut (ConstruPilot palette)
+    unit: str = "u"          # u / prises / spots / radiateurs / m² / etc.
+    markers: list[CounterMarker] = []
+
+
+class NoteAnnotation(BaseModel):
+    id: str
+    x: float
+    y: float
+    text: str = ""
+
+
+class AngleAnnotation(BaseModel):
+    id: str
+    # 3 points : sommet + 2 branches
+    vx: float
+    vy: float
+    ax: float
+    ay: float
+    bx: float
+    by: float
+    degrees: float
+    label: str | None = None  # ex: "Pente toiture ouest"
+
+
+class PitchSurfaceAnnotation(BaseModel):
+    id: str
+    points: list[list[float]]       # polygone en pixels
+    projected_area_m2: float         # aire vue en plan
+    pitch_degrees: float             # inclinaison (0 = à plat)
+    real_area_m2: float              # aire réelle = projected / cos(pitch)
+    label: str | None = None
+
+
+class AnnotationsIn(BaseModel):
+    page_index: int = 0
+    counters: list[CounterAnnotation] = []
+    notes: list[NoteAnnotation] = []
+    angles: list[AngleAnnotation] = []
+    pitched_surfaces: list[PitchSurfaceAnnotation] = []
+
+
+@router.patch("/{plan_id}/annotations")
+async def save_annotations(plan_id: str, body: AnnotationsIn, user=Depends(current_user)):
+    """Persiste les 4 types d'annotations QuoterPlan-like par page (compteur / note / angle / pente).
+
+    Le document plan stocke `annotations` = { "<page_index>": { counters, notes, angles, pitched_surfaces } }.
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1, "annotations": 1}
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    if body.page_index < 0 or body.page_index >= len(p.get("pages") or []):
+        raise HTTPException(404, "Page inconnue")
+
+    page_key = str(body.page_index)
+    payload = {
+        "counters": [c.model_dump() for c in body.counters],
+        "notes": [n.model_dump() for n in body.notes],
+        "angles": [a.model_dump() for a in body.angles],
+        "pitched_surfaces": [s.model_dump() for s in body.pitched_surfaces],
+    }
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {f"annotations.{page_key}": payload, "updated_at": _now()}}
+    )
+    total_counter_items = sum(len(c["markers"]) for c in payload["counters"])
+    return {"ok": True, "page_index": body.page_index,
+            "totals": {"counters": len(payload["counters"]),
+                       "counter_items": total_counter_items,
+                       "notes": len(payload["notes"]),
+                       "angles": len(payload["angles"]),
+                       "pitched_surfaces": len(payload["pitched_surfaces"])}}

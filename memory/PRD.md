@@ -1404,3 +1404,69 @@ Le prompt de `engines/plan_ai.py` demande désormais à GPT-4o de **distinguer v
 - Screenshot `/plan` idle : bloc « Mes plans récents » avec 11 plans dont "test (copie).pdf"
   (validation e2e du duplicate iter55) — cards cliquables ouvrent le viewer.
 
+
+## 43. Changelog Iter 57 (13/02/2026) — QuoterPlan Wave A (4 outils traçage)
+
+### 🎯 Objectif
+Rapprocher ConstruPilot de QuoterPlan sur les outils de traçage plan.
+Vague A = 4 outils manquants les plus visibles chez QuoterPlan.
+
+### 🛠️ Nouveaux outils dans PlanTakeoff.jsx
+
+**1. Compteur (`tool-counter`)** — icône `Hash` (#)
+- Clic canvas → dépose une pastille de couleur (marker)
+- Panel contextuel (`counter-panel`) sous la toolbar liste les compteurs (chips)
+- Chaque compteur a un label modifiable (« Prises », « Spots », « Radiateurs »), une couleur
+  (rotation 7 couleurs de `COUNTER_COLORS`), une unité (`u`)
+- Badge nombre total × sur le premier marker du compteur (compact)
+- `data-testid` : `tool-counter`, `counter-panel`, `counter-add-new`, `counter-chip-<id>`,
+  `counter-delete-active`
+
+**2. Note (`tool-note`)** — icône `StickyNote`
+- Clic canvas → `window.prompt` (max 60 caractères) → dépose un post-it jaune (fillStyle
+  `rgba(250, 204, 21, 0.95)` + bordure jaune foncée)
+- Position (x, y) sur le canvas, texte tronqué à 60 caractères
+- Toast confirmation « Note ajoutée »
+
+**3. Angle (`tool-angle`)** — icône `Triangle`
+- 3 clics : branche 1 → sommet → branche 2
+- Message contextuel step-by-step affiché sous la toolbar (« Cliquez sur la 1ʳᵉ branche »,
+  « sommet », « 2ᵉ branche »)
+- Calcul angle via produit scalaire + arccos
+- Rendu : 2 traits + arc violet + label `X° · Y/12` (conversion pente toiture US)
+- Toast « Angle : 42.5° · pente 11.0/12 » à la clôture
+
+**4. Pente de toit (`tool-pitch`)** — icône `MountainSnow`
+- Comme l'outil pièce mais applique un facteur de pente
+- Input degrees dans la contextual bar (`pitch-degrees-input`, 0-80°, défaut 30°)
+- Formule : `real_area_m2 = projected_area_m2 / cos(pitch)` (avec floor 0.05 pour éviter div/0)
+- Rendu : polygone bleu dashed + label `X m² · Y°` au centroïde
+- Disabled tant que le plan n'est pas calibré
+
+### 🗄️ Backend
+- Nouvel endpoint `PATCH /api/takeoffs/{plan_id}/annotations` (dans `plans_crud.py`)
+- Modèles Pydantic : `CounterAnnotation`, `NoteAnnotation`, `AngleAnnotation`,
+  `PitchSurfaceAnnotation`, wrapper `AnnotationsIn` (par page)
+- Stockage : `plan.annotations["<page_index>"] = {counters, notes, angles, pitched_surfaces}`
+- Retour : totals détaillés (`counter_items` = somme des markers de tous les compteurs)
+- 404 si plan inexistant ou page hors bornes
+- `_plan_summary` (dans `plans_common.py`) expose `annotations` (défaut `{}`)
+
+### 🔁 Auto-save
+- `useEffect` dans PlanTakeoff écoute `annotations` + `plan.plan_id` + `pageIndex`
+- Debounce 600ms
+- Skippe si toutes les listes sont vides
+- Silencieux en cas d'erreur (aucun toast d'échec pendant qu'on trace)
+
+### 🧪 Tests (79/79 iter53-57 PASSED + 4 nouveaux HTTP roundtrip par testing agent)
+- Nouveau `/app/backend/tests/test_iter57_quoterplan_tools.py` — **10/10 PASSED**
+  (schema AnnotationsIn + defaults, `_plan_summary` inclut annotations, math pente toit,
+  math angle 90° et 45°, math x/12)
+- Nouveau `/app/backend/tests/test_iter57_http_annotations.py` créé par testing agent —
+  **4/4 PASSED** (HTTP roundtrip complet counters/notes/angles/pitched + 404 handling)
+- Rapport testing agent `/app/test_reports/iteration_55.json` : **0 critical / 0 minor /
+  0 action items**, `retest_needed: false`
+- Frontend testé e2e : 4 boutons présents, Counter flow complet (clic → prompt → chip →
+  auto-save vérifié via GET /takeoffs), Angle hints contextuels corrects, Pitch
+  correctement disabled sans calibration
+
