@@ -30,7 +30,7 @@ from core.security import current_user, admin_user
 from engines import geometry as G
 from engines.plan_processor import process_upload, auto_calibration_from_pdf_scale
 from engines.plan_ai import analyze_plan_image
-from engines.plan_cv import detect_walls, flood_fill_room
+from engines.plan_cv import detect_walls, flood_fill_room, detect_all_rooms
 from engines.pdf_takeoff import build_takeoff_pdf
 
 logger = logging.getLogger(__name__)
@@ -664,6 +664,42 @@ async def get_video_3d_mp4(plan_id: str, video_id: str, user=Depends(current_use
     return FileResponse(str(path), media_type="video/mp4",
                         filename=f"tour-3d-{plan_id}.mp4")
 
+
+
+@router.post("/{plan_id}/detect-all-rooms")
+async def detect_all_rooms_route(plan_id: str, page_index: int = 0, user=Depends(current_user)):
+    """Auto-détection de TOUTES les pièces closes d'une page via findContours.
+
+    Retourne les polygones simplifiés + surface_m2 (si calibré). Utilisé par le
+    bouton "Importer ces pièces" côté frontend pour matcher les pièces IA avec
+    des contours réels au lieu d'un carré approximatif.
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages": 1, "calibrations": 1},
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if page_index < 0 or page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    img = pages[page_index].get("image_png_b64")
+    if not img:
+        raise HTTPException(500, "Image manquante")
+    try:
+        result = detect_all_rooms(img)
+    except Exception as e:
+        logger.exception("detect_all_rooms failed")
+        raise HTTPException(500, f"Détection impossible : {e}")
+
+    calib = (p.get("calibrations") or {}).get(str(page_index))
+    if calib:
+        ppm = calib["pixels_per_meter"]
+        for r in result.get("rooms", []):
+            if len(r.get("points", [])) >= 3:
+                r["surface_m2"] = round(G.polygon_area_m2(r["points"], ppm), 3)
+                r["perimeter_m"] = round(G.polygon_perimeter_m(r["points"], ppm), 3)
+    return result
 
 
 @router.post("/{plan_id}/room-autofill")
@@ -2018,25 +2054,67 @@ async def submit_signature(token: str, body: SignatureIn):
     """Endpoint public : le client soumet sa signature (image base64)."""
     log = await db.quote_sends.find_one({"signature_token": token},
                                           {"_id": 0, "log_id": 1, "user_id": 1,
-                                           "signed": 1, "client_email": 1})
+                                           "signed": 1, "client_email": 1,
+                                           "plan_id": 1, "client_name": 1,
+                                           "total_ttc": 1})
     if not log:
         raise HTTPException(404, "Lien invalide")
     if log.get("signed"):
         raise HTTPException(400, "Ce devis a déjà été signé")
     b64_clean = body.signature_b64.split(",")[-1]
+    signer = body.signer_name.strip()[:120]
     await db.quote_sends.update_one(
         {"log_id": log["log_id"]},
         {"$set": {"signed": True, "signed_at": _now(),
-                   "signer_name": body.signer_name.strip()[:120],
+                   "signer_name": signer,
                    "signature_b64": b64_clean}}
     )
-    # Notification au sender
+    # Notification in-app (bell)
+    client_email = log.get("client_email") or ""
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(5),
         "user_id": log["user_id"], "type": "quote_signed", "log_id": log["log_id"],
-        "message": f"{body.signer_name} a signé le devis ({log.get('client_email')}).",
+        "message": f"{signer} a signé le devis ({client_email}).",
         "created_at": _now(), "read": False,
     })
+    # Push notification (best-effort)
+    try:
+        from routes.phase7 import notify_user
+        total = log.get("total_ttc") or 0
+        title = "✍️ Devis signé !"
+        push_body = f"{signer} vient de signer votre devis" + (f" ({int(total):,} € TTC)".replace(",", " ") if total else "")
+        await notify_user(log["user_id"], title, push_body, "/devis")
+    except Exception as e:
+        logger.warning(f"Push signature notify failed: {e}")
+    # Email au pro (best-effort)
+    try:
+        from engines import emailer
+        pro = await db.users.find_one({"user_id": log["user_id"]}, {"_id": 0, "email": 1, "name": 1})
+        if pro and pro.get("email"):
+            html = (
+                f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'>"
+                f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
+                f"<h1 style='margin:0;font-size:22px'>✍️ Devis signé</h1></div>"
+                f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
+                f"<p>Bonjour {pro.get('name') or ''},</p>"
+                f"<p><strong>{signer}</strong> vient de signer votre devis"
+                + (f" — <strong>{int(log.get('total_ttc', 0)):,} € TTC</strong>".replace(",", " ")
+                   if log.get('total_ttc') else "")
+                + f".</p>"
+                f"<p>Client : <em>{client_email}</em><br/>"
+                f"Date : {_now()[:10]}</p>"
+                f"<p style='margin-top:24px'>"
+                f"<a href='https://construpilot.fr/devis' "
+                f"style='background:hsl(24,96%,55%);color:white;padding:12px 24px;"
+                f"text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>"
+                f"Voir le devis signé</a></p>"
+                f"<p style='margin-top:32px;color:#888;font-size:12px'>"
+                f"ConstruPilot · Estimez. Comparez. Construisez.</p>"
+                f"</div></div>"
+            )
+            await emailer.send_email(pro["email"], f"✍️ {signer} a signé votre devis", html)
+    except Exception as e:
+        logger.warning(f"Email signature notify failed: {e}")
     return {"ok": True, "signed_at": _now()}
 
 

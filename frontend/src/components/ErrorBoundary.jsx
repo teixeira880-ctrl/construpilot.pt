@@ -22,6 +22,26 @@ export class ErrorBoundary extends React.Component {
     // eslint-disable-next-line no-console
     console.error("[ErrorBoundary]", error, info);
     this.setState({ info });
+    // Fire-and-forget report to backend for centralized logs (supervisor).
+    try {
+      const backend = process.env.REACT_APP_BACKEND_URL;
+      const body = {
+        message: String(error?.message || error).slice(0, 2000),
+        stack: String(error?.stack || info?.componentStack || "").slice(0, 5000),
+        url: window.location.href.slice(0, 500),
+        user_agent: navigator.userAgent.slice(0, 500),
+        user_id: (() => {
+          try { return JSON.parse(localStorage.getItem("construpilot_user") || "{}").user_id || null; }
+          catch { return null; }
+        })(),
+      };
+      fetch(`${backend}/api/errors/client-log`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        keepalive: true,
+      }).catch(() => { /* best-effort */ });
+    } catch { /* never let the reporter itself crash the boundary */ }
   }
 
   handleReload = () => {

@@ -17,6 +17,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     ai_routes, leads, admin, photos, billing, revenue,
                     phase4, phase5, phase6, phase7, share, admin_revenue,
                     referrals as referrals_routes,
+                    errors as errors_routes,
                     plans as plans_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -52,6 +53,7 @@ api_router.include_router(admin_revenue.router)
 api_router.include_router(plans_routes.router)
 api_router.include_router(plans_routes.quote_router)
 api_router.include_router(referrals_routes.router)
+api_router.include_router(errors_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(

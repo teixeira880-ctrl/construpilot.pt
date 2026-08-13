@@ -830,6 +830,32 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 28. Changelog Iter 42 (13/02/2026) — Log central + Auto Trace CV + Alertes signature
+
+### 📡 Log central des erreurs client
+- Nouveau endpoint `POST /api/errors/client-log` (`routes/errors.py`) — reçoit `{message, stack, url, user_agent, user_id}` de l'ErrorBoundary et log via `logging.getLogger("client_errors")` (visible dans `/var/log/supervisor/backend.err.log` et les logs déployés).
+- **Anti-flood** : dedup en mémoire par `(ip, sha256(msg)[:16])` sur fenêtre 60 s + purge auto au-delà de 500 entrées. Test : 3× même appel → 1er `{"ok":true}`, 2ᵉ et 3ᵉ `{"ok":true,"deduped":true}`.
+- Aucune dépendance externe (pas de Sentry) — les logs remontent naturellement dans le pipeline Emergent.
+- ErrorBoundary câblé : `componentDidCatch` fait un `fetch(POST)` avec `keepalive:true`, propre garde try/catch pour ne jamais casser le boundary lui-même.
+
+### 🧠 Auto Trace Pièces via CV
+- **Backend** : nouvelle fonction `plan_cv.detect_all_rooms(png_b64)` qui utilise `adaptiveThreshold` + `morphologyEx(OPEN)` + `findContours(RETR_CCOMP)` pour détecter toutes les régions closes. Filtres : `min_area_px=800`, ratio `area/bbox > 0.35` (rejette les strips minces), aire < 60 % de la page (rejette la bordure page).
+- **Endpoint** : `POST /api/takeoffs/{plan_id}/detect-all-rooms?page_index=X` renvoie `{rooms: [{points, area_px2, centroid, bounding_box, surface_m2, perimeter_m}]}` (les 2 derniers uniquement si calibré).
+- **Frontend `importAiRooms`** : appelle d'abord `/detect-all-rooms`, matche gloutonnement chaque pièce IA au meilleur contour CV (tolérance ±30 % sur la surface_m2), crée les pièces avec les vrais polygones. Fallback carré approximatif seulement pour les pièces sans match CV. Toast enrichi : « X pièces IA importées · Y contours détectés par CV ».
+
+### ✍️ Alertes Signature (push + email au pro)
+- `submit_signature` (`/api/quotes/public/sign/{token}`) déclenche désormais 3 canaux :
+  1. Notification in-app (bell, déjà en place)
+  2. **Push notification** via `notify_user()` (VAPID) — titre « ✍️ Devis signé ! » + montant TTC formaté FR, click → `/devis`
+  3. **Email HTML branded** via `emailer.send_email` — header orange, nom signataire, montant TTC, CTA « Voir le devis signé » vers `/devis`
+- Best-effort : les 2 canaux (push + email) sont wrapped dans try/except pour ne jamais bloquer la signature elle-même. Log warning en cas d'échec.
+
+### 🧪 Tests
+- `/errors/client-log` : dédup vérifié + entrée présente dans backend.err.log au format `CLIENT_ERROR | ip=... | msg=...`.
+- `/detect-all-rooms` : plan test → 2 contours détectés (75.5 m² et 73.4 m²), matching avec AI Salon 20 m² → écart trop grand, fallback carré déclenché comme prévu.
+- Frontend Playwright : upload → Analyse IA → Import → CV appelé (HTTP 200), 1 pièce créée, toast affiché correctement.
+- Backend redémarré sans erreur.
+
 ## 27. Changelog Iter 41 (13/02/2026) — ErrorBoundary global + optional chaining EstimateDialog
 
 ### 🛡️ ErrorBoundary global

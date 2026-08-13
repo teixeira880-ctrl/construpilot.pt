@@ -221,6 +221,68 @@ def flood_fill_room(png_b64: str, seed_x: int, seed_y: int,
     }
 
 
+def detect_all_rooms(png_b64: str,
+                     simplify_epsilon_px: float = 3.0,
+                     min_area_px: int = 800,
+                     max_rooms: int = 30) -> dict:
+    """Detect ALL enclosed rooms on a plan image automatically (no seed click).
+
+    Uses adaptive threshold + morphological open + findContours with hierarchy
+    to identify internal enclosed regions (rooms), then filters by min_area_px
+    and returns their simplified polygons in image pixel coordinates.
+
+    Returns `{"rooms": [{"points": [[x,y],...], "area_px2": float,
+                         "centroid": [cx, cy], "bounding_box": {...}}]}`.
+    """
+    binary, w, h = _binarize_plan(png_b64)
+    # Slight morpho open to close small gaps in walls, then invert : rooms = 255
+    kernel = np.ones((3, 3), np.uint8)
+    closed = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=1)
+    # Use hierarchy : we want internal contours (inside a wall polygon)
+    contours, hier = cv2.findContours(closed, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return {"image_width": w, "image_height": h, "rooms": []}
+
+    total_area = w * h
+    candidates = []
+    for i, c in enumerate(contours):
+        area = float(cv2.contourArea(c))
+        # Skip full-page contour + noise
+        if area < min_area_px or area > total_area * 0.6:
+            continue
+        # Rough aspect check : avoid thin strips (walls)
+        x, y, ww, hh = cv2.boundingRect(c)
+        if ww < 20 or hh < 20:
+            continue
+        ratio = area / (ww * hh) if ww and hh else 0
+        if ratio < 0.35:  # very concave = probably not a room
+            continue
+        candidates.append((area, c, (x, y, ww, hh)))
+
+    # Sort by area desc, keep top N
+    candidates.sort(key=lambda t: t[0], reverse=True)
+    candidates = candidates[:max_rooms]
+
+    rooms = []
+    for area, c, (x, y, ww, hh) in candidates:
+        approx = cv2.approxPolyDP(c, simplify_epsilon_px, closed=True)
+        points = [[int(pt[0][0]), int(pt[0][1])] for pt in approx]
+        if len(points) < 3:
+            continue
+        M = cv2.moments(c)
+        cx = int(M["m10"] / M["m00"]) if M["m00"] else x + ww // 2
+        cy = int(M["m01"] / M["m00"]) if M["m00"] else y + hh // 2
+        rooms.append({
+            "points": points,
+            "point_count": len(points),
+            "area_px2": round(area, 1),
+            "centroid": [cx, cy],
+            "bounding_box": {"x": int(x), "y": int(y), "w": int(ww), "h": int(hh)},
+        })
+
+    return {"image_width": w, "image_height": h, "rooms": rooms}
+
+
 # ============ DESKEW (perspective correction photo smartphone) ============
 
 def _order_corners(pts: np.ndarray) -> np.ndarray:

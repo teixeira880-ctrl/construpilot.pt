@@ -450,28 +450,63 @@ export default function PlanTakeoff() {
   const importAiRooms = async () => {
     const aiRooms = plan?.ai_analysis?.rooms || [];
     if (!aiRooms.length) return toast.error("Aucune pièce IA à importer");
-    let imported = 0;
-    for (const r of aiRooms) {
-      const surf = Number(r.surface_written_m2) || 0;
-      if (!surf) continue;
-      // Approxime un carré parfait dans l'espace image (côté = √surface × ppm),
-      // puis dispose les carrés sur une grille pour éviter les superpositions.
-      const ppm = currentCalib?.pixels_per_meter || 60;
-      const sidePx = Math.sqrt(surf) * ppm;
-      const cols = Math.ceil(Math.sqrt(aiRooms.length));
-      const gap = sidePx * 0.15;
-      const col = imported % cols;
-      const row = Math.floor(imported / cols);
-      const x0 = 200 + col * (sidePx + gap);
-      const y0 = 200 + row * (sidePx + gap);
-      const points = [
-        [x0, y0], [x0 + sidePx, y0],
-        [x0 + sidePx, y0 + sidePx], [x0, y0 + sidePx],
-      ];
+
+    // Try CV auto-detection first : real contours matched by surface
+    let cvRooms = [];
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-all-rooms?page_index=${pageIndex}`);
+      cvRooms = (data?.rooms || []).filter((r) => r.surface_m2);
+    } catch (e) { /* fall back to square approximation */ }
+
+    // Match AI rooms to CV contours by closest surface_m2 (greedy)
+    const usedCvIdx = new Set();
+    const matches = aiRooms.map((ai) => {
+      const targetSurf = Number(ai.surface_written_m2) || 0;
+      if (!targetSurf || !cvRooms.length) return { ai, cv: null };
+      let best = -1, bestDelta = Infinity;
+      cvRooms.forEach((cv, i) => {
+        if (usedCvIdx.has(i)) return;
+        const delta = Math.abs(cv.surface_m2 - targetSurf);
+        // Only match if the CV contour is within ±30% of the AI-written surface
+        if (delta < bestDelta && delta <= targetSurf * 0.3) {
+          best = i; bestDelta = delta;
+        }
+      });
+      if (best >= 0) { usedCvIdx.add(best); return { ai, cv: cvRooms[best] }; }
+      return { ai, cv: null };
+    });
+
+    // Fallback grid layout for AI rooms without a CV match
+    const ppm = currentCalib?.pixels_per_meter || 60;
+    const unmatched = matches.filter((m) => !m.cv);
+    const cols = Math.max(1, Math.ceil(Math.sqrt(unmatched.length)));
+
+    let imported = 0, matchedCount = 0, fallbackCount = 0;
+    for (let i = 0; i < matches.length; i++) {
+      const { ai, cv } = matches[i];
+      let points;
+      if (cv?.points?.length >= 3) {
+        points = cv.points;
+        matchedCount++;
+      } else {
+        const surf = Number(ai.surface_written_m2) || 0;
+        if (!surf) continue;
+        const sidePx = Math.sqrt(surf) * ppm;
+        const gap = sidePx * 0.15;
+        const col = fallbackCount % cols;
+        const row = Math.floor(fallbackCount / cols);
+        const x0 = 200 + col * (sidePx + gap);
+        const y0 = 200 + row * (sidePx + gap);
+        points = [
+          [x0, y0], [x0 + sidePx, y0],
+          [x0 + sidePx, y0 + sidePx], [x0, y0 + sidePx],
+        ];
+        fallbackCount++;
+      }
       try {
         await api.post(`/takeoffs/${plan.plan_id}/rooms`, {
           page_index: pageIndex,
-          name: r.name || `Pièce ${imported + 1}`,
+          name: ai.name || `Pièce ${imported + 1}`,
           points,
           ceiling_h_m: 2.5,
         });
@@ -480,7 +515,12 @@ export default function PlanTakeoff() {
     }
     await refreshPlan();
     setRightTab("rooms");
-    if (imported > 0) toast.success(`${imported} pièces IA importées — vérifiez les positions sur le canvas`);
+    if (imported > 0) {
+      const detail = matchedCount > 0
+        ? `${matchedCount} contour${matchedCount > 1 ? "s" : ""} détecté${matchedCount > 1 ? "s" : ""} par CV`
+        : "carrés approximatifs — ajustez si besoin";
+      toast.success(`${imported} pièces IA importées · ${detail}`, { duration: 6000 });
+    }
     else toast.error("Aucune pièce importable (surfaces IA manquantes)");
   };
 
