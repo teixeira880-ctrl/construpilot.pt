@@ -1659,6 +1659,11 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     if backend_public:
         pixel_tag = (f'<img src="{backend_public}/api/quotes/track/open/{log_id}" '
                      f'width="1" height="1" alt="" style="display:block" />')
+    # Client portal — permet au client de retrouver tous ses devis en un lien
+    from routes.plans import build_client_portal_token
+    portal_token = build_client_portal_token(body.client_email or "")
+    portal_url = f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr').rstrip('/')}/mes-devis?token={portal_token}"
+
     inner = (
         f"<p>{hello}</p>"
         f"{intro_html}"
@@ -1669,6 +1674,15 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         f"<p style='margin-top:16px'>Ce document est un devis estimatif indicatif "
         f"(TVA 10 % rénovation logement &gt; 2 ans). Nous restons à votre disposition "
         f"pour toute question ou visite technique.</p>"
+        f"<div style='margin-top:24px;padding:16px;background:#f8fafc;border-radius:6px;"
+        f"border-left:3px solid #FF5A00'>"
+        f"<p style='margin:0 0 6px;font-weight:700;font-size:13px'>📁 Votre espace devis</p>"
+        f"<p style='margin:0 0 10px;font-size:12px;color:#64748B'>"
+        f"Retrouvez tous vos devis reçus (celui-ci et les précédents) "
+        f"dans votre espace personnel sécurisé :</p>"
+        f"<a href='{portal_url}' style='color:#FF5A00;font-weight:700;text-decoration:none;font-size:13px'>"
+        f"→ Ouvrir mon espace devis</a>"
+        f"</div>"
         f"<p style='color:#666;font-size:12px;margin-top:24px'>"
         f"{company}<br/>{contact}</p>"
         f"{pixel_tag}"
@@ -1885,6 +1899,9 @@ async def _run_reminders() -> dict:
                     {"$set": {"signature_token": token,
                               "signature_token_created_at": _now()}})
             sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{token}"
+            from routes.plans import build_client_portal_token as _bpt
+            reminder_portal_token = _bpt(c.get("client_email") or "")
+            reminder_portal_url = f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr').rstrip('/')}/mes-devis?token={reminder_portal_token}"
             inner = (
                 f"<p>{hello}</p>"
                 f"<p>Nous nous permettons un petit rappel : votre devis "
@@ -1895,6 +1912,9 @@ async def _run_reminders() -> dict:
                 f"<a href='{sign_url}' style='background:#FF5A00;color:white;"
                 f"padding:14px 28px;border-radius:6px;text-decoration:none;"
                 f"font-weight:700;font-size:16px'>Signer le devis</a></p>"
+                f"<p style='text-align:center;margin:8px 0 24px'>"
+                f"<a href='{reminder_portal_url}' style='color:#64748B;font-size:12px;"
+                f"text-decoration:underline'>Voir tous mes devis dans mon espace</a></p>"
                 f"<p>Nous restons à votre disposition pour toute question ou "
                 f"ajustement.</p>"
                 f"<p style='color:#666;font-size:12px;margin-top:24px'>"

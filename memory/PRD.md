@@ -830,6 +830,31 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 37. Changelog Iter 51 (13/02/2026) — Client portal link injecté + Actions leads
+
+### 📧 Link portail client dans emails devis
+- `POST /api/quotes/send` (send_quote) : bloc « 📁 Votre espace devis » ajouté à l'inner du template devis avec CTA orange « → Ouvrir mon espace devis » pointant vers `/mes-devis?token=<HMAC-email>`.
+- Emails de rappel (`reminders/run`) : ligne supplémentaire discrète « Voir tous mes devis dans mon espace » sous le CTA de signature.
+- Helper `build_client_portal_token(email)` centralisé dans `routes/plans.py` — signature HMAC-SHA256 stable, aucun stockage requis.
+- Utilise `FRONTEND_URL` env var avec fallback `https://construpilot.fr`.
+
+### ⚡ Actions directes sur les leads (Admin Inbox)
+- Nouveau composant `LeadRow` remplaçant l'affichage brut des leads :
+  - **Badge statut** dynamique (nouveau/en_cours/handled) avec couleurs (primary/amber/green).
+  - Bouton **📞 Call** — `<a href="tel:...">` (icône Phone).
+  - Bouton **✉️ Email** — `<a href="mailto:...?subject=Re : votre demande ConstruPilot · [description]">`.
+  - Bouton **« En cours »** — PUT status="en_cours".
+  - Bouton **« ✓ Traité »** — PUT status="handled" (avec texte barré + fond vert).
+  - Bouton **« Rouvrir »** — sur les leads déjà traités.
+- Endpoint réutilisé : `PUT /api/admin/leads/{lead_id}` (déjà en place, body `{status}`).
+- Reload auto de l'inbox après mise à jour.
+
+### 🧪 Tests
+- Backend restart clean.
+- `PUT /admin/leads/{lead_id}` avec status=handled → statut mis à jour ✅.
+- `build_client_portal_token('info@construpilot.fr')` → token valide généré.
+- Playwright : 5 call buttons, 5 email buttons, 4 handled buttons présents ; lead marqué handled affiche bien le badge vert + texte barré + bouton Rouvrir.
+
 ## 36. Changelog Iter 50 (13/02/2026) — Pro Business gate + Marketing teaser + Client Portal + Admin Inbox
 
 ### 💰 Feature gate Pro Business (+100 €)

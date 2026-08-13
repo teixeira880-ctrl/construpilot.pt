@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Shield, Save, Plus, Trash2, RefreshCw } from "lucide-react";
+import { Shield, Save, Plus, Trash2, RefreshCw, Phone, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -694,17 +694,7 @@ function InboxPanel() {
       {data && (
         <>
           <InboxSection title="Leads reçus" items={data.leads || []} empty="Aucun lead sur la période.">
-            {(l) => (
-              <div className="flex items-center justify-between text-xs">
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold truncate">{l.name || l.email || "—"}</p>
-                  <p className="text-muted-foreground truncate">
-                    {l.email || "—"}{l.phone ? ` · ${l.phone}` : ""} · {l.status || "nouveau"}
-                  </p>
-                </div>
-                {l.budget && <span className="num font-bold text-primary ml-2">{l.budget} €</span>}
-              </div>
-            )}
+            {(l) => <LeadRow lead={l} onUpdated={load} />}
           </InboxSection>
 
           <InboxSection title="Nouveaux comptes" items={data.new_users || []} empty="Aucun nouvel utilisateur.">
@@ -775,6 +765,107 @@ function InboxSection({ title, items, empty, children }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- LeadRow with direct actions (call / email / mark handled) ---------- */
+function LeadRow({ lead, onUpdated }) {
+  const [status, setStatus] = useState(lead.status || "nouveau");
+  const [busy, setBusy] = useState(false);
+
+  const setLeadStatus = async (next) => {
+    setBusy(true);
+    try {
+      await api.put(`/admin/leads/${lead.lead_id}`, { status: next });
+      setStatus(next);
+      toast.success(`Statut : ${next}`);
+      if (onUpdated) onUpdated();
+    } catch { toast.error("Mise à jour impossible"); }
+    setBusy(false);
+  };
+
+  const isDone = ["handled", "won", "lost", "traité"].includes(status);
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 text-xs items-center"
+         data-testid={`lead-row-${lead.lead_id}`}>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className={`font-semibold truncate ${isDone ? "line-through opacity-60" : ""}`}>
+            {lead.name || lead.email || "—"}
+          </p>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-sm border uppercase tracking-wider whitespace-nowrap
+            ${isDone ? "bg-green-500/15 text-green-600 border-green-500/40"
+                      : status === "en_cours" ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
+                                              : "bg-primary/15 text-primary border-primary/40"}`}>
+            {status}
+          </span>
+        </div>
+        <p className="text-muted-foreground truncate">
+          {lead.email || "—"}{lead.phone ? ` · ${lead.phone}` : ""}
+          {lead.budget ? ` · budget ${lead.budget} €` : ""}
+        </p>
+        {lead.description && (
+          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">
+            "{lead.description}"
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        {lead.phone && (
+          <a
+            href={`tel:${lead.phone}`}
+            data-testid={`lead-call-${lead.lead_id}`}
+            className="rounded-sm border border-border p-1.5 hover:bg-primary hover:text-white hover:border-primary transition"
+            title={`Appeler ${lead.phone}`}
+          >
+            <Phone className="h-3.5 w-3.5" />
+          </a>
+        )}
+        {lead.email && (
+          <a
+            href={`mailto:${lead.email}?subject=${encodeURIComponent(
+              `Re : votre demande ConstruPilot${lead.description ? " · " + lead.description.slice(0, 40) : ""}`
+            )}`}
+            data-testid={`lead-email-${lead.lead_id}`}
+            className="rounded-sm border border-border p-1.5 hover:bg-primary hover:text-white hover:border-primary transition"
+            title={`Écrire à ${lead.email}`}
+          >
+            <Mail className="h-3.5 w-3.5" />
+          </a>
+        )}
+        {!isDone ? (
+          <>
+            <Button
+              size="sm" variant="outline"
+              disabled={busy}
+              onClick={() => setLeadStatus("en_cours")}
+              data-testid={`lead-inprogress-${lead.lead_id}`}
+              className="rounded-sm h-7 text-[10px]"
+            >
+              En cours
+            </Button>
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => setLeadStatus("handled")}
+              data-testid={`lead-handled-${lead.lead_id}`}
+              className="rounded-sm h-7 text-[10px]"
+            >
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Traité
+            </Button>
+          </>
+        ) : (
+          <Button
+            size="sm" variant="outline"
+            disabled={busy}
+            onClick={() => setLeadStatus("nouveau")}
+            className="rounded-sm h-7 text-[10px]"
+          >
+            Rouvrir
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
