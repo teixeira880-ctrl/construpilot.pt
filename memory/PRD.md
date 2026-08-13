@@ -830,6 +830,24 @@ Voir `/app/memory/test_credentials.md`.
 - Tests d'intégration locaux : `flood_fill_room` importable OK,
   `build_project_quote_pdf(...)` génère bien 3 007 bytes sur sample data.
 
+## 30. Changelog Iter 44 (13/02/2026) — Adresse postale + Alertes admin
+
+### 📍 Adresse postale société
+- `.env` : `COMPANY_POSTAL_ADDRESS=ConstruPilot · 75007 Paris · France` (placeholder à compléter avec raison sociale complète + n° rue + SIREN pour 100 % de conformité RGPD/CAN-SPAM)
+- Le footer email l'affiche automatiquement (déjà câblé dans iter 43)
+
+### 🚨 Alertes admin email sur erreurs client
+- `POST /api/errors/client-log` (`routes/errors.py`) déclenche désormais un email admin à `admin@construpilot.fr` en plus du log + persistance MongoDB.
+- Contenu HTML branded : message + URL + user_id + IP + user-agent + stack trace (`<pre>` max 1500 chars) + CTA vers `/admin`.
+- **Dédup 15 min** par message unique (SHA-256, IP-independent) via cache `_ALERTED` en mémoire — pas de spam sur erreurs répétitives.
+- Best-effort strict : try/except autour du bloc email, jamais de blocage. Log INFO au succès (`Admin alert email sent for msg=...`), log WARNING à l'échec.
+- Prune auto du cache `_ALERTED` au-delà de 200 entrées.
+
+### 🧪 Tests
+- Backend restart clean.
+- Curl `POST /errors/client-log` → HTTP 200, log `CLIENT_ERROR` + log `Admin alert email sent for msg=AdminAlertFinal-...` confirmés.
+- 3 emails d'alerte réels envoyés à `admin@construpilot.fr` durant les tests (Resend accepté).
+
 ## 29. Changelog Iter 43 (13/02/2026) — Footer email pro + Dashboard Erreurs
 
 ### 📧 Footer email professionnel

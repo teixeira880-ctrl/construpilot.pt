@@ -27,6 +27,11 @@ _RECENT: dict[tuple[str, str], float] = {}
 _DEDUP_WINDOW_S = 60.0
 _MAX_CACHE = 500
 
+# Alert dedup — 1 email admin per unique message every 15 min
+_ALERTED: dict[str, float] = {}
+_ALERT_WINDOW_S = 15 * 60.0
+_ADMIN_ALERT_EMAIL = "admin@construpilot.fr"
+
 
 class ClientErrorIn(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
@@ -86,6 +91,41 @@ async def log_client_error(body: ClientErrorIn, request: Request):
         await db.client_errors.insert_one(doc)
     except Exception as e:
         logger.warning(f"client_errors insert failed: {e}")
+    # Email admin alert (best-effort, debounced 15 min per unique message)
+    msg_key = hashlib.sha256(body.message.encode("utf-8", "ignore")).hexdigest()[:16]
+    last_alert = _ALERTED.get(msg_key)
+    if not last_alert or (time.time() - last_alert) > _ALERT_WINDOW_S:
+        _ALERTED[msg_key] = time.time()
+        # Prune old alert cache
+        if len(_ALERTED) > 200:
+            cutoff = time.time() - _ALERT_WINDOW_S
+            for k, t in list(_ALERTED.items()):
+                if t < cutoff:
+                    _ALERTED.pop(k, None)
+        try:
+            from engines import emailer
+            html = emailer.wrap_html(
+                "🚨 Erreur client détectée",
+                "<p>Une erreur JavaScript a été remontée par l'ErrorBoundary "
+                "en production.</p>"
+                f"<p><strong>Message :</strong> <code>{body.message[:400]}</code></p>"
+                f"<p><strong>URL :</strong> {body.url or '—'}<br/>"
+                f"<strong>User :</strong> {body.user_id or 'anonyme'}<br/>"
+                f"<strong>IP :</strong> {ip}<br/>"
+                f"<strong>UA :</strong> {(body.user_agent or '—')[:100]}</p>"
+                + (f"<pre style='background:#f5f5f7;padding:12px;border-radius:4px;"
+                   f"font-size:11px;overflow:auto;max-height:240px'>{body.stack[:1500]}</pre>"
+                   if body.stack else "")
+                + "<p style='color:#64748B;font-size:12px;margin-top:16px'>"
+                "Prochaine alerte identique dans 15 min max (dédup).</p>",
+                cta_url="https://construpilot.fr/admin",
+                cta_label="Voir le dashboard Erreurs",
+            )
+            await emailer.send_email(_ADMIN_ALERT_EMAIL,
+                                      f"🚨 [ConstruPilot] {body.message[:80]}", html)
+            logger.info(f"Admin alert email sent for msg={body.message[:60]}")
+        except Exception as e:
+            logger.warning(f"admin alert email failed: {e}")
     return {"ok": True}
 
 
