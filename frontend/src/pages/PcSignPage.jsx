@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { CheckCircle2, CreditCard, HardHat, ShieldCheck } from "lucide-react";
+import { CheckCircle2, CreditCard, FileDown, HardHat, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, eur, num } from "@/lib/api";
@@ -179,6 +179,12 @@ export default function PcSignPage() {
             {dep.paid_at && (
               <p className="text-xs text-muted-foreground">le {String(dep.paid_at).slice(0, 10)}</p>
             )}
+            <a href={`${api.defaults.baseURL}/pc/sign/${token}/deposit/invoice`}
+               target="_blank" rel="noreferrer"
+               className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline underline-offset-2"
+               data-testid="pc-deposit-invoice-link">
+              <FileDown className="h-3.5 w-3.5" /> Télécharger la facture d'acompte
+            </a>
           </div>
         ) : (
           <div className="surface p-5 space-y-3" data-testid="pc-deposit-block">

@@ -155,6 +155,8 @@ class TestDashboard:
             assert "plan_id" in s
             assert "status" in s
             assert s["status"] in (
-                "générée", "envoyée", "relancée", "ouverte", "acceptée")
-        # At least one should be 'acceptée' per task context
-        assert any(s["status"] == "acceptée" for s in data["studies"])
+                "générée", "envoyée", "relancée", "ouverte", "acceptée",
+                "acompte versé")
+        # At least one accepted study (or beyond: deposit paid) per task context
+        assert any(s["status"] in ("acceptée", "acompte versé")
+                   for s in data["studies"])

@@ -39,8 +39,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
   const [rate, setRate] = useState(35);
   const [margin, setMargin] = useState(30);
   const [depositPct, setDepositPct] = useState(30);
+  const [depReminderDays, setDepReminderDays] = useState(3);
   const [weeklyReport, setWeeklyReport] = useState(true);
   const [teamShare, setTeamShare] = useState(true);
+  const [teamCanEdit, setTeamCanEdit] = useState(false);
   const [reminderDays, setReminderDays] = useState(3);
   const [notifyMode, setNotifyMode] = useState("email");
   const [notifyPhone, setNotifyPhone] = useState("");
@@ -61,8 +63,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       setRate(s.hourly_rate_eur ?? d.hourly_rate_eur ?? 35);
       setMargin(s.margin_pct ?? d.margin_pct ?? 30);
       setDepositPct(s.deposit_pct ?? d.deposit_pct ?? 30);
+      setDepReminderDays(s.deposit_reminder_days ?? d.deposit_reminder_days ?? 3);
       setWeeklyReport(s.weekly_report ?? d.weekly_report ?? true);
       setTeamShare(s.team_share ?? d.team_share ?? true);
+      setTeamCanEdit(s.team_can_edit ?? d.team_can_edit ?? false);
       setReminderDays(s.reminder_days ?? d.reminder_days ?? 3);
       setNotifyMode(s.notify_on_open ?? d.notify_on_open ?? "email");
       setNotifyPhone(s.notify_phone ?? "");
@@ -84,8 +88,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         hourly_rate_eur: parseFloat(rate) || 35,
         margin_pct: Math.max(0, parseFloat(margin) || 0),
         deposit_pct: Math.max(0, parseFloat(depositPct) || 0),
+        deposit_reminder_days: Math.max(0, parseInt(depReminderDays, 10) || 0),
         weekly_report: !!weeklyReport,
         team_share: !!teamShare,
+        team_can_edit: !!teamCanEdit,
         reminder_days: Math.max(0, parseInt(reminderDays, 10) || 0),
         notify_on_open: notifyMode,
         notify_phone: notifyPhone.trim() || null,
@@ -145,6 +151,12 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
                    onChange={(e) => setDepositPct(e.target.value)}
                    data-testid="pc-settings-deposit-input" className="rounded-sm num" />
           </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="pc-dep-reminder" className="text-xs">Relance acompte impayé (jours) — 0 = jamais</Label>
+            <Input id="pc-dep-reminder" type="number" min="0" max="30" value={depReminderDays}
+                   onChange={(e) => setDepReminderDays(e.target.value)}
+                   data-testid="pc-settings-deposit-reminder-input" className="rounded-sm num" />
+          </div>
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={weeklyReport} onChange={(e) => setWeeklyReport(e.target.checked)}
                    data-testid="pc-settings-weekly-checkbox" className="accent-primary" />
@@ -154,6 +166,11 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
             <input type="checkbox" checked={teamShare} onChange={(e) => setTeamShare(e.target.checked)}
                    data-testid="pc-settings-teamshare-checkbox" className="accent-primary" />
             Partager mes études PC avec mon équipe
+          </label>
+          <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
+            <input type="checkbox" checked={teamCanEdit} onChange={(e) => setTeamCanEdit(e.target.checked)}
+                   data-testid="pc-settings-teamedit-checkbox" className="accent-primary" />
+            Autoriser l'équipe à modifier mes études (sinon lecture seule)
           </label>
           <div className="grid gap-1.5 col-span-2">
             <Label htmlFor="pc-reminder" className="text-xs">

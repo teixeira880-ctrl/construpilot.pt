@@ -353,3 +353,57 @@ def build_purchase_order_pdf(plan: dict, level_name: str, items: list[dict],
     _story_footer(story, S)
     doc.build(story)
     return buf.getvalue()
+
+
+def build_deposit_invoice_pdf(plan: dict, branding: dict | None, inv: dict) -> bytes:
+    """Facture d'acompte acquittée (paiement CB) prête à envoyer au client."""
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                            topMargin=16 * mm, bottomMargin=16 * mm)
+    S = _styles()
+    story: list = []
+    _story_header_branding(story, branding, S)
+    story.append(Paragraph("FACTURE D'ACOMPTE — ACQUITTÉE", S["kicker"]))
+    story.append(Paragraph(inv["invoice_no"], S["h1"]))
+    paid_date = _fr_long(inv["paid_at"]) if inv.get("paid_at") else ""
+    story.append(Paragraph(
+        f"Date : {paid_date} · Chantier : {plan.get('filename') or 'permis de construire'}",
+        S["muted"]))
+    client = inv.get("client_name") or ""
+    if client or inv.get("client_email"):
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(
+            f"Client : <b>{client or inv.get('client_email')}</b>"
+            + (f" · {inv['client_email']}" if client and inv.get("client_email") else ""),
+            S["body"]))
+    story.append(Spacer(1, 6))
+
+    amount = float(inv["amount"])
+    ht = round(amount / 1.2, 2)
+    tva = round(amount - ht, 2)
+    total_ttc = float(inv.get("total_ttc") or 0)
+    rows = [["Désignation", "Montant HT", "TVA 20 %", "Montant TTC"],
+            [Paragraph(f"Acompte {inv.get('pct', 0):g} % sur l'étude gros œuvre — "
+                       f"marché de {_fmt(total_ttc, '€')} TTC", S["body"]),
+             _fmt(ht, "€"), _fmt(tva, "€"), _fmt(amount, "€")],
+            ["", "", "TOTAL ACQUITTÉ", _fmt(amount, "€")]]
+    story.append(_table(rows, [88 * mm, 30 * mm, 30 * mm, 30 * mm],
+                        [("BACKGROUND", (0, 0), (-1, 0), DARK),
+                         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+                         ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                         ("FONTNAME", (2, 2), (-1, 2), "Helvetica-Bold"),
+                         ("TEXTCOLOR", (3, 2), (3, 2), ORANGE)]))
+    story.append(Spacer(1, 5))
+    story.append(Paragraph(
+        f"Facture acquittée — règlement reçu par carte bancaire le {paid_date} "
+        f"(réf. paiement {str(inv.get('session_id') or '')[:28]}).", S["body"]))
+    if total_ttc:
+        story.append(Paragraph(
+            f"Reste à facturer sur le marché : <b>{_fmt(round(total_ttc - amount, 2), '€')} "
+            "TTC</b> (situations de travaux à venir).", S["muted"]))
+    story.append(Paragraph(
+        "TVA acquittée sur les encaissements. Document généré par ConstruPilot.", S["muted"]))
+    _story_footer(story, S)
+    doc.build(story)
+    return buf.getvalue()

@@ -88,7 +88,7 @@ class TestPcHistory:
         r1 = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study/history",
                           headers=pro_headers, timeout=30)
         h = r1.json()["history"]
-        assert len(h) == n0 + 1
+        assert len(h) == min(n0 + 1, 20)  # l'endpoint plafonne à 20 versions
         assert h[0]["source"] in ("analyse", "recalcul")
         assert h[0]["ttc"] and h[0]["beton_m3"]
 

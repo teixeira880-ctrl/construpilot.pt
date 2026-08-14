@@ -2092,3 +2092,16 @@ Chantier/engins 10,5 k + Terrassement 15 k + Fondations 12 k + Planchers 21,4 k 
 ### Tests
 - pytest 52/52 (iter69-72) + 12/12 nouveaux (test_iter73_pc_margin_deposit.py) + E2E Stripe réel (rapport /app/test_reports/iteration_66.json)
 
+---
+
+## Itération 77 (14/06/2026) — FACTURE D'ACOMPTE + RELANCE ACOMPTE + LECTURE SEULE ÉQUIPE
+
+### Livré (testé en réel : curl E2E + simulation paiement + pytest 63/63)
+1. **Facture d'acompte automatique** : à chaque acompte payé, `_apply_pc_deposit` génère un n° séquentiel `AC-{année}-{NNNN}` (compteur db.counters par pro/année), construit le PDF (`build_deposit_invoice_pdf` dans pc_export.py — facture acquittée, HT/TVA 20 %/TTC, réf. Stripe, reste à facturer) et l'envoie **au client** (email + PDF joint) + au pro/équipe. Téléchargeable publiquement : `GET /api/pc/sign/{token}/deposit/invoice` — lien « Télécharger la facture d'acompte » sur la page de signature (vérifié en screenshot). `invoice_no` exposé dans GET /api/pc/sign/{token}.
+2. **Relance acompte** : le job `_run_pc_reminders` (toutes les 6 h) relance par email le client qui a **accepté sans payer** après N jours (`deposit_reminder_days`, défaut 3, 0 = jamais) — email avec montant + CTA vers /etude/{token}, envoyé UNE fois (flag `deposit_reminder_sent`, idempotence testée). Retour job : `deposit_reminders` / `deposit_candidates`.
+3. **Lecture seule équipe** : nouveau réglage `team_can_edit` (défaut **False** = lecture seule). `_pc_owner_id(write=True)` bloque les collègues (403 « Lecture seule… ») sur : analyse, recompute, envoi étude, envoi BC, réponse négoce. Lecture/exports/BC PDF restent accessibles. Testé : collègue GET 200, POST 403, toggle → 200, restauré.
+4. Réglages ⚙️ : champs « Relance acompte impayé (jours) » + case « Autoriser l'équipe à modifier mes études ».
+
+### État données
+- Facture backfill AC-2026-0001 sur l'acompte déjà payé (plan_619e41f98d6b). ALAOUI intact (207 823,01 € TTC, aucun envoi).
+

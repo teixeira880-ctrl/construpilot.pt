@@ -12,8 +12,8 @@ from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
 from core.security import admin_user, current_user
-from engines.pc_export import (build_pc_docx, build_pc_pdf,
-                               build_purchase_order_pdf)
+from engines.pc_export import (build_deposit_invoice_pdf, build_pc_docx,
+                               build_pc_pdf, build_purchase_order_pdf)
 from engines.pc_study import (CREW_SIZE, DEFAULT_MARGIN_PCT, HOURLY_RATE_EUR,
                               PC_UNIT_PRICES, analyze_pc_page,
                               build_purchase_order_items, build_study,
@@ -35,10 +35,25 @@ async def _load_pc_settings(user_id: str) -> dict:
 
 
 DEFAULT_DEPOSIT_PCT = 30.0
+DEFAULT_DEPOSIT_REMINDER_DAYS = 3
 
 
-async def _pc_owner_id(plan_id: str, user: dict) -> str:
-    """Propriétaire du plan — accès accordé au propriétaire et à son équipe (org)."""
+async def _next_invoice_no(user_id: str) -> str:
+    """Numérotation séquentielle des factures d'acompte, par pro et par année."""
+    from datetime import datetime, timezone
+    from pymongo import ReturnDocument
+    year = datetime.now(timezone.utc).year
+    c = await db.counters.find_one_and_update(
+        {"_id": f"pc_deposit_invoice_{user_id}_{year}"},
+        {"$inc": {"seq": 1}}, upsert=True,
+        return_document=ReturnDocument.AFTER)
+    return f"AC-{year}-{int(c['seq']):04d}"
+
+
+async def _pc_owner_id(plan_id: str, user: dict, write: bool = False) -> str:
+    """Propriétaire du plan — accès accordé au propriétaire et à son équipe (org).
+
+    write=True : refuse les collègues si le propriétaire est en lecture seule."""
     p = await db.plans_takeoff.find_one({"plan_id": plan_id}, {"_id": 0, "user_id": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
@@ -52,8 +67,12 @@ async def _pc_owner_id(plan_id: str, user: dict) -> str:
                                     {"_id": 0, "organization_id": 1})
     if not owner or owner.get("organization_id") != org:
         raise HTTPException(404, "Plan introuvable")
-    if (await _load_pc_settings(owner_id)).get("team_share") is False:
+    settings = await _load_pc_settings(owner_id)
+    if settings.get("team_share") is False:
         raise HTTPException(403, "Partage équipe désactivé par le propriétaire de l'étude")
+    if write and settings.get("team_can_edit") is not True:
+        raise HTTPException(403, "Lecture seule — le propriétaire n'autorise pas "
+                                 "la modification de ses études par l'équipe")
     return owner_id
 
 
@@ -95,7 +114,7 @@ async def _archive_pc_version(plan_id: str, user_id: str, study: dict,
 
 @router.post("/{plan_id}/pc-study")
 async def run_pc_study(plan_id: str, body: PcStudyIn, user=Depends(current_user)) -> dict:
-    owner_id = await _pc_owner_id(plan_id, user)
+    owner_id = await _pc_owner_id(plan_id, user, write=True)
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id},
         {"_id": 0, "pages": 1, "rooms": 1, "pc_study": 1})
@@ -147,7 +166,7 @@ async def get_pc_study(plan_id: str, user=Depends(current_user)) -> dict:
 @router.post("/{plan_id}/pc-study/recompute")
 async def recompute_pc_study(plan_id: str, user=Depends(current_user)) -> dict:
     """Recalcule devis + planning avec les réglages actuels (sans rappel IA)."""
-    p = await _plan_and_study(plan_id, user)
+    p = await _plan_and_study(plan_id, user, write=True)
     owner_id = p["user_id"]
     study = p["pc_study"]
     await _archive_pc_version(plan_id, owner_id, study, "recalcul")
@@ -226,7 +245,7 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
     import html as _html
     from engines.emailer import send_email_with_pdf, wrap_html
 
-    p = await _plan_and_study(plan_id, user)
+    p = await _plan_and_study(plan_id, user, write=True)
     p["plan_id"] = plan_id
     settings = await _load_pc_settings(p["user_id"])
     prices = merge_unit_prices(settings.get("unit_prices"))
@@ -270,8 +289,8 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
             "total_ht": total, "items": len(items)}
 
 
-async def _plan_and_study(plan_id: str, user: dict) -> dict:
-    await _pc_owner_id(plan_id, user)
+async def _plan_and_study(plan_id: str, user: dict, write: bool = False) -> dict:
+    await _pc_owner_id(plan_id, user, write=write)
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id},
         {"_id": 0, "filename": 1, "pc_study": 1, "user_id": 1})
@@ -331,7 +350,7 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
     import html as _html
     from engines.emailer import send_email_with_pdf, wrap_html
 
-    p = await _plan_and_study(plan_id, user)
+    p = await _plan_and_study(plan_id, user, write=True)
     study = p["pc_study"]
     branding = await _resolve_branding(p["user_id"])
     start = _valid_date(body.start_date)
@@ -400,8 +419,10 @@ class PcSettingsIn(BaseModel):
     hourly_rate_eur: float | None = Field(default=None, ge=20, le=150)
     margin_pct: float | None = Field(default=None, ge=0, le=200)
     deposit_pct: float | None = Field(default=None, ge=0, le=100)
+    deposit_reminder_days: int | None = Field(default=None, ge=0, le=30)
     weekly_report: bool | None = None
     team_share: bool | None = None
+    team_can_edit: bool | None = None
     reminder_days: int | None = Field(default=None, ge=0, le=30)
     notify_on_open: str | None = Field(default=None,
                                        pattern="^(email|sms|both|off)$")
@@ -417,8 +438,10 @@ async def get_pc_settings(user=Depends(current_user)) -> dict:
                          "hourly_rate_eur": HOURLY_RATE_EUR,
                          "margin_pct": DEFAULT_MARGIN_PCT,
                          "deposit_pct": DEFAULT_DEPOSIT_PCT,
+                         "deposit_reminder_days": DEFAULT_DEPOSIT_REMINDER_DAYS,
                          "weekly_report": True,
                          "team_share": True,
+                         "team_can_edit": False,
                          "reminder_days": DEFAULT_REMINDER_DAYS,
                          "notify_on_open": "email"}}
 
@@ -439,7 +462,9 @@ async def save_pc_settings(body: PcSettingsIn, user=Depends(current_user)) -> di
     doc = {"user_id": user["user_id"], "unit_prices": prices,
            "crew_size": body.crew_size, "hourly_rate_eur": body.hourly_rate_eur,
            "margin_pct": body.margin_pct, "deposit_pct": body.deposit_pct,
+           "deposit_reminder_days": body.deposit_reminder_days,
            "weekly_report": body.weekly_report, "team_share": body.team_share,
+           "team_can_edit": body.team_can_edit,
            "reminder_days": body.reminder_days,
            "notify_on_open": body.notify_on_open,
            "notify_phone": (body.notify_phone or "").strip() or None,
@@ -557,6 +582,30 @@ async def _send_pc_reminder(p: dict, s: dict) -> None:
         pdf, filename=f"etude-pc-{p['plan_id']}.pdf")
 
 
+async def _send_deposit_reminder(p: dict, s: dict, pct: float, amount: float) -> None:
+    import html as _html
+    from engines.emailer import send_email, wrap_html
+
+    branding = await _resolve_branding(p["user_id"])
+    company = (branding or {}).get("company_name") or "ConstruPilot"
+    filename = p.get("filename") or "permis de construire"
+    frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
+    link = f"{frontend}/etude/{s['sign_token']}" if frontend else None
+    await send_email(
+        s["to_email"],
+        f"Rappel — acompte de {amount} € à régler · {filename}",
+        wrap_html(
+            "Votre chantier n'attend plus que l'acompte",
+            f"<p>Bonjour {_html.escape(s.get('accepted_by') or '')},</p>"
+            f"<p>Vous avez accepté l'étude gros œuvre du chantier "
+            f"« {_html.escape(filename)} » — il ne reste que l'acompte de "
+            f"<b>{pct:g} %</b>, soit <b>{amount} €</b>, à régler par carte "
+            "bancaire pour lancer les travaux.</p>"
+            f"<p>Le paiement est sécurisé (Stripe) et votre facture d'acompte "
+            f"vous sera envoyée automatiquement.<br/>{_html.escape(company)}</p>",
+            cta_url=link, cta_label="Régler l'acompte en ligne"))
+
+
 async def _run_pc_reminders() -> dict:
     """Job : relance les études PC envoyées mais jamais ouvertes après N jours."""
     from datetime import datetime, timedelta, timezone
@@ -596,8 +645,50 @@ async def _run_pc_reminders() -> dict:
             except Exception as e:
                 logger.warning(f"pc reminder {p['plan_id']}/{s.get('track_id')}: {e}")
                 failed += 1
+
+    # Relance d'acompte : étude acceptée mais acompte non versé après N jours
+    dep_sent = 0
+    dep_candidates = await db.plans_takeoff.find(
+        {"sent_reports": {"$elemMatch": {"kind": "pc_study", "accepted": True,
+                                         "deposit_paid": {"$ne": True},
+                                         "deposit_reminder_sent": {"$ne": True}}}},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1,
+         "pc_study.totals": 1, "sent_reports": 1}).to_list(200)
+    for p in dep_candidates:
+        uid = p["user_id"]
+        if uid not in settings_cache:
+            settings_cache[uid] = await _load_pc_settings(uid)
+        st = settings_cache[uid]
+        pct = st.get("deposit_pct")
+        pct = DEFAULT_DEPOSIT_PCT if pct is None else float(pct)
+        ddays = st.get("deposit_reminder_days")
+        ddays = DEFAULT_DEPOSIT_REMINDER_DAYS if ddays is None else int(ddays)
+        if pct <= 0 or ddays <= 0:
+            continue
+        ttc = float((p.get("pc_study", {}).get("totals") or {}).get("ttc") or 0)
+        amount = round(ttc * pct / 100.0, 2)
+        cutoff = (now - timedelta(days=ddays)).isoformat()
+        for s in p.get("sent_reports") or []:
+            if (s.get("kind") != "pc_study" or not s.get("accepted")
+                    or s.get("deposit_paid") or s.get("deposit_reminder_sent")
+                    or not s.get("sign_token") or not s.get("to_email")
+                    or amount < 1
+                    or (s.get("accepted_at") or "9999") > cutoff):
+                continue
+            try:
+                await _send_deposit_reminder(p, s, pct, amount)
+                await db.plans_takeoff.update_one(
+                    {"plan_id": p["plan_id"],
+                     "sent_reports.sign_token": s["sign_token"]},
+                    {"$set": {"sent_reports.$.deposit_reminder_sent": True,
+                              "sent_reports.$.deposit_reminder_at": _now()}})
+                dep_sent += 1
+            except Exception as e:
+                logger.warning(f"pc deposit reminder {p['plan_id']}: {e}")
+                failed += 1
     return {"sent": sent, "failed": failed, "skipped": skipped,
-            "candidates": len(plans)}
+            "candidates": len(plans), "deposit_reminders": dep_sent,
+            "deposit_candidates": len(dep_candidates)}
 
 
 @pc_router.post("/reminders/run")
@@ -628,7 +719,7 @@ class PoResponseIn(BaseModel):
 @router.post("/{plan_id}/purchase-orders/response")
 async def record_po_response(plan_id: str, body: PoResponseIn,
                              user=Depends(current_user)) -> dict:
-    await _pc_owner_id(plan_id, user)
+    await _pc_owner_id(plan_id, user, write=True)
     r = await db.plans_takeoff.update_one(
         {"plan_id": plan_id,
          "sent_reports": {"$elemMatch": {"kind": "purchase_order",
@@ -680,7 +771,8 @@ async def get_pc_sign(token: str) -> dict:
         "deposit": {"pct": dep_pct, "amount": dep_amount,
                     "paid": bool(entry.get("deposit_paid")),
                     "paid_at": entry.get("deposit_at"),
-                    "paid_amount": entry.get("deposit_amount")},
+                    "paid_amount": entry.get("deposit_amount"),
+                    "invoice_no": entry.get("deposit_invoice_no")},
     }
 
 
@@ -789,39 +881,119 @@ async def pc_deposit_checkout(token: str, body: PcDepositCheckoutIn) -> dict:
 
 
 async def _apply_pc_deposit(rec: dict) -> None:
-    """Marque l'acompte payé (idempotent) + notifie le pro et son équipe."""
+    """Marque l'acompte payé (idempotent), génère la facture d'acompte
+    et l'envoie au client + notifie le pro et son équipe."""
     token = rec.get("sign_token")
     amount = round((rec.get("amount_cents") or 0) / 100.0, 2)
+    paid_at = _now()
     r = await db.plans_takeoff.update_one(
         {"sent_reports": {"$elemMatch": {"sign_token": token,
                                          "deposit_paid": {"$ne": True}}}},
         {"$set": {"sent_reports.$.deposit_paid": True,
                   "sent_reports.$.deposit_amount": amount,
-                  "sent_reports.$.deposit_at": _now(),
+                  "sent_reports.$.deposit_at": paid_at,
                   "sent_reports.$.deposit_session_id": rec.get("session_id")}})
     if not r.modified_count:
         return
     try:
         import html as _html
-        from engines.emailer import send_email, wrap_html
+        from engines.emailer import send_email, send_email_with_pdf, wrap_html
         p = await db.plans_takeoff.find_one(
             {"sent_reports.sign_token": token},
-            {"_id": 0, "user_id": 1, "filename": 1})
+            {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1,
+             "pc_study.totals": 1, "sent_reports": 1})
         if not p:
             return
+        entry = next((s for s in p.get("sent_reports") or []
+                      if s.get("sign_token") == token), {})
         filename = p.get("filename") or "permis de construire"
+
+        # Facture d'acompte acquittée
+        invoice_no = await _next_invoice_no(p["user_id"])
+        await db.plans_takeoff.update_one(
+            {"sent_reports.sign_token": token},
+            {"$set": {"sent_reports.$.deposit_invoice_no": invoice_no}})
+        settings = await _load_pc_settings(p["user_id"])
+        pct = settings.get("deposit_pct")
+        pct = DEFAULT_DEPOSIT_PCT if pct is None else float(pct)
+        branding = await _resolve_branding(p["user_id"])
+        pdf = None
+        try:
+            pdf = build_deposit_invoice_pdf(p, branding, {
+                "invoice_no": invoice_no, "amount": amount, "pct": pct,
+                "total_ttc": (p.get("pc_study", {}).get("totals") or {}).get("ttc"),
+                "paid_at": paid_at, "session_id": rec.get("session_id"),
+                "client_name": entry.get("accepted_by"),
+                "client_email": entry.get("to_email")})
+        except Exception:
+            logger.exception("pc deposit invoice pdf")
+
+        # Email client : facture jointe
+        if entry.get("to_email") and pdf:
+            company = (branding or {}).get("company_name") or "ConstruPilot"
+            await send_email_with_pdf(
+                entry["to_email"],
+                f"Votre facture d'acompte {invoice_no} · {filename}",
+                wrap_html("Facture d'acompte — merci !",
+                          f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
+                          f"<p>Nous avons bien reçu votre acompte de <b>{amount} €</b> "
+                          f"pour le chantier « {_html.escape(filename)} ». "
+                          f"Votre facture d'acompte <b>{invoice_no}</b> est en pièce "
+                          "jointe.</p>"
+                          f"<p>À très vite pour le lancement des travaux !<br/>"
+                          f"{_html.escape(company)}</p>"),
+                pdf, filename=f"facture-acompte-{invoice_no}.pdf")
+
+        # Notification pro + équipe (facture jointe si dispo)
         html = wrap_html(
             "Acompte encaissé",
             f"<p>Bonne nouvelle : un acompte de <b>{amount} €</b> vient d'être réglé "
             f"par carte pour l'étude « {_html.escape(filename)} ». "
-            "Vous pouvez lancer le chantier !</p>")
+            f"Facture <b>{invoice_no}</b> envoyée au client — "
+            "vous pouvez lancer le chantier !</p>")
+        subject = f"💶 Acompte de {amount} € reçu · {filename}"
         u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1})
         if u and u.get("email"):
-            await send_email(u["email"], f"💶 Acompte de {amount} € reçu · {filename}", html)
+            if pdf:
+                await send_email_with_pdf(u["email"], subject, html, pdf,
+                                          filename=f"facture-acompte-{invoice_no}.pdf")
+            else:
+                await send_email(u["email"], subject, html)
         for m in await _team_members(p["user_id"]):
             await send_email(m["email"], f"💶 Acompte reçu (équipe) · {filename}", html)
     except Exception as e:
         logger.warning(f"pc deposit notify fail {token}: {e}")
+
+
+@pc_router.get("/sign/{token}/deposit/invoice")
+async def pc_deposit_invoice(token: str):
+    """Facture d'acompte en PDF (public — accessible depuis la page de signature)."""
+    p = await db.plans_takeoff.find_one(
+        {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1,
+         "pc_study.totals": 1, "sent_reports.$": 1})
+    if not p:
+        raise HTTPException(404, "Lien invalide ou expiré")
+    entry = (p.get("sent_reports") or [{}])[0]
+    if not entry.get("deposit_paid") or not entry.get("deposit_invoice_no"):
+        raise HTTPException(400, "Aucun acompte réglé pour cette étude")
+    settings = await _load_pc_settings(p["user_id"])
+    pct = settings.get("deposit_pct")
+    pct = DEFAULT_DEPOSIT_PCT if pct is None else float(pct)
+    branding = await _resolve_branding(p["user_id"])
+    pdf = build_deposit_invoice_pdf(p, branding, {
+        "invoice_no": entry["deposit_invoice_no"],
+        "amount": entry.get("deposit_amount") or 0, "pct": pct,
+        "total_ttc": (p.get("pc_study", {}).get("totals") or {}).get("ttc"),
+        "paid_at": entry.get("deposit_at"),
+        "session_id": entry.get("deposit_session_id"),
+        "client_name": entry.get("accepted_by"),
+        "client_email": entry.get("to_email")})
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="facture-acompte-'
+                 f'{entry["deposit_invoice_no"]}.pdf"'})
 
 
 @pc_router.get("/deposit/status/{session_id}")
