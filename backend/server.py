@@ -170,10 +170,15 @@ async def seed():
                 "plan": "premium", "password_hash": hash_password(owner_pwd),
                 "auth_provider": "password", "picture": None,
                 "user_id": new_user_id(), "must_change_password": True,
+                "two_fa_enabled": True,
                 "created_at": datetime.now(timezone.utc).isoformat()})
             logger.info("Compte admin définitif créé : %s", owner_email)
-        elif existing.get("role") != "admin":
-            await db.users.update_one({"email": owner_email}, {"$set": {"role": "admin"}})
+        else:
+            if existing.get("role") != "admin":
+                await db.users.update_one({"email": owner_email}, {"$set": {"role": "admin"}})
+            if "two_fa_enabled" not in existing:
+                await db.users.update_one({"email": owner_email},
+                                          {"$set": {"two_fa_enabled": True}})
     # Migration one-shot : rendus 3D embarqués → collection plan_renders_3d
     # (les images base64 dans plans_takeoff dépassaient la limite BSON 16 Mo).
     async for p in db.plans_takeoff.find({"renders_3d.0": {"$exists": True}},
@@ -187,6 +192,8 @@ async def seed():
     await db.plan_renders_3d.create_index("plan_id")
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.password_reset_tokens.create_index("token_hash")
+    await db.two_fa_codes.create_index("expires_at", expireAfterSeconds=0)
+    await db.two_fa_codes.create_index("pending_token")
     await db.known_devices.create_index("device_key")
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")

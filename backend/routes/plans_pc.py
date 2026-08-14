@@ -899,9 +899,16 @@ async def get_pc_sign(token: str) -> dict:
     dep_pct = settings.get("deposit_pct")
     dep_pct = DEFAULT_DEPOSIT_PCT if dep_pct is None else float(dep_pct)
     dep_amount = round((t.get("ttc") or 0) * dep_pct / 100.0, 2) if dep_pct > 0 else 0.0
+    owner = await db.users.find_one({"user_id": p["user_id"]},
+                                     {"_id": 0, "name": 1, "phone": 1, "email": 1, "picture": 1}) or {}
+    pro_photo = owner.get("picture") or ""
     return {
         "filename": p.get("filename"),
         "company": (branding or {}).get("company_name"),
+        "pro": {"name": owner.get("name"), "phone": owner.get("phone"),
+                "email": owner.get("email"),
+                "photo": pro_photo if pro_photo.startswith("data:image") else None,
+                "contact_line": (branding or {}).get("contact_line")},
         "generated_at": study.get("generated_at"),
         "demandes": (study.get("demandes") or [])[:5],
         # totaux "client" uniquement — jamais le coût de revient ni la marge

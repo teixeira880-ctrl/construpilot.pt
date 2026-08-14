@@ -2,6 +2,8 @@ import { AlertTriangle, UserCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
+import { DevicesList } from "@/components/account/DevicesList";
+import { TwoFaCard } from "@/components/account/TwoFaCard";
 
 export default function Account() {
   const { user } = useAuth();
@@ -31,7 +33,9 @@ export default function Account() {
       )}
 
       <ProfileForm />
+      <TwoFaCard />
       <PasswordForm />
+      <DevicesList />
     </div>
   );
 }

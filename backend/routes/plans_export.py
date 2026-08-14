@@ -933,6 +933,58 @@ async def list_all_quote_sends(user=Depends(current_user)) -> dict:
     return {"sends": docs, "stats": stats}
 
 
+@quote_router.get("/export.csv")
+async def export_clients_csv(user=Depends(current_user)):
+    """Export comptabilité : devis métrés envoyés + études PC (CSV Excel FR)."""
+    import csv
+    from io import StringIO
+    from fastapi.responses import Response
+    buf = StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["Type", "Date d'envoi", "Client", "Email client", "Document",
+                "Montant TTC (EUR)", "Statut", "Signé le", "Acompte payé",
+                "Facture acompte"])
+    sends = await db.quote_sends.find(
+        {"user_id": user["user_id"]}, {"_id": 0, "signature_b64": 0}
+    ).sort("created_at", -1).to_list(5000)
+    plan_ids = list({d["plan_id"] for d in sends})
+    plans_names = {p["plan_id"]: p.get("filename") for p in await db.plans_takeoff.find(
+        {"plan_id": {"$in": plan_ids}}, {"_id": 0, "plan_id": 1, "filename": 1}
+    ).to_list(2000)} if plan_ids else {}
+    for s_ in sends:
+        status = ("Signé" if s_.get("signed")
+                  else "Ouvert" if s_.get("opened")
+                  else "Envoyé")
+        w.writerow(["Devis métré", (s_.get("created_at") or "")[:10],
+                    s_.get("client_name") or "", s_.get("client_email") or "",
+                    plans_names.get(s_.get("plan_id")) or s_.get("plan_id") or "",
+                    f"{(s_.get('total_ttc') or 0):.2f}".replace(".", ","),
+                    status, (s_.get("signed_at") or "")[:10], "", ""])
+    pc_plans = await db.plans_takeoff.find(
+        {"user_id": user["user_id"], "sent_reports.0": {"$exists": True}},
+        {"_id": 0, "plan_id": 1, "filename": 1, "sent_reports": 1}
+    ).to_list(2000)
+    for p in pc_plans:
+        for r in p.get("sent_reports") or []:
+            if r.get("kind") != "pc_study":
+                continue
+            status = ("Signée" if r.get("accepted")
+                      else "Ouverte" if r.get("opened")
+                      else "Envoyée")
+            w.writerow(["Étude PC", (r.get("sent_at") or "")[:10],
+                        r.get("accepted_by") or "", r.get("to_email") or "",
+                        p.get("filename") or p["plan_id"],
+                        f"{(r.get('ttc') or 0):.2f}".replace(".", ","),
+                        status, (r.get("accepted_at") or "")[:10],
+                        "Oui" if r.get("deposit_paid") else "Non",
+                        r.get("deposit_invoice_no") or ""])
+    csv_bytes = ("\ufeff" + buf.getvalue()).encode("utf-8")
+    return Response(
+        content=csv_bytes, media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition":
+                 'attachment; filename="construpilot-clients-devis.csv"'})
+
+
 # ============ SIGNATURE CLIENT ============
 
 @router.post("/{plan_id}/quote-sends/{log_id}/signature-link")

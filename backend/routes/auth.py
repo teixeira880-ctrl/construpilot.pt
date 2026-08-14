@@ -29,7 +29,8 @@ class LoginIn(BaseModel):
 
 def _public(u: dict) -> dict:
     return {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
-                                  "phone", "auth_provider", "must_change_password", "created_at")}
+                                  "phone", "auth_provider", "must_change_password",
+                                  "two_fa_enabled", "created_at")}
 
 
 async def _set_session(response: Response, user_id: str, token: str | None = None) -> str:
@@ -115,9 +116,13 @@ async def login(body: LoginIn, request: Request, response: Response) -> dict:
         await _record_failed_login(identifier)
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     await db.login_attempts.delete_one({"identifier": identifier})
-    await _alert_admin_new_device(user, request)
+    if user.get("role") == "admin" and user.get("two_fa_enabled"):
+        return await _start_2fa(user)
+    await _register_device(user, request)
     token = await _set_session(response, user["user_id"])
-    return {"user": _public(user), "token": make_jwt(user["user_id"]), "session_token": token}
+    return {"user": _public(user),
+            "token": make_jwt(user["user_id"], user.get("token_version") or 0),
+            "session_token": token}
 
 
 class ChangePasswordIn(BaseModel):
@@ -309,11 +314,9 @@ async def reset_password(body: ResetIn) -> dict:
 
 # ---- Alerte connexion admin depuis un nouvel appareil ------------------------
 
-async def _alert_admin_new_device(user: dict, request: Request) -> None:
-    """Si un admin se connecte depuis un appareil inconnu (IP + user-agent),
-    enregistre l'appareil et envoie un email d'alerte (fire-and-forget)."""
-    if user.get("role") != "admin":
-        return
+async def _register_device(user: dict, request: Request) -> None:
+    """Trace l'appareil (IP + user-agent) pour l'historique des connexions.
+    Nouvel appareil sur un compte admin → email d'alerte (fire-and-forget)."""
     ip = _client_ip(request)
     ua = (request.headers.get("user-agent") or "inconnu")[:200]
     device_key = hashlib.sha256(f"{user['user_id']}:{ip}:{ua}".encode()).hexdigest()
@@ -325,6 +328,8 @@ async def _alert_admin_new_device(user: dict, request: Request) -> None:
     await db.known_devices.insert_one({
         "device_key": device_key, "user_id": user["user_id"], "ip": ip,
         "user_agent": ua, "created_at": now, "last_seen": now})
+    if user.get("role") != "admin":
+        return
     html = (
         f"<p>Bonjour {user.get('name') or ''},</p>"
         f"<p>Une connexion à votre compte <b>administrateur ConstruPilot</b> vient d'avoir lieu "
@@ -343,6 +348,150 @@ async def _alert_admin_new_device(user: dict, request: Request) -> None:
         except Exception:
             pass
     asyncio.create_task(_send())
+
+
+# ---- 2FA email (admin) -------------------------------------------------------
+
+async def _send_2fa_email(user: dict, code: str) -> None:
+    html = (
+        f"<p>Bonjour {user.get('name') or ''},</p>"
+        f"<p>Votre code de connexion ConstruPilot :</p>"
+        f"<p style='font-size:32px;font-weight:bold;letter-spacing:8px'>{code}</p>"
+        f"<p style='font-size:12px;color:#666'>Valable 10 minutes. Si vous n'êtes pas à "
+        f"l'origine de cette connexion, changez votre mot de passe immédiatement.</p>")
+
+    async def _send():
+        from engines.emailer import send_email
+        try:
+            await send_email(user["email"],
+                             f"{code} — votre code de connexion ConstruPilot", html)
+        except Exception:
+            pass
+    asyncio.create_task(_send())
+
+
+async def _start_2fa(user: dict) -> dict:
+    code = f"{secrets.randbelow(900000) + 100000}"
+    pending = secrets.token_urlsafe(32)
+    await db.two_fa_codes.insert_one({
+        "pending_token": pending, "user_id": user["user_id"],
+        "code_hash": hashlib.sha256(code.encode()).hexdigest(),
+        "attempts": 0, "resends": 0,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10)})
+    await _send_2fa_email(user, code)
+    return {"two_fa_required": True, "pending_token": pending,
+            "message": "Code de vérification envoyé par email"}
+
+
+class TwoFaVerifyIn(BaseModel):
+    pending_token: str
+    code: str
+
+
+@router.post("/verify-2fa")
+async def verify_2fa(body: TwoFaVerifyIn, request: Request, response: Response) -> dict:
+    rec = await db.two_fa_codes.find_one({"pending_token": body.pending_token})
+    if not rec:
+        raise HTTPException(status_code=401,
+                            detail="Session de vérification expirée — reconnectez-vous")
+    exp = rec["expires_at"]
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp < datetime.now(timezone.utc):
+        await db.two_fa_codes.delete_one({"_id": rec["_id"]})
+        raise HTTPException(status_code=401, detail="Code expiré — reconnectez-vous")
+    if rec.get("attempts", 0) >= 5:
+        await db.two_fa_codes.delete_one({"_id": rec["_id"]})
+        raise HTTPException(status_code=429, detail="Trop d'essais — reconnectez-vous")
+    if hashlib.sha256(body.code.strip().encode()).hexdigest() != rec["code_hash"]:
+        await db.two_fa_codes.update_one({"_id": rec["_id"]}, {"$inc": {"attempts": 1}})
+        raise HTTPException(status_code=401, detail="Code incorrect")
+    await db.two_fa_codes.delete_one({"_id": rec["_id"]})
+    user = await db.users.find_one({"user_id": rec["user_id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="Compte introuvable")
+    await _register_device(user, request)
+    token = await _set_session(response, user["user_id"])
+    return {"user": _public(user),
+            "token": make_jwt(user["user_id"], user.get("token_version") or 0),
+            "session_token": token}
+
+
+class TwoFaResendIn(BaseModel):
+    pending_token: str
+
+
+@router.post("/resend-2fa")
+async def resend_2fa(body: TwoFaResendIn) -> dict:
+    rec = await db.two_fa_codes.find_one({"pending_token": body.pending_token})
+    if not rec:
+        raise HTTPException(status_code=401,
+                            detail="Session de vérification expirée — reconnectez-vous")
+    if rec.get("resends", 0) >= 3:
+        raise HTTPException(status_code=429, detail="Limite de renvois atteinte — reconnectez-vous")
+    code = f"{secrets.randbelow(900000) + 100000}"
+    await db.two_fa_codes.update_one(
+        {"_id": rec["_id"]},
+        {"$set": {"code_hash": hashlib.sha256(code.encode()).hexdigest(),
+                  "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
+                  "attempts": 0},
+         "$inc": {"resends": 1}})
+    user = await db.users.find_one({"user_id": rec["user_id"]}, {"_id": 0})
+    await _send_2fa_email(user, code)
+    return {"ok": True}
+
+
+class TwoFaToggleIn(BaseModel):
+    enabled: bool
+    current_password: str | None = None
+
+
+@router.put("/2fa")
+async def toggle_2fa(body: TwoFaToggleIn, user=Depends(current_user)) -> dict:
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+    if not body.enabled:
+        full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        if not body.current_password or not verify_password(
+                body.current_password, full.get("password_hash") or ""):
+            raise HTTPException(status_code=401,
+                                detail="Mot de passe actuel requis pour désactiver la double authentification")
+    await db.users.update_one({"user_id": user["user_id"]},
+                              {"$set": {"two_fa_enabled": body.enabled}})
+    fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return {"user": _public(fresh)}
+
+
+# ---- Appareils connectés -------------------------------------------------------
+
+@router.get("/devices")
+async def list_devices(request: Request, user=Depends(current_user)) -> dict:
+    ip = _client_ip(request)
+    ua = (request.headers.get("user-agent") or "inconnu")[:200]
+    current_key = hashlib.sha256(f"{user['user_id']}:{ip}:{ua}".encode()).hexdigest()
+    docs = await (db.known_devices.find({"user_id": user["user_id"]}, {"_id": 0})
+                  .sort("last_seen", -1).to_list(50))
+    return {"devices": [{**d, "current": d["device_key"] == current_key} for d in docs]}
+
+
+@router.delete("/devices/{device_key}")
+async def delete_device(device_key: str, user=Depends(current_user)) -> dict:
+    await db.known_devices.delete_one({"device_key": device_key, "user_id": user["user_id"]})
+    return {"ok": True}
+
+
+@router.post("/logout-others")
+async def logout_other_devices(response: Response, user=Depends(current_user)) -> dict:
+    """Invalide tous les JWT existants (token_version++) et toutes les sessions,
+    puis ré-émet un jeton frais pour l'appareil courant."""
+    new_version = int(user.get("token_version") or 0) + 1
+    await db.users.update_one({"user_id": user["user_id"]},
+                              {"$set": {"token_version": new_version}})
+    await db.user_sessions.delete_many({"user_id": user["user_id"]})
+    token = await _set_session(response, user["user_id"])
+    return {"ok": True, "token": make_jwt(user["user_id"], new_version),
+            "session_token": token}
 
 
 @router.post("/session")
@@ -371,7 +520,7 @@ async def google_session(request: Request, response: Response) -> dict:
                                   {"$set": {"picture": data.get("picture") or user.get("picture"),
                                             "name": data.get("name") or user.get("name")}})
     token = await _set_session(response, user["user_id"], data.get("session_token"))
-    await _alert_admin_new_device(user, request)
+    await _register_device(user, request)
     return {"user": _public(user), "session_token": token}
 
 

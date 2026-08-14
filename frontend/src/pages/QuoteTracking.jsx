@@ -26,6 +26,21 @@ export default function QuoteTracking() {
   };
   useEffect(() => { if (user) load(); }, [user]);
 
+  const exportCsv = async () => {
+    try {
+      const res = await api.get("/quotes/export.csv", { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "construpilot-clients-devis.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Export CSV téléchargé");
+    } catch {
+      toast.error("Export impossible");
+    }
+  };
+
   const copySignLink = async (send) => {
     try {
       // Create or reuse signature link
@@ -96,10 +111,16 @@ export default function QuoteTracking() {
 
   return (
     <div className="grid gap-8">
-      <SectionTitle over="Suivi Devis" title="Où en sont vos devis envoyés ?">
-        Toutes les propositions envoyées à vos clients, organisées par état d'avancement.
-        Relancez au bon moment grâce au suivi d'ouverture et de signature.
-      </SectionTitle>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SectionTitle over="Suivi Devis" title="Où en sont vos devis envoyés ?">
+          Toutes les propositions envoyées à vos clients, organisées par état d'avancement.
+          Relancez au bon moment grâce au suivi d'ouverture et de signature.
+        </SectionTitle>
+        <Button variant="outline" onClick={exportCsv} className="rounded-sm gap-2"
+                data-testid="export-csv-btn">
+          <Download className="h-4 w-4" /> Exporter CSV (comptabilité)
+        </Button>
+      </div>
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

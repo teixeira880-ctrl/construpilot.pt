@@ -172,12 +172,15 @@ def test_admin_login_registers_new_device():
     _run(_cleanup())
 
 
-def test_non_admin_login_no_device_tracking():
+def test_non_admin_login_tracked_without_email_alert():
+    """Depuis l'historique des connexions, TOUS les appareils sont tracés
+    (l'email d'alerte reste réservé aux admins)."""
     ua = f"PytestUserDevice/{uuid.uuid4().hex[:6]}"
     _login(DEMO_EMAIL, DEMO_PWD, ua=ua)
 
     async def _check():
         db = AsyncIOMotorClient(MONGO_URL)[DB_NAME]
         dev = await db.known_devices.find_one({"user_agent": ua})
-        assert dev is None, "les non-admins ne doivent pas être trackés"
+        assert dev is not None, "appareil non tracé pour un utilisateur standard"
+        await db.known_devices.delete_many({"user_agent": {"$regex": "^PytestUserDevice/"}})
     _run(_check())

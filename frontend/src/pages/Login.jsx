@@ -10,11 +10,13 @@ import { useAuth } from "@/context/AuthContext";
 import { api, IMAGES } from "@/lib/api";
 
 export default function Login() {
-  const { login, register, user } = useAuth();
+  const { login, register, verify2fa, user } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const refCodeFromUrl = params.get("ref") || "";
   const [busy, setBusy] = useState(false);
+  const [tfa, setTfa] = useState(null);
+  const [tfaCode, setTfaCode] = useState("");
   const [form, setForm] = useState({ name: "", email: "", password: "", ref: refCodeFromUrl });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -59,6 +61,11 @@ export default function Login() {
           toast.success(`Code parrainage ${ref.toUpperCase()} appliqué — bienvenue !`);
           sessionStorage.removeItem("construpilot_ref");
         }
+      }
+      if (logged?.two_fa_required) {
+        setTfa(logged);
+        toast.info("Un code de vérification vient de vous être envoyé par email", { duration: 5000 });
+        return;
       }
       toast.success("Bienvenue chez ConstruPilot", { position: "bottom-right", duration: 2500 });
       if (logged?.must_change_password) {
@@ -130,6 +137,68 @@ export default function Login() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
+          {tfa ? (
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setBusy(true);
+              try {
+                const u = await verify2fa(tfa.pending_token, tfaCode);
+                toast.success("Bienvenue chez ConstruPilot", { position: "bottom-right", duration: 2500 });
+                if (u?.must_change_password) {
+                  toast.warning("Mot de passe provisoire — merci de le changer maintenant", { duration: 6000 });
+                  navigate("/compte");
+                } else {
+                  navigate("/dashboard");
+                }
+              } catch (err) {
+                const d = err?.response?.data?.detail;
+                toast.error(typeof d === "string" ? d : "Code incorrect");
+              } finally {
+                setBusy(false);
+              }
+            }} className="grid gap-4" data-testid="tfa-form">
+              <div>
+                <p className="font-semibold">Vérification en deux étapes</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Un code à 6 chiffres vient d'être envoyé à votre adresse email.
+                  Il est valable 10 minutes.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label>Code de vérification</Label>
+                <Input required inputMode="numeric" autoFocus maxLength={6}
+                       value={tfaCode}
+                       onChange={(e) => setTfaCode(e.target.value.replace(/\D/g, ""))}
+                       placeholder="123456"
+                       className="rounded-sm h-12 text-center text-2xl tracking-[0.5em] num"
+                       data-testid="tfa-code-input" />
+              </div>
+              <Button type="submit" disabled={busy || tfaCode.length !== 6}
+                      className="rounded-sm h-11" data-testid="tfa-submit-btn">
+                {busy ? "Vérification…" : "Valider le code"}
+              </Button>
+              <div className="flex items-center justify-between text-xs">
+                <button type="button" className="text-muted-foreground hover:text-primary"
+                        data-testid="tfa-resend-btn"
+                        onClick={async () => {
+                          try {
+                            await api.post("/auth/resend-2fa", { pending_token: tfa.pending_token });
+                            toast.success("Nouveau code envoyé");
+                          } catch (err) {
+                            const d = err?.response?.data?.detail;
+                            toast.error(typeof d === "string" ? d : "Renvoi impossible");
+                          }
+                        }}>
+                  Renvoyer le code
+                </button>
+                <button type="button" className="text-muted-foreground hover:text-primary"
+                        data-testid="tfa-back-btn"
+                        onClick={() => { setTfa(null); setTfaCode(""); }}>
+                  Retour à la connexion
+                </button>
+              </div>
+            </form>
+          ) : (
           <Tabs defaultValue="login">
             <TabsList className="w-full rounded-sm">
               <TabsTrigger value="login" className="flex-1 rounded-sm" data-testid="tab-login">Connexion</TabsTrigger>
@@ -186,6 +255,7 @@ export default function Login() {
               </form>
             </TabsContent>
           </Tabs>
+          )}
 
           {/* Accès démo — 1 clic */}
           <div className="mt-8 border-t border-border pt-6" data-testid="demo-access-panel">

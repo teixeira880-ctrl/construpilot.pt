@@ -15,6 +15,8 @@ import { Stat, SectionTitle } from "@/components/Bits";
 import RevenueTab from "@/components/RevenueTab";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
+import { DevicesList } from "@/components/account/DevicesList";
+import { TwoFaCard } from "@/components/account/TwoFaCard";
 
 export default function Admin() {
   const [stats, setStats] = useState(null);
@@ -106,7 +108,9 @@ export default function Admin() {
               Gérez vos informations de profil et votre mot de passe.
             </SectionTitle>
             <ProfileForm />
+            <TwoFaCard />
             <PasswordForm />
+            <DevicesList />
           </div>
         </TabsContent>
 

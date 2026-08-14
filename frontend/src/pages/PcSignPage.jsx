@@ -127,6 +127,30 @@ export default function PcSignPage() {
           </p>
         </header>
 
+        {data.pro && (data.pro.name || data.pro.photo) && (
+          <div className="surface p-4 flex items-center gap-4" data-testid="pc-sign-pro-card">
+            {data.pro.photo ? (
+              <img src={data.pro.photo} alt={data.pro.name || "Votre interlocuteur"}
+                   className="h-14 w-14 rounded-full object-cover border border-border shrink-0"
+                   data-testid="pc-sign-pro-photo" />
+            ) : (
+              <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground shrink-0">
+                {(data.pro.name || "?").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Votre interlocuteur</p>
+              <p className="font-semibold truncate" data-testid="pc-sign-pro-name">{data.pro.name}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {[data.pro.phone, data.pro.email].filter(Boolean).join(" · ")}
+              </p>
+              {data.pro.contact_line && (
+                <p className="text-xs text-muted-foreground truncate">{data.pro.contact_line}</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {data.demandes?.length > 0 && (
           <ul className="text-sm text-muted-foreground space-y-0.5">
             {data.demandes.slice(0, 4).map((d, i) => <li key={i}>• {d}</li>)}

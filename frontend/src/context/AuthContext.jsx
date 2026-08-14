@@ -36,6 +36,16 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
+    if (data.two_fa_required) return data;
+    if (data.token) localStorage.setItem("construpilot_token", data.token);
+    setUser(data.user);
+    return data.user;
+  };
+
+  const verify2fa = async (pendingToken, code) => {
+    const { data } = await api.post("/auth/verify-2fa", {
+      pending_token: pendingToken, code,
+    });
     if (data.token) localStorage.setItem("construpilot_token", data.token);
     setUser(data.user);
     return data.user;
@@ -59,7 +69,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, setUser, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, verify2fa, register, logout, setUser, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

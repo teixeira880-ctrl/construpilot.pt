@@ -23,9 +23,10 @@ def verify_password(pw: str, hashed: str) -> bool:
         return False
 
 
-def make_jwt(user_id: str) -> str:
+def make_jwt(user_id: str, version: int = 0) -> str:
     payload = {
         'sub': user_id,
+        'v': int(version or 0),
         'exp': datetime.now(timezone.utc) + timedelta(days=TOKEN_DAYS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
@@ -40,7 +41,10 @@ async def _user_from_jwt(token: str):
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
     except Exception:
         return None
-    return await db.users.find_one({"user_id": payload.get('sub')}, {"_id": 0})
+    user = await db.users.find_one({"user_id": payload.get('sub')}, {"_id": 0})
+    if user and int(payload.get('v') or 0) != int(user.get('token_version') or 0):
+        return None
+    return user
 
 
 async def _user_from_session(token: str):
