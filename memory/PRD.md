@@ -1873,3 +1873,18 @@ R+1 60m² 2.30m, combles 30m² 1.80m » → l'IA détecte les 3 niveaux + hauteu
 
 ### Backlog restant
 - P2 : Type hints Python backend ; split PlanTakeoff.jsx (>3400 lignes) recommandé par la revue ; factoriser downloadBlob (downloadPdf/downloadEcartsPdf/downloadMultiQuote).
+
+---
+
+## Itération 64 (14/06/2026) — Double-clic pour terminer une mesure
+
+**Demande** : dans Plan 2D mesures, le curseur doit se désactiver avec 2 clics gauche (double-clic) et reprendre la cote au clic suivant.
+
+### Implémenté (PlanTakeoff.jsx uniquement)
+- PlanCanvas : prop `onCanvasDoubleClick` + handler `onDoubleClick` (ignoré en Sélection/verrouillé).
+- `onCanvasDoubleClick` (main) : déduplique les points ajoutés par les 2 clics (< 3 px), puis termine selon l'outil — DIST → `finishDistance(chain)` (mesure sauvée via /measure), POLY → `finishPolyline(chain)`, ROOM (≥3 pts) → ouvre le dialog pièce. `setPoints([])` détache le curseur ; le clic suivant démarre une nouvelle mesure.
+- `finishDistance/finishPolyline/finishRoom` acceptent `pts = points` en paramètre ; boutons corrigés en `onClick={() => finish...()}` (l'event n'est plus passé en pts).
+- Hint UI `dblclick-hint` : « double-clic = terminer · clic suivant = nouvelle mesure ».
+
+### Test (screenshot Playwright E2E)
+Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge « 1 point » ; double-clic → toast « Distance : 12.781 m » + badge disparu ; clic suivant → « 1 point ». PASS.

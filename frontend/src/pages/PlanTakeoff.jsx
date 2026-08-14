@@ -83,6 +83,7 @@ function PlanCanvas({
   focusRequest = null,  // {px, py, ts} — quand ts change, centrer sur (px, py)
   selectedCoteIndex = null,
   onCoteClick = null,
+  onCanvasDoubleClick = null,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -627,10 +628,18 @@ function PlanCanvas({
   const cursorClass =
     tool === TOOLS.SELECT ? "cursor-grab" : "cursor-crosshair";
 
+  // Double-clic gauche = terminer la mesure en cours (le clic suivant en reprend une nouvelle)
+  const handleDoubleClick = (e) => {
+    if (locked || tool === TOOLS.SELECT || !onCanvasDoubleClick) return;
+    e.preventDefault();
+    onCanvasDoubleClick();
+  };
+
   return (
     <canvas
       ref={canvasRef}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -1031,12 +1040,12 @@ export default function PlanTakeoff() {
     } catch { toast.error("Suppression impossible"); }
   };
 
-  const finishPolyline = async () => {
-    if (points.length < 2) return;
+  const finishPolyline = async (pts = points) => {
+    if (pts.length < 2) return;
     if (!currentCalib) return toast.error("Calibrez d'abord le plan");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
-        page_index: pageIndex, kind: "polyline", points,
+        page_index: pageIndex, kind: "polyline", points: pts,
       });
       toast.success(`Longueur : ${data.length_m} m`);
       setPoints([]);
@@ -1191,23 +1200,42 @@ export default function PlanTakeoff() {
     }
   };
 
-  const finishDistance = async () => {
-    if (points.length !== 2) return;
+  const finishDistance = async (pts = points) => {
+    if (pts.length < 2) return;
     if (!currentCalib) return toast.error("Calibrez d'abord le plan");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
-        page_index: pageIndex, kind: "distance", points,
+        page_index: pageIndex, kind: "distance", points: pts.slice(0, 2),
       });
       toast.success(`Distance : ${data.value_m} m`);
       setPoints([]);
     } catch { toast.error("Mesure échouée"); }
   };
 
-  const finishRoom = () => {
-    if (points.length < 3) return toast.error("Une pièce nécessite au moins 3 points");
+  const finishRoom = (pts = points) => {
+    if (pts.length < 3) return toast.error("Une pièce nécessite au moins 3 points");
     if (!currentCalib) return toast.error("Calibrez d'abord le plan");
     setPendingRoomName(`Pièce ${String(rooms.length + 1).padStart(2, "0")}`);
     setRoomDialog(true);
+  };
+
+  // Double-clic gauche : termine la cote/mesure en cours — le clic suivant
+  // reprend une nouvelle mesure. Nettoie le point dupliqué par les 2 clics.
+  const onCanvasDoubleClick = () => {
+    let chain = [...points];
+    while (chain.length >= 2) {
+      const a = chain[chain.length - 1], b = chain[chain.length - 2];
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 3) chain = chain.slice(0, -1);
+      else break;
+    }
+    if (tool === TOOLS.DIST && chain.length >= 2) {
+      finishDistance(chain);
+    } else if (tool === TOOLS.POLY && chain.length >= 2) {
+      finishPolyline(chain);
+    } else if (tool === TOOLS.ROOM && chain.length >= 3) {
+      setPoints(chain);
+      finishRoom(chain);
+    }
   };
 
   const saveRoom = async () => {
@@ -2368,6 +2396,7 @@ export default function PlanTakeoff() {
             focusRequest={focusRequest}
             selectedCoteIndex={selectedCote}
             onCoteClick={setSelectedCote}
+            onCanvasDoubleClick={onCanvasDoubleClick}
           />
 
           {/* Iter63 — panneau détail de la cote IA sélectionnée */}
@@ -2485,13 +2514,18 @@ export default function PlanTakeoff() {
           {points.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2 items-center">
               <Badge variant="outline" className="rounded-sm num" data-testid="points-count">{points.length} point{points.length > 1 ? "s" : ""}</Badge>
+              {(tool === TOOLS.DIST || tool === TOOLS.POLY || tool === TOOLS.ROOM) && (
+                <span className="text-[10px] text-muted-foreground" data-testid="dblclick-hint">
+                  double-clic = terminer · clic suivant = nouvelle mesure
+                </span>
+              )}
               {tool === TOOLS.DIST && points.length === 2 && (
-                <Button size="sm" onClick={finishDistance} data-testid="tool-finish-distance" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                <Button size="sm" onClick={() => finishDistance()} data-testid="tool-finish-distance" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
                   <Save className="h-3 w-3" /> Mesurer
                 </Button>
               )}
               {tool === TOOLS.POLY && points.length >= 2 && (
-                <Button size="sm" onClick={finishPolyline} data-testid="tool-finish-polyline" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                <Button size="sm" onClick={() => finishPolyline()} data-testid="tool-finish-polyline" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
                   <Save className="h-3 w-3" /> Terminer polyligne
                 </Button>
               )}
@@ -2509,7 +2543,7 @@ export default function PlanTakeoff() {
                       {currentPreset.name}
                     </Badge>
                   )}
-                  <Button size="sm" onClick={finishRoom} data-testid="tool-finish-room" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                  <Button size="sm" onClick={() => finishRoom()} data-testid="tool-finish-room" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
                     <Save className="h-3 w-3" /> Fermer pièce
                   </Button>
                 </>
