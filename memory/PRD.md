@@ -1992,3 +1992,17 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 ### Tests
 - `tests/test_iter70_pc_extras.py` 7/7 (planning arithmétique total_days = Σ(work+cure), phases séquentielles, 422/404/401 send, historique pc_study) + iter69 9/9 régression.
 - E2E Playwright : dialog → planning affiché (22 j / 4,4 sem) → dialog envoi OK → comparer → /prix avec 4 items quantifiés + recherche auto lancée.
+
+---
+
+## Itération 71 (14/06/2026) — Étude PC : prix modifiables, Gantt, suivi d'ouverture
+
+### Livré (pytest 22/22 + vérif visuelle Playwright)
+1. **Prix Étude Modifiables** : collection `pc_settings` {user_id, unit_prices{13 postes: mat/mo}, crew_size (1-12), hourly_rate_eur (20-150)}. Router `pc_router` (prefix /api/pc) : GET/PUT/DELETE `/pc/settings`. Moteur : `merge_unit_prices`, `compute_gros_oeuvre(prices)`, `compute_planning(crew, rate)`, `build_study(settings)`, champ `custom_pricing`. `POST /takeoffs/{id}/pc-study/recompute` recalcule devis+planning avec les réglages SANS rappel IA. UI : `PcSettingsDialog.jsx` (bouton `pc-settings-open-btn`, table 13 postes `pc-price-{key}-mat/mo`, crew/rate, save→recompute auto avec toast, reset).
+2. **Diagramme Gantt** : `PcGantt.jsx` — date de démarrage choisie (`pc-gantt-start-input`), frise colorée par phase (barres pleines = jours ouvrés avec week-ends sautés, hachurées = séchage béton en jours calendaires), dates réelles par phase, fin de chantier estimée (`pc-gantt-end-date`). Client-side pur, recalcule en live au changement de date.
+3. **Suivi Ouverture Email** : pixel gif `GET /api/pc/track/{track_id}` (public, idempotent) injecté dans l'email d'envoi (PUBLIC_BACKEND_URL), `sent_reports` enrichi {track_id, opened, opened_at} via $elemMatch/$ positional. UI : section « Envois au client » dans PcStudyDialog (`pc-sent-list`, badge vert `Ouvert le …` / gris `Non ouvert`).
+- Fix affichage : décimales hypothèses (hauteur 2,5 m au lieu de 3 m).
+
+### Tests
+- `test_iter70_pc_extras.py` étendu : TestPcSettings (PUT→recompute TTC↑→reset TTC de base, 422 crew 99, 401 sans auth) + TestPcTracking (pixel public gif, idempotent 2 hits, opened_at persisté, track inconnu→200).
+- E2E visuel : Gantt 4 barres + fin « dimanche 6 septembre 2026 » (recalcul au 01/09 → 24/09), réglages 38→45 €/m² → toast recalcul 12 513 €, badge « Ouvert le 14/08/2026 ».

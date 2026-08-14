@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart } from "lucide-react";
+import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart, Settings2, MailCheck, MailX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PcSendDialog from "@/components/planTakeoff/PcSendDialog";
+import PcSettingsDialog from "@/components/planTakeoff/PcSettingsDialog";
+import PcGantt from "@/components/planTakeoff/PcGantt";
 import { eur, num } from "@/lib/api";
 
 const RULES_LABELS = [
@@ -14,8 +16,9 @@ const RULES_LABELS = [
   "Aciers : semelles 15 kg/ml (3+3 HA10 + cadres HA6) · dalle 14 kg/m² (ST25C) · escalier 100 kg/m³",
 ];
 
-export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDownload, onDownloadXlsx, planId, onSent, onCompareSuppliers }) {
+export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDownload, onDownloadXlsx, planId, onSent, onCompareSuppliers, sentReports = [], onRecompute }) {
   const [sendOpen, setSendOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="pc-study-dialog">
@@ -37,6 +40,10 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                   className="rounded-sm gap-2 hover:bg-orange-600">
             <Sparkles className={`h-4 w-4 ${busy ? "animate-pulse" : ""}`} />
             {busy ? "Analyse du PC en cours… (peut prendre 1-2 min)" : study ? "Relancer l'analyse" : "Lancer l'analyse du PC"}
+          </Button>
+          <Button variant="outline" onClick={() => setSettingsOpen(true)} data-testid="pc-settings-open-btn"
+                  className="rounded-sm gap-2">
+            <Settings2 className="h-4 w-4" /> Réglages prix & équipe
           </Button>
           {study && (
             <>
@@ -61,6 +68,8 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
         </div>
         <PcSendDialog open={sendOpen} onClose={() => setSendOpen(false)}
                       planId={planId} onSent={onSent} />
+        <PcSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)}
+                          onSaved={() => study && onRecompute?.()} />
 
         {study && (
           <div className="space-y-4" data-testid="pc-study-result">
@@ -90,11 +99,11 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 {[
                   ["Niveaux", study.inputs?.levels, study.input_sources?.levels],
-                  ["Surface", `${num(study.inputs?.surface_m2)} m²`, study.input_sources?.surface_m2],
-                  ["Hauteur murs", `${num(study.inputs?.wall_height_m)} m`, study.input_sources?.wall_height_m],
-                  ["Périmètre", `${num(study.inputs?.perimeter_m)} m`, study.input_sources?.perimeter_m],
-                  ["Refends", `${num(study.inputs?.refends_m)} m`, study.input_sources?.refends_m],
-                  ["Ouvertures", `${study.inputs?.openings_count} u · ${num(study.inputs?.openings_area_m2)} m²`, ""],
+                  ["Surface", `${num(study.inputs?.surface_m2, 1)} m²`, study.input_sources?.surface_m2],
+                  ["Hauteur murs", `${num(study.inputs?.wall_height_m, 2)} m`, study.input_sources?.wall_height_m],
+                  ["Périmètre", `${num(study.inputs?.perimeter_m, 1)} m`, study.input_sources?.perimeter_m],
+                  ["Refends", `${num(study.inputs?.refends_m, 1)} m`, study.input_sources?.refends_m],
+                  ["Ouvertures", `${study.inputs?.openings_count} u · ${num(study.inputs?.openings_area_m2, 1)} m²`, ""],
                   ["Escaliers", study.inputs?.stairs_count, ""],
                 ].map(([k, v, s]) => (
                   <div key={k} className="rounded-sm border border-border p-2">
@@ -164,7 +173,11 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
               <section data-testid="pc-study-planning">
                 <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
                   <CalendarRange className="h-4 w-4 text-primary" /> Planning de chantier — gros œuvre
+                  {study.custom_pricing && (
+                    <Badge variant="outline" className="text-[10px] rounded-sm">prix personnalisés</Badge>
+                  )}
                 </h3>
+                <PcGantt planning={study.planning} />
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
@@ -195,6 +208,38 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                   ouvrés + {study.planning.total_cure_days} jours de séchage béton,
                   soit ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semaines)</b> de chantier.
                 </p>
+              </section>
+            )}
+
+            {sentReports.length > 0 && (
+              <section data-testid="pc-sent-list">
+                <h3 className="text-sm font-semibold mb-1">Envois au client</h3>
+                <div className="space-y-1">
+                  {sentReports.slice(-5).reverse().map((s, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-xs border border-border rounded-sm px-2 py-1.5"
+                         data-testid={`pc-sent-${i}`}>
+                      <span className="truncate">✉ {s.to_email}</span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        <span className="num text-muted-foreground">
+                          {new Date(s.sent_at).toLocaleDateString("fr-FR")}{" "}
+                          {new Date(s.sent_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {s.opened ? (
+                          <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 hover:bg-emerald-500/15"
+                                 data-testid={`pc-sent-${i}-status`}>
+                            <MailCheck className="h-3 w-3" />
+                            Ouvert le {new Date(s.opened_at).toLocaleDateString("fr-FR")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-muted-foreground"
+                                 data-testid={`pc-sent-${i}-status`}>
+                            <MailX className="h-3 w-3" /> Non ouvert
+                          </Badge>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
 

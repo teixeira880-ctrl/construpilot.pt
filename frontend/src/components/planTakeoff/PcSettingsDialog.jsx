@@ -1,0 +1,155 @@
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { RotateCcw, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { api } from "@/lib/api";
+
+const PRICE_LABELS = {
+  fouilles: ["Fouilles en rigole", "m³"],
+  beton_proprete: ["Béton de propreté", "m³"],
+  beton_semelle: ["Béton semelles C25/30", "m³"],
+  acier_semelle: ["Aciers semelles", "kg"],
+  beton_dalle: ["Béton dalle / plancher", "m³"],
+  treillis_dalle: ["Treillis ST25C", "kg"],
+  coffrage_rive: ["Coffrage de rives", "ml"],
+  mur_isobrique: ["Mur brique isobrique 20", "m²"],
+  chainage_beton: ["Béton chaînages", "m³"],
+  acier_chainage: ["Aciers chaînages", "kg"],
+  linteau: ["Linteaux BA", "ml"],
+  escalier_beton: ["Béton escalier", "m³"],
+  acier_escalier: ["Aciers escalier", "kg"],
+};
+
+export default function PcSettingsDialog({ open, onClose, onSaved }) {
+  const [prices, setPrices] = useState({});
+  const [crew, setCrew] = useState(3);
+  const [rate, setRate] = useState(45);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    api.get("/pc/settings").then(({ data }) => {
+      const d = data.defaults || {};
+      const s = data.settings || {};
+      const merged = {};
+      Object.entries(d.unit_prices || {}).forEach(([k, v]) => {
+        const c = (s.unit_prices || {})[k] || {};
+        merged[k] = { mat: c.mat ?? v.mat, mo: c.mo ?? v.mo };
+      });
+      setPrices(merged);
+      setCrew(s.crew_size ?? d.crew_size ?? 3);
+      setRate(s.hourly_rate_eur ?? d.hourly_rate_eur ?? 45);
+    }).catch(() => toast.error("Chargement des réglages impossible"));
+  }, [open]);
+
+  const setP = (key, field, val) =>
+    setPrices((prev) => ({ ...prev, [key]: { ...prev[key], [field]: val } }));
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const unit_prices = {};
+      Object.entries(prices).forEach(([k, v]) => {
+        unit_prices[k] = { mat: parseFloat(v.mat) || 0, mo: parseFloat(v.mo) || 0 };
+      });
+      await api.put("/pc/settings", {
+        unit_prices, crew_size: parseInt(crew, 10) || 3,
+        hourly_rate_eur: parseFloat(rate) || 45,
+      });
+      toast.success("Réglages enregistrés");
+      onSaved?.();
+      onClose();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossible"); }
+    finally { setBusy(false); }
+  };
+
+  const reset = async () => {
+    setBusy(true);
+    try {
+      await api.delete("/pc/settings");
+      toast.success("Réglages réinitialisés aux valeurs par défaut");
+      onSaved?.();
+      onClose();
+    } catch { toast.error("Réinitialisation impossible"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="rounded-sm max-w-2xl max-h-[85vh] overflow-y-auto"
+                     data-testid="pc-settings-dialog">
+        <DialogHeader>
+          <DialogTitle>Réglages de l'étude PC</DialogTitle>
+          <DialogDescription>
+            Vos prix unitaires (€ HT), la taille d'équipe et le taux horaire sont
+            appliqués à toutes vos prochaines études — et recalculés sur l'étude en cours.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="pc-crew" className="text-xs">Taille d'équipe (compagnons)</Label>
+            <Input id="pc-crew" type="number" min="1" max="12" value={crew}
+                   onChange={(e) => setCrew(e.target.value)}
+                   data-testid="pc-settings-crew-input" className="rounded-sm num" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="pc-rate" className="text-xs">Taux horaire MO (€/h)</Label>
+            <Input id="pc-rate" type="number" min="20" max="150" value={rate}
+                   onChange={(e) => setRate(e.target.value)}
+                   data-testid="pc-settings-rate-input" className="rounded-sm num" />
+          </div>
+        </div>
+
+        <table className="w-full text-xs border border-border">
+          <thead>
+            <tr className="bg-muted text-left">
+              <th className="p-1.5">Poste</th>
+              <th className="p-1.5">Unité</th>
+              <th className="p-1.5 text-right">PU matériaux €</th>
+              <th className="p-1.5 text-right">PU main d'œuvre €</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(PRICE_LABELS).map(([key, [label, unit]]) => (
+              <tr key={key} className="border-t border-border">
+                <td className="p-1.5 font-medium">{label}</td>
+                <td className="p-1.5 text-muted-foreground">{unit}</td>
+                <td className="p-1.5">
+                  <Input type="number" min="0" step="0.05" value={prices[key]?.mat ?? ""}
+                         onChange={(e) => setP(key, "mat", e.target.value)}
+                         data-testid={`pc-price-${key}-mat`}
+                         className="rounded-sm h-7 text-right num text-xs" />
+                </td>
+                <td className="p-1.5">
+                  <Input type="number" min="0" step="0.05" value={prices[key]?.mo ?? ""}
+                         onChange={(e) => setP(key, "mo", e.target.value)}
+                         data-testid={`pc-price-${key}-mo`}
+                         className="rounded-sm h-7 text-right num text-xs" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={reset} disabled={busy}
+                  className="rounded-sm gap-2 mr-auto" data-testid="pc-settings-reset-btn">
+            <RotateCcw className="h-3.5 w-3.5" /> Réinitialiser
+          </Button>
+          <Button variant="outline" onClick={onClose} className="rounded-sm"
+                  data-testid="pc-settings-cancel">Annuler</Button>
+          <Button onClick={save} disabled={busy} className="rounded-sm gap-2"
+                  data-testid="pc-settings-save-btn">
+            <Save className="h-3.5 w-3.5" /> {busy ? "…" : "Enregistrer"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

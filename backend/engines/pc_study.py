@@ -11,7 +11,6 @@ Les quantités/prix sont calculés ici avec des RÈGLES FIXES validées par l'ut
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import math
@@ -71,7 +70,8 @@ PLANNING_PHASES = [
 ]
 
 
-def compute_planning(lots: list[dict], crew_size: int = CREW_SIZE) -> dict:
+def compute_planning(lots: list[dict], crew_size: int = CREW_SIZE,
+                     hourly_rate: float = HOURLY_RATE_EUR) -> dict:
     """Planning séquentiel des corps d'état : durées issues des heures MO + séchages."""
     all_lines = [ln for l in lots for ln in l["lines"]]
     phases: list[dict] = []
@@ -81,14 +81,14 @@ def compute_planning(lots: list[dict], crew_size: int = CREW_SIZE) -> dict:
                  if any(k.lower() in ln["designation"].lower() for k in keys)]
         if not tasks:
             continue
-        hours = sum(ln["total_mo"] for ln in tasks) / HOURLY_RATE_EUR
+        hours = sum(ln["total_mo"] for ln in tasks) / hourly_rate
         work_days = max(1, math.ceil(hours / (crew_size * 8)))
         phases.append({"name": name, "tasks": [t["designation"] for t in tasks],
                        "hours": round(hours, 1), "work_days": work_days,
                        "cure_days": cure, "start_day": cursor,
                        "end_day": cursor + work_days - 1})
         cursor += work_days + cure
-    return {"crew_size": crew_size, "hourly_rate_eur": HOURLY_RATE_EUR,
+    return {"crew_size": crew_size, "hourly_rate_eur": hourly_rate,
             "phases": phases,
             "total_work_days": sum(p["work_days"] for p in phases),
             "total_cure_days": sum(p["cure_days"] for p in phases),
@@ -143,7 +143,7 @@ async def analyze_pc_page(image_b64_png: str) -> dict:
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent", "confidence": 0.0}
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        from emergentintegrations.llm.chat import ImageContent, LlmChat, UserMessage
         chat = LlmChat(api_key=api_key, session_id="pc-study",
                        system_message="Tu réponds toujours en JSON strict, sans markdown.",
                        ).with_model("openai", "gpt-4o")
@@ -257,8 +257,20 @@ def _resolve_inputs(merged: dict, overrides: dict, rooms_surface_m2: float) -> t
              "stairs_count": stairs}, src)
 
 
-def _line(designation: str, detail: str, unit: str, qty: float, price_key: str) -> dict:
-    p = PC_UNIT_PRICES[price_key]
+def merge_unit_prices(custom: dict | None) -> dict:
+    """Fusionne les prix personnalisés (réglages user) avec les défauts."""
+    if not custom:
+        return PC_UNIT_PRICES
+    out = {}
+    for k, v in PC_UNIT_PRICES.items():
+        c = custom.get(k) or {}
+        out[k] = {"mat": float(c.get("mat", v["mat"])), "mo": float(c.get("mo", v["mo"]))}
+    return out
+
+
+def _line(designation: str, detail: str, unit: str, qty: float, price_key: str,
+          prices: dict | None = None) -> dict:
+    p = (prices or PC_UNIT_PRICES)[price_key]
     qty = round(qty, 2)
     t_mat = round(qty * p["mat"], 2)
     t_mo = round(qty * p["mo"], 2)
@@ -277,25 +289,27 @@ def _stair_volume(height_m: float, steps: int | None) -> float:
     return round(paillasse + marches, 3)
 
 
-def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None) -> dict:
+def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
+                        prices: dict | None = None) -> dict:
     """Calcul déterministe des quantités + devis détaillé (règles fixes)."""
     R = RULES
+    P = prices or PC_UNIT_PRICES
     per, ref, lv, h = i["perimeter_m"], i["refends_m"], i["levels"], i["wall_height_m"]
     L_sem = round(per + ref, 2)
 
     fondations = [
         _line("Fouilles en rigole 60 × 60 cm (mise hors gel)",
               f"{L_sem} ml sous murs porteurs (périmètre {per} m + refends {ref} m)",
-              "m³", L_sem * 0.6 * 0.6, "fouilles"),
+              "m³", L_sem * 0.6 * 0.6, "fouilles", P),
         _line("Béton de propreté ép. 5 cm",
               "C16/20 — largeur 60 cm en fond de fouille", "m³",
-              L_sem * 0.6 * 0.05, "beton_proprete"),
+              L_sem * 0.6 * 0.05, "beton_proprete", P),
         _line("Semelles filantes BA 60 × 30 cm",
               f"C25/30 — {L_sem} ml sous tous murs porteurs", "m³",
-              L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle"),
+              L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle", P),
         _line("Aciers semelles — 3+3 HA10 filants + cadres HA6",
               f"{R['acier_semelle_kg_ml']} kg/ml × {L_sem} ml", "kg",
-              L_sem * R["acier_semelle_kg_ml"], "acier_semelle"),
+              L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
     ]
 
     slab_area = round(i["ground_floor_area_m2"] + i["upper_floors_area_m2"], 2)
@@ -305,11 +319,11 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None) -> dict:
     planchers = [
         _line(f"Dalle / plancher BA ép. {int(R['slab_thickness_m'] * 100)} cm",
               f"C25/30 — {detail_slab}", "m³",
-              slab_area * R["slab_thickness_m"], "beton_dalle"),
+              slab_area * R["slab_thickness_m"], "beton_dalle", P),
         _line("Treillis soudé ST25C + chapeaux",
               f"{R['acier_dalle_kg_m2']} kg/m² × {slab_area} m²", "kg",
-              slab_area * R["acier_dalle_kg_m2"], "treillis_dalle"),
-        _line("Coffrage de rives de dalle", "périmètre dalle RDC", "ml", per, "coffrage_rive"),
+              slab_area * R["acier_dalle_kg_m2"], "treillis_dalle", P),
+        _line("Coffrage de rives de dalle", "périmètre dalle RDC", "ml", per, "coffrage_rive", P),
     ]
 
     wall_gross = round((per + ref) * h * lv, 2)
@@ -324,16 +338,16 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None) -> dict:
         _line(f"Murs en brique isobrique ép. {int(R['wall_thickness_m'] * 100)} cm",
               f"{bricks} briques (≈ {R['bricks_per_m2']} u/m²) — pose joint mince — "
               f"{wall_gross} m² bruts − {i['openings_area_m2']} m² d'ouvertures",
-              "m²", wall_net, "mur_isobrique"),
+              "m²", wall_net, "mur_isobrique", P),
         _line("Chaînages horizontaux + raidisseurs verticaux BA 20 × 20",
               f"{ch_h} ml CH + {ch_v} ml CV ({n_raid} raidisseurs/niveau)", "m³",
-              ch_beton, "chainage_beton"),
+              ch_beton, "chainage_beton", P),
         _line("Aciers chaînages — 4 HA10 + cadres HA6",
               f"{R['acier_chainage_kg_ml']} kg/ml × {round(ch_h + ch_v, 1)} ml", "kg",
-              (ch_h + ch_v) * R["acier_chainage_kg_ml"], "acier_chainage"),
+              (ch_h + ch_v) * R["acier_chainage_kg_ml"], "acier_chainage", P),
         _line("Linteaux BA sur ouvertures",
               f"{i['openings_count']} ouvertures (larg. moy. {i['avg_opening_width_m']} m "
-              "+ 2 × 20 cm d'appuis)", "ml", lint_ml, "linteau"),
+              "+ 2 × 20 cm d'appuis)", "ml", lint_ml, "linteau", P),
     ]
 
     escalier = []
@@ -343,10 +357,10 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None) -> dict:
         escalier = [
             _line("Escalier béton armé coulé en place",
                   f"{i['stairs_count']} volée(s) — paillasse 15 cm + marches 17 × 28, larg. 1,00 m",
-                  "m³", vol_esc, "escalier_beton"),
+                  "m³", vol_esc, "escalier_beton", P),
             _line("Aciers escalier",
                   f"{R['acier_escalier_kg_m3']} kg/m³ × {vol_esc} m³", "kg",
-                  vol_esc * R["acier_escalier_kg_m3"], "acier_escalier"),
+                  vol_esc * R["acier_escalier_kg_m3"], "acier_escalier", P),
         ]
 
     lots = [l for l in [
@@ -370,11 +384,16 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None) -> dict:
 
 
 def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
-                pages_analyzed: list[int] | None = None) -> dict:
+                pages_analyzed: list[int] | None = None,
+                settings: dict | None = None) -> dict:
     """Assemble l'étude complète : demandes lues + hypothèses + devis quantifié."""
+    settings = settings or {}
+    prices = merge_unit_prices(settings.get("unit_prices"))
+    crew = int(settings.get("crew_size") or CREW_SIZE)
+    rate = float(settings.get("hourly_rate_eur") or HOURLY_RATE_EUR)
     inputs, sources = _resolve_inputs(merged, overrides, rooms_surface_m2)
-    computed = compute_gros_oeuvre(inputs, merged.get("stairs_steps"))
-    planning = compute_planning(computed["lots"])
+    computed = compute_gros_oeuvre(inputs, merged.get("stairs_steps"), prices)
+    planning = compute_planning(computed["lots"], crew, rate)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "pages_analyzed": pages_analyzed or [],
@@ -386,6 +405,7 @@ def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
         "inputs": inputs,
         "input_sources": sources,
         "rules": RULES,
+        "custom_pricing": bool(settings.get("unit_prices")),
         "planning": planning,
         **computed,
     }

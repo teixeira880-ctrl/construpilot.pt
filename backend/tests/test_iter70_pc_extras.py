@@ -96,3 +96,67 @@ class TestPcSend:
         reports = r.json().get("sent_reports") or []
         assert any(s.get("kind") == "pc_study" for s in reports), \
             "l'envoi pc_study doit apparaître dans sent_reports"
+
+
+class TestPcSettings:
+    def test_get_settings_with_defaults(self, pro_headers):
+        r = requests.get(f"{BASE_URL}/api/pc/settings", headers=pro_headers, timeout=30)
+        assert r.status_code == 200
+        d = r.json()
+        assert len(d["defaults"]["unit_prices"]) == 13
+        assert d["defaults"]["crew_size"] >= 1
+
+    def test_put_recompute_and_reset(self, pro_headers):
+        r0 = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study",
+                          headers=pro_headers, timeout=30)
+        base_ttc = r0.json()["pc_study"]["totals"]["ttc"]
+        r = requests.put(f"{BASE_URL}/api/pc/settings", json={
+            "unit_prices": {"mur_isobrique": {"mat": 60, "mo": 70}},
+            "crew_size": 5, "hourly_rate_eur": 50}, headers=pro_headers, timeout=30)
+        assert r.status_code == 200
+        r = requests.post(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study/recompute",
+                          headers=pro_headers, timeout=30)
+        assert r.status_code == 200
+        study = r.json()
+        assert study["custom_pricing"] is True
+        assert study["planning"]["crew_size"] == 5
+        assert study["totals"]["ttc"] > base_ttc
+        # reset → retour au TTC de base
+        assert requests.delete(f"{BASE_URL}/api/pc/settings",
+                               headers=pro_headers, timeout=30).status_code == 200
+        r = requests.post(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study/recompute",
+                          headers=pro_headers, timeout=30)
+        assert r.json()["totals"]["ttc"] == pytest.approx(base_ttc, abs=0.02)
+        assert r.json()["custom_pricing"] is False
+
+    def test_put_rejects_bad_crew(self, pro_headers):
+        r = requests.put(f"{BASE_URL}/api/pc/settings", json={"crew_size": 99},
+                         headers=pro_headers, timeout=30)
+        assert r.status_code == 422
+
+    def test_settings_require_auth(self):
+        assert requests.get(f"{BASE_URL}/api/pc/settings",
+                            timeout=30).status_code in (401, 403)
+
+
+class TestPcTracking:
+    def test_pixel_public_and_idempotent(self, pro_headers):
+        r = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}", headers=pro_headers,
+                         timeout=30)
+        tracked = [s for s in r.json().get("sent_reports") or []
+                   if s.get("track_id")]
+        assert tracked, "au moins un envoi pc_study doit avoir un track_id"
+        tid = tracked[-1]["track_id"]
+        # pixel public (sans auth), gif, 2 hits = idempotent
+        for _ in range(2):
+            px = requests.get(f"{BASE_URL}/api/pc/track/{tid}", timeout=30)
+            assert px.status_code == 200
+            assert px.headers["content-type"].startswith("image/gif")
+        r = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}", headers=pro_headers,
+                         timeout=30)
+        s = [x for x in r.json()["sent_reports"] if x.get("track_id") == tid][0]
+        assert s["opened"] is True and s.get("opened_at")
+
+    def test_pixel_unknown_track_id_still_200(self):
+        px = requests.get(f"{BASE_URL}/api/pc/track/pct_inconnu", timeout=30)
+        assert px.status_code == 200

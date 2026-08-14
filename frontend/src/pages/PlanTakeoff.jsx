@@ -623,6 +623,13 @@ export default function PlanTakeoff() {
     }));
     nav("/prix");
   };
+  const recomputePcStudy = async () => {
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/pc-study/recompute`);
+      await refreshPlan();
+      toast.success(`Devis recalculé avec vos réglages — ${data.totals?.ttc ?? 0} € TTC`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Recalcul impossible"); }
+  };
 
   // Iter67 — modèles de message réutilisables (envoi de rapports)
   useEffect(() => {
@@ -1770,7 +1777,9 @@ export default function PlanTakeoff() {
                          onRun={runPcStudy} onDownload={downloadPcFile}
                          onDownloadXlsx={downloadXlsx}
                          planId={plan?.plan_id} onSent={refreshPlan}
-                         onCompareSuppliers={comparePcSuppliers} />
+                         onCompareSuppliers={comparePcSuppliers}
+                         sentReports={(plan?.sent_reports || []).filter((s) => s.kind === "pc_study")}
+                         onRecompute={recomputePcStudy} />
           <Button variant="outline"
                   onClick={() => { setEstimateDialog(true); setEstimateResult(null); }}
                   data-testid="plan-estimate-btn"
