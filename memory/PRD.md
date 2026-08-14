@@ -2122,3 +2122,10 @@ Chantier/engins 10,5 k + Terrassement 15 k + Fondations 12 k + Planchers 21,4 k 
 - plans_pc.py ≈ 1 500 lignes — scission en modules recommandée (non demandée par l'utilisateur).
 - Test Playwright du canvas : dispatcher des PointerEvent (pointerId) — page.mouse seul ne déclenche pas hasInk.
 
+---
+
+## Itération 79 (14/06/2026) — GOOGLE SIGN-IN (Emergent Auth) : VÉRIFIÉ COMPLET
+
+Constat : l'intégration Emergent Google Auth était déjà entièrement implémentée (bouton /login `google-login-btn`, AuthCallback + détection hash synchrone via useLocation, garde AuthProvider, POST /api/auth/session → fusion par email + cookie httpOnly `session_token` 7 j, current_user cookie→Bearer (session ou JWT), /auth/me, /auth/logout). Conformité playbook revalidée point par point (redirect via window.location.origin sans fallback, commentaire REMINDER présent).
+Tests réels (14/06) : /auth/me Bearer + cookie 200, endpoint protégé 200, session_id invalide → 401 (Emergent Auth joignable), logout → 401, navigateur : dashboard chargé sans redirection avec session simulée (« Bonjour Test »). Playbook de test sauvegardé dans /app/auth_testing.md ; identités de test documentées dans /app/memory/test_credentials.md. Données de test nettoyées.
+
