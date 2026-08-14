@@ -41,7 +41,7 @@ async def _set_session(response: Response, user_id: str, token: str | None = Non
 
 
 @router.post("/register")
-async def register(body: RegisterIn, response: Response):
+async def register(body: RegisterIn, response: Response) -> dict:
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
@@ -67,7 +67,7 @@ async def register(body: RegisterIn, response: Response):
 
 
 @router.post("/login")
-async def login(body: LoginIn, response: Response):
+async def login(body: LoginIn, response: Response) -> dict:
     user = await db.users.find_one({"email": body.email.lower()}, {"_id": 0})
     if not user or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
@@ -76,7 +76,7 @@ async def login(body: LoginIn, response: Response):
 
 
 @router.post("/session")
-async def google_session(request: Request, response: Response):
+async def google_session(request: Request, response: Response) -> dict:
     session_id = request.headers.get("X-Session-ID") or (await request.json()).get("session_id")
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id manquant")
@@ -110,7 +110,7 @@ async def me(user=Depends(current_user)):
 
 
 @router.post("/logout")
-async def logout(request: Request, response: Response, user=Depends(optional_user)):
+async def logout(request: Request, response: Response, user=Depends(optional_user)) -> dict:
     token = request.cookies.get("session_token")
     if token:
         await db.user_sessions.delete_many({"session_token": token})

@@ -58,7 +58,7 @@ async def upsert_whitelabel(body: WhiteLabelConfigIn, admin=Depends(admin_user))
 
 
 @router.delete("/admin/whitelabel/{tenant_slug}")
-async def delete_whitelabel(tenant_slug: str, admin=Depends(admin_user)):
+async def delete_whitelabel(tenant_slug: str, admin=Depends(admin_user)) -> dict:
     await db.whitelabel_tenants.delete_one({"tenant_slug": tenant_slug})
     return {"ok": True}
 
@@ -72,7 +72,7 @@ class SupplierClaimIn(BaseModel):
 
 
 @router.post("/suppliers/claim")
-async def claim_supplier(body: SupplierClaimIn, user=Depends(current_user)):
+async def claim_supplier(body: SupplierClaimIn, user=Depends(current_user)) -> dict:
     """Un user réclame la propriété d'un fournisseur (validation admin ensuite)."""
     doc = body.model_dump()
     doc.update({"user_id": user["user_id"], "verified": False,
@@ -92,7 +92,7 @@ async def _resolve_supplier(user_id: str) -> str | None:
 
 
 @router.get("/suppliers/dashboard")
-async def supplier_dashboard(days: int = 30, user=Depends(current_user)):
+async def supplier_dashboard(days: int = 30, user=Depends(current_user)) -> dict:
     """Dashboard fournisseur : clics, redirections, top produits, GMV, commissions."""
     sup = await _resolve_supplier(user["user_id"])
     if not sup and user.get("role") == "admin":
@@ -128,7 +128,7 @@ async def supplier_dashboard(days: int = 30, user=Depends(current_user)):
 
 
 @router.post("/admin/suppliers/{claim_id}/verify")
-async def verify_supplier_claim(claim_id: str, admin=Depends(admin_user)):
+async def verify_supplier_claim(claim_id: str, admin=Depends(admin_user)) -> dict:
     r = await db.supplier_owners.update_one(
         {"user_id": claim_id} if "@" not in claim_id else {"contact_email": claim_id},
         {"$set": {"verified": True, "status": "verified", "verified_at": _now()}})
@@ -159,7 +159,7 @@ class EnterpriseLeadIn(BaseModel):
 
 
 @router.post("/enterprise/contact")
-async def enterprise_contact(body: EnterpriseLeadIn):
+async def enterprise_contact(body: EnterpriseLeadIn) -> dict:
     doc = body.model_dump()
     doc.update({"lead_id": f"ent_{int(datetime.now(timezone.utc).timestamp()*1000)}",
                 "status": "new", "score": _score_enterprise(doc),

@@ -27,7 +27,7 @@ def _now():
 # =============== PUSH NOTIFICATIONS ===============
 
 @router.get("/push/public-key")
-async def push_public_key():
+async def push_public_key() -> dict:
     return {"public_key": VAPID_PUBLIC}
 
 
@@ -37,7 +37,7 @@ class PushSubIn(BaseModel):
 
 
 @router.post("/push/subscribe")
-async def push_subscribe(body: PushSubIn, user=Depends(current_user)):
+async def push_subscribe(body: PushSubIn, user=Depends(current_user)) -> dict:
     doc = {"user_id": user["user_id"], "endpoint": body.endpoint,
            "keys": body.keys, "created_at": _now()}
     await db.push_subscriptions.update_one({"endpoint": body.endpoint},
@@ -46,7 +46,7 @@ async def push_subscribe(body: PushSubIn, user=Depends(current_user)):
 
 
 @router.post("/push/unsubscribe")
-async def push_unsubscribe(body: PushSubIn, user=Depends(current_user)):
+async def push_unsubscribe(body: PushSubIn, user=Depends(current_user)) -> dict:
     await db.push_subscriptions.delete_one({"endpoint": body.endpoint,
                                             "user_id": user["user_id"]})
     return {"ok": True}
@@ -79,7 +79,7 @@ async def notify_user(user_id: str, title: str, body: str, url: str = "/") -> in
 
 
 @router.post("/push/test")
-async def push_test(user=Depends(current_user)):
+async def push_test(user=Depends(current_user)) -> dict:
     n = await notify_user(user["user_id"], "ConstruPilot",
                           "🎉 Vos notifications push sont bien activées !", "/dashboard")
     return {"ok": True, "sent": n}
@@ -88,7 +88,7 @@ async def push_test(user=Depends(current_user)):
 # =============== RETENTION digest manual trigger ===============
 
 @router.post("/admin/retention/send-digests")
-async def send_digests_now(admin=Depends(admin_user)):
+async def send_digests_now(admin=Depends(admin_user)) -> dict:
     from engines import retention
     sent = await retention.send_weekly_digests()
     return {"ok": True, "sent": sent}
@@ -128,7 +128,7 @@ class SnapshotLabelIn(BaseModel):
 
 
 @router.get("/users/me/branding")
-async def get_branding(user=Depends(current_user)):
+async def get_branding(user=Depends(current_user)) -> dict:
     # Si user membre d'une org → branding org (partagé équipe)
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1,
@@ -230,7 +230,7 @@ async def _org_public(org_id: str) -> dict | None:
 
 
 @router.get("/organizations/me")
-async def org_me(user=Depends(current_user)):
+async def org_me(user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1})
     org_id = (u or {}).get("organization_id")
@@ -246,7 +246,7 @@ async def org_me(user=Depends(current_user)):
 
 
 @router.post("/organizations")
-async def org_create(body: OrgCreateIn, user=Depends(current_user)):
+async def org_create(body: OrgCreateIn, user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1})
     if u and u.get("organization_id"):
@@ -288,7 +288,7 @@ class OrgJoinCodeIn(BaseModel):
 
 
 @router.post("/organizations/join")
-async def org_join(body: OrgJoinCodeIn, user=Depends(current_user)):
+async def org_join(body: OrgJoinCodeIn, user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1})
     if u and u.get("organization_id"):
@@ -305,7 +305,7 @@ async def org_join(body: OrgJoinCodeIn, user=Depends(current_user)):
 
 
 @router.post("/organizations/leave")
-async def org_leave(user=Depends(current_user)):
+async def org_leave(user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1})
     org_id = (u or {}).get("organization_id")
@@ -332,7 +332,7 @@ class OrgTransferIn(BaseModel):
 
 
 @router.post("/organizations/transfer-ownership")
-async def org_transfer_ownership(body: OrgTransferIn, user=Depends(current_user)):
+async def org_transfer_ownership(body: OrgTransferIn, user=Depends(current_user)) -> dict:
     """Transfère la propriété de l'org à un autre membre. L'ancien devient admin."""
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1})
@@ -359,7 +359,7 @@ async def org_transfer_ownership(body: OrgTransferIn, user=Depends(current_user)
 
 
 @router.delete("/organizations/members/{member_user_id}")
-async def org_remove_member(member_user_id: str, user=Depends(current_user)):
+async def org_remove_member(member_user_id: str, user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1})
     if not u or not u.get("organization_id"):
@@ -382,7 +382,7 @@ async def org_remove_member(member_user_id: str, user=Depends(current_user)):
 
 
 @router.post("/organizations/invite")
-async def org_invite(body: OrgInviteIn, user=Depends(current_user)):
+async def org_invite(body: OrgInviteIn, user=Depends(current_user)) -> dict:
     """Envoie un email d'invitation contenant le code de l'organisation."""
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1, "email": 1,

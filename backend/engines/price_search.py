@@ -318,7 +318,7 @@ def stores_nearby(lat: float, lng: float, radius_km: int = 20) -> list[dict]:
     """
     seed_bytes = f"{lat:.4f}:{lng:.4f}:{radius_km}".encode()
 
-    def _stream():
+    def _stream() -> None:
         counter = 0
         while True:
             h = hashlib.sha256(seed_bytes + counter.to_bytes(4, "big")).digest()

@@ -39,7 +39,7 @@ async def chat(body: ChatIn, user=Depends(optional_user)):
         "role": "user", "content": body.message,
         "created_at": datetime.now(timezone.utc).isoformat()})
 
-    async def gen():
+    async def gen() -> None:
         yield f"data: {json.dumps({'session_id': session_id})}\n\n"
         chunks = []
         async for delta in ai.stream_chat(history, body.message, session_id, context):
@@ -69,7 +69,7 @@ class PhotoIn(BaseModel):
 
 
 @router.post("/vision/photo")
-async def analyse_photo(body: PhotoIn, user=Depends(optional_user)):
+async def analyse_photo(body: PhotoIn, user=Depends(optional_user)) -> dict:
     b64 = body.image_base64.split(",")[-1]
     result = await ai.analyse_photo(b64, body.note)
     dims = result.get("estimated_dimensions") or {}

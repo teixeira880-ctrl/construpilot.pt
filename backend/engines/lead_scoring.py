@@ -35,7 +35,7 @@ def budget_tier(budget: float | None) -> str:
     return "grand"
 
 
-def _score_budget(lead: dict, add):
+def _score_budget(lead: dict, add) -> None:
     b = lead.get("budget") or 0
     if b <= 0:
         return
@@ -46,7 +46,7 @@ def _score_budget(lead: dict, add):
         add("Budget premium", 5, ">= 20 000 €")
 
 
-def _score_address(lead: dict, add):
+def _score_address(lead: dict, add) -> None:
     addr = (lead.get("address") or "").strip()
     if not addr:
         return
@@ -56,7 +56,7 @@ def _score_address(lead: dict, add):
         add("Adresse partielle", 5, "sans code postal")
 
 
-def _score_description(lead: dict, add):
+def _score_description(lead: dict, add) -> None:
     desc = (lead.get("description") or "").strip()
     if len(desc) >= 100:
         add("Description détaillée", 10, f"{len(desc)} caractères")
@@ -64,12 +64,12 @@ def _score_description(lead: dict, add):
         add("Description sommaire", 5, f"{len(desc)} caractères")
 
 
-def _score_surface(lead: dict, add):
+def _score_surface(lead: dict, add) -> None:
     if lead.get("surface"):
         add("Surface indiquée", 10, f"{lead['surface']} m²")
 
 
-def _score_delay(lead: dict, add):
+def _score_delay(lead: dict, add) -> None:
     d = lead.get("delay_days")
     if d is None:
         return
@@ -79,7 +79,7 @@ def _score_delay(lead: dict, add):
         add("Démarrage court terme", 5, "≤ 6 mois")
 
 
-def _score_phone(lead: dict, add):
+def _score_phone(lead: dict, add) -> None:
     phone = (lead.get("phone") or "").strip()
     if phone and len(re.sub(r"\D", "", phone)) >= 9:
         add("Téléphone présent", 10, phone)
@@ -87,7 +87,7 @@ def _score_phone(lead: dict, add):
             add("Téléphone vérifié", 5)
 
 
-def _score_email(lead: dict, add):
+def _score_email(lead: dict, add) -> None:
     email = (lead.get("email") or "").strip()
     if "@" in email:
         add("Email présent", 10)
@@ -95,13 +95,13 @@ def _score_email(lead: dict, add):
             add("Email vérifié", 5)
 
 
-def _score_photos(lead: dict, add):
+def _score_photos(lead: dict, add) -> None:
     photos = lead.get("photos_count", 0) or 0
     if photos:
         add("Photos jointes", min(15, photos * 5), f"{photos} photo(s)")
 
 
-def _score_keywords(lead: dict, add):
+def _score_keywords(lead: dict, add) -> None:
     low = (lead.get("description") or "").lower()
     matched = [kw for kw in LOT_KEYWORDS if kw in low]
     if matched:
@@ -132,7 +132,7 @@ def score(lead: dict) -> dict:
     detail: list[dict] = []
     pts = 0
 
-    def add(label: str, value: int, reason: str = ""):
+    def add(label: str, value: int, reason: str = "") -> None:
         nonlocal pts
         pts += value
         detail.append({"label": label, "points": value, "reason": reason})

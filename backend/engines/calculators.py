@@ -38,7 +38,7 @@ def _paint_geometry(p: PaintParams) -> dict:
             "ceiling": ceiling, "net": net}
 
 
-def paint(*args, **kwargs):
+def paint(*args, **kwargs) -> dict:
     """Calc peinture. Accepte `PaintParams(...)` OU les kwargs legacy."""
     p = args[0] if args and isinstance(args[0], PaintParams) else PaintParams(*args, **kwargs)
     geom = _paint_geometry(p)
@@ -93,7 +93,7 @@ def _tile_default_loss(pose: str) -> float:
     return 12 if pose == "diagonale" else 8
 
 
-def tile(*args, **kwargs):
+def tile(*args, **kwargs) -> dict:
     p = args[0] if args and isinstance(args[0], TileParams) else TileParams(*args, **kwargs)
     loss = p.loss_pct if p.loss_pct is not None else _tile_default_loss(p.pose)
     tile_area = (p.tile_length / 100 + p.joint / 1000) * (p.tile_width / 100 + p.joint / 1000)
@@ -134,7 +134,7 @@ def tile(*args, **kwargs):
 # =============== DRYWALL ===============
 
 def drywall(area: float, plate_type: str = "BA13 standard", plate_length: float = 250,
-            plate_width: float = 120, structure: str = "cloison", price_per_plate: float = 7.5):
+            plate_width: float = 120, structure: str = "cloison", price_per_plate: float = 7.5) -> dict:
     plate_area = (plate_length / 100) * (plate_width / 100)
     layers = 2 if structure == "cloison" else 1
     net = area * 1.10 * layers
@@ -213,7 +213,7 @@ def _concrete_materials_for_mode(mode: str, vol_margin: float, cement_kg: float,
 
 
 def concrete(length: float, width: float, thickness_cm: float, mode: str = "sacs",
-             price_per_m3: float = 135.0):
+             price_per_m3: float = 135.0) -> dict:
     volume = length * width * (thickness_cm / 100)
     vol_margin = volume * 1.07
     bags_35 = _ceil(vol_margin / 0.0175)  # 1 sac 35kg ≈ 17,5 L de béton
@@ -245,7 +245,7 @@ LAMBDA = {"laine_de_verre": 0.032, "laine_de_roche": 0.035, "polystyrene": 0.031
 
 
 def insulation(area: float, material: str = "laine_de_verre", thickness_mm: float | None = None,
-               target_r: float | None = None, price_per_sqm: float = 12.0):
+               target_r: float | None = None, price_per_sqm: float = 12.0) -> dict:
     lam = LAMBDA.get(material, 0.035)
     if target_r and not thickness_mm:
         thickness_mm = round(target_r * lam * 1000)
@@ -346,7 +346,7 @@ def _roof_facade_materials(real_area: float, facade_net: float, projected: float
     ]
 
 
-def roof_facade(*args, **kwargs):
+def roof_facade(*args, **kwargs) -> dict:
     """Toitures inclinées + ITE façades.
 
     Accepte `RoofFacadeParams(...)` OU les kwargs legacy (compat).

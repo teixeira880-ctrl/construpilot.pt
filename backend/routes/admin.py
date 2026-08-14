@@ -12,7 +12,7 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(admin_
 
 
 @router.get("/inbox")
-async def admin_inbox(hours: int = 168):
+async def admin_inbox(hours: int = 168) -> dict:
     """Boîte de réception admin — vue consolidée des demandes et incidents récents.
 
     Renvoie leads récents + nouveaux users + devis envoyés + erreurs client
@@ -77,7 +77,7 @@ async def admin_inbox(hours: int = 168):
 
 
 @router.get("/stats")
-async def stats():
+async def stats() -> dict:
     users = await db.users.count_documents({})
     projects = await db.projects.count_documents({})
     leads = await db.leads.count_documents({})
@@ -92,7 +92,7 @@ async def stats():
 
 
 @router.get("/prices")
-async def prices():
+async def prices() -> list:
     overrides = {d["key"]: d async for d in db.price_reference.find({}, {"_id": 0})}
     return [{**l, **overrides.get(l["key"], {}), "overridden": l["key"] in overrides} for l in LOTS]
 
@@ -106,7 +106,7 @@ class PriceIn(BaseModel):
 
 
 @router.put("/prices/{key}")
-async def update_price(key: str, body: PriceIn):
+async def update_price(key: str, body: PriceIn) -> dict:
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     await db.price_reference.update_one(
         {"key": key}, {"$set": {**updates, "key": key,
@@ -118,7 +118,7 @@ async def update_price(key: str, body: PriceIn):
 
 
 @router.delete("/prices/{key}")
-async def reset_price(key: str):
+async def reset_price(key: str) -> dict:
     await db.price_reference.delete_one({"key": key})
     return {"ok": True}
 
@@ -187,7 +187,7 @@ async def update_lead(lead_id: str, body: LeadStatusIn):
 
 
 @router.get("/suppliers")
-async def suppliers():
+async def suppliers() -> dict:
     extra = await db.suppliers.find({}, {"_id": 0}).to_list(200)
     return {"builtin": price_search.SUPPLIERS, "custom": extra}
 
@@ -215,7 +215,7 @@ async def add_supplier(body: SupplierIn):
 
 
 @router.delete("/suppliers/{key}")
-async def delete_supplier(key: str):
+async def delete_supplier(key: str) -> dict:
     await db.suppliers.delete_one({"key": key})
     return {"ok": True}
 
@@ -263,13 +263,13 @@ async def upsert_plan(body: PlanIn):
 
 
 @router.delete("/plans/{plan_id}")
-async def delete_plan(plan_id: str):
+async def delete_plan(plan_id: str) -> dict:
     await db.plans.delete_one({"plan_id": plan_id})
     return {"ok": True}
 
 
 @router.post("/plans/sync-stripe")
-async def sync_stripe():
+async def sync_stripe() -> dict:
     from engines import monetization
     await monetization.ensure_stripe_catalog()
     return {"ok": True}
@@ -293,7 +293,7 @@ async def set_flags(body: dict):
 # ---------- Revenue dashboard (Phase 1 : basique) ----------
 
 @router.get("/revenue")
-async def revenue_dashboard():
+async def revenue_dashboard() -> dict:
     paid = await db.payment_transactions.find(
         {"payment_status": "paid"}, {"_id": 0}).to_list(5000)
     from collections import defaultdict

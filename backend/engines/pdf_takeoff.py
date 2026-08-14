@@ -57,7 +57,7 @@ def _fmt(v, unit="", digits=2):
     return str(v)
 
 
-def _styles():
+def _styles() -> dict:
     ss = getSampleStyleSheet()
     return {
         "h1": ParagraphStyle("h1", parent=ss["Heading1"], textColor=DARK,
@@ -351,9 +351,40 @@ def _story_preset_legend(story: list, kinds: list[str], S: dict) -> None:
     story.append(t)
 
 
+def _story_measurements(story: list, measurements: list, S: dict) -> None:
+    """Iter66 — mesures ad-hoc enregistrées (trace imprimable avec libellés)."""
+    if not measurements:
+        return
+    story.append(Paragraph("Mesures enregistrées", S["h2"]))
+    kind_fr = {"distance": "Distance", "polyline": "Polyligne", "polygon": "Polygone"}
+    rows = [["Libellé", "Type", "Page", "Valeur", "Créée le"]]
+    for m in measurements:
+        if m.get("kind") == "polygon":
+            value = f"{_fmt(m.get('area_m2', 0), 'm²')}"
+        else:
+            value = _fmt(m.get("value_m") or m.get("length_m") or 0, "m")
+        d = str(m.get("created_at") or "")[:10]
+        created = f"{d[8:10]}/{d[5:7]}/{d[0:4]}" if len(d) == 10 else "—"
+        rows.append([m.get("label") or "—",
+                     kind_fr.get(m.get("kind"), m.get("kind") or "—"),
+                     str((m.get("page_index") or 0) + 1),
+                     value, created])
+    story.append(_table(rows, [58 * mm, 25 * mm, 14 * mm, 38 * mm, 25 * mm],
+                        style_extras=[
+                            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("ALIGN", (2, 1), (3, -1), "RIGHT"),
+                            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+                        ], repeat_rows=1))
+    story.append(Spacer(1, 4 * mm))
+
+
 def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
                        branding: dict | None = None,
-                       presets_by_id: dict | None = None) -> bytes:
+                       presets_by_id: dict | None = None,
+                       measurements: list | None = None) -> bytes:
     """Rend un PDF de métré à partir d'un plan (rooms + totals + levels).
 
     `branding` optionnel : {"company_name": str, "contact_line": str, "logo_b64": str}
@@ -376,6 +407,7 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
     _story_totals_per_level(story, takeoff.get("levels", []), S)
     _story_rooms_detail(story, takeoff.get("rooms", []), S)
     _story_room_presets(story, takeoff.get("rooms", []), presets_by_id or {}, S)
+    _story_measurements(story, measurements or [], S)
     _story_materials(story, materials, S)
     _story_footer(story, S)
 

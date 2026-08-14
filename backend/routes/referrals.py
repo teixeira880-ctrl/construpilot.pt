@@ -106,7 +106,7 @@ async def referrals_me(user=Depends(current_user)):
 
 
 @router.get("/lookup/{code}")
-async def referrals_lookup(code: str):
+async def referrals_lookup(code: str) -> dict:
     """Public endpoint used by the /register frontend to validate a referral
     code shown in the URL query string. Returns the referrer's first name
     (for the "Invité par Marc" welcome message) or 404 if the code is bogus."""

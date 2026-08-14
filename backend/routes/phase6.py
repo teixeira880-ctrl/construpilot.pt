@@ -44,12 +44,12 @@ async def list_sponsorships(admin=Depends(admin_user)):
 
 
 @router.delete("/admin/sponsorships/{supplier_key}")
-async def delete_sponsorship(supplier_key: str, admin=Depends(admin_user)):
+async def delete_sponsorship(supplier_key: str, admin=Depends(admin_user)) -> dict:
     await db.sponsorships.delete_one({"supplier_key": supplier_key})
     return {"ok": True}
 
 
-async def _reset_daily_if_needed(sp: dict):
+async def _reset_daily_if_needed(sp: dict) -> None:
     reset_at = sp.get("reset_at")
     try:
         d = datetime.fromisoformat(reset_at.replace("Z", "+00:00"))
@@ -94,7 +94,7 @@ class SponsoredClickIn(BaseModel):
 
 
 @router.post("/sponsored/click")
-async def sponsored_click(body: SponsoredClickIn):
+async def sponsored_click(body: SponsoredClickIn) -> dict:
     sp = await db.sponsorships.find_one({"supplier_key": body.supplier_key, "active": True},
                                         {"_id": 0})
     if not sp:
@@ -112,7 +112,7 @@ async def sponsored_click(body: SponsoredClickIn):
 # =============== PRICE HISTORY ===============
 
 @router.post("/prices/history/snapshot")
-async def snapshot_prices(query: str, admin=Depends(admin_user)):
+async def snapshot_prices(query: str, admin=Depends(admin_user)) -> dict:
     """Enregistre les prix courants d'une requête pour tracer l'historique."""
     from engines import price_search
     res = await price_search.search(query, 20)
@@ -135,7 +135,7 @@ async def snapshot_prices(query: str, admin=Depends(admin_user)):
 
 
 @router.get("/prices/history/chart")
-async def price_history_chart(query: str, days: int = 90):
+async def price_history_chart(query: str, days: int = 90) -> dict:
     """Retourne l'historique des prix pour graphique (agrégat journalier)."""
     since = (_now() - timedelta(days=days)).date().isoformat()
     docs = await db.price_history_daily.find(

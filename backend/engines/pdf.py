@@ -24,7 +24,7 @@ def _money(v):
     return f"{v:,.2f} €".replace(",", " ").replace(".", ",").replace(" ", " ")
 
 
-def _styles():
+def _styles() -> dict:
     """Return a dict of paragraph styles used across all `_esti_*` helpers."""
     ss = getSampleStyleSheet()
     return {

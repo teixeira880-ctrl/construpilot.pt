@@ -116,7 +116,7 @@ class PageIn(BaseModel):
 
 
 @router.post("/{plan_id}/calibrate/from-cotes")
-async def calibrate_from_cotes(plan_id: str, body: PageIn, user=Depends(current_user)):
+async def calibrate_from_cotes(plan_id: str, body: PageIn, user=Depends(current_user)) -> dict:
     """Calibration automatique par les traits de cote lus par l'IA (médiane robuste).
 
     Recalcule immédiatement les surfaces de toutes les pièces de la page.
@@ -165,7 +165,7 @@ class ReconcileIn(BaseModel):
 
 
 @router.post("/{plan_id}/calibrate/reconcile")
-async def reconcile_surfaces(plan_id: str, body: ReconcileIn, user=Depends(current_user)):
+async def reconcile_surfaces(plan_id: str, body: ReconcileIn, user=Depends(current_user)) -> dict:
     """Contrôle croisé surfaces mesurées ↔ surfaces ÉCRITES sur le plan (IA).
 
     apply=false : renvoie le diagnostic (écart médian, ppm proposé).
@@ -350,7 +350,7 @@ class WallTypeIn(BaseModel):
 
 @router.patch("/{plan_id}/walls/{page_index}/{wall_id}/type")
 async def update_wall_type(plan_id: str, page_index: int, wall_id: str,
-                           body: WallTypeIn, user=Depends(current_user)):
+                           body: WallTypeIn, user=Depends(current_user)) -> dict:
     """Reclasse manuellement un mur détecté (porteur / cloison / doublage)."""
     if body.wall_type not in ("porteur", "cloison", "doublage"):
         raise HTTPException(400, "wall_type invalide (porteur|cloison|doublage)")
@@ -374,7 +374,7 @@ async def update_wall_type(plan_id: str, page_index: int, wall_id: str,
 
 
 @router.get("/{plan_id}/walls-summary")
-async def walls_summary(plan_id: str, user=Depends(current_user)):
+async def walls_summary(plan_id: str, user=Depends(current_user)) -> dict:
     """Résumé des murs détectés par type + ML total pour lien avec l'estimation."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -478,6 +478,7 @@ class MeasureIn(BaseModel):
     page_index: int
     kind: Literal["distance", "polyline", "polygon"]
     points: list[tuple[float, float]] = Field(min_length=2)
+    label: str | None = Field(default=None, max_length=80)
 
 
 @router.post("/{plan_id}/measure")
@@ -510,6 +511,7 @@ async def measure(plan_id: str, body: MeasureIn, user=Depends(current_user)):
     record = {"measurement_id": f"mes_{secrets.token_hex(6)}",
               "page_index": body.page_index,
               "points": [list(pt) for pt in body.points],
+              "label": (body.label or "").strip()[:80] or None,
               "created_at": _now(), **result}
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
@@ -520,7 +522,7 @@ async def measure(plan_id: str, body: MeasureIn, user=Depends(current_user)):
 
 @router.delete("/{plan_id}/measurements/{measurement_id}")
 async def delete_measurement(plan_id: str, measurement_id: str,
-                             user=Depends(current_user)):
+                             user=Depends(current_user)) -> dict:
     """Supprime une mesure ad-hoc (volet Objets)."""
     res = await db.plans_takeoff.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -531,9 +533,27 @@ async def delete_measurement(plan_id: str, measurement_id: str,
     return {"ok": True}
 
 
+class MeasureLabelIn(BaseModel):
+    label: str = Field(max_length=80)
+
+
+@router.patch("/{plan_id}/measurements/{measurement_id}")
+async def rename_measurement(plan_id: str, measurement_id: str,
+                             body: MeasureLabelIn, user=Depends(current_user)) -> dict:
+    """Modifie le libellé d'une mesure (ex. « murs parpaing », « murs en brique »)."""
+    label = body.label.strip()[:80] or None
+    res = await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"],
+         "measurements.measurement_id": measurement_id},
+        {"$set": {"measurements.$.label": label, "updated_at": _now()}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Mesure introuvable")
+    return {"ok": True, "label": label}
+
+
 @router.delete("/{plan_id}/measurements")
 async def clear_measurements(plan_id: str, page_index: int = 0,
-                             user=Depends(current_user)):
+                             user=Depends(current_user)) -> dict:
     """Efface toutes les mesures ad-hoc d'une page."""
     res = await db.plans_takeoff.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -600,7 +620,7 @@ async def add_opening(plan_id: str, room_id: str, body: OpeningIn, user=Depends(
 
 @router.delete("/{plan_id}/rooms/{room_id}/openings/{opening_id}")
 async def delete_opening(plan_id: str, room_id: str, opening_id: str,
-                          user=Depends(current_user)):
+                          user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "rooms": 1}
     )
@@ -667,7 +687,7 @@ async def upsert_room(plan_id: str, body: RoomIn, user=Depends(current_user)):
 
 
 @router.delete("/{plan_id}/rooms/{room_id}")
-async def delete_room(plan_id: str, room_id: str, user=Depends(current_user)):
+async def delete_room(plan_id: str, room_id: str, user=Depends(current_user)) -> dict:
     res = await db.plans_takeoff.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"$pull": {"rooms": {"room_id": room_id}}, "$set": {"updated_at": _now()}}
@@ -686,7 +706,7 @@ class RoomUpdateIn(BaseModel):
 
 @router.patch("/{plan_id}/rooms/{room_id}")
 async def update_room(plan_id: str, room_id: str, body: RoomUpdateIn,
-                      user=Depends(current_user)):
+                      user=Depends(current_user)) -> dict:
     """Édition inline d'une pièce depuis le Volet Objets (Vague B).
 
     Fix revue iter63 : la hauteur est stockée dans `ceiling_height_m` (champ
@@ -918,7 +938,7 @@ def _diff_walls(before: dict, after: dict) -> dict:
 
 
 @router.post("/compare")
-async def compare_plans(body: CompareIn, user=Depends(current_user)):
+async def compare_plans(body: CompareIn, user=Depends(current_user)) -> dict:
     """Compare 2 plans (avant/après) et renvoie les pièces + murs différents."""
     before = await db.plans_takeoff.find_one(
         {"plan_id": body.before_plan_id, "user_id": user["user_id"]},
@@ -960,7 +980,7 @@ class SnapshotCompareIn(BaseModel):
 
 @router.post("/{plan_id}/history/compare")
 async def compare_snapshots(plan_id: str, body: SnapshotCompareIn,
-                             user=Depends(current_user)):
+                             user=Depends(current_user)) -> dict:
     """Compare 2 snapshots d'historique du MÊME plan (avant/après édition)."""
     if body.before_snapshot_id == body.after_snapshot_id:
         raise HTTPException(400, "Sélectionnez deux snapshots différents.")
@@ -1037,7 +1057,7 @@ def _sum_totals(rooms: list[dict]) -> dict:
 
 
 @router.get("/{plan_id}/takeoff")
-async def takeoff(plan_id: str, user=Depends(current_user)):
+async def takeoff(plan_id: str, user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "rooms": 1, "filename": 1, "pages": 1})
     if not p:
@@ -1099,7 +1119,7 @@ async def compute_materials(plan_id: str, body: MaterialsIn, user=Depends(curren
 # ============ HISTORIQUE (auto-snapshots) ============
 
 @router.get("/{plan_id}/history")
-async def list_history(plan_id: str, user=Depends(current_user)):
+async def list_history(plan_id: str, user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "plan_id": 1})
     if not p:
@@ -1112,7 +1132,7 @@ async def list_history(plan_id: str, user=Depends(current_user)):
 
 
 @router.post("/{plan_id}/history/restore/{snapshot_id}")
-async def restore_snapshot(plan_id: str, snapshot_id: str, user=Depends(current_user)):
+async def restore_snapshot(plan_id: str, snapshot_id: str, user=Depends(current_user)) -> dict:
     snap = await db.plans_takeoff_history.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"], "snapshot_id": snapshot_id},
         {"_id": 0}
@@ -1145,7 +1165,7 @@ class SnapshotLabelIn(BaseModel):
 
 @router.put("/{plan_id}/history/{snapshot_id}/label")
 async def label_snapshot(plan_id: str, snapshot_id: str, body: SnapshotLabelIn,
-                        user=Depends(current_user)):
+                        user=Depends(current_user)) -> dict:
     """Renomme un snapshot d'historique (ex. « Version client 12/02 »)."""
     label = body.label.strip()[:80] or None
     res = await db.plans_takeoff_history.update_one(

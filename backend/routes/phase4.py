@@ -50,7 +50,7 @@ async def rotate_api_key(prefix: str, user=Depends(current_user)):
 
 
 @router.delete("/api-keys/{prefix}")
-async def revoke_api_key(prefix: str, user=Depends(current_user)):
+async def revoke_api_key(prefix: str, user=Depends(current_user)) -> dict:
     await api_commerciale.revoke_api_key(prefix, user["user_id"])
     return {"ok": True}
 
@@ -68,7 +68,7 @@ class PublicEstimateIn(BaseModel):
 
 
 @router.post("/v1/public/estimation")
-async def public_estimation(body: PublicEstimateIn, key=Depends(api_commerciale.require_api_key)):
+async def public_estimation(body: PublicEstimateIn, key=Depends(api_commerciale.require_api_key)) -> dict:
     d = body.model_dump()
     est = estimation.estimate(project_type=d["project_type"], surface=d["surface"],
                               finish=d["finish_level"], country=d["country"],
@@ -83,7 +83,7 @@ class PublicPriceIn(BaseModel):
 
 
 @router.post("/v1/public/prices")
-async def public_prices(body: PublicPriceIn, key=Depends(api_commerciale.require_api_key)):
+async def public_prices(body: PublicPriceIn, key=Depends(api_commerciale.require_api_key)) -> dict:
     res = await price_search.search(body.query, body.limit)
     return {"data": res, "meta": {"plan_id": key["plan_id"]}}
 
@@ -94,7 +94,7 @@ class PublicCalcIn(BaseModel):
 
 
 @router.post("/v1/public/calculators")
-async def public_calc(body: PublicCalcIn, key=Depends(api_commerciale.require_api_key)):
+async def public_calc(body: PublicCalcIn, key=Depends(api_commerciale.require_api_key)) -> dict:
     fn_map = {"paint": calculators.paint, "tile": calculators.tile,
               "drywall": calculators.drywall, "concrete": calculators.concrete,
               "insulation": calculators.insulation}
@@ -124,7 +124,7 @@ class KycSubmitIn(BaseModel):
 
 
 @router.post("/marketplace/kyc")
-async def submit_kyc(body: KycSubmitIn, user=Depends(current_user)):
+async def submit_kyc(body: KycSubmitIn, user=Depends(current_user)) -> dict:
     siren = "".join(c for c in body.siren if c.isdigit())
     if len(siren) not in (9, 14):
         raise HTTPException(status_code=400, detail="SIREN/SIRET invalide (9 ou 14 chiffres)")
@@ -161,7 +161,7 @@ class KycAdminAction(BaseModel):
 
 
 @router.post("/admin/kyc/review")
-async def review_kyc(body: KycAdminAction, admin=Depends(admin_user)):
+async def review_kyc(body: KycAdminAction, admin=Depends(admin_user)) -> dict:
     upd = {"status": "verified" if body.approve else "rejected",
            "verified": body.approve,
            "badge": "ConstruPilot Verified" if body.approve else None,
@@ -185,7 +185,7 @@ async def list_kyc(status: str | None = None, admin=Depends(admin_user)):
 # =============== 4. PORTAIL PRO (leads, achats crédits) ===============
 
 @router.get("/pro/me")
-async def pro_dashboard(user=Depends(current_user)):
+async def pro_dashboard(user=Depends(current_user)) -> dict:
     pro = await db.marketplace_pros.find_one({"user_id": user["user_id"]}, {"_id": 0})
     if not pro:
         return {"registered": False}
@@ -213,7 +213,7 @@ class RechargeIn(BaseModel):
 
 
 @router.post("/pro/credits/checkout")
-async def recharge_credits(body: RechargeIn, user=Depends(current_user)):
+async def recharge_credits(body: RechargeIn, user=Depends(current_user)) -> dict:
     """Recharge crédits pros via Stripe (Checkout Session payment mode)."""
     import stripe
     pro = await db.marketplace_pros.find_one({"user_id": user["user_id"], "verified": True},
@@ -267,7 +267,7 @@ class AffiliateClickIn(BaseModel):
 
 
 @router.post("/affiliate/click")
-async def affiliate_click(body: AffiliateClickIn, user=Depends(optional_user)):
+async def affiliate_click(body: AffiliateClickIn, user=Depends(optional_user)) -> dict:
     click_id = await affiliate.record_click(
         user["user_id"] if user else None, body.supplier_key, body.product_url, body.query)
     return {"ok": True, "click_id": click_id}
@@ -304,7 +304,7 @@ class AffiliateConfigIn(BaseModel):
 
 
 @router.post("/admin/affiliate/configs")
-async def upsert_affiliate_config(body: AffiliateConfigIn, admin=Depends(admin_user)):
+async def upsert_affiliate_config(body: AffiliateConfigIn, admin=Depends(admin_user)) -> dict:
     await affiliate.upsert_config(body.model_dump())
     return {"ok": True}
 

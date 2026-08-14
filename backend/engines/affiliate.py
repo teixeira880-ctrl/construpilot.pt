@@ -40,7 +40,7 @@ DEFAULT_AFFILIATE_CONFIG = [
 ]
 
 
-async def seed_affiliate_configs():
+async def seed_affiliate_configs() -> None:
     for cfg in DEFAULT_AFFILIATE_CONFIG:
         exists = await db.affiliate_configs.find_one({"supplier_key": cfg["supplier_key"]})
         if not exists:
@@ -56,7 +56,7 @@ async def config_map() -> dict:
     return {c["supplier_key"]: c for c in await all_configs()}
 
 
-async def upsert_config(cfg: dict):
+async def upsert_config(cfg: dict) -> None:
     cfg["updated_at"] = _now().isoformat()
     await db.affiliate_configs.update_one({"supplier_key": cfg["supplier_key"]},
                                           {"$set": cfg}, upsert=True)

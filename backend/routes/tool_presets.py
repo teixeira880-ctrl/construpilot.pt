@@ -61,7 +61,7 @@ def _normalize(body: ToolPresetIn) -> dict:
 
 
 @router.get("")
-async def list_presets(user=Depends(current_user)):
+async def list_presets(user=Depends(current_user)) -> dict:
     """Renvoie tous les presets de l'utilisateur, triés par nom."""
     cursor = db.tool_presets.find({"user_id": user["user_id"]}, {"_id": 0}).sort("name", 1)
     return {"presets": await cursor.to_list(200)}
@@ -95,7 +95,7 @@ async def update_preset(preset_id: str, body: ToolPresetIn, user=Depends(current
 
 
 @router.delete("/{preset_id}")
-async def delete_preset(preset_id: str, user=Depends(current_user)):
+async def delete_preset(preset_id: str, user=Depends(current_user)) -> dict:
     res = await db.tool_presets.delete_one(
         {"preset_id": preset_id, "user_id": user["user_id"]}
     )
@@ -105,7 +105,7 @@ async def delete_preset(preset_id: str, user=Depends(current_user)):
 
 
 @router.post("/seed-defaults")
-async def seed_default_presets(user=Depends(current_user)):
+async def seed_default_presets(user=Depends(current_user)) -> dict:
     """Crée les 6 presets d'usine si l'utilisateur n'en a aucun (utile onboarding)."""
     existing = await db.tool_presets.count_documents({"user_id": user["user_id"]})
     if existing > 0:

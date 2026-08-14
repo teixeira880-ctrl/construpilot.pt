@@ -80,6 +80,7 @@ export default function ObjectPanel({
   onRenameRoom, onDeleteRoom, onEstimateRoom, onAttachPreset,
   onDeleteMeasure,
   onClearMeasures,
+  onRenameMeasure,
   onDeleteCounter, onRenameCounter,
   onDeleteNote, onEditNote,
   onDeleteAngle,
@@ -393,17 +394,33 @@ export default function ObjectPanel({
               </div>
             )}
             {measurements.map((m, idx) => (
+              editingId === m.measurement_id ? (
+                <div key={m.measurement_id} className="px-3 py-2 flex items-center gap-2">
+                  <Input value={editValue} onChange={(e) => setEditValue(e.target.value)}
+                         autoFocus className="h-7 text-xs"
+                         placeholder="ex. murs parpaing, murs en brique…"
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter") commitEdit((v) => onRenameMeasure?.(m.measurement_id, v));
+                           if (e.key === "Escape") { setEditingId(null); setEditValue(""); }
+                         }}
+                         data-testid={`object-row-measure-${idx}-input`} />
+                  <Button size="sm" onClick={() => commitEdit((v) => onRenameMeasure?.(m.measurement_id, v))}
+                          className="h-7 text-xs">OK</Button>
+                </div>
+              ) : (
               <Row
                 key={m.measurement_id || idx}
                 icon={Ruler}
                 testId={`object-row-measure-${idx}`}
-                primary={m.kind === "distance" ? "Distance" : "Polyligne"}
-                secondary={`Créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
+                primary={m.label || (m.kind === "distance" ? "Distance" : "Polyligne")}
+                secondary={`${m.kind === "distance" ? "Distance" : "Polyligne"} · créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
                 badge={`${(m.length_m || 0).toFixed(2)} m`}
-                badgeColor="#f97316"
+                badgeColor="#0d9488"
                 onFocus={() => onFocusObject?.({ kind: "measure", data: m })}
+                onEdit={onRenameMeasure ? () => startEdit(m.measurement_id, m.label || "") : null}
                 onDelete={onDeleteMeasure ? () => onDeleteMeasure(m.measurement_id) : null}
               />
+              )
             ))}
           </>
         )}

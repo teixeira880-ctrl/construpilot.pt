@@ -98,7 +98,7 @@ def _auto_calibrate_pages(parsed: dict) -> dict:
 # ============ LIST / GET / DELETE ============
 
 @router.get("")
-async def list_plans(user=Depends(current_user)):
+async def list_plans(user=Depends(current_user)) -> dict:
     docs = await db.plans_takeoff.find(
         {"user_id": user["user_id"]},
         {"_id": 0, "pages.image_png_b64": 0}
@@ -131,7 +131,7 @@ async def get_plan_page(plan_id: str, page_index: int, user=Depends(current_user
 
 
 @router.delete("/{plan_id}")
-async def delete_plan(plan_id: str, user=Depends(current_user)):
+async def delete_plan(plan_id: str, user=Depends(current_user)) -> dict:
     res = await db.plans_takeoff.delete_one({"plan_id": plan_id, "user_id": user["user_id"]})
     if res.deleted_count == 0:
         raise HTTPException(404, "Plan introuvable")
@@ -149,7 +149,7 @@ def _duplicate_filename(name: str) -> str:
 
 
 @router.post("/{plan_id}/duplicate")
-async def duplicate_plan(plan_id: str, user=Depends(current_user)):
+async def duplicate_plan(plan_id: str, user=Depends(current_user)) -> dict:
     """Clone un plan (pages, rooms, ouvertures, calibrations, defaults) sous un
     nouveau plan_id. Utile pour tester des variantes (finitions, cloisons différentes).
 
@@ -201,7 +201,7 @@ class CalibIn(BaseModel):
 
 
 @router.post("/{plan_id}/calibrate")
-async def calibrate_plan(plan_id: str, body: CalibIn, user=Depends(current_user)):
+async def calibrate_plan(plan_id: str, body: CalibIn, user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0})
     if not p:
@@ -249,7 +249,7 @@ class PlanDefaultsIn(BaseModel):
 
 
 @router.patch("/{plan_id}/defaults")
-async def update_plan_defaults(plan_id: str, body: PlanDefaultsIn, user=Depends(current_user)):
+async def update_plan_defaults(plan_id: str, body: PlanDefaultsIn, user=Depends(current_user)) -> dict:
     """Défauts globaux du plan (hauteur murs, épaisseur plancher)."""
     res = await db.plans_takeoff.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -271,7 +271,7 @@ class PageLevelIn(BaseModel):
 
 @router.patch("/{plan_id}/pages/{page_index}/level")
 async def set_page_level(plan_id: str, page_index: int, body: PageLevelIn,
-                        user=Depends(current_user)):
+                        user=Depends(current_user)) -> dict:
     """Assigne un niveau (RDC / R+1 / R+2 / Sous-sol) à une page."""
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "pages": 1})
@@ -343,7 +343,7 @@ class AnnotationsIn(BaseModel):
 
 
 @router.patch("/{plan_id}/annotations")
-async def save_annotations(plan_id: str, body: AnnotationsIn, user=Depends(current_user)):
+async def save_annotations(plan_id: str, body: AnnotationsIn, user=Depends(current_user)) -> dict:
     """Persiste les 4 types d'annotations QuoterPlan-like par page (compteur / note / angle / pente).
 
     Le document plan stocke `annotations` = { "<page_index>": { counters, notes, angles, pitched_surfaces } }.

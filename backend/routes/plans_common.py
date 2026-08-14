@@ -44,7 +44,7 @@ def _now() -> str:
 # ---- Snapshots (auto-history) ------------------------------------------
 
 async def _snapshot(plan_id: str, user_id: str, action: str, meta: dict | None = None,
-                    label: str | None = None):
+                    label: str | None = None) -> None:
     """Sauvegarde un instantané du plan avant/après une mutation (auto-history)."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user_id},

@@ -113,7 +113,8 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
             presets_by_id[preset["preset_id"]] = preset
 
     pdf_bytes = build_takeoff_pdf(plan_light, takeoff, materials,
-                                   branding=branding, presets_by_id=presets_by_id)
+                                   branding=branding, presets_by_id=presets_by_id,
+                                   measurements=p.get("measurements") or [])
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
@@ -184,7 +185,7 @@ class SendEcartsIn(BaseModel):
 
 @router.post("/{plan_id}/ecarts-pdf/send")
 async def send_ecarts_pdf(plan_id: str, body: SendEcartsIn,
-                          user=Depends(current_user)):
+                          user=Depends(current_user)) -> dict:
     """Envoie le rapport d'écarts PDF au client par email avec un mot personnalisé (iter64)."""
     import html as _html
     from engines.emailer import send_email_with_pdf, wrap_html
@@ -342,7 +343,7 @@ async def _maybe_attach_latest_video(plan_id: str, user_id: str) -> tuple[dict |
 
 
 @router.post("/{plan_id}/send-quote")
-async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)):
+async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)) -> dict:
     """Envoie le PDF Devis directement au client par email + copie au sender + log."""
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.client_email or ""):
         raise HTTPException(400, "Email client invalide.")
@@ -454,7 +455,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
 
 
 @router.get("/{plan_id}/quote-sends")
-async def list_quote_sends(plan_id: str, user=Depends(current_user)):
+async def list_quote_sends(plan_id: str, user=Depends(current_user)) -> dict:
     """Historique des envois de devis pour ce plan."""
     docs = await db.quote_sends.find(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -477,7 +478,7 @@ class TakeoffEstimateIn(BaseModel):
 
 @router.post("/{plan_id}/estimate-from-takeoff")
 async def estimate_from_takeoff(plan_id: str, body: TakeoffEstimateIn,
-                                 user=Depends(current_user)):
+                                 user=Depends(current_user)) -> dict:
     """Envoie automatiquement la surface mesurée du plan à l'estimateur."""
     from engines.estimation import estimate as estim_run
 
@@ -624,7 +625,7 @@ class QuoteTemplateIn(BaseModel):
 
 
 @quote_router.post("/templates")
-async def create_quote_template(body: QuoteTemplateIn, user=Depends(current_user)):
+async def create_quote_template(body: QuoteTemplateIn, user=Depends(current_user)) -> dict:
     tpl_id = "qtpl_" + secrets.token_hex(5)
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1}) or {}
@@ -643,7 +644,7 @@ async def create_quote_template(body: QuoteTemplateIn, user=Depends(current_user
 
 
 @quote_router.get("/templates")
-async def list_quote_templates(user=Depends(current_user)):
+async def list_quote_templates(user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1}) or {}
     org_id = u.get("organization_id")
@@ -655,7 +656,7 @@ async def list_quote_templates(user=Depends(current_user)):
 
 
 @quote_router.delete("/templates/{template_id}")
-async def delete_quote_template(template_id: str, user=Depends(current_user)):
+async def delete_quote_template(template_id: str, user=Depends(current_user)) -> dict:
     tpl = await db.quote_templates.find_one({"template_id": template_id}, {"_id": 0})
     if not tpl:
         raise HTTPException(404, "Modèle introuvable")
@@ -767,7 +768,7 @@ async def track_quote_open(log_id: str):
 
 
 @quote_router.get("/notifications/me")
-async def list_notifications(user=Depends(current_user)):
+async def list_notifications(user=Depends(current_user)) -> dict:
     docs = await db.notifications.find(
         {"user_id": user["user_id"]}, {"_id": 0}
     ).sort("created_at", -1).limit(50).to_list(50)
@@ -776,7 +777,7 @@ async def list_notifications(user=Depends(current_user)):
 
 
 @quote_router.post("/notifications/{notif_id}/read")
-async def mark_notification_read(notif_id: str, user=Depends(current_user)):
+async def mark_notification_read(notif_id: str, user=Depends(current_user)) -> dict:
     await db.notifications.update_one(
         {"notif_id": notif_id, "user_id": user["user_id"]},
         {"$set": {"read": True, "read_at": _now()}}
@@ -785,7 +786,7 @@ async def mark_notification_read(notif_id: str, user=Depends(current_user)):
 
 
 @quote_router.post("/notifications/read-all")
-async def mark_all_notifications_read(user=Depends(current_user)):
+async def mark_all_notifications_read(user=Depends(current_user)) -> dict:
     """Marque toutes les notifs comme lues."""
     res = await db.notifications.update_many(
         {"user_id": user["user_id"], "read": False},
@@ -795,7 +796,7 @@ async def mark_all_notifications_read(user=Depends(current_user)):
 
 
 @quote_router.get("/sends/all")
-async def list_all_quote_sends(user=Depends(current_user)):
+async def list_all_quote_sends(user=Depends(current_user)) -> dict:
     """Suivi Devis : tous les devis envoyés par l'utilisateur, plan_ids agrégés."""
     docs = await db.quote_sends.find(
         {"user_id": user["user_id"]},
@@ -826,7 +827,7 @@ async def list_all_quote_sends(user=Depends(current_user)):
 # ============ SIGNATURE CLIENT ============
 
 @router.post("/{plan_id}/quote-sends/{log_id}/signature-link")
-async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_user)):
+async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_user)) -> dict:
     """Génère un lien public unique pour que le client signe le devis."""
     log = await db.quote_sends.find_one(
         {"log_id": log_id, "plan_id": plan_id, "user_id": user["user_id"]},
@@ -845,7 +846,7 @@ async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_
 
 
 @quote_router.get("/client-portal/{token}")
-async def client_portal(token: str):
+async def client_portal(token: str) -> dict:
     """Portail public client — liste tous les devis reçus pour un email donné."""
     from routes.emails import _sign
     import hmac
@@ -882,7 +883,7 @@ async def client_portal(token: str):
 
 
 @quote_router.get("/public/sign/{token}")
-async def get_signature_page_data(token: str):
+async def get_signature_page_data(token: str) -> dict:
     """Endpoint public : récupère le résumé du devis à signer."""
     log = await db.quote_sends.find_one(
         {"signature_token": token},
@@ -958,7 +959,7 @@ async def _notify_pro_on_signature(log: dict, signer: str, client_email: str) ->
 
 
 @quote_router.post("/public/sign/{token}")
-async def submit_signature(token: str, body: SignatureIn):
+async def submit_signature(token: str, body: SignatureIn) -> dict:
     """Endpoint public : le client soumet sa signature (image base64)."""
     log = await db.quote_sends.find_one({"signature_token": token},
                                           {"_id": 0, "log_id": 1, "user_id": 1,

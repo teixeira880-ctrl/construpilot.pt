@@ -40,7 +40,7 @@ async def _complete(system: str, text: str, images: list[str] | None = None,
     return "".join(out)
 
 
-async def stream_chat(history: list[dict], message: str, session_id: str, context: str = ""):
+async def stream_chat(history: list[dict], message: str, session_id: str, context: str = "") -> None:
     system = BRAND + (f"\n\nContexte du projet de l'utilisateur :\n{context}" if context else "")
     convo = "\n".join(f"{'Utilisateur' if m['role'] == 'user' else 'ConstruPilot'}: {m['content']}"
                       for m in history[-10:])

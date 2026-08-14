@@ -1921,3 +1921,22 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 - `test_iter65_measurements.py` 6/6 (persist, GET, delete, clear, 404) + iter64 4/4 + iter62 10/10 re-PASS.
 - E2E Playwright : mesure 9.60 m teal persistée au canvas, volet Objets → Mesures (1) → Tout effacer OK, légende écarts visible, sent-reports-list « ✉ delivered@resend.dev 14/08/2026 08:08 ».
 - Piège : calibrate 2 points attend `real_distance_m` (pas `known_m`).
+
+---
+
+## Itération 66 (14/06/2026) — Mesures PDF, renvoi 1-clic, type hints, découpage Plan2D, libellés mesures
+
+### Livré (backend 11/11 + 96 régression PASS ; frontend testing agent 15/15 = 100 %)
+1. **Libellés modifiables des mesures** (demande : « murs parpaing », « murs en brique ») : `MeasureIn.label` + `PATCH /measurements/{id}` {label} ; édition inline dans le volet Objets (crayon → input `object-row-measure-{i}-input` + Entrée) ; canvas affiche « libellé · X.XX m » sur le trait teal ; libellé dans le PDF.
+2. **Mesures sur PDF** : `pdf_takeoff.py::_story_measurements` (Libellé | Type | Page | Valeur | Créée le) + param `measurements` de `build_takeoff_pdf` ; route `/pdf` passe `p["measurements"]`.
+3. **Renvoi 1-clic** : bouton `resend-report-{i}` (icône RotateCw) dans `sent-reports-list` → réutilise POST /ecarts-pdf/send avec le même destinataire + message vide.
+4. **Type hints** : +167 annotations de retour CONSERVATRICES (script AST : uniquement dict/list/None prouvables) sur routes/* engines/* core/*. Serveur OK, aucune régression.
+5. **Découpage Plan2D** : PlanTakeoff.jsx 3650 → 3000 lignes. NOUVEAUX fichiers : `components/planTakeoff/PlanCanvas.jsx` (export default, 657 l.) et `planConstants.js` (TOOLS, CALIB_METHOD_LABELS, COUNTER_COLORS, ROOM_COLORS, pointSegDist). Extraction par script Python (marqueurs de lignes) — propre et props-identiques.
+
+### Notes
+- Ruff : 14 F401 restants = imports inutilisés dans les helpers de test du testing agent (pré-existant, sans impact).
+- Cosmétique signalé par le testing agent : la nav header (« Je le fais moi-même ») wrappe maladroitement à 1920px — PRÉ-EXISTANT, non lié (backlog P3).
+- iter58 tests exigent REACT_APP_BACKend_URL exporté dans l'env shell.
+
+### Backlog restant
+- P3 : wrap nav header ; factoriser downloadBlob ; légende PDF takeoff pour mesures multiples pages.

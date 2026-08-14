@@ -46,7 +46,7 @@ class ShareIn(BaseModel):
 
 @router.post("/projects/{project_id}/share")
 async def create_share_link(project_id: str, body: ShareIn | None = None,
-                            user=Depends(current_user)):
+                            user=Depends(current_user)) -> dict:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]})
     if not p:
         raise HTTPException(404, "Projet introuvable")
@@ -68,7 +68,7 @@ async def create_share_link(project_id: str, body: ShareIn | None = None,
 
 
 @router.delete("/projects/{project_id}/share")
-async def revoke_share_link(project_id: str, user=Depends(current_user)):
+async def revoke_share_link(project_id: str, user=Depends(current_user)) -> dict:
     res = await db.projects.update_one(
         {"project_id": project_id, "user_id": user["user_id"]},
         {"$unset": {"share_token": "", "share_created_at": "", "share_expires_at": ""}},
@@ -79,7 +79,7 @@ async def revoke_share_link(project_id: str, user=Depends(current_user)):
 
 
 @router.get("/projects/{project_id}/share/stats")
-async def share_stats(project_id: str, user=Depends(current_user)):
+async def share_stats(project_id: str, user=Depends(current_user)) -> dict:
     p = await db.projects.find_one(
         {"project_id": project_id, "user_id": user["user_id"]},
         {"_id": 0, "share_token": 1, "share_opens": 1, "share_last_open_at": 1,
@@ -100,7 +100,7 @@ async def share_stats(project_id: str, user=Depends(current_user)):
 
 
 @router.get("/public/estimation/{token}")
-async def public_estimation(token: str, request: Request):
+async def public_estimation(token: str, request: Request) -> dict:
     p = await db.projects.find_one({"share_token": token},
                                    {"_id": 0, "user_id": 0})
     if not p:
@@ -160,7 +160,7 @@ class SmsShareIn(BaseModel):
 
 
 @router.get("/share/sms/config")
-async def sms_config():
+async def sms_config() -> dict:
     """Renvoie l'état de configuration Twilio (sans exposer les clés)."""
     return {
         "twilio_enabled": bool(TWILIO_SID and TWILIO_TOKEN and TWILIO_FROM),
@@ -172,7 +172,7 @@ async def sms_config():
 
 
 @router.post("/projects/{project_id}/share/sms")
-async def send_sms(project_id: str, body: SmsShareIn, user=Depends(current_user)):
+async def send_sms(project_id: str, body: SmsShareIn, user=Depends(current_user)) -> dict:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "share_token": 1})
     if not p:

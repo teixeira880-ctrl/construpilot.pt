@@ -53,7 +53,7 @@ async def optimize(body: CartIn):
 
 
 @router.get("/stores")
-async def stores(lat: float, lng: float, radius_km: int = 20):
+async def stores(lat: float, lng: float, radius_km: int = 20) -> dict:
     return {"radius_km": radius_km, "stores": price_search.stores_nearby(lat, lng, radius_km)}
 
 
@@ -100,7 +100,7 @@ async def list_alerts(user=Depends(current_user)):
 
 
 @router.post("/alerts/check-now")
-async def check_alerts_now(user=Depends(current_user)):
+async def check_alerts_now(user=Depends(current_user)) -> dict:
     """Force la vérification immédiate des alertes de l'utilisateur + envoi email des déclenchées."""
     from engines import alerting
     sent = await alerting.check_user_alerts(user["user_id"])
@@ -108,6 +108,6 @@ async def check_alerts_now(user=Depends(current_user)):
 
 
 @router.delete("/alerts/{alert_id}")
-async def delete_alert(alert_id: str, user=Depends(current_user)):
+async def delete_alert(alert_id: str, user=Depends(current_user)) -> dict:
     await db.price_alerts.delete_one({"alert_id": alert_id, "user_id": user["user_id"]})
     return {"ok": True}

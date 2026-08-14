@@ -93,7 +93,7 @@ async def _persist_stripe_ids(plan: dict, prod, price) -> None:
     )
 
 
-async def ensure_stripe_catalog():
+async def ensure_stripe_catalog() -> None:
     """Crée/synchronise les Products et Prices Stripe à partir des plans DB."""
     if not stripe.api_key:
         logger.warning("STRIPE_SECRET_KEY manquant — Stripe désactivé")
@@ -284,7 +284,7 @@ async def _apply_pro_credit_topup(rec: dict) -> None:
     logger.info(f"Pro credits +{total} cents pour {rec['user_id']}")
 
 
-async def _mark_paid(session_id: str, s):
+async def _mark_paid(session_id: str, s) -> None:
     upd = await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
         {"$set": {"status": "completed", "payment_status": "paid",
@@ -308,7 +308,7 @@ async def _mark_paid(session_id: str, s):
     await _credit_referrer_safe(rec["user_id"])
 
 
-async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict):
+async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict) -> None:
     """Crée/met à jour l'entitlement de l'utilisateur suite à un paiement."""
     now = datetime.now(timezone.utc)
     doc = {
@@ -332,7 +332,7 @@ async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict):
     logger.info(f"Entitlement granted: user={user_id} plan={plan['plan_id']}")
 
 
-async def revoke_entitlement(subscription_id: str, reason: str = "cancelled"):
+async def revoke_entitlement(subscription_id: str, reason: str = "cancelled") -> None:
     await db.entitlements.update_many(
         {"stripe_subscription_id": subscription_id},
         {"$set": {"status": reason, "revoked_at": now_iso()}})

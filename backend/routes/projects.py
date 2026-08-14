@@ -99,7 +99,7 @@ async def update_project(project_id: str, body: UpdateIn, user=Depends(current_u
 
 
 @router.delete("/{project_id}")
-async def delete_project(project_id: str, user=Depends(current_user)):
+async def delete_project(project_id: str, user=Depends(current_user)) -> dict:
     await _get(project_id, user)
     await db.projects.delete_one({"project_id": project_id})
     return {"ok": True}
@@ -121,7 +121,7 @@ async def add_expense(project_id: str, body: ExpenseIn, user=Depends(current_use
 
 
 @router.get("/{project_id}/budget")
-async def budget(project_id: str, user=Depends(current_user)):
+async def budget(project_id: str, user=Depends(current_user)) -> dict:
     p = await _get(project_id, user)
     initial = float(p.get("budget") or p["estimation"]["total_avg"])
     spent = round(sum(e["amount"] for e in p.get("expenses", [])), 2)
@@ -145,7 +145,7 @@ async def budget(project_id: str, user=Depends(current_user)):
 
 
 @router.post("/{project_id}/advice")
-async def project_advice(project_id: str, user=Depends(current_user)):
+async def project_advice(project_id: str, user=Depends(current_user)) -> dict:
     p = await _get(project_id, user)
     text = await ai.project_advice(p["estimation"])
     await db.projects.update_one({"project_id": project_id},
@@ -167,7 +167,7 @@ PROGRESS_LABEL = {"todo": "à faire", "doing": "en cours", "done": "terminé"}
 
 
 @router.get("/{project_id}/timeline")
-async def project_timeline(project_id: str, user=Depends(current_user)):
+async def project_timeline(project_id: str, user=Depends(current_user)) -> dict:
     """Frise chronologique : création + photos + dépenses + lots + leads."""
     p = await _get(project_id, user)
     events: list[dict] = []

@@ -38,7 +38,7 @@ async def _monthly_from_plan(plan: dict) -> float:
 
 
 @router.get("/kpis")
-async def revenue_kpis(admin=Depends(admin_user)):
+async def revenue_kpis(admin=Depends(admin_user)) -> dict:
     now = _now()
     plans = await db.plans.find({}, {"_id": 0}).to_list(200)
     plan_by_id = {p["plan_id"]: p for p in plans}
@@ -124,7 +124,7 @@ async def revenue_kpis(admin=Depends(admin_user)):
 
 
 @router.get("/timeseries")
-async def revenue_timeseries(days: int = 90, admin=Depends(admin_user)):
+async def revenue_timeseries(days: int = 90, admin=Depends(admin_user)) -> dict:
     """Renvoie les revenus quotidiens (paiements confirmés) sur les N derniers jours."""
     days = min(max(days, 7), 365)
     now = _now()

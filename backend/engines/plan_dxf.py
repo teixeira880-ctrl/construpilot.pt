@@ -27,7 +27,7 @@ PREVIEW_MAX_SIDE = 2000
 PREVIEW_MARGIN = 40
 
 
-def _iter_dxf_entities(msp):
+def _iter_dxf_entities(msp) -> None:
     """Génère les entités graphiques utiles depuis un modelspace ezdxf."""
     for e in msp:
         yield e
@@ -72,7 +72,7 @@ def _compute_bounds(entities) -> tuple[float, float, float, float]:
     min_x = min_y = float("inf")
     max_x = max_y = float("-inf")
 
-    def upd(x, y):
+    def upd(x, y) -> None:
         nonlocal min_x, min_y, max_x, max_y
         if x < min_x: min_x = x
         if y < min_y: min_y = y

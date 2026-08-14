@@ -36,7 +36,7 @@ class DescribeIn(BaseModel):
 
 
 @router.get("/catalog")
-async def catalog():
+async def catalog() -> dict:
     overrides = {d["key"]: d async for d in db.price_reference.find({}, {"_id": 0})}
     lots = []
     for l in LOTS:
@@ -50,7 +50,7 @@ async def catalog():
     }
 
 
-def _apply_overrides(overrides: dict):
+def _apply_overrides(overrides: dict) -> None:
     from engines.catalog import LOTS_BY_KEY
     for key, ov in overrides.items():
         if key in LOTS_BY_KEY:
@@ -75,7 +75,7 @@ async def compute(body: EstimateIn):
 
 
 @router.post("/analyse")
-async def analyse(body: DescribeIn):
+async def analyse(body: DescribeIn) -> dict:
     """Smart Project : IA comprend -> moteur déterministe estime.
 
     Priorité pour la hauteur sous plafond : override utilisateur > détection IA > 2.5m.
@@ -101,7 +101,7 @@ async def analyse(body: DescribeIn):
 
 
 @router.post("/advice")
-async def advice(body: dict):
+async def advice(body: dict) -> dict:
     est = body.get("estimation")
     if not est:
         raise HTTPException(status_code=400, detail="estimation requise")
@@ -142,7 +142,7 @@ class PdfEmailIn(BaseModel):
 
 
 @router.post("/pdf/email")
-async def estimation_pdf_email(body: PdfEmailIn):
+async def estimation_pdf_email(body: PdfEmailIn) -> dict:
     """Envoie le PDF de devis par email via Resend (route publique)."""
     if not body.estimation or not body.estimation.get("lots"):
         raise HTTPException(status_code=400, detail="Estimation requise")
@@ -176,7 +176,7 @@ async def estimation_pdf_email(body: PdfEmailIn):
 
 
 @router.post("/materials")
-async def materials_list(body: MaterialsIn):
+async def materials_list(body: MaterialsIn) -> dict:
     """Panier de chantier intelligent : liste d'achats depuis les lots estimés."""
     from engines import calculators
     items = []

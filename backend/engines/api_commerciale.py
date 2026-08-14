@@ -61,7 +61,7 @@ async def rotate_api_key(key_id: str, user_id: str) -> dict:
     return existing
 
 
-async def revoke_api_key(prefix: str, user_id: str):
+async def revoke_api_key(prefix: str, user_id: str) -> None:
     await db.api_keys.update_one(
         {"prefix": prefix, "user_id": user_id},
         {"$set": {"active": False, "revoked_at": _now().isoformat()}})

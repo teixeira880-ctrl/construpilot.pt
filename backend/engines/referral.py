@@ -95,7 +95,7 @@ async def generate_referee_coupon(user_id: str) -> str | None:
     return code_str
 
 
-async def credit_referrer_on_first_payment(referee_id: str):
+async def credit_referrer_on_first_payment(referee_id: str) -> None:
     """Appelé depuis le webhook checkout.session.completed."""
     ref = await db.referrals.find_one({"referee_id": referee_id, "status": "pending"}, {"_id": 0})
     if not ref:

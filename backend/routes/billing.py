@@ -16,7 +16,7 @@ router = APIRouter(tags=["billing"])
 # ---------- Public : liste des plans ----------
 
 @router.get("/plans")
-async def list_plans(audience: str | None = None):
+async def list_plans(audience: str | None = None) -> dict:
     q = {"active": True}
     if audience:
         q["audience"] = audience
@@ -54,7 +54,7 @@ async def checkout(body: CheckoutIn, user=Depends(current_user)):
 
 
 @router.get("/billing/status/{session_id}")
-async def payment_status(session_id: str):
+async def payment_status(session_id: str) -> dict:
     try:
         rec = await monetization.sync_status(session_id)
     except ValueError:
@@ -81,7 +81,7 @@ async def stripe_webhook(request: Request):
 # ---------- Portail utilisateur ----------
 
 @router.get("/billing/me")
-async def my_billing(user=Depends(current_user)):
+async def my_billing(user=Depends(current_user)) -> dict:
     active = await monetization.user_active_plan(user["user_id"])
     tier = await monetization.user_tier(user["user_id"])
     history = await db.payment_transactions.find(
@@ -95,7 +95,7 @@ class PortalIn(BaseModel):
 
 
 @router.post("/billing/portal")
-async def customer_portal(body: PortalIn, user=Depends(current_user)):
+async def customer_portal(body: PortalIn, user=Depends(current_user)) -> dict:
     import stripe
     if not user.get("stripe_customer_id"):
         raise HTTPException(status_code=404, detail="Aucun compte de facturation")
@@ -108,7 +108,7 @@ async def customer_portal(body: PortalIn, user=Depends(current_user)):
 # ---------- Feature flags publics ----------
 
 @router.get("/billing/flags")
-async def public_flags():
+async def public_flags() -> dict:
     flags = await db.feature_flags.find_one({"_id": "global"}, {"_id": 0}) or {}
     return {"trial_enabled": flags.get("trial_enabled", True),
             "trial_days": flags.get("trial_days", 7),

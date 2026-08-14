@@ -43,7 +43,7 @@ async def project_savings(project_id: str, user=Depends(current_user)):
 # ============ REFERRAL ============
 
 @router.get("/referral/me")
-async def my_referral(user=Depends(current_user)):
+async def my_referral(user=Depends(current_user)) -> dict:
     code = await referral.get_or_create_code(user)
     stats = await referral.stats(user["user_id"])
     return {"code": code, "share_url": f"?ref={code}", **stats}
@@ -54,7 +54,7 @@ class ReferralApplyIn(BaseModel):
 
 
 @router.post("/referral/apply")
-async def apply_referral(body: ReferralApplyIn, user=Depends(current_user)):
+async def apply_referral(body: ReferralApplyIn, user=Depends(current_user)) -> dict:
     ok = await referral.apply_code_at_signup(user["user_id"], body.code)
     if not ok:
         raise HTTPException(status_code=400, detail="Code invalide ou inutilisable")
@@ -80,7 +80,7 @@ async def _flags():
 
 
 @router.post("/marketplace/register")
-async def register_pro(body: ProfessionalIn, user=Depends(current_user)):
+async def register_pro(body: ProfessionalIn, user=Depends(current_user)) -> dict:
     flags = await _flags()
     if not flags.get("marketplace_enabled"):
         raise HTTPException(status_code=403, detail="Marketplace bientôt disponible")
@@ -95,7 +95,7 @@ async def register_pro(body: ProfessionalIn, user=Depends(current_user)):
 
 
 @router.get("/marketplace/pros")
-async def list_pros(zone: str | None = None, trade: str | None = None):
+async def list_pros(zone: str | None = None, trade: str | None = None) -> dict:
     q = {"verified": True}
     if zone:
         q["zones"] = zone
@@ -142,7 +142,7 @@ async def submit_lead(body: LeadCreateIn, user=Depends(optional_user)):
 
 
 @router.get("/marketplace/leads")
-async def list_available_leads(user=Depends(current_user)):
+async def list_available_leads(user=Depends(current_user)) -> dict:
     """Un pro voit les leads correspondant à ses trades/zones."""
     pro = await db.marketplace_pros.find_one({"user_id": user["user_id"], "verified": True},
                                              {"_id": 0})
@@ -159,7 +159,7 @@ class BuyLeadIn(BaseModel):
 
 
 @router.post("/marketplace/leads/buy")
-async def buy_lead(body: BuyLeadIn, user=Depends(current_user)):
+async def buy_lead(body: BuyLeadIn, user=Depends(current_user)) -> dict:
     pro = await db.marketplace_pros.find_one({"user_id": user["user_id"], "verified": True},
                                              {"_id": 0})
     if not pro:
@@ -239,7 +239,7 @@ async def list_promo(user=Depends(admin_user)):
 
 
 @router.patch("/admin/promo-codes/{code}")
-async def toggle_promo(code: str, active: bool, user=Depends(admin_user)):
+async def toggle_promo(code: str, active: bool, user=Depends(admin_user)) -> dict:
     doc = await db.promo_codes.find_one({"code": code.upper()}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Code inconnu")

@@ -137,7 +137,7 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
 
 
 @router.post("/{plan_id}/render-3d")
-async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
+async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)) -> dict:
     """Convertit la page du plan 2D en rendu 3D via Gemini Nano Banana."""
     await require_pro_business(user)
     p = await db.plans_takeoff.find_one(
@@ -179,7 +179,7 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)):
 
 
 @router.get("/{plan_id}/renders-3d")
-async def list_renders_3d(plan_id: str, user=Depends(current_user)):
+async def list_renders_3d(plan_id: str, user=Depends(current_user)) -> dict:
     """Liste les rendus 3D (meta uniquement, sans image_b64 lourd)."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -197,7 +197,7 @@ async def list_renders_3d(plan_id: str, user=Depends(current_user)):
 
 
 @router.get("/{plan_id}/renders-3d/{render_id}")
-async def get_render_3d(plan_id: str, render_id: str, user=Depends(current_user)):
+async def get_render_3d(plan_id: str, render_id: str, user=Depends(current_user)) -> dict:
     """Récupère l'image d'un rendu 3D précédemment généré."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -249,7 +249,7 @@ async def _load_watermark_bytes(user_id: str) -> bytes | None:
 
 
 @router.post("/{plan_id}/render-video")
-async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(current_user)):
+async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(current_user)) -> dict:
     """Génère plusieurs rendus IA du plan avec différents styles et les assemble
     en un tour vidéo MP4 (Ken Burns + crossfade + filigrane + musique).
     """
@@ -312,7 +312,7 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
 
 
 @router.get("/{plan_id}/videos-3d")
-async def list_videos_3d(plan_id: str, user=Depends(current_user)):
+async def list_videos_3d(plan_id: str, user=Depends(current_user)) -> dict:
     """Liste les tours vidéo 3D générés pour ce plan (meta uniquement)."""
     cursor = db.plan_videos_3d.find(
         {"plan_id": plan_id, "user_id": user["user_id"]},

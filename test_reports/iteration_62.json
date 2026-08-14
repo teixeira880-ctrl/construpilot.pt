@@ -1,0 +1,25 @@
+{
+  "summary": "Iteration 66 frontend regression testing after PlanCanvas.jsx refactor. Executed 15/15 critical checks — all PASS. Login admin, opened seeded plan plan_494e7f317d82, verified canvas rendering, calibration badge 'auto (cotes IA)', Séjour room 121 m² (+21%) écart badge, legend, all toolbar buttons visible without crash. Verified measurement label edit feature end-to-end (rename to 'murs parpaing' → toast + label displayed on canvas 'murs parpaing · 12.65 m'). Verified 1-click resend from IA tab (sent-reports-list → resend-report-0 → toast 'Rapport renvoyé à delivered@resend.dev' + list updated with new entry at top). Verified Métré PDF button triggers GET /api/takeoffs/{id}/pdf returning 200.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Top navigation (Shell header)", "issues": ["Menu items 'Je le fais moi-même' and adjacent labels overlap/wrap awkwardly on 1920px width — visible in screenshots but non-blocking"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PlanCanvas.jsx refactor is clean and props-preserving — no regressions detected in canvas interactions (zoom/pan/tools/measurements/room colors/écart badges/legend).",
+    "planConstants.js properly isolates TOOLS/ROOM_COLORS/pointSegDist — imports work as expected.",
+    "Measure label edit UX: editingId pattern in ObjectPanel.jsx works correctly; renderer displays label prefix on canvas teal segment."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (skip)", "frontend": "100% (15/15)"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "None — used existing seeded plan_494e7f317d82",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 66 refactor validated. PlanCanvas extraction + measure label edit + 1-click resend + PDF metré all functional. Header nav overlap is cosmetic and pre-existing (not related to this iteration). Backend was skipped per request (already 11/11 + 96 regression PASS)."
+}

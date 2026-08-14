@@ -58,7 +58,7 @@ def _dedup(ip: str, msg: str) -> bool:
 
 
 @router.post("/client-log")
-async def log_client_error(body: ClientErrorIn, request: Request):
+async def log_client_error(body: ClientErrorIn, request: Request) -> dict:
     """Public endpoint (no auth) — logs a frontend runtime error.
 
     The ErrorBoundary POSTs here whenever `componentDidCatch` fires.
@@ -133,7 +133,7 @@ async def log_client_error(body: ClientErrorIn, request: Request):
 async def list_client_errors(
     hours: int = Query(24, ge=1, le=720),
     limit: int = Query(200, ge=1, le=1000),
-):
+) -> dict:
     """Admin — liste les erreurs client des N dernières heures + agrégat par
     message pour identifier rapidement les patterns récurrents.
     """

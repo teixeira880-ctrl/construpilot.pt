@@ -111,3 +111,69 @@ class TestIter65Measurements:
         r = requests.delete(f"{BASE_URL}/api/takeoffs/plan_inconnu/measurements/mes_x",
                             headers=ctx["hdrs"], timeout=15)
         assert r.status_code == 404
+
+
+class TestIter66MeasureLabels:
+    """Iter66 — libellés modifiables sur les mesures + PDF avec mesures."""
+
+    @pytest.fixture(scope="class")
+    def ctx(self):
+        hdrs = _login()
+        files = {"file": ("iter66.png", _make_png(), "image/png")}
+        r = requests.post(f"{BASE_URL}/api/takeoffs/upload", files=files,
+                          headers=hdrs, timeout=60)
+        assert r.status_code == 200, r.text
+        pid = r.json()["plan_id"]
+        r = requests.post(f"{BASE_URL}/api/takeoffs/{pid}/calibrate", json={
+            "page_index": 0, "p1": [100, 100], "p2": [600, 100],
+            "real_distance_m": 10.0,
+        }, headers=hdrs, timeout=15)
+        assert r.status_code == 200, r.text
+        yield {"pid": pid, "hdrs": hdrs}
+        requests.delete(f"{BASE_URL}/api/takeoffs/{pid}", headers=hdrs, timeout=15)
+
+    def test_measure_with_label(self, ctx):
+        r = requests.post(f"{BASE_URL}/api/takeoffs/{ctx['pid']}/measure", json={
+            "page_index": 0, "kind": "distance",
+            "points": [[100, 200], [600, 200]], "label": "murs parpaing",
+        }, headers=ctx["hdrs"], timeout=15)
+        assert r.status_code == 200, r.text
+        assert r.json()["label"] == "murs parpaing"
+        ctx["mid"] = r.json()["measurement_id"]
+
+    def test_rename_measurement(self, ctx):
+        r = requests.patch(
+            f"{BASE_URL}/api/takeoffs/{ctx['pid']}/measurements/{ctx['mid']}",
+            json={"label": "murs en brique"}, headers=ctx["hdrs"], timeout=15)
+        assert r.status_code == 200, r.text
+        assert r.json()["label"] == "murs en brique"
+        r = requests.get(f"{BASE_URL}/api/takeoffs/{ctx['pid']}", headers=ctx["hdrs"], timeout=15)
+        assert r.json()["measurements"][0]["label"] == "murs en brique"
+
+    def test_rename_unknown_404(self, ctx):
+        r = requests.patch(
+            f"{BASE_URL}/api/takeoffs/{ctx['pid']}/measurements/mes_inconnu",
+            json={"label": "x"}, headers=ctx["hdrs"], timeout=15)
+        assert r.status_code == 404
+
+    def test_takeoff_pdf_includes_measurements(self, ctx):
+        r = requests.get(f"{BASE_URL}/api/takeoffs/{ctx['pid']}/pdf",
+                         headers=ctx["hdrs"], timeout=60)
+        assert r.status_code == 200, r.text
+        assert r.content[:5] == b"%PDF-"
+
+    def test_builder_measurements_section(self):
+        import sys
+        sys.path.insert(0, "/app/backend")
+        from engines.pdf_takeoff import build_takeoff_pdf
+        pdf = build_takeoff_pdf(
+            {"plan_id": "p1", "filename": "t.pdf", "page_count": 1},
+            {"room_count": 0, "rooms": [], "levels": [], "totals":
+             {"floor_m2": 0, "ceiling_m2": 0, "walls_gross_m2": 0,
+              "walls_net_m2": 0, "perimeter_m": 0}},
+            None,
+            measurements=[{"kind": "distance", "value_m": 10.0, "page_index": 0,
+                           "label": "murs parpaing", "created_at": "2026-06-14T10:00:00"},
+                          {"kind": "polyline", "length_m": 7.0, "page_index": 0,
+                           "label": None, "created_at": "2026-06-14T10:05:00"}])
+        assert pdf[:5] == b"%PDF-"

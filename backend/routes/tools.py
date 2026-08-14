@@ -7,7 +7,7 @@ router = APIRouter(tags=["tools"])
 
 
 @router.get("/calculators")
-async def list_calculators():
+async def list_calculators() -> list:
     return [{k: v for k, v in c.items() if k != "fn"} for c in calculators.CALCULATORS.values()]
 
 
@@ -39,7 +39,7 @@ async def run_calculator(key: str, body: CalcIn):
 
 
 @router.get("/diy/tasks")
-async def diy_tasks():
+async def diy_tasks() -> list:
     return [{"key": t["key"], "name": t["name"], "difficulty": t["difficulty"],
              "difficulty_label": diy.DIFFICULTY[t["difficulty"]]["label"],
              "difficulty_color": diy.DIFFICULTY[t["difficulty"]]["color"],

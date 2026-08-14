@@ -14,7 +14,7 @@ MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_KIND = {"before", "after", "progress"}
 
 
-async def _get_owned(project_id: str, user: dict):
+async def _get_owned(project_id: str, user: dict) -> None:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "project_id": 1})
     if not p:
@@ -66,7 +66,7 @@ async def upload_photo(project_id: str,
 
 
 @router.get("/{project_id}/photos")
-async def list_photos(project_id: str, user=Depends(current_user)):
+async def list_photos(project_id: str, user=Depends(current_user)) -> dict:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "photos": 1})
     if not p:
@@ -93,7 +93,7 @@ async def download_photo(project_id: str, photo_id: str, user=Depends(current_us
 
 
 @router.delete("/{project_id}/photos/{photo_id}")
-async def delete_photo(project_id: str, photo_id: str, user=Depends(current_user)):
+async def delete_photo(project_id: str, photo_id: str, user=Depends(current_user)) -> dict:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "photos": 1})
     if not p:
