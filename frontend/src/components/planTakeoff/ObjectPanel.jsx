@@ -13,7 +13,7 @@
  * Clic sur une ligne : centre la vue sur l'objet (via onFocus callback).
  */
 import React, { useState, useMemo, useEffect } from "react";
-import { Square, DoorOpen, Hash, StickyNote, Triangle, MountainSnow, Ruler, Trash2, Edit3, X, Calculator, Layers } from "lucide-react";
+import { Square, DoorOpen, Hash, StickyNote, Triangle, MountainSnow, Ruler, Trash2, Edit3, X, Calculator, Layers, Home, Scissors } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ const TABS = [
   { id: "measures", label: "Mesures", icon: Ruler },
 ];
 
-function Row({ icon: Icon, testId, primary, secondary, badge, onFocus, onEdit, onDelete, onExtra, extraLabel, extraIcon: ExtraIcon, badgeColor }) {
+function Row({ icon: Icon, testId, primary, secondary, badge, onFocus, onEdit, onDelete, onExtra, extraLabel, extraIcon: ExtraIcon, onExtra2, extra2Label, extra2Icon: Extra2Icon, badgeColor }) {
   return (
     <div
       data-testid={testId}
@@ -53,6 +53,14 @@ function Row({ icon: Icon, testId, primary, secondary, badge, onFocus, onEdit, o
                 data-testid={`${testId}-extra`}
                 title={extraLabel}>
           <ExtraIcon className="h-3 w-3" />
+        </Button>
+      )}
+      {onExtra2 && Extra2Icon && (
+        <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onExtra2(); }}
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition text-red-500"
+                data-testid={`${testId}-extra2`}
+                title={extra2Label}>
+          <Extra2Icon className="h-3 w-3" />
         </Button>
       )}
       {onEdit && (
@@ -81,6 +89,8 @@ export default function ObjectPanel({
   onDeleteMeasure,
   onClearMeasures,
   onRenameMeasure,
+  onConvertMeasure,
+  onDeductMeasure,
   onDeleteCounter, onRenameCounter,
   onDeleteNote, onEditNote,
   onDeleteAngle,
@@ -417,6 +427,12 @@ export default function ObjectPanel({
                 badge={m.kind === "polygon" ? `${(m.area_m2 || 0).toFixed(2)} m²` : `${(m.length_m || 0).toFixed(2)} m`}
                 badgeColor="#0d9488"
                 onFocus={() => onFocusObject?.({ kind: "measure", data: m })}
+                onExtra={m.kind === "polygon" && onConvertMeasure ? () => onConvertMeasure(m.measurement_id) : null}
+                extraIcon={Home}
+                extraLabel="Convertir en pièce (murs + estimation)"
+                onExtra2={m.kind === "polygon" && onDeductMeasure ? () => onDeductMeasure(m.measurement_id) : null}
+                extra2Icon={Scissors}
+                extra2Label="Déduire de la pièce contenante (trémie, escalier…)"
                 onEdit={onRenameMeasure ? () => startEdit(m.measurement_id, m.label || "") : null}
                 onDelete={onDeleteMeasure ? () => onDeleteMeasure(m.measurement_id) : null}
               />

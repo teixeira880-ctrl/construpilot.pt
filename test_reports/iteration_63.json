@@ -1,0 +1,45 @@
+{
+  "summary": "Frontend-only verification of the 3 new features on /plan (PlanTakeoff): (1) Convert polygon measurement to room, (2) Deduct measurement from containing room (trémie/escalier), (3) XLSX export of métré. All three features WORK end-to-end via the UI: correct toasts fire, backend state updates, canvas + panel reflect changes, and the Excel file is downloaded successfully.",
+  "test_setup": {
+    "user_used": "pro@construpilot.fr / Pro2026! (tier pro_business — required because /plan is gated behind Pro Business paywall via BillingContext FEATURE_TIER.plan_takeoff = PRO_BUSINESS_ONLY)",
+    "plan_used": "plan_619e41f98d6b (1 calibrated room 'Salon', 600x400 px = 24 m²)",
+    "seed": "Two polygon measurements created via POST /api/takeoffs/{id}/measure : (a) 'test convert' at [[800,800],[900,800],[900,900],[800,900]] (outside room), (b) 'test deduct' at [[100,100],[200,100],[200,200],[100,200]] (inside Salon).",
+    "how_plan_opened": "URL /plan?id=<pid> does NOT auto-open a plan (query param ignored). Had to click data-testid=recent-plan-<pid> on the landing gallery."
+  },
+  "results": {
+    "TEST_1_panel_and_measure_visible": "PASS — data-testid='tool-objects-panel' opens data-testid='object-panel'. Measures tab lists both measurements with 1.00 m² badge.",
+    "TEST_2_convert_to_room": "PASS — Click on data-testid='object-row-measure-0-extra' triggered toast 'Pièce créée : test convert (1 m²) — murs et volume calculés'. New room 'test convert' appears in the right-side rooms panel with Surface, Murs bruts, Murs nets, Volume computed. Backend GET /takeoffs shows rooms=2 (Salon + test convert).",
+    "TEST_3_deduct_from_room": "PASS — After convert, measurements has only 'test deduct' at idx 0. Click on data-testid='object-row-measure-0-extra2' triggered toast '− 1 m² déduits de « Salon » → surface nette 23 m²'. Salon detail now shows the deduction chip '- 1 m² test deduct ×' allowing removal, and Surface updated 24→23 m². Backend confirms Salon.deductions has 1 entry.",
+    "TEST_4_xlsx_export": "PASS — data-testid='plan-xlsx-export-btn' triggers download of metre-plan_619e41f98d6b.xlsx (6124 bytes, valid XLSX). Toast 'Export Excel téléchargé' displayed.",
+    "TEST_5_regression": "PASS — /plan loads, canvas renders, Objets panel opens, tabs (Pièces/Mesures/Toitures/etc.) switch. No console errors observed during the flow."
+  },
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "observations": [
+      {"component": "PlanTakeoff route", "note": "URL query param /plan?id=<pid> is NOT wired to auto-open a plan — user must click a recent-plan card. Consider parsing search param on mount for deep-linking."},
+      {"component": "ObjectPanel rooms tab", "note": "Query for [data-testid^='object-row-room-'] returned 0 rows even though 2 rooms exist and are shown in the right-side Pièces column — the ObjectPanel rooms tab may not be populated from the same source or the testid prefix uses a different value than expected (room ids vs iteration index). Non-blocking as the main Pièces list works."},
+      {"component": "Paywall gating", "note": "demo@construpilot.fr (billing tier='free' per /api/billing/me despite user.plan='premium') is BLOCKED from /plan by data-testid='plan-paywall'. Only pro_business users (or role=admin) can access /plan. This is by design per BillingContext but conflicts with the task instruction that said to use demo@construpilot.fr — flagging for review."}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Verify intended access tier for /plan takeoff: task instruction assumed demo@ can use /plan but paywall blocks non-pro_business users. If demo should have access, grant demo a pro_business entitlement or lower FEATURE_TIER.plan_takeoff.",
+    "(Optional) Add search-param deep-linking on /plan?id=<pid> to auto-open a plan.",
+    "(Optional) Investigate ObjectPanel rooms tab testid population — rooms not queryable via object-row-room-* selectors even though rooms exist."
+  ],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx is 3142 lines — well above 700 line threshold; should be split into feature modules (canvas, panel logic, export, quote, snapshots).",
+    "BillingContext.has() defaults to true when feature not in FEATURE_TIER map (line 57) — safe default but worth documenting."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not_tested_this_iteration", "frontend": "100% (5/5 tests)"},
+  "test_credentials": "Used pro@construpilot.fr / Pro2026! (tier pro_business); demo@construpilot.fr is billing-free tier and blocked by paywall on /plan.",
+  "seed_data_creation": "Created 2 polygon measurements on plan_619e41f98d6b (owned by pro user). Both were consumed by the tests (measurement→room, measurement→deduction). Backend measurements list is now empty for this plan.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Convert/deduct/xlsx flow validated end-to-end on pro user. If retesting with demo@, note the paywall gate (BillingContext plan_takeoff = pro_business_only). Use recent-plan-<pid> testid to open plans (query params not wired).",
+  "rca of the issue": "No functional bugs found; only observations logged above."
+}

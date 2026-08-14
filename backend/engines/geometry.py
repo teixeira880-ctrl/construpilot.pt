@@ -64,6 +64,20 @@ def polyline_length_m(points: Sequence[Point], pixels_per_meter: float) -> float
 
 # ============ POLYGONES (SURFACES) ============
 
+def point_in_polygon(x: float, y: float, points: Sequence[Point]) -> bool:
+    """Test pair-impair (ray casting) — le point (x, y) est-il dans le polygone ?"""
+    inside = False
+    n = len(points)
+    j = n - 1
+    for i in range(n):
+        xi, yi = points[i][0], points[i][1]
+        xj, yj = points[j][0], points[j][1]
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
+            inside = not inside
+        j = i
+    return inside
+
+
 def polygon_area_m2(points: Sequence[Point], pixels_per_meter: float) -> float:
     """Aire d'un polygone (Shoelace / Gauss), fermé implicitement.
     Retourne toujours une valeur positive en m².

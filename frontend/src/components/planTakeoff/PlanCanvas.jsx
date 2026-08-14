@@ -219,6 +219,25 @@ export default function PlanCanvas({
           cx, cy + 32 / zoom
         );
       }
+      // DÉDUCTIONS (iter68) — trémies/escaliers en pointillés rouges
+      (r.deductions || []).forEach((d) => {
+        const dp = d.points || [];
+        if (dp.length < 3) return;
+        ctx.beginPath();
+        dp.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1])));
+        ctx.closePath();
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.9)";
+        ctx.setLineDash([6 / zoom, 4 / zoom]);
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const dx = dp.reduce((s, p) => s + p[0], 0) / dp.length;
+        const dy = dp.reduce((s, p) => s + p[1], 0) / dp.length;
+        ctx.font = `bold ${11 / zoom}px system-ui`;
+        ctx.fillStyle = "#dc2626";
+        ctx.textAlign = "center";
+        ctx.fillText(`− ${d.area_m2} m²`, dx, dy);
+      });
     });
 
     // MESURES ENREGISTRÉES (iter65) — teal, gérées via le volet Objets

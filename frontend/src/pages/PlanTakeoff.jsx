@@ -8,6 +8,7 @@ import { QuoteDialog } from "@/components/planTakeoff/QuoteDialog";
 import { Render3dDialog } from "@/components/planTakeoff/Render3dDialog";
 import { EstimateDialog } from "@/components/planTakeoff/EstimateDialog";
 import { MultiPlanDialog } from "@/components/planTakeoff/MultiPlanDialog";
+import PcStudyDialog from "@/components/planTakeoff/PcStudyDialog";
 import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
@@ -17,7 +18,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, FileDown, History, Film, DoorOpen, Copy,
-  Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon,
+  Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon, Sheet, FileSearch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -528,6 +529,82 @@ export default function PlanTakeoff() {
       await refreshPlan();
       toast.success(label ? `Mesure renommée : ${label}` : "Libellé effacé");
     } catch { toast.error("Renommage impossible"); }
+  };
+
+  // Iter68 — surface mesurée → pièce complète (1 clic)
+  const convertMeasureToRoom = async (measureId) => {
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/measurements/${measureId}/to-room`);
+      toast.success(`Pièce créée : ${data.room.name} (${data.room.surface_m2} m²) — murs et volume calculés`, { duration: 6000 });
+      await refreshPlan();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Conversion impossible"); }
+  };
+
+  // Iter68 — déduction (trémie, escalier…) de la pièce contenante
+  const deductMeasure = async (measureId) => {
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/measurements/${measureId}/deduct`);
+      toast.success(`− ${data.deduction.area_m2} m² déduits de « ${data.room_name} » → surface nette ${data.surface_m2} m²`, { duration: 7000 });
+      await refreshPlan();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Déduction impossible"); }
+  };
+
+  const removeDeduction = async (roomId, dedId) => {
+    try {
+      const { data } = await api.delete(`/takeoffs/${plan.plan_id}/rooms/${roomId}/deductions/${dedId}`);
+      toast.success(`Déduction retirée — surface : ${data.surface_m2} m²`);
+      await refreshPlan();
+    } catch { toast.error("Suppression impossible"); }
+  };
+
+  // Iter68 — export Excel (pièces + mesures)
+  const downloadXlsx = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("construpilot_token");
+      const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/export-xlsx`,
+        { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
+      if (!res.ok) throw new Error("Export impossible");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `metre-${plan.plan_id}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Export Excel téléchargé");
+    } catch (e) { toast.error(e.message || "Export Excel impossible"); }
+  };
+
+  // Iter69 — Étude Permis de Construire (gros œuvre : béton, aciers, isobrique)
+  const [pcDialog, setPcDialog] = useState(false);
+  const [pcBusy, setPcBusy] = useState(false);
+  const runPcStudy = async () => {
+    setPcBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/pc-study`, {});
+      await refreshPlan();
+      toast.success(
+        `Étude PC terminée — ${data.totals?.beton_m3 ?? 0} m³ béton · ${data.totals?.acier_kg ?? 0} kg aciers · ${data.totals?.ttc ?? 0} € TTC`,
+        { duration: 8000 });
+    } catch (e) { toast.error(e?.response?.data?.detail || "Étude PC impossible"); }
+    finally { setPcBusy(false); }
+  };
+  const downloadPcFile = async (fmt) => {
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("construpilot_token");
+      const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/pc-study/${fmt}`,
+        { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
+      if (!res.ok) throw new Error("Export impossible");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `etude-pc-${plan.plan_id}.${fmt}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Étude PC ${fmt.toUpperCase()} téléchargée`);
+    } catch (e) { toast.error(e.message || "Export impossible"); }
   };
 
   // Iter67 — modèles de message réutilisables (envoi de rapports)
@@ -1663,6 +1740,18 @@ export default function PlanTakeoff() {
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" /> Métré PDF
           </Button>
+          <Button variant="outline" onClick={downloadXlsx} data-testid="plan-xlsx-export-btn"
+                  className="rounded-sm gap-2">
+            <Sheet className="h-4 w-4" /> Excel
+          </Button>
+          <Button variant="outline" onClick={() => setPcDialog(true)} data-testid="plan-pc-study-btn"
+                  className="rounded-sm gap-2 border-emerald-500/60 text-emerald-600 hover:bg-emerald-500 hover:text-white">
+            <FileSearch className="h-4 w-4" /> Étude PC
+          </Button>
+          <PcStudyDialog open={pcDialog} onClose={() => setPcDialog(false)}
+                         study={plan?.pc_study || null} busy={pcBusy}
+                         onRun={runPcStudy} onDownload={downloadPcFile}
+                         onDownloadXlsx={downloadXlsx} />
           <Button variant="outline"
                   onClick={() => { setEstimateDialog(true); setEstimateResult(null); }}
                   data-testid="plan-estimate-btn"
@@ -1992,6 +2081,8 @@ export default function PlanTakeoff() {
             onDeleteMeasure={deleteMeasureFromPanel}
             onClearMeasures={clearMeasures}
             onRenameMeasure={renameMeasure}
+            onConvertMeasure={convertMeasureToRoom}
+            onDeductMeasure={deductMeasure}
             onDeleteCounter={(id) => deleteAnnotationLocal("counters", id)}
             onRenameCounter={(id, name) => updateAnnotationLocal("counters", id, { label: name })}
             onDeleteNote={(id) => deleteAnnotationLocal("notes", id)}
@@ -2226,7 +2317,7 @@ export default function PlanTakeoff() {
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>
-                  {(r.floor_material || r.surface_delta_pct != null) && (
+                  {(r.floor_material || r.surface_delta_pct != null || (r.deductions || []).length > 0) && (
                     <div className="flex gap-1 flex-wrap mt-1">
                       {r.floor_material && (
                         <Badge variant="outline" className="rounded-sm text-[10px] capitalize"
@@ -2243,6 +2334,19 @@ export default function PlanTakeoff() {
                           écrit {r.surface_written_m2} m² ({r.surface_delta_pct > 0 ? "+" : ""}{r.surface_delta_pct}%)
                         </Badge>
                       )}
+                      {(r.deductions || []).map((d) => (
+                        <Badge key={d.deduction_id} variant="outline"
+                               className="rounded-sm text-[10px] num border-red-400 text-red-500 gap-1"
+                               title={`Surface brute : ${r.surface_gross_m2} m²`}
+                               data-testid={`room-deduction-${d.deduction_id}`}>
+                          − {d.area_m2} m² {d.label}
+                          <button onClick={() => removeDeduction(r.room_id, d.deduction_id)}
+                                  className="hover:text-destructive"
+                                  data-testid={`room-deduction-remove-${d.deduction_id}`}>
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-2 mt-2 text-xs num">

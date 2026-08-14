@@ -1954,3 +1954,28 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 - `test_iter67_surface_templates.py` 6/6 (polygone 18 m² exact, 422 <3 pts, templates CRUD + auth) + iter65 11/11.
 - E2E : nav 1 ligne (header 65px) + menu Plus 10 entrées + navigation OK ; surface 25.6 m² via double-clic + polygone teal rempli « terrasse · 18.00 m² » ; modèle enregistré → chip → clic applique le message.
 - PIÈGE Playwright : OnboardingTour overlay (z-100) bloque les clics au premier passage sur /dashboard → cliquer « Passer le tour » d'abord.
+
+---
+
+## Itération 68 (14/06/2026) — Fix fork + Types de travaux Construction Maison
+
+### Livré
+1. **Vérif UI post-fork** (iter63 report 5/5 PASS) : Convertir en pièce, Déduction, Export Excel fonctionnels dans ObjectPanel.
+2. **Fix entitlements fork** : `server.py::seed()` seed idempotent d'un entitlement `pro_business_monthly` actif pour demo@ et pro@ (les routes /takeoffs renvoyaient 402 après le fork → 83 tests échouaient). Tests iter14 assouplis (Twilio configuré dans .env).
+3. **Types de travaux construction** (`catalog.py`) : 5 nouveaux PROJECT_TYPES — construction_maison_neuve (clé en main, ~1543 €/m²), construction_maison_hors_eau_hors_air (~826 €/m²), construction_maison_gros_oeuvre (~333 €/m²), construction_maison_second_oeuvre (~729 €/m²), construction_maison_main_oeuvre (labour_only=true → matériaux 0 €, ~672 €/m²). + 4 nouveaux LOTS : terrassement, charpente, vrd, ventilation. EXECUTION_ORDER + HIGH_RISK_LOTS mis à jour. `estimation.py` : flag `labour_only` (matériaux zéro dans _compute_lot et _price_model).
+
+---
+
+## Itération 69 (14/06/2026) — Étude Permis de Construire (PC) — Gros Œuvre
+
+### Livré (testing agent iter64 : backend 9/9 + frontend 4/4 = 100 %)
+1. **Moteur** `engines/pc_study.py` : IA GPT-4o vision lit chaque page du PC (texte verbatim, demandes, surfaces, niveaux, périmètre, refends, ouvertures, escaliers) → merge multi-pages (par confiance) → calcul DÉTERMINISTE avec RÈGLES FIXES validées : semelles filantes 60×30 cm (périmètre + refends), dalle/plancher 15 cm, murs brique isobrique 20 cm (9,5 briques/m²), escalier BA, aciers (semelles 15 kg/ml 3+3 HA10+cadres HA6 ; dalle 14 kg/m² ST25C ; escalier 100 kg/m³ ; chaînages 3,6 kg/ml). Devis 4 lots (Terrassement&Fondations incl. fouilles+propreté / Planchers / Élévations incl. chaînages+linteaux / Escalier) avec PU mat/MO (PC_UNIT_PRICES), totaux béton m³ · aciers kg · briques · HT/TVA 20 %/TTC. Résolution des entrées : manuel > IA (PC) > mesures plan > estimé (sources tracées dans input_sources).
+2. **Routes** `routes/plans_pc.py` : POST/GET `/api/takeoffs/{id}/pc-study` (timeout 90 s/page, max 8 pages), GET `/pc-study/pdf` (reportlab), GET `/pc-study/docx` (python-docx NOUVEAU package). Feuille « Étude PC » ajoutée à `/export-xlsx`. `pc_study` exposé dans _plan_summary.
+3. **UI** `PcStudyDialog.jsx` : bouton `plan-pc-study-btn` (vert émeraude) sur /plan → dialog règles fixes + `pc-study-run-btn` → toast récap → hypothèses (avec source), tableaux par lot, totaux (`pc-study-total-ttc`), exports PDF/Word/Excel (`pc-study-download-*`), bannière fallback si l'IA n'a rien lu (`pc-study-fallback-note`), avertissements IA.
+
+### Tests
+- `tests/test_iter69_pc_study.py` 9/9 (arithmétique vérifiée : (per+ref)×0,6×0,3 ✓, ×15 kg/ml ✓).
+- E2E frontend : run <10 s (plan blanc → fallback géométrie), 3 téléchargements interceptés OK, régression xlsx/pdf/objets OK.
+
+### Backlog restant (P3)
+- Deep-link /plan?id=<pid> (QA), MAX_PC_PAGES en config, factoriser downloadBlob, légende PDF mesures multi-pages.

@@ -134,6 +134,19 @@ async def seed():
 
     # Seed "BTP Demo SAS" — org démo pour montrer le partage de branding
     await _seed_demo_org()
+
+    # Entitlement Pro Business permanent pour les comptes de test (idempotent).
+    # Sans lui, les routes /takeoffs renvoient 402 et la suite pytest échoue après un fork.
+    for email in (DEMO_EMAIL, PRO_EMAIL):
+        u = await db.users.find_one({"email": email}, {"user_id": 1})
+        if u and not await db.entitlements.find_one(
+                {"user_id": u["user_id"], "plan_id": "pro_business_monthly", "status": "active"}):
+            await db.entitlements.insert_one({
+                "user_id": u["user_id"], "plan_id": "pro_business_monthly",
+                "plan_code": "PRO_BUSINESS_MONTHLY", "kind": "subscription",
+                "audience": "pro", "status": "active",
+                "granted_at": datetime.now(timezone.utc).isoformat(),
+                "source": "seed_demo"})
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")

@@ -109,7 +109,8 @@ def _resolve_lots(tpl: dict, lot_keys: list[str] | None) -> dict:
 
 def _compute_lot(key: str, factor: float, surface: float,
                  finish_cfg: dict, global_coef: float, rc: float,
-                 ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M) -> dict | None:
+                 ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M,
+                 labour_only: bool = False) -> dict | None:
     """Calcule le détail d'un lot (qty, prix unitaire, total).
 
     Si le lot est sensible à la hauteur sous plafond (peinture, placo, isolation,
@@ -126,7 +127,7 @@ def _compute_lot(key: str, factor: float, surface: float,
     qty = round(surface * factor * height_ratio, 2)
     if lot["unit"] == "u":
         qty = max(1, round(qty))
-    mp = _mat_price(lot, finish_cfg["key"])
+    mp = 0.0 if labour_only else _mat_price(lot, finish_cfg["key"])
     mat_unit = round(mp * rc * 0.6 + mp * 0.4, 2)
     labour_unit = round(lot["labour"] * global_coef * finish_cfg["coef"] ** 0.4, 2)
     materials = round(qty * mat_unit, 2)
@@ -165,10 +166,11 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
 
     effective_height = _weighted_avg_height(levels, ceiling_height_m)
 
+    labour_only = bool(tpl.get("labour_only"))
     selected = _resolve_lots(tpl, lot_keys)
     lots = [lot for key, factor in selected.items()
             if (lot := _compute_lot(key, factor, surface, finish_cfg, global_coef, rc,
-                                     effective_height))]
+                                     effective_height, labour_only))]
     lots.sort(key=lambda l: EXECUTION_ORDER.index(l["key"]) if l["key"] in EXECUTION_ORDER else 99)
 
     materials_total = round(sum(l["material_cost"] for l in lots), 2)
@@ -187,6 +189,7 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
         "finish_level": finish_cfg["key"], "finish_level_name": finish_cfg["name"],
         "country": country, "region": region, "building_type": building_type,
         "condition": condition, "construction_year": construction_year,
+        "labour_only": labour_only,
         "coefficients": {"region": rc, "condition": cc, "building": bc, "year": yc,
                          "finish": finish_cfg["coef"]},
         "lots": lots,
@@ -214,13 +217,15 @@ def _price_model(project_type, surface, country, region, building_type, conditio
         rc = region_coef(country, region)
         coef = rc * CONDITION_COEF.get(condition, 1.0) * BUILDING_COEF.get(building_type, 1.0) * year_coef(year)
         sel = tpl["lots"] if not lot_keys else {k: v for k, v in tpl["lots"].items() if k in lot_keys}
+        labour_only = bool(tpl.get("labour_only"))
         tot = 0.0
         for key, factor in sel.items():
             lot = LOTS_BY_KEY.get(key)
             if not lot:
                 continue
             qty = surface * factor
-            tot += qty * (_mat_price(lot, lvl) * rc + lot["labour"] * coef * finish_cfg["coef"] ** 0.4)
+            mat = 0.0 if labour_only else _mat_price(lot, lvl)
+            tot += qty * (mat * rc + lot["labour"] * coef * finish_cfg["coef"] ** 0.4)
         tot *= 1.145
         out[lvl] = {"total": round(tot, 2), "per_sqm": round(tot / surface, 2) if surface else 0}
     return out

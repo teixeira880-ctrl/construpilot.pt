@@ -72,24 +72,34 @@ def _ai_dim_zones(ai: dict | None, page_index: int, page: dict) -> list[dict]:
 
 
 def _recompute_room(room: dict, ppm: float) -> dict:
-    """Recalcule surface / périmètre / murs / volume d'une pièce avec un nouveau ppm."""
+    """Recalcule surface / périmètre / murs / volume d'une pièce avec un nouveau ppm.
+
+    Iter68 : les déductions (trémie, escalier…) sont soustraites de la surface,
+    du plafond et du volume — le périmètre et les murs restent inchangés.
+    """
     pts = room.get("points") or []
     if len(pts) < 3 or not ppm or ppm <= 0:
         return room
     height = float(room.get("ceiling_height_m") or 2.5)
     m = G.room_measurements(pts, ppm, height)
     net = G.subtract_openings(m["wall_area_gross_m2"], room.get("openings") or [])
+    ded = round(sum(float(d.get("area_m2") or 0)
+                    for d in (room.get("deductions") or [])), 3)
+    surface = max(0.0, round(m["surface_m2"] - ded, 3))
     room.update({
-        "surface_m2": m["surface_m2"], "perimeter_m": m["perimeter_m"],
-        "ceiling_area_m2": m["ceiling_area_m2"],
+        "surface_m2": surface,
+        "surface_gross_m2": m["surface_m2"],
+        "deductions_area_m2": ded,
+        "perimeter_m": m["perimeter_m"],
+        "ceiling_area_m2": surface,
         "wall_area_gross_m2": m["wall_area_gross_m2"],
         "wall_area_net_m2": net["wall_area_net_m2"],
         "openings_area_m2": net["openings_area_m2"],
-        "volume_m3": round(m["surface_m2"] * height, 3),
+        "volume_m3": round(surface * height, 3),
     })
     written = room.get("surface_written_m2")
-    if written and m["surface_m2"] > 0:
-        room["surface_delta_pct"] = round((float(written) / m["surface_m2"] - 1) * 100, 1)
+    if written and surface > 0:
+        room["surface_delta_pct"] = round((float(written) / surface - 1) * 100, 1)
     return room
 
 
@@ -562,6 +572,117 @@ async def clear_measurements(plan_id: str, page_index: int = 0,
     if res.matched_count == 0:
         raise HTTPException(404, "Plan introuvable")
     return {"ok": True}
+
+
+# ============ SURFACE → PIÈCE & DÉDUCTIONS (iter68) ============
+
+async def _plan_and_polygon_measure(plan_id: str, measurement_id: str, user_id: str):
+    """Charge plan + mesure polygone + calibration — 404/422/400 sinon."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user_id},
+        {"_id": 0, "calibrations": 1, "rooms": 1, "measurements": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    m = next((x for x in (p.get("measurements") or [])
+              if x.get("measurement_id") == measurement_id), None)
+    if not m:
+        raise HTTPException(404, "Mesure introuvable")
+    if m.get("kind") != "polygon" or len(m.get("points") or []) < 3:
+        raise HTTPException(422, "Seule une mesure de surface (polygone) est convertible")
+    calib = (p.get("calibrations") or {}).get(str(m.get("page_index", 0)))
+    if not calib:
+        raise HTTPException(400, "Page non calibrée")
+    return p, m, calib
+
+
+@router.post("/{plan_id}/measurements/{measurement_id}/to-room")
+async def measurement_to_room(plan_id: str, measurement_id: str,
+                              user=Depends(current_user)) -> dict:
+    """Convertit une surface mesurée en pièce complète (murs et volume calculés)."""
+    p, m, calib = await _plan_and_polygon_measure(plan_id, measurement_id, user["user_id"])
+    rooms = p.get("rooms") or []
+    room = {
+        "room_id": "room_" + secrets.token_hex(4),
+        "page_index": m.get("page_index", 0),
+        "name": (m.get("label") or f"Pièce {len(rooms) + 1:02d}").strip()[:60],
+        "points": [list(pt) for pt in m["points"]],
+        "openings": [],
+        "ceiling_height_m": 2.5,
+        "floor_thickness_m": 0.15,
+        "created_at": _now(),
+    }
+    _recompute_room(room, calib["pixels_per_meter"])
+    rooms.append(room)
+    measurements = [x for x in p.get("measurements") or []
+                    if x.get("measurement_id") != measurement_id]
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {"rooms": rooms, "measurements": measurements, "updated_at": _now()}})
+    await _snapshot(plan_id, user["user_id"], "measure_to_room",
+                    {"room_name": room["name"]})
+    return {"ok": True, "room": room}
+
+
+@router.post("/{plan_id}/measurements/{measurement_id}/deduct")
+async def measurement_deduct(plan_id: str, measurement_id: str,
+                             user=Depends(current_user)) -> dict:
+    """Soustrait une surface mesurée (trémie, escalier…) de la pièce qui la contient."""
+    p, m, calib = await _plan_and_polygon_measure(plan_id, measurement_id, user["user_id"])
+    pts = m["points"]
+    cx = sum(pt[0] for pt in pts) / len(pts)
+    cy = sum(pt[1] for pt in pts) / len(pts)
+    rooms = p.get("rooms") or []
+    target = next(
+        (r for r in rooms
+         if r.get("page_index") == m.get("page_index", 0)
+         and len(r.get("points") or []) >= 3
+         and G.point_in_polygon(cx, cy, r["points"])),
+        None)
+    if not target:
+        raise HTTPException(400, "Dessinez la surface à l'intérieur d'une pièce à déduire")
+    deduction = {
+        "deduction_id": "ded_" + secrets.token_hex(4),
+        "label": m.get("label") or "Déduction",
+        "area_m2": float(m.get("area_m2") or 0),
+        "points": [list(pt) for pt in pts],
+    }
+    target.setdefault("deductions", []).append(deduction)
+    _recompute_room(target, calib["pixels_per_meter"])
+    measurements = [x for x in p.get("measurements") or []
+                    if x.get("measurement_id") != measurement_id]
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {"rooms": rooms, "measurements": measurements, "updated_at": _now()}})
+    await _snapshot(plan_id, user["user_id"], "room_deduction",
+                    {"room_name": target["name"], "area_m2": deduction["area_m2"]})
+    return {"ok": True, "room_id": target["room_id"], "room_name": target["name"],
+            "deduction": deduction, "surface_m2": target["surface_m2"]}
+
+
+@router.delete("/{plan_id}/rooms/{room_id}/deductions/{deduction_id}")
+async def delete_deduction(plan_id: str, room_id: str, deduction_id: str,
+                           user=Depends(current_user)) -> dict:
+    """Retire une déduction d'une pièce et recalcule ses surfaces."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "rooms": 1, "calibrations": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    rooms = p.get("rooms") or []
+    room = next((r for r in rooms if r.get("room_id") == room_id), None)
+    if not room:
+        raise HTTPException(404, "Pièce introuvable")
+    before = len(room.get("deductions") or [])
+    room["deductions"] = [d for d in room.get("deductions") or []
+                          if d.get("deduction_id") != deduction_id]
+    if len(room["deductions"]) == before:
+        raise HTTPException(404, "Déduction introuvable")
+    calib = (p.get("calibrations") or {}).get(str(room.get("page_index", 0)))
+    _recompute_room(room, (calib or {}).get("pixels_per_meter") or 0)
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {"rooms": rooms, "updated_at": _now()}})
+    return {"ok": True, "surface_m2": room["surface_m2"]}
 
 
 # ============ PIÈCES ============

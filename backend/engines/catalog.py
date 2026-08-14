@@ -18,6 +18,18 @@ LOTS = [
     {"key": "fondations", "name": "Fondations", "unit": "m³", "mat_eco": 130, "mat_std": 165, "mat_premium": 210,
      "labour": 140, "hours": 2.5, "difficulty": "pro", "diy_possible": False,
      "tools": ["Mini-pelle", "Coffrage", "Aiguille vibrante"]},
+    {"key": "terrassement", "name": "Terrassement", "unit": "m²", "mat_eco": 15, "mat_std": 25, "mat_premium": 40,
+     "labour": 30, "hours": 0.5, "difficulty": "pro", "diy_possible": False,
+     "tools": ["Pelle mécanique", "Laser de chantier", "Compacteur", "Camion-benne"]},
+    {"key": "vrd", "name": "VRD / Raccordements réseaux", "unit": "ml", "mat_eco": 45, "mat_std": 65, "mat_premium": 95,
+     "labour": 55, "hours": 1.0, "difficulty": "pro", "diy_possible": False,
+     "tools": ["Mini-pelle", "Grillage avertisseur", "Fourreaux TPC", "Regards"]},
+    {"key": "charpente", "name": "Charpente", "unit": "m²", "mat_eco": 55, "mat_std": 85, "mat_premium": 140,
+     "labour": 45, "hours": 0.8, "difficulty": "pro", "diy_possible": False,
+     "tools": ["Grue / manuscopique", "Cloueur charpente", "Harnais", "Niveau laser"]},
+    {"key": "ventilation", "name": "Ventilation / VMC", "unit": "m²", "mat_eco": 12, "mat_std": 18, "mat_premium": 32,
+     "labour": 14, "hours": 0.25, "difficulty": "hard", "diy_possible": True,
+     "tools": ["Scie cloche", "Gaines isolées", "Anémomètre", "Perforateur"]},
     {"key": "placo", "name": "Plâtrerie / Placo", "unit": "m²", "mat_eco": 12, "mat_std": 17, "mat_premium": 24,
      "labour": 26, "hours": 0.55, "difficulty": "intermediate", "diy_possible": True,
      "tools": ["Visseuse placo", "Lève-plaque", "Couteau à enduire", "Niveau laser"]},
@@ -82,6 +94,9 @@ LOTS_BY_KEY = {l["key"]: l for l in LOTS}
 DEFAULT_LOT_FACTORS = {
     "demolition": 0.90,     # m² : ~90% de la surface est démolie
     "fondations": 0.30,     # m³ : 0.30 m³ de béton / m² SHAB
+    "terrassement": 1.00,   # m² : emprise au sol ≈ surface
+    "vrd": 0.40,            # ml : ~40 ml de tranchées pour 100 m²
+    "charpente": 1.10,      # m² : débord de toit inclus
     "maconnerie": 0.20,     # m² : 20% de refends/reprises
     "toiture": 1.10,        # m² : léger débord de toit
     "facade": 0.90,         # m² : périmètre × hauteur / surface
@@ -106,6 +121,40 @@ DEFAULT_LOT_FACTORS = {
 
 # Modèles de projet : lot -> facteur de quantité par m² de surface du projet
 PROJECT_TYPES = [
+    # ---- Construction maison neuve (tous corps d'état détaillés) ----
+    {"key": "construction_maison_neuve", "name": "Construction maison neuve (clé en main)",
+     "image": "project_card_exterior",
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+              "charpente": 1.10, "toiture": 1.10, "facade": 1.0, "menuiseries": 0.08,
+              "electricite": 1.0, "plomberie": 1.0, "chauffage": 1.0, "ventilation": 1.0,
+              "isolation": 1.4, "placo": 1.8, "carrelage": 0.35, "parquet": 0.5,
+              "peinture": 2.9, "cuisine": 0.03, "salle_de_bain": 0.06, "dechets": 0.5}},
+    {"key": "construction_maison_hors_eau_hors_air",
+     "name": "Construction maison neuve — hors d'eau / hors d'air",
+     "image": "project_card_exterior",
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+              "charpente": 1.10, "toiture": 1.10, "facade": 1.0, "menuiseries": 0.08,
+              "dechets": 0.4}},
+    {"key": "construction_maison_gros_oeuvre",
+     "name": "Construction maison — gros œuvre seul",
+     "image": "project_card_exterior",
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+              "dechets": 0.3}},
+    {"key": "construction_maison_second_oeuvre",
+     "name": "Construction maison — second œuvre & finitions",
+     "image": "project_card_interior",
+     "lots": {"electricite": 1.0, "plomberie": 1.0, "chauffage": 1.0, "ventilation": 1.0,
+              "isolation": 1.4, "placo": 1.8, "carrelage": 0.35, "parquet": 0.5,
+              "peinture": 2.9, "cuisine": 0.03, "salle_de_bain": 0.06, "dechets": 0.3}},
+    {"key": "construction_maison_main_oeuvre",
+     "name": "Construction maison neuve — main d'œuvre seule",
+     "image": "project_card_exterior", "labour_only": True,
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+              "charpente": 1.10, "toiture": 1.10, "facade": 1.0, "menuiseries": 0.08,
+              "electricite": 1.0, "plomberie": 1.0, "chauffage": 1.0, "ventilation": 1.0,
+              "isolation": 1.4, "placo": 1.8, "carrelage": 0.35, "parquet": 0.5,
+              "peinture": 2.9, "cuisine": 0.03, "salle_de_bain": 0.06, "dechets": 0.5}},
+    # ---- Rénovation ----
     {"key": "renovation_complete", "name": "Rénovation complète maison", "image": "project_card_exterior",
      "lots": {"demolition": 0.9, "maconnerie": 0.15, "placo": 1.8, "isolation": 1.4, "electricite": 1.0,
               "plomberie": 1.0, "chauffage": 1.0, "carrelage": 0.35, "parquet": 0.5, "peinture": 2.9,
@@ -209,10 +258,13 @@ RISK_KEYWORDS = {
 }
 
 HIGH_RISK_LOTS = {"electricite", "chauffage", "climatisation", "toiture", "facade", "fondations",
-                  "extension", "maconnerie", "renovation_energetique"}
+                  "extension", "maconnerie", "renovation_energetique", "terrassement", "charpente",
+                  "vrd"}
 
 # Ordre d'exécution pour le planning
-EXECUTION_ORDER = ["demolition", "fondations", "maconnerie", "extension", "toiture", "menuiseries",
-                   "electricite", "plomberie", "chauffage", "climatisation", "isolation", "placo",
+EXECUTION_ORDER = ["demolition", "terrassement", "fondations", "vrd", "maconnerie", "extension",
+                   "charpente", "toiture", "menuiseries",
+                   "electricite", "plomberie", "chauffage", "climatisation", "ventilation",
+                   "isolation", "placo",
                    "carrelage", "parquet", "peinture", "cuisine", "salle_de_bain", "facade",
                    "terrasse", "renovation_energetique", "dechets"]

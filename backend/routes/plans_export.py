@@ -10,6 +10,7 @@ import os
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
@@ -220,6 +221,114 @@ async def send_ecarts_pdf(plan_id: str, body: SendEcartsIn,
             "ecarts": meta["ecarts"], "matches": meta["matches"],
         }], "$slice": -20}}})
     return {"ok": True, "sent_to": body.to_email, **meta}
+
+
+# ============ EXPORT EXCEL (iter68) ============
+
+@router.get("/{plan_id}/export-xlsx")
+async def export_xlsx(plan_id: str, user=Depends(current_user)):
+    """Export Excel des pièces et mesures — prêt pour les tableaux de chiffrage."""
+    from fastapi.responses import Response
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "filename": 1, "rooms": 1, "measurements": 1, "pc_study": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+
+    header_font = Font(bold=True, color="FFFFFF", size=10)
+    header_fill = PatternFill("solid", fgColor="1F2733")
+    bold = Font(bold=True)
+
+    def sheet_header(ws, headers: list, widths: list) -> None:
+        ws.append(headers)
+        for col, w in enumerate(widths, start=1):
+            cell = ws.cell(row=1, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center")
+            ws.column_dimensions[cell.column_letter].width = w
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pièces"
+    sheet_header(ws, ["Pièce", "Page", "Surface nette (m²)", "Surface brute (m²)",
+                      "Déductions (m²)", "Périmètre (m)", "Murs bruts (m²)",
+                      "Murs nets (m²)", "Plafond (m²)", "HSP (m)", "Volume (m³)",
+                      "Matériau sol", "Surface écrite (m²)", "Écart (%)"],
+                 [22, 6, 16, 16, 14, 13, 13, 12, 12, 8, 12, 16, 16, 10])
+    rooms = p.get("rooms") or []
+    for r in rooms:
+        ws.append([r.get("name"), (r.get("page_index") or 0) + 1,
+                   r.get("surface_m2"),
+                   r.get("surface_gross_m2") or r.get("surface_m2"),
+                   r.get("deductions_area_m2") or 0,
+                   r.get("perimeter_m"), r.get("wall_area_gross_m2"),
+                   r.get("wall_area_net_m2"), r.get("ceiling_area_m2"),
+                   r.get("ceiling_height_m"), r.get("volume_m3"),
+                   r.get("floor_material") or "",
+                   r.get("surface_written_m2") or "",
+                   r.get("surface_delta_pct") if r.get("surface_delta_pct") is not None else ""])
+    if rooms:
+        last = ws.max_row
+        totals = ["TOTAL", ""]
+        for letter in ["C", "D", "E", "F", "G", "H", "I"]:
+            totals.append(f"=SUM({letter}2:{letter}{last})")
+        totals.append("")
+        totals.append(f"=SUM(K2:K{last})")
+        ws.append(totals)
+        for cell in ws[ws.max_row]:
+            cell.font = bold
+
+    ws2 = wb.create_sheet("Mesures")
+    sheet_header(ws2, ["Libellé", "Type", "Page", "Longueur (m)", "Surface (m²)",
+                       "Périmètre (m)", "Créée le"],
+                 [28, 12, 6, 13, 13, 13, 18])
+    kind_fr = {"distance": "Distance", "polyline": "Polyligne", "polygon": "Surface"}
+    for m in p.get("measurements") or []:
+        is_poly = m.get("kind") == "polygon"
+        ws2.append([m.get("label") or "",
+                    kind_fr.get(m.get("kind"), m.get("kind") or ""),
+                    (m.get("page_index") or 0) + 1,
+                    "" if is_poly else (m.get("value_m") or m.get("length_m") or ""),
+                    m.get("area_m2") if is_poly else "",
+                    m.get("perimeter_m") if is_poly else "",
+                    str(m.get("created_at") or "")[:16].replace("T", " ")])
+
+    # Étude PC (gros œuvre) — feuille dédiée si l'analyse a été lancée
+    study = p.get("pc_study")
+    if study:
+        ws3 = wb.create_sheet("Étude PC")
+        sheet_header(ws3, ["Lot", "Désignation", "Détail", "Unité", "Qté",
+                           "PU mat. (€)", "PU MO (€)", "Total HT (€)"],
+                     [30, 42, 52, 8, 10, 12, 12, 14])
+        for lot in study.get("lots") or []:
+            for ln in lot.get("lines") or []:
+                ws3.append([lot.get("lot"), ln.get("designation"), ln.get("detail"),
+                            ln.get("unit"), ln.get("qty"), ln.get("pu_mat"),
+                            ln.get("pu_mo"), ln.get("total")])
+        t = study.get("totals") or {}
+        ws3.append([])
+        for label, val in [("Béton total (m³)", t.get("beton_m3")),
+                           ("Aciers total (kg)", t.get("acier_kg")),
+                           ("Briques isobrique (u)", t.get("briques_u")),
+                           ("Total HT (€)", t.get("ht")),
+                           ("TVA (€)", t.get("tva")),
+                           ("TOTAL TTC (€)", t.get("ttc"))]:
+            ws3.append(["", "", "", "", "", "", label, val])
+            ws3.cell(row=ws3.max_row, column=7).font = bold
+            ws3.cell(row=ws3.max_row, column=8).font = bold
+
+    buf = BytesIO()
+    wb.save(buf)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition":
+                 f'attachment; filename="metre-{plan_id}.xlsx"'}
+    )
 
 
 # ============ PDF DEVIS ============
