@@ -30,6 +30,8 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
   const [crew, setCrew] = useState(3);
   const [rate, setRate] = useState(45);
   const [reminderDays, setReminderDays] = useState(3);
+  const [notifyMode, setNotifyMode] = useState("email");
+  const [notifyPhone, setNotifyPhone] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -46,6 +48,8 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       setCrew(s.crew_size ?? d.crew_size ?? 3);
       setRate(s.hourly_rate_eur ?? d.hourly_rate_eur ?? 45);
       setReminderDays(s.reminder_days ?? d.reminder_days ?? 3);
+      setNotifyMode(s.notify_on_open ?? d.notify_on_open ?? "email");
+      setNotifyPhone(s.notify_phone ?? "");
     }).catch(() => toast.error("Chargement des réglages impossible"));
   }, [open]);
 
@@ -63,6 +67,8 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         unit_prices, crew_size: parseInt(crew, 10) || 3,
         hourly_rate_eur: parseFloat(rate) || 45,
         reminder_days: Math.max(0, parseInt(reminderDays, 10) || 0),
+        notify_on_open: notifyMode,
+        notify_phone: notifyPhone.trim() || null,
       });
       toast.success("Réglages enregistrés");
       onSaved?.();
@@ -115,6 +121,25 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
                    onChange={(e) => setReminderDays(e.target.value)}
                    data-testid="pc-settings-reminder-input" className="rounded-sm num w-32" />
           </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Me prévenir quand le client ouvre l'étude</Label>
+            <select value={notifyMode} onChange={(e) => setNotifyMode(e.target.value)}
+                    data-testid="pc-settings-notify-select"
+                    className="h-9 rounded-sm border border-input bg-background px-2 text-sm">
+              <option value="email">Par email</option>
+              <option value="sms">Par SMS</option>
+              <option value="both">Email + SMS</option>
+              <option value="off">Ne pas me prévenir</option>
+            </select>
+          </div>
+          {(notifyMode === "sms" || notifyMode === "both") && (
+            <div className="grid gap-1.5">
+              <Label htmlFor="pc-notify-phone" className="text-xs">Numéro pour les SMS (+33…)</Label>
+              <Input id="pc-notify-phone" type="tel" placeholder="+33612345678"
+                     value={notifyPhone} onChange={(e) => setNotifyPhone(e.target.value)}
+                     data-testid="pc-settings-phone-input" className="rounded-sm num" />
+            </div>
+          )}
         </div>
 
         <table className="w-full text-xs border border-border">

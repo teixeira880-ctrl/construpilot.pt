@@ -302,3 +302,54 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None,
     buf = BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+def build_purchase_order_pdf(plan: dict, level_name: str, items: list[dict],
+                             branding: dict | None, order_ref: str,
+                             supplier_name: str = "", notes: str = "") -> bytes:
+    """Bon de commande matériaux (un niveau de l'étude PC) prêt à envoyer au négoce."""
+    from datetime import date
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                            topMargin=16 * mm, bottomMargin=16 * mm)
+    S = _styles()
+    story: list = []
+    _story_header_branding(story, branding, S)
+    story.append(Paragraph("BON DE COMMANDE MATÉRIAUX", S["kicker"]))
+    story.append(Paragraph(order_ref, S["h1"]))
+    story.append(Paragraph(
+        f"Date : {date.today().strftime('%d/%m/%Y')} · "
+        f"Chantier : {plan.get('filename') or 'permis de construire'} · "
+        f"Phase : <b>{level_name}</b>", S["muted"]))
+    if supplier_name:
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(f"À l'attention de : <b>{supplier_name}</b>", S["body"]))
+    story.append(Spacer(1, 6))
+
+    rows = [["Désignation", "U", "Qté commandée*", "PU indicatif", "Total indicatif"]]
+    for it in items:
+        rows.append([Paragraph(it["designation"], S["body"]), it["unit"],
+                     _fmt(it["qty"]), _fmt(it["pu_mat"], "€"), _fmt(it["total"], "€")])
+    total = round(sum(it["total"] for it in items), 2)
+    rows.append(["", "", "", "TOTAL HT indicatif", _fmt(total, "€")])
+    story.append(_table(rows, [78 * mm, 12 * mm, 28 * mm, 28 * mm, 28 * mm],
+                        [("BACKGROUND", (0, 0), (-1, 0), DARK),
+                         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                         ("FONTSIZE", (0, 0), (-1, -1), 8),
+                         ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+                         ("FONTNAME", (3, len(rows) - 1), (-1, len(rows) - 1),
+                          "Helvetica-Bold"),
+                         ("TEXTCOLOR", (4, len(rows) - 1), (4, len(rows) - 1), ORANGE)],
+                        repeat_rows=1))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(
+        "* Quantités incluant +5 % de chutes/pertes, arrondies au conditionnement "
+        "supérieur. Prix indicatifs issus de notre étude — merci de confirmer vos "
+        "tarifs, disponibilités et délais de livraison.", S["muted"]))
+    if notes:
+        story.append(Paragraph("Notes", S["h2"]))
+        story.append(Paragraph(notes.replace("\n", "<br/>"), S["body"]))
+    _story_footer(story, S)
+    doc.build(story)
+    return buf.getvalue()

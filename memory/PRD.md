@@ -2021,3 +2021,16 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 
 ### Tests
 - `test_iter70_pc_extras.py` : +TestPcLevelsAndGantt (sommes niveaux==global, WE sautés, ?start invalide toléré) +TestPcReminders (roundtrip settings, bornes 422, admin-only, idempotence sent:0).
+
+---
+
+## Itération 73 (14/06/2026) — Étude PC : bon de commande, notification ouverture, historique
+
+### Livré (pytest 40/40 iter69-71 + E2E réels + vérif visuelle UI & PDF)
+1. **Commande Fournisseur** : `pc_study.py` — `_line` stocke désormais `key` (price_key) ; `build_purchase_order_items(level)` convertit les lignes d'un niveau en articles matériaux (+5 % chutes, arrondis : m³→0,5 sup, kg→5 sup ; briques converties m²→unités +colle joint mince 1,5 kg/m² ; fouilles exclues). `pc_export.py::build_purchase_order_pdf` (réf BC-xxx-Nx-date, branding, destinataire, total HT indicatif, mention chutes). Routes : GET `/takeoffs/{id}/pc-study/purchase-order?level=&supplier=&notes=` (PDF) + POST `.../purchase-order/send` {level_index, supplier_email, supplier_name, notes} (email PDF joint au négoce, reply-to mentionné, historisé sent_reports kind="purchase_order"). UI : bouton « Commander » par niveau (`pc-level-{i}-order-btn`) → `PcOrderDialog.jsx` (négoce, email, notes, télécharger/envoyer). Envoi réel testé (8 articles, 4 343 € HT).
+2. **Notification Ouverture** : réglages `notify_on_open` (email|sms|both|off, défaut email) + `notify_phone` dans pc_settings (validation pattern 422). `_notify_study_opened` appelé à la 1ʳᵉ ouverture du pixel (best-effort, pixel jamais bloqué) : email au pro (« X a ouvert votre étude ») et/ou SMS via `alerting._send_sms` (Twilio). UI : select `pc-settings-notify-select` + champ téléphone conditionnel `pc-settings-phone-input`.
+3. **Historique Études** : collection `pc_study_history` (plan_id, user_id, saved_at, source analyse|recalcul, ht/ttc/tva, beton_m3, acier_kg, briques_u, total_days, custom_pricing). Archivage automatique de la version remplacée dans run_pc_study et recompute. GET `/takeoffs/{id}/pc-study/history` (20 dernières). UI : section `pc-history-list` — tableau Date | Origine | Béton | Aciers | TTC | Δ vs version actuelle (vert baisse / rouge hausse / « identique »).
+
+### Tests
+- `test_iter71_pc_orders.py` 10/10 : items engine (+5 % chutes, briques+colle, fouilles exclues), PDF BC, 400 niveau inconnu, 422 email, historisation purchase_order, versions history +1 après recompute, 401 sans auth, roundtrip notify both+phone, 422 mode invalide, pixel toujours 200.
+- Piège récurrent (3ᵉ fois) : éditions parallèles sur le MÊME fichier se sont écrasées (defaults notify_on_open perdu). Règle : sur plans_pc.py, séquencer les éditions ou re-vérifier par grep après chaque batch.

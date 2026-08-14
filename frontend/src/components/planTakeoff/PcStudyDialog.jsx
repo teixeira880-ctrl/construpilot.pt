@@ -1,12 +1,13 @@
-import { useState } from "react";
-import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart, Settings2, MailCheck, MailX, Layers, BellRing } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart, Settings2, MailCheck, MailX, Layers, BellRing, History, PackageOpen, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PcSendDialog from "@/components/planTakeoff/PcSendDialog";
 import PcSettingsDialog from "@/components/planTakeoff/PcSettingsDialog";
+import PcOrderDialog from "@/components/planTakeoff/PcOrderDialog";
 import PcGantt from "@/components/planTakeoff/PcGantt";
-import { eur, num } from "@/lib/api";
+import { api, eur, num } from "@/lib/api";
 
 const RULES_LABELS = [
   "Semelles filantes 60 × 30 cm (périmètre + refends porteurs)",
@@ -20,6 +21,14 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
   const [sendOpen, setSendOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [ganttStart, setGanttStart] = useState(() => new Date().toISOString().slice(0, 10));
+  const [orderLevel, setOrderLevel] = useState(null);
+  const [history, setHistory] = useState([]);
+  useEffect(() => {
+    if (!open || !study || !planId) return;
+    api.get(`/takeoffs/${planId}/pc-study/history`)
+      .then(({ data }) => setHistory(data.history || []))
+      .catch(() => {});
+  }, [open, study, planId]);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="pc-study-dialog">
@@ -184,6 +193,7 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                       <th className="p-1.5 text-right">Briques</th>
                       <th className="p-1.5 text-right">Murs</th>
                       <th className="p-1.5 text-right">Total HT</th>
+                      <th className="p-1.5 text-right">Négoce</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -204,14 +214,25 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                         <td className="p-1.5 text-right num">{l.briques_u ? `${num(l.briques_u)} u` : "—"}</td>
                         <td className="p-1.5 text-right num">{l.murs_m2 ? `${num(l.murs_m2, 1)} m²` : "—"}</td>
                         <td className="p-1.5 text-right num font-semibold">{eur(l.ht)}</td>
+                        <td className="p-1.5 text-right">
+                          <button onClick={() => setOrderLevel(i)}
+                                  className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-orange-600 transition underline underline-offset-2"
+                                  title="Générer le bon de commande matériaux de ce niveau"
+                                  data-testid={`pc-level-${i}-order-btn`}>
+                            <PackageOpen className="h-3 w-3" /> Commander
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Cliquez sur un niveau pour voir le détail des lignes. Idéal pour commander
-                  les matériaux phase par phase.
+                  Cliquez sur un niveau pour voir le détail des lignes. « Commander » génère
+                  le bon de commande matériaux prêt à envoyer à votre négoce.
                 </p>
+                <PcOrderDialog open={orderLevel !== null} onClose={() => setOrderLevel(null)}
+                               planId={planId} levelIndex={orderLevel ?? 0}
+                               levelName={study.levels_breakdown?.[orderLevel]?.name || ""} />
               </section>
             )}
 
@@ -254,6 +275,61 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                   ouvrés + {study.planning.total_cure_days} jours de séchage béton,
                   soit ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semaines)</b> de chantier.
                 </p>
+              </section>
+            )}
+
+            {history.length > 0 && (
+              <section data-testid="pc-history-list">
+                <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
+                  <History className="h-4 w-4 text-primary" /> Historique des versions
+                </h3>
+                <table className="w-full text-xs border border-border">
+                  <thead>
+                    <tr className="bg-muted text-left">
+                      <th className="p-1.5">Date</th>
+                      <th className="p-1.5">Origine</th>
+                      <th className="p-1.5 text-right">Béton</th>
+                      <th className="p-1.5 text-right">Aciers</th>
+                      <th className="p-1.5 text-right">Total TTC</th>
+                      <th className="p-1.5 text-right">Δ vs version actuelle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h, i) => {
+                      const delta = (study.totals?.ttc ?? 0) - (h.ttc ?? 0);
+                      return (
+                        <tr key={i} className="border-t border-border" data-testid={`pc-history-${i}`}>
+                          <td className="p-1.5 num">
+                            {new Date(h.saved_at).toLocaleDateString("fr-FR")}{" "}
+                            {new Date(h.saved_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                          </td>
+                          <td className="p-1.5 text-muted-foreground">
+                            {h.source === "analyse" ? "Analyse IA" : "Recalcul"}
+                            {h.custom_pricing ? " · prix perso" : ""}
+                          </td>
+                          <td className="p-1.5 text-right num">{num(h.beton_m3, 2)} m³</td>
+                          <td className="p-1.5 text-right num">{num(h.acier_kg)} kg</td>
+                          <td className="p-1.5 text-right num">{eur(h.ttc)}</td>
+                          <td className="p-1.5 text-right num">
+                            {Math.abs(delta) < 0.01 ? (
+                              <span className="text-muted-foreground inline-flex items-center gap-1">
+                                <Minus className="h-3 w-3" /> identique
+                              </span>
+                            ) : delta > 0 ? (
+                              <span className="text-red-500 inline-flex items-center gap-1">
+                                <TrendingUp className="h-3 w-3" /> +{num(delta, 2)} €
+                              </span>
+                            ) : (
+                              <span className="text-emerald-500 inline-flex items-center gap-1">
+                                <TrendingDown className="h-3 w-3" /> {num(delta, 2)} €
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </section>
             )}
 

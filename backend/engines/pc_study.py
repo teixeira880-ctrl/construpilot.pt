@@ -274,7 +274,8 @@ def _line(designation: str, detail: str, unit: str, qty: float, price_key: str,
     qty = round(qty, 2)
     t_mat = round(qty * p["mat"], 2)
     t_mo = round(qty * p["mo"], 2)
-    return {"designation": designation, "detail": detail, "unit": unit, "qty": qty,
+    return {"key": price_key, "designation": designation, "detail": detail,
+            "unit": unit, "qty": qty,
             "pu_mat": p["mat"], "pu_mo": p["mo"],
             "total_mat": t_mat, "total_mo": t_mo, "total": round(t_mat + t_mo, 2)}
 
@@ -455,6 +456,60 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
             stairs_left -= 1
         out.append(summarize(name, lines, briques, wall_net))
     return out
+
+
+# ---- Bon de commande fournisseur (par niveau) -----------------------------
+ORDER_ITEMS = {
+    "beton_proprete": ("Béton de propreté C16/20", "m³"),
+    "beton_semelle": ("Béton prêt à l'emploi C25/30 — semelles", "m³"),
+    "beton_dalle": ("Béton prêt à l'emploi C25/30 — dalle / plancher", "m³"),
+    "chainage_beton": ("Béton C25/30 — chaînages & raidisseurs", "m³"),
+    "escalier_beton": ("Béton C25/30 — escalier", "m³"),
+    "acier_semelle": ("Aciers HA façonnés — semelles (3+3 HA10 + cadres HA6)", "kg"),
+    "acier_chainage": ("Aciers HA façonnés — chaînages (4 HA10 + cadres HA6)", "kg"),
+    "acier_escalier": ("Aciers HA façonnés — escalier", "kg"),
+    "treillis_dalle": ("Treillis soudé ST25C (panneaux)", "kg"),
+    "mur_isobrique": ("Briques isobrique ép. 20 cm", "u"),
+    "linteau": ("Linteaux / coffrage BA 20 × 20", "ml"),
+    "coffrage_rive": ("Planches de coffrage de rives", "ml"),
+}
+WASTE_FACTOR = 1.05  # +5 % de chutes / pertes
+
+
+def _order_round(qty: float, unit: str) -> float:
+    if unit == "m³":
+        return math.ceil(qty * 2) / 2   # au 0,5 m³ supérieur
+    if unit == "kg":
+        return float(math.ceil(qty / 5) * 5)
+    return float(math.ceil(qty))
+
+
+def build_purchase_order_items(level: dict, prices: dict | None = None) -> list[dict]:
+    """Convertit les lignes d'un niveau en articles matériaux à commander (+5 % chutes)."""
+    P = prices or PC_UNIT_PRICES
+    items: list[dict] = []
+    for ln in level.get("lines") or []:
+        key = ln.get("key")
+        if key not in ORDER_ITEMS or key == "fouilles":
+            continue
+        name, unit = ORDER_ITEMS[key]
+        pu = P.get(key, PC_UNIT_PRICES.get(key, {})).get("mat", 0)
+        if key == "mur_isobrique":
+            qty = _order_round(ln["qty"] * RULES["bricks_per_m2"] * WASTE_FACTOR, "u")
+            pu = round(P[key]["mat"] / RULES["bricks_per_m2"], 2)  # €/brique indicatif
+            items.append({"designation": name, "unit": unit, "qty": qty,
+                          "pu_mat": pu, "total": round(qty * pu, 2)})
+            colle = _order_round(ln["qty"] * 1.5 * WASTE_FACTOR, "kg")
+            items.append({"designation": "Colle / mortier joint mince", "unit": "kg",
+                          "qty": colle, "pu_mat": 0.85,
+                          "total": round(colle * 0.85, 2)})
+            continue
+        if pu <= 0:
+            continue
+        qty = _order_round(ln["qty"] * WASTE_FACTOR, unit)
+        items.append({"designation": name, "unit": unit, "qty": qty,
+                      "pu_mat": pu, "total": round(qty * pu, 2)})
+    return items
 
 
 def schedule_with_dates(planning: dict, start_iso: str) -> list[dict]:
