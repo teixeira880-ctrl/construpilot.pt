@@ -158,7 +158,7 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
               </section>
             ))}
 
-            <section className="rounded-sm border-2 border-primary/40 p-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm"
+            <section className="rounded-sm border-2 border-primary/40 p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm"
                      data-testid="pc-study-totals">
               <div><p className="text-[10px] text-muted-foreground">Béton total</p>
                 <p className="font-bold num">{num(study.totals?.beton_m3)} m³</p></div>
@@ -166,11 +166,15 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                 <p className="font-bold num">{num(study.totals?.acier_kg)} kg</p></div>
               <div><p className="text-[10px] text-muted-foreground">Briques isobrique</p>
                 <p className="font-bold num">{study.totals?.briques_u} u</p></div>
-              <div><p className="text-[10px] text-muted-foreground">Total HT</p>
+              <div><p className="text-[10px] text-muted-foreground">Coût de revient HT</p>
+                <p className="font-bold num" data-testid="pc-study-cout-ht">{eur(study.totals?.cout_ht ?? study.totals?.ht)}</p></div>
+              <div><p className="text-[10px] text-muted-foreground">Marge pro ({num(study.totals?.marge_pct ?? 0)} %)</p>
+                <p className="font-bold num text-emerald-600" data-testid="pc-study-marge">{eur(study.totals?.marge_eur ?? 0)}</p></div>
+              <div><p className="text-[10px] text-muted-foreground">Prix de vente HT</p>
                 <p className="font-bold num">{eur(study.totals?.ht)}</p></div>
               <div><p className="text-[10px] text-muted-foreground">TVA 20 %</p>
                 <p className="font-bold num">{eur(study.totals?.tva)}</p></div>
-              <div><p className="text-[10px] text-muted-foreground">TOTAL TTC</p>
+              <div><p className="text-[10px] text-muted-foreground">PRIX DE VENTE TTC</p>
                 <p className="font-bold num text-primary" data-testid="pc-study-total-ttc">{eur(study.totals?.ttc)}</p></div>
             </section>
 

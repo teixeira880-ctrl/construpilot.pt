@@ -2074,3 +2074,21 @@ Chantier/engins 10,5 k + Terrassement 15 k + Fondations 12 k + Planchers 21,4 k 
 - P1 : Acompte en ligne Stripe après signature sur /etude/:token
 - P1 : Partage équipe des études PC
 
+---
+
+## Itération 76 (14/06/2026) — MARGE PRO 30 % + ACOMPTE STRIPE + PARTAGE ÉQUIPE + RAPPORT HEBDO (BUILD DÉFINITIF, testé en réel 100 %)
+
+### Livré (testing agent iter66 : backend 12/12, frontend 100 % avec PAIEMENT STRIPE RÉEL)
+1. **Marge Pro 30 %** (`margin_pct` dans pc_settings, défaut 30) : `compute_study_costing()` dans `pc_study.py` applique la marge sur les PU (prix de vente client) ; le planning reste calculé sur les coûts MO réels. Totaux : `cout_ht` / `marge_pct` / `marge_eur` / `ht` (vente) / `tva` / `ttc`. La marge n'apparaît QUE dans le dialog pro — la page publique de signature filtre les totaux (whitelist ht/tva/ttc/quantités). ALAOUI : coût 133 205 € HT → vente 173 186 € HT → **207 823 € TTC**.
+2. **Acompte en ligne Stripe** (`deposit_pct`, défaut 30 %, 0 = désactivé) : sur /etude/:token après acceptation → bouton « Payer l'acompte » → Stripe Checkout (session `payment`, type `pc_deposit` dans payment_transactions) → retour + polling `GET /api/pc/deposit/status/{session_id}` → bloc « Acompte réglé ». Webhook `checkout.session.completed` géré aussi via `_mark_paid` (monetization.py). Email « Acompte reçu » au pro + équipe. Testé EN RÉEL avec carte 4242 (44 629,05 € encaissés sandbox).
+3. **Partage équipe** (`team_share`, défaut on) : `_pc_owner_id()` accorde l'accès aux études PC à toute l'organisation (lecture + recompute + envois + BC, réglages/branding du propriétaire). Dashboard /etudes-pc (alias /pc) montre les études des collègues avec badge « Étude de {owner} ». Notifications équipe sur ouverture/acceptation/acompte. Hors org → 404 (testé).
+4. **Rapport hebdo auto** (`weekly_report`, défaut on) : APScheduler cron lundi 07:00 UTC → email Resend par pro (acceptées / ouvertes à rappeler / à relancer / pipeline TTC / acomptes) + tableau des études + CTA. Endpoints : `POST /api/pc/weekly-report/send-me` (bouton sur le dashboard) et `/run` (admin).
+5. Réglages ⚙️ enrichis : marge %, acompte %, cases rapport hebdo & partage équipe. Dashboard : 4e carte « Acomptes encaissés » + statut « acompte versé » (violet).
+
+### Endpoints ajoutés
+- `POST /api/pc/sign/{token}/deposit/checkout` (public) · `GET /api/pc/deposit/status/{session_id}` (public)
+- `GET /api/pc/dashboard` (org-wide) · `POST /api/pc/weekly-report/send-me` · `POST /api/pc/weekly-report/run` (admin)
+
+### Tests
+- pytest 52/52 (iter69-72) + 12/12 nouveaux (test_iter73_pc_margin_deposit.py) + E2E Stripe réel (rapport /app/test_reports/iteration_66.json)
+

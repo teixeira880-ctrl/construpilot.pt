@@ -1,0 +1,40 @@
+{
+  "summary": "Iter 66 — Full validation of 4 new PC features (marge pro 30%, Stripe deposit E2E, team share, weekly report). Backend pytest 12/12 passed. Frontend + REAL Stripe checkout (4242 4242 4242 4242) completed successfully — deposit paid, callback + polling worked, badge 'acompte versé' visible on dashboard, 'Acomptes encaissés' stat updated to 44 629 €.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Spec URL /pc vs implementation /etudes-pc",
+        "issue": "Le brief mentionne le dashboard PC à '/pc' mais l'app le monte sur '/etudes-pc' (App.js ligne 102). Aucune route '/pc' n'existe (autre que /plan). C'est probablement voulu (PcDashboard est bien sous /etudes-pc), mais si E1 souhaite '/pc' court, il faut ajouter <Route path='/pc' element={<PcDashboard/>} />.",
+        "affected_selectors": ["/etudes-pc"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter73_pc_margin_deposit.py",
+    "/app/test_reports/pytest/iter73_results.xml"
+  ],
+  "action_items": [
+    "Optionnel : ajouter un alias de route '/pc' → PcDashboard pour respecter la nomenclature du brief.",
+    "Optionnel : les 3 études existantes ont désormais 1 étude 'acompte versé' (plan_619e41f98d6b, session cs_test_a1Nxrri3QlHm78RWXoQbs2cv7UTB9zxZHxuauh7dGBdxKicnbRn834QvNR). L'état de test peut être réinitialisé si besoin."
+  ],
+  "critical_code_review_comments": [
+    "plans_pc.py fait maintenant 1032 lignes (limite recommandée 700). À scinder en modules : pc_settings.py, pc_sign.py (public + accept + deposit), pc_dashboard.py, pc_weekly.py, pc_orders.py.",
+    "PlanTakeoff.jsx toujours > 3200 lignes — refactoring urgent."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter73_pc_margin_deposit.py"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (E2E Stripe réussi, dashboard + settings + team share + weekly OK)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! · collegue@construpilot.fr / Collegue2026! · client@construpilot.fr / Client2026! · admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "Acompte E2E réel réglé sur token pcs_e2a4c343ca79d96e (plan_619e41f98d6b) — session cs_test_a1Nxrri3QlHm78RWXoQbs2cv7UTB9zxZHxuauh7dGBdxKicnbRn834QvNR, montant 44 629,05 €. Etat 'acompte versé' visible dashboard.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Suite iter73 valide : GET /api/pc/settings defaults (margin_pct=30, deposit_pct=30, weekly_report=true, team_share=true, hourly_rate=35, 21 unit_prices) ; PUT settings margin_pct=40 → recompute → totals.marge_pct=40 & ht≈cout_ht*1.4 puis restauré à 30 ; GET /api/pc/sign/{token} public sans cout_ht/marge_eur/marge_pct + deposit block correct ; POST /pc/sign/{token}/deposit/checkout retourne url stripe + session_id ; team share (collegue voit 3 études owner_name='Marc BTP (Pro)', is_own=False ; client hors org → 404) ; POST /pc/weekly-report/send-me → ok+studies=3 ; POST /pc/weekly-report/run (admin) → sent>=1 ; exports pdf/docx/purchase-order OK. E2E Stripe complet : radio 'Card' à cliquer avant d'accéder aux champs card. Route dashboard = /etudes-pc (pas /pc). Note importante : le token pcs_e2a4c343ca79d96e est en fait rattaché à plan_619e41f98d6b (before.png, TTC 148 764 €, acompte 30% = 44 629 €), PAS à plan_6696782f92ca (ALAOUI 207 823 €) comme mentionné dans le brief — vérifier avec E1.",
+  "rca of the issue": "N/A — aucun bug bloquant détecté. Toutes les fonctionnalités demandées fonctionnent end-to-end, y compris le paiement Stripe réel sandbox avec polling et mise à jour du statut."
+}

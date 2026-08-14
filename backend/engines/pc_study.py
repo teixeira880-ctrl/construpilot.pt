@@ -621,6 +621,33 @@ def schedule_with_dates(planning: dict, start_iso: str) -> list[dict]:
     return rows
 
 
+DEFAULT_MARGIN_PCT = 30.0
+
+
+def apply_margin(prices: dict, pct: float) -> dict:
+    """Prix de vente = coût × (1 + marge %). Retourne un nouveau barème."""
+    if not pct:
+        return prices
+    c = 1 + pct / 100.0
+    return {k: {"mat": round(v["mat"] * c, 2), "mo": round(v["mo"] * c, 2)}
+            for k, v in prices.items()}
+
+
+def compute_study_costing(inputs: dict, stairs_steps: int | None, prices: dict,
+                          margin_pct: float, crew: int, rate: float) -> tuple:
+    """Devis client aux prix de vente margés + planning basé sur les coûts MO réels."""
+    sale_prices = apply_margin(prices, margin_pct)
+    computed = compute_gros_oeuvre(inputs, stairs_steps, sale_prices)
+    raw = compute_gros_oeuvre(inputs, stairs_steps, prices) if margin_pct else computed
+    computed["totals"].update(
+        marge_pct=round(margin_pct, 1),
+        cout_ht=raw["totals"]["ht"],
+        marge_eur=round(computed["totals"]["ht"] - raw["totals"]["ht"], 2))
+    planning = compute_planning(raw["lots"], crew, rate)
+    levels_breakdown = compute_levels_breakdown(inputs, sale_prices, stairs_steps)
+    return computed, planning, levels_breakdown
+
+
 def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
                 pages_analyzed: list[int] | None = None,
                 settings: dict | None = None) -> dict:
@@ -629,10 +656,11 @@ def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
     prices = merge_unit_prices(settings.get("unit_prices"))
     crew = int(settings.get("crew_size") or CREW_SIZE)
     rate = float(settings.get("hourly_rate_eur") or HOURLY_RATE_EUR)
+    margin = settings.get("margin_pct")
+    margin = DEFAULT_MARGIN_PCT if margin is None else float(margin)
     inputs, sources = _resolve_inputs(merged, overrides, rooms_surface_m2)
-    computed = compute_gros_oeuvre(inputs, merged.get("stairs_steps"), prices)
-    planning = compute_planning(computed["lots"], crew, rate)
-    levels_breakdown = compute_levels_breakdown(inputs, prices, merged.get("stairs_steps"))
+    computed, planning, levels_breakdown = compute_study_costing(
+        inputs, merged.get("stairs_steps"), prices, margin, crew, rate)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "pages_analyzed": pages_analyzed or [],

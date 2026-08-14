@@ -295,6 +295,11 @@ async def _mark_paid(session_id: str, s) -> None:
         return
     rec = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
 
+    if rec.get("type") == "pc_deposit":
+        from routes.plans_pc import _apply_pc_deposit
+        await _apply_pc_deposit(rec)
+        return
+
     if rec.get("type") == "pro_credit_topup":
         await _apply_pro_credit_topup(rec)
         return

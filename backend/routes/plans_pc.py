@@ -14,12 +14,11 @@ from core.db import db
 from core.security import admin_user, current_user
 from engines.pc_export import (build_pc_docx, build_pc_pdf,
                                build_purchase_order_pdf)
-from engines.pc_study import (CREW_SIZE, HOURLY_RATE_EUR, PC_UNIT_PRICES,
-                              analyze_pc_page, build_purchase_order_items,
-                              build_study, compute_gros_oeuvre,
-                              compute_levels_breakdown, compute_planning,
-                              merge_pc_analyses, merge_unit_prices,
-                              schedule_with_dates)
+from engines.pc_study import (CREW_SIZE, DEFAULT_MARGIN_PCT, HOURLY_RATE_EUR,
+                              PC_UNIT_PRICES, analyze_pc_page,
+                              build_purchase_order_items, build_study,
+                              compute_study_costing, merge_pc_analyses,
+                              merge_unit_prices, schedule_with_dates)
 from routes.plans_common import _now, _resolve_branding, router
 
 logger = logging.getLogger(__name__)
@@ -33,6 +32,43 @@ pc_router = APIRouter(prefix="/pc", tags=["pc-study"])
 async def _load_pc_settings(user_id: str) -> dict:
     doc = await db.pc_settings.find_one({"user_id": user_id}, {"_id": 0})
     return doc or {}
+
+
+DEFAULT_DEPOSIT_PCT = 30.0
+
+
+async def _pc_owner_id(plan_id: str, user: dict) -> str:
+    """Propriétaire du plan — accès accordé au propriétaire et à son équipe (org)."""
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id}, {"_id": 0, "user_id": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    owner_id = p["user_id"]
+    if owner_id == user["user_id"]:
+        return owner_id
+    org = user.get("organization_id")
+    if not org:
+        raise HTTPException(404, "Plan introuvable")
+    owner = await db.users.find_one({"user_id": owner_id},
+                                    {"_id": 0, "organization_id": 1})
+    if not owner or owner.get("organization_id") != org:
+        raise HTTPException(404, "Plan introuvable")
+    if (await _load_pc_settings(owner_id)).get("team_share") is False:
+        raise HTTPException(403, "Partage équipe désactivé par le propriétaire de l'étude")
+    return owner_id
+
+
+async def _team_members(owner_id: str) -> list[dict]:
+    """Collègues (même organisation) du propriétaire — pour les notifications équipe."""
+    owner = await db.users.find_one({"user_id": owner_id},
+                                    {"_id": 0, "organization_id": 1})
+    org = (owner or {}).get("organization_id")
+    if not org:
+        return []
+    if (await _load_pc_settings(owner_id)).get("team_share") is False:
+        return []
+    rows = await db.users.find({"organization_id": org},
+                               {"_id": 0, "user_id": 1, "email": 1, "name": 1}).to_list(50)
+    return [r for r in rows if r["user_id"] != owner_id and r.get("email")][:10]
 
 
 class PcStudyIn(BaseModel):
@@ -59,8 +95,9 @@ async def _archive_pc_version(plan_id: str, user_id: str, study: dict,
 
 @router.post("/{plan_id}/pc-study")
 async def run_pc_study(plan_id: str, body: PcStudyIn, user=Depends(current_user)) -> dict:
+    owner_id = await _pc_owner_id(plan_id, user)
     p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"plan_id": plan_id},
         {"_id": 0, "pages": 1, "rooms": 1, "pc_study": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
@@ -88,12 +125,12 @@ async def run_pc_study(plan_id: str, body: PcStudyIn, user=Depends(current_user)
     rooms_surface = round(sum(float(r.get("surface_m2") or 0)
                               for r in (p.get("rooms") or [])), 2)
     overrides = {k: v for k, v in body.dict().items() if k != "pages"}
-    settings = await _load_pc_settings(user["user_id"])
+    settings = await _load_pc_settings(owner_id)
     study = build_study(merged, overrides, rooms_surface,
                         pages_analyzed=[i for i, _ in images],
                         settings=settings)
     if p.get("pc_study"):
-        await _archive_pc_version(plan_id, user["user_id"], p["pc_study"], "analyse")
+        await _archive_pc_version(plan_id, owner_id, p["pc_study"], "analyse")
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {"pc_study": study, "updated_at": _now()}})
@@ -102,28 +139,29 @@ async def run_pc_study(plan_id: str, body: PcStudyIn, user=Depends(current_user)
 
 @router.get("/{plan_id}/pc-study")
 async def get_pc_study(plan_id: str, user=Depends(current_user)) -> dict:
-    p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "pc_study": 1})
-    if not p:
-        raise HTTPException(404, "Plan introuvable")
-    return {"pc_study": p.get("pc_study")}
+    await _pc_owner_id(plan_id, user)
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id}, {"_id": 0, "pc_study": 1})
+    return {"pc_study": (p or {}).get("pc_study")}
 
 
 @router.post("/{plan_id}/pc-study/recompute")
 async def recompute_pc_study(plan_id: str, user=Depends(current_user)) -> dict:
     """Recalcule devis + planning avec les réglages actuels (sans rappel IA)."""
-    p = await _plan_and_study(plan_id, user["user_id"])
+    p = await _plan_and_study(plan_id, user)
+    owner_id = p["user_id"]
     study = p["pc_study"]
-    await _archive_pc_version(plan_id, user["user_id"], study, "recalcul")
-    settings = await _load_pc_settings(user["user_id"])
+    await _archive_pc_version(plan_id, owner_id, study, "recalcul")
+    settings = await _load_pc_settings(owner_id)
     prices = merge_unit_prices(settings.get("unit_prices"))
     crew = int(settings.get("crew_size") or CREW_SIZE)
     rate = float(settings.get("hourly_rate_eur") or HOURLY_RATE_EUR)
-    computed = compute_gros_oeuvre(study["inputs"], None, prices)
+    margin = settings.get("margin_pct")
+    margin = DEFAULT_MARGIN_PCT if margin is None else float(margin)
+    computed, planning, levels = compute_study_costing(
+        study["inputs"], None, prices, margin, crew, rate)
     study.update(**computed,
-                 planning=compute_planning(computed["lots"], crew, rate),
-                 levels_breakdown=compute_levels_breakdown(study["inputs"], prices),
+                 planning=planning,
+                 levels_breakdown=levels,
                  custom_pricing=bool(settings.get("unit_prices")),
                  recomputed_at=_now())
     await db.plans_takeoff.update_one(
@@ -135,8 +173,9 @@ async def recompute_pc_study(plan_id: str, user=Depends(current_user)) -> dict:
 @router.get("/{plan_id}/pc-study/history")
 async def get_pc_history(plan_id: str, user=Depends(current_user)) -> dict:
     """Versions archivées de l'étude (comparaison de l'évolution des prix)."""
+    await _pc_owner_id(plan_id, user)
     rows = await db.pc_study_history.find(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"plan_id": plan_id},
         {"_id": 0}).sort("saved_at", -1).to_list(20)
     return {"history": rows}
 
@@ -161,12 +200,12 @@ def _order_context(p: dict, level_index: int, prices: dict) -> tuple[dict, list[
 async def download_purchase_order(plan_id: str, level: int = 0,
                                   supplier: str = "", notes: str = "",
                                   user=Depends(current_user)):
-    p = await _plan_and_study(plan_id, user["user_id"])
+    p = await _plan_and_study(plan_id, user)
     p["plan_id"] = plan_id
-    settings = await _load_pc_settings(user["user_id"])
+    settings = await _load_pc_settings(p["user_id"])
     prices = merge_unit_prices(settings.get("unit_prices"))
     lvl, items, ref = _order_context(p, level, prices)
-    branding = await _resolve_branding(user["user_id"])
+    branding = await _resolve_branding(p["user_id"])
     pdf = build_purchase_order_pdf(p, lvl["name"], items, branding, ref,
                                    supplier_name=supplier[:80], notes=notes[:500])
     return Response(content=pdf, media_type="application/pdf",
@@ -187,12 +226,12 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
     import html as _html
     from engines.emailer import send_email_with_pdf, wrap_html
 
-    p = await _plan_and_study(plan_id, user["user_id"])
+    p = await _plan_and_study(plan_id, user)
     p["plan_id"] = plan_id
-    settings = await _load_pc_settings(user["user_id"])
+    settings = await _load_pc_settings(p["user_id"])
     prices = merge_unit_prices(settings.get("unit_prices"))
     lvl, items, ref = _order_context(p, body.level_index, prices)
-    branding = await _resolve_branding(user["user_id"])
+    branding = await _resolve_branding(p["user_id"])
     pdf = build_purchase_order_pdf(p, lvl["name"], items, branding, ref,
                                    supplier_name=body.supplier_name,
                                    notes=body.notes)
@@ -222,7 +261,7 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
     except Exception:
         raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
     await db.plans_takeoff.update_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"plan_id": plan_id},
         {"$push": {"sent_reports": {"$each": [{
             "kind": "purchase_order", "to_email": body.supplier_email,
             "sent_at": _now(), "ref": ref, "level": lvl["name"], "total_ht": total,
@@ -231,10 +270,11 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
             "total_ht": total, "items": len(items)}
 
 
-async def _plan_and_study(plan_id: str, user_id: str) -> dict:
+async def _plan_and_study(plan_id: str, user: dict) -> dict:
+    await _pc_owner_id(plan_id, user)
     p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user_id},
-        {"_id": 0, "filename": 1, "pc_study": 1})
+        {"plan_id": plan_id},
+        {"_id": 0, "filename": 1, "pc_study": 1, "user_id": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
     if not p.get("pc_study"):
@@ -258,8 +298,8 @@ def _valid_date(s: str | None) -> str | None:
 @router.get("/{plan_id}/pc-study/pdf")
 async def export_pc_pdf(plan_id: str, start: str | None = None,
                         user=Depends(current_user)):
-    p = await _plan_and_study(plan_id, user["user_id"])
-    branding = await _resolve_branding(user["user_id"])
+    p = await _plan_and_study(plan_id, user)
+    branding = await _resolve_branding(p["user_id"])
     pdf = build_pc_pdf(p, p["pc_study"], branding, start_date=_valid_date(start))
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition":
@@ -269,8 +309,8 @@ async def export_pc_pdf(plan_id: str, start: str | None = None,
 @router.get("/{plan_id}/pc-study/docx")
 async def export_pc_docx(plan_id: str, start: str | None = None,
                          user=Depends(current_user)):
-    p = await _plan_and_study(plan_id, user["user_id"])
-    branding = await _resolve_branding(user["user_id"])
+    p = await _plan_and_study(plan_id, user)
+    branding = await _resolve_branding(p["user_id"])
     docx = build_pc_docx(p, p["pc_study"], branding, start_date=_valid_date(start))
     return Response(
         content=docx,
@@ -291,9 +331,9 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
     import html as _html
     from engines.emailer import send_email_with_pdf, wrap_html
 
-    p = await _plan_and_study(plan_id, user["user_id"])
+    p = await _plan_and_study(plan_id, user)
     study = p["pc_study"]
-    branding = await _resolve_branding(user["user_id"])
+    branding = await _resolve_branding(p["user_id"])
     start = _valid_date(body.start_date)
     pdf = build_pc_pdf(p, study, branding, start_date=start)
 
@@ -342,7 +382,7 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
     except Exception:
         raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
     await db.plans_takeoff.update_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"plan_id": plan_id},
         {"$push": {"sent_reports": {"$each": [{
             "kind": "pc_study", "to_email": body.to_email, "sent_at": _now(),
             "ttc": t.get("ttc"), "beton_m3": t.get("beton_m3"),
@@ -358,6 +398,10 @@ class PcSettingsIn(BaseModel):
     unit_prices: dict | None = None
     crew_size: int | None = Field(default=None, ge=1, le=12)
     hourly_rate_eur: float | None = Field(default=None, ge=20, le=150)
+    margin_pct: float | None = Field(default=None, ge=0, le=200)
+    deposit_pct: float | None = Field(default=None, ge=0, le=100)
+    weekly_report: bool | None = None
+    team_share: bool | None = None
     reminder_days: int | None = Field(default=None, ge=0, le=30)
     notify_on_open: str | None = Field(default=None,
                                        pattern="^(email|sms|both|off)$")
@@ -371,6 +415,10 @@ async def get_pc_settings(user=Depends(current_user)) -> dict:
             "defaults": {"unit_prices": PC_UNIT_PRICES,
                          "crew_size": CREW_SIZE,
                          "hourly_rate_eur": HOURLY_RATE_EUR,
+                         "margin_pct": DEFAULT_MARGIN_PCT,
+                         "deposit_pct": DEFAULT_DEPOSIT_PCT,
+                         "weekly_report": True,
+                         "team_share": True,
                          "reminder_days": DEFAULT_REMINDER_DAYS,
                          "notify_on_open": "email"}}
 
@@ -390,6 +438,8 @@ async def save_pc_settings(body: PcSettingsIn, user=Depends(current_user)) -> di
                 continue
     doc = {"user_id": user["user_id"], "unit_prices": prices,
            "crew_size": body.crew_size, "hourly_rate_eur": body.hourly_rate_eur,
+           "margin_pct": body.margin_pct, "deposit_pct": body.deposit_pct,
+           "weekly_report": body.weekly_report, "team_share": body.team_share,
            "reminder_days": body.reminder_days,
            "notify_on_open": body.notify_on_open,
            "notify_phone": (body.notify_phone or "").strip() or None,
@@ -446,6 +496,15 @@ async def _notify_study_opened(track_id: str) -> None:
         _send_sms(settings["notify_phone"],
                   f"ConstruPilot : {client} vient d'ouvrir votre étude gros œuvre "
                   f"({filename}). Rappelez-le pendant qu'il est dessus !")
+    for m in await _team_members(p["user_id"]):
+        try:
+            await send_email(
+                m["email"], f"👀 Étude ouverte (équipe) · {filename}",
+                wrap_html("Étude ouverte — équipe",
+                          f"<p><b>{_html.escape(client)}</b> vient d'ouvrir l'étude "
+                          f"« {_html.escape(filename)} » d'un membre de votre équipe.</p>"))
+        except Exception as e:
+            logger.warning(f"pc open team notify fail: {e}")
 
 
 @pc_router.get("/track/{track_id}", include_in_schema=False)
@@ -569,8 +628,9 @@ class PoResponseIn(BaseModel):
 @router.post("/{plan_id}/purchase-orders/response")
 async def record_po_response(plan_id: str, body: PoResponseIn,
                              user=Depends(current_user)) -> dict:
+    await _pc_owner_id(plan_id, user)
     r = await db.plans_takeoff.update_one(
-        {"plan_id": plan_id, "user_id": user["user_id"],
+        {"plan_id": plan_id,
          "sent_reports": {"$elemMatch": {"kind": "purchase_order",
                                          "ref": body.ref}}},
         {"$set": {"sent_reports.$.status": body.status,
@@ -596,12 +656,19 @@ async def get_pc_sign(token: str) -> dict:
     entry = (p.get("sent_reports") or [{}])[0]
     study = p["pc_study"]
     branding = await _resolve_branding(p["user_id"])
+    t = study.get("totals") or {}
+    settings = await _load_pc_settings(p["user_id"])
+    dep_pct = settings.get("deposit_pct")
+    dep_pct = DEFAULT_DEPOSIT_PCT if dep_pct is None else float(dep_pct)
+    dep_amount = round((t.get("ttc") or 0) * dep_pct / 100.0, 2) if dep_pct > 0 else 0.0
     return {
         "filename": p.get("filename"),
         "company": (branding or {}).get("company_name"),
         "generated_at": study.get("generated_at"),
         "demandes": (study.get("demandes") or [])[:5],
-        "totals": study.get("totals") or {},
+        # totaux "client" uniquement — jamais le coût de revient ni la marge
+        "totals": {k: t.get(k) for k in ("ht", "tva", "ttc", "beton_m3",
+                                         "acier_kg", "briques_u")},
         "lots": [{"lot": l["lot"],
                   "total": round(sum(ln["total"] for ln in l["lines"]), 2)}
                  for l in study.get("lots") or []],
@@ -610,6 +677,10 @@ async def get_pc_sign(token: str) -> dict:
         "accepted": bool(entry.get("accepted")),
         "accepted_at": entry.get("accepted_at"),
         "accepted_by": entry.get("accepted_by"),
+        "deposit": {"pct": dep_pct, "amount": dep_amount,
+                    "paid": bool(entry.get("deposit_paid")),
+                    "paid_at": entry.get("deposit_at"),
+                    "paid_amount": entry.get("deposit_amount")},
     }
 
 
@@ -640,8 +711,8 @@ async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
         from engines.emailer import send_email, wrap_html
         u = await db.users.find_one({"user_id": p["user_id"]},
                                     {"_id": 0, "email": 1})
+        filename = p.get("filename") or "permis de construire"
         if u and u.get("email"):
-            filename = p.get("filename") or "permis de construire"
             await send_email(
                 u["email"],
                 f"✅ Étude acceptée par {body.name.strip()} · {filename}",
@@ -649,47 +720,312 @@ async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
                           f"<p><b>{_html.escape(body.name.strip())}</b> vient d'accepter "
                           f"l'étude gros œuvre du chantier « {_html.escape(filename)} ». "
                           "Vous pouvez lancer les commandes matériaux.</p>"))
+        for m in await _team_members(p["user_id"]):
+            await send_email(
+                m["email"],
+                f"✅ Étude acceptée (équipe) · {filename}",
+                wrap_html("Étude acceptée — équipe",
+                          f"<p><b>{_html.escape(body.name.strip())}</b> vient d'accepter "
+                          f"l'étude « {_html.escape(filename)} » d'un membre de votre "
+                          "équipe. Retrouvez-la dans le tableau de bord PC.</p>"))
     except Exception as e:
         logger.warning(f"pc accept notify fail {token}: {e}")
     return {"ok": True, "accepted_at": now}
 
 
+# ---- Acompte en ligne (Stripe Checkout, page publique) ---------------------
+
+class PcDepositCheckoutIn(BaseModel):
+    origin_url: str = Field(max_length=200)
+
+
+@pc_router.post("/sign/{token}/deposit/checkout")
+async def pc_deposit_checkout(token: str, body: PcDepositCheckoutIn) -> dict:
+    """Crée la session Stripe pour l'acompte (public — lien de signature)."""
+    import stripe
+    p = await db.plans_takeoff.find_one(
+        {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1,
+         "pc_study.totals": 1, "sent_reports.$": 1})
+    if not p or not p.get("pc_study"):
+        raise HTTPException(404, "Lien invalide ou expiré")
+    entry = (p.get("sent_reports") or [{}])[0]
+    if not entry.get("accepted"):
+        raise HTTPException(400, "Acceptez d'abord l'étude avant de verser l'acompte")
+    if entry.get("deposit_paid"):
+        raise HTTPException(400, "L'acompte a déjà été réglé — merci !")
+    settings = await _load_pc_settings(p["user_id"])
+    pct = settings.get("deposit_pct")
+    pct = DEFAULT_DEPOSIT_PCT if pct is None else float(pct)
+    if pct <= 0:
+        raise HTTPException(400, "Le paiement d'acompte en ligne est désactivé")
+    ttc = float((p["pc_study"].get("totals") or {}).get("ttc") or 0)
+    amount_cents = int(round(ttc * pct))  # € TTC × pct % → centimes
+    if amount_cents < 100:
+        raise HTTPException(400, "Montant d'acompte invalide")
+    origin = body.origin_url.rstrip("/")
+    filename = (p.get("filename") or "étude gros œuvre")[:80]
+    try:
+        session = stripe.checkout.Session.create(
+            line_items=[{"price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"Acompte {pct:g} % — {filename}"},
+                "unit_amount": amount_cents}, "quantity": 1}],
+            mode="payment",
+            success_url=f"{origin}/etude/{token}?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{origin}/etude/{token}",
+            metadata={"type": "pc_deposit", "sign_token": token,
+                      "plan_id": p["plan_id"]})
+    except Exception:
+        logger.exception("stripe pc deposit checkout")
+        raise HTTPException(502, "Paiement indisponible — réessayez plus tard")
+    await db.payment_transactions.insert_one({
+        "session_id": session.id, "user_id": p["user_id"], "plan_id": p["plan_id"],
+        "sign_token": token, "type": "pc_deposit", "amount_cents": amount_cents,
+        "currency": "eur", "mode": "payment", "status": "initiated",
+        "payment_status": "pending", "created_at": _now(), "updated_at": _now()})
+    return {"url": session.url, "session_id": session.id,
+            "amount": round(amount_cents / 100.0, 2)}
+
+
+async def _apply_pc_deposit(rec: dict) -> None:
+    """Marque l'acompte payé (idempotent) + notifie le pro et son équipe."""
+    token = rec.get("sign_token")
+    amount = round((rec.get("amount_cents") or 0) / 100.0, 2)
+    r = await db.plans_takeoff.update_one(
+        {"sent_reports": {"$elemMatch": {"sign_token": token,
+                                         "deposit_paid": {"$ne": True}}}},
+        {"$set": {"sent_reports.$.deposit_paid": True,
+                  "sent_reports.$.deposit_amount": amount,
+                  "sent_reports.$.deposit_at": _now(),
+                  "sent_reports.$.deposit_session_id": rec.get("session_id")}})
+    if not r.modified_count:
+        return
+    try:
+        import html as _html
+        from engines.emailer import send_email, wrap_html
+        p = await db.plans_takeoff.find_one(
+            {"sent_reports.sign_token": token},
+            {"_id": 0, "user_id": 1, "filename": 1})
+        if not p:
+            return
+        filename = p.get("filename") or "permis de construire"
+        html = wrap_html(
+            "Acompte encaissé",
+            f"<p>Bonne nouvelle : un acompte de <b>{amount} €</b> vient d'être réglé "
+            f"par carte pour l'étude « {_html.escape(filename)} ». "
+            "Vous pouvez lancer le chantier !</p>")
+        u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1})
+        if u and u.get("email"):
+            await send_email(u["email"], f"💶 Acompte de {amount} € reçu · {filename}", html)
+        for m in await _team_members(p["user_id"]):
+            await send_email(m["email"], f"💶 Acompte reçu (équipe) · {filename}", html)
+    except Exception as e:
+        logger.warning(f"pc deposit notify fail {token}: {e}")
+
+
+@pc_router.get("/deposit/status/{session_id}")
+async def pc_deposit_status(session_id: str) -> dict:
+    """Statut public du paiement d'acompte (polling au retour de Stripe)."""
+    rec = await db.payment_transactions.find_one(
+        {"session_id": session_id, "type": "pc_deposit"}, {"_id": 0})
+    if not rec:
+        raise HTTPException(404, "Session inconnue")
+    if rec.get("payment_status") != "paid":
+        import stripe
+        try:
+            s = stripe.checkout.Session.retrieve(session_id)
+            if s.payment_status == "paid" or s.status == "complete":
+                upd = await db.payment_transactions.update_one(
+                    {"session_id": session_id, "payment_status": {"$ne": "paid"}},
+                    {"$set": {"status": "completed", "payment_status": "paid",
+                              "stripe_payment_intent_id": s.payment_intent,
+                              "updated_at": _now()}})
+                rec = await db.payment_transactions.find_one(
+                    {"session_id": session_id}, {"_id": 0})
+                if upd.modified_count:
+                    await _apply_pc_deposit(rec)
+            elif s.status == "expired":
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"status": "expired", "payment_status": "expired",
+                              "updated_at": _now()}})
+                rec["payment_status"] = "expired"
+        except Exception as e:
+            logger.warning(f"pc deposit status poll {session_id}: {e}")
+    return {"session_id": session_id, "status": rec.get("status"),
+            "payment_status": rec.get("payment_status"),
+            "amount": round((rec.get("amount_cents") or 0) / 100.0, 2)}
+
+
 # ---- Tableau de bord des études PC ----------------------------------------
+
+def _study_row(p: dict) -> dict:
+    sends = [s for s in p.get("sent_reports") or [] if s.get("kind") == "pc_study"]
+    orders = [s for s in p.get("sent_reports") or []
+              if s.get("kind") == "purchase_order"]
+    status = "générée"
+    if sends:
+        status = "envoyée"
+    if any(s.get("reminder_sent") for s in sends):
+        status = "relancée"
+    if any(s.get("opened") for s in sends):
+        status = "ouverte"
+    if any(s.get("accepted") for s in sends):
+        status = "acceptée"
+    if any(s.get("deposit_paid") for s in sends):
+        status = "acompte versé"
+    st = p.get("pc_study") or {}
+    t = st.get("totals") or {}
+    return {
+        "plan_id": p["plan_id"], "filename": p.get("filename"),
+        "generated_at": st.get("generated_at"),
+        "ttc": t.get("ttc"), "beton_m3": t.get("beton_m3"),
+        "acier_kg": t.get("acier_kg"),
+        "total_days": (st.get("planning") or {}).get("total_days"),
+        "custom_pricing": bool(st.get("custom_pricing")),
+        "status": status, "sends": len(sends), "orders": len(orders),
+        "last_sent_to": sends[-1].get("to_email") if sends else None,
+        "deposit_amount": round(sum(s.get("deposit_amount") or 0 for s in sends), 2),
+    }
+
+
+_DASH_PROJ = {"_id": 0, "plan_id": 1, "filename": 1, "user_id": 1,
+              "sent_reports": 1, "pc_study.totals": 1,
+              "pc_study.generated_at": 1, "pc_study.custom_pricing": 1,
+              "pc_study.planning.total_days": 1}
+
 
 @pc_router.get("/dashboard")
 async def pc_dashboard(user=Depends(current_user)) -> dict:
+    uids = {user["user_id"]}
+    names: dict[str, str] = {}
+    org = user.get("organization_id")
+    if org:
+        rows = await db.users.find(
+            {"organization_id": org},
+            {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(200)
+        share = {s["user_id"]: s.get("team_share")
+                 for s in await db.pc_settings.find(
+                     {"user_id": {"$in": [r["user_id"] for r in rows]}},
+                     {"_id": 0, "user_id": 1, "team_share": 1}).to_list(200)}
+        for r in rows:
+            if r["user_id"] == user["user_id"] or share.get(r["user_id"]) is not False:
+                uids.add(r["user_id"])
+                names[r["user_id"]] = r.get("name") or r.get("email") or ""
     plans = await db.plans_takeoff.find(
-        {"user_id": user["user_id"], "pc_study": {"$exists": True}},
-        {"_id": 0, "plan_id": 1, "filename": 1, "sent_reports": 1,
-         "pc_study.totals": 1, "pc_study.generated_at": 1,
-         "pc_study.custom_pricing": 1,
-         "pc_study.planning.total_days": 1}).to_list(100)
+        {"user_id": {"$in": list(uids)}, "pc_study": {"$exists": True}},
+        _DASH_PROJ).to_list(200)
     studies = []
     for p in plans:
-        sends = [s for s in p.get("sent_reports") or []
-                 if s.get("kind") == "pc_study"]
-        orders = [s for s in p.get("sent_reports") or []
-                  if s.get("kind") == "purchase_order"]
-        status = "générée"
-        if sends:
-            status = "envoyée"
-        if any(s.get("reminder_sent") for s in sends):
-            status = "relancée"
-        if any(s.get("opened") for s in sends):
-            status = "ouverte"
-        if any(s.get("accepted") for s in sends):
-            status = "acceptée"
-        st = p.get("pc_study") or {}
-        t = st.get("totals") or {}
-        studies.append({
-            "plan_id": p["plan_id"], "filename": p.get("filename"),
-            "generated_at": st.get("generated_at"),
-            "ttc": t.get("ttc"), "beton_m3": t.get("beton_m3"),
-            "acier_kg": t.get("acier_kg"),
-            "total_days": (st.get("planning") or {}).get("total_days"),
-            "custom_pricing": bool(st.get("custom_pricing")),
-            "status": status, "sends": len(sends), "orders": len(orders),
-            "last_sent_to": sends[-1].get("to_email") if sends else None,
-        })
+        row = _study_row(p)
+        row["is_own"] = p["user_id"] == user["user_id"]
+        row["owner_name"] = None if row["is_own"] else names.get(p["user_id"])
+        studies.append(row)
     studies.sort(key=lambda x: x.get("generated_at") or "", reverse=True)
     return {"studies": studies}
+
+
+# ---- Rapport hebdo automatique (email du lundi) ----------------------------
+
+async def _send_weekly_pc_report_email(u: dict, rows: list[dict]) -> None:
+    import html as _html
+    from engines.emailer import send_email, wrap_html
+
+    accepted = [r for r in rows if r["status"] in ("acceptée", "acompte versé")]
+    opened = [r for r in rows if r["status"] == "ouverte"]
+    to_chase = [r for r in rows if r["status"] in ("envoyée", "relancée")]
+    pipeline = round(sum(r.get("ttc") or 0 for r in rows), 2)
+    deposits = round(sum(r.get("deposit_amount") or 0 for r in rows), 2)
+
+    def _eur(x: float) -> str:
+        return f"{x:,.0f}".replace(",", " ") + " €"
+
+    trs = "".join(
+        f'<tr><td style="padding:6px;border-bottom:1px solid #eee">'
+        f'{_html.escape((r.get("filename") or r["plan_id"])[:60])}</td>'
+        f'<td style="padding:6px;border-bottom:1px solid #eee">{r["status"]}</td>'
+        f'<td style="padding:6px;border-bottom:1px solid #eee;text-align:right">'
+        f'{_eur(r.get("ttc") or 0)}</td>'
+        f'<td style="padding:6px;border-bottom:1px solid #eee">'
+        f'{_html.escape(r.get("last_sent_to") or "—")}</td></tr>'
+        for r in rows[:20])
+    frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
+    cta = (f'<p style="margin:18px 0"><a href="{frontend}/etudes-pc" '
+           'style="background:#FF5A00;color:#ffffff;padding:11px 24px;'
+           'border-radius:4px;text-decoration:none;font-weight:bold">'
+           "Ouvrir le tableau de bord PC</a></p>") if frontend else ""
+    name = _html.escape(u.get("name") or "")
+    html = wrap_html(
+        "Rapport hebdo — Études PC",
+        f"<p>Bonjour {name},</p>"
+        f"<p>Le point du lundi sur vos <b>{len(rows)} études PC</b> :</p>"
+        f"<ul><li><b>{len(accepted)}</b> acceptée(s)</li>"
+        f"<li><b>{len(opened)}</b> ouverte(s) par le client mais pas encore "
+        "signée(s) — à rappeler</li>"
+        f"<li><b>{len(to_chase)}</b> envoyée(s) sans réponse — à relancer</li>"
+        f"<li>Pipeline total : <b>{_eur(pipeline)} TTC</b>"
+        + (f" · acomptes encaissés : <b>{_eur(deposits)}</b>" if deposits else "")
+        + "</li></ul>"
+        '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+        '<tr><th style="text-align:left;padding:6px">Chantier</th>'
+        '<th style="text-align:left;padding:6px">Statut</th>'
+        '<th style="text-align:right;padding:6px">TTC</th>'
+        '<th style="text-align:left;padding:6px">Client</th></tr>'
+        f"{trs}</table>{cta}")
+    await send_email(
+        u["email"],
+        f"📊 Rapport hebdo PC — {len(rows)} études, {len(to_chase)} à relancer",
+        html)
+
+
+async def _run_pc_weekly_reports() -> dict:
+    """Job du lundi : un email récapitulatif des études PC à chaque professionnel."""
+    plans = await db.plans_takeoff.find(
+        {"pc_study": {"$exists": True}}, _DASH_PROJ).to_list(500)
+    by_user: dict[str, list[dict]] = {}
+    for p in plans:
+        by_user.setdefault(p["user_id"], []).append(p)
+    sent, failed, skipped = 0, 0, 0
+    for uid, ps in by_user.items():
+        settings = await _load_pc_settings(uid)
+        if settings.get("weekly_report") is False:
+            skipped += 1
+            continue
+        u = await db.users.find_one({"user_id": uid}, {"_id": 0, "email": 1, "name": 1})
+        if not u or not u.get("email"):
+            skipped += 1
+            continue
+        try:
+            await _send_weekly_pc_report_email(u, [_study_row(p) for p in ps])
+            sent += 1
+        except Exception as e:
+            logger.warning(f"pc weekly report {uid}: {e}")
+            failed += 1
+    return {"sent": sent, "failed": failed, "skipped": skipped,
+            "users": len(by_user)}
+
+
+@pc_router.post("/weekly-report/run")
+async def trigger_pc_weekly_reports(user=Depends(admin_user)) -> dict:
+    """Endpoint admin : lance le rapport hebdo pour tous les pros."""
+    return await _run_pc_weekly_reports()
+
+
+@pc_router.post("/weekly-report/send-me")
+async def send_my_weekly_report(user=Depends(current_user)) -> dict:
+    """Envoie immédiatement son rapport hebdo à l'utilisateur courant."""
+    plans = await db.plans_takeoff.find(
+        {"user_id": user["user_id"], "pc_study": {"$exists": True}},
+        _DASH_PROJ).to_list(200)
+    if not plans:
+        raise HTTPException(400, "Aucune étude PC à résumer")
+    if not user.get("email"):
+        raise HTTPException(400, "Aucun email sur votre compte")
+    try:
+        await _send_weekly_pc_report_email(user, [_study_row(p) for p in plans])
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception:
+        raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+    return {"ok": True, "studies": len(plans), "sent_to": user["email"]}

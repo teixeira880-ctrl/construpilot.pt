@@ -100,6 +100,7 @@ function AppRouter() {
       <Route path="/sign/:token" element={<SignQuote />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
       <Route path="/etudes-pc" element={<Protected><Shell><PcDashboard /></Shell></Protected>} />
+      <Route path="/pc" element={<Protected><Shell><PcDashboard /></Shell></Protected>} />
       <Route path="/plan" element={<Protected><Shell><PlanTakeoff /></Shell></Protected>} />
       <Route path="/plan/compare" element={<Protected><Shell><PlanCompare /></Shell></Protected>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />

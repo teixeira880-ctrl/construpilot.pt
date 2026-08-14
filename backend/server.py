@@ -217,6 +217,10 @@ async def seed():
     scheduler.add_job(plans_routes._run_pc_reminders,
                       "interval", hours=6, id="pc_study_reminders",
                       max_instances=1, coalesce=True)
+    # Rapport hebdo Études PC — chaque lundi 07:00 UTC (~08-09 h Paris)
+    scheduler.add_job(plans_routes._run_pc_weekly_reports,
+                      CronTrigger(day_of_week="mon", hour=7, minute=0),
+                      id="pc_weekly_report", max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

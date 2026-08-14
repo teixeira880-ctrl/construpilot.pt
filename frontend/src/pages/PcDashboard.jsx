@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileSearch, HardHat, CheckCircle2, Eye, BellRing, Send, FileStack } from "lucide-react";
+import { toast } from "sonner";
+import { FileSearch, HardHat, CheckCircle2, CreditCard, Eye, BellRing, Send, FileStack, Users, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, eur, num } from "@/lib/api";
 
 const STATUS_STYLE = {
+  "acompte versé": "bg-violet-500/15 text-violet-600 border-violet-500/40",
   "acceptée": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
   "ouverte": "bg-sky-500/15 text-sky-600 border-sky-500/40",
   "relancée": "bg-amber-500/15 text-amber-600 border-amber-500/40",
@@ -13,13 +15,14 @@ const STATUS_STYLE = {
   "générée": "bg-muted text-muted-foreground border-border",
 };
 const STATUS_ICON = {
-  "acceptée": CheckCircle2, "ouverte": Eye, "relancée": BellRing,
-  "envoyée": Send, "générée": FileStack,
+  "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
+  "relancée": BellRing, "envoyée": Send, "générée": FileStack,
 };
 
 export default function PcDashboard() {
   const nav = useNavigate();
   const [studies, setStudies] = useState(null);
+  const [reportBusy, setReportBusy] = useState(false);
 
   useEffect(() => {
     api.get("/pc/dashboard")
@@ -27,25 +30,43 @@ export default function PcDashboard() {
       .catch(() => setStudies([]));
   }, []);
 
+  const sendReportNow = async () => {
+    setReportBusy(true);
+    try {
+      const { data } = await api.post("/pc/weekly-report/send-me");
+      toast.success(`Rapport envoyé à ${data.sent_to} (${data.studies} études)`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    finally { setReportBusy(false); }
+  };
+
   const list = studies || [];
   const totalTtc = list.reduce((s, x) => s + (x.ttc || 0), 0);
-  const accepted = list.filter((x) => x.status === "acceptée").length;
+  const accepted = list.filter((x) => ["acceptée", "acompte versé"].includes(x.status)).length;
+  const deposits = list.reduce((s, x) => s + (x.deposit_amount || 0), 0);
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-8 space-y-6" data-testid="pc-dashboard">
-      <header>
-        <p className="overline flex items-center gap-2 text-primary">
-          <HardHat className="h-4 w-4" /> Études Permis de Construire
-        </p>
-        <h1 className="font-display text-3xl font-extrabold">Tableau de bord PC</h1>
-        <p className="text-sm text-muted-foreground">
-          Toutes vos études gros œuvre et leur statut client, au même endroit.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="overline flex items-center gap-2 text-primary">
+            <HardHat className="h-4 w-4" /> Études Permis de Construire
+          </p>
+          <h1 className="font-display text-3xl font-extrabold">Tableau de bord PC</h1>
+          <p className="text-sm text-muted-foreground">
+            Toutes les études gros œuvre de votre équipe et leur statut client, au même endroit.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={sendReportNow} disabled={reportBusy}
+                className="rounded-sm gap-2" data-testid="pc-dash-weekly-report-btn">
+          <Mail className="h-3.5 w-3.5" />
+          {reportBusy ? "Envoi…" : "M'envoyer le rapport hebdo"}
+        </Button>
       </header>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[["Études", list.length], ["Montant cumulé TTC", eur(totalTtc)],
-          ["Acceptées", `${accepted} / ${list.length}`]].map(([k, v]) => (
+          ["Acceptées", `${accepted} / ${list.length}`],
+          ["Acomptes encaissés", eur(deposits)]].map(([k, v]) => (
           <div key={k} className="surface p-4">
             <p className="text-[10px] text-muted-foreground">{k}</p>
             <p className="font-display text-xl font-extrabold num">{v}</p>
@@ -86,6 +107,12 @@ export default function PcDashboard() {
                     data-testid={`pc-dash-row-${i}`}>
                   <td className="p-2">
                     <p className="font-medium truncate max-w-[220px]">{s.filename || s.plan_id}</p>
+                    {s.owner_name && (
+                      <p className="text-[10px] text-sky-600 flex items-center gap-1 truncate"
+                         data-testid={`pc-dash-row-${i}-owner`}>
+                        <Users className="h-3 w-3" /> Étude de {s.owner_name}
+                      </p>
+                    )}
                     {s.last_sent_to && (
                       <p className="text-[10px] text-muted-foreground truncate">→ {s.last_sent_to}</p>
                     )}

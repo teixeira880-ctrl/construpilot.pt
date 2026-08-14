@@ -1,24 +1,55 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { CheckCircle2, HardHat, ShieldCheck } from "lucide-react";
+import { CheckCircle2, CreditCard, HardHat, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, eur, num } from "@/lib/api";
 
 export default function PcSignPage() {
   const { token } = useParams();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [depositBusy, setDepositBusy] = useState(false);
 
   useEffect(() => {
     api.get(`/pc/sign/${token}`)
       .then(({ data: d }) => setData(d))
       .catch((e) => setError(e?.response?.data?.detail || "Lien invalide ou expiré"));
   }, [token]);
+
+  // Retour de Stripe : confirme le paiement de l'acompte (polling)
+  useEffect(() => {
+    const sid = searchParams.get("session_id");
+    if (!sid) return;
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries += 1;
+      try {
+        const { data: st } = await api.get(`/pc/deposit/status/${sid}`);
+        if (st.payment_status === "paid") {
+          clearInterval(timer);
+          toast.success("Acompte reçu — merci !");
+          setData((p) => p ? {
+            ...p,
+            deposit: { ...(p.deposit || {}), paid: true, paid_amount: st.amount },
+          } : p);
+        } else if (["expired", "failed"].includes(st.payment_status) || tries > 12) {
+          clearInterval(timer);
+          if (["expired", "failed"].includes(st.payment_status)) {
+            toast.error("Le paiement n'a pas abouti — vous pouvez réessayer");
+          }
+        }
+      } catch {
+        if (tries > 12) clearInterval(timer);
+      }
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [searchParams]);
 
   const accept = async () => {
     if (name.trim().length < 2) return toast.error("Indiquez votre nom complet");
@@ -30,6 +61,18 @@ export default function PcSignPage() {
       toast.success("Étude acceptée — merci !");
     } catch (e) { toast.error(e?.response?.data?.detail || "Acceptation impossible"); }
     finally { setBusy(false); }
+  };
+
+  const payDeposit = async () => {
+    setDepositBusy(true);
+    try {
+      const { data: r } = await api.post(`/pc/sign/${token}/deposit/checkout`,
+        { origin_url: window.location.origin });
+      window.location.href = r.url;
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Paiement indisponible — réessayez plus tard");
+      setDepositBusy(false);
+    }
   };
 
   if (error) {
@@ -46,6 +89,7 @@ export default function PcSignPage() {
   }
 
   const t = data.totals || {};
+  const dep = data.deposit || {};
   return (
     <div className="min-h-screen bg-background py-10 px-4" data-testid="pc-sign-page">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -124,6 +168,35 @@ export default function PcSignPage() {
             </Button>
           </div>
         )}
+
+        {data.accepted && dep.pct > 0 && (dep.paid ? (
+          <div className="rounded-sm border-2 border-emerald-500/50 bg-emerald-500/10 p-4 text-center space-y-1"
+               data-testid="pc-deposit-paid">
+            <CreditCard className="h-6 w-6 text-emerald-500 mx-auto" />
+            <p className="font-display font-bold text-emerald-600">
+              Acompte de {eur(dep.paid_amount || dep.amount)} réglé
+            </p>
+            {dep.paid_at && (
+              <p className="text-xs text-muted-foreground">le {String(dep.paid_at).slice(0, 10)}</p>
+            )}
+          </div>
+        ) : (
+          <div className="surface p-5 space-y-3" data-testid="pc-deposit-block">
+            <p className="font-semibold flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-primary" /> Verser l'acompte pour lancer le chantier
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Acompte de <b>{num(dep.pct)} %</b> — soit <b>{eur(dep.amount)}</b> sur un
+              total de {eur(t.ttc)} TTC. Paiement sécurisé par carte bancaire (Stripe).
+            </p>
+            <Button onClick={payDeposit} disabled={depositBusy}
+                    className="rounded-sm w-full gap-2" data-testid="pc-deposit-pay-btn">
+              <CreditCard className="h-4 w-4" />
+              {depositBusy ? "Redirection vers le paiement…" : `Payer l'acompte de ${eur(dep.amount)}`}
+            </Button>
+          </div>
+        ))}
+
         <p className="text-[10px] text-muted-foreground text-center">
           Document indicatif généré par ConstruPilot — ne constitue pas un devis contractuel.
         </p>

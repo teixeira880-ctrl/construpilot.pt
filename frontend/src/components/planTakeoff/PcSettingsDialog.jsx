@@ -37,6 +37,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
   const [prices, setPrices] = useState({});
   const [crew, setCrew] = useState(3);
   const [rate, setRate] = useState(35);
+  const [margin, setMargin] = useState(30);
+  const [depositPct, setDepositPct] = useState(30);
+  const [weeklyReport, setWeeklyReport] = useState(true);
+  const [teamShare, setTeamShare] = useState(true);
   const [reminderDays, setReminderDays] = useState(3);
   const [notifyMode, setNotifyMode] = useState("email");
   const [notifyPhone, setNotifyPhone] = useState("");
@@ -55,6 +59,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       setPrices(merged);
       setCrew(s.crew_size ?? d.crew_size ?? 3);
       setRate(s.hourly_rate_eur ?? d.hourly_rate_eur ?? 35);
+      setMargin(s.margin_pct ?? d.margin_pct ?? 30);
+      setDepositPct(s.deposit_pct ?? d.deposit_pct ?? 30);
+      setWeeklyReport(s.weekly_report ?? d.weekly_report ?? true);
+      setTeamShare(s.team_share ?? d.team_share ?? true);
       setReminderDays(s.reminder_days ?? d.reminder_days ?? 3);
       setNotifyMode(s.notify_on_open ?? d.notify_on_open ?? "email");
       setNotifyPhone(s.notify_phone ?? "");
@@ -74,6 +82,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       await api.put("/pc/settings", {
         unit_prices, crew_size: parseInt(crew, 10) || 3,
         hourly_rate_eur: parseFloat(rate) || 35,
+        margin_pct: Math.max(0, parseFloat(margin) || 0),
+        deposit_pct: Math.max(0, parseFloat(depositPct) || 0),
+        weekly_report: !!weeklyReport,
+        team_share: !!teamShare,
         reminder_days: Math.max(0, parseInt(reminderDays, 10) || 0),
         notify_on_open: notifyMode,
         notify_phone: notifyPhone.trim() || null,
@@ -121,6 +133,28 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
                    onChange={(e) => setRate(e.target.value)}
                    data-testid="pc-settings-rate-input" className="rounded-sm num" />
           </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="pc-margin" className="text-xs">Marge bénéficiaire (%) — prix de vente client</Label>
+            <Input id="pc-margin" type="number" min="0" max="200" value={margin}
+                   onChange={(e) => setMargin(e.target.value)}
+                   data-testid="pc-settings-margin-input" className="rounded-sm num" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="pc-deposit" className="text-xs">Acompte en ligne (%) — 0 = désactivé</Label>
+            <Input id="pc-deposit" type="number" min="0" max="100" value={depositPct}
+                   onChange={(e) => setDepositPct(e.target.value)}
+                   data-testid="pc-settings-deposit-input" className="rounded-sm num" />
+          </div>
+          <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
+            <input type="checkbox" checked={weeklyReport} onChange={(e) => setWeeklyReport(e.target.checked)}
+                   data-testid="pc-settings-weekly-checkbox" className="accent-primary" />
+            Rapport hebdo par email (chaque lundi)
+          </label>
+          <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
+            <input type="checkbox" checked={teamShare} onChange={(e) => setTeamShare(e.target.checked)}
+                   data-testid="pc-settings-teamshare-checkbox" className="accent-primary" />
+            Partager mes études PC avec mon équipe
+          </label>
           <div className="grid gap-1.5 col-span-2">
             <Label htmlFor="pc-reminder" className="text-xs">
               Relance auto du client si l'étude n'est pas ouverte après (jours) — 0 = désactivée
