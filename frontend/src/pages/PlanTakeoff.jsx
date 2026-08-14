@@ -17,7 +17,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, FileDown, History, Film, DoorOpen, Copy,
-  Hash, StickyNote, Triangle, MountainSnow, X,
+  Hash, StickyNote, Triangle, MountainSnow, X, Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { api, eur, num } from "@/lib/api";
 
 const TOOLS = {
@@ -84,6 +84,7 @@ function PlanCanvas({
   selectedCoteIndex = null,
   onCoteClick = null,
   onCanvasDoubleClick = null,
+  showDeltas = true,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -254,14 +255,21 @@ function PlanCanvas({
     // ROOMS overlays
     rooms.forEach((r, i) => {
       if (!r.points || r.points.length < 3) return;
+      // Écarts surfaces (iter64) : ambre si écart mesuré↔écrit > 5 %, vert sinon
+      const delta = showDeltas && r.surface_delta_pct != null ? r.surface_delta_pct : null;
+      const deltaBad = delta != null && Math.abs(delta) > 5;
       ctx.beginPath();
       r.points.forEach((p, idx) => {
         idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]);
       });
       ctx.closePath();
-      ctx.fillStyle = ROOM_COLORS[i % ROOM_COLORS.length];
+      ctx.fillStyle = delta == null
+        ? ROOM_COLORS[i % ROOM_COLORS.length]
+        : deltaBad ? "rgba(245, 158, 11, 0.30)" : "rgba(34, 197, 94, 0.22)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,140,0,0.9)";
+      ctx.strokeStyle = delta == null
+        ? "rgba(255,140,0,0.9)"
+        : deltaBad ? "rgba(217, 119, 6, 0.95)" : "rgba(22, 163, 74, 0.9)";
       ctx.lineWidth = 2 / zoom;
       ctx.stroke();
       // label
@@ -273,6 +281,14 @@ function PlanCanvas({
       ctx.fillText(r.name, cx, cy);
       ctx.font = `${12 / zoom}px system-ui`;
       ctx.fillText(`${r.surface_m2} m²`, cx, cy + 16 / zoom);
+      if (delta != null) {
+        ctx.font = `bold ${11 / zoom}px system-ui`;
+        ctx.fillStyle = deltaBad ? "#b45309" : "#15803d";
+        ctx.fillText(
+          `écrit ${r.surface_written_m2} m² (${delta > 0 ? "+" : ""}${delta}%)`,
+          cx, cy + 32 / zoom
+        );
+      }
     });
 
     // ============ QUOTERPLAN-LIKE ANNOTATIONS ============
@@ -538,7 +554,7 @@ function PlanCanvas({
   }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
        calibration, detectedWalls, showWalls, pixelsPerMeter,
        dimensionLines, showDimensionLines, annotations, activeCounterId,
-       selectedCoteIndex]);
+       selectedCoteIndex, showDeltas]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -693,6 +709,11 @@ export default function PlanTakeoff() {
   const [aiActionBusy, setAiActionBusy] = useState(false);
   const [reconcile, setReconcile] = useState(null);
   const [selectedCote, setSelectedCote] = useState(null);
+  const [showDeltas, setShowDeltas] = useState(true);
+  const [sendEcartsDialog, setSendEcartsDialog] = useState(false);
+  const [ecartsEmail, setEcartsEmail] = useState("");
+  const [ecartsMessage, setEcartsMessage] = useState("");
+  const [sendingEcarts, setSendingEcarts] = useState(false);
   const [detectedWalls, setDetectedWalls] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
@@ -1546,6 +1567,41 @@ export default function PlanTakeoff() {
 
   useEffect(() => { setSelectedCote(null); }, [pageIndex]);
 
+  // Échap = annule la mesure en cours SANS rien enregistrer (iter64)
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (e.target?.closest?.('[role="dialog"]')) return;
+      if (points.length > 0) {
+        setPoints([]);
+        toast.info("Mesure annulée");
+      } else if (selectedCote != null) {
+        setSelectedCote(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [points, selectedCote]);
+
+  // Iter64 — envoi du rapport d'écarts par email au client
+  const sendEcartsReport = async () => {
+    if (!ecartsEmail.trim()) return toast.error("Renseignez l'email du client");
+    setSendingEcarts(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/ecarts-pdf/send`, {
+        page_index: pageIndex,
+        to_email: ecartsEmail.trim(),
+        message: ecartsMessage,
+      });
+      toast.success(`Rapport d'écarts envoyé à ${data.sent_to}`, { duration: 7000 });
+      setSendEcartsDialog(false);
+      setEcartsMessage("");
+    } catch (e) {
+      const detail = e?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Envoi impossible — vérifiez l'email");
+    } finally { setSendingEcarts(false); }
+  };
+
   const loadHistory = async () => {
     if (!plan?.plan_id) return;
     setHistoryLoading(true);
@@ -2315,6 +2371,14 @@ export default function PlanTakeoff() {
             <ToolButton icon={Triangle} label="Angle" testId="tool-angle" active={tool === TOOLS.ANGLE} onClick={() => { setTool(TOOLS.ANGLE); setPoints([]); }} />
             <ToolButton icon={MountainSnow} label="Pente toit" testId="tool-pitch" active={tool === TOOLS.PITCH} onClick={() => { setTool(TOOLS.PITCH); setPoints([]); }} disabled={!currentCalib} />
             <div className="flex-1" />
+            {rooms.some((r) => r.page_index === pageIndex && r.surface_delta_pct != null) && (
+              <Button size="sm" variant={showDeltas ? "default" : "outline"}
+                      onClick={() => setShowDeltas(!showDeltas)}
+                      data-testid="toggle-deltas-overlay"
+                      className="rounded-sm gap-1 h-8">
+                <Square className="h-3 w-3" /> Écarts
+              </Button>
+            )}
             {detectedWalls && (
               <>
                 <Button size="sm" variant={showWalls ? "default" : "outline"} onClick={() => setShowWalls(!showWalls)}
@@ -2397,6 +2461,7 @@ export default function PlanTakeoff() {
             selectedCoteIndex={selectedCote}
             onCoteClick={setSelectedCote}
             onCanvasDoubleClick={onCanvasDoubleClick}
+            showDeltas={showDeltas}
           />
 
           {/* Iter63 — panneau détail de la cote IA sélectionnée */}
@@ -2881,6 +2946,13 @@ export default function PlanTakeoff() {
                             <FileDown className="h-3.5 w-3.5" />
                             Rapport écarts (PDF)
                           </Button>
+                          <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
+                                  disabled={aiActionBusy}
+                                  onClick={() => setSendEcartsDialog(true)}
+                                  data-testid="send-ecarts-btn">
+                            <Mail className="h-3.5 w-3.5" />
+                            Envoyer au client
+                          </Button>
                         </>
                       )}
                       {reconcile && !reconcile.applied && reconcile.can_reconcile && (
@@ -3175,6 +3247,42 @@ export default function PlanTakeoff() {
           </Tabs>
         </div>
       </div>
+
+      {/* SEND ECARTS DIALOG (iter64) */}
+      <Dialog open={sendEcartsDialog} onOpenChange={setSendEcartsDialog}>
+        <DialogContent className="rounded-sm" data-testid="send-ecarts-dialog">
+          <DialogHeader>
+            <DialogTitle>Envoyer le rapport d'écarts au client</DialogTitle>
+            <DialogDescription>
+              Le PDF de contrôle des surfaces (mesurées vs écrites) sera joint à l'email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="ecarts-email">Email du client</Label>
+              <Input id="ecarts-email" type="email" placeholder="client@exemple.fr"
+                     value={ecartsEmail} onChange={(e) => setEcartsEmail(e.target.value)}
+                     data-testid="ecarts-email-input" className="rounded-sm" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ecarts-message">Mot personnalisé (optionnel)</Label>
+              <Textarea id="ecarts-message" rows={4}
+                        placeholder="Bonjour, veuillez trouver ci-joint le rapport de contrôle des surfaces de votre projet…"
+                        value={ecartsMessage} onChange={(e) => setEcartsMessage(e.target.value)}
+                        data-testid="ecarts-message-input" className="rounded-sm" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendEcartsDialog(false)}
+                    className="rounded-sm" data-testid="ecarts-send-cancel">Annuler</Button>
+            <Button onClick={sendEcartsReport} disabled={sendingEcarts}
+                    className="rounded-sm gap-2" data-testid="ecarts-send-confirm">
+              <Mail className="h-3.5 w-3.5" />
+              {sendingEcarts ? "Envoi…" : "Envoyer le rapport"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* CALIB DIALOG */}
       <Dialog open={calibDialog} onOpenChange={setCalibDialog}>

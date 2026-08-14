@@ -1888,3 +1888,19 @@ R+1 60m² 2.30m, combles 30m² 1.80m » → l'IA détecte les 3 niveaux + hauteu
 
 ### Test (screenshot Playwright E2E)
 Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge « 1 point » ; double-clic → toast « Distance : 12.781 m » + badge disparu ; clic suivant → « 1 point ». PASS.
+
+---
+
+## Itération 64b (14/06/2026) — Échap, Écarts colorés, Envoi rapport par email
+
+### Features livrées (toutes testées E2E)
+1. **Touche Échap** (PlanTakeoff.jsx) : annule la mesure en cours SANS enregistrer (`setPoints([])` + toast « Mesure annulée ») ; ignore si un dialog Radix est ouvert (`e.target.closest('[role=dialog]')`) ; désélectionne aussi la cote IA si aucune mesure en cours.
+2. **Écarts sur pièces** (PlanCanvas) : les pièces avec `surface_delta_pct` sont colorées en direct — ambre si |écart| > 5 %, vert sinon — avec libellé « écrit X m² (+Y%) » sous le nom. Prop `showDeltas` + bouton toggle `toggle-deltas-overlay` « Écarts » (visible si au moins une pièce a un delta).
+3. **Envoi rapport écarts par email** :
+   - Backend : refactor `_ecarts_pdf_for()` (partagé GET/POST) + `POST /api/takeoffs/{id}/ecarts-pdf/send` {page_index, to_email (EmailStr), message} — email Resend via `emailer.send_email_with_pdf` + `wrap_html`, message personnalisé échappé (html.escape + nl2br), stats dans le corps, 503 si RESEND_API_KEY manquant, 502 si échec envoi.
+   - Frontend : bouton `send-ecarts-btn` « Envoyer au client » (onglet IA) + dialog `send-ecarts-dialog` (email + mot personnalisé) + `sendEcartsReport`.
+
+### Tests
+- API : envoi réel 200 vers delivered@resend.dev (adresse test officielle Resend) ; 422 email invalide ; `test_iter64_send_ecarts.py` 4/4 (chemins d'erreur sans envoi réel) ; iter63 9/9 re-PASS.
+- E2E Playwright : Échap OK (badge disparu + toast), pièce ambre « écrit 121 m² (+21%) » visible au canvas, dialog envoi → toast « Rapport d'écarts envoyé à delivered@resend.dev ».
+- Piège Playwright noté : `get_by_role("tab", name="IA")` matche aussi « MatérIAux » → utiliser `[data-testid="tab-ai"]`.

@@ -12,7 +12,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
 from core.security import admin_user, current_user
@@ -123,21 +123,17 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
 
 # ============ PDF RAPPORT ÉCARTS (iter63) ============
 
-@router.get("/{plan_id}/ecarts-pdf")
-async def export_ecarts_pdf(plan_id: str, page_index: int = 0,
-                            user=Depends(current_user)):
-    """Rapport PDF des écarts surfaces mesurées ↔ surfaces écrites sur le plan.
+async def _ecarts_pdf_for(plan_id: str, user_id: str, page_index: int):
+    """Génère le rapport écarts (bytes) + méta. Lève HTTPException si prérequis manquants.
 
     Le matching pièces mesurées ↔ pièces IA est recalculé en direct
-    (nom normalisé puis proximité de surface) — pas besoin d'avoir lancé
-    « Appliquer les textes » au préalable.
+    (nom normalisé puis proximité de surface).
     """
-    from fastapi.responses import Response
     from engines import plan_texts as T
     from engines.pdf_takeoff import build_ecarts_pdf
 
     p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"plan_id": plan_id, "user_id": user_id},
         {"_id": 0, "pages.image_png_b64": 0})
     if not p:
         raise HTTPException(404, "Plan introuvable")
@@ -156,15 +152,65 @@ async def export_ecarts_pdf(plan_id: str, page_index: int = 0,
     matched_ids = {m["room_id"] for m in matches}
     unmatched = [r for r in rooms if r.get("room_id") not in matched_ids]
 
-    branding = await _resolve_branding(user["user_id"])
+    branding = await _resolve_branding(user_id)
     pdf_bytes = build_ecarts_pdf(
         {"plan_id": p.get("plan_id"), "filename": p.get("filename")},
         calib, matches, unmatched, branding=branding, page_index=page_index)
+    ecarts = sum(1 for m in matches if abs(m.get("delta_pct") or 0) > 5.0)
+    meta = {"filename": p.get("filename") or "plan",
+            "matches": len(matches), "ecarts": ecarts,
+            "unmatched": len(unmatched)}
+    return pdf_bytes, meta
+
+
+@router.get("/{plan_id}/ecarts-pdf")
+async def export_ecarts_pdf(plan_id: str, page_index: int = 0,
+                            user=Depends(current_user)):
+    """Rapport PDF des écarts surfaces mesurées ↔ surfaces écrites sur le plan."""
+    from fastapi.responses import Response
+    pdf_bytes, _ = await _ecarts_pdf_for(plan_id, user["user_id"], page_index)
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
                  f'attachment; filename="rapport-ecarts-{plan_id}.pdf"'}
     )
+
+
+class SendEcartsIn(BaseModel):
+    page_index: int = Field(default=0, ge=0)
+    to_email: EmailStr
+    message: str = ""
+
+
+@router.post("/{plan_id}/ecarts-pdf/send")
+async def send_ecarts_pdf(plan_id: str, body: SendEcartsIn,
+                          user=Depends(current_user)):
+    """Envoie le rapport d'écarts PDF au client par email avec un mot personnalisé (iter64)."""
+    import html as _html
+    from engines.emailer import send_email_with_pdf, wrap_html
+
+    pdf_bytes, meta = await _ecarts_pdf_for(plan_id, user["user_id"], body.page_index)
+    perso = _html.escape(body.message.strip()[:2000]).replace("\n", "<br/>")
+    intro = f"<p>{perso}</p>" if perso else ""
+    stats = (f"<p><b>{meta['matches']}</b> pièce(s) comparée(s) · "
+             f"<b>{meta['ecarts']}</b> écart(s) &gt; 5 % · "
+             f"{meta['unmatched']} sans surface écrite.</p>")
+    html_body = (
+        intro +
+        "<p>Veuillez trouver ci-joint le <b>rapport de contrôle des surfaces</b> du plan "
+        f"« {_html.escape(meta['filename'])} » : comparaison des surfaces mesurées "
+        "numériquement avec les surfaces écrites sur le plan.</p>" + stats)
+    html = wrap_html("Rapport de contrôle des surfaces", html_body)
+    try:
+        await send_email_with_pdf(
+            body.to_email,
+            f"Rapport de contrôle des surfaces — {meta['filename']}",
+            html, pdf_bytes, filename=f"rapport-ecarts-{plan_id}.pdf")
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception:
+        raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+    return {"ok": True, "sent_to": body.to_email, **meta}
 
 
 # ============ PDF DEVIS ============
