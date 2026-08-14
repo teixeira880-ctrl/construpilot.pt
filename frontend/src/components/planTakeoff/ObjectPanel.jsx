@@ -182,7 +182,7 @@ export default function ObjectPanel({
                       secondary={
                         attachedPreset
                           ? `Modèle : ${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
-                          : `${r.perimeter_m || 0} m linéaires · ${r.height_m || 2.5} m HSP`
+                          : `${r.perimeter_m || 0} m linéaires · ${r.ceiling_height_m || r.height_m || 2.5} m HSP`
                       }
                       badge={`${r.surface_m2 ?? 0} m²`}
                       badgeColor={attachedPreset ? attachedPreset.color : "#f97316"}

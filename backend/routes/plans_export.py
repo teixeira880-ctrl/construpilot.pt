@@ -121,6 +121,52 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
     )
 
 
+# ============ PDF RAPPORT ÉCARTS (iter63) ============
+
+@router.get("/{plan_id}/ecarts-pdf")
+async def export_ecarts_pdf(plan_id: str, page_index: int = 0,
+                            user=Depends(current_user)):
+    """Rapport PDF des écarts surfaces mesurées ↔ surfaces écrites sur le plan.
+
+    Le matching pièces mesurées ↔ pièces IA est recalculé en direct
+    (nom normalisé puis proximité de surface) — pas besoin d'avoir lancé
+    « Appliquer les textes » au préalable.
+    """
+    from fastapi.responses import Response
+    from engines import plan_texts as T
+    from engines.pdf_takeoff import build_ecarts_pdf
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages.image_png_b64": 0})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    ai = p.get("ai_analysis") or {}
+    if not ai or ai.get("error"):
+        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+    rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+    if not rooms:
+        raise HTTPException(400, "Aucune pièce mesurée sur cette page")
+
+    calib = (p.get("calibrations") or {}).get(str(page_index))
+    result = T.reconcile_written_surfaces(
+        rooms, ai.get("rooms") or [],
+        (calib or {}).get("pixels_per_meter") or 1.0)
+    matches = result.get("matches", [])
+    matched_ids = {m["room_id"] for m in matches}
+    unmatched = [r for r in rooms if r.get("room_id") not in matched_ids]
+
+    branding = await _resolve_branding(user["user_id"])
+    pdf_bytes = build_ecarts_pdf(
+        {"plan_id": p.get("plan_id"), "filename": p.get("filename")},
+        calib, matches, unmatched, branding=branding, page_index=page_index)
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="rapport-ecarts-{plan_id}.pdf"'}
+    )
+
+
 # ============ PDF DEVIS ============
 
 @router.get("/{plan_id}/quote-pdf")

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, Smartphone } from "lucide-react";
 
@@ -10,10 +10,30 @@ import { Play, Smartphone } from "lucide-react";
  */
 export function MarketingTeaser() {
   const [failed, setFailed] = useState(false);
+  const videoRef = useRef(null);
   const VIDEO_URL =
     process.env.REACT_APP_MARKETING_VIDEO_URL || "/marketing-teaser.mp4";
   const POSTER_URL =
     process.env.REACT_APP_MARKETING_VIDEO_POSTER || "/marketing-teaser.jpg";
+
+  // Autoplay fiable : React ne pose pas toujours l'attribut `muted` sur la balise
+  // (bug connu) → Chrome bloque alors l'autoplay. On force muted + play() quand
+  // la vidéo entre dans le viewport, et on met en pause hors écran (économie data).
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.muted = true;
+    el.play?.().catch(() => {});
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) el.play?.().catch(() => {});
+        else el.pause?.();
+      },
+      { threshold: 0.25 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [failed]);
 
   return (
     <section
@@ -65,12 +85,14 @@ export function MarketingTeaser() {
             <div className="relative w-full h-full rounded-[2rem] overflow-hidden bg-secondary">
               {!failed ? (
                 <video
+                  ref={videoRef}
                   src={VIDEO_URL}
                   poster={POSTER_URL}
                   autoPlay
                   muted
                   loop
                   playsInline
+                  preload="auto"
                   onError={() => setFailed(true)}
                   className="w-full h-full object-cover"
                   data-testid="teaser-video"
@@ -90,8 +112,7 @@ export function MarketingTeaser() {
                       Aperçu de l'app
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Ajoutez la vidéo teaser dans<br />
-                      <code>public/marketing-teaser.mp4</code>
+                      Vidéo indisponible sur ce navigateur
                     </p>
                   </div>
                 </div>

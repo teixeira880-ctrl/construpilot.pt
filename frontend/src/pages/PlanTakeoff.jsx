@@ -17,7 +17,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, FileDown, History, Film, DoorOpen, Copy,
-  Hash, StickyNote, Triangle, MountainSnow,
+  Hash, StickyNote, Triangle, MountainSnow, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,15 @@ const ROOM_COLORS = [
 
 // ============ VIEWER / CANVAS ============
 
+// Distance point → segment (espace image) — hit-test des cotes IA cliquables
+function pointSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
 function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
   onCanvasClick, onZoomChange, onOffsetChange, onAutoRotate,
@@ -72,10 +81,13 @@ function PlanCanvas({
   annotations = { counters: [], notes: [], angles: [], pitched_surfaces: [] },
   activeCounterId = null,
   focusRequest = null,  // {px, py, ts} — quand ts change, centrer sur (px, py)
+  selectedCoteIndex = null,
+  onCoteClick = null,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
   const dragRef = useRef(null);
+  const movedRef = useRef(false);
   const [hoverPoint, setHoverPoint] = useState(null);
 
   // Wall endpoint snap : magnetic attraction to detected wall endpoints (within 15px screen)
@@ -186,16 +198,21 @@ function PlanCanvas({
       const W = imgRef.current.naturalWidth;
       const H = imgRef.current.naturalHeight;
       ctx.save();
-      dimensionLines.forEach((d) => {
+      dimensionLines.forEach((d, di) => {
         const bb = d.bbox_norm;
         if (!Array.isArray(bb) || bb.length !== 4) return;
+        const isSel = di === selectedCoteIndex;
         const x1 = bb[0] * W, y1 = bb[1] * H;
         const x2 = bb[2] * W, y2 = bb[3] * H;
-        // Trait de cote — magenta pour se distinguer clairement des murs et pièces
-        ctx.strokeStyle = "rgba(217, 70, 239, 0.9)";
-        ctx.fillStyle = "rgba(217, 70, 239, 0.95)";
-        ctx.lineWidth = 2 / zoom;
-        ctx.setLineDash([8 / zoom, 4 / zoom]);
+        // Trait de cote — magenta (ambre en surbrillance quand sélectionné)
+        ctx.strokeStyle = isSel ? "rgba(245, 158, 11, 1)" : "rgba(217, 70, 239, 0.9)";
+        ctx.fillStyle = isSel ? "rgba(245, 158, 11, 1)" : "rgba(217, 70, 239, 0.95)";
+        ctx.lineWidth = (isSel ? 4 : 2) / zoom;
+        if (isSel) {
+          ctx.shadowColor = "rgba(245, 158, 11, 0.9)";
+          ctx.shadowBlur = 12 / zoom;
+        }
+        ctx.setLineDash(isSel ? [] : [8 / zoom, 4 / zoom]);
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
@@ -216,10 +233,10 @@ function PlanCanvas({
         if (d.value_m != null) {
           const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
           const label = `${Number(d.value_m).toFixed(2)} m`;
-          ctx.font = `bold ${13 / zoom}px system-ui`;
+          ctx.font = `bold ${(isSel ? 15 : 13) / zoom}px system-ui`;
           const w = ctx.measureText(label).width + 10 / zoom;
-          const h = 18 / zoom;
-          ctx.fillStyle = "rgba(217, 70, 239, 0.95)";
+          const h = (isSel ? 20 : 18) / zoom;
+          ctx.fillStyle = isSel ? "rgba(245, 158, 11, 1)" : "rgba(217, 70, 239, 0.95)";
           ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
           ctx.fillStyle = "#fff";
           ctx.textAlign = "center";
@@ -227,6 +244,8 @@ function PlanCanvas({
           ctx.fillText(label, cx, cy);
           ctx.textBaseline = "alphabetic";
         }
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = "transparent";
       });
       ctx.restore();
     }
@@ -517,7 +536,8 @@ function PlanCanvas({
     ctx.restore();
   }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
        calibration, detectedWalls, showWalls, pixelsPerMeter,
-       dimensionLines, showDimensionLines, annotations, activeCounterId]);
+       dimensionLines, showDimensionLines, annotations, activeCounterId,
+       selectedCoteIndex]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -535,7 +555,23 @@ function PlanCanvas({
   };
 
   const handleClick = (e) => {
-    if (tool === TOOLS.SELECT) return;
+    if (tool === TOOLS.SELECT) {
+      // Cotes IA cliquables : hit-test au clic (pas au drag)
+      if (movedRef.current || !onCoteClick) return;
+      if (!showDimensionLines || !dimensionLines?.length || !imgRef.current) return;
+      const [rx, ry] = screenToImage(e.clientX, e.clientY);
+      const W = imgRef.current.naturalWidth, H = imgRef.current.naturalHeight;
+      const tol = 12 / zoom;
+      let best = null, bestD = Infinity;
+      dimensionLines.forEach((d, i) => {
+        const bb = d.bbox_norm;
+        if (!Array.isArray(bb) || bb.length !== 4) return;
+        const dd = pointSegDist(rx, ry, bb[0] * W, bb[1] * H, bb[2] * W, bb[3] * H);
+        if (dd < tol && dd < bestD) { best = i; bestD = dd; }
+      });
+      onCoteClick(best);
+      return;
+    }
     if (dragRef.current) return;
     const [rx, ry] = screenToImage(e.clientX, e.clientY);
     const [ix, iy] = applySnap(rx, ry);
@@ -552,10 +588,14 @@ function PlanCanvas({
   const handleMouseDown = (e) => {
     if (locked) return;
     if (tool !== TOOLS.SELECT && e.button !== 1) return;
+    movedRef.current = false;
     dragRef.current = { sx: e.clientX, sy: e.clientY, ox: offset.x, oy: offset.y };
   };
   const handleMouseMove = (e) => {
     if (dragRef.current) {
+      if (Math.hypot(e.clientX - dragRef.current.sx, e.clientY - dragRef.current.sy) > 3) {
+        movedRef.current = true;
+      }
       onOffsetChange({ x: dragRef.current.ox + (e.clientX - dragRef.current.sx),
                        y: dragRef.current.oy + (e.clientY - dragRef.current.sy) });
       return;
@@ -643,6 +683,7 @@ export default function PlanTakeoff() {
   const [cvBusy, setCvBusy] = useState(false);
   const [aiActionBusy, setAiActionBusy] = useState(false);
   const [reconcile, setReconcile] = useState(null);
+  const [selectedCote, setSelectedCote] = useState(null);
   const [detectedWalls, setDetectedWalls] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
@@ -714,6 +755,12 @@ export default function PlanTakeoff() {
   const fileRef = useRef(null);
 
   const currentCalib = plan?.calibrations?.[String(pageIndex)];
+  // Fix revue iter63 : les cotes IA ne s'affichent que sur la page analysée
+  const aiDimLines = useMemo(() => {
+    const ai = plan?.ai_analysis;
+    if (!ai || (ai.page_index != null && ai.page_index !== pageIndex)) return [];
+    return ai.dimension_lines || [];
+  }, [plan, pageIndex]);
   const rooms = useMemo(() => (plan?.rooms || []).filter((r) => r.page_index === pageIndex),
                         [plan, pageIndex]);
 
@@ -1424,6 +1471,52 @@ export default function PlanTakeoff() {
       toast.success("Métré PDF téléchargé");
     } catch { toast.error("Export PDF impossible"); }
   };
+
+  // Iter63 — Rapport PDF des écarts surfaces mesurées ↔ écrites
+  const downloadEcartsPdf = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("construpilot_token");
+      const res = await fetch(
+        `${base}/api/takeoffs/${plan.plan_id}/ecarts-pdf?page_index=${pageIndex}`,
+        { headers: { Authorization: `Bearer ${token}` }, credentials: "include" }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "PDF error");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `rapport-ecarts-${plan.plan_id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Rapport d'écarts PDF téléchargé");
+    } catch (e) { toast.error(e.message || "Export rapport écarts impossible"); }
+  };
+
+  // Iter63 — détail de la cote IA sélectionnée (clic sur le plan)
+  const coteDetail = useMemo(() => {
+    if (selectedCote == null) return null;
+    const d = aiDimLines[selectedCote];
+    if (!d) return null;
+    const page = plan?.pages?.[pageIndex];
+    const bb = d.bbox_norm;
+    let measured = null, deltaPct = null;
+    if (Array.isArray(bb) && bb.length === 4 && page?.width_px && page?.height_px) {
+      const pxLen = Math.hypot((bb[2] - bb[0]) * page.width_px,
+                               (bb[3] - bb[1]) * page.height_px);
+      const ppm = currentCalib?.pixels_per_meter;
+      if (ppm) {
+        measured = pxLen / ppm;
+        if (d.value_m) deltaPct = (measured / Number(d.value_m) - 1) * 100;
+      }
+    }
+    return { ...d, measured, deltaPct };
+  }, [selectedCote, aiDimLines, plan, pageIndex, currentCalib]);
+
+  useEffect(() => { setSelectedCote(null); }, [pageIndex]);
 
   const loadHistory = async () => {
     if (!plan?.plan_id) return;
@@ -2252,6 +2345,7 @@ export default function PlanTakeoff() {
           </div>
 
           {/* CANVAS */}
+          <div className="relative">
           <PlanCanvas
             pageData={pageData} tool={tool} points={points} rooms={rooms}
             calibration={currentCalib} zoom={zoom} offset={offset} rotation={rotation}
@@ -2267,12 +2361,73 @@ export default function PlanTakeoff() {
             pixelsPerMeter={currentCalib?.pixels_per_meter || 0}
             orthoSnap={true}
             locked={locked}
-            dimensionLines={plan?.ai_analysis?.dimension_lines || []}
+            dimensionLines={aiDimLines}
             showDimensionLines={showDimensionLines}
             annotations={annotations}
             activeCounterId={activeCounterId}
             focusRequest={focusRequest}
+            selectedCoteIndex={selectedCote}
+            onCoteClick={setSelectedCote}
           />
+
+          {/* Iter63 — panneau détail de la cote IA sélectionnée */}
+          {coteDetail && (
+            <div className="absolute top-3 right-3 z-20 w-64 border border-fuchsia-500/50 bg-background/95 backdrop-blur rounded-sm p-3 grid gap-1.5 shadow-lg"
+                 data-testid="cote-detail-panel">
+              <div className="flex items-center justify-between">
+                <p className="overline text-fuchsia-500">Cote IA #{selectedCote + 1}</p>
+                <button onClick={() => setSelectedCote(null)}
+                        className="text-muted-foreground hover:text-foreground"
+                        data-testid="cote-detail-close">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Valeur écrite</span>
+                <b className="num" data-testid="cote-written-value">
+                  {coteDetail.value_m != null ? `${Number(coteDetail.value_m).toFixed(2)} m` : "—"}
+                </b>
+              </div>
+              {coteDetail.measured != null ? (
+                <>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Mesure (échelle actuelle)</span>
+                    <b className="num" data-testid="cote-measured-value">
+                      {coteDetail.measured.toFixed(2)} m
+                    </b>
+                  </div>
+                  {coteDetail.deltaPct != null && (
+                    <div className={`flex justify-between text-xs ${Math.abs(coteDetail.deltaPct) > 3 ? "text-amber-500" : "text-green-600"}`}
+                         data-testid="cote-delta">
+                      <span>Écart</span>
+                      <b className="num">
+                        {coteDetail.deltaPct > 0 ? "+" : ""}{coteDetail.deltaPct.toFixed(1)}%
+                        {Math.abs(coteDetail.deltaPct) > 3 ? " ⚠" : " ✓"}
+                      </b>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">
+                  Calibrez la page pour comparer la mesure à la valeur écrite.
+                </p>
+              )}
+              {coteDetail.location && (
+                <p className="text-[10px] text-muted-foreground">{coteDetail.location}</p>
+              )}
+              <div className="flex gap-1 flex-wrap">
+                {coteDetail.orientation && (
+                  <Badge variant="outline" className="rounded-sm text-[10px]">{coteDetail.orientation}</Badge>
+                )}
+                {coteDetail.confidence != null && (
+                  <Badge variant="outline" className="rounded-sm text-[10px] num">
+                    conf. {Math.round(Number(coteDetail.confidence) * 100)}%
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+          </div>
 
           <ObjectPanel
             open={objectPanelOpen}
@@ -2679,12 +2834,20 @@ export default function PlanTakeoff() {
                       </Button>
                       {currentCalib && rooms.some((r) => r.page_index === pageIndex) &&
                         (plan.ai_analysis.rooms || []).some((r) => r.surface_written_m2) && (
-                        <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
-                                disabled={aiActionBusy} onClick={() => checkWrittenSurfaces(false)}
-                                data-testid="reconcile-check-btn">
-                          <Square className="h-3.5 w-3.5" />
-                          Vérifier les surfaces écrites
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
+                                  disabled={aiActionBusy} onClick={() => checkWrittenSurfaces(false)}
+                                  data-testid="reconcile-check-btn">
+                            <Square className="h-3.5 w-3.5" />
+                            Vérifier les surfaces écrites
+                          </Button>
+                          <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
+                                  disabled={aiActionBusy} onClick={downloadEcartsPdf}
+                                  data-testid="ecarts-pdf-btn">
+                            <FileDown className="h-3.5 w-3.5" />
+                            Rapport écarts (PDF)
+                          </Button>
+                        </>
                       )}
                       {reconcile && !reconcile.applied && reconcile.can_reconcile && (
                         <div className="border border-amber-500/40 bg-amber-500/10 rounded-sm p-2 grid gap-1"

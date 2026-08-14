@@ -1845,3 +1845,31 @@ R+1 60m² 2.30m, combles 30m² 1.80m » → l'IA détecte les 3 niveaux + hauteu
 - P2 : Type hints Python backend.
 - P3 : Légende des icônes presets dans le PDF takeoff.
 - P3 : Autoplay muet du teaser vidéo sur la landing.
+
+---
+
+## Itération 63 (14/06/2026) — 4 features + revue de code (4 bugs corrigés)
+
+### Features livrées
+1. **Cotes IA cliquables** (PlanTakeoff.jsx) : en outil Sélection, clic sur un trait de cote magenta → surbrillance ambre + panneau `cote-detail-panel` (valeur écrite, mesure à l'échelle actuelle, écart % ✓/⚠, orientation, confiance). Hit-test `pointSegDist` avec anti-drag (`movedRef`). Props PlanCanvas : `selectedCoteIndex`, `onCoteClick`.
+2. **Légende PDF presets** (`pdf_takeoff.py::_story_preset_legend`) : pastilles + libellés complets (clé `full` dans PRESET_KIND_ICONS) sous le tableau des modèles, lignes de 6 paires.
+3. **Teaser autoplay** (`MarketingTeaser.jsx`) : `el.muted=true` forcé via JS (bug React attribut muted) + IntersectionObserver play/pause au viewport + `preload="auto"`. NOTE : Chromium headless (Playwright) ne décode pas H.264 → fallback affiché en test, normal. Texte fallback adouci.
+4. **Rapport écarts PDF** : `GET /api/takeoffs/{id}/ecarts-pdf?page_index=` (`plans_export.py`) + `build_ecarts_pdf` (calibration, table écarts par pièce conforme/écart/sans référence, synthèse, verdict). Bouton `ecarts-pdf-btn` dans le bloc Actions cotes & textes.
+
+### Revue de code (code_review_agent) — 4 défauts confirmés, TOUS CORRIGÉS
+- **HIGH** `walls-summary` : lisait `scale_m_per_px` (clé jamais écrite) → ml toujours 0. Fix : `meters_per_pixel` ou 1/ppm.
+- **MEDIUM** PATCH `/rooms/{id}` : écrivait `height_m` (divergent de `ceiling_height_m`) sans recalcul. Fix : stocke `ceiling_height_m` + `_recompute_room`, validation 422 AVANT 404 (contrat iter58), renvoie la pièce recalculée.
+- **MEDIUM** `estimate_room` : lisait `height_m` → 2.5 par défaut. Fix : `ceiling_height_m` d'abord.
+- **MEDIUM** décompte portes plinthes : lisait `o.type` au lieu de `o.kind` (plans_analysis.py /materials + plans_common.py devis). Fix : `kind` avec fallback `type` legacy.
+- **MEDIUM** cotes IA affichées sur toutes les pages : fix frontend `aiDimLines` memo filtré par `ai_analysis.page_index`.
+- ObjectPanel HSP : affiche `ceiling_height_m || height_m`.
+
+### Tests
+- `test_iter63_ecarts_legende.py` : 9/9 (rapport écarts + builders + 4 régressions revue).
+- Testing agent iteration_61.json : frontend 100 % (cotes cliquables, anti-drag, ecarts-pdf-btn, régression iter62).
+- Suites récentes iter52→63 : 91/91 PASS.
+- ATTENTION legacy : test_iter13/14 et autres vieux fichiers ciblent l'ancienne API `/api/plans/*` (renommée `/api/takeoffs`) et le compte demo non Pro Business → échecs PRÉ-EXISTANTS, pas des régressions.
+- LEÇON : ne PAS faire plusieurs search_replace en parallèle sur le MÊME fichier (corruption plans_analysis.py subie et réparée).
+
+### Backlog restant
+- P2 : Type hints Python backend ; split PlanTakeoff.jsx (>3400 lignes) recommandé par la revue ; factoriser downloadBlob (downloadPdf/downloadEcartsPdf/downloadMultiQuote).

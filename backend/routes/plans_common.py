@@ -186,7 +186,7 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
                              lot.get(mat_key, 35), lot.get("labour", 26))
     if include_skirting:
         door_count = sum(len([o for o in r.get("openings", [])
-                              if o.get("type", "").lower().startswith("port")])
+                              if (o.get("kind") or o.get("type") or "").lower().startswith("port")])
                          for r in rooms)
         _add_quote_line(line_items, "Plinthes (ml)",
                          total_perim - 1.8 * door_count, "ml", 5.0, 6.0)

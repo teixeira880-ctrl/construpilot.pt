@@ -1,0 +1,25 @@
+{
+  "summary": "Iter63 frontend tests PASS end-to-end. Setup: uploaded PNG 1200x900 as admin, injected synthetic FAKE_AI (3 dimension_lines at 50 px/m) via pymongo, calibrated via /calibrate/from-cotes, created Séjour room (500x500 px). Then via Playwright: (1) Cote panel opens on click on cote0 with correct written (6.00 m), measured (6.00 m), delta (0.0% ✓). (2) Close button (cote-detail-close) hides the panel. (3) Clicking cote2 (bottom horizontal 2.00 m) reopens the panel — cote switching works. (4) Clicking on empty area of the plan deselects (panel disappears). (5) Anti-drag protection confirmed: a drag starting from a cote line does NOT open the panel (movedRef.current guard works). (6) ecarts-pdf-btn visible in IA tab under the same conditions as reconcile-check-btn (calibrated + rooms + written surfaces). (7) Clicking ecarts-pdf-btn triggers GET /api/takeoffs/{id}/ecarts-pdf?page_index=0 → 200 (PDF downloaded). (8) Regression iter62: calibrate-from-cotes-btn, apply-ai-texts-btn, reconcile-check-btn all present; calib-badge shows '50.0 px/m · auto (cotes IA) (3 cotes)'. (9) MarketingTeaser: marketing-teaser section present on landing. Chromium headless cannot decode H.264, so teaser-fallback is displayed (as noted in the problem statement — NOT a bug). Video file marketing-teaser.mp4 (8.4 MB) is present and served with 200 by CDN. No JS pageerror on any page.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MarketingTeaser fallback", "issues": ["Le message de fallback ('Ajoutez la vidéo teaser dans public/marketing-teaser.mp4') s'affiche alors que la vidéo EST bien présente et servie en 200. Le fallback est déclenché par onError quand le codec H.264 n'est pas décodable (cas du Chromium headless). Dans un vrai navigateur user (Chrome/Safari), la vidéo joue. Cependant, le texte du fallback est trompeur pour un dev qui aurait un souci de codec (ex: Firefox sans H.264). Envisager un texte plus neutre du type 'Vidéo indisponible sur ce navigateur'."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/_iter63_setup.py"],
+  "action_items": ["(Optionnel) Adoucir le texte du teaser-fallback pour ne pas suggérer que le fichier vidéo est absent alors qu'il l'est."],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx dépasse 3400 lignes — split urgent recommandé (canvas/panneau IA/dialogs) pour maintenabilité, sinon risques de régressions comme celle traitée en iter62 (img vs imgRef.current).",
+    "downloadEcartsPdf duplique la logique de downloadPdf/downloadMultiQuote (fetch + blob + a.click + revokeObjectURL) — factoriser en util downloadBlob(url, filename)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "plan_36ea547823ab (upload PNG 1200x900 + FAKE_AI injecté + calibration auto_cotes 50 px/m + 1 pièce Séjour 500x500 px). Peut rester en base (utile pour re-tests futurs) ou être supprimé via DELETE /api/takeoffs/plan_36ea547823ab.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Le helper /app/backend/tests/_iter63_setup.py automatise le seed complet (login+upload+FAKE_AI+calibrate+room) en <2s. Coordonnées écran depuis image: screen_x = canvas.left + canvas.width/2 + (px-600)*zoom ; screen_y = canvas.top + canvas.height/2 + (py-450)*zoom. Zoom initial = 0.5 pour un canvas 738x500 sur viewport 1600x1000. La cote horiz #1 (100,80)-(400,80) atterrit sur écran (~490,529)-(~640,529), mid (565, 529). Anti-drag: mouseDown+mouseMove(>3px)+mouseUp bloque handleClick via movedRef. En Chromium headless, la teaser-video tombe TOUJOURS en fallback (H.264 non décodé) — vérifier plutôt la présence de marketing-teaser + soit teaser-video soit teaser-fallback.",
+  "rca of the issue": "Aucun bug trouvé sur iter63 frontend. Toutes les nouvelles fonctionnalités (cotes cliquables + panneau détail + rapport écarts PDF + teaser autoplay/fallback) et la régression iter62 (calibrate-from-cotes, apply-ai-texts, reconcile-check, calib-badge) fonctionnent."
+}

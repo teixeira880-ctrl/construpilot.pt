@@ -10,22 +10,21 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
                                PageBreak)
 from reportlab.graphics.shapes import Drawing, Circle, String
-from reportlab.graphics import renderPDF
 
 
 # Iter 61 — icônes visuelles par catégorie pour la table des modèles.
 # Chaque catégorie a une couleur + une lettre (initiale) affichée dans un cercle.
 PRESET_KIND_ICONS = {
-    "wall":       {"color": colors.HexColor("#0ea5e9"), "letter": "M", "label": "Mur"},
-    "opening":    {"color": colors.HexColor("#a855f7"), "letter": "O", "label": "Ouvert."},
-    "floor":      {"color": colors.HexColor("#f97316"), "letter": "S", "label": "Sol"},
-    "ceiling":    {"color": colors.HexColor("#8b5cf6"), "letter": "P", "label": "Plafond"},
-    "paint":      {"color": colors.HexColor("#eab308"), "letter": "PEI", "label": "Peint."},
-    "insulation": {"color": colors.HexColor("#22c55e"), "letter": "I", "label": "Isol."},
-    "counter":    {"color": colors.HexColor("#ec4899"), "letter": "#", "label": "Cptr."},
-    "roof":       {"color": colors.HexColor("#3b82f6"), "letter": "T", "label": "Toit."},
-    "note":       {"color": colors.HexColor("#64748b"), "letter": "N", "label": "Note"},
-    "other":      {"color": colors.HexColor("#64748b"), "letter": "?", "label": "Autre"},
+    "wall":       {"color": colors.HexColor("#0ea5e9"), "letter": "M", "label": "Mur", "full": "Mur"},
+    "opening":    {"color": colors.HexColor("#a855f7"), "letter": "O", "label": "Ouvert.", "full": "Ouverture"},
+    "floor":      {"color": colors.HexColor("#f97316"), "letter": "S", "label": "Sol", "full": "Sol"},
+    "ceiling":    {"color": colors.HexColor("#8b5cf6"), "letter": "P", "label": "Plafond", "full": "Plafond"},
+    "paint":      {"color": colors.HexColor("#eab308"), "letter": "PEI", "label": "Peint.", "full": "Peinture"},
+    "insulation": {"color": colors.HexColor("#22c55e"), "letter": "I", "label": "Isol.", "full": "Isolation"},
+    "counter":    {"color": colors.HexColor("#ec4899"), "letter": "#", "label": "Cptr.", "full": "Comptage"},
+    "roof":       {"color": colors.HexColor("#3b82f6"), "letter": "T", "label": "Toit.", "full": "Toiture"},
+    "note":       {"color": colors.HexColor("#64748b"), "letter": "N", "label": "Note", "full": "Note"},
+    "other":      {"color": colors.HexColor("#64748b"), "letter": "?", "label": "Autre", "full": "Autre"},
 }
 
 
@@ -318,7 +317,38 @@ def _story_room_presets(story: list, rooms: list, presets_by_id: dict, S: dict) 
                             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
                         ], repeat_rows=1))
+    story.append(Spacer(1, 2 * mm))
+    _story_preset_legend(story, [p.get("kind", "other") for _, p in rooms_with_preset], S)
     story.append(Spacer(1, 4 * mm))
+
+
+def _story_preset_legend(story: list, kinds: list[str], S: dict) -> None:
+    """Iter63 — légende des pastilles de catégories sous la table des modèles.
+
+    Affiche uniquement les catégories réellement présentes dans le tableau,
+    par lignes de 6 paires (pastille + libellé complet) max.
+    """
+    used = set(kinds)
+    seen = [k for k in PRESET_KIND_ICONS if k in used]
+    if not seen:
+        return
+    pairs = []
+    for k in seen:
+        pairs.append(_preset_icon_drawing(k))
+        pairs.append(Paragraph(PRESET_KIND_ICONS[k]["full"], S["muted"]))
+    per_row = 12  # 6 paires (icône + libellé)
+    rows = [pairs[i:i + per_row] for i in range(0, len(pairs), per_row)]
+    rows[-1] += [""] * (per_row - len(rows[-1]))
+    t = Table(rows, colWidths=[6 * mm, 22 * mm] * 6)
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 1),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+    ]))
+    story.append(Paragraph("Légende des catégories :", S["muted"]))
+    story.append(t)
 
 
 def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
@@ -348,6 +378,145 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
     _story_room_presets(story, takeoff.get("rooms", []), presets_by_id or {}, S)
     _story_materials(story, materials, S)
     _story_footer(story, S)
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+# ============ RAPPORT ÉCARTS SURFACES (iter63) ============
+
+ECARTS_METHOD_LABELS = {
+    "auto_pdf_scale": "échelle PDF", "two_points": "2 points",
+    "known_dimension": "cote connue", "auto_cotes": "auto (cotes IA)",
+    "reconcile_surfaces": "recalé (surfaces écrites)", "ai_scale_text": "échelle écrite",
+}
+GREEN = colors.HexColor("#16a34a")
+AMBER = colors.HexColor("#d97706")
+
+
+def _ecarts_title(story: list, plan: dict, page_index: int, S: dict) -> None:
+    story.append(Paragraph("RAPPORT DE CONTRÔLE DES SURFACES", S["kicker"]))
+    story.append(Paragraph(plan.get("filename") or "Plan", S["h1"]))
+    date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    story.append(Paragraph(
+        f"Plan ID <b>{plan.get('plan_id', '?')}</b> · page {page_index + 1} · généré le {date_str} — "
+        "comparaison des surfaces mesurées numériquement avec les surfaces écrites sur le plan.",
+        S["muted"]))
+    story.append(Spacer(1, 10))
+
+
+def _ecarts_calibration(story: list, calibration: dict | None, S: dict) -> None:
+    story.append(Paragraph("Calibration utilisée", S["h2"]))
+    if not calibration:
+        story.append(Paragraph("Page non calibrée — calibrez la page pour des mesures fiables.",
+                               S["muted"]))
+        return
+    method = ECARTS_METHOD_LABELS.get(calibration.get("method"),
+                                      calibration.get("method") or "—")
+    rows = [["Méthode", method],
+            ["Échelle", _fmt(calibration.get("pixels_per_meter", 0), "px/m")]]
+    if calibration.get("samples_used"):
+        rows.append(["Cotes utilisées",
+                     f"{calibration['samples_used']} (dispersion ±{calibration.get('spread_pct', 0)} %)"])
+    if calibration.get("confidence") is not None:
+        rows.append(["Confiance", f"{int(round(calibration['confidence'] * 100))} %"])
+    story.append(_table(rows, [60 * mm, 60 * mm], style_extras=[
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+
+
+def _ecarts_table(story: list, matches: list[dict], unmatched: list[dict], S: dict) -> None:
+    story.append(Paragraph("Écarts par pièce", S["h2"]))
+    rows = [["Pièce", "Mesurée", "Écrite (plan)", "Écart", "Statut"]]
+    row_styles = []
+    for i, m in enumerate(matches, start=1):
+        delta = m.get("delta_pct") or 0
+        ok = abs(delta) <= 5.0
+        rows.append([m.get("room_name") or "—",
+                     _fmt(m.get("measured_m2", 0), "m²"),
+                     _fmt(m.get("written_m2", 0), "m²"),
+                     f"{'+' if delta > 0 else ''}{delta} %",
+                     "Conforme" if ok else "Écart"])
+        row_styles.append(("TEXTCOLOR", (3, i), (4, i), GREEN if ok else AMBER))
+        row_styles.append(("FONTNAME", (4, i), (4, i), "Helvetica-Bold"))
+    for j, r in enumerate(unmatched, start=len(matches) + 1):
+        rows.append([r.get("name") or "—", _fmt(r.get("surface_m2", 0), "m²"),
+                     "—", "—", "Sans référence"])
+        row_styles.append(("TEXTCOLOR", (2, j), (4, j), GREY))
+    story.append(_table(rows, [45 * mm, 28 * mm, 30 * mm, 22 * mm, 30 * mm], style_extras=[
+        ("BACKGROUND", (0, 0), (-1, 0), DARK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("ALIGN", (1, 1), (3, -1), "RIGHT"),
+        ("ALIGN", (4, 1), (4, -1), "CENTER"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+    ] + row_styles, repeat_rows=1))
+
+
+def _ecarts_summary(story: list, matches: list[dict], unmatched: list[dict], S: dict) -> None:
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("Synthèse", S["h2"]))
+    deltas = sorted(abs(m.get("delta_pct") or 0) for m in matches)
+    conformes = sum(1 for d in deltas if d <= 5.0)
+    ecarts = len(deltas) - conformes
+    rows = [["Pièces conformes (écart ≤ 5 %)", str(conformes)],
+            ["Pièces en écart (> 5 %)", str(ecarts)],
+            ["Pièces sans surface écrite", str(len(unmatched))]]
+    if deltas:
+        n = len(deltas)
+        med = deltas[n // 2] if n % 2 else (deltas[n // 2 - 1] + deltas[n // 2]) / 2
+        rows.append(["Écart médian absolu", f"{round(med, 1)} %"])
+    story.append(_table(rows, [90 * mm, 45 * mm], style_extras=[
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(Spacer(1, 8))
+    if matches and ecarts == 0:
+        verdict = ParagraphStyle("v_ok", fontName="Helvetica-Bold", fontSize=10,
+                                 textColor=GREEN, leading=13)
+        story.append(Paragraph(
+            "Toutes les surfaces mesurées sont conformes aux surfaces écrites "
+            "sur le plan (tolérance 5 %).", verdict))
+    elif ecarts:
+        verdict = ParagraphStyle("v_ko", fontName="Helvetica-Bold", fontSize=10,
+                                 textColor=AMBER, leading=13)
+        story.append(Paragraph(
+            f"{ecarts} pièce(s) présentent un écart supérieur à 5 % — utilisez "
+            "« Recaler l'échelle » dans ConstruPilot PLAN ou vérifiez le tracé "
+            "de ces pièces.", verdict))
+
+
+def build_ecarts_pdf(plan: dict, calibration: dict | None, matches: list[dict],
+                     unmatched: list[dict], branding: dict | None = None,
+                     page_index: int = 0) -> bytes:
+    """Rapport PDF des écarts surfaces mesurées ↔ surfaces écrites (iter63).
+
+    Document de contrôle qualité à joindre au métré pour rassurer le client :
+    calibration utilisée, écart par pièce, synthèse et verdict.
+    """
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=18 * mm, bottomMargin=18 * mm)
+    S = _styles()
+    story: list = []
+
+    _story_header_branding(story, branding, S)
+    _ecarts_title(story, plan, page_index, S)
+    _ecarts_calibration(story, calibration, S)
+    _ecarts_table(story, matches, unmatched, S)
+    _ecarts_summary(story, matches, unmatched, S)
+    story.append(Spacer(1, 16))
+    story.append(Paragraph(
+        "Rapport généré par <b>ConstruPilot</b> — les surfaces « écrites » sont lues "
+        "automatiquement sur le plan par l'IA ; les surfaces « mesurées » proviennent du "
+        "métré numérique calibré. Document de contrôle indicatif.", S["muted"]))
 
     doc.build(story)
     return buf.getvalue()

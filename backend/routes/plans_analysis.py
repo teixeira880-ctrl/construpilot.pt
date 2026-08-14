@@ -384,7 +384,12 @@ async def walls_summary(plan_id: str, user=Depends(current_user)):
         raise HTTPException(404, "Plan introuvable")
     cv_walls = p.get("cv_walls") or {}
     calibs = p.get("calibrations") or {}
-    scales = [c.get("scale_m_per_px") for c in calibs.values() if c.get("scale_m_per_px")]
+    scales = []
+    for c in calibs.values():
+        mpp = c.get("meters_per_pixel") or (
+            1.0 / c["pixels_per_meter"] if c.get("pixels_per_meter") else None)
+        if mpp:
+            scales.append(mpp)
     scale = sum(scales) / len(scales) if scales else None
 
     totals = {"porteur": {"count": 0, "ml": 0.0},
@@ -646,29 +651,43 @@ class RoomUpdateIn(BaseModel):
 @router.patch("/{plan_id}/rooms/{room_id}")
 async def update_room(plan_id: str, room_id: str, body: RoomUpdateIn,
                       user=Depends(current_user)):
-    """Édition inline d'une pièce depuis le Volet Objets (Vague B)."""
-    updates = {}
-    if body.name is not None:
-        cleaned = body.name.strip()
-        if not cleaned:
-            raise HTTPException(422, "Nom invalide")
-        updates["rooms.$.name"] = cleaned[:60]
-    if body.height_m is not None:
-        if body.height_m <= 0 or body.height_m > 20:
-            raise HTTPException(422, "Hauteur invalide")
-        updates["rooms.$.height_m"] = float(body.height_m)
-    if body.preset_id is not None:
-        updates["rooms.$.preset_id"] = body.preset_id or None
-    if not updates:
+    """Édition inline d'une pièce depuis le Volet Objets (Vague B).
+
+    Fix revue iter63 : la hauteur est stockée dans `ceiling_height_m` (champ
+    utilisé partout) et les surfaces murs/volume sont recalculées.
+    """
+    # Validation d'abord (contrat iter58 : 422 avant 404)
+    if body.name is None and body.height_m is None and body.preset_id is None:
         raise HTTPException(422, "Aucun champ à mettre à jour")
-    updates["updated_at"] = _now()
-    res = await db.plans_takeoff.update_one(
-        {"plan_id": plan_id, "user_id": user["user_id"], "rooms.room_id": room_id},
-        {"$set": updates},
-    )
-    if res.matched_count == 0:
+    if body.name is not None and not body.name.strip():
+        raise HTTPException(422, "Nom invalide")
+    if body.height_m is not None and (body.height_m <= 0 or body.height_m > 20):
+        raise HTTPException(422, "Hauteur invalide")
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "rooms": 1, "calibrations": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    rooms = p.get("rooms") or []
+    room = next((r for r in rooms if r.get("room_id") == room_id), None)
+    if not room:
         raise HTTPException(404, "Pièce introuvable")
-    return {"ok": True, "updated": list(updates.keys())}
+    updated = []
+    if body.name is not None:
+        room["name"] = body.name.strip()[:60]
+        updated.append("name")
+    if body.height_m is not None:
+        room["ceiling_height_m"] = float(body.height_m)
+        calib = (p.get("calibrations") or {}).get(str(room.get("page_index", 0)))
+        _recompute_room(room, (calib or {}).get("pixels_per_meter") or 0)
+        updated.append("ceiling_height_m")
+    if body.preset_id is not None:
+        room["preset_id"] = body.preset_id or None
+        updated.append("preset_id")
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {"rooms": rooms, "updated_at": _now()}})
+    return {"ok": True, "updated": updated, "room": room}
 
 
 # ============ VAGUE C — Estimation par métier depuis une pièce ============
@@ -687,7 +706,8 @@ def _room_dimensions_for_estimator(room: dict, override_height: float | None) ->
     dans l'espace pixel → conversion en mètres via `pixels_per_meter` (fourni par le plan).
     Si `surface_m2` est disponible mais pas de polygone, on approxime en carré (√S × √S).
     """
-    height = override_height or float(room.get("height_m") or 2.5)
+    height = override_height or float(
+        room.get("ceiling_height_m") or room.get("height_m") or 2.5)
     surf = float(room.get("surface_m2") or 0)
     # Si pas de surface, impossible d'estimer
     if surf <= 0:
@@ -1034,7 +1054,7 @@ async def compute_materials(plan_id: str, body: MaterialsIn, user=Depends(curren
         result["placo"] = G.placo_quantity(walls_net + ceiling)
     if body.include.get("skirting", True):
         doors = sum(len([o for o in r.get("openings", [])
-                          if o.get("type", "").lower().startswith("port")])
+                          if (o.get("kind") or o.get("type") or "").lower().startswith("port")])
                     for r in rooms)
         result["skirting"] = G.skirting_length_m(perim, doors * 0.9)
     return result

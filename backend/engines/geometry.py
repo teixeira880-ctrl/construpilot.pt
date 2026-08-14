@@ -113,7 +113,7 @@ def room_measurements(points: Sequence[Point], pixels_per_meter: float,
 
 def subtract_openings(wall_area_gross_m2: float, openings: Iterable[dict]) -> dict:
     """Soustrait les ouvertures (portes/fenêtres/baies) d'une surface brute de murs.
-    Chaque opening = {"width_m": float, "height_m": float, "type": str}
+    Chaque opening = {"width_m": float, "height_m": float, "kind": str}
     """
     total_open = 0.0
     per_opening = []
