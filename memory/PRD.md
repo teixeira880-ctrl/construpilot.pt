@@ -1814,3 +1814,34 @@ R+1 60m² 2.30m, combles 30m² 1.80m » → l'IA détecte les 3 niveaux + hauteu
   (`test_iter6_revenue_phase23.py::test_marketplace_pros_list` — assertion `count==0` mais
   seed contient 4 pros vérifiés)
 
+
+---
+
+## Itération 62 (14/06/2026) — Analyse 2D : calibration par cotes, murs vs cotes, textes du plan
+
+**Demande utilisateur (FR)** : (1) le calcul de surfaces planchers est faux car la calibration fonctionne mal, (2) l'IA doit distinguer les murs des traits de cotes sur les plans gros œuvre, (3) l'IA doit interpréter les textes des plans et adapter ses analyses.
+
+### Implémenté
+1. **Calibration auto par les cotes IA** — `POST /api/takeoffs/{id}/calibrate/from-cotes`
+   - `engines/plan_texts.py::calibration_from_dimension_lines` : médiane robuste des ratios px/m des `dimension_lines` IA (bbox_norm × dims image), rejet outliers ±12%, confidence + spread_pct.
+   - Persiste `method=auto_cotes` + recalcule TOUTES les pièces de la page (`_recompute_room`).
+2. **Recalage via surfaces écrites** — `POST /api/takeoffs/{id}/calibrate/reconcile` (apply true/false)
+   - `reconcile_written_surfaces` : appariement pièces mesurées↔IA (nom normalisé puis surface ±35%), ratio médian écrit/mesuré, `ppm_new = ppm × √(mesuré/écrit)`, needs_recalib si écart > 5%.
+3. **Application des textes du plan** — `POST /api/takeoffs/{id}/apply-ai-texts`
+   - Renommage pièces génériques (« Pièce 01 ») → nom IA ; floor_material + floor_note_text ; ceiling_height_m écrit (si pièce à 2.5 défaut) avec recalcul ; drapeaux surface_written_m2/surface_delta_pct ; échelle écrite « 1:100 » → calibration si page non calibrée. Snapshot AVANT application (annulable).
+4. **Filtrage murs vs cotes** — `engines/plan_cv.py::filter_cote_segments` dans `detect_walls`
+   - 3 critères : proche+parallèle d'une cote IA (dim_zones), milieu dans zone texte PDF (text_blocks), trait fin < 2.2px SANS partenaire parallèle (mur creux = 2 traits). Champ `filtered_cotes` retourné.
+5. **Frontend PlanTakeoff.jsx** : bloc « Actions cotes & textes » dans l'onglet IA (data-testids: ai-text-actions, calibrate-from-cotes-btn, apply-ai-texts-btn, reconcile-check-btn, reconcile-apply-btn, reconcile-result), badge calibration lisible FR (CALIB_METHOD_LABELS + data-testid=calib-badge), badges pièces room-floor-material-{id} / room-surface-delta-{id}, toast detect-walls avec cotes ignorées.
+
+### Bug critique corrigé (par testing agent, validé par main agent)
+- PlanTakeoff.jsx L185-187 : `img` (hors scope) → `imgRef.current` dans l'overlay dimension lines de PlanCanvas.redraw — provoquait un crash React (page blanche) dès qu'un plan avec dimension_lines était ouvert.
+
+### Tests
+- `/app/backend/tests/test_iter62_cotes_textes.py` : 10/10 PASS (pattern : injection ai_analysis synthétique via pymongo — déterministe, pas d'appel GPT). ATTENTION pytest.ini `-n 2 --dist loadscope` → garder les tests séquentiels dans UNE seule classe.
+- Testing agent iteration_60.json : backend 100%, frontend 100%.
+- Échecs pré-existants connus : test_iter15/iter14 (compte demo non Pro Business → 402 upload, attendu depuis iter50).
+
+### Backlog restant
+- P2 : Type hints Python backend.
+- P3 : Légende des icônes presets dans le PDF takeoff.
+- P3 : Autoplay muet du teaser vidéo sur la landing.

@@ -38,6 +38,15 @@ const TOOLS = {
   COUNTER: "counter", NOTE: "note", ANGLE: "angle", PITCH: "pitch",
 };
 
+const CALIB_METHOD_LABELS = {
+  auto_pdf_scale: "échelle PDF",
+  two_points: "2 points",
+  known_dimension: "cote connue",
+  auto_cotes: "auto (cotes IA)",
+  reconcile_surfaces: "recalé (surfaces écrites)",
+  ai_scale_text: "échelle écrite",
+};
+
 const COUNTER_COLORS = [
   "#f97316", // orange
   "#22c55e", // green
@@ -173,9 +182,9 @@ function PlanCanvas({
 
     // AI DIMENSION LINES OVERLAY (traits de cote détectés par l'IA)
     // Coordonnées normalisées 0-1 → converties dans l'espace image
-    if (showDimensionLines && dimensionLines?.length && img) {
-      const W = img.naturalWidth;
-      const H = img.naturalHeight;
+    if (showDimensionLines && dimensionLines?.length && imgRef.current) {
+      const W = imgRef.current.naturalWidth;
+      const H = imgRef.current.naturalHeight;
       ctx.save();
       dimensionLines.forEach((d) => {
         const bb = d.bbox_norm;
@@ -632,6 +641,8 @@ export default function PlanTakeoff() {
   const [ceilingH, setCeilingH] = useState("2.5");
   const [aiBusy, setAiBusy] = useState(false);
   const [cvBusy, setCvBusy] = useState(false);
+  const [aiActionBusy, setAiActionBusy] = useState(false);
+  const [reconcile, setReconcile] = useState(null);
   const [detectedWalls, setDetectedWalls] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
@@ -1274,6 +1285,60 @@ export default function PlanTakeoff() {
     finally { setAiBusy(false); }
   };
 
+  // --- Iter62 : calibration par cotes / recalage surfaces écrites / textes IA ---
+  const calibrateFromCotes = async () => {
+    setAiActionBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/calibrate/from-cotes`,
+        { page_index: pageIndex });
+      toast.success(
+        `Échelle calibrée par les cotes : ${data.calibration.pixels_per_meter.toFixed(1)} px/m ` +
+        `(${data.calibration.samples_used} cote${data.calibration.samples_used > 1 ? "s" : ""}, ±${data.calibration.spread_pct}%)` +
+        (data.rooms_recomputed ? ` · ${data.rooms_recomputed} pièce(s) recalculée(s)` : ""),
+        { duration: 8000 });
+      await refreshPlan();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Calibration par cotes impossible"); }
+    finally { setAiActionBusy(false); }
+  };
+
+  const checkWrittenSurfaces = async (apply = false) => {
+    setAiActionBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/calibrate/reconcile`,
+        { page_index: pageIndex, apply });
+      setReconcile(data);
+      if (data.applied) {
+        toast.success(
+          `Échelle recalée : ${data.calibration.pixels_per_meter.toFixed(1)} px/m · ` +
+          `${data.rooms_recomputed} pièce(s) recalculée(s)`, { duration: 7000 });
+        setReconcile(null);
+        await refreshPlan();
+      } else if (!data.can_reconcile) {
+        toast.warning(data.reason || "Aucune correspondance avec une surface écrite");
+      }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Vérification impossible"); }
+    finally { setAiActionBusy(false); }
+  };
+
+  const applyAiTexts = async () => {
+    setAiActionBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/apply-ai-texts`,
+        { page_index: pageIndex });
+      const parts = [];
+      if (data.renamed?.length) parts.push(`${data.renamed.length} pièce(s) renommée(s)`);
+      if (data.materials_set?.length) parts.push(`${data.materials_set.length} matériau(x) sol`);
+      if (data.heights_updated?.length) parts.push(`${data.heights_updated.length} hauteur(s)`);
+      if (data.calibration_set) parts.push("échelle écrite appliquée");
+      if (data.surface_flags?.length) parts.push(`⚠ ${data.surface_flags.length} écart(s) de surface >5%`);
+      toast.success(parts.length
+        ? `Textes du plan appliqués — ${parts.join(" · ")}`
+        : "Textes analysés — rien à modifier", { duration: 9000 });
+      await refreshPlan();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Application des textes impossible"); }
+    finally { setAiActionBusy(false); }
+  };
+
   const detectWalls = async () => {
     if (!plan?.plan_id) return;
     setCvBusy(true);
@@ -1281,7 +1346,10 @@ export default function PlanTakeoff() {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-walls?page_index=${pageIndex}`);
       setDetectedWalls(data);
       setShowWalls(true);
-      toast.success(`${data.segment_count} segments de murs détectés`);
+      toast.success(
+        `${data.segment_count} segments de murs détectés` +
+        (data.filtered_cotes ? ` · ${data.filtered_cotes} traits de cote/textes ignorés` : "")
+      );
       await loadWallsSummary();
     } catch (e) { toast.error("Détection murs impossible"); }
     finally { setCvBusy(false); }
@@ -1936,8 +2004,9 @@ export default function PlanTakeoff() {
           <h1 className="font-display text-2xl font-bold">
             {rooms.length} pièce{rooms.length > 1 ? "s" : ""}
             {currentCalib && (
-              <Badge variant="outline" className="ml-3 num text-xs rounded-sm">
-                {currentCalib.pixels_per_meter.toFixed(1)} px/m · {currentCalib.method}
+              <Badge variant="outline" className="ml-3 num text-xs rounded-sm" data-testid="calib-badge">
+                {currentCalib.pixels_per_meter.toFixed(1)} px/m · {CALIB_METHOD_LABELS[currentCalib.method] || currentCalib.method}
+                {currentCalib.samples_used ? ` (${currentCalib.samples_used} cotes)` : ""}
               </Badge>
             )}
             {!currentCalib && (
@@ -2441,6 +2510,25 @@ export default function PlanTakeoff() {
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>
+                  {(r.floor_material || r.surface_delta_pct != null) && (
+                    <div className="flex gap-1 flex-wrap mt-1">
+                      {r.floor_material && (
+                        <Badge variant="outline" className="rounded-sm text-[10px] capitalize"
+                               title={r.floor_note_text || undefined}
+                               data-testid={`room-floor-material-${r.room_id}`}>
+                          {r.floor_material}
+                        </Badge>
+                      )}
+                      {r.surface_delta_pct != null && (
+                        <Badge variant="outline"
+                               className={`rounded-sm text-[10px] num ${Math.abs(r.surface_delta_pct) > 5 ? "border-amber-500 text-amber-500" : "border-green-600 text-green-600"}`}
+                               title={`Surface écrite sur le plan : ${r.surface_written_m2} m²`}
+                               data-testid={`room-surface-delta-${r.room_id}`}>
+                          écrit {r.surface_written_m2} m² ({r.surface_delta_pct > 0 ? "+" : ""}{r.surface_delta_pct}%)
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-2 mt-2 text-xs num">
                     <span>Surface</span><span className="text-right font-bold">{r.surface_m2} m²</span>
                     <span>Périmètre</span><span className="text-right">{r.perimeter_m} m</span>
@@ -2566,6 +2654,63 @@ export default function PlanTakeoff() {
                         <Badge variant="outline" className="rounded-sm num">
                           conf. {Math.round((plan.ai_analysis.confidence || 0) * 100)}%
                         </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  {/* --- ACTIONS COTES & TEXTES (iter62) --- */}
+                  {!plan.ai_analysis.error && (
+                    <div className="border border-primary/30 bg-primary/5 p-2 rounded-sm grid gap-2"
+                         data-testid="ai-text-actions">
+                      <p className="overline text-primary">Actions cotes & textes</p>
+                      {(plan.ai_analysis.dimension_lines || []).some((d) => d.bbox_norm) && (
+                        <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
+                                disabled={aiActionBusy} onClick={calibrateFromCotes}
+                                data-testid="calibrate-from-cotes-btn">
+                          <Ruler className="h-3.5 w-3.5" />
+                          Calibrer par les cotes ({(plan.ai_analysis.dimension_lines || []).filter((d) => d.bbox_norm).length})
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
+                              disabled={aiActionBusy} onClick={applyAiTexts}
+                              data-testid="apply-ai-texts-btn">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Appliquer les textes du plan
+                      </Button>
+                      {currentCalib && rooms.some((r) => r.page_index === pageIndex) &&
+                        (plan.ai_analysis.rooms || []).some((r) => r.surface_written_m2) && (
+                        <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
+                                disabled={aiActionBusy} onClick={() => checkWrittenSurfaces(false)}
+                                data-testid="reconcile-check-btn">
+                          <Square className="h-3.5 w-3.5" />
+                          Vérifier les surfaces écrites
+                        </Button>
+                      )}
+                      {reconcile && !reconcile.applied && reconcile.can_reconcile && (
+                        <div className="border border-amber-500/40 bg-amber-500/10 rounded-sm p-2 grid gap-1"
+                             data-testid="reconcile-result">
+                          <p className="text-[11px]">
+                            Écart médian mesuré ↔ écrit : <b className="num">{reconcile.deviation_pct}%</b>
+                            {" "}({reconcile.matches.length} pièce{reconcile.matches.length > 1 ? "s" : ""} comparée{reconcile.matches.length > 1 ? "s" : ""})
+                          </p>
+                          {reconcile.matches.slice(0, 4).map((m, i) => (
+                            <div key={i} className="flex justify-between text-[10px] text-muted-foreground">
+                              <span>{m.room_name}</span>
+                              <span className="num">{m.measured_m2} → {m.written_m2} m² ({m.delta_pct > 0 ? "+" : ""}{m.delta_pct}%)</span>
+                            </div>
+                          ))}
+                          {reconcile.needs_recalib ? (
+                            <Button size="sm" className="w-full mt-1 rounded-sm" disabled={aiActionBusy}
+                                    onClick={() => checkWrittenSurfaces(true)}
+                                    data-testid="reconcile-apply-btn">
+                              Recaler l'échelle ({reconcile.current_ppm?.toFixed(1)} → {reconcile.proposed_ppm?.toFixed(1)} px/m)
+                            </Button>
+                          ) : (
+                            <p className="text-[10px] text-green-600">
+                              ✓ Calibration cohérente (écart ≤ 5%) — aucun recalage nécessaire
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

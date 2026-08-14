@@ -5,6 +5,7 @@ Refactor iter53 : extrait de `routes/plans.py`.
 from __future__ import annotations
 
 import logging
+import re
 import secrets
 from typing import Literal
 
@@ -14,8 +15,10 @@ from pydantic import BaseModel, Field
 from core.db import db
 from core.security import current_user
 from engines import geometry as G
+from engines import plan_texts as T
 from engines.plan_ai import analyze_plan_image
 from engines.plan_cv import detect_all_rooms, detect_walls, flood_fill_room
+from engines.plan_processor import auto_calibration_from_pdf_scale
 
 from routes.plans_common import (
     _diff_rooms, _now, _snapshot, router,
@@ -49,6 +52,252 @@ async def analyze_plan(plan_id: str, page_index: int = 0, user=Depends(current_u
     return analysis
 
 
+# ============ CALIBRATION PAR COTES & TEXTES (iter62) ============
+
+def _ai_dim_zones(ai: dict | None, page_index: int, page: dict) -> list[dict]:
+    """Convertit les bbox normalisées des cotes IA en segments pixels."""
+    if not ai or ai.get("page_index") not in (None, page_index):
+        return []
+    w = page.get("width_px") or 0
+    h = page.get("height_px") or 0
+    if not w or not h:
+        return []
+    zones = []
+    for d in ai.get("dimension_lines") or []:
+        bbox = d.get("bbox_norm")
+        if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+            zones.append({"x1": bbox[0] * w, "y1": bbox[1] * h,
+                          "x2": bbox[2] * w, "y2": bbox[3] * h})
+    return zones
+
+
+def _recompute_room(room: dict, ppm: float) -> dict:
+    """Recalcule surface / périmètre / murs / volume d'une pièce avec un nouveau ppm."""
+    pts = room.get("points") or []
+    if len(pts) < 3 or not ppm or ppm <= 0:
+        return room
+    height = float(room.get("ceiling_height_m") or 2.5)
+    m = G.room_measurements(pts, ppm, height)
+    net = G.subtract_openings(m["wall_area_gross_m2"], room.get("openings") or [])
+    room.update({
+        "surface_m2": m["surface_m2"], "perimeter_m": m["perimeter_m"],
+        "ceiling_area_m2": m["ceiling_area_m2"],
+        "wall_area_gross_m2": m["wall_area_gross_m2"],
+        "wall_area_net_m2": net["wall_area_net_m2"],
+        "openings_area_m2": net["openings_area_m2"],
+        "volume_m3": round(m["surface_m2"] * height, 3),
+    })
+    written = room.get("surface_written_m2")
+    if written and m["surface_m2"] > 0:
+        room["surface_delta_pct"] = round((float(written) / m["surface_m2"] - 1) * 100, 1)
+    return room
+
+
+async def _apply_new_calibration(plan: dict, plan_id: str,
+                                 page_index: int, payload: dict) -> int:
+    """Sauve la calibration + recalcule toutes les pièces de la page. Retourne n pièces."""
+    ppm = payload["pixels_per_meter"]
+    rooms = plan.get("rooms") or []
+    updated = 0
+    for r in rooms:
+        if r.get("page_index") == page_index and len(r.get("points") or []) >= 3:
+            _recompute_room(r, ppm)
+            updated += 1
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {f"calibrations.{page_index}": payload,
+                  "rooms": rooms, "updated_at": _now()}},
+    )
+    return updated
+
+
+class PageIn(BaseModel):
+    page_index: int = Field(default=0, ge=0)
+
+
+@router.post("/{plan_id}/calibrate/from-cotes")
+async def calibrate_from_cotes(plan_id: str, body: PageIn, user=Depends(current_user)):
+    """Calibration automatique par les traits de cote lus par l'IA (médiane robuste).
+
+    Recalcule immédiatement les surfaces de toutes les pièces de la page.
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages.width_px": 1, "pages.height_px": 1, "ai_analysis": 1, "rooms": 1},
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if body.page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    ai = p.get("ai_analysis") or {}
+    if not ai or ai.get("error"):
+        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+    if ai.get("page_index") not in (None, body.page_index):
+        raise HTTPException(400, "L'Analyse IA porte sur une autre page — relancez-la sur cette page")
+    page = pages[body.page_index]
+    calib = T.calibration_from_dimension_lines(
+        ai.get("dimension_lines") or [],
+        page.get("width_px") or 0, page.get("height_px") or 0)
+    if not calib:
+        raise HTTPException(422, "Aucune cote exploitable sur le plan (valeur + position requises)")
+    payload = {
+        "pixels_per_meter": calib["pixels_per_meter"],
+        "meters_per_pixel": calib["meters_per_pixel"],
+        "method": "auto_cotes",
+        "confidence": calib["confidence"],
+        "samples_used": calib["samples_used"],
+        "samples_total": calib["samples_total"],
+        "spread_pct": calib["spread_pct"],
+        "created_at": _now(),
+    }
+    rooms_updated = await _apply_new_calibration(p, plan_id, body.page_index, payload)
+    await _snapshot(plan_id, user["user_id"], "calibrate_auto_cotes",
+                    {"page": body.page_index, "ppm": payload["pixels_per_meter"],
+                     "samples": calib["samples_used"]})
+    return {"ok": True, "page_index": body.page_index, "calibration": payload,
+            "rooms_recomputed": rooms_updated, "samples": calib["samples"]}
+
+
+class ReconcileIn(BaseModel):
+    page_index: int = Field(default=0, ge=0)
+    apply: bool = False
+
+
+@router.post("/{plan_id}/calibrate/reconcile")
+async def reconcile_surfaces(plan_id: str, body: ReconcileIn, user=Depends(current_user)):
+    """Contrôle croisé surfaces mesurées ↔ surfaces ÉCRITES sur le plan (IA).
+
+    apply=false : renvoie le diagnostic (écart médian, ppm proposé).
+    apply=true : recale l'échelle et recalcule les pièces de la page.
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "calibrations": 1, "ai_analysis": 1, "rooms": 1},
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    calib = (p.get("calibrations") or {}).get(str(body.page_index))
+    if not calib:
+        raise HTTPException(400, "Page non calibrée")
+    ai = p.get("ai_analysis") or {}
+    if not ai or ai.get("error"):
+        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+    page_rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == body.page_index]
+    if not page_rooms:
+        raise HTTPException(400, "Aucune pièce mesurée sur cette page")
+    result = T.reconcile_written_surfaces(page_rooms, ai.get("rooms") or [],
+                                          calib["pixels_per_meter"])
+    if not body.apply or not result.get("can_reconcile"):
+        return {"applied": False, **result}
+    payload = {
+        "pixels_per_meter": result["proposed_ppm"],
+        "meters_per_pixel": round(1.0 / result["proposed_ppm"], 8),
+        "method": "reconcile_surfaces",
+        "confidence": 0.9,
+        "based_on_matches": len(result["matches"]),
+        "created_at": _now(),
+    }
+    rooms_updated = await _apply_new_calibration(p, plan_id, body.page_index, payload)
+    await _snapshot(plan_id, user["user_id"], "calibrate_reconcile",
+                    {"page": body.page_index, "ppm": payload["pixels_per_meter"]})
+    return {"applied": True, "rooms_recomputed": rooms_updated,
+            "calibration": payload, **result}
+
+
+@router.post("/{plan_id}/apply-ai-texts")
+async def apply_ai_texts(plan_id: str, body: PageIn, user=Depends(current_user)):
+    """Applique les textes lus sur le plan aux pièces mesurées :
+    noms de pièces, matériaux de sol, hauteurs sous plafond, échelle écrite.
+    Un snapshot est pris AVANT application (annulable via l'historique).
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages.width_px": 1, "pages.height_px": 1, "pages.dpi": 1,
+         "ai_analysis": 1, "rooms": 1, "calibrations": 1},
+    )
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    ai = p.get("ai_analysis") or {}
+    if not ai or ai.get("error"):
+        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+
+    summary: dict = {"renamed": [], "materials_set": [], "heights_updated": [],
+                     "calibration_set": False, "surface_flags": []}
+    rooms = p.get("rooms") or []
+    page_rooms = [r for r in rooms if r.get("page_index") == body.page_index]
+    calib = (p.get("calibrations") or {}).get(str(body.page_index))
+    ppm = calib.get("pixels_per_meter") if calib else None
+
+    await _snapshot(plan_id, user["user_id"], "apply_ai_texts", {"page": body.page_index})
+
+    pairs = T.match_ai_rooms(page_rooms, ai.get("rooms") or [])
+    for pr in pairs:
+        room, ai_room = pr["room"], pr["ai"]
+        ai_name = (ai_room.get("name") or "").strip()
+        if ai_name and T.is_generic_name(room.get("name")):
+            summary["renamed"].append({"room_id": room["room_id"],
+                                       "from": room.get("name"), "to": ai_name[:60]})
+            room["name"] = ai_name[:60]
+        mat = ai_room.get("floor_material")
+        if mat and not room.get("floor_material"):
+            room["floor_material"] = mat
+            if ai_room.get("floor_note_text"):
+                room["floor_note_text"] = str(ai_room["floor_note_text"])[:120]
+            summary["materials_set"].append({"room_id": room["room_id"],
+                                             "room_name": room["name"], "material": mat})
+        try:
+            ai_h = float(ai_room.get("ceiling_height_m") or 0)
+        except (TypeError, ValueError):
+            ai_h = 0
+        cur_h = float(room.get("ceiling_height_m") or 2.5)
+        if 1.8 <= ai_h <= 6.0 and abs(ai_h - cur_h) > 0.01 and cur_h == 2.5:
+            room["ceiling_height_m"] = ai_h
+            if ppm:
+                _recompute_room(room, ppm)
+            summary["heights_updated"].append({"room_id": room["room_id"],
+                                               "room_name": room["name"],
+                                               "from": cur_h, "to": ai_h})
+        try:
+            written = float(ai_room.get("surface_written_m2") or 0)
+        except (TypeError, ValueError):
+            written = 0
+        measured = float(room.get("surface_m2") or 0)
+        if written > 0 and measured > 0:
+            delta_pct = round((written / measured - 1) * 100, 1)
+            room["surface_written_m2"] = written
+            room["surface_delta_pct"] = delta_pct
+            if abs(delta_pct) > 5:
+                summary["surface_flags"].append({"room_id": room["room_id"],
+                                                 "room_name": room["name"],
+                                                 "measured_m2": round(measured, 2),
+                                                 "written_m2": written,
+                                                 "delta_pct": delta_pct})
+
+    updates: dict = {"rooms": rooms, "updated_at": _now()}
+
+    # Échelle écrite (« 1:100 ») → calibration si la page n'en a pas
+    if not calib and ai.get("detected_scale"):
+        m = re.search(r"1\s*[:/]\s*(\d{2,4})", str(ai["detected_scale"]))
+        pages = p.get("pages") or []
+        if m and body.page_index < len(pages):
+            dpi = pages[body.page_index].get("dpi") or 150
+            ppm_scale = auto_calibration_from_pdf_scale(int(m.group(1)), dpi)
+            if ppm_scale:
+                updates[f"calibrations.{body.page_index}"] = {
+                    "pixels_per_meter": ppm_scale,
+                    "method": "ai_scale_text",
+                    "scale_denominator": int(m.group(1)),
+                    "confidence": 0.7, "created_at": _now(),
+                }
+                summary["calibration_set"] = True
+
+    await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": updates})
+    summary["ok"] = True
+    summary["rooms_matched"] = len(pairs)
+    return summary
+
+
 # ============ COMPUTER VISION (Phase B) ============
 
 class RoomAutofillIn(BaseModel):
@@ -61,21 +310,29 @@ class RoomAutofillIn(BaseModel):
 @router.post("/{plan_id}/detect-walls")
 async def detect_walls_route(plan_id: str, page_index: int = 0,
                               user=Depends(current_user)):
-    """Détecte automatiquement les segments de murs sur une page via OpenCV Hough."""
+    """Détecte automatiquement les segments de murs sur une page via OpenCV Hough.
+
+    Iter62 : filtre les traits de cote (zones cotes IA + zones de texte PDF +
+    traits fins isolés) pour ne garder que les vrais murs.
+    """
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "pages": 1},
+        {"_id": 0, "pages": 1, "ai_analysis": 1},
     )
     if not p:
         raise HTTPException(404, "Plan introuvable")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
         raise HTTPException(404, "Page inconnue")
-    img = pages[page_index].get("image_png_b64")
+    page = pages[page_index]
+    img = page.get("image_png_b64")
     if not img:
         raise HTTPException(500, "Image manquante")
+    dim_zones = _ai_dim_zones(p.get("ai_analysis"), page_index, page)
+    text_zones = [t for t in (page.get("text_blocks") or [])
+                  if all(k in t for k in ("x", "y", "w", "h"))]
     try:
-        result = detect_walls(img)
+        result = detect_walls(img, dim_zones=dim_zones, text_zones=text_zones)
     except Exception as e:
         logger.exception("wall detection failed")
         raise HTTPException(500, f"Détection murs impossible : {e}")

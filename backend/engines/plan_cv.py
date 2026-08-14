@@ -92,9 +92,102 @@ def _build_segment(line, dist: "np.ndarray", w: int, h: int, token_hex) -> dict:
     }
 
 
+# ---- Filtrage traits de cote (iter62) ----
+
+def _angle_close(a: float, b: float, tol: float = 12.0) -> bool:
+    d = abs((a % 180) - (b % 180))
+    return min(d, 180 - d) <= tol
+
+
+def _point_seg_distance(px: float, py: float, x1: float, y1: float,
+                        x2: float, y2: float) -> float:
+    dx, dy = x2 - x1, y2 - y1
+    l2 = dx * dx + dy * dy
+    if l2 == 0:
+        return float(np.hypot(px - x1, py - y1))
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / l2))
+    return float(np.hypot(px - (x1 + t * dx), py - (y1 + t * dy)))
+
+
+def _matches_dim_zone(seg: dict, dim_zones: list[dict], dist_tol: float = 18.0) -> bool:
+    """Un segment est un trait de cote s'il est proche ET parallèle à une cote IA."""
+    mx, my = (seg["x1"] + seg["x2"]) / 2, (seg["y1"] + seg["y2"]) / 2
+    for z in dim_zones or []:
+        if _point_seg_distance(mx, my, z["x1"], z["y1"], z["x2"], z["y2"]) > dist_tol:
+            continue
+        z_angle = float(np.degrees(np.arctan2(z["y2"] - z["y1"], z["x2"] - z["x1"])))
+        if _angle_close(seg["angle_deg"], z_angle):
+            return True
+    return False
+
+
+def _in_text_zone(seg: dict, text_zones: list[dict], pad: float = 2.0) -> bool:
+    mx, my = (seg["x1"] + seg["x2"]) / 2, (seg["y1"] + seg["y2"]) / 2
+    for t in text_zones or []:
+        if (t["x"] - pad <= mx <= t["x"] + t["w"] + pad
+                and t["y"] - pad <= my <= t["y"] + t["h"] + pad):
+            return True
+    return False
+
+
+def _has_parallel_partner(seg: dict, others: list[dict],
+                          min_gap: float = 2.0, max_gap: float = 28.0,
+                          min_overlap: float = 0.35) -> bool:
+    """Les murs « creux » sont dessinés en 2 traits parallèles proches.
+    Un trait fin ISOLÉ (sans partenaire parallèle) est très probablement une cote."""
+    mx = (seg["x1"] + seg["x2"]) / 2
+    my = (seg["y1"] + seg["y2"]) / 2
+    for o in others:
+        if o is seg or not _angle_close(seg["angle_deg"], o["angle_deg"], 8.0):
+            continue
+        d = _point_seg_distance(mx, my, o["x1"], o["y1"], o["x2"], o["y2"])
+        if not (min_gap <= d <= max_gap):
+            continue
+        horiz = abs(seg["x2"] - seg["x1"]) >= abs(seg["y2"] - seg["y1"])
+        if horiz:
+            a0, a1 = sorted((seg["x1"], seg["x2"]))
+            b0, b1 = sorted((o["x1"], o["x2"]))
+        else:
+            a0, a1 = sorted((seg["y1"], seg["y2"]))
+            b0, b1 = sorted((o["y1"], o["y2"]))
+        overlap = max(0.0, min(a1, b1) - max(a0, b0))
+        if overlap / max(1.0, a1 - a0) >= min_overlap:
+            return True
+    return False
+
+
+def filter_cote_segments(segments: list[dict], dim_zones: list | None = None,
+                         text_zones: list | None = None,
+                         thin_px: float = 2.2) -> tuple[list[dict], int]:
+    """Sépare vrais murs / traits de cote. Retourne (murs, nb_cotes_filtrées).
+
+    3 critères d'exclusion :
+    1. proche + parallèle d'un trait de cote localisé par l'IA (bbox_norm)
+    2. milieu du segment dans une zone de texte du plan (PDF vectoriel)
+    3. trait très fin (< thin_px) SANS partenaire parallèle (mur creux = 2 traits)
+    """
+    kept: list[dict] = []
+    removed = 0
+    for s in segments:
+        if dim_zones and _matches_dim_zone(s, dim_zones):
+            removed += 1
+            continue
+        if text_zones and _in_text_zone(s, text_zones):
+            removed += 1
+            continue
+        if s.get("thickness_px", 99) < thin_px and not _has_parallel_partner(s, segments):
+            removed += 1
+            continue
+        kept.append(s)
+    return kept, removed
+
+
 def detect_walls(png_b64: str, min_length_px: int = 60,
                  max_line_gap_px: int = 15, canny_low: int = 50,
-                 canny_high: int = 150) -> dict:
+                 canny_high: int = 150,
+                 dim_zones: list | None = None,
+                 text_zones: list | None = None,
+                 filter_cotes: bool = True) -> dict:
     """Détecte les segments de murs (lignes droites) via Canny + HoughLinesP.
 
     Retourne une liste de segments {x1, y1, x2, y2, length_px, angle_deg,
@@ -119,6 +212,10 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
     segments = [_build_segment(line, dist, w, h, _sec.token_hex)
                 for line in (lines if lines is not None else [])]
 
+    filtered_cotes = 0
+    if filter_cotes and segments:
+        segments, filtered_cotes = filter_cote_segments(segments, dim_zones, text_zones)
+
     segments.sort(key=lambda s: -s["length_px"])
     segments = segments[:500]
 
@@ -126,6 +223,7 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
         "image_width": int(w),
         "image_height": int(h),
         "segment_count": len(segments),
+        "filtered_cotes": filtered_cotes,
         "segments": segments,
         "params": {
             "canny_low": canny_low, "canny_high": canny_high,
