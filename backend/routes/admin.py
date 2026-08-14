@@ -84,8 +84,11 @@ async def stats() -> dict:
     quotes = await db.quote_analyses.count_documents({})
     top = await db.search_stats.find({}, {"_id": 0}).sort("count", -1).to_list(10)
     plans = await db.users.aggregate([{"$group": {"_id": "$plan", "count": {"$sum": 1}}}]).to_list(10)
-    projs = await db.projects.find({}, {"_id": 0, "estimation.total_avg": 1}).to_list(1000)
-    volume = round(sum((p.get("estimation") or {}).get("total_avg", 0) for p in projs), 2)
+    agg = await db.projects.aggregate([
+        {"$group": {"_id": None,
+                    "volume": {"$sum": {"$ifNull": ["$estimation.total_avg", 0]}}}},
+    ]).to_list(1)
+    volume = round((agg[0]["volume"] if agg else 0) or 0, 2)
     return {"users": users, "projects": projects, "leads": leads, "quote_analyses": quotes,
             "top_searches": top, "plans": [{"plan": p["_id"] or "free", "count": p["count"]} for p in plans],
             "estimated_volume": volume}
