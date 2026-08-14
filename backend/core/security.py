@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, Request
 
 from core.db import db
 
-JWT_SECRET = os.environ.get('JWT_SECRET', 'dev-secret')
+JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGO = 'HS256'
 TOKEN_DAYS = 7
 

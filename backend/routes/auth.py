@@ -35,9 +35,44 @@ async def _set_session(response: Response, user_id: str, token: str | None = Non
         "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
         "created_at": datetime.now(timezone.utc),
     })
+    # SEC-003 : SameSite=lax — front et API sur la même origine, bloque le CSRF cross-site
     response.set_cookie("session_token", token, httponly=True, secure=True,
-                        samesite="none", path="/", max_age=7 * 24 * 3600)
+                        samesite="lax", path="/", max_age=7 * 24 * 3600)
     return token
+
+
+# ---- Protection anti-brute force (audit sécurité) ---------------------------
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def _check_lockout(identifier: str) -> None:
+    doc = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    if not doc or doc.get("count", 0) < MAX_LOGIN_ATTEMPTS:
+        return
+    until = doc.get("locked_until")
+    if until and until.tzinfo is None:
+        until = until.replace(tzinfo=timezone.utc)
+    if until and until > datetime.now(timezone.utc):
+        raise HTTPException(status_code=429,
+                            detail="Trop de tentatives — réessayez dans 15 minutes")
+    await db.login_attempts.delete_one({"identifier": identifier})
+
+
+async def _record_failed_login(identifier: str) -> None:
+    await db.login_attempts.update_one(
+        {"identifier": identifier},
+        {"$inc": {"count": 1},
+         "$set": {"locked_until": datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES),
+                  "updated_at": datetime.now(timezone.utc)}},
+        upsert=True)
 
 
 @router.post("/register")
@@ -67,12 +102,51 @@ async def register(body: RegisterIn, response: Response) -> dict:
 
 
 @router.post("/login")
-async def login(body: LoginIn, response: Response) -> dict:
-    user = await db.users.find_one({"email": body.email.lower()}, {"_id": 0})
+async def login(body: LoginIn, request: Request, response: Response) -> dict:
+    email = body.email.lower()
+    identifier = f"{_client_ip(request)}:{email}"
+    await _check_lockout(identifier)
+    user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
+        await _record_failed_login(identifier)
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+    await db.login_attempts.delete_one({"identifier": identifier})
     token = await _set_session(response, user["user_id"])
     return {"user": _public(user), "token": make_jwt(user["user_id"]), "session_token": token}
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+async def change_password(body: ChangePasswordIn, request: Request,
+                          user=Depends(current_user)) -> dict:
+    """Change le mot de passe (vérifie l'actuel) et révoque les autres sessions."""
+    full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if not full or not full.get("password_hash"):
+        raise HTTPException(status_code=400,
+                            detail="Compte Google — pas de mot de passe à changer")
+    if not verify_password(body.current_password, full["password_hash"]):
+        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400,
+                            detail="Nouveau mot de passe : 8 caractères minimum")
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"password_hash": hash_password(body.new_password),
+                  "password_changed_at": datetime.now(timezone.utc).isoformat()}})
+    # Révoque toutes les autres sessions (garde la session courante)
+    current = request.cookies.get("session_token")
+    if not current:
+        auth = request.headers.get("Authorization", "")
+        current = auth[7:] if auth.startswith("Bearer ") else None
+    q = {"user_id": user["user_id"]}
+    if current:
+        q["session_token"] = {"$ne": current}
+    await db.user_sessions.delete_many(q)
+    return {"ok": True}
 
 
 @router.post("/session")
@@ -114,5 +188,5 @@ async def logout(request: Request, response: Response, user=Depends(optional_use
     token = request.cookies.get("session_token")
     if token:
         await db.user_sessions.delete_many({"session_token": token})
-    response.delete_cookie("session_token", path="/", secure=True, samesite="none")
+    response.delete_cookie("session_token", path="/", secure=True, samesite="lax")
     return {"ok": True}

@@ -991,6 +991,17 @@ class PcDepositCheckoutIn(BaseModel):
     origin_url: str = Field(max_length=200)
 
 
+async def _checkout_flood_guard(token: str) -> None:
+    """Anti-abus : max 10 sessions de paiement en attente par lien et par heure."""
+    from datetime import datetime, timedelta, timezone
+    since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    n = await db.payment_transactions.count_documents(
+        {"sign_token": token, "payment_status": "pending",
+         "created_at": {"$gte": since}})
+    if n >= 10:
+        raise HTTPException(429, "Trop de tentatives de paiement — réessayez plus tard")
+
+
 @pc_router.post("/sign/{token}/deposit/checkout")
 async def pc_deposit_checkout(token: str, body: PcDepositCheckoutIn) -> dict:
     """Crée la session Stripe pour l'acompte (public — lien de signature)."""
@@ -1006,6 +1017,7 @@ async def pc_deposit_checkout(token: str, body: PcDepositCheckoutIn) -> dict:
         raise HTTPException(400, "Acceptez d'abord l'étude avant de verser l'acompte")
     if entry.get("deposit_paid"):
         raise HTTPException(400, "L'acompte a déjà été réglé — merci !")
+    await _checkout_flood_guard(token)
     settings = await _load_pc_settings(p["user_id"])
     pct = settings.get("deposit_pct")
     pct = DEFAULT_DEPOSIT_PCT if pct is None else float(pct)
@@ -1208,6 +1220,7 @@ async def pc_situation_checkout(token: str, sit_id: str,
         raise HTTPException(404, "Situation introuvable")
     if sit.get("paid"):
         raise HTTPException(400, "Cette facture a déjà été réglée — merci !")
+    await _checkout_flood_guard(token)
     amount_cents = int(round(float(sit["amount"]) * 100))
     if amount_cents < 100:
         raise HTTPException(400, "Montant invalide")

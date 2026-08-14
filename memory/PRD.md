@@ -2124,6 +2124,17 @@ Chantier/engins 10,5 k + Terrassement 15 k + Fondations 12 k + Planchers 21,4 k 
 
 ---
 
+## Itération 80 (14/06/2026) — AUDIT DE SÉCURITÉ + CORRECTIFS (tous vérifiés)
+
+Audit (security_audit_agent) : DO NOT LAUNCH → 3 findings corrigés le jour même :
+1. **SEC-001 (critique) — seed backdoor** : `server.py` ne crée les comptes démo que si `SEED_DEMO_DATA="true"` (ajouté au .env preview) et **ne réécrit plus jamais** le password_hash d'un compte existant. Vérifié : restart → mots de passe conservés. ⚠️ PROD : retirer/omettre SEED_DEMO_DATA dans les env du déploiement + changer les mots de passe seed via /compte après redéploiement.
+2. **SEC-002 (élevé) — CORS** : allowlist explicite `CORS_ORIGINS` (preview + construpilot.fr + www + localhost), plus jamais `*` avec credentials. Vérifié sur localhost:8001 : origine non listée → aucun header allow-origin.
+3. **SEC-003 (moyen) — CSRF** : cookies session en `SameSite=lax` (login, session Google, logout) — front et API même origine, flux OAuth inchangé.
+Durcissements : `JWT_SECRET` sans fallback (fail-fast) ; anti-brute force login (5 échecs → 429 pendant 15 min, collection `login_attempts` + TTL 1 h, vérifié 5×401→429) ; `_checkout_flood_guard` (max 10 sessions Stripe pending/lien/heure sur acompte + situations).
+Nouveau : **POST /api/auth/change-password** (vérifie l'actuel, bcrypt, révoque les autres sessions) + page **/compte** (lien « Mon compte » menu Plus). Testé : changement + ancien 401 + nouveau 200 + restauration. Pytest 72/72.
+
+---
+
 ## Itération 79 (14/06/2026) — GOOGLE SIGN-IN (Emergent Auth) : VÉRIFIÉ COMPLET
 
 Constat : l'intégration Emergent Google Auth était déjà entièrement implémentée (bouton /login `google-login-btn`, AuthCallback + détection hash synchrone via useLocation, garde AuthProvider, POST /api/auth/session → fusion par email + cookie httpOnly `session_token` 7 j, current_user cookie→Bearer (session ou JWT), /auth/me, /auth/logout). Conformité playbook revalidée point par point (redirect via window.location.origin sans fallback, commentaire REMINDER présent).

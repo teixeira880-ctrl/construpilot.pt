@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
-  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler,
+  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
   Users, LineChart, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ const USER_LINKS = [
   { to: "/etudes-pc", label: "Études PC", icon: FileSearch },
   { to: "/equipe", label: "Équipe", icon: Users },
   { to: "/inviter", label: "Parrainer", icon: Sparkles },
+  { to: "/compte", label: "Mon compte", icon: KeyRound },
 ];
 
 export const Nav = () => {

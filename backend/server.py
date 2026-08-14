@@ -64,7 +64,9 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    # SEC-002 : allowlist explicite — jamais '*' avec credentials
+    allow_origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",")
+                   if o.strip() and o.strip() != "*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -113,47 +115,59 @@ async def _seed_demo_org():
 
 @app.on_event("startup")
 async def seed():
-    # Nettoyage des anciens comptes (renommage marque)
-    await db.users.delete_many({"email": {"$in": ["admin@cmrenov.fr", "demo@cmrenov.fr"]}})
+    # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
+    # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
+    if os.environ.get("SEED_DEMO_DATA") == "true":
+        await db.users.delete_many({"email": {"$in": ["admin@cmrenov.fr", "demo@cmrenov.fr"]}})
 
-    accounts = (
-        (ADMIN_EMAIL,     "Admin ConstruPilot", "admin", "premium", "Construpilot2026!"),
-        (DEMO_EMAIL,      "Client Démo",        "user",  "premium", "Demo2026!"),
-        (CLIENT_EMAIL,    "Alice Particulier",  "user",  "free",    "Client2026!"),
-        (PRO_EMAIL,       "Marc BTP (Pro)",     "user",  "premium", "Pro2026!"),
-        (COLLEGUE_EMAIL,  "Julie Collègue",     "user",  "free",    "Collegue2026!"),
-    )
-    for email, name, role, plan, pw in accounts:
-        existing = await db.users.find_one({"email": email})
-        doc = {"email": email, "name": name, "role": role, "plan": plan,
-               "password_hash": hash_password(pw), "auth_provider": "password", "picture": None}
-        if existing:
-            await db.users.update_one({"email": email}, {"$set": doc})
-        else:
-            await db.users.insert_one({**doc, "user_id": new_user_id(),
-                                       "created_at": datetime.now(timezone.utc).isoformat()})
+        accounts = (
+            (ADMIN_EMAIL,     "Admin ConstruPilot", "admin", "premium", "Construpilot2026!"),
+            (DEMO_EMAIL,      "Client Démo",        "user",  "premium", "Demo2026!"),
+            (CLIENT_EMAIL,    "Alice Particulier",  "user",  "free",    "Client2026!"),
+            (PRO_EMAIL,       "Marc BTP (Pro)",     "user",  "premium", "Pro2026!"),
+            (COLLEGUE_EMAIL,  "Julie Collègue",     "user",  "free",    "Collegue2026!"),
+        )
+        for email, name, role, plan, pw in accounts:
+            existing = await db.users.find_one({"email": email})
+            if existing:
+                await db.users.update_one(
+                    {"email": email},
+                    {"$set": {"name": name, "role": role, "plan": plan}})
+            else:
+                await db.users.insert_one({
+                    "email": email, "name": name, "role": role, "plan": plan,
+                    "password_hash": hash_password(pw), "auth_provider": "password",
+                    "picture": None, "user_id": new_user_id(),
+                    "created_at": datetime.now(timezone.utc).isoformat()})
 
-    # Seed "BTP Demo SAS" — org démo pour montrer le partage de branding
-    await _seed_demo_org()
+        # Seed "BTP Demo SAS" — org démo pour montrer le partage de branding
+        await _seed_demo_org()
 
-    # Entitlement Pro Business permanent pour les comptes de test (idempotent).
-    # Sans lui, les routes /takeoffs renvoient 402 et la suite pytest échoue après un fork.
-    for email in (DEMO_EMAIL, PRO_EMAIL):
-        u = await db.users.find_one({"email": email}, {"user_id": 1})
-        if u and not await db.entitlements.find_one(
-                {"user_id": u["user_id"], "plan_id": "pro_business_monthly", "status": "active"}):
-            await db.entitlements.insert_one({
-                "user_id": u["user_id"], "plan_id": "pro_business_monthly",
-                "plan_code": "PRO_BUSINESS_MONTHLY", "kind": "subscription",
-                "audience": "pro", "status": "active",
-                "granted_at": datetime.now(timezone.utc).isoformat(),
-                "source": "seed_demo"})
+        # Entitlement Pro Business permanent pour les comptes de test (idempotent).
+        # Sans lui, les routes /takeoffs renvoient 402 et la suite pytest échoue après un fork.
+        for email in (DEMO_EMAIL, PRO_EMAIL):
+            u = await db.users.find_one({"email": email}, {"user_id": 1})
+            if u and not await db.entitlements.find_one(
+                    {"user_id": u["user_id"], "plan_id": "pro_business_monthly", "status": "active"}):
+                await db.entitlements.insert_one({
+                    "user_id": u["user_id"], "plan_id": "pro_business_monthly",
+                    "plan_code": "PRO_BUSINESS_MONTHLY", "kind": "subscription",
+                    "audience": "pro", "status": "active",
+                    "granted_at": datetime.now(timezone.utc).isoformat(),
+                    "source": "seed_demo"})
+    else:
+        logger.info("SEED_DEMO_DATA désactivé — aucun compte de démonstration créé")
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")
     await db.entitlements.create_index("user_id")
     await db.entitlements.create_index("stripe_subscription_id")
     await db.payment_transactions.create_index("session_id", unique=True)
+    await db.login_attempts.create_index("identifier")
+    try:
+        await db.login_attempts.create_index("updated_at", expireAfterSeconds=3600)
+    except Exception as e:
+        logger.warning(f"login_attempts TTL index skipped: {e}")
     await db.plans.create_index("plan_id", unique=True)
     # Organizations (team branding)
     await db.organizations.create_index("org_id", unique=True)
