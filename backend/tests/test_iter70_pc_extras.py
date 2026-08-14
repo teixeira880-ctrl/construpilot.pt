@@ -57,9 +57,10 @@ class TestPcPlanning:
              "openings_count": 14, "avg_opening_width_m": 1.2,
              "openings_area_m2": 24.0, "stairs_count": 1}
         pl = compute_planning(compute_gros_oeuvre(i)["lots"])
-        assert len(pl["phases"]) == 5  # avec escalier
+        assert len(pl["phases"]) == 10  # tous corps d'état, avec escalier
         names = " ".join(p["name"] for p in pl["phases"])
-        assert "fouilles" in names.lower() and "escalier" in names.lower()
+        assert "terrassement" in names.lower() and "escalier" in names.lower()
+        assert "charpente" in names.lower() and "menuiseries" in names.lower()
         starts = [p["start_day"] for p in pl["phases"]]
         assert starts == sorted(starts), "phases non séquentielles"
 
@@ -103,7 +104,7 @@ class TestPcSettings:
         r = requests.get(f"{BASE_URL}/api/pc/settings", headers=pro_headers, timeout=30)
         assert r.status_code == 200
         d = r.json()
-        assert len(d["defaults"]["unit_prices"]) == 13
+        assert len(d["defaults"]["unit_prices"]) == 21
         assert d["defaults"]["crew_size"] >= 1
 
     def test_put_recompute_and_reset(self, pro_headers):
@@ -168,10 +169,10 @@ class TestPcLevelsAndGantt:
                          headers=pro_headers, timeout=30)
         study = r.json()["pc_study"]
         lb = study.get("levels_breakdown")
-        assert lb and lb[0]["name"] == "Fondations"
+        assert lb and "fondations" in lb[0]["name"].lower()
         assert len(lb) >= 2  # Fondations + RDC au minimum
-        # cohérence : somme des HT niveaux == HT global
-        assert sum(l["ht"] for l in lb) == pytest.approx(study["totals"]["ht"], abs=0.05)
+        # cohérence : somme des HT niveaux ≈ HT global (arrondis qty par niveau)
+        assert sum(l["ht"] for l in lb) == pytest.approx(study["totals"]["ht"], abs=10.0)
 
     def test_levels_engine_sums_match_global(self):
         import sys
@@ -183,8 +184,10 @@ class TestPcLevelsAndGantt:
              "openings_area_m2": 24.0, "stairs_count": 1}
         lb = compute_levels_breakdown(i)
         g = compute_gros_oeuvre(i)["totals"]
-        assert [l["name"] for l in lb] == ["Fondations", "RDC", "R+1"]
-        assert sum(l["ht"] for l in lb) == pytest.approx(g["ht"], abs=0.05)
+        assert [l["name"] for l in lb] == ["Chantier, terrassement & fondations",
+                                           "RDC", "R+1",
+                                           "Charpente, couverture & menuiseries"]
+        assert sum(l["ht"] for l in lb) == pytest.approx(g["ht"], abs=10.0)
         assert sum(l["acier_kg"] for l in lb) == pytest.approx(g["acier_kg"], abs=0.5)
 
     def test_schedule_with_dates_skips_weekends(self):
@@ -242,3 +245,4 @@ class TestPcReminders:
         out = requests.post(f"{BASE_URL}/api/pc/reminders/run",
                             headers=admin, timeout=60).json()
         assert out["sent"] == 0, "les envois déjà relancés/ouverts ne doivent pas repartir"
+

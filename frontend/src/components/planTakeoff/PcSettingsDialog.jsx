@@ -10,25 +10,33 @@ import {
 import { api } from "@/lib/api";
 
 const PRICE_LABELS = {
-  fouilles: ["Fouilles en rigole", "m³"],
+  installation_chantier: ["Installation chantier (base vie, clôture, benne)", "forfait"],
+  engins_levage: ["Engins & machines (grue, bétonnière)", "forfait"],
+  echafaudage: ["Échafaudage (location + montage)", "forfait"],
+  terrassement_complet: ["Terrassement complet (fouilles, remblais)", "forfait"],
   beton_proprete: ["Béton de propreté", "m³"],
   beton_semelle: ["Béton semelles C25/30", "m³"],
   acier_semelle: ["Aciers semelles", "kg"],
-  beton_dalle: ["Béton dalle / plancher", "m³"],
+  fondations_moe: ["Mise en œuvre fondations", "forfait"],
+  beton_dalle: ["Béton dallage RDC", "m³"],
   treillis_dalle: ["Treillis ST25C", "kg"],
   coffrage_rive: ["Coffrage de rives", "ml"],
+  plancher_etage: ["Plancher d'étage complet", "forfait/niv."],
   mur_isobrique: ["Mur brique isobrique 20", "m²"],
   chainage_beton: ["Béton chaînages", "m³"],
   acier_chainage: ["Aciers chaînages", "kg"],
   linteau: ["Linteaux BA", "ml"],
   escalier_beton: ["Béton escalier", "m³"],
   acier_escalier: ["Aciers escalier", "kg"],
+  charpente_trad: ["Charpente traditionnelle", "forfait"],
+  couverture_tuiles: ["Couverture tuiles", "forfait"],
+  menuiseries_ext: ["Menuiseries ext. (fenêtres)", "forfait"],
 };
 
 export default function PcSettingsDialog({ open, onClose, onSaved }) {
   const [prices, setPrices] = useState({});
   const [crew, setCrew] = useState(3);
-  const [rate, setRate] = useState(45);
+  const [rate, setRate] = useState(35);
   const [reminderDays, setReminderDays] = useState(3);
   const [notifyMode, setNotifyMode] = useState("email");
   const [notifyPhone, setNotifyPhone] = useState("");
@@ -46,7 +54,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       });
       setPrices(merged);
       setCrew(s.crew_size ?? d.crew_size ?? 3);
-      setRate(s.hourly_rate_eur ?? d.hourly_rate_eur ?? 45);
+      setRate(s.hourly_rate_eur ?? d.hourly_rate_eur ?? 35);
       setReminderDays(s.reminder_days ?? d.reminder_days ?? 3);
       setNotifyMode(s.notify_on_open ?? d.notify_on_open ?? "email");
       setNotifyPhone(s.notify_phone ?? "");
@@ -65,7 +73,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       });
       await api.put("/pc/settings", {
         unit_prices, crew_size: parseInt(crew, 10) || 3,
-        hourly_rate_eur: parseFloat(rate) || 45,
+        hourly_rate_eur: parseFloat(rate) || 35,
         reminder_days: Math.max(0, parseInt(reminderDays, 10) || 0),
         notify_on_open: notifyMode,
         notify_phone: notifyPhone.trim() || null,

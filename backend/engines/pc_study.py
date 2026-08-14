@@ -8,6 +8,10 @@ Les quantités/prix sont calculés ici avec des RÈGLES FIXES validées par l'ut
 - Escaliers : béton armé
 - Aciers : semelles 3+3 HA10 + cadres HA6 (15 kg/ml), dalle ST25C + chapeaux (14 kg/m²),
   escalier 100 kg/m³, chaînages 4 HA10 + cadres HA6 (3,6 kg/ml)
+- FORFAITS calibrés sur coûts réels utilisateur (06/2026) : terrassement 15 k€,
+  fondations ≈ 12 k€, plancher étage 15 k€/niveau, charpente trad. 20 k€,
+  couverture tuiles 14 k€, menuiseries ext. 18 k€, chantier/engins/échafaudage
+  ≈ 10,5 k€ — main d'œuvre 35 €/h.
 """
 from __future__ import annotations
 
@@ -35,38 +39,53 @@ RULES = {
     "bricks_per_m2": 9.5,            # bloc 500 × 212 — ép. 200
 }
 
-# ---- Prix unitaires gros œuvre (€ HT / unité) -----------------------------
+# ---- Prix unitaires (€ HT / unité) — forfaits calibrés sur coûts réels user
 PC_UNIT_PRICES = {
-    "fouilles":       {"mat": 0.0,  "mo": 38.0},   # m³ — pelle mécanique + évacuation
+    "terrassement_complet": {"mat": 7500.0, "mo": 7500.0},   # forfait ≈ 15 000 €
     "beton_proprete": {"mat": 125.0, "mo": 55.0},  # m³ — C16/20
     "beton_semelle":  {"mat": 145.0, "mo": 75.0},  # m³ — C25/30 coulé
     "acier_semelle":  {"mat": 1.45, "mo": 0.55},   # kg — HA façonné posé
+    "fondations_moe": {"mat": 1200.0, "mo": 7000.0},  # forfait — implantation + coffrage + coulage
     "beton_dalle":    {"mat": 150.0, "mo": 90.0},  # m³ — C25/30 + pompage
     "treillis_dalle": {"mat": 1.35, "mo": 0.40},   # kg — ST25C posé
     "coffrage_rive":  {"mat": 6.0,  "mo": 14.0},   # ml
+    "plancher_etage": {"mat": 9500.0, "mo": 5500.0},  # forfait/niveau ≈ 15 000 €
     "mur_isobrique":  {"mat": 38.0, "mo": 42.0},   # m² — brique 20 + colle joint mince
     "chainage_beton": {"mat": 160.0, "mo": 180.0}, # m³ — CH + CV coffrés
     "acier_chainage": {"mat": 1.45, "mo": 0.65},   # kg
     "linteau":        {"mat": 22.0, "mo": 28.0},   # ml — linteau BA 20×20 coulé
     "escalier_beton": {"mat": 165.0, "mo": 420.0}, # m³ — coffrage + coulage
     "acier_escalier": {"mat": 1.45, "mo": 0.70},   # kg
+    "charpente_trad":    {"mat": 12500.0, "mo": 7500.0},  # forfait ≈ 20 000 €
+    "couverture_tuiles": {"mat": 9500.0, "mo": 4500.0},   # forfait ≈ 14 000 €
+    "menuiseries_ext":   {"mat": 14500.0, "mo": 3500.0},  # forfait ≈ 18 000 €
+    "installation_chantier": {"mat": 1200.0, "mo": 800.0},  # forfait — base vie, clôture, benne
+    "engins_levage":  {"mat": 5500.0, "mo": 500.0},  # forfait — grue/manuscopique, bétonnière, outillage
+    "echafaudage":    {"mat": 2200.0, "mo": 300.0},  # forfait — location + montage/démontage
 }
 
 TVA_RATE = 0.20  # construction neuve
 
 # ---- Planning de chantier ---------------------------------------------
 CREW_SIZE = 3
-HOURLY_RATE_EUR = 45.0  # coût horaire MO — convertit les PU MO en heures
+HOURLY_RATE_EUR = 35.0  # coût horaire MO — convertit les PU MO en heures
 
 PLANNING_PHASES = [
-    ("Terrassement — fouilles en rigole", ["Fouilles"], 0),
+    ("Installation de chantier — base vie, clôture, engins, échafaudage",
+     ["Installation de chantier", "Engins", "Échafaudage"], 0),
+    ("Terrassement — décapage, fouilles en rigole, remblais", ["Terrassement complet"], 0),
     ("Fondations — béton de propreté + semelles filantes 60×30 + aciers",
-     ["propreté", "Semelles filantes", "Aciers semelles"], 7),
-    ("Dalle / plancher BA ép. 15 cm + treillis",
-     ["Dalle / plancher", "Treillis", "Coffrage de rives"], 7),
+     ["propreté", "Semelles filantes", "Aciers semelles", "Mise en œuvre fondations"], 7),
+    ("Dallage RDC ép. 15 cm + treillis",
+     ["Dallage RDC", "Treillis", "Coffrage de rives"], 7),
     ("Élévations — murs brique isobrique + chaînages + linteaux",
      ["brique isobrique", "Chaînages", "Linteaux"], 2),
+    ("Plancher d'étage — poutrelles-hourdis + table de compression",
+     ["Plancher d'étage"], 7),
     ("Escalier béton armé", ["Escalier béton", "Aciers escalier"], 7),
+    ("Charpente traditionnelle", ["Charpente traditionnelle"], 0),
+    ("Couverture tuiles", ["Couverture tuiles"], 0),
+    ("Menuiseries extérieures — pose des fenêtres", ["Menuiseries extérieures"], 0),
 ]
 
 
@@ -297,11 +316,15 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
     P = prices or PC_UNIT_PRICES
     per, ref, lv, h = i["perimeter_m"], i["refends_m"], i["levels"], i["wall_height_m"]
     L_sem = round(per + ref, 2)
+    n_up = lv - 1 if i["upper_floors_area_m2"] > 0 else 0
+
+    terrassement = [
+        _line("Terrassement complet — décapage, fouilles en rigole, évacuation & remblais",
+              f"emprise {i['ground_floor_area_m2']} m² — {L_sem} ml de fouilles 60 × 60 "
+              "sous murs porteurs (forfait)", "forfait", 1, "terrassement_complet", P),
+    ]
 
     fondations = [
-        _line("Fouilles en rigole 60 × 60 cm (mise hors gel)",
-              f"{L_sem} ml sous murs porteurs (périmètre {per} m + refends {ref} m)",
-              "m³", L_sem * 0.6 * 0.6, "fouilles", P),
         _line("Béton de propreté ép. 5 cm",
               "C16/20 — largeur 60 cm en fond de fouille", "m³",
               L_sem * 0.6 * 0.05, "beton_proprete", P),
@@ -311,21 +334,26 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
         _line("Aciers semelles — 3+3 HA10 filants + cadres HA6",
               f"{R['acier_semelle_kg_ml']} kg/ml × {L_sem} ml", "kg",
               L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
+        _line("Mise en œuvre fondations — implantation, coffrage, réglage & coulage",
+              "forfait main d'œuvre + consommables", "forfait", 1, "fondations_moe", P),
     ]
 
-    slab_area = round(i["ground_floor_area_m2"] + i["upper_floors_area_m2"], 2)
-    detail_slab = f"RDC {i['ground_floor_area_m2']} m²"
-    if i["upper_floors_area_m2"] > 0:
-        detail_slab += f" + étages {i['upper_floors_area_m2']} m²"
+    ground = i["ground_floor_area_m2"]
     planchers = [
-        _line(f"Dalle / plancher BA ép. {int(R['slab_thickness_m'] * 100)} cm",
-              f"C25/30 — {detail_slab}", "m³",
-              slab_area * R["slab_thickness_m"], "beton_dalle", P),
+        _line(f"Dallage RDC — dalle BA ép. {int(R['slab_thickness_m'] * 100)} cm",
+              f"C25/30 — {ground} m²", "m³",
+              ground * R["slab_thickness_m"], "beton_dalle", P),
         _line("Treillis soudé ST25C + chapeaux",
-              f"{R['acier_dalle_kg_m2']} kg/m² × {slab_area} m²", "kg",
-              slab_area * R["acier_dalle_kg_m2"], "treillis_dalle", P),
+              f"{R['acier_dalle_kg_m2']} kg/m² × {ground} m²", "kg",
+              ground * R["acier_dalle_kg_m2"], "treillis_dalle", P),
         _line("Coffrage de rives de dalle", "périmètre dalle RDC", "ml", per, "coffrage_rive", P),
     ]
+    if n_up:
+        planchers.append(
+            _line("Plancher d'étage complet — poutrelles-hourdis + table de compression",
+                  f"{i['upper_floors_area_m2']} m² — étaiement compris "
+                  f"({n_up} niveau(x), forfait/niveau)",
+                  "forfait", n_up, "plancher_etage", P))
 
     wall_gross = round((per + ref) * h * lv, 2)
     wall_net = round(max(0.0, wall_gross - i["openings_area_m2"]), 2)
@@ -364,16 +392,42 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
                   vol_esc * R["acier_escalier_kg_m3"], "acier_escalier", P),
         ]
 
+    toiture = [
+        _line("Charpente traditionnelle — bois massif assemblé",
+              f"toiture sur emprise {i['ground_floor_area_m2']} m² (forfait)",
+              "forfait", 1, "charpente_trad", P),
+        _line("Couverture tuiles — tuiles, écran sous-toiture, liteaux & faîtage",
+              "fourniture + pose (forfait)", "forfait", 1, "couverture_tuiles", P),
+    ]
+
+    menuiseries = [
+        _line("Menuiseries extérieures — fenêtres & portes-fenêtres posées",
+              f"{i['openings_count']} ouvertures (≈ {i['openings_area_m2']} m² "
+              "de tableaux, forfait)", "forfait", 1, "menuiseries_ext", P),
+    ]
+
+    chantier = [
+        _line("Installation de chantier — base vie, clôture, benne gravats",
+              "forfait durée du chantier", "forfait", 1, "installation_chantier", P),
+        _line("Engins & machines — grue/manuscopique, bétonnière, outillage",
+              "location durée du gros œuvre (forfait)", "forfait", 1, "engins_levage", P),
+        _line("Échafaudage périphérique — location, montage & démontage",
+              f"périmètre {per} m (forfait)", "forfait", 1, "echafaudage", P),
+    ]
+
     lots = [l for l in [
-        {"lot": "Terrassement & Fondations", "lines": fondations},
-        {"lot": "Planchers / Dalles (ép. 15 cm)", "lines": planchers},
+        {"lot": "Installation de chantier & engins", "lines": chantier},
+        {"lot": "Terrassement", "lines": terrassement},
+        {"lot": "Fondations", "lines": fondations},
+        {"lot": "Planchers / Dalles", "lines": planchers},
         {"lot": "Élévations — murs brique isobrique 20 cm", "lines": murs},
         {"lot": "Escalier béton", "lines": escalier},
+        {"lot": "Charpente & Couverture", "lines": toiture},
+        {"lot": "Menuiseries extérieures", "lines": menuiseries},
     ] if l["lines"]]
 
     all_lines = [ln for l in lots for ln in l["lines"]]
-    beton = round(sum(ln["qty"] for ln in all_lines if ln["unit"] == "m³"
-                      and "Fouilles" not in ln["designation"]), 2)
+    beton = round(sum(ln["qty"] for ln in all_lines if ln["unit"] == "m³"), 2)
     acier = round(sum(ln["qty"] for ln in all_lines if ln["unit"] == "kg"), 1)
     ht = round(sum(ln["total"] for ln in all_lines), 2)
     tva = round(ht * TVA_RATE, 2)
@@ -394,46 +448,59 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
     L_sem = round(per + ref, 2)
     n_raid = max(4, round(per / 5))
     open_per_lvl = round(i["openings_area_m2"] / lv, 2)
-    n_open_lvl = max(1, round(i["openings_count"] / lv))
-    lint_lvl = round(n_open_lvl * (i["avg_opening_width_m"] + 0.40), 2)
+    base_open, extra_open = divmod(int(i["openings_count"]), lv)
     stairs_left = i["stairs_count"]
 
     def summarize(name: str, lines: list[dict], briques: int, murs_m2: float) -> dict:
         return {"name": name, "lines": lines,
-                "beton_m3": round(sum(ln["qty"] for ln in lines if ln["unit"] == "m³"
-                                      and "Fouilles" not in ln["designation"]), 2),
+                "beton_m3": round(sum(ln["qty"] for ln in lines if ln["unit"] == "m³"), 2),
                 "acier_kg": round(sum(ln["qty"] for ln in lines if ln["unit"] == "kg"), 1),
                 "briques_u": briques, "murs_m2": murs_m2,
                 "ht": round(sum(ln["total"] for ln in lines), 2)}
 
-    out = [summarize("Fondations", [
-        _line("Fouilles en rigole 60 × 60 cm", f"{L_sem} ml", "m³",
-              L_sem * 0.6 * 0.6, "fouilles", P),
+    out = [summarize("Chantier, terrassement & fondations", [
+        _line("Installation de chantier — base vie, clôture, benne",
+              "forfait", "forfait", 1, "installation_chantier", P),
+        _line("Engins & machines — grue/manuscopique, bétonnière, outillage",
+              "forfait", "forfait", 1, "engins_levage", P),
+        _line("Échafaudage périphérique — location & montage",
+              "forfait", "forfait", 1, "echafaudage", P),
+        _line("Terrassement complet — décapage, fouilles, évacuation & remblais",
+              f"{L_sem} ml de fouilles 60 × 60", "forfait", 1, "terrassement_complet", P),
         _line("Béton de propreté ép. 5 cm", "C16/20", "m³",
               L_sem * 0.6 * 0.05, "beton_proprete", P),
         _line("Semelles filantes BA 60 × 30 cm", f"{L_sem} ml", "m³",
               L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle", P),
         _line("Aciers semelles (3+3 HA10 + cadres HA6)", f"{R['acier_semelle_kg_ml']} kg/ml",
               "kg", L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
+        _line("Mise en œuvre fondations — implantation, coffrage, coulage",
+              "forfait", "forfait", 1, "fondations_moe", P),
     ], 0, 0.0)]
 
     for k in range(lv):
         name = "RDC" if k == 0 else f"R+{k}"
-        slab_area = i["ground_floor_area_m2"] if k == 0 else (
-            round(i["upper_floors_area_m2"] / max(1, lv - 1), 2))
         wall_net = round(max(0.0, (per + ref) * h - open_per_lvl), 2)
         briques = math.ceil(wall_net * R["bricks_per_m2"])
         ch_ml = round((per + ref) + n_raid * h, 2)
-        lines = [
-            _line(f"Dalle / plancher BA ép. {int(R['slab_thickness_m'] * 100)} cm",
-                  f"{slab_area} m²", "m³", slab_area * R["slab_thickness_m"],
-                  "beton_dalle", P),
-            _line("Treillis soudé ST25C + chapeaux", f"{R['acier_dalle_kg_m2']} kg/m²",
-                  "kg", slab_area * R["acier_dalle_kg_m2"], "treillis_dalle", P),
-        ]
         if k == 0:
-            lines.append(_line("Coffrage de rives de dalle", "périmètre RDC", "ml",
-                               per, "coffrage_rive", P))
+            ground = i["ground_floor_area_m2"]
+            lines = [
+                _line(f"Dallage RDC — dalle BA ép. {int(R['slab_thickness_m'] * 100)} cm",
+                      f"{ground} m²", "m³", ground * R["slab_thickness_m"],
+                      "beton_dalle", P),
+                _line("Treillis soudé ST25C + chapeaux", f"{R['acier_dalle_kg_m2']} kg/m²",
+                      "kg", ground * R["acier_dalle_kg_m2"], "treillis_dalle", P),
+                _line("Coffrage de rives de dalle", "périmètre RDC", "ml",
+                      per, "coffrage_rive", P),
+            ]
+        elif i["upper_floors_area_m2"] > 0:
+            lines = [
+                _line("Plancher d'étage complet — poutrelles-hourdis + table de compression",
+                      f"≈ {round(i['upper_floors_area_m2'] / max(1, lv - 1), 2)} m² "
+                      "— étaiement compris (forfait)", "forfait", 1, "plancher_etage", P),
+            ]
+        else:
+            lines = []
         lines += [
             _line(f"Murs brique isobrique ép. {int(R['wall_thickness_m'] * 100)} cm",
                   f"{briques} briques", "m²", wall_net, "mur_isobrique", P),
@@ -442,9 +509,12 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
             _line("Aciers chaînages (4 HA10 + cadres HA6)",
                   f"{R['acier_chainage_kg_ml']} kg/ml", "kg",
                   ch_ml * R["acier_chainage_kg_ml"], "acier_chainage", P),
-            _line("Linteaux BA sur ouvertures", f"{n_open_lvl} ouvertures", "ml",
-                  lint_lvl, "linteau", P),
         ]
+        n_open_lvl = base_open + (1 if k < extra_open else 0)
+        if n_open_lvl > 0:
+            lines.append(
+                _line("Linteaux BA sur ouvertures", f"{n_open_lvl} ouvertures", "ml",
+                      n_open_lvl * (i["avg_opening_width_m"] + 0.40), "linteau", P))
         if stairs_left > 0 and k < lv - 1:
             vol = _stair_volume(h, stairs_steps)
             lines += [
@@ -455,6 +525,15 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
             ]
             stairs_left -= 1
         out.append(summarize(name, lines, briques, wall_net))
+
+    out.append(summarize("Charpente, couverture & menuiseries", [
+        _line("Charpente traditionnelle — bois massif assemblé", "forfait",
+              "forfait", 1, "charpente_trad", P),
+        _line("Couverture tuiles — tuiles, écran, liteaux & faîtage", "forfait",
+              "forfait", 1, "couverture_tuiles", P),
+        _line("Menuiseries extérieures — fenêtres & portes-fenêtres posées",
+              f"{i['openings_count']} ouvertures", "forfait", 1, "menuiseries_ext", P),
+    ], 0, 0.0))
     return out
 
 
@@ -472,6 +551,10 @@ ORDER_ITEMS = {
     "mur_isobrique": ("Briques isobrique ép. 20 cm", "u"),
     "linteau": ("Linteaux / coffrage BA 20 × 20", "ml"),
     "coffrage_rive": ("Planches de coffrage de rives", "ml"),
+    "plancher_etage": ("Plancher poutrelles-hourdis — étage (fourniture complète)", "forfait"),
+    "charpente_trad": ("Charpente traditionnelle (fourniture bois)", "forfait"),
+    "couverture_tuiles": ("Tuiles + écran sous-toiture + liteaux (fourniture)", "forfait"),
+    "menuiseries_ext": ("Menuiseries extérieures — fenêtres (fourniture)", "forfait"),
 }
 WASTE_FACTOR = 1.05  # +5 % de chutes / pertes
 
@@ -490,7 +573,7 @@ def build_purchase_order_items(level: dict, prices: dict | None = None) -> list[
     items: list[dict] = []
     for ln in level.get("lines") or []:
         key = ln.get("key")
-        if key not in ORDER_ITEMS or key == "fouilles":
+        if key not in ORDER_ITEMS:
             continue
         name, unit = ORDER_ITEMS[key]
         pu = P.get(key, PC_UNIT_PRICES.get(key, {})).get("mat", 0)
@@ -506,7 +589,7 @@ def build_purchase_order_items(level: dict, prices: dict | None = None) -> list[
             continue
         if pu <= 0:
             continue
-        qty = _order_round(ln["qty"] * WASTE_FACTOR, unit)
+        qty = ln["qty"] if unit == "forfait" else _order_round(ln["qty"] * WASTE_FACTOR, unit)
         items.append({"designation": name, "unit": unit, "qty": qty,
                       "pu_mat": pu, "total": round(qty * pu, 2)})
     return items

@@ -2052,3 +2052,25 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 
 ### État global : MODULE ÉTUDE PC COMPLET ET TESTÉ EN RÉEL
 Analyse IA PC → devis gros œuvre (règles fixes) → niveaux → planning Gantt + météo → PDF/Word/Excel → envoi client (tracking, relance auto, signature en ligne, notification ouverture) → bons de commande négoces (envoi + suivi réponses) → prix personnalisables + historique versions → tableau de bord.
+
+---
+
+## Itération 75 (14/06/2026) — RECALIBRAGE PRIX ÉTUDE PC (coûts réels utilisateur)
+
+### Problème signalé (test réel plan « PC ALAOUI Hicham », 148,87 m² R+1)
+L'étude sortait 44 009 € TTC — l'étude ne chiffrait QUE le gros œuvre béton/brique. Coûts réels utilisateur : charpente trad. 20 k€, tuiles 14 k€, étage 15 k€, terrassement 15 k€, fondations 12 k€, fenêtres 18 k€, MO 35 €/h. Choix utilisateur : étude complète, montants FORFAITAIRES fixes (pas de mise à l'échelle m²), intégration complète (réglages/Gantt/niveaux), et « tout absolument tout » y compris machines/engins.
+
+### Livré (pytest 51/51 iter69-72 + E2E UI vérifié)
+1. **`pc_study.py`** : `HOURLY_RATE_EUR` 45→35 €/h. 8 nouveaux postes forfaitaires dans `PC_UNIT_PRICES` (21 postes au total) : `terrassement_complet` (15 k€, remplace la ligne fouilles), `fondations_moe` (8,2 k€ → lot Fondations ≈ 12 k€), `plancher_etage` (15 k€/niveau, remplace la dalle quantitative des étages — dallage RDC reste quantitatif), `charpente_trad` (20 k€), `couverture_tuiles` (14 k€), `menuiseries_ext` (18 k€), `installation_chantier` (2 k€), `engins_levage` (6 k€), `echafaudage` (2,5 k€).
+2. **8 lots dans le devis** : Installation chantier & engins / Terrassement / Fondations / Planchers / Élévations / Escalier / Charpente & Couverture / Menuiseries ext. Planning passe à 10 phases (installation → menuiseries). Linteaux désormais distribués exactement par niveau (divmod) — delta somme niveaux vs global ≤ ~5 € (arrondis qty).
+3. **Ventilation niveaux** : « Chantier, terrassement & fondations » / RDC / R+1… / « Charpente, couverture & menuiseries ». BC négoce : forfaits commandables (charpente bois, tuiles, fenêtres, plancher poutrelles-hourdis) sans +5 % chutes ; installation/engins/échafaudage/fondations_moe exclus.
+4. **Migration** : 3 études existantes recalculées (archivées en historique source `recalibrage`). ALAOUI : 44 009 → **159 846 € TTC** (133 205 € HT). UI réglages : 21 postes éditables, défauts 35 €/h.
+
+### Résultat ALAOUI Hicham (148,87 m², R+1)
+Chantier/engins 10,5 k + Terrassement 15 k + Fondations 12 k + Planchers 21,4 k (dallage RDC + plancher étage 15 k) + Élévations 21,5 k + Escalier 0,9 k + Charpente/Couverture 34 k + Menuiseries 18 k = 133,2 k€ HT → 159,8 k€ TTC. Planning 96 j (19,2 semaines, équipe 3, 35 €/h).
+
+### À suivre (validé utilisateur)
+- P1 : Rapport hebdo auto (email lundi : études ouvertes/acceptées/à relancer)
+- P1 : Acompte en ligne Stripe après signature sur /etude/:token
+- P1 : Partage équipe des études PC
+
