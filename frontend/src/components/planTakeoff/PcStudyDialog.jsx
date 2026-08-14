@@ -9,6 +9,8 @@ import PcOrderDialog from "@/components/planTakeoff/PcOrderDialog";
 import PcOrdersTracking from "@/components/planTakeoff/PcOrdersTracking";
 import PcWeather from "@/components/planTakeoff/PcWeather";
 import PcGantt from "@/components/planTakeoff/PcGantt";
+import { PcProgress } from "@/components/planTakeoff/PcProgress";
+import { PcSituations } from "@/components/planTakeoff/PcSituations";
 import { api, eur, num } from "@/lib/api";
 
 const RULES_LABELS = [
@@ -282,8 +284,12 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                   ouvrés + {study.planning.total_cure_days} jours de séchage béton,
                   soit ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semaines)</b> de chantier.
                 </p>
+                <PcProgress key={planId} planId={planId} planning={study.planning}
+                            progress={study.progress} />
               </section>
             )}
+
+            <PcSituations key={`sit-${planId}`} planId={planId} />
 
             {ordersReports.length > 0 && (
               <PcOrdersTracking planId={planId} orders={ordersReports} onSaved={onSent} />

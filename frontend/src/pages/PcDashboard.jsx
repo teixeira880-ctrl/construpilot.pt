@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { FileSearch, HardHat, CheckCircle2, CreditCard, Eye, BellRing, Send, FileStack, Users, Mail } from "lucide-react";
+import { FileSearch, HardHat, CheckCircle2, CreditCard, Eye, BellRing, Send, FileStack, Users, Mail, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, eur, num } from "@/lib/api";
 
 const STATUS_STYLE = {
+  "soldée": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
   "acompte versé": "bg-violet-500/15 text-violet-600 border-violet-500/40",
   "acceptée": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
   "ouverte": "bg-sky-500/15 text-sky-600 border-sky-500/40",
@@ -15,7 +16,7 @@ const STATUS_STYLE = {
   "générée": "bg-muted text-muted-foreground border-border",
 };
 const STATUS_ICON = {
-  "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
+  "soldée": BadgeCheck, "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
   "relancée": BellRing, "envoyée": Send, "générée": FileStack,
 };
 
@@ -41,7 +42,7 @@ export default function PcDashboard() {
 
   const list = studies || [];
   const totalTtc = list.reduce((s, x) => s + (x.ttc || 0), 0);
-  const accepted = list.filter((x) => ["acceptée", "acompte versé"].includes(x.status)).length;
+  const accepted = list.filter((x) => ["acceptée", "acompte versé", "soldée"].includes(x.status)).length;
   const deposits = list.reduce((s, x) => s + (x.deposit_amount || 0), 0);
 
   return (

@@ -13,7 +13,8 @@ from pydantic import BaseModel, EmailStr, Field
 from core.db import db
 from core.security import admin_user, current_user
 from engines.pc_export import (build_deposit_invoice_pdf, build_pc_docx,
-                               build_pc_pdf, build_purchase_order_pdf)
+                               build_pc_pdf, build_purchase_order_pdf,
+                               build_situation_invoice_pdf)
 from engines.pc_study import (CREW_SIZE, DEFAULT_MARGIN_PCT, HOURLY_RATE_EUR,
                               PC_UNIT_PRICES, analyze_pc_page,
                               build_purchase_order_items, build_study,
@@ -38,16 +39,17 @@ DEFAULT_DEPOSIT_PCT = 30.0
 DEFAULT_DEPOSIT_REMINDER_DAYS = 3
 
 
-async def _next_invoice_no(user_id: str) -> str:
-    """Numérotation séquentielle des factures d'acompte, par pro et par année."""
+async def _next_invoice_no(user_id: str, kind: str = "deposit",
+                           prefix: str = "AC") -> str:
+    """Numérotation séquentielle des factures, par pro / type / année."""
     from datetime import datetime, timezone
     from pymongo import ReturnDocument
     year = datetime.now(timezone.utc).year
     c = await db.counters.find_one_and_update(
-        {"_id": f"pc_deposit_invoice_{user_id}_{year}"},
+        {"_id": f"pc_{kind}_invoice_{user_id}_{year}"},
         {"$inc": {"seq": 1}}, upsert=True,
         return_document=ReturnDocument.AFTER)
-    return f"AC-{year}-{int(c['seq']):04d}"
+    return f"{prefix}-{year}-{int(c['seq']):04d}"
 
 
 async def _pc_owner_id(plan_id: str, user: dict, write: bool = False) -> str:
@@ -197,6 +199,151 @@ async def get_pc_history(plan_id: str, user=Depends(current_user)) -> dict:
         {"plan_id": plan_id},
         {"_id": 0}).sort("saved_at", -1).to_list(20)
     return {"history": rows}
+
+
+# ---- Avancement chantier (visible par le client) ---------------------------
+
+def _progress_view(study: dict) -> dict:
+    phases = (study.get("planning") or {}).get("phases") or []
+    done = set((study.get("progress") or {}).get("done") or [])
+    items = [{"name": ph["name"], "work_days": ph["work_days"], "done": i in done}
+             for i, ph in enumerate(phases)]
+    done_count = len([x for x in items if x["done"]])
+    return {"phases": items, "done_count": done_count, "total": len(items),
+            "pct": round(100 * done_count / len(items)) if items else 0,
+            "updated_at": (study.get("progress") or {}).get("updated_at")}
+
+
+class PcProgressIn(BaseModel):
+    done: list[int] = Field(default_factory=list, max_length=30)
+
+
+@router.post("/{plan_id}/pc-study/progress")
+async def set_pc_progress(plan_id: str, body: PcProgressIn,
+                          user=Depends(current_user)) -> dict:
+    """Coche les phases terminées — le client les voit sur sa page /etude."""
+    p = await _plan_and_study(plan_id, user, write=True)
+    n = len((p["pc_study"].get("planning") or {}).get("phases") or [])
+    done = sorted({i for i in body.done if 0 <= i < n})
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {"pc_study.progress": {"done": done, "updated_at": _now()},
+                  "updated_at": _now()}})
+    return {"ok": True, "done": done, "total": n,
+            "pct": round(100 * len(done) / n) if n else 0}
+
+
+# ---- Situations de travaux & solde (facturation d'avancement) ---------------
+
+def _billing_summary(p: dict) -> dict:
+    ttc = float((p.get("pc_study", {}).get("totals") or {}).get("ttc") or 0)
+    sends = [s for s in p.get("sent_reports") or [] if s.get("kind") == "pc_study"]
+    deposit_paid = round(sum(s.get("deposit_amount") or 0 for s in sends), 2)
+    sits = p.get("pc_situations") or []
+    sit_invoiced = round(sum(s.get("amount") or 0 for s in sits), 2)
+    sit_paid = round(sum(s.get("amount") or 0 for s in sits if s.get("paid")), 2)
+    invoiced = round(deposit_paid + sit_invoiced, 2)
+    paid = round(deposit_paid + sit_paid, 2)
+    return {"total_ttc": ttc, "deposit_paid": deposit_paid,
+            "invoiced": invoiced, "paid": paid,
+            "remaining_to_invoice": round(max(0.0, ttc - invoiced), 2),
+            "remaining_to_pay": round(max(0.0, ttc - paid), 2)}
+
+
+_SIT_PROJ = {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1,
+             "pc_study.totals": 1, "sent_reports": 1, "pc_situations": 1}
+
+
+class PcSituationIn(BaseModel):
+    pct_cumul: float | None = Field(default=None, ge=1, le=100)
+    solde: bool = False
+    note: str | None = Field(default=None, max_length=300)
+
+
+@router.get("/{plan_id}/pc-study/situations")
+async def list_pc_situations(plan_id: str, user=Depends(current_user)) -> dict:
+    await _pc_owner_id(plan_id, user)
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id}, _SIT_PROJ)
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    return {"situations": p.get("pc_situations") or [],
+            "billing": _billing_summary(p)}
+
+
+@router.post("/{plan_id}/pc-study/situations")
+async def create_pc_situation(plan_id: str, body: PcSituationIn,
+                              user=Depends(current_user)) -> dict:
+    """Émet une facture de situation (avancement cumulé %) ou de solde,
+    l'envoie au client avec un lien de paiement en ligne."""
+    await _pc_owner_id(plan_id, user, write=True)
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id}, _SIT_PROJ)
+    if not p or not p.get("pc_study"):
+        raise HTTPException(400, "Aucune étude PC — lancez d'abord l'analyse")
+    bs = _billing_summary(p)
+    if bs["total_ttc"] <= 0:
+        raise HTTPException(400, "Total du marché invalide")
+    if body.solde:
+        amount = bs["remaining_to_invoice"]
+        pct_cumul = 100.0
+    else:
+        if not body.pct_cumul:
+            raise HTTPException(422, "Indiquez l'avancement cumulé (%) ou facturez le solde")
+        target = round(bs["total_ttc"] * body.pct_cumul / 100.0, 2)
+        amount = round(target - bs["invoiced"], 2)
+        pct_cumul = float(body.pct_cumul)
+    if amount < 1:
+        raise HTTPException(400, f"Rien à facturer : {bs['invoiced']} € déjà facturés "
+                                 f"sur {bs['total_ttc']} € TTC — augmentez l'avancement")
+    sit_no = len(p.get("pc_situations") or []) + 1
+    invoice_no = await _next_invoice_no(p["user_id"], kind="situation", prefix="SIT")
+    sit = {"sit_id": f"sit_{secrets.token_hex(5)}", "sit_no": sit_no,
+           "invoice_no": invoice_no, "is_final": bool(body.solde),
+           "pct_cumul": pct_cumul, "amount": amount,
+           "note": (body.note or "").strip(), "paid": False,
+           "created_at": _now(), "created_by": user["user_id"]}
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$push": {"pc_situations": sit}, "$set": {"updated_at": _now()}})
+
+    # Email client : facture + lien de paiement en ligne
+    entry = next((s for s in reversed(p.get("sent_reports") or [])
+                  if s.get("kind") == "pc_study" and s.get("sign_token")), None)
+    emailed = False
+    if entry and entry.get("to_email"):
+        try:
+            import html as _html
+            from engines.emailer import send_email_with_pdf, wrap_html
+            branding = await _resolve_branding(p["user_id"])
+            company = (branding or {}).get("company_name") or "ConstruPilot"
+            filename = p.get("filename") or "permis de construire"
+            pdf = build_situation_invoice_pdf(p, branding, {
+                **sit, "total_ttc": bs["total_ttc"],
+                "already_invoiced": bs["invoiced"],
+                "client_name": entry.get("accepted_by"),
+                "client_email": entry.get("to_email")})
+            frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
+            link = f"{frontend}/etude/{entry['sign_token']}" if frontend else None
+            label = "de solde" if sit["is_final"] else f"de situation n° {sit_no}"
+            await send_email_with_pdf(
+                entry["to_email"],
+                f"Facture {label} {invoice_no} — {amount} € · {filename}",
+                wrap_html(
+                    f"Facture {label} — {invoice_no}",
+                    f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
+                    f"<p>Les travaux du chantier « {_html.escape(filename)} » avancent"
+                    f"{'' if sit['is_final'] else f' ({pct_cumul:g} % réalisés)'} : "
+                    f"vous trouverez en pièce jointe la facture {label} de "
+                    f"<b>{amount} € TTC</b>.</p>"
+                    "<p>Vous pouvez la régler en ligne par carte bancaire en un clic "
+                    f"depuis votre espace chantier.<br/>{_html.escape(company)}</p>",
+                    cta_url=link, cta_label="Régler en ligne par carte"),
+                pdf, filename=f"facture-{invoice_no}.pdf")
+            emailed = True
+        except Exception as e:
+            logger.warning(f"pc situation email {plan_id}: {e}")
+
+    p2 = await db.plans_takeoff.find_one({"plan_id": plan_id}, _SIT_PROJ)
+    return {"situation": sit, "billing": _billing_summary(p2), "emailed": emailed}
 
 
 # ---- Bon de commande fournisseur (par niveau) ------------------------------
@@ -741,7 +888,7 @@ async def get_pc_sign(token: str) -> dict:
     p = await db.plans_takeoff.find_one(
         {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "pc_study": 1,
-         "sent_reports.$": 1})
+         "pc_situations": 1, "sent_reports.$": 1})
     if not p or not p.get("pc_study"):
         raise HTTPException(404, "Lien invalide ou expiré")
     entry = (p.get("sent_reports") or [{}])[0]
@@ -768,16 +915,24 @@ async def get_pc_sign(token: str) -> dict:
         "accepted": bool(entry.get("accepted")),
         "accepted_at": entry.get("accepted_at"),
         "accepted_by": entry.get("accepted_by"),
+        "accepted_signature": entry.get("accepted_signature"),
         "deposit": {"pct": dep_pct, "amount": dep_amount,
                     "paid": bool(entry.get("deposit_paid")),
                     "paid_at": entry.get("deposit_at"),
                     "paid_amount": entry.get("deposit_amount"),
                     "invoice_no": entry.get("deposit_invoice_no")},
+        "progress": _progress_view(study),
+        "situations": [{k: s.get(k) for k in
+                        ("sit_id", "sit_no", "invoice_no", "is_final", "pct_cumul",
+                         "amount", "paid", "paid_at", "created_at")}
+                       for s in p.get("pc_situations") or []],
+        "billing": _billing_summary(p),
     }
 
 
 class PcAcceptIn(BaseModel):
     name: str = Field(min_length=2, max_length=80)
+    signature_data: str | None = Field(default=None, max_length=300_000)
 
 
 @pc_router.post("/sign/{token}/accept")
@@ -791,13 +946,18 @@ async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
     if entry.get("accepted"):
         return {"ok": True, "already": True, "accepted_at": entry.get("accepted_at")}
     now = _now()
+    sig = (body.signature_data or "").strip()
+    if sig and not sig.startswith("data:image/"):
+        raise HTTPException(422, "Signature invalide")
+    upd = {"sent_reports.$.accepted": True,
+           "sent_reports.$.accepted_at": now,
+           "sent_reports.$.accepted_by": body.name.strip(),
+           "sent_reports.$.opened": True,
+           "sent_reports.$.opened_at": entry.get("opened_at") or now}
+    if sig:
+        upd["sent_reports.$.accepted_signature"] = sig
     await db.plans_takeoff.update_one(
-        {"sent_reports.sign_token": token},
-        {"$set": {"sent_reports.$.accepted": True,
-                  "sent_reports.$.accepted_at": now,
-                  "sent_reports.$.accepted_by": body.name.strip(),
-                  "sent_reports.$.opened": True,
-                  "sent_reports.$.opened_at": entry.get("opened_at") or now}})
+        {"sent_reports.sign_token": token}, {"$set": upd})
     try:
         import html as _html
         from engines.emailer import send_email, wrap_html
@@ -998,9 +1158,9 @@ async def pc_deposit_invoice(token: str):
 
 @pc_router.get("/deposit/status/{session_id}")
 async def pc_deposit_status(session_id: str) -> dict:
-    """Statut public du paiement d'acompte (polling au retour de Stripe)."""
-    rec = await db.payment_transactions.find_one(
-        {"session_id": session_id, "type": "pc_deposit"}, {"_id": 0})
+    """Statut public d'un paiement (acompte ou situation) — polling au retour Stripe."""
+    q = {"session_id": session_id, "type": {"$in": ["pc_deposit", "pc_situation"]}}
+    rec = await db.payment_transactions.find_one(q, {"_id": 0})
     if not rec:
         raise HTTPException(404, "Session inconnue")
     if rec.get("payment_status") != "paid":
@@ -1013,10 +1173,12 @@ async def pc_deposit_status(session_id: str) -> dict:
                     {"$set": {"status": "completed", "payment_status": "paid",
                               "stripe_payment_intent_id": s.payment_intent,
                               "updated_at": _now()}})
-                rec = await db.payment_transactions.find_one(
-                    {"session_id": session_id}, {"_id": 0})
+                rec = await db.payment_transactions.find_one(q, {"_id": 0})
                 if upd.modified_count:
-                    await _apply_pc_deposit(rec)
+                    if rec.get("type") == "pc_situation":
+                        await _apply_pc_situation(rec)
+                    else:
+                        await _apply_pc_deposit(rec)
             elif s.status == "expired":
                 await db.payment_transactions.update_one(
                     {"session_id": session_id},
@@ -1026,8 +1188,148 @@ async def pc_deposit_status(session_id: str) -> dict:
         except Exception as e:
             logger.warning(f"pc deposit status poll {session_id}: {e}")
     return {"session_id": session_id, "status": rec.get("status"),
-            "payment_status": rec.get("payment_status"),
+            "payment_status": rec.get("payment_status"), "type": rec.get("type"),
             "amount": round((rec.get("amount_cents") or 0) / 100.0, 2)}
+
+
+@pc_router.post("/sign/{token}/situation/{sit_id}/checkout")
+async def pc_situation_checkout(token: str, sit_id: str,
+                                body: PcDepositCheckoutIn) -> dict:
+    """Session Stripe pour régler une situation de travaux (page publique)."""
+    import stripe
+    p = await db.plans_takeoff.find_one(
+        {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "pc_situations": 1})
+    if not p:
+        raise HTTPException(404, "Lien invalide ou expiré")
+    sit = next((s for s in p.get("pc_situations") or []
+                if s.get("sit_id") == sit_id), None)
+    if not sit:
+        raise HTTPException(404, "Situation introuvable")
+    if sit.get("paid"):
+        raise HTTPException(400, "Cette facture a déjà été réglée — merci !")
+    amount_cents = int(round(float(sit["amount"]) * 100))
+    if amount_cents < 100:
+        raise HTTPException(400, "Montant invalide")
+    origin = body.origin_url.rstrip("/")
+    filename = (p.get("filename") or "étude gros œuvre")[:80]
+    label = "Solde" if sit.get("is_final") else f"Situation n° {sit['sit_no']}"
+    try:
+        session = stripe.checkout.Session.create(
+            line_items=[{"price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"{label} ({sit['invoice_no']}) — {filename}"},
+                "unit_amount": amount_cents}, "quantity": 1}],
+            mode="payment",
+            success_url=f"{origin}/etude/{token}?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{origin}/etude/{token}",
+            metadata={"type": "pc_situation", "sit_id": sit_id,
+                      "sign_token": token, "plan_id": p["plan_id"]})
+    except Exception:
+        logger.exception("stripe pc situation checkout")
+        raise HTTPException(502, "Paiement indisponible — réessayez plus tard")
+    await db.payment_transactions.insert_one({
+        "session_id": session.id, "user_id": p["user_id"], "plan_id": p["plan_id"],
+        "sign_token": token, "sit_id": sit_id, "type": "pc_situation",
+        "amount_cents": amount_cents, "currency": "eur", "mode": "payment",
+        "status": "initiated", "payment_status": "pending",
+        "created_at": _now(), "updated_at": _now()})
+    return {"url": session.url, "session_id": session.id,
+            "amount": round(amount_cents / 100.0, 2)}
+
+
+async def _apply_pc_situation(rec: dict) -> None:
+    """Marque la situation payée (idempotent) + facture acquittée au client,
+    notification pro + équipe."""
+    sit_id = rec.get("sit_id")
+    paid_at = _now()
+    r = await db.plans_takeoff.update_one(
+        {"pc_situations": {"$elemMatch": {"sit_id": sit_id, "paid": {"$ne": True}}}},
+        {"$set": {"pc_situations.$.paid": True,
+                  "pc_situations.$.paid_at": paid_at,
+                  "pc_situations.$.paid_session_id": rec.get("session_id")}})
+    if not r.modified_count:
+        return
+    try:
+        import html as _html
+        from engines.emailer import send_email, send_email_with_pdf, wrap_html
+        p = await db.plans_takeoff.find_one({"pc_situations.sit_id": sit_id}, _SIT_PROJ)
+        if not p:
+            return
+        sit = next(s for s in p["pc_situations"] if s["sit_id"] == sit_id)
+        bs = _billing_summary(p)
+        filename = p.get("filename") or "permis de construire"
+        amount = sit["amount"]
+        label = "du solde" if sit.get("is_final") else f"de la situation n° {sit['sit_no']}"
+        entry = next((s for s in reversed(p.get("sent_reports") or [])
+                      if s.get("kind") == "pc_study" and s.get("sign_token")), None)
+        branding = await _resolve_branding(p["user_id"])
+        pdf = None
+        try:
+            pdf = build_situation_invoice_pdf(p, branding, {
+                **sit, "total_ttc": bs["total_ttc"],
+                "already_invoiced": round(bs["invoiced"] - amount, 2),
+                "session_id": rec.get("session_id"),
+                "client_name": (entry or {}).get("accepted_by"),
+                "client_email": (entry or {}).get("to_email")})
+        except Exception:
+            logger.exception("pc situation invoice pdf")
+        if entry and entry.get("to_email") and pdf:
+            company = (branding or {}).get("company_name") or "ConstruPilot"
+            await send_email_with_pdf(
+                entry["to_email"],
+                f"Reçu — facture {sit['invoice_no']} acquittée · {filename}",
+                wrap_html("Paiement reçu — merci !",
+                          f"<p>Nous avons bien reçu votre règlement {label} : "
+                          f"<b>{amount} €</b> pour le chantier "
+                          f"« {_html.escape(filename)} ». La facture acquittée est "
+                          f"en pièce jointe.</p><p>{_html.escape(company)}</p>"),
+                pdf, filename=f"facture-{sit['invoice_no']}.pdf")
+        solde_txt = (" Le marché est intégralement soldé 🎉"
+                     if bs["remaining_to_pay"] <= 0.01 else
+                     f" Reste à encaisser : {bs['remaining_to_pay']} € TTC.")
+        html = wrap_html(
+            "Paiement de situation reçu",
+            f"<p>Le règlement {label} (<b>{amount} €</b>, facture "
+            f"{sit['invoice_no']}) vient d'être reçu par carte pour l'étude "
+            f"« {_html.escape(filename)} ».{solde_txt}</p>")
+        subject = f"💶 {amount} € reçus ({sit['invoice_no']}) · {filename}"
+        u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1})
+        if u and u.get("email"):
+            await send_email(u["email"], subject, html)
+        for m in await _team_members(p["user_id"]):
+            await send_email(m["email"], f"💶 Situation réglée (équipe) · {filename}", html)
+    except Exception as e:
+        logger.warning(f"pc situation notify fail {sit_id}: {e}")
+
+
+@pc_router.get("/sign/{token}/situation/{sit_id}/invoice")
+async def pc_situation_invoice(token: str, sit_id: str):
+    """Facture de situation / solde en PDF (public — espace chantier client)."""
+    p = await db.plans_takeoff.find_one(
+        {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "pc_study.totals": 1,
+         "pc_situations": 1, "sent_reports": 1})
+    if not p:
+        raise HTTPException(404, "Lien invalide ou expiré")
+    sit = next((s for s in p.get("pc_situations") or []
+                if s.get("sit_id") == sit_id), None)
+    if not sit:
+        raise HTTPException(404, "Situation introuvable")
+    bs = _billing_summary(p)
+    entry = next((s for s in reversed(p.get("sent_reports") or [])
+                  if s.get("kind") == "pc_study" and s.get("sign_token")), None)
+    branding = await _resolve_branding(p["user_id"])
+    pdf = build_situation_invoice_pdf(p, branding, {
+        **sit, "total_ttc": bs["total_ttc"],
+        "already_invoiced": round(bs["invoiced"] - float(sit["amount"]), 2),
+        "session_id": sit.get("paid_session_id"),
+        "client_name": (entry or {}).get("accepted_by"),
+        "client_email": (entry or {}).get("to_email")})
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="facture-{sit["invoice_no"]}.pdf"'})
 
 
 # ---- Tableau de bord des études PC ----------------------------------------
@@ -1047,8 +1349,14 @@ def _study_row(p: dict) -> dict:
         status = "acceptée"
     if any(s.get("deposit_paid") for s in sends):
         status = "acompte versé"
+    sits = p.get("pc_situations") or []
     st = p.get("pc_study") or {}
     t = st.get("totals") or {}
+    paid_total = round(sum(s.get("deposit_amount") or 0 for s in sends)
+                       + sum(s.get("amount") or 0 for s in sits if s.get("paid")), 2)
+    if sits and all(s.get("paid") for s in sits) and t.get("ttc") \
+            and paid_total >= float(t["ttc"]) - 0.01:
+        status = "soldée"
     return {
         "plan_id": p["plan_id"], "filename": p.get("filename"),
         "generated_at": st.get("generated_at"),
@@ -1063,7 +1371,7 @@ def _study_row(p: dict) -> dict:
 
 
 _DASH_PROJ = {"_id": 0, "plan_id": 1, "filename": 1, "user_id": 1,
-              "sent_reports": 1, "pc_study.totals": 1,
+              "sent_reports": 1, "pc_situations": 1, "pc_study.totals": 1,
               "pc_study.generated_at": 1, "pc_study.custom_pricing": 1,
               "pc_study.planning.total_days": 1}
 
@@ -1104,7 +1412,7 @@ async def _send_weekly_pc_report_email(u: dict, rows: list[dict]) -> None:
     import html as _html
     from engines.emailer import send_email, wrap_html
 
-    accepted = [r for r in rows if r["status"] in ("acceptée", "acompte versé")]
+    accepted = [r for r in rows if r["status"] in ("acceptée", "acompte versé", "soldée")]
     opened = [r for r in rows if r["status"] == "ouverte"]
     to_chase = [r for r in rows if r["status"] in ("envoyée", "relancée")]
     pipeline = round(sum(r.get("ttc") or 0 for r in rows), 2)

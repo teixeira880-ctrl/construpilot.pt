@@ -2105,3 +2105,20 @@ Chantier/engins 10,5 k + Terrassement 15 k + Fondations 12 k + Planchers 21,4 k 
 ### État données
 - Facture backfill AC-2026-0001 sur l'acompte déjà payé (plan_619e41f98d6b). ALAOUI intact (207 823,01 € TTC, aucun envoi).
 
+---
+
+## Itération 78 (14/06/2026) — SITUATIONS & SOLDE + SIGNATURE DESSINÉE + SUIVI CHANTIER CLIENT
+
+### Livré (testing agent iter67 : backend 9/9, frontend 100 % avec paiement Stripe réel)
+1. **Situations & solde** : `POST /api/takeoffs/{plan_id}/pc-study/situations` {pct_cumul | solde:true} → montant = TTC × % cumulé − déjà facturé (acompte compris). Facture `SIT-{année}-NNNN` (build_situation_invoice_pdf — situation ou solde, acquittée/à régler, déjà facturé + reste) envoyée au client avec CTA « Régler en ligne par carte ». Paiement public : `POST /api/pc/sign/{token}/situation/{sit_id}/checkout` (Stripe, type pc_situation) ; statut via `GET /api/pc/deposit/status/{sid}` généralisé ; `_apply_pc_situation` idempotent → facture acquittée au client + notif pro/équipe (+ « marché intégralement soldé » si reste=0). Facture PDF publique : `GET /api/pc/sign/{token}/situation/{sit_id}/invoice`. UI pro : section `PcSituations` (Marché/Facturé/Encaissé/Reste + liste + form % + bouton solde). Statut dashboard « soldée » quand tout encaissé. Données stockées dans `plan.pc_situations`.
+2. **Signature dessinée** : canvas pointer-events (`SignatureCanvas.jsx`, souris + tactile, bouton effacer) sur /etude/{token} ; `signature_data` (data:image/png) stockée dans `sent_reports.$.accepted_signature`, affichée dans le bandeau accepté et renvoyée par l'API publique.
+3. **Suivi chantier client** : `POST /api/takeoffs/{plan_id}/pc-study/progress` {done:[indices]} (écriture équipe soumise à team_can_edit) ; UI pro `PcProgress` (checkboxes par phase + barre %) dans le dialog planning ; côté client : section « Avancement de votre chantier » (barre % + phases cochées) sur /etude/{token}. Stocké dans `pc_study.progress` (préservé au recompute).
+
+### État données de test
+- plan_619e41f98d6b : SIT-2026-0001 payée en réel (44 629,05 €), SIT-2026-0002 (80 %) et SIT-2026-0003 (solde) émises non payées → 100 % facturé, encaissé 89 258,10 €, statut « acompte versé ». Progress 4/8 phases (50 %).
+- plan_6696782f92ca : tokens pcs_00129d5b41fa9098 (accepté sans signature) et pcs_3d34bedde48d21fb (accepté avec signature dessinée).
+
+### Note testing agent (backlog technique)
+- plans_pc.py ≈ 1 500 lignes — scission en modules recommandée (non demandée par l'utilisateur).
+- Test Playwright du canvas : dispatcher des PointerEvent (pointerId) — page.mouse seul ne déclenche pas hasInk.
+

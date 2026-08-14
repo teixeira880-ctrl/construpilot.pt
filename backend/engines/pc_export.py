@@ -407,3 +407,77 @@ def build_deposit_invoice_pdf(plan: dict, branding: dict | None, inv: dict) -> b
     _story_footer(story, S)
     doc.build(story)
     return buf.getvalue()
+
+
+def build_situation_invoice_pdf(plan: dict, branding: dict | None, inv: dict) -> bytes:
+    """Facture de situation de travaux (ou de solde) — acquittée ou à régler."""
+    from datetime import date
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                            topMargin=16 * mm, bottomMargin=16 * mm)
+    S = _styles()
+    story: list = []
+    _story_header_branding(story, branding, S)
+    kind = "FACTURE DE SOLDE" if inv.get("is_final") else "FACTURE DE SITUATION"
+    status = "ACQUITTÉE" if inv.get("paid") else "À RÉGLER"
+    story.append(Paragraph(f"{kind} — {status}", S["kicker"]))
+    story.append(Paragraph(inv["invoice_no"], S["h1"]))
+    day = _fr_long(inv["created_at"]) if inv.get("created_at") else date.today().strftime("%d/%m/%Y")
+    story.append(Paragraph(
+        f"Date : {day} · Chantier : {plan.get('filename') or 'permis de construire'}",
+        S["muted"]))
+    client = inv.get("client_name") or ""
+    if client or inv.get("client_email"):
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(
+            f"Client : <b>{client or inv.get('client_email')}</b>"
+            + (f" · {inv['client_email']}" if client and inv.get("client_email") else ""),
+            S["body"]))
+    story.append(Spacer(1, 6))
+
+    amount = float(inv["amount"])
+    ht = round(amount / 1.2, 2)
+    tva = round(amount - ht, 2)
+    total_ttc = float(inv.get("total_ttc") or 0)
+    if inv.get("is_final"):
+        desig = "Solde du marché — travaux gros œuvre achevés"
+    else:
+        desig = (f"Situation n° {inv.get('sit_no')} — avancement cumulé "
+                 f"{inv.get('pct_cumul', 0):g} % du marché")
+    if inv.get("note"):
+        desig += f" · {inv['note']}"
+    rows = [["Désignation", "Montant HT", "TVA 20 %", "Montant TTC"],
+            [Paragraph(desig, S["body"]), _fmt(ht, "€"), _fmt(tva, "€"), _fmt(amount, "€")],
+            ["", "", "TOTAL " + ("ACQUITTÉ" if inv.get("paid") else "À RÉGLER"),
+             _fmt(amount, "€")]]
+    story.append(_table(rows, [88 * mm, 30 * mm, 30 * mm, 30 * mm],
+                        [("BACKGROUND", (0, 0), (-1, 0), DARK),
+                         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+                         ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                         ("FONTNAME", (2, 2), (-1, 2), "Helvetica-Bold"),
+                         ("TEXTCOLOR", (3, 2), (3, 2), ORANGE)]))
+    story.append(Spacer(1, 5))
+    already = float(inv.get("already_invoiced") or 0)
+    if total_ttc:
+        story.append(Paragraph(
+            f"Marché total : <b>{_fmt(total_ttc, '€')} TTC</b> · déjà facturé avant "
+            f"cette situation (acompte compris) : {_fmt(already, '€')} · reste à "
+            f"facturer après cette situation : "
+            f"<b>{_fmt(round(max(0.0, total_ttc - already - amount), 2), '€')}</b>.",
+            S["muted"]))
+    if inv.get("paid"):
+        paid_date = _fr_long(inv["paid_at"]) if inv.get("paid_at") else ""
+        story.append(Paragraph(
+            f"Facture acquittée — règlement reçu par carte bancaire le {paid_date} "
+            f"(réf. paiement {str(inv.get('session_id') or '')[:28]}).", S["body"]))
+    else:
+        story.append(Paragraph(
+            "Règlement en ligne par carte bancaire via le lien sécurisé transmis "
+            "par email, ou par virement à réception.", S["body"]))
+    story.append(Paragraph(
+        "TVA acquittée sur les encaissements. Document généré par ConstruPilot.", S["muted"]))
+    _story_footer(story, S)
+    doc.build(story)
+    return buf.getvalue()
