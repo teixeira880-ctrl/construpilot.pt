@@ -2034,3 +2034,21 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 ### Tests
 - `test_iter71_pc_orders.py` 10/10 : items engine (+5 % chutes, briques+colle, fouilles exclues), PDF BC, 400 niveau inconnu, 422 email, historisation purchase_order, versions history +1 après recompute, 401 sans auth, roundtrip notify both+phone, 422 mode invalide, pixel toujours 200.
 - Piège récurrent (3ᵉ fois) : éditions parallèles sur le MÊME fichier se sont écrasées (defaults notify_on_open perdu). Règle : sur plans_pc.py, séquencer les éditions ou re-vérifier par grep après chaque batch.
+
+---
+
+## Itération 74 (14/06/2026) — BUILD FINAL Étude PC : météo, réponses négoces, signature en ligne, tableau de bord
+
+### Livré (testing agent iter65 : backend 11/11 + frontend 95→100 % après finitions)
+1. **Météo Chantier** : `engines/pc_weather.py` (Open-Meteo, gratuit sans clé : géocodage + prévisions 16 j). Route GET `/api/pc/weather?city=`. UI `PcWeather.jsx` sous le Gantt : ville (persistée localStorage), cartes par phase de coulage béton (fondations/dalle/élévations/escalier) avec t°min/max, précipitations, badges « OK coulage » / « Pluie forte » (≥5 mm) / « Gel — coulage déconseillé » (≤0 °C), « Prévision indisponible (>16 j) ». `PcGantt.jsx` exporte `computeSchedule`.
+2. **Réponse Négoce** : POST `/takeoffs/{id}/purchase-orders/response` {ref, status en_attente|recu|retenu, quoted_ht, notes} (404 ref inconnue, 422 statut). UI `PcOrdersTracking.jsx` : table des BC (réf, négoce, indicatif HT, input devis reçu avec delta % vs étude, badge « Meilleure offre », select statut, save).
+3. **Signature Étude** : l'envoi client génère `sign_token` + bouton CTA orange « Consulter et accepter l'étude en ligne » dans l'email ({FRONTEND_URL}/etude/{token}). Routes publiques GET `/api/pc/sign/{token}` (résumé : totaux, lots, planning, demandes — pas de détails privés) + POST `.../accept` {name} (idempotent already:true, marque aussi opened, notifie le pro par email). Page publique `PcSignPage.jsx` (route /etude/:token, hors Shell) : cartes totaux, table lots, formulaire nom + checkbox + « J'accepte cette étude » → bloc vert accepté. Badge « Acceptée le … par X » dans la liste des envois du dialog.
+4. **Tableau de Bord PC** : GET `/api/pc/dashboard` → études avec statut dérivé (acceptée > ouverte > relancée > envoyée > générée), envois/BC counts, last_sent_to. Page `PcDashboard.jsx` (/etudes-pc, lien nav « Plus » > Études PC) : 3 cartes stats + table statuts colorés + bouton « Ouvrir » → deep-link `/plan?open={id}` qui charge le plan ET ouvre automatiquement le dialog Étude PC (PlanTakeoff useEffect ~221).
+
+### Notes de test
+- Faux positif testing agent « lien Plus>Études PC introuvable » : c'était l'overlay `onboarding-overlay` (OnboardingTour) qui bloquait les clics headless — le menu fonctionne (vérifié visuellement).
+- pytest `test_iter72_pc_final.py` (11 tests, créé par le testing agent) + iter69/70/71 : 51 tests module PC.
+- Refactor à prévoir (P2, signalé par testing agent) : `plans_pc.py` ~700 lignes (scinder pc_weather/sign/dashboard) ; `PlanTakeoff.jsx` 3222 lignes.
+
+### État global : MODULE ÉTUDE PC COMPLET ET TESTÉ EN RÉEL
+Analyse IA PC → devis gros œuvre (règles fixes) → niveaux → planning Gantt + météo → PDF/Word/Excel → envoi client (tracking, relance auto, signature en ligne, notification ouverture) → bons de commande négoces (envoi + suivi réponses) → prix personnalisables + historique versions → tableau de bord.

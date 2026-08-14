@@ -40,6 +40,7 @@ const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 // Raccourcis utilisateur connecté — dans le menu « Plus » (plus de chevauchement header)
 const USER_LINKS = [
   { to: "/devis", label: "Suivi devis", icon: LineChart },
+  { to: "/etudes-pc", label: "Études PC", icon: FileSearch },
   { to: "/equipe", label: "Équipe", icon: Users },
   { to: "/inviter", label: "Parrainer", icon: Sparkles },
 ];

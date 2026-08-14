@@ -218,6 +218,17 @@ export default function PlanTakeoff() {
     }
   }, [plan?.plan_id]);
 
+  // Deep-link ?open=<plan_id> (depuis le Tableau de bord PC)
+  useEffect(() => {
+    const pid = new URLSearchParams(window.location.search).get("open");
+    if (!pid) return;
+    api.get(`/takeoffs/${pid}`).then(({ data }) => {
+      setPlan(data);
+      setPageIndex(0);
+      if (data.pc_study) setPcDialog(true);
+    }).catch(() => toast.error("Impossible d'ouvrir ce plan"));
+  }, []);
+
   const savePlanDefaults = async (next) => {
     if (!plan?.plan_id) return;
     try {
@@ -1780,6 +1791,7 @@ export default function PlanTakeoff() {
                          planId={plan?.plan_id} onSent={refreshPlan}
                          onCompareSuppliers={comparePcSuppliers}
                          sentReports={(plan?.sent_reports || []).filter((s) => s.kind === "pc_study")}
+                         ordersReports={(plan?.sent_reports || []).filter((s) => s.kind === "purchase_order")}
                          onRecompute={recomputePcStudy} />
           <Button variant="outline"
                   onClick={() => { setEstimateDialog(true); setEstimateResult(null); }}

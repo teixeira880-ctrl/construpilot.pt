@@ -320,6 +320,14 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
         f"permis de construire « {_html.escape(filename)} » : quantités de béton, "
         "aciers, briques et devis détaillé par corps d'état.</p>" + recap)
     track_id = "pct_" + secrets.token_hex(6)
+    sign_token = "pcs_" + secrets.token_hex(8)
+    frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
+    if frontend:
+        html_body += (
+            f'<p style="margin:18px 0"><a href="{frontend}/etude/{sign_token}" '
+            'style="background:#FF5A00;color:#ffffff;padding:11px 24px;'
+            'border-radius:4px;text-decoration:none;font-weight:bold">'
+            "Consulter et accepter l'étude en ligne</a></p>")
     backend_public = os.getenv("PUBLIC_BACKEND_URL") or os.getenv("FRONTEND_URL") or ""
     if backend_public:
         html_body += (f'<img src="{backend_public}/api/pc/track/{track_id}" '
@@ -338,10 +346,10 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
         {"$push": {"sent_reports": {"$each": [{
             "kind": "pc_study", "to_email": body.to_email, "sent_at": _now(),
             "ttc": t.get("ttc"), "beton_m3": t.get("beton_m3"),
-            "track_id": track_id, "opened": False,
+            "track_id": track_id, "opened": False, "sign_token": sign_token,
         }], "$slice": -20}}})
     return {"ok": True, "sent_to": body.to_email, "ttc": t.get("ttc"),
-            "track_id": track_id}
+            "track_id": track_id, "sign_token": sign_token}
 
 
 # ---- Réglages étude PC (prix unitaires, équipe, taux horaire) ------------
@@ -537,3 +545,151 @@ async def _run_pc_reminders() -> dict:
 async def trigger_pc_reminders(user=Depends(admin_user)) -> dict:
     """Endpoint admin pour lancer manuellement les relances d'études PC."""
     return await _run_pc_reminders()
+
+
+# ---- Météo chantier (Open-Meteo, sans clé) --------------------------------
+
+@pc_router.get("/weather")
+async def pc_weather(city: str, user=Depends(current_user)) -> dict:
+    from engines.pc_weather import get_forecast
+    if not city.strip():
+        raise HTTPException(422, "Ville requise")
+    return await get_forecast(city.strip()[:60])
+
+
+# ---- Réponses négoces sur les bons de commande ----------------------------
+
+class PoResponseIn(BaseModel):
+    ref: str = Field(max_length=40)
+    status: str = Field(default="en_attente", pattern="^(en_attente|recu|retenu)$")
+    quoted_ht: float | None = Field(default=None, ge=0)
+    notes: str = Field(default="", max_length=300)
+
+
+@router.post("/{plan_id}/purchase-orders/response")
+async def record_po_response(plan_id: str, body: PoResponseIn,
+                             user=Depends(current_user)) -> dict:
+    r = await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"],
+         "sent_reports": {"$elemMatch": {"kind": "purchase_order",
+                                         "ref": body.ref}}},
+        {"$set": {"sent_reports.$.status": body.status,
+                  "sent_reports.$.quoted_ht": body.quoted_ht,
+                  "sent_reports.$.response_notes": body.notes,
+                  "sent_reports.$.response_at": _now()}})
+    if not r.matched_count:
+        raise HTTPException(404, "Bon de commande introuvable")
+    return {"ok": True, "ref": body.ref, "status": body.status}
+
+
+# ---- Acceptation de l'étude en ligne (page publique /etude/{token}) --------
+
+@pc_router.get("/sign/{token}")
+async def get_pc_sign(token: str) -> dict:
+    """Vue publique de l'étude pour acceptation client (résumé, sans détails privés)."""
+    p = await db.plans_takeoff.find_one(
+        {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "pc_study": 1,
+         "sent_reports.$": 1})
+    if not p or not p.get("pc_study"):
+        raise HTTPException(404, "Lien invalide ou expiré")
+    entry = (p.get("sent_reports") or [{}])[0]
+    study = p["pc_study"]
+    branding = await _resolve_branding(p["user_id"])
+    return {
+        "filename": p.get("filename"),
+        "company": (branding or {}).get("company_name"),
+        "generated_at": study.get("generated_at"),
+        "demandes": (study.get("demandes") or [])[:5],
+        "totals": study.get("totals") or {},
+        "lots": [{"lot": l["lot"],
+                  "total": round(sum(ln["total"] for ln in l["lines"]), 2)}
+                 for l in study.get("lots") or []],
+        "planning": {"total_days": (study.get("planning") or {}).get("total_days"),
+                     "total_weeks": (study.get("planning") or {}).get("total_weeks")},
+        "accepted": bool(entry.get("accepted")),
+        "accepted_at": entry.get("accepted_at"),
+        "accepted_by": entry.get("accepted_by"),
+    }
+
+
+class PcAcceptIn(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+
+
+@pc_router.post("/sign/{token}/accept")
+async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
+    p = await db.plans_takeoff.find_one(
+        {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
+        {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "sent_reports.$": 1})
+    if not p:
+        raise HTTPException(404, "Lien invalide ou expiré")
+    entry = (p.get("sent_reports") or [{}])[0]
+    if entry.get("accepted"):
+        return {"ok": True, "already": True, "accepted_at": entry.get("accepted_at")}
+    now = _now()
+    await db.plans_takeoff.update_one(
+        {"sent_reports.sign_token": token},
+        {"$set": {"sent_reports.$.accepted": True,
+                  "sent_reports.$.accepted_at": now,
+                  "sent_reports.$.accepted_by": body.name.strip(),
+                  "sent_reports.$.opened": True,
+                  "sent_reports.$.opened_at": entry.get("opened_at") or now}})
+    try:
+        import html as _html
+        from engines.emailer import send_email, wrap_html
+        u = await db.users.find_one({"user_id": p["user_id"]},
+                                    {"_id": 0, "email": 1})
+        if u and u.get("email"):
+            filename = p.get("filename") or "permis de construire"
+            await send_email(
+                u["email"],
+                f"✅ Étude acceptée par {body.name.strip()} · {filename}",
+                wrap_html("Étude acceptée !",
+                          f"<p><b>{_html.escape(body.name.strip())}</b> vient d'accepter "
+                          f"l'étude gros œuvre du chantier « {_html.escape(filename)} ». "
+                          "Vous pouvez lancer les commandes matériaux.</p>"))
+    except Exception as e:
+        logger.warning(f"pc accept notify fail {token}: {e}")
+    return {"ok": True, "accepted_at": now}
+
+
+# ---- Tableau de bord des études PC ----------------------------------------
+
+@pc_router.get("/dashboard")
+async def pc_dashboard(user=Depends(current_user)) -> dict:
+    plans = await db.plans_takeoff.find(
+        {"user_id": user["user_id"], "pc_study": {"$exists": True}},
+        {"_id": 0, "plan_id": 1, "filename": 1, "sent_reports": 1,
+         "pc_study.totals": 1, "pc_study.generated_at": 1,
+         "pc_study.custom_pricing": 1,
+         "pc_study.planning.total_days": 1}).to_list(100)
+    studies = []
+    for p in plans:
+        sends = [s for s in p.get("sent_reports") or []
+                 if s.get("kind") == "pc_study"]
+        orders = [s for s in p.get("sent_reports") or []
+                  if s.get("kind") == "purchase_order"]
+        status = "générée"
+        if sends:
+            status = "envoyée"
+        if any(s.get("reminder_sent") for s in sends):
+            status = "relancée"
+        if any(s.get("opened") for s in sends):
+            status = "ouverte"
+        if any(s.get("accepted") for s in sends):
+            status = "acceptée"
+        st = p.get("pc_study") or {}
+        t = st.get("totals") or {}
+        studies.append({
+            "plan_id": p["plan_id"], "filename": p.get("filename"),
+            "generated_at": st.get("generated_at"),
+            "ttc": t.get("ttc"), "beton_m3": t.get("beton_m3"),
+            "acier_kg": t.get("acier_kg"),
+            "total_days": (st.get("planning") or {}).get("total_days"),
+            "custom_pricing": bool(st.get("custom_pricing")),
+            "status": status, "sends": len(sends), "orders": len(orders),
+            "last_sent_to": sends[-1].get("to_email") if sends else None,
+        })
+    studies.sort(key=lambda x: x.get("generated_at") or "", reverse=True)
+    return {"studies": studies}

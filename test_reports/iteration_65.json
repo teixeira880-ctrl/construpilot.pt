@@ -1,0 +1,45 @@
+{
+  "summary": "Iter 65 final QA of ConstruPilot 'Étude PC' module — all 4 new features (Weather / PO response / Public signature / Dashboard) validated end-to-end in both backend (pytest 11/11) and frontend (browser automation).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Nav 'Plus' → 'Études PC'",
+        "issue": "Clicking header 'Plus' menu via text selector did not surface data-testid='nav-link-etudes-pc' item during automation. Radix dropdown may need explicit open via role=menu or the button may need a data-testid. Direct URL /etudes-pc works fine. Human users likely OK — flagged for E1 to verify manually.",
+        "affected_selectors": ["nav-link-etudes-pc"]
+      },
+      {
+        "flow": "Deep-link /plan?open=<id> from PC dashboard",
+        "issue": "Le plan est bien chargé automatiquement via useEffect (ligne ~222 de PlanTakeoff.jsx), mais le dialog Étude PC (pc-study-dialog) ne s'ouvre PAS automatiquement — il faut cliquer manuellement 'plan-pc-study-btn'. Spec dit 'LE PLAN S'OUVRE AUTOMATIQUEMENT' — ambigu, mais si l'intention est d'ouvrir aussi le dialog PC, il faut ajouter setPcDialog(true) après setPlan(data).",
+        "affected_selectors": ["pc-study-dialog"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter72_pc_final.py",
+    "/app/test_reports/pytest/iter72_results.xml"
+  ],
+  "action_items": [
+    "(Optionnel) PlanTakeoff.jsx ligne ~222 : après setPlan(data) dans le useEffect deep-link, ajouter setPcDialog(true) si data.pc_study existe, pour que le dashboard 'Ouvrir' bascule directement sur l'étude PC.",
+    "(Optionnel) Vérifier que le lien 'Études PC' du menu déroulant 'Plus' est bien rendu au hover/click — data-testid présent dans le code, peut-être problème d'ouverture du dropdown Radix depuis Playwright."
+  ],
+  "critical_code_review_comments": [
+    "plans_pc.py (696 lignes) — proche de la limite recommandée 700 lignes, envisager scission (weather, sign, dashboard) dans des sous-modules routes/pc_*.py",
+    "PlanTakeoff.jsx = 3222 lignes — largement au-dessus du seuil 700 lignes. Split urgent en pages/sections (upload, canvas, quantities, PcStudySection, ...)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter72_pc_final.py"
+  ],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "95% (features validées, 2 items mineurs)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!  ·  admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "PO response TEST_ persistée sur plan_619e41f98d6b (ref BC-F98D6B-N1-20260814, status=retenu, quoted_ht=4100) — pas critique, écrasable.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Suite pytest test_iter72_pc_final.py couvre: /api/pc/weather (200 Marseille, ville inconnue → error inline, 401 sans auth), /api/takeoffs/{plan}/purchase-orders/response (200 ref valide, 404 ref inconnue, 422 status invalide), /api/pc/sign/{token} (404 invalide, 200 valide avec accepted=true), /api/pc/sign/{token}/accept déjà accepté → already:true, /api/pc/dashboard (200 auth avec ≥1 étude 'acceptée', 401 sans auth). Playwright a validé: dashboard 3 études, bouton Ouvrir deep-link, plan_6ebd820859f2 study dialog + météo Marseille (3 cartes) + 'Prévision indisponible (>16j)' quand start-date >16j, plan_619e41f98d6b pc-orders-tracking avec ligne BC-F98D6B-N1-20260814 (4343€ étude, saisie 4100€, delta -5.6% affiché, toast 'Réponse enregistrée'), badge pc-sent-0-accepted 'Acceptée le 14/08/2026 par Jean Client', /etude/pcs_e2a4c343ca79d96e page publique OK avec bloc pc-sign-accepted par Jean Client. Régression légère : /estimation (maison OK), /plan (6 plans récents), login pro OK.",
+  "rca of the issue": "N/A - aucun bug bloquant. Les 2 remarques mineures (deep-link n'ouvre pas le dialog + link Plus>Études PC non résolu en headless) sont ergonomiques."
+}

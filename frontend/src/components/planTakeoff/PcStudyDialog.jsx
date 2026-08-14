@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart, Settings2, MailCheck, MailX, Layers, BellRing, History, PackageOpen, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart, Settings2, MailCheck, MailX, Layers, BellRing, History, PackageOpen, TrendingDown, TrendingUp, Minus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PcSendDialog from "@/components/planTakeoff/PcSendDialog";
 import PcSettingsDialog from "@/components/planTakeoff/PcSettingsDialog";
 import PcOrderDialog from "@/components/planTakeoff/PcOrderDialog";
+import PcOrdersTracking from "@/components/planTakeoff/PcOrdersTracking";
+import PcWeather from "@/components/planTakeoff/PcWeather";
 import PcGantt from "@/components/planTakeoff/PcGantt";
 import { api, eur, num } from "@/lib/api";
 
@@ -17,7 +19,7 @@ const RULES_LABELS = [
   "Aciers : semelles 15 kg/ml (3+3 HA10 + cadres HA6) · dalle 14 kg/m² (ST25C) · escalier 100 kg/m³",
 ];
 
-export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDownload, onDownloadXlsx, planId, onSent, onCompareSuppliers, sentReports = [], onRecompute }) {
+export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDownload, onDownloadXlsx, planId, onSent, onCompareSuppliers, sentReports = [], ordersReports = [], onRecompute }) {
   const [sendOpen, setSendOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [ganttStart, setGanttStart] = useState(() => new Date().toISOString().slice(0, 10));
@@ -245,6 +247,7 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                   )}
                 </h3>
                 <PcGantt planning={study.planning} start={ganttStart} onStartChange={setGanttStart} />
+                <PcWeather planning={study.planning} start={ganttStart} />
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
@@ -276,6 +279,10 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                   soit ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semaines)</b> de chantier.
                 </p>
               </section>
+            )}
+
+            {ordersReports.length > 0 && (
+              <PcOrdersTracking planId={planId} orders={ordersReports} onSaved={onSent} />
             )}
 
             {history.length > 0 && (
@@ -356,6 +363,13 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                           <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-muted-foreground"
                                  data-testid={`pc-sent-${i}-status`}>
                             <MailX className="h-3 w-3" /> Non ouvert
+                          </Badge>
+                        )}
+                        {s.accepted && (
+                          <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/20 text-emerald-700 border border-emerald-500/50 hover:bg-emerald-500/20"
+                                 data-testid={`pc-sent-${i}-accepted`}>
+                            <CheckCircle2 className="h-3 w-3" />
+                            Acceptée le {new Date(s.accepted_at).toLocaleDateString("fr-FR")} par {s.accepted_by}
                           </Badge>
                         )}
                         {s.reminder_sent && (

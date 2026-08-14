@@ -8,23 +8,25 @@ const fmt = (d) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-dig
 const fmtLong = (d) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const COLORS = ["#f59e0b", "#f97316", "#0ea5e9", "#10b981", "#8b5cf6"];
 
+export const computeSchedule = (planning, start) => {
+  let cursor = skipWE(new Date(start + "T00:00:00"));
+  return (planning?.phases || []).map((ph) => {
+    const workStart = skipWE(cursor);
+    const d = new Date(workStart);
+    let remaining = ph.work_days - 1;
+    while (remaining > 0) { d.setDate(d.getDate() + 1); if (!isWE(d)) remaining--; }
+    const workEnd = new Date(d);
+    const cureEnd = new Date(workEnd);
+    cureEnd.setDate(cureEnd.getDate() + ph.cure_days);
+    cursor = new Date(cureEnd);
+    cursor.setDate(cursor.getDate() + 1);
+    return { ...ph, workStart, workEnd, cureEnd };
+  });
+};
+
 export default function PcGantt({ planning, start, onStartChange }) {
 
-  const rows = useMemo(() => {
-    let cursor = skipWE(new Date(start + "T00:00:00"));
-    return (planning?.phases || []).map((ph) => {
-      const workStart = skipWE(cursor);
-      const d = new Date(workStart);
-      let remaining = ph.work_days - 1;
-      while (remaining > 0) { d.setDate(d.getDate() + 1); if (!isWE(d)) remaining--; }
-      const workEnd = new Date(d);
-      const cureEnd = new Date(workEnd);
-      cureEnd.setDate(cureEnd.getDate() + ph.cure_days);
-      cursor = new Date(cureEnd);
-      cursor.setDate(cursor.getDate() + 1);
-      return { ...ph, workStart, workEnd, cureEnd };
-    });
-  }, [planning, start]);
+  const rows = useMemo(() => computeSchedule(planning, start), [planning, start]);
 
   if (!rows.length) return null;
   const t0 = rows[0].workStart.getTime();
