@@ -150,8 +150,12 @@ export const Nav = () => {
             <>
               <LangToggle />
               <NotificationsBell />
-              <span className="hidden 2xl:block text-sm text-muted-foreground max-w-[140px] truncate">
-                {user.name}
+              <span className="hidden 2xl:flex items-center gap-2 text-sm text-muted-foreground max-w-[170px]">
+                {user.picture && (
+                  <img src={user.picture} alt="" data-testid="nav-avatar"
+                       className="h-7 w-7 rounded-full object-cover border border-border shrink-0" />
+                )}
+                <span className="truncate">{user.name}</span>
               </span>
               <Button
                 variant="ghost" size="sm" data-testid="logout-btn" className="rounded-sm"

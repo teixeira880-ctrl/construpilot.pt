@@ -56,7 +56,7 @@ class TestDemoSeed:
         r = requests.get(f"{API}/organizations/me", headers=auth, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["in_org"] is True
+        assert d["in_org"] == True
         assert d["name"] == "BTP Demo SAS"
         assert d["role"] == "owner"
         assert d["member_count"] == 2
@@ -67,7 +67,7 @@ class TestDemoSeed:
         r = requests.get(f"{API}/organizations/me", headers=auth, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["in_org"] is True
+        assert d["in_org"] == True
         assert d["name"] == "BTP Demo SAS"
         assert d["role"] == "member"
         assert d["org_code"] == "DEMO-2026"
@@ -95,7 +95,7 @@ class TestTransferOwnership:
                           headers=pro_auth, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["ok"] is True
+        assert d["ok"] == True
         assert d["new_owner"]["user_id"] == col_uid
 
         # (b) Former owner sees role=admin

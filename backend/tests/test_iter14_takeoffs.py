@@ -90,7 +90,7 @@ class TestGeometry:
     def test_calibration_check_ok(self):
         r = G.calibration_check(3.18, 3.20)
         assert r["delta_pct"] == pytest.approx(0.63, abs=0.01)
-        assert r["ok"] is True
+        assert r["ok"] == True
 
     def test_paint_liters_100m2(self):
         r = G.paint_liters(100)
@@ -215,7 +215,7 @@ class TestPlanFlow:
         assert r.status_code == 200
         d = r.json()
         assert "delta_pct" in d
-        assert d["ok"] is True
+        assert d["ok"] == True
 
     def test_09_measure_distance(self, user_headers):
         r = requests.post(f"{BASE_URL}/api/takeoffs/{TestPlanFlow.plan_id}/measure",
@@ -331,7 +331,7 @@ class TestPlanFlow:
             f"{BASE_URL}/api/takeoffs/{TestPlanFlow.plan_id}/rooms/{TestPlanFlow.room_id}",
             headers=user_headers, timeout=15)
         assert r.status_code == 200
-        assert r.json()["ok"] is True
+        assert r.json()["ok"] == True
 
     def test_99_cleanup(self, user_headers):
         r = requests.delete(f"{BASE_URL}/api/takeoffs/{TestPlanFlow.plan_id}",
@@ -373,8 +373,8 @@ class TestTwilio:
                          headers=user_headers, timeout=10)
         assert r.status_code == 200
         d = r.json()
-        assert d["sid_configured"] is True
-        assert d["token_configured"] is True
+        assert d["sid_configured"] == True
+        assert d["token_configured"] == True
         assert isinstance(d["from_configured"], bool)
         assert isinstance(d["twilio_enabled"], bool)
 

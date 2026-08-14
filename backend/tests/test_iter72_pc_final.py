@@ -23,10 +23,10 @@ BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL")
             or _read_frontend_env() or "").rstrip("/")
 assert BASE_URL, "REACT_APP_BACKEND_URL missing"
 
-PRO_EMAIL = "pro@construpilot.fr"
-PRO_PWD = "Pro2026!"
-ADMIN_EMAIL = "admin@construpilot.fr"
-ADMIN_PWD = "Construpilot2026!"
+try:
+    from tests.creds import ADMIN_EMAIL, ADMIN_PWD, PRO_EMAIL, PRO_PWD
+except ImportError:
+    from creds import ADMIN_EMAIL, ADMIN_PWD, PRO_EMAIL, PRO_PWD
 
 PLAN_WITH_STUDY = "plan_6ebd820859f2"
 PLAN_WITH_BC = "plan_619e41f98d6b"
@@ -106,7 +106,7 @@ class TestPoResponse:
         assert r.status_code in (200, 404), r.text
         if r.status_code == 200:
             data = r.json()
-            assert data.get("ok") is True
+            assert data.get("ok") == True
             assert data.get("status") == "retenu"
 
 
@@ -124,7 +124,7 @@ class TestSign:
         data = r.json()
         assert "totals" in data
         assert "lots" in data
-        assert data.get("accepted") is True
+        assert data.get("accepted") == True
         assert data.get("accepted_by")
 
     def test_already_accepted_returns_already(self):
@@ -133,7 +133,7 @@ class TestSign:
             json={"name": "Testeur QA"}, timeout=15)
         assert r.status_code == 200, r.text
         data = r.json()
-        assert data.get("already") is True
+        assert data.get("already") == True
 
 
 # ---------- D. Dashboard ----------

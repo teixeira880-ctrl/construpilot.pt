@@ -21,7 +21,7 @@ WALL_HEIGHT_SENSITIVE_LOTS = {"peinture", "placo", "isolation", "facade", "macon
 def _weighted_avg_height(levels: list[dict] | None,
                           default_height: float) -> float:
     """Retourne la hauteur moyenne PONDÉRÉE PAR SURFACE quand plusieurs étages
-    ont des HSP différents (ex : maison ancienne RDC 2.60m + R+1 2.20m + combles 1.80m).
+    ont des HSP différentes (ex : maison ancienne RDC 2.60m + R+1 2.20m + combles 1.80m).
 
     Chaque item : {"label": str, "surface_m2": float, "ceiling_height_m": float}
     - Si liste vide ou None → renvoie `default_height`.
@@ -42,7 +42,7 @@ def _weighted_avg_height(levels: list[dict] | None,
 
 @dataclass
 class PricingRequest:
-    """Groupe les 10 paramètres de `estimate()` en un objet unique — plus lisible
+    """Groupe les paramètres de `estimate()` en un objet unique — plus lisible
     à l'appel, plus facile à tester et à sérialiser.
 
     Usage recommandé pour le nouveau code :
@@ -61,6 +61,18 @@ class PricingRequest:
     construction_year: int | None = None
     lot_keys: list[str] | None = field(default=None)
     ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M
+    levels: list[dict] | None = field(default=None)
+
+
+@dataclass
+class LotContext:
+    """Contexte partagé du calcul d'un lot (évite une signature à 8 paramètres)."""
+    surface: float
+    finish_cfg: dict
+    global_coef: float
+    rc: float
+    ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M
+    labour_only: bool = False
 
 
 def estimate_from_request(req: PricingRequest) -> dict:
@@ -107,10 +119,7 @@ def _resolve_lots(tpl: dict, lot_keys: list[str] | None) -> dict:
     return selected
 
 
-def _compute_lot(key: str, factor: float, surface: float,
-                 finish_cfg: dict, global_coef: float, rc: float,
-                 ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M,
-                 labour_only: bool = False) -> dict | None:
+def _compute_lot(key: str, factor: float, ctx: LotContext) -> dict | None:
     """Calcule le détail d'un lot (qty, prix unitaire, total).
 
     Si le lot est sensible à la hauteur sous plafond (peinture, placo, isolation,
@@ -122,14 +131,14 @@ def _compute_lot(key: str, factor: float, surface: float,
     if not lot:
         return None
     height_ratio = 1.0
-    if key in WALL_HEIGHT_SENSITIVE_LOTS and ceiling_height_m and ceiling_height_m > 0:
-        height_ratio = ceiling_height_m / REFERENCE_CEILING_HEIGHT_M
-    qty = round(surface * factor * height_ratio, 2)
+    if key in WALL_HEIGHT_SENSITIVE_LOTS and ctx.ceiling_height_m and ctx.ceiling_height_m > 0:
+        height_ratio = ctx.ceiling_height_m / REFERENCE_CEILING_HEIGHT_M
+    qty = round(ctx.surface * factor * height_ratio, 2)
     if lot["unit"] == "u":
         qty = max(1, round(qty))
-    mp = 0.0 if labour_only else _mat_price(lot, finish_cfg["key"])
-    mat_unit = round(mp * rc * 0.6 + mp * 0.4, 2)
-    labour_unit = round(lot["labour"] * global_coef * finish_cfg["coef"] ** 0.4, 2)
+    mp = 0.0 if ctx.labour_only else _mat_price(lot, ctx.finish_cfg["key"])
+    mat_unit = round(mp * ctx.rc * 0.6 + mp * 0.4, 2)
+    labour_unit = round(lot["labour"] * ctx.global_coef * ctx.finish_cfg["coef"] ** 0.4, 2)
     materials = round(qty * mat_unit, 2)
     labour = round(qty * labour_unit, 2)
     hours = round(qty * lot["hours"], 1)
@@ -147,6 +156,20 @@ def _compute_lot(key: str, factor: float, surface: float,
     }
 
 
+def _financials(lots: list[dict], surface: float, rc: float) -> dict:
+    """Synthèse financière (matériaux, MO, frais annexes, aléas) d'une liste de lots."""
+    materials = round(sum(l["material_cost"] for l in lots), 2)
+    labour = round(sum(l["labour_cost"] for l in lots), 2)
+    hours = round(sum(l["hours"] for l in lots), 1)
+    equipment = round((materials + labour) * 0.035, 2)
+    waste = round(surface * 9 * rc, 2)
+    subtotal = round(materials + labour + equipment + waste, 2)
+    contingency = round(subtotal * 0.10, 2)
+    return {"materials": materials, "labour": labour, "hours": hours,
+            "equipment": equipment, "waste": waste, "contingency": contingency,
+            "total_avg": round(subtotal + contingency, 2)}
+
+
 def estimate(project_type: str, surface: float, finish: str = "standard", country: str = "FR",
              region: str | None = None, building_type: str = "maison", condition: str = "bon",
              construction_year: int | None = None, lot_keys: list[str] | None = None,
@@ -155,6 +178,9 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
     """Moteur d'estimation. Si `levels` est fourni ([{label, surface_m2, ceiling_height_m}]),
     la hauteur retenue pour les lots muraux est la moyenne pondérée par surface,
     permettant de bien chiffrer les bâtiments à HSP mixtes (RDC 2.60 + R+1 2.20 + combles 1.80).
+
+    NB : préférer `estimate_from_request(PricingRequest(...))` pour les nouveaux appels —
+    la signature positionnelle est conservée pour compatibilité.
     """
     tpl = PROJECT_TYPES_BY_KEY.get(project_type) or PROJECT_TYPES_BY_KEY["renovation_complete"]
     finish_cfg = FINISH_BY_KEY.get(finish) or FINISH_BY_KEY["standard"]
@@ -167,20 +193,15 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
     effective_height = _weighted_avg_height(levels, ceiling_height_m)
 
     labour_only = bool(tpl.get("labour_only"))
+    ctx = LotContext(surface=surface, finish_cfg=finish_cfg, global_coef=global_coef,
+                     rc=rc, ceiling_height_m=effective_height, labour_only=labour_only)
     selected = _resolve_lots(tpl, lot_keys)
     lots = [lot for key, factor in selected.items()
-            if (lot := _compute_lot(key, factor, surface, finish_cfg, global_coef, rc,
-                                     effective_height, labour_only))]
+            if (lot := _compute_lot(key, factor, ctx))]
     lots.sort(key=lambda l: EXECUTION_ORDER.index(l["key"]) if l["key"] in EXECUTION_ORDER else 99)
 
-    materials_total = round(sum(l["material_cost"] for l in lots), 2)
-    labour_total = round(sum(l["labour_cost"] for l in lots), 2)
-    hours_total = round(sum(l["hours"] for l in lots), 1)
-    equipment = round((materials_total + labour_total) * 0.035, 2)
-    waste = round(surface * 9 * rc, 2)
-    subtotal = round(materials_total + labour_total + equipment + waste, 2)
-    contingency = round(subtotal * 0.10, 2)
-    total_avg = round(subtotal + contingency, 2)
+    fin = _financials(lots, surface, rc)
+    total_avg = fin["total_avg"]
 
     return {
         "project_type": tpl["key"], "project_type_name": tpl["name"], "surface": surface,
@@ -194,40 +215,46 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
                          "finish": finish_cfg["coef"]},
         "lots": lots,
         "breakdown": {
-            "materials": materials_total, "labour": labour_total,
-            "equipment_rental": equipment, "waste_disposal": waste,
-            "contingency_rate": 0.10, "contingency": contingency,
+            "materials": fin["materials"], "labour": fin["labour"],
+            "equipment_rental": fin["equipment"], "waste_disposal": fin["waste"],
+            "contingency_rate": 0.10, "contingency": fin["contingency"],
         },
         "total_min": round(total_avg * 0.88, 2),
         "total_avg": total_avg,
         "total_max": round(total_avg * 1.16, 2),
         "price_per_sqm": round(total_avg / surface, 2) if surface else 0,
-        "total_hours": hours_total,
-        "duration_weeks": max(1, math.ceil(hours_total / 70)),
-        "price_model": _price_model(project_type, surface, country, region, building_type,
-                                    condition, construction_year, lot_keys),
+        "total_hours": fin["hours"],
+        "duration_weeks": max(1, math.ceil(fin["hours"] / 70)),
+        "price_model": _price_model(PricingRequest(
+            project_type=project_type, surface=surface, country=country, region=region,
+            building_type=building_type, condition=condition,
+            construction_year=construction_year, lot_keys=lot_keys)),
     }
 
 
-def _price_model(project_type, surface, country, region, building_type, condition, year, lot_keys):
+def _price_model(req: PricingRequest) -> dict:
+    """Totaux eco/standard/premium pour un même projet (fourchette de finitions)."""
     out = {}
     for lvl in ("eco", "standard", "premium"):
-        tpl = PROJECT_TYPES_BY_KEY.get(project_type) or PROJECT_TYPES_BY_KEY["renovation_complete"]
+        tpl = PROJECT_TYPES_BY_KEY.get(req.project_type) or PROJECT_TYPES_BY_KEY["renovation_complete"]
         finish_cfg = FINISH_BY_KEY[lvl]
-        rc = region_coef(country, region)
-        coef = rc * CONDITION_COEF.get(condition, 1.0) * BUILDING_COEF.get(building_type, 1.0) * year_coef(year)
-        sel = tpl["lots"] if not lot_keys else {k: v for k, v in tpl["lots"].items() if k in lot_keys}
+        rc = region_coef(req.country, req.region)
+        coef = (rc * CONDITION_COEF.get(req.condition, 1.0)
+                * BUILDING_COEF.get(req.building_type, 1.0) * year_coef(req.construction_year))
+        sel = (tpl["lots"] if not req.lot_keys
+               else {k: v for k, v in tpl["lots"].items() if k in req.lot_keys})
         labour_only = bool(tpl.get("labour_only"))
         tot = 0.0
         for key, factor in sel.items():
             lot = LOTS_BY_KEY.get(key)
             if not lot:
                 continue
-            qty = surface * factor
+            qty = req.surface * factor
             mat = 0.0 if labour_only else _mat_price(lot, lvl)
             tot += qty * (mat * rc + lot["labour"] * coef * finish_cfg["coef"] ** 0.4)
         tot *= 1.145
-        out[lvl] = {"total": round(tot, 2), "per_sqm": round(tot / surface, 2) if surface else 0}
+        out[lvl] = {"total": round(tot, 2),
+                    "per_sqm": round(tot / req.surface, 2) if req.surface else 0}
     return out
 
 

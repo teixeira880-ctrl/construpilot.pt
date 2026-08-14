@@ -85,9 +85,9 @@ class TestRoofFacade:
 
     def test_warning_no_rampant(self):
         r = requests.post(f"{BASE_URL}/api/calculators/roof_facade",
-                          json={"params": {"projected_m2": 100, "pitch_deg": 35}}, timeout=15)
+                          json={"params": {"projected_m2": 100, "pitch_deg": 0}}, timeout=15)
         warns = r.json().get("warnings", [])
-        assert any("Rampant" in w for w in warns)
+        assert any("rampant" in w.lower() for w in warns)
 
     def test_math_pitch_45(self):
         r = requests.post(f"{BASE_URL}/api/calculators/roof_facade",

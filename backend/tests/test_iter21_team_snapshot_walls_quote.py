@@ -98,7 +98,7 @@ class TestOrganizationSystem:
                           headers=owner_auth, timeout=15)
         assert r.status_code == 200, r.text
         data = r.json()
-        assert data["ok"] is True
+        assert data["ok"] == True
         assert data["name"] == "BTP Test Iter21"
         assert data["owner_user_id"]
         code = data["org_code"]
@@ -110,7 +110,7 @@ class TestOrganizationSystem:
         r = requests.get(f"{API}/organizations/me", headers=owner_auth, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["in_org"] is True
+        assert d["in_org"] == True
         assert d["role"] == "owner"
         assert d["member_count"] == 1
         assert isinstance(d["members"], list) and len(d["members"]) == 1
@@ -122,7 +122,7 @@ class TestOrganizationSystem:
                           headers=owner_auth, timeout=30)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["ok"] is True
+        assert d["ok"] == True
         assert "email_status" in d
         assert d["email_status"] in ("sent", "failed", "skipped")
         assert d["org_code"]
@@ -133,12 +133,12 @@ class TestOrganizationSystem:
         r = requests.post(f"{API}/organizations/join",
                           json={"code": code}, headers=member_auth, timeout=15)
         assert r.status_code == 200, r.text
-        assert r.json()["ok"] is True
+        assert r.json()["ok"] == True
 
         # verify member sees in_org
         me = requests.get(f"{API}/organizations/me", headers=member_auth,
                           timeout=15).json()
-        assert me["in_org"] is True
+        assert me["in_org"] == True
         assert me["role"] == "member"
         assert me["member_count"] == 2
 
@@ -148,7 +148,7 @@ class TestOrganizationSystem:
         assert r.status_code == 200
         d = r.json()
         assert d["source"] == "organization"
-        assert d["can_edit"] is True
+        assert d["can_edit"] == True
         assert d["org_role"] == "owner"
 
         # Member: can_edit false
@@ -156,7 +156,7 @@ class TestOrganizationSystem:
         assert r.status_code == 200
         d = r.json()
         assert d["source"] == "organization"
-        assert d["can_edit"] is False
+        assert d["can_edit"] == False
         assert d["org_role"] == "member"
 
     def test_g_member_cannot_put_branding(self, member_auth):
@@ -274,7 +274,7 @@ class TestSnapshotLabel:
                          headers=auth, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["ok"] is True
+        assert d["ok"] == True
         assert d["label"] == "Version client"
 
     def test_history_returns_label(self, plan_and_snap):

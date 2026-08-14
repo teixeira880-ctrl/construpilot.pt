@@ -188,7 +188,7 @@ def drywall(area: float, plate_type: str = "BA13 standard", plate_length: float 
 
 # =============== CONCRETE ===============
 
-def _concrete_materials_for_mode(mode: str, vol_margin: float, cement_kg: float,
+def _concrete_materials_for_mode(mode: str, *, vol_margin: float, cement_kg: float,
                                   sand_kg: float, gravel_kg: float,
                                   bags_35: int, length: float, width: float) -> list[dict]:
     mats: list[dict] = []
@@ -232,8 +232,9 @@ def concrete(length: float, width: float, thickness_cm: float, mode: str = "sacs
             {"label": "Gravier", "value": round(gravel_kg), "unit": "kg"},
             {"label": "Eau", "value": round(water_l), "unit": "L"},
         ],
-        "materials": _concrete_materials_for_mode(mode, vol_margin, cement_kg, sand_kg,
-                                                   gravel_kg, bags_35, length, width),
+        "materials": _concrete_materials_for_mode(
+            mode, vol_margin=vol_margin, cement_kg=cement_kg, sand_kg=sand_kg,
+            gravel_kg=gravel_kg, bags_35=bags_35, length=length, width=width),
         "estimated_budget": round(vol_margin * price_per_m3, 2),
     }
 

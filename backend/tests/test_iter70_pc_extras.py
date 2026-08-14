@@ -119,7 +119,7 @@ class TestPcSettings:
                           headers=pro_headers, timeout=30)
         assert r.status_code == 200
         study = r.json()
-        assert study["custom_pricing"] is True
+        assert study["custom_pricing"] == True
         assert study["planning"]["crew_size"] == 5
         assert study["totals"]["ttc"] > base_ttc
         # reset → retour au TTC de base
@@ -128,7 +128,7 @@ class TestPcSettings:
         r = requests.post(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study/recompute",
                           headers=pro_headers, timeout=30)
         assert r.json()["totals"]["ttc"] == pytest.approx(base_ttc, abs=0.02)
-        assert r.json()["custom_pricing"] is False
+        assert r.json()["custom_pricing"] == False
 
     def test_put_rejects_bad_crew(self, pro_headers):
         r = requests.put(f"{BASE_URL}/api/pc/settings", json={"crew_size": 99},
@@ -156,7 +156,7 @@ class TestPcTracking:
         r = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}", headers=pro_headers,
                          timeout=30)
         s = [x for x in r.json()["sent_reports"] if x.get("track_id") == tid][0]
-        assert s["opened"] is True and s.get("opened_at")
+        assert s["opened"] == True and s.get("opened_at")
 
     def test_pixel_unknown_track_id_still_200(self):
         px = requests.get(f"{BASE_URL}/api/pc/track/pct_inconnu", timeout=30)

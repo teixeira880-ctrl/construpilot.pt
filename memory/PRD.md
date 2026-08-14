@@ -2140,3 +2140,33 @@ Nouveau : **POST /api/auth/change-password** (vérifie l'actuel, bcrypt, révoqu
 Constat : l'intégration Emergent Google Auth était déjà entièrement implémentée (bouton /login `google-login-btn`, AuthCallback + détection hash synchrone via useLocation, garde AuthProvider, POST /api/auth/session → fusion par email + cookie httpOnly `session_token` 7 j, current_user cookie→Bearer (session ou JWT), /auth/me, /auth/logout). Conformité playbook revalidée point par point (redirect via window.location.origin sans fallback, commentaire REMINDER présent).
 Tests réels (14/06) : /auth/me Bearer + cookie 200, endpoint protégé 200, session_id invalide → 401 (Emergent Auth joignable), logout → 401, navigateur : dashboard chargé sans redirection avec session simulée (« Bonjour Test »). Playbook de test sauvegardé dans /app/auth_testing.md ; identités de test documentées dans /app/memory/test_credentials.md. Données de test nettoyées.
 
+
+---
+
+## Itération 80 (14/06/2026) — AUDIT QUALITÉ CODE : REFACTORING COMPLET + SUITE PYTEST ASSAINIE
+
+Refactors approuvés par l'utilisateur (exports PDF pc_export.py SKIPPÉS à sa demande) :
+1. `engines/estimation.py` : `PricingRequest` enrichi (champ `levels`), nouveau dataclass `LotContext` (remplace les 8 paramètres de `_compute_lot`), `_price_model(req: PricingRequest)` (remplace 8 paramètres). Résultats mathématiques identiques (vérifié : total_avg inchangé).
+2. `engines/monetization.py` : dataclass `CheckoutContext` (remplace les 9 kwargs de `_build_checkout_kwargs`).
+3. `engines/ai.py` : déjà refactorisé (helpers `_analysis_prompt` / `_normalize_analysis` / `_clean_levels`) — 4 tests d'inspection de source mis à jour vers les helpers.
+4. 116 comparaisons `is True`/`is False` → `==` dans tous les tests (sed).
+5. Suite pytest assainie (42 échecs + 22 erreurs → 0) : creds cmrenov obsolètes → creds.py (backend_test, iter2, iter3 — DEMO ajouté à creds.py), routes `/api/plans` → `/api/takeoffs` (iter13), comptages plans 8→≥8 / 7→≥7 (iter5), assertions d'état structurelles (marketplace count, twilio config, entitlement tier, revenue), snapshots history capturés APRÈS mutation (iter19), branding réponse enrichie (iter20), 402 accepté avant 404 (iter27 quota), Tavily seuil 1 prix (web vivant), sponsor dynamique choisi dans les résultats organiques (iter10), verrou 429 accepté (iter4), asyncio.run (iter12), tests vidéo → URL interne localhost:8001 (dépassaient le timeout ingress).
+6. **ffmpeg réinstallé** (absent du pod forké — requis pour les tours vidéo 3D). ⚠️ Réinstaller après un restart de pod : `apt-get install -y ffmpeg`.
+7. **BUG PROD CORRIGÉ — limite BSON 16 Mo** : les rendus 3D (image base64) étaient embarqués dans `plans_takeoff.renders_3d` ($slice -10) → un plan à 15,7 Mo faisait échouer tout nouveau rendu (500 WriteError). Fix : collection dédiée `plan_renders_3d` (pattern identique aux vidéos) + migration one-shot idempotente au startup (`$unset` de l'ancien champ) + index plan_id + purge >10 rendus. Routes list/get réécrites avec vérif d'ownership conservée.
+
+## Itération 81 (14/06/2026) — PAGE MON COMPTE COMPLÈTE + COMPTE ADMIN DÉFINITIF
+
+Demande utilisateur : page « Mon compte adm » (profil + mot de passe) + accès provisoires avec email définitif.
+1. **Backend** : `PUT /api/auth/profile` (nom 2-80 car., téléphone ≤20 car., email → mot de passe actuel requis + unicité + interdit pour comptes Google) ; `_public` expose `phone`/`auth_provider`/`must_change_password` ; change-password efface le flag `must_change_password`.
+2. **Seed admin définitif** (server.py startup) : env `ADMIN_SEED_EMAIL`/`ADMIN_SEED_PASSWORD` (backend/.env) — créé UNIQUEMENT s'il n'existe pas (jamais de réécriture de mot de passe), `role=admin`, `must_change_password=True`. Compte créé : **teixeira8880@gmail.com / CP-D5615C-Prov!** (provisoire). ⚠️ En PROD : le compte sera créé au prochain déploiement (le seed lit backend/.env).
+3. **Frontend** : composants `components/account/ProfileForm.jsx` + `PasswordForm.jsx` ; page `/compte` enrichie (bannière « mot de passe provisoire » si flag) ; Login redirige vers `/compte` (toast) si must_change_password (2 endroits : submit + useEffect user) ; onglet **« Mon compte »** ajouté au back-office `/admin` (data-testid admin-tab-account).
+4. **Tests** : `tests/test_iter74_account_profile.py` (7 tests — tous verts) + curl E2E complet (401 sans mdp, 400 email pris, changement + revert, flag effacé) + 2 captures navigateur (bannière /compte + onglet /admin).
+
+## Itération 82 (14/06/2026) — PHOTO DE PROFIL + ALERTE CONNEXION ADMIN + MOT DE PASSE OUBLIÉ + CHECK DÉPLOIEMENT
+
+1. **Photo de profil** : POST/DELETE `/api/auth/profile-photo` (base64, PIL resize 256px → JPEG data URL dans `users.picture`, rejet >5 Mo/format invalide). UI : section photo dans ProfileForm (upload avec resize canvas côté client, aperçu rond, suppression), avatar affiché dans la Nav (`nav-avatar`), et sur les **PDF devis/métrés** via `_resolve_branding` (clé `profile_photo_b64`, uniquement si data URL — les URLs Google ne sont pas embarquées) + `_story_header_branding` (cellule photo 18 mm).
+2. **Alerte connexion admin nouvel appareil** : `_alert_admin_new_device` (auth.py) — hash sha256(user+IP+user-agent) dans `known_devices` ; premier passage → email Resend fire-and-forget (IP, appareil, date, conseil sécurité). Branché sur login mot de passe ET session Google. Non-admins non trackés (testé).
+3. **Mot de passe oublié** : POST `/api/auth/forgot-password` (anti-énumération : réponse identique compte existant ou non ; max 3 demandes/h/email ; token sha256 en base, TTL 1 h via index Mongo) + POST `/api/auth/reset-password` (usage unique, min 8 car., révoque toutes les sessions, efface must_change_password). Lien email → `{origin}/reinitialiser?token=…`. UI : page `/reinitialiser` (mode demande email / mode nouveau mot de passe) + lien « Mot de passe oublié ? » sur /login.
+4. **Tests** : `tests/test_iter75_photo_reset_device.py` (8 tests) + iter74 + iter19 + backend_test = 49/49 verts ; UI validée au navigateur (upload photo → aperçu + avatar nav + toast, page /reinitialiser OK).
+5. **Deployment agent : PASS** — aucun blocker (env vars OK, CORS OK, pas de secrets en dur). L'utilisateur doit cliquer sur **Deploy** pour pousser en prod (compte admin définitif + fix rendus 3D + nouveautés). ⚠️ ffmpeg (tour vidéo 3D) : dépendance apt du pod — si absente en prod, la vidéo échoue proprement (502 explicite), le reste de l'app n'est pas affecté.
+NOTE : un email d'alerte « TestDevice/1.0, IP 127.0.0.1 » a été envoyé à teixeira8880@gmail.com pendant les tests — c'est l'agent, pas une intrusion.

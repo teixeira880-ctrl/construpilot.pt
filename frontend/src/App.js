@@ -9,6 +9,7 @@ import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
+import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import Estimator from "@/pages/Estimator";
 import SmartProject from "@/pages/SmartProject";
@@ -76,6 +77,7 @@ function AppRouter() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/inscription" element={<Login />} />
+      <Route path="/reinitialiser" element={<ResetPassword />} />
       <Route path="/smart-project" element={<Shell><SmartProject /></Shell>} />
       <Route path="/estimation" element={<Shell><Estimator /></Shell>} />
       <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />

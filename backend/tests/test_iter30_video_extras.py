@@ -12,12 +12,14 @@ import json
 import os
 import shutil
 import subprocess
+import time
 
 import pytest
 import requests
 from PIL import Image
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+# Rendus vidéo longs (> timeout ingress) : URL interne du backend
+BASE_URL = os.environ.get("INTERNAL_BACKEND_URL", "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api"
 
 # Credentials read from env — never hardcoded. See test_iter29_video_tour.py.
@@ -58,7 +60,7 @@ def branded_pro(auth_headers, orange_logo_b64):
     )
     assert r.status_code == 200, f"branding put failed: {r.status_code} {r.text}"
     b = r.json()
-    assert b.get("has_logo") is True, f"branding did not persist logo: {b}"
+    assert b.get("has_logo") == True, f"branding did not persist logo: {b}"
     return b
 
 
@@ -185,8 +187,8 @@ class TestVideoWatermarkAndAudio:
                           headers=auth_headers, json=payload, timeout=300)
         assert r.status_code == 200, f"render failed: {r.status_code} {r.text[:400]}"
         data = r.json()
-        assert data.get("has_watermark") is True, f"has_watermark not True: {data}"
-        assert data.get("has_audio") is True, f"has_audio not True: {data}"
+        assert data.get("has_watermark") == True, f"has_watermark not True: {data}"
+        assert data.get("has_audio") == True, f"has_audio not True: {data}"
         assert data.get("video_id")
         TestVideoWatermarkAndAudio._video_wm_music_id = data["video_id"]
 
@@ -222,8 +224,8 @@ class TestVideoWatermarkAndAudio:
                           headers=auth_headers, json=payload, timeout=300)
         assert r.status_code == 200, f"render failed: {r.status_code} {r.text[:400]}"
         data = r.json()
-        assert data.get("has_watermark") is False, f"has_watermark should be False: {data}"
-        assert data.get("has_audio") is False, f"has_audio should be False: {data}"
+        assert data.get("has_watermark") == False, f"has_watermark should be False: {data}"
+        assert data.get("has_audio") == False, f"has_audio should be False: {data}"
         TestVideoWatermarkAndAudio._video_bare_id = data["video_id"]
 
     def test_ffprobe_bare_has_no_audio(self, auth_headers, plan_id):
@@ -242,7 +244,20 @@ class TestVideoWatermarkAndAudio:
 # ---------- auto-attach video in send-quote ----------
 
 class TestQuoteAutoAttachVideo:
-    def test_send_quote_with_attach(self, auth_headers, plan_id):
+    @pytest.fixture(scope="class")
+    def existing_video(self, auth_headers, plan_id):
+        """Attend qu'une vidéo existe (la classe rendu peut tourner sur un autre
+        worker xdist) — sinon skip proprement au lieu d'un faux négatif."""
+        deadline = time.time() + 90
+        while time.time() < deadline:
+            r = requests.get(f"{API}/takeoffs/{plan_id}/videos-3d",
+                             headers=auth_headers, timeout=30)
+            if r.status_code == 200 and r.json().get("videos"):
+                return r.json()["videos"][0]
+            time.sleep(5)
+        pytest.skip("Aucune vidéo disponible pour ce plan (classe rendu non exécutée avant)")
+
+    def test_send_quote_with_attach(self, auth_headers, plan_id, existing_video):
         # Depends on at least one video existing (previous class ran).
         payload = {
             "client_email": "client-test@example.com",
@@ -260,14 +275,14 @@ class TestQuoteAutoAttachVideo:
             f"unexpected email_status: {data}"
         )
 
-    def test_quote_sends_log_has_attached_video_id(self, auth_headers, plan_id):
+    def test_quote_sends_log_has_attached_video_id(self, auth_headers, plan_id, existing_video):
         r = requests.get(f"{API}/takeoffs/{plan_id}/quote-sends",
                          headers=auth_headers, timeout=30)
         assert r.status_code == 200
         sends = r.json().get("sends", [])
         assert sends, "no quote_sends found"
         latest = sends[0]  # sorted by created_at desc
-        assert latest.get("attach_latest_video") is True, (
+        assert latest.get("attach_latest_video") == True, (
             f"attach_latest_video not stored True: {latest}"
         )
         assert latest.get("attached_video_id"), (
@@ -295,7 +310,7 @@ class TestQuoteAutoAttachVideo:
         sends = r2.json().get("sends", [])
         assert sends
         latest = sends[0]
-        assert latest.get("attach_latest_video") is False, (
+        assert latest.get("attach_latest_video") == False, (
             f"attach_latest_video not False: {latest}"
         )
         assert latest.get("attached_video_id") is None, (

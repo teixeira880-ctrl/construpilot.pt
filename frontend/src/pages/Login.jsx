@@ -41,14 +41,17 @@ export default function Login() {
   }, [refCodeFromUrl]);
 
   useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
+    if (user) {
+      navigate(user.must_change_password ? "/compte" : "/dashboard", { replace: true });
+    }
   }, [user, navigate]);
 
   const submit = (mode) => async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "login") await login(form.email, form.password);
+      let logged = null;
+      if (mode === "login") logged = await login(form.email, form.password);
       else {
         const ref = (form.ref || sessionStorage.getItem("construpilot_ref") || "").trim();
         await register(form.name, form.email, form.password, ref || null);
@@ -58,7 +61,12 @@ export default function Login() {
         }
       }
       toast.success("Bienvenue chez ConstruPilot", { position: "bottom-right", duration: 2500 });
-      navigate("/dashboard");
+      if (logged?.must_change_password) {
+        toast.warning("Mot de passe provisoire — merci de le changer maintenant", { duration: 6000 });
+        navigate("/compte");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Échec de la connexion");
     } finally {
@@ -137,6 +145,10 @@ export default function Login() {
                 <div className="grid gap-2">
                   <Label>Mot de passe</Label>
                   <Input required type="password" value={form.password} onChange={set("password")} data-testid="login-password-input" className="rounded-sm h-11" />
+                  <Link to="/reinitialiser" className="text-xs text-muted-foreground hover:text-primary w-fit"
+                        data-testid="forgot-password-link">
+                    Mot de passe oublié ?
+                  </Link>
                 </div>
                 <Button type="submit" disabled={busy} data-testid="login-submit-btn" className="rounded-sm h-11 hover:bg-orange-600 hover:text-white">
                   {busy ? "Connexion…" : "Se connecter"}

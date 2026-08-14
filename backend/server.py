@@ -157,6 +157,37 @@ async def seed():
                     "source": "seed_demo"})
     else:
         logger.info("SEED_DEMO_DATA désactivé — aucun compte de démonstration créé")
+    # Compte administrateur définitif (ADMIN_SEED_EMAIL/PASSWORD) — créé uniquement
+    # s'il n'existe pas (jamais de réécriture de mot de passe existant), avec un
+    # mot de passe provisoire à changer à la première connexion.
+    owner_email = (os.environ.get("ADMIN_SEED_EMAIL") or "").lower().strip()
+    owner_pwd = os.environ.get("ADMIN_SEED_PASSWORD") or ""
+    if owner_email and owner_pwd:
+        existing = await db.users.find_one({"email": owner_email})
+        if not existing:
+            await db.users.insert_one({
+                "email": owner_email, "name": "Administrateur", "role": "admin",
+                "plan": "premium", "password_hash": hash_password(owner_pwd),
+                "auth_provider": "password", "picture": None,
+                "user_id": new_user_id(), "must_change_password": True,
+                "created_at": datetime.now(timezone.utc).isoformat()})
+            logger.info("Compte admin définitif créé : %s", owner_email)
+        elif existing.get("role") != "admin":
+            await db.users.update_one({"email": owner_email}, {"$set": {"role": "admin"}})
+    # Migration one-shot : rendus 3D embarqués → collection plan_renders_3d
+    # (les images base64 dans plans_takeoff dépassaient la limite BSON 16 Mo).
+    async for p in db.plans_takeoff.find({"renders_3d.0": {"$exists": True}},
+                                          {"plan_id": 1, "user_id": 1, "renders_3d": 1}):
+        docs = [{**r, "plan_id": p["plan_id"], "user_id": p.get("user_id")}
+                for r in (p.get("renders_3d") or [])]
+        if docs:
+            await db.plan_renders_3d.insert_many(docs)
+        await db.plans_takeoff.update_one({"_id": p["_id"]}, {"$unset": {"renders_3d": ""}})
+        logger.info("Rendus 3D migrés vers plan_renders_3d : %s (%d)", p["plan_id"], len(docs))
+    await db.plan_renders_3d.create_index("plan_id")
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.password_reset_tokens.create_index("token_hash")
+    await db.known_devices.create_index("device_key")
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")

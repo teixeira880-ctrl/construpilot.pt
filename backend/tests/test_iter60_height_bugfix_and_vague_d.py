@@ -83,7 +83,7 @@ def test_ai_analyse_prompt_asks_for_ceiling_height():
     """Le prompt AI doit demander la hauteur sous plafond."""
     import inspect
     from engines import ai
-    src = inspect.getsource(ai.analyse_description)
+    src = inspect.getsource(ai._analysis_prompt)
     assert "ceiling_height_m" in src
     assert "hauteur" in src.lower()
 
@@ -92,7 +92,7 @@ def test_ai_analyse_result_bounds_ceiling_height():
     """La hauteur détectée par l'IA est cappée à [2.0, 5.0]."""
     import inspect
     from engines import ai
-    src = inspect.getsource(ai.analyse_description)
+    src = inspect.getsource(ai._normalize_analysis)
     assert "max(2.0" in src and "min(5.0" in src
 
 

@@ -64,12 +64,12 @@ def test_send_sms_returns_false_without_twilio_env(monkeypatch):
     monkeypatch.setenv("TWILIO_ACCOUNT_SID", "")
     monkeypatch.setenv("TWILIO_AUTH_TOKEN", "")
     monkeypatch.setenv("TWILIO_FROM_NUMBER", "")
-    assert alerting._send_sms("+33612345678", "hello") is False
+    assert alerting._send_sms("+33612345678", "hello") == False
 
 
 def test_send_sms_returns_false_when_to_missing():
     from engines import alerting
-    assert alerting._send_sms("", "hello") is False
+    assert alerting._send_sms("", "hello") == False
 
 
 # ============ Alerting notify_channels dispatch ============
@@ -97,7 +97,7 @@ def test_notify_channels_email_only(monkeypatch):
          "product": "BA13", "query": "ba13"},
         {"price": 4.0, "supplier": "Castorama", "url": "https://x"}
     ))
-    assert ok is True
+    assert ok == True
     assert calls == {"email": 1, "sms": 0}
 
 
@@ -131,5 +131,5 @@ def test_notify_channels_sms_and_email(monkeypatch):
          "target_price": 5.0, "product": "BA13", "query": "ba13"},
         {"price": 4.0, "supplier": "Castorama", "url": "https://x"}
     ))
-    assert ok is True
+    assert ok == True
     assert calls == {"email": 1, "sms": 1}

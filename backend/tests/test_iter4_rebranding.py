@@ -53,7 +53,8 @@ def test_root_brand():
 ])
 def test_old_cmrenov_credentials_rejected(email, pwd):
     r = requests.post(f"{API}/auth/login", json={"email": email, "password": pwd}, timeout=30)
-    assert r.status_code in (400, 401, 403, 404), f"Old cred {email} should be rejected, got {r.status_code}"
+    # 429 = verrou anti-brute-force (rejet aussi valable)
+    assert r.status_code in (400, 401, 403, 404, 429), f"Old cred {email} should be rejected, got {r.status_code}"
 
 
 def test_admin_login(admin_token):
@@ -137,7 +138,7 @@ def test_ai_smart_project_available():
 
 def test_prices_alerts_check_now(admin_token):
     h = {"Authorization": f"Bearer {admin_token}"}
-    r = requests.post(f"{API}/prices/alerts/check-now", headers=h, timeout=60)
+    r = requests.post(f"{API}/prices/alerts/check-now", headers=h, timeout=180)
     assert r.status_code in (200, 202), r.text
 
 

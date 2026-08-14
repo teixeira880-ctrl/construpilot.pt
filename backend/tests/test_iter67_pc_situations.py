@@ -69,7 +69,7 @@ class TestSituations:
         assert d["situation"]["invoice_no"] == "SIT-2026-0002"
         assert d["situation"]["pct_cumul"] == 80
         assert 29000 < d["situation"]["amount"] < 30500
-        assert d.get("emailed") is True
+        assert d.get("emailed") == True
 
     def test_solde(self, pro_token):
         r = requests.post(f"{API}/takeoffs/{PLAN_A}/pc-study/situations",
@@ -78,7 +78,7 @@ class TestSituations:
             pytest.skip("Solde déjà émis ou blocage")
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["situation"]["is_final"] is True
+        assert d["situation"]["is_final"] == True
         # remaining_to_invoice ~ 0
         r2 = requests.get(f"{API}/takeoffs/{PLAN_A}/pc-study/situations", headers=H(pro_token), timeout=30)
         assert r2.json()["billing"]["remaining_to_invoice"] < 1.0
@@ -135,7 +135,7 @@ class TestProgress:
         prog = p.get("progress") or {}
         assert prog.get("pct") == 50
         assert prog.get("done_count") == 4
-        assert prog["phases"][3]["done"] is True
+        assert prog["phases"][3]["done"] == True
 
 
 # --- Regression dashboard ---

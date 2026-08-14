@@ -70,14 +70,12 @@ def _json(raw: str, fallback):
     return fallback
 
 
-async def analyse_description(description: str) -> dict:
+def _analysis_prompt(description: str) -> str:
+    """Construit le prompt JSON d'analyse (séparé pour lisibilité/testabilité)."""
     types = ", ".join(f"{p['key']}" for p in PROJECT_TYPES)
     lots = ", ".join(l["key"] for l in LOTS)
     finishes = ", ".join(f["key"] for f in FINISH_LEVELS)
-    system = BRAND + (
-        "\nTu analyses une description de projet et retournes UNIQUEMENT du JSON valide, sans texte autour."
-    )
-    prompt = f"""Analyse cette description de projet de travaux et retourne ce JSON :
+    return f"""Analyse cette description de projet de travaux et retourne ce JSON :
 {{
  "project_type": "un de: {types}",
  "surface": nombre en m² (estime si absent),
@@ -99,47 +97,53 @@ async def analyse_description(description: str) -> dict:
 }}
 
 Description : {description}"""
-    raw = await _complete(system, prompt)
-    data = _json(raw, {})
-    data.setdefault("project_type", "renovation_complete")
-    data.setdefault("surface", 100)
-    data.setdefault("ceiling_height_m", 2.5)
-    data.setdefault("levels", [])
-    data.setdefault("building_type", "maison")
-    data.setdefault("finish_level", "standard")
-    data.setdefault("condition", "moyen")
-    data.setdefault("lots", [])
-    data.setdefault("questions", [])
-    data.setdefault("risks", [])
-    data.setdefault("summary", description[:200])
-    data.setdefault("diy_advice", "")
-    try:
-        data["surface"] = float(data["surface"])
-    except Exception:
-        data["surface"] = 100.0
-    try:
-        h = float(data["ceiling_height_m"])
-        data["ceiling_height_m"] = max(2.0, min(5.0, h))  # bornes réalistes
-    except Exception:
-        data["ceiling_height_m"] = 2.5
-    # Nettoie levels : garde uniquement les entrées bien formées et bornées
-    cleaned_levels = []
-    for lvl in (data.get("levels") or []):
+
+
+def _clean_levels(levels: list) -> list[dict]:
+    """Ne garde que les niveaux bien formés et bornés (1,5 m ≤ HSP ≤ 5 m)."""
+    cleaned = []
+    for lvl in levels or []:
         if not isinstance(lvl, dict):
             continue
         try:
             s = float(lvl.get("surface_m2") or 0)
             h = float(lvl.get("ceiling_height_m") or 0)
-            if s > 0 and 1.5 <= h <= 5.0:
-                cleaned_levels.append({
-                    "label": str(lvl.get("label") or "niveau")[:20],
-                    "surface_m2": round(s, 2),
-                    "ceiling_height_m": round(h, 2),
-                })
         except (TypeError, ValueError):
             continue
-    data["levels"] = cleaned_levels
+        if s > 0 and 1.5 <= h <= 5.0:
+            cleaned.append({"label": str(lvl.get("label") or "niveau")[:20],
+                            "surface_m2": round(s, 2),
+                            "ceiling_height_m": round(h, 2)})
+    return cleaned
+
+
+def _normalize_analysis(data: dict, description: str) -> dict:
+    """Applique défauts + bornes sur la réponse IA (parsing séparé de l'appel)."""
+    defaults = {"project_type": "renovation_complete", "surface": 100,
+                "ceiling_height_m": 2.5, "levels": [], "building_type": "maison",
+                "finish_level": "standard", "condition": "moyen", "lots": [],
+                "questions": [], "risks": [], "summary": description[:200],
+                "diy_advice": ""}
+    for k, v in defaults.items():
+        data.setdefault(k, v)
+    try:
+        data["surface"] = float(data["surface"])
+    except (TypeError, ValueError):
+        data["surface"] = 100.0
+    try:
+        data["ceiling_height_m"] = max(2.0, min(5.0, float(data["ceiling_height_m"])))
+    except (TypeError, ValueError):
+        data["ceiling_height_m"] = 2.5
+    data["levels"] = _clean_levels(data.get("levels"))
     return data
+
+
+async def analyse_description(description: str) -> dict:
+    system = BRAND + (
+        "\nTu analyses une description de projet et retournes UNIQUEMENT du JSON valide, sans texte autour."
+    )
+    raw = await _complete(system, _analysis_prompt(description))
+    return _normalize_analysis(_json(raw, {}), description)
 
 
 async def analyse_photo(image_b64: str, note: str = "") -> dict:

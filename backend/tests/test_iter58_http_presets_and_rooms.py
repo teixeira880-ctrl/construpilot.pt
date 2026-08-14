@@ -103,7 +103,7 @@ def test_seed_defaults_idempotent_for_admin(h):
     r = requests.post(f"{BASE_URL}/api/tool-presets/seed-defaults", headers=h, timeout=10)
     assert r.status_code == 200
     body = r.json()
-    assert body["ok"] is True
+    assert body["ok"] == True
     assert body["created"] == 0
     assert body.get("already_had", 0) >= 6
 
@@ -129,7 +129,7 @@ def test_seed_defaults_new_user_creates_6():
     r1 = requests.post(f"{BASE_URL}/api/tool-presets/seed-defaults", headers=nh, timeout=10)
     assert r1.status_code == 200, r1.text
     b1 = r1.json()
-    assert b1["ok"] is True
+    assert b1["ok"] == True
     assert b1["created"] == 6
     assert len(b1["presets"]) == 6
     kinds = [p["kind"] for p in b1["presets"]]

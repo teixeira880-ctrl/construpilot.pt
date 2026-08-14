@@ -244,7 +244,7 @@ class TestErrorsAndEmails:
                           json={"message": unique_msg, "url": "https://x", "user_agent": "pytest"},
                           timeout=15)
         assert r.status_code == 200
-        assert r.json().get("ok") is True
+        assert r.json().get("ok") == True
         # Verify visible in admin list
         r2 = requests.get(f"{API}/errors/admin/list?hours=1&limit=200", headers=_h(admin_token), timeout=15)
         assert r2.status_code == 200

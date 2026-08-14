@@ -152,7 +152,7 @@ def test_level_patch_manual(two_page_plan, auth_hdr):
     r = requests.patch(f"{BASE_URL}/api/takeoffs/{plan_id}/pages/0/level",
                        json={"level_index": 0, "level_label": "RDC"}, headers=auth_hdr)
     assert r.status_code == 200
-    assert r.json()["ok"] is True
+    assert r.json()["ok"] == True
 
     # GET plan confirms
     g = requests.get(f"{BASE_URL}/api/takeoffs/{plan_id}", headers=auth_hdr)
@@ -294,7 +294,7 @@ def test_admin_revenue(admin_token):
 def test_share_sms_config(auth_hdr):
     r = requests.get(f"{BASE_URL}/api/share/sms/config", headers=auth_hdr)
     assert r.status_code == 200
-    assert r.json().get("twilio_enabled") is True
+    assert r.json().get("twilio_enabled") == True
 
 
 def test_push_public_key():

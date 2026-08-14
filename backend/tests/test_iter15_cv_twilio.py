@@ -183,10 +183,10 @@ class TestTwilio:
                          headers=user_headers, timeout=10)
         assert r.status_code == 200
         d = r.json()
-        assert d["sid_configured"] is True
-        assert d["token_configured"] is True
-        assert d["from_configured"] is True, f"from_configured expected True: {d}"
-        assert d["twilio_enabled"] is True, f"twilio_enabled expected True: {d}"
+        assert d["sid_configured"] == True
+        assert d["token_configured"] == True
+        assert d["from_configured"] == True, f"from_configured expected True: {d}"
+        assert d["twilio_enabled"] == True, f"twilio_enabled expected True: {d}"
 
     def test_sms_send_no_503_config(self, user_headers):
         """Get a real project of the user and try to send SMS.

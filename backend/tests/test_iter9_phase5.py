@@ -49,7 +49,7 @@ def test_whitelabel_config_default_when_missing():
     r = requests.get(f"{API}/whitelabel/config", params={"tenant": "no_such_tenant_xyz"}, timeout=15)
     assert r.status_code == 200
     d = r.json()
-    assert d.get("default") is True
+    assert d.get("default") == True
     assert d.get("tenant_slug") is None
 
 
@@ -92,7 +92,7 @@ def test_whitelabel_admin_delete(admin_token):
     r = requests.delete(f"{API}/admin/whitelabel/{TSLUG}", headers=H(admin_token), timeout=15)
     assert r.status_code == 200
     r2 = requests.get(f"{API}/whitelabel/config", params={"tenant": TSLUG}, timeout=15)
-    assert r2.json().get("default") is True
+    assert r2.json().get("default") == True
 
 
 # ============ SUPPLIERS ============
@@ -115,14 +115,14 @@ def test_suppliers_dashboard_unverified_user_returns_verified_false(demo_token):
     r = requests.get(f"{API}/suppliers/dashboard", headers=H(demo_token), timeout=15)
     assert r.status_code == 200
     d = r.json()
-    assert d.get("verified") is False
+    assert d.get("verified") == False
 
 
 def test_suppliers_dashboard_admin_fallback(admin_token):
     r = requests.get(f"{API}/suppliers/dashboard", params={"days": 30}, headers=H(admin_token), timeout=20)
     assert r.status_code == 200, r.text
     d = r.json()
-    assert d.get("verified") is True
+    assert d.get("verified") == True
     assert d.get("supplier_key") == "leroymerlin"
     for k in ("clicks", "redirects", "conversions", "gmv_eur", "commission_eur"):
         assert k in d, f"missing {k}"
@@ -152,7 +152,7 @@ def test_enterprise_contact_public_creates_lead():
     r = requests.post(f"{API}/enterprise/contact", json=body, timeout=20)
     assert r.status_code == 200, r.text
     j = r.json()
-    assert j.get("ok") is True
+    assert j.get("ok") == True
     assert isinstance(j.get("lead_id"), str) and j["lead_id"].startswith("ent_")
 
 

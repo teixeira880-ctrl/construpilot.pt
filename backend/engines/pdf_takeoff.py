@@ -105,16 +105,24 @@ def _decode_brand_logo(logo_b64_str: str, size_mm: float = 32):
 
 
 def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
-    """Section 1 — logo + company + contact line."""
-    if not branding or not (branding.get("company_name") or branding.get("logo_b64")):
+    """Section 1 — logo + photo de profil + company + contact line."""
+    if not branding or not (branding.get("company_name") or branding.get("logo_b64")
+                            or branding.get("profile_photo_b64")):
         return
     logo_cell = _decode_brand_logo(branding["logo_b64"]) if branding.get("logo_b64") else None
+    photo_cell = (_decode_brand_logo(branding["profile_photo_b64"], size_mm=18)
+                  if branding.get("profile_photo_b64") else None)
     info_lines = []
     if branding.get("company_name"):
         info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
     if branding.get("contact_line"):
         info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
-    t = Table([[logo_cell or "", info_lines]], colWidths=[35 * mm, None])
+    cells = [logo_cell or "", info_lines]
+    widths = [35 * mm, None]
+    if photo_cell:
+        cells.append(photo_cell)
+        widths = [35 * mm, None, 20 * mm]
+    t = Table([cells], colWidths=widths)
     t.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),

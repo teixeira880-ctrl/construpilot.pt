@@ -103,13 +103,15 @@ def _plan_summary(p: dict) -> dict:
 # ---- Branding resolution -----------------------------------------------
 
 async def _resolve_branding(user_id: str) -> dict | None:
-    """Récupère branding : prefer org branding si user en fait partie."""
+    """Récupère branding : prefer org branding si user en fait partie.
+    Ajoute toujours la photo de profil uploadée (data URL) si présente."""
     u = await db.users.find_one({"user_id": user_id},
-                                 {"_id": 0, "organization_id": 1,
+                                 {"_id": 0, "organization_id": 1, "picture": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
                                   "brand_logo_b64": 1})
     if not u:
         return None
+    photo = u.get("picture") if (u.get("picture") or "").startswith("data:image") else None
     if u.get("organization_id"):
         org = await db.organizations.find_one({"org_id": u["organization_id"]},
                                                 {"_id": 0, "brand_company_name": 1,
@@ -118,11 +120,16 @@ async def _resolve_branding(user_id: str) -> dict | None:
                                               "brand_logo_b64")):
             return {"company_name": org.get("brand_company_name"),
                     "contact_line": org.get("brand_contact_line"),
-                    "logo_b64": org.get("brand_logo_b64")}
+                    "logo_b64": org.get("brand_logo_b64"),
+                    "profile_photo_b64": photo}
     if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64")):
         return {"company_name": u.get("brand_company_name"),
                 "contact_line": u.get("brand_contact_line"),
-                "logo_b64": u.get("brand_logo_b64")}
+                "logo_b64": u.get("brand_logo_b64"),
+                "profile_photo_b64": photo}
+    if photo:
+        return {"company_name": None, "contact_line": None, "logo_b64": None,
+                "profile_photo_b64": photo}
     return None
 
 

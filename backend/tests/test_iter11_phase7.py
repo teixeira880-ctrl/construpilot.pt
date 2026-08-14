@@ -63,13 +63,13 @@ class TestPush:
         body = {"endpoint": "https://example.com/test-iter11", "keys": {"p256dh": "x", "auth": "y"}}
         r = requests.post(f"{BASE_URL}/api/push/subscribe", json=body, headers=headers, timeout=30)
         assert r.status_code == 200, r.text
-        assert r.json().get("ok") is True
+        assert r.json().get("ok") == True
 
         # test broadcast
         rt = requests.post(f"{BASE_URL}/api/push/test", headers=headers, timeout=30)
         assert rt.status_code == 200, rt.text
         j = rt.json()
-        assert j.get("ok") is True
+        assert j.get("ok") == True
         assert "sent" in j and isinstance(j["sent"], int)
 
         # unsubscribe cleanup
@@ -89,7 +89,7 @@ class TestRetention:
         r = requests.post(f"{BASE_URL}/api/admin/retention/send-digests", headers=headers, timeout=60)
         assert r.status_code == 200, r.text
         j = r.json()
-        assert j.get("ok") is True
+        assert j.get("ok") == True
         assert "sent" in j
 
     def test_user_preferences_update(self, user_token):
@@ -103,7 +103,7 @@ class TestRetention:
         assert r.status_code == 200, r.text
         prefs = r.json()
         # Should reflect the update
-        assert prefs.get("weekly_digest") is False or prefs.get("preferences", {}).get("weekly_digest") is False
+        assert prefs.get("weekly_digest") == False or prefs.get("preferences", {}).get("weekly_digest") == False
         # Restore true
         requests.put(
             f"{BASE_URL}/api/users/me/preferences",

@@ -11,8 +11,13 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://pilot-build-demo.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN = {"email": "admin@cmrenov.fr", "password": "Cmrenov2026!"}
-DEMO = {"email": "demo@cmrenov.fr", "password": "Demo2026!"}
+try:
+    from tests.creds import ADMIN_EMAIL, ADMIN_PWD, DEMO_EMAIL, DEMO_PWD
+except ImportError:
+    from creds import ADMIN_EMAIL, ADMIN_PWD, DEMO_EMAIL, DEMO_PWD
+
+ADMIN = {"email": ADMIN_EMAIL, "password": ADMIN_PWD}
+DEMO = {"email": DEMO_EMAIL, "password": DEMO_PWD}
 
 
 # ---------- fixtures ----------

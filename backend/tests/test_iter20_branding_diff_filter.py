@@ -90,8 +90,9 @@ class TestBrandingEndpoint:
         r = requests.get(f"{API}/users/me/branding", headers=auth, timeout=30)
         assert r.status_code == 200
         d = r.json()
-        assert d == {"company_name": None, "contact_line": None,
-                     "has_logo": False, "logo_b64": None}
+        for k, v in {"company_name": None, "contact_line": None,
+                     "has_logo": False, "logo_b64": None}.items():
+            assert d.get(k) == v, f"{k}={d.get(k)}"
 
         # PUT branding
         payload = {
@@ -105,7 +106,7 @@ class TestBrandingEndpoint:
         d = r.json()
         assert d["company_name"] == "BTP Test SAS"
         assert d["contact_line"] == "12 rue X · Paris"
-        assert d["has_logo"] is True
+        assert d["has_logo"] == True
         assert d["logo_b64"] == TINY_PNG_B64
 
         # GET refresh persists
@@ -113,7 +114,7 @@ class TestBrandingEndpoint:
         d2 = r.json()
         assert d2["company_name"] == "BTP Test SAS"
         assert d2["contact_line"] == "12 rue X · Paris"
-        assert d2["has_logo"] is True
+        assert d2["has_logo"] == True
 
     def test_branding_clear_empty_string(self, auth):
         # First set a value

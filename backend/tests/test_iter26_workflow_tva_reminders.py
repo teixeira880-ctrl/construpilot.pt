@@ -74,12 +74,12 @@ class TestEstimateFromTakeoff:
         )
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d.get("ok") is True
+        assert d.get("ok") == True
         assert d.get("plan_id") == plan_id_with_rooms
         assert d.get("project_id", "").startswith("proj_")
         assert d.get("surface_m2", 0) > 0
         assert d.get("room_count", 0) > 0
-        assert d.get("is_renovation") is True
+        assert d.get("is_renovation") == True
         est = d.get("estimation") or {}
         assert isinstance(est.get("lots"), list) and est["lots"], "lots missing"
         for key in ("total_avg", "total_min", "total_max", "duration_weeks",
@@ -95,7 +95,7 @@ class TestEstimateFromTakeoff:
             timeout=30,
         )
         assert r.status_code == 200, r.text
-        assert r.json().get("is_renovation") is False
+        assert r.json().get("is_renovation") == False
 
     def test_estimate_no_rooms_returns_400(self, pro_headers):
         # Non-existent plan → 404; test empty rooms via impossible plan_id
@@ -146,7 +146,7 @@ class TestSendQuotePersonalisationAndTva:
         assert found.get("message") == "TEST message"
         assert found.get("client_address") == "12 rue X 75002 Paris"
         assert found.get("work_address") == "12 rue X 75002 Paris"
-        assert found.get("include_tva_attestation") is True
+        assert found.get("include_tva_attestation") == True
 
     def test_send_quote_subject_fallback(self, pro_headers, plan_id_with_rooms):
         r = requests.post(
@@ -249,7 +249,7 @@ class TestReminders:
             headers=pro_headers, timeout=20,
         ).json()
         found = next(s for s in lst["sends"] if s["log_id"] == log_id)
-        assert found.get("reminder_sent") is True
+        assert found.get("reminder_sent") == True
         assert found.get("reminder_sent_at")
 
         # 5) verify notification of type reminder_sent inserted
@@ -269,7 +269,7 @@ class TestReminders:
             headers=pro_headers, timeout=20,
         ).json()
         found2 = next(s for s in lst2["sends"] if s["log_id"] == log_id)
-        assert found2.get("reminder_sent") is True
+        assert found2.get("reminder_sent") == True
 
     def test_scheduler_job_registered(self):
         """Verify import + job registered without errors."""

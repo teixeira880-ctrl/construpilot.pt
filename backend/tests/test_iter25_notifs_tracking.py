@@ -52,7 +52,7 @@ class TestNotifications:
                           headers=pro_headers, timeout=15)
         assert r.status_code == 200
         data = r.json()
-        assert data.get("ok") is True
+        assert data.get("ok") == True
         assert "marked" in data and isinstance(data["marked"], int)
 
         # Verify unread now = 0
@@ -104,6 +104,6 @@ class TestQuoteSendsAll:
         )
         assert r2.status_code == 200, r2.text
         data = r2.json()
-        assert data.get("ok") is True
+        assert data.get("ok") == True
         assert "token" in data and "url" in data
         assert "/sign/" in data["url"]

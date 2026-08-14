@@ -251,7 +251,7 @@ def test_share_sms_config():
     r = requests.get(f"{API}/share/sms/config", timeout=20)
     assert r.status_code == 200
     data = r.json()
-    assert data.get("twilio_enabled") is True, f"twilio_enabled={data.get('twilio_enabled')}"
+    assert data.get("twilio_enabled") == True, f"twilio_enabled={data.get('twilio_enabled')}"
 
 
 def test_push_public_key():

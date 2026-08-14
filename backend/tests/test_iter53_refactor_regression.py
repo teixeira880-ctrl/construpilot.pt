@@ -100,12 +100,12 @@ class TestMonetizationRefactor:
 
     def test_plan_is_pro_tier(self):
         from engines.monetization import _plan_is_pro_tier
-        assert _plan_is_pro_tier({"audience": "pro", "plan_id": "pro_monthly"}) is True
+        assert _plan_is_pro_tier({"audience": "pro", "plan_id": "pro_monthly"}) == True
         assert _plan_is_pro_tier({"audience": "particulier",
-                                   "plan_id": "pro_business_yearly"}) is True
+                                   "plan_id": "pro_business_yearly"}) == True
         # premium_* n'est PAS pro-tier (préserve sémantique originale du code)
         assert _plan_is_pro_tier({"audience": "particulier",
-                                   "plan_id": "premium_monthly"}) is False
+                                   "plan_id": "premium_monthly"}) == False
 
     def test_price_matches(self):
         from engines.monetization import _price_matches

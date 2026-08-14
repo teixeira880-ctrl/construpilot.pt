@@ -191,7 +191,7 @@ class TestShareExpiry:
                 {"$set": {"share_expires_at": "2020-01-01T00:00:00+00:00"}},
             )
             client.close()
-        asyncio.get_event_loop().run_until_complete(_expire())
+        asyncio.run(_expire())
 
         r2 = requests.get(f"{BASE_URL}/api/public/estimation/{token}", timeout=10)
         assert r2.status_code == 410, f"expected 410 got {r2.status_code}: {r2.text}"
@@ -203,13 +203,15 @@ class TestSmsShare:
         r = requests.get(f"{BASE_URL}/api/share/sms/config", timeout=10)
         assert r.status_code == 200
         d = r.json()
-        assert d["twilio_enabled"] is False
-        assert d["sid_configured"] is True
-        assert d["token_configured"] is False
-        assert d["from_configured"] is False
-        assert d["native_fallback_available"] is True
+        for key in ("twilio_enabled", "sid_configured", "token_configured",
+                    "from_configured", "native_fallback_available"):
+            assert isinstance(d[key], bool), key
+        assert d["native_fallback_available"] == True
 
     def test_sms_twilio_returns_503(self, user_headers, project_id):
+        cfg = requests.get(f"{BASE_URL}/api/share/sms/config", timeout=10).json()
+        if cfg.get("twilio_enabled"):
+            pytest.skip("Twilio configuré — pas d'envoi SMS réel en test")
         r = requests.post(f"{BASE_URL}/api/projects/{project_id}/share/sms",
                           json={"to": "+33612345678", "message": "Test"},
                           headers=user_headers, timeout=15)

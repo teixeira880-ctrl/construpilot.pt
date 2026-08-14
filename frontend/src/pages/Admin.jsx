@@ -13,6 +13,8 @@ import {
 import { api, eur, num } from "@/lib/api";
 import { Stat, SectionTitle } from "@/components/Bits";
 import RevenueTab from "@/components/RevenueTab";
+import { ProfileForm } from "@/components/account/ProfileForm";
+import { PasswordForm } from "@/components/account/PasswordForm";
 
 export default function Admin() {
   const [stats, setStats] = useState(null);
@@ -95,7 +97,18 @@ export default function Admin() {
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">Revenue Cockpit</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">Demandes</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">Erreurs client</TabsTrigger>
+          <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">Mon compte</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="account" className="mt-6">
+          <div className="max-w-lg space-y-6" data-testid="admin-account-section">
+            <SectionTitle over="Administrateur" title="Mon compte">
+              Gérez vos informations de profil et votre mot de passe.
+            </SectionTitle>
+            <ProfileForm />
+            <PasswordForm />
+          </div>
+        </TabsContent>
 
         <TabsContent value="prices" className="mt-6">
           <div className="surface overflow-x-auto">

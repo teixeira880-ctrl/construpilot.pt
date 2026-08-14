@@ -11,6 +11,7 @@ nesting depth > 2.
 """
 import os
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import stripe
@@ -167,30 +168,41 @@ def _resolve_promo_discount(promo_code: str | None) -> list | None:
     return [{"promotion_code": promos[0].id}]
 
 
-def _build_checkout_kwargs(*, user: dict, plan: dict, price, customer_id: str,
-                           origin_url: str, is_sub: bool,
-                           total_trial_days: int, bonus_days_consumed: int,
-                           promo_discount: list | None) -> dict:
+@dataclass
+class CheckoutContext:
+    """Contexte d'une session Checkout (évite une signature à 9 paramètres)."""
+    user: dict
+    plan: dict
+    price: object
+    customer_id: str
+    origin_url: str
+    is_sub: bool
+    total_trial_days: int = 0
+    bonus_days_consumed: int = 0
+    promo_discount: list | None = None
+
+
+def _build_checkout_kwargs(ctx: CheckoutContext) -> dict:
     kwargs = {
-        "customer": customer_id,
-        "line_items": [{"price": price.id, "quantity": 1}],
-        "mode": "subscription" if is_sub else "payment",
-        "success_url": f"{origin_url}/paiement/succes?session_id={{CHECKOUT_SESSION_ID}}",
-        "cancel_url": f"{origin_url}/paiement/annule",
-        "metadata": {"user_id": user["user_id"], "plan_id": plan["plan_id"],
-                     "lookup_key": plan["lookup_key"]},
+        "customer": ctx.customer_id,
+        "line_items": [{"price": ctx.price.id, "quantity": 1}],
+        "mode": "subscription" if ctx.is_sub else "payment",
+        "success_url": f"{ctx.origin_url}/paiement/succes?session_id={{CHECKOUT_SESSION_ID}}",
+        "cancel_url": f"{ctx.origin_url}/paiement/annule",
+        "metadata": {"user_id": ctx.user["user_id"], "plan_id": ctx.plan["plan_id"],
+                     "lookup_key": ctx.plan["lookup_key"]},
         "allow_promotion_codes": True,
     }
-    if is_sub and total_trial_days > 0:
+    if ctx.is_sub and ctx.total_trial_days > 0:
         kwargs["subscription_data"] = {
-            "trial_period_days": total_trial_days,
-            "metadata": {"user_id": user["user_id"],
-                         "plan_id": plan["plan_id"],
-                         "bonus_days_consumed": str(bonus_days_consumed)},
+            "trial_period_days": ctx.total_trial_days,
+            "metadata": {"user_id": ctx.user["user_id"],
+                         "plan_id": ctx.plan["plan_id"],
+                         "bonus_days_consumed": str(ctx.bonus_days_consumed)},
         }
-    if promo_discount is not None:
+    if ctx.promo_discount is not None:
         kwargs.pop("allow_promotion_codes", None)
-        kwargs["discounts"] = promo_discount
+        kwargs["discounts"] = ctx.promo_discount
     return kwargs
 
 
@@ -223,13 +235,13 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
     total_trial_days, bonus_days_consumed = await _compute_trial_days(user, plan, is_sub)
     promo_discount = _resolve_promo_discount(promo_code)
 
-    kwargs = _build_checkout_kwargs(
+    kwargs = _build_checkout_kwargs(CheckoutContext(
         user=user, plan=plan, price=price, customer_id=customer_id,
         origin_url=origin_url, is_sub=is_sub,
         total_trial_days=total_trial_days,
         bonus_days_consumed=bonus_days_consumed,
         promo_discount=promo_discount,
-    )
+    ))
     session = stripe.checkout.Session.create(**kwargs)
     await _record_payment_transaction(session, price, plan, user,
                                        kwargs["mode"], bonus_days_consumed)

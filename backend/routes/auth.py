@@ -1,4 +1,7 @@
 import uuid
+import asyncio
+import hashlib
+import secrets
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Response, Request, Depends
@@ -25,7 +28,8 @@ class LoginIn(BaseModel):
 
 
 def _public(u: dict) -> dict:
-    return {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan", "created_at")}
+    return {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
+                                  "phone", "auth_provider", "must_change_password", "created_at")}
 
 
 async def _set_session(response: Response, user_id: str, token: str | None = None) -> str:
@@ -111,6 +115,7 @@ async def login(body: LoginIn, request: Request, response: Response) -> dict:
         await _record_failed_login(identifier)
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     await db.login_attempts.delete_one({"identifier": identifier})
+    await _alert_admin_new_device(user, request)
     token = await _set_session(response, user["user_id"])
     return {"user": _public(user), "token": make_jwt(user["user_id"]), "session_token": token}
 
@@ -136,6 +141,7 @@ async def change_password(body: ChangePasswordIn, request: Request,
     await db.users.update_one(
         {"user_id": user["user_id"]},
         {"$set": {"password_hash": hash_password(body.new_password),
+                  "must_change_password": False,
                   "password_changed_at": datetime.now(timezone.utc).isoformat()}})
     # Révoque toutes les autres sessions (garde la session courante)
     current = request.cookies.get("session_token")
@@ -147,6 +153,196 @@ async def change_password(body: ChangePasswordIn, request: Request,
         q["session_token"] = {"$ne": current}
     await db.user_sessions.delete_many(q)
     return {"ok": True}
+
+
+class ProfileIn(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    email: EmailStr | None = None
+    current_password: str | None = None
+
+
+@router.put("/profile")
+async def update_profile(body: ProfileIn, user=Depends(current_user)) -> dict:
+    """Met à jour nom / téléphone / email (changement d'email : mot de passe requis)."""
+    updates: dict = {}
+    if body.name is not None:
+        name = body.name.strip()
+        if not 2 <= len(name) <= 80:
+            raise HTTPException(status_code=400, detail="Nom : entre 2 et 80 caractères")
+        updates["name"] = name
+    if body.phone is not None:
+        updates["phone"] = body.phone.strip()[:20] or None
+    if body.email is not None and body.email.lower() != user["email"]:
+        full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        if full.get("auth_provider") == "google":
+            raise HTTPException(status_code=400,
+                                detail="Compte Google — l'email ne peut pas être modifié")
+        if not body.current_password or not verify_password(
+                body.current_password, full.get("password_hash") or ""):
+            raise HTTPException(status_code=401,
+                                detail="Mot de passe actuel requis pour changer l'email")
+        new_email = body.email.lower()
+        if await db.users.find_one({"email": new_email}):
+            raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
+        updates["email"] = new_email
+    if not updates:
+        return {"user": _public(user)}
+    updates["profile_updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
+    fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return {"user": _public(fresh)}
+
+
+class PhotoIn(BaseModel):
+    image_b64: str
+
+
+@router.post("/profile-photo")
+async def upload_profile_photo(body: PhotoIn, user=Depends(current_user)) -> dict:
+    """Upload d'une photo de profil (redimensionnée 256px, stockée en data URL)."""
+    import base64
+    from io import BytesIO
+    from PIL import Image
+    try:
+        data = base64.b64decode(body.image_b64.split(",")[-1])
+    except Exception:
+        raise HTTPException(status_code=400, detail="Image invalide")
+    if len(data) > 5_000_000:
+        raise HTTPException(status_code=400, detail="Image trop lourde (5 Mo max)")
+    try:
+        img = Image.open(BytesIO(data)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Format d'image non reconnu")
+    img.thumbnail((256, 256))
+    out = BytesIO()
+    img.save(out, format="JPEG", quality=85)
+    data_url = "data:image/jpeg;base64," + base64.b64encode(out.getvalue()).decode()
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"picture": data_url}})
+    fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return {"user": _public(fresh)}
+
+
+@router.delete("/profile-photo")
+async def delete_profile_photo(user=Depends(current_user)) -> dict:
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"picture": None}})
+    fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return {"user": _public(fresh)}
+
+
+# ---- Mot de passe oublié -----------------------------------------------------
+
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+
+class ResetIn(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotIn, request: Request) -> dict:
+    """Envoie un lien de réinitialisation (réponse identique que le compte existe
+    ou non — anti-énumération). Max 3 demandes/heure par email."""
+    import os
+    email = body.email.lower()
+    user = await db.users.find_one({"email": email},
+                                   {"_id": 0, "user_id": 1, "password_hash": 1, "name": 1})
+    if not user or not user.get("password_hash"):
+        return {"ok": True}
+    hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent = await db.password_reset_tokens.count_documents(
+        {"email": email, "created_at": {"$gt": hour_ago}})
+    if recent >= 3:
+        return {"ok": True}
+    token = secrets.token_urlsafe(32)
+    await db.password_reset_tokens.insert_one({
+        "token_hash": hashlib.sha256(token.encode()).hexdigest(),
+        "email": email, "user_id": user["user_id"], "used": False,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
+    })
+    origin = request.headers.get("origin") or os.environ.get("FRONTEND_URL", "")
+    link = f"{origin}/reinitialiser?token={token}"
+    html = (
+        f"<p>Bonjour {user.get('name') or ''},</p>"
+        f"<p>Vous avez demandé la réinitialisation de votre mot de passe ConstruPilot.</p>"
+        f"<p><a href='{link}' style='background:#16a34a;color:#fff;padding:10px 18px;"
+        f"border-radius:4px;text-decoration:none'>Choisir un nouveau mot de passe</a></p>"
+        f"<p style='font-size:12px;color:#666'>Ce lien est valable 1 heure et ne peut être "
+        f"utilisé qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>"
+    )
+
+    async def _send():
+        from engines.emailer import send_email
+        try:
+            await send_email(email, "Réinitialisation de votre mot de passe ConstruPilot", html)
+        except Exception:
+            pass
+    asyncio.create_task(_send())
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetIn) -> dict:
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Nouveau mot de passe : 8 caractères minimum")
+    th = hashlib.sha256(body.token.encode()).hexdigest()
+    rec = await db.password_reset_tokens.find_one({"token_hash": th, "used": False})
+    if not rec:
+        raise HTTPException(status_code=400, detail="Lien invalide ou déjà utilisé")
+    exp = rec["expires_at"]
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Lien expiré — refaites une demande")
+    await db.users.update_one(
+        {"user_id": rec["user_id"]},
+        {"$set": {"password_hash": hash_password(body.new_password),
+                  "must_change_password": False,
+                  "password_changed_at": datetime.now(timezone.utc).isoformat()}})
+    await db.password_reset_tokens.update_one({"_id": rec["_id"]}, {"$set": {"used": True}})
+    await db.user_sessions.delete_many({"user_id": rec["user_id"]})
+    return {"ok": True}
+
+
+# ---- Alerte connexion admin depuis un nouvel appareil ------------------------
+
+async def _alert_admin_new_device(user: dict, request: Request) -> None:
+    """Si un admin se connecte depuis un appareil inconnu (IP + user-agent),
+    enregistre l'appareil et envoie un email d'alerte (fire-and-forget)."""
+    if user.get("role") != "admin":
+        return
+    ip = _client_ip(request)
+    ua = (request.headers.get("user-agent") or "inconnu")[:200]
+    device_key = hashlib.sha256(f"{user['user_id']}:{ip}:{ua}".encode()).hexdigest()
+    now = datetime.now(timezone.utc).isoformat()
+    if await db.known_devices.find_one({"device_key": device_key}, {"_id": 1}):
+        await db.known_devices.update_one({"device_key": device_key},
+                                          {"$set": {"last_seen": now}})
+        return
+    await db.known_devices.insert_one({
+        "device_key": device_key, "user_id": user["user_id"], "ip": ip,
+        "user_agent": ua, "created_at": now, "last_seen": now})
+    html = (
+        f"<p>Bonjour {user.get('name') or ''},</p>"
+        f"<p>Une connexion à votre compte <b>administrateur ConstruPilot</b> vient d'avoir lieu "
+        f"depuis un nouvel appareil :</p>"
+        f"<ul><li><b>Adresse IP</b> : {ip}</li>"
+        f"<li><b>Appareil / navigateur</b> : {ua}</li>"
+        f"<li><b>Date</b> : {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}</li></ul>"
+        f"<p style='font-size:12px;color:#666'>Si c'était bien vous, aucune action n'est requise. "
+        f"Sinon, changez immédiatement votre mot de passe depuis la page Mon compte.</p>"
+    )
+
+    async def _send():
+        from engines.emailer import send_email
+        try:
+            await send_email(user["email"], "Nouvelle connexion admin — ConstruPilot", html)
+        except Exception:
+            pass
+    asyncio.create_task(_send())
 
 
 @router.post("/session")
@@ -175,6 +371,7 @@ async def google_session(request: Request, response: Response) -> dict:
                                   {"$set": {"picture": data.get("picture") or user.get("picture"),
                                             "name": data.get("name") or user.get("name")}})
     token = await _set_session(response, user["user_id"], data.get("session_token"))
+    await _alert_admin_new_device(user, request)
     return {"user": _public(user), "session_token": token}
 
 

@@ -161,7 +161,7 @@ class TestIter62CotesTextes:
                           json={"page_index": 0}, headers=headers, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["ok"] is True
+        assert d["ok"] == True
         assert d["rooms_matched"] == 1
         assert len(d["renamed"]) == 1
         assert d["renamed"][0]["to"] == "Séjour"
@@ -188,9 +188,9 @@ class TestIter62CotesTextes:
                           json={"page_index": 0, "apply": False}, headers=headers, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["applied"] is False
-        assert d["can_reconcile"] is True
-        assert d["needs_recalib"] is True
+        assert d["applied"] == False
+        assert d["can_reconcile"] == True
+        assert d["needs_recalib"] == True
         assert abs(d["deviation_pct"] - 21.0) < 1.5
         assert d["matches"][0]["match_method"] == "name"   # « Séjour » matché par nom
         # ppm proposé = 50 × √(100/121) ≈ 45.45
@@ -201,7 +201,7 @@ class TestIter62CotesTextes:
                           json={"page_index": 0, "apply": True}, headers=headers, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["applied"] is True
+        assert d["applied"] == True
         assert d["rooms_recomputed"] == 1
         assert d["calibration"]["method"] == "reconcile_surfaces"
         # après recalage, la surface mesurée == surface écrite

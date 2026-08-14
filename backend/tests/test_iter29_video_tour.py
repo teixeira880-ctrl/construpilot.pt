@@ -10,7 +10,8 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+# Rendus vidéo longs (> timeout ingress) : URL interne du backend
+BASE_URL = os.environ.get("INTERNAL_BACKEND_URL", "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api"
 
 # Credentials read from env — never hardcoded here. Set via TEST_USER_PRO_EMAIL /

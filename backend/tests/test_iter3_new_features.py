@@ -7,7 +7,7 @@ import pytest
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://pilot-build-demo.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
-DEMO_EMAIL = "demo@cmrenov.fr"
+DEMO_EMAIL = "demo@construpilot.fr"
 DEMO_PASS = "Demo2026!"
 
 
@@ -45,7 +45,7 @@ class TestPdfEmail:
         }, timeout=60)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d.get("ok") is True
+        assert d.get("ok") == True
         assert d.get("to") == "delivered@resend.dev"
 
     def test_email_empty_estimation_400(self):
@@ -140,7 +140,7 @@ class TestAlertsCheckNow:
         r = requests.post(f"{API}/prices/alerts/check-now", headers=headers, timeout=60)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d.get("ok") is True
+        assert d.get("ok") == True
         assert isinstance(d.get("notified"), int)
         assert d["notified"] >= 0
 

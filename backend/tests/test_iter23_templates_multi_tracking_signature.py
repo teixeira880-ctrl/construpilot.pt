@@ -88,7 +88,7 @@ class TestQuoteTemplates:
                           headers=auth, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["ok"] is True
+        assert d["ok"] == True
         assert d["template_id"].startswith("qtpl_")
         assert d["finish"] == "premium"
         assert d["floor_material"] == "parquet"
@@ -240,7 +240,7 @@ class TestEmailTracking:
                     if n.get("type") == "quote_opened" and n.get("log_id") == log_id]
         assert len(matching) == 1, f"Expected exactly 1 quote_opened notif, got {len(matching)}"
         notif_id = matching[0]["notif_id"]
-        assert matching[0]["read"] is False
+        assert matching[0]["read"] == False
 
         # Mark as read
         r = requests.post(f"{API}/quotes/notifications/{notif_id}/read",
@@ -251,14 +251,14 @@ class TestEmailTracking:
                          headers=auth, timeout=15)
         matching = [n for n in r.json()["notifications"]
                     if n["notif_id"] == notif_id]
-        assert matching and matching[0]["read"] is True
+        assert matching and matching[0]["read"] == True
 
         # Verify open_count in quote_sends
         r = requests.get(f"{API}/takeoffs/{pid}/quote-sends",
                          headers=auth, timeout=15)
         sends = r.json()["sends"]
         entry = next(s for s in sends if s["log_id"] == log_id)
-        assert entry["opened"] is True
+        assert entry["opened"] == True
         assert entry.get("open_count", 0) >= 2
 
 
@@ -289,7 +289,7 @@ class TestSignatureFlow:
             headers=auth, timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["ok"] is True
+        assert d["ok"] == True
         assert d["token"].startswith("sig_")
         assert d["url"].endswith(f"/sign/{d['token']}")
         token = d["token"]
@@ -301,7 +301,7 @@ class TestSignatureFlow:
         assert s["log_id"] == log_id
         assert s["plan_id"] == pid
         assert s["client_email"] == "signer@example.com"
-        assert s["signed"] is False
+        assert s["signed"] == False
         assert "total_ttc" in s
         assert "company_name" in s
         assert "contact_line" in s
@@ -311,7 +311,7 @@ class TestSignatureFlow:
         r = requests.post(f"{API}/quotes/public/sign/{token}",
                           json=payload, timeout=15)
         assert r.status_code == 200, r.text
-        assert r.json()["ok"] is True
+        assert r.json()["ok"] == True
 
         # (c-bis) Notification "quote_signed" for sender
         r = requests.get(f"{API}/quotes/notifications/me",
@@ -324,7 +324,7 @@ class TestSignatureFlow:
 
         # Public GET now says signed=true
         r = requests.get(f"{API}/quotes/public/sign/{token}", timeout=15)
-        assert r.json()["signed"] is True
+        assert r.json()["signed"] == True
 
         # (d) Signing again → 400
         r = requests.post(f"{API}/quotes/public/sign/{token}",

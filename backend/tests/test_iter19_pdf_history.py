@@ -131,21 +131,21 @@ class TestHistory:
         _calibrate(plan_id, auth)
         _add_room(plan_id, auth, "Salon", 6, 4)
         _add_room(plan_id, auth, "Cuisine", 3, 3)
-        # Snapshots are captured BEFORE each mutation:
-        #   [0] room_upsert (Cuisine)  -> state has Salon + calibrations
-        #   [1] room_upsert (Salon)    -> state has 0 rooms + calibrations
-        #   [2] calibrate              -> state has 0 rooms + no calibrations
-        # We want state with calibrations but 0 rooms -> [1] (2nd oldest)
+        # Snapshots capturés APRÈS chaque mutation (DESC) :
+        #   [0] room_upsert (Cuisine) -> 2 rooms + calibrations
+        #   [1] room_upsert (Salon)   -> 1 room  + calibrations
+        #   [2] calibrate             -> 0 rooms + calibrations
+        # On veut l'état avec calibrations mais 0 rooms -> snapshot `calibrate`
         h = requests.get(f"{API}/takeoffs/{plan_id}/history", headers=auth, timeout=30).json()
-        target = h["history"][-2]
-        assert target["action"] == "room_upsert"
+        target = next(s for s in reversed(h["history"])
+                      if not s["rooms"] and s["calibrations"])
         assert len(target["rooms"]) == 0
         snap_id = target["snapshot_id"]
         r = requests.post(f"{API}/takeoffs/{plan_id}/history/restore/{snap_id}",
                           headers=auth, timeout=30)
         assert r.status_code == 200, r.text
         j = r.json()
-        assert j["ok"] is True
+        assert j["ok"] == True
         assert j["restored_from"] == snap_id
         # Confirm plan state
         p = requests.get(f"{API}/takeoffs/{plan_id}", headers=auth, timeout=30).json()

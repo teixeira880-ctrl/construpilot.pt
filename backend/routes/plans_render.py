@@ -162,17 +162,22 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)) 
 
     render_id = "r3d_" + secrets.token_hex(5)
     render_doc = {
-        "render_id": render_id, "style": body.style,
+        "render_id": render_id, "plan_id": plan_id, "user_id": user["user_id"],
+        "style": body.style,
         "include_furniture": body.include_furniture,
         "page_index": body.page_index,
         "created_at": _now(),
         "image_b64": generated_b64, "mime_type": mime,
         "prompt": prompt[:800],
     }
-    await db.plans_takeoff.update_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"$push": {"renders_3d": {"$each": [render_doc], "$slice": -10}}}
-    )
+    # Collection dédiée (les images base64 embarquées dans plans_takeoff
+    # faisaient exploser la limite BSON de 16 Mo). On garde les 10 derniers.
+    await db.plan_renders_3d.insert_one(render_doc)
+    old = await (db.plan_renders_3d
+                 .find({"plan_id": plan_id}, {"_id": 1})
+                 .sort("created_at", -1).skip(10).to_list(50))
+    if old:
+        await db.plan_renders_3d.delete_many({"_id": {"$in": [o["_id"] for o in old]}})
     return {"ok": True, "render_id": render_id, "style": body.style,
             "mime_type": mime, "image_b64": generated_b64,
             "prompt_used": prompt[:400]}
@@ -182,12 +187,13 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)) 
 async def list_renders_3d(plan_id: str, user=Depends(current_user)) -> dict:
     """Liste les rendus 3D (meta uniquement, sans image_b64 lourd)."""
     p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "renders_3d": 1}
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 1}
     )
     if not p:
         raise HTTPException(404, "Plan introuvable")
-    renders = p.get("renders_3d") or []
+    renders = await (db.plan_renders_3d
+                     .find({"plan_id": plan_id}, {"_id": 0, "image_b64": 0, "prompt": 0})
+                     .sort("created_at", 1).to_list(20))
     return {"plan_id": plan_id, "renders": [
         {"render_id": r.get("render_id"), "style": r.get("style"),
          "page_index": r.get("page_index"), "created_at": r.get("created_at"),
@@ -200,18 +206,18 @@ async def list_renders_3d(plan_id: str, user=Depends(current_user)) -> dict:
 async def get_render_3d(plan_id: str, render_id: str, user=Depends(current_user)) -> dict:
     """Récupère l'image d'un rendu 3D précédemment généré."""
     p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "renders_3d": 1}
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 1}
     )
     if not p:
         raise HTTPException(404, "Plan introuvable")
-    for r in p.get("renders_3d") or []:
-        if r.get("render_id") == render_id:
-            return {"render_id": render_id, "style": r.get("style"),
-                    "mime_type": r.get("mime_type", "image/png"),
-                    "image_b64": r.get("image_b64"),
-                    "created_at": r.get("created_at")}
-    raise HTTPException(404, "Rendu 3D introuvable")
+    r = await db.plan_renders_3d.find_one(
+        {"plan_id": plan_id, "render_id": render_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(404, "Rendu 3D introuvable")
+    return {"render_id": render_id, "style": r.get("style"),
+            "mime_type": r.get("mime_type", "image/png"),
+            "image_b64": r.get("image_b64"),
+            "created_at": r.get("created_at")}
 
 
 # ============ VIDEO TOUR 3D ============

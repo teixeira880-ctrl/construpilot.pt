@@ -102,19 +102,21 @@ def test_estimate_in_levels_optional():
 def test_ai_prompt_mentions_levels_per_storey():
     import inspect
     from engines import ai
-    src = inspect.getsource(ai.analyse_description)
+    src = inspect.getsource(ai._analysis_prompt)
     assert '"levels"' in src
     assert "RDC" in src or "R+1" in src
 
 
 def test_ai_cleans_invalid_levels():
-    """La fonction _cleans levels rejette entrées sans surface ou hors bornes."""
-    import inspect
+    """`_clean_levels` rejette entrées sans surface ou hors bornes (1.5-5.0 m)."""
     from engines import ai
-    src = inspect.getsource(ai.analyse_description)
-    assert "cleaned_levels" in src
-    # Bornes hauteur 1.5 - 5.0
-    assert "1.5 <= h" in src or "1.5<=h" in src
+    cleaned = ai._clean_levels([
+        {"label": "RDC", "surface_m2": 40, "ceiling_height_m": 2.6},
+        {"label": "cave", "surface_m2": 0, "ceiling_height_m": 2.2},
+        {"label": "grenier", "surface_m2": 10, "ceiling_height_m": 9.0},
+        "junk",
+    ])
+    assert len(cleaned) == 1 and cleaned[0]["label"] == "RDC"
 
 
 # ============ FEATURE 2 — Compare on Room Estimate ============

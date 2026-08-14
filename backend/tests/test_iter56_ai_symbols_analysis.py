@@ -53,7 +53,7 @@ def test_normalize_preserves_existing_data():
     }
     result = _normalize_analysis(payload)
     assert result["dimension_lines"][0]["value_m"] == 3.42
-    assert result["wall_types"]["load_bearing_visible"] is True
+    assert result["wall_types"]["load_bearing_visible"] == True
     assert result["materials_notes"][0]["category"] == "revêtement_sol"
     assert result["openings"]["reservations_visible"] == 2
     assert result["openings"]["details"][0]["kind"] == "porte"

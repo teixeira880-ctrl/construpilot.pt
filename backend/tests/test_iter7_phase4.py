@@ -87,7 +87,7 @@ def admin_api_key(admin_token):
 
 def test_admin_can_create_key(admin_api_key):
     assert admin_api_key["plan_id"] == "api_starter"
-    assert admin_api_key["active"] is True
+    assert admin_api_key["active"] == True
 
 
 def test_list_keys_masked(admin_token, admin_api_key):
@@ -220,7 +220,7 @@ def test_kyc_admin_approve(admin_token, user):
     r2 = requests.get(f"{API}/marketplace/kyc/me",
                       headers=_h(user["token"]), timeout=15)
     d = r2.json()
-    assert d["verified"] is True
+    assert d["verified"] == True
     assert d["badge"] == "ConstruPilot Verified"
 
 
@@ -228,15 +228,15 @@ def test_kyc_admin_approve(admin_token, user):
 def test_pro_me_unregistered(user2):
     r = requests.get(f"{API}/pro/me", headers=_h(user2["token"]), timeout=15)
     assert r.status_code == 200
-    assert r.json()["registered"] is False
+    assert r.json()["registered"] == False
 
 
 def test_pro_me_verified(user):
     r = requests.get(f"{API}/pro/me", headers=_h(user["token"]), timeout=15)
     assert r.status_code == 200
     d = r.json()
-    assert d["registered"] is True
-    assert d["verified"] is True
+    assert d["registered"] == True
+    assert d["verified"] == True
     assert d["badge"] == "ConstruPilot Verified"
     assert d["credits_cents"] == 0
     assert d["leads_bought"] == []
@@ -342,11 +342,11 @@ def test_prices_search_enriched():
     for key in ("leroymerlin", "manomano"):
         if key in by_supplier:
             sample = by_supplier[key][0]
-            assert sample.get("is_affiliate") is True, f"{key} not affiliate: {sample}"
+            assert sample.get("is_affiliate") == True, f"{key} not affiliate: {sample}"
             assert sample.get("tracking_url")
             assert sample.get("affiliate_disclosure")
     if "castorama" in by_supplier:
-        assert by_supplier["castorama"][0].get("is_affiliate") is False
+        assert by_supplier["castorama"][0].get("is_affiliate") == False
 
 
 # =============== 8. Regression ===============

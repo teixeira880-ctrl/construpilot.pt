@@ -16,10 +16,10 @@ def _fe_env():
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or _fe_env() or "").rstrip("/")
 assert BASE_URL
 
-PRO = ("pro@construpilot.fr", "Pro2026!")
-COLLEGUE = ("collegue@construpilot.fr", "Collegue2026!")
-CLIENT = ("client@construpilot.fr", "Client2026!")
-ADMIN = ("admin@construpilot.fr", "Construpilot2026!")
+try:
+    from tests.creds import ADMIN, CLIENT, COLLEGUE, PRO
+except ImportError:
+    from creds import ADMIN, CLIENT, COLLEGUE, PRO
 
 PLAN_ID = "plan_6696782f92ca"
 TOKEN = "pcs_e2a4c343ca79d96e"
@@ -62,8 +62,8 @@ def test_pc_settings_defaults(pro_h):
     d = r.json()["defaults"]
     assert d["margin_pct"] == 30
     assert d["deposit_pct"] == 30
-    assert d["weekly_report"] is True
-    assert d["team_share"] is True
+    assert d["weekly_report"] == True
+    assert d["team_share"] == True
     assert d["hourly_rate_eur"] == 35
     assert len(d["unit_prices"]) == 21
 
@@ -149,7 +149,7 @@ def test_team_share_collegue_sees_pro_studies(col_h):
     marc = [x for x in rows if (x.get("owner_name") or "").startswith("Marc")]
     assert len(marc) >= 1, [r.get("owner_name") for r in rows]
     for r_ in marc:
-        assert r_.get("is_own") is False
+        assert r_.get("is_own") == False
 
 
 def test_team_share_collegue_access_study(col_h):
@@ -174,7 +174,7 @@ def test_weekly_report_send_me(pro_h):
         pytest.skip("Resend sandbox 503 — non blocking")
     assert r.status_code == 200, r.text
     j = r.json()
-    assert j.get("ok") is True
+    assert j.get("ok") == True
     assert (j.get("studies") or 0) >= 1
 
 
