@@ -482,6 +482,7 @@ class MeasureIn(BaseModel):
 
 @router.post("/{plan_id}/measure")
 async def measure(plan_id: str, body: MeasureIn, user=Depends(current_user)):
+    """Calcule ET persiste la mesure — historique effaçable du volet Objets (iter65)."""
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "calibrations": 1})
     if not p:
@@ -494,18 +495,53 @@ async def measure(plan_id: str, body: MeasureIn, user=Depends(current_user)):
     if body.kind == "distance":
         if len(body.points) != 2:
             raise HTTPException(422, "distance = exactement 2 points")
-        return {"kind": "distance",
-                "value_m": round(G.distance_m(body.points[0], body.points[1], ppm), 3)}
-    if body.kind == "polyline":
-        return {"kind": "polyline",
-                "length_m": round(G.polyline_length_m(body.points, ppm), 3)}
-    if len(body.points) < 3:
-        raise HTTPException(422, "polygon >= 3 points")
-    return {
-        "kind": "polygon",
-        "area_m2": round(G.polygon_area_m2(body.points, ppm), 3),
-        "perimeter_m": round(G.polygon_perimeter_m(body.points, ppm), 3),
-    }
+        dist = round(G.distance_m(body.points[0], body.points[1], ppm), 3)
+        result = {"kind": "distance", "value_m": dist, "length_m": dist}
+    elif body.kind == "polyline":
+        result = {"kind": "polyline",
+                  "length_m": round(G.polyline_length_m(body.points, ppm), 3)}
+    else:
+        if len(body.points) < 3:
+            raise HTTPException(422, "polygon >= 3 points")
+        result = {"kind": "polygon",
+                  "area_m2": round(G.polygon_area_m2(body.points, ppm), 3),
+                  "perimeter_m": round(G.polygon_perimeter_m(body.points, ppm), 3)}
+
+    record = {"measurement_id": f"mes_{secrets.token_hex(6)}",
+              "page_index": body.page_index,
+              "points": [list(pt) for pt in body.points],
+              "created_at": _now(), **result}
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$push": {"measurements": {"$each": [record], "$slice": -50}},
+         "$set": {"updated_at": _now()}})
+    return record
+
+
+@router.delete("/{plan_id}/measurements/{measurement_id}")
+async def delete_measurement(plan_id: str, measurement_id: str,
+                             user=Depends(current_user)):
+    """Supprime une mesure ad-hoc (volet Objets)."""
+    res = await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$pull": {"measurements": {"measurement_id": measurement_id}},
+         "$set": {"updated_at": _now()}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Plan introuvable")
+    return {"ok": True}
+
+
+@router.delete("/{plan_id}/measurements")
+async def clear_measurements(plan_id: str, page_index: int = 0,
+                             user=Depends(current_user)):
+    """Efface toutes les mesures ad-hoc d'une page."""
+    res = await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$pull": {"measurements": {"page_index": page_index}},
+         "$set": {"updated_at": _now()}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Plan introuvable")
+    return {"ok": True}
 
 
 # ============ PIÈCES ============

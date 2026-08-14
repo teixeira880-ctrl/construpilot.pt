@@ -1904,3 +1904,20 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 - API : envoi réel 200 vers delivered@resend.dev (adresse test officielle Resend) ; 422 email invalide ; `test_iter64_send_ecarts.py` 4/4 (chemins d'erreur sans envoi réel) ; iter63 9/9 re-PASS.
 - E2E Playwright : Échap OK (badge disparu + toast), pièce ambre « écrit 121 m² (+21%) » visible au canvas, dialog envoi → toast « Rapport d'écarts envoyé à delivered@resend.dev ».
 - Piège Playwright noté : `get_by_role("tab", name="IA")` matche aussi « MatérIAux » → utiliser `[data-testid="tab-ai"]`.
+
+---
+
+## Itération 65 (14/06/2026) — Historique mesures, historique envois, légende écarts
+
+### Features livrées (toutes testées E2E + pytest 20/20)
+1. **Historique Mesures** :
+   - Backend : `POST /measure` PERSISTE désormais chaque mesure ({measurement_id, page_index, points, value_m/length_m, created_at}, `$push` cap 50) ; `DELETE /{id}/measurements/{measurement_id}` ; `DELETE /{id}/measurements?page_index=` (tout effacer par page).
+   - Frontend : mesures sauvées dessinées en TEAL sur le canvas (segments + label total « X.XX m ») ; volet Objets → onglet Mesures liste + suppression unitaire + bouton `clear-measures-btn` « Tout effacer (n) » ; `pageMeasurements` memo filtré par page ; refreshPlan après chaque mesure.
+2. **Historique Envois** : `send_ecarts_pdf` pousse dans `sent_reports` ({kind:"ecarts", to_email, page_index, sent_at, ecarts, matches}, cap 20) ; affiché dans le bloc Actions IA (`sent-reports-list`, 3 derniers, ✉ email + date/heure fr).
+3. **Légende Écarts** : dessinée en ESPACE ÉCRAN (setTransform identité) en bas-gauche du canvas — carré vert « Conforme (écart ≤ 5 %) » + carré ambre « Écart mesuré ↔ écrit > 5 % », visible seulement si showDeltas et au moins une pièce avec delta.
+4. `_plan_summary` expose désormais `measurements` + `sent_reports`.
+
+### Tests
+- `test_iter65_measurements.py` 6/6 (persist, GET, delete, clear, 404) + iter64 4/4 + iter62 10/10 re-PASS.
+- E2E Playwright : mesure 9.60 m teal persistée au canvas, volet Objets → Mesures (1) → Tout effacer OK, légende écarts visible, sent-reports-list « ✉ delivered@resend.dev 14/08/2026 08:08 ».
+- Piège : calibrate 2 points attend `real_distance_m` (pas `known_m`).

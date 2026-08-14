@@ -210,6 +210,14 @@ async def send_ecarts_pdf(plan_id: str, body: SendEcartsIn,
         raise HTTPException(503, str(e))
     except Exception:
         raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+    # Historique des envois sur la fiche du plan (iter65)
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$push": {"sent_reports": {"$each": [{
+            "kind": "ecarts", "to_email": body.to_email,
+            "page_index": body.page_index, "sent_at": _now(),
+            "ecarts": meta["ecarts"], "matches": meta["matches"],
+        }], "$slice": -20}}})
     return {"ok": True, "sent_to": body.to_email, **meta}
 
 

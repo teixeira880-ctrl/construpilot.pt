@@ -79,6 +79,7 @@ export default function ObjectPanel({
   onFocusObject,
   onRenameRoom, onDeleteRoom, onEstimateRoom, onAttachPreset,
   onDeleteMeasure,
+  onClearMeasures,
   onDeleteCounter, onRenameCounter,
   onDeleteNote, onEditNote,
   onDeleteAngle,
@@ -381,6 +382,16 @@ export default function ObjectPanel({
         {tab === "measures" && (
           <>
             {measurements.length === 0 && <EmptyState label="Aucune mesure ad-hoc" />}
+            {measurements.length > 0 && onClearMeasures && (
+              <div className="px-3 pb-1">
+                <Button size="sm" variant="outline"
+                        onClick={onClearMeasures}
+                        data-testid="clear-measures-btn"
+                        className="w-full rounded-sm gap-2 text-destructive hover:text-destructive">
+                  <Trash2 className="h-3 w-3" /> Tout effacer ({measurements.length})
+                </Button>
+              </div>
+            )}
             {measurements.map((m, idx) => (
               <Row
                 key={m.measurement_id || idx}

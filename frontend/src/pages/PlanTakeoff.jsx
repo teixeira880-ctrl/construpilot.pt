@@ -79,6 +79,7 @@ function PlanCanvas({
   detectedWalls, showWalls, pixelsPerMeter, orthoSnap = true, locked = false,
   dimensionLines = [], showDimensionLines = false,
   annotations = { counters: [], notes: [], angles: [], pitched_surfaces: [] },
+  measurements = [],
   activeCounterId = null,
   focusRequest = null,  // {px, py, ts} — quand ts change, centrer sur (px, py)
   selectedCoteIndex = null,
@@ -289,6 +290,38 @@ function PlanCanvas({
           cx, cy + 32 / zoom
         );
       }
+    });
+
+    // MESURES ENREGISTRÉES (iter65) — teal, gérées via le volet Objets
+    (measurements || []).forEach((m) => {
+      const pts = m.points || [];
+      if (pts.length < 2) return;
+      ctx.strokeStyle = "rgba(13, 148, 136, 0.95)";
+      ctx.lineWidth = 2 / zoom;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      pts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1])));
+      ctx.stroke();
+      ctx.fillStyle = "rgba(13, 148, 136, 1)";
+      pts.forEach((p) => {
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 3 / zoom, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      const midIdx = Math.floor((pts.length - 1) / 2);
+      const [ax, ay] = pts[midIdx];
+      const [bx, by] = pts[Math.min(midIdx + 1, pts.length - 1)];
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
+      const label = `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
+      ctx.font = `bold ${12 / zoom}px system-ui`;
+      const w = ctx.measureText(label).width + 8 / zoom;
+      ctx.fillStyle = "rgba(13, 148, 136, 0.95)";
+      ctx.fillRect(mx - w / 2, my - 9 / zoom, w, 18 / zoom);
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, mx, my);
+      ctx.textBaseline = "alphabetic";
     });
 
     // ============ QUOTERPLAN-LIKE ANNOTATIONS ============
@@ -551,10 +584,35 @@ function PlanCanvas({
       }
     }
     ctx.restore();
+
+    // LÉGENDE ÉCARTS (iter65) — espace écran, coin bas-gauche
+    if (showDeltas && rooms.some((r) => r.surface_delta_pct != null)) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const lx = 12, ly = c.height - 60;
+      ctx.fillStyle = "rgba(15, 18, 25, 0.85)";
+      ctx.fillRect(lx, ly, 214, 48);
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lx, ly, 214, 48);
+      ctx.font = "600 11px system-ui";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(34, 197, 94, 0.9)";
+      ctx.fillRect(lx + 10, ly + 9, 12, 12);
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fillText("Conforme (écart ≤ 5 %)", lx + 28, ly + 15);
+      ctx.fillStyle = "rgba(245, 158, 11, 0.95)";
+      ctx.fillRect(lx + 10, ly + 27, 12, 12);
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fillText("Écart mesuré ↔ écrit > 5 %", lx + 28, ly + 33);
+      ctx.textBaseline = "alphabetic";
+      ctx.restore();
+    }
   }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
        calibration, detectedWalls, showWalls, pixelsPerMeter,
        dimensionLines, showDimensionLines, annotations, activeCounterId,
-       selectedCoteIndex, showDeltas]);
+       selectedCoteIndex, showDeltas, measurements]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -785,6 +843,10 @@ export default function PlanTakeoff() {
   const fileRef = useRef(null);
 
   const currentCalib = plan?.calibrations?.[String(pageIndex)];
+  const pageMeasurements = useMemo(
+    () => (plan?.measurements || []).filter((m) => m.page_index === pageIndex),
+    [plan, pageIndex]
+  );
   // Fix revue iter63 : les cotes IA ne s'affichent que sur la page analysée
   const aiDimLines = useMemo(() => {
     const ai = plan?.ai_analysis;
@@ -1070,6 +1132,7 @@ export default function PlanTakeoff() {
       });
       toast.success(`Longueur : ${data.length_m} m`);
       setPoints([]);
+      await refreshPlan();
     } catch (e) { toast.error("Mesure échouée"); }
   };
 
@@ -1136,7 +1199,17 @@ export default function PlanTakeoff() {
     try {
       await api.delete(`/takeoffs/${plan.plan_id}/measurements/${measureId}`);
       await refreshPlan();
-    } catch { /* endpoint may not exist yet; silent */ }
+      toast.success("Mesure supprimée");
+    } catch { toast.error("Suppression impossible"); }
+  };
+
+  const clearMeasures = async () => {
+    if (!plan?.plan_id) return;
+    try {
+      await api.delete(`/takeoffs/${plan.plan_id}/measurements?page_index=${pageIndex}`);
+      await refreshPlan();
+      toast.success("Mesures de la page effacées");
+    } catch { toast.error("Effacement impossible"); }
   };
 
   const deleteAnnotationLocal = (kind, id) => {
@@ -1230,6 +1303,7 @@ export default function PlanTakeoff() {
       });
       toast.success(`Distance : ${data.value_m} m`);
       setPoints([]);
+      await refreshPlan();
     } catch { toast.error("Mesure échouée"); }
   };
 
@@ -1596,6 +1670,7 @@ export default function PlanTakeoff() {
       toast.success(`Rapport d'écarts envoyé à ${data.sent_to}`, { duration: 7000 });
       setSendEcartsDialog(false);
       setEcartsMessage("");
+      await refreshPlan();
     } catch (e) {
       const detail = e?.response?.data?.detail;
       toast.error(typeof detail === "string" ? detail : "Envoi impossible — vérifiez l'email");
@@ -2462,6 +2537,7 @@ export default function PlanTakeoff() {
             onCoteClick={setSelectedCote}
             onCanvasDoubleClick={onCanvasDoubleClick}
             showDeltas={showDeltas}
+            measurements={pageMeasurements}
           />
 
           {/* Iter63 — panneau détail de la cote IA sélectionnée */}
@@ -2527,7 +2603,7 @@ export default function PlanTakeoff() {
             open={objectPanelOpen}
             onClose={() => setObjectPanelOpen(false)}
             rooms={rooms}
-            measurements={plan?.measurements || []}
+            measurements={pageMeasurements}
             annotations={annotations}
             onFocusObject={focusOnObject}
             onRenameRoom={renameRoom}
@@ -2535,6 +2611,7 @@ export default function PlanTakeoff() {
             onEstimateRoom={generateRoomEstimate}
             onAttachPreset={attachPresetToRoom}
             onDeleteMeasure={deleteMeasureFromPanel}
+            onClearMeasures={clearMeasures}
             onDeleteCounter={(id) => deleteAnnotationLocal("counters", id)}
             onRenameCounter={(id, name) => updateAnnotationLocal("counters", id, { label: name })}
             onDeleteNote={(id) => deleteAnnotationLocal("notes", id)}
@@ -2954,6 +3031,26 @@ export default function PlanTakeoff() {
                             Envoyer au client
                           </Button>
                         </>
+                      )}
+                      {(plan.sent_reports || []).some((s) => s.kind === "ecarts") && (
+                        <div className="grid gap-0.5 pt-1.5 border-t border-border/50"
+                             data-testid="sent-reports-list">
+                          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                            Rapports envoyés
+                          </p>
+                          {(plan.sent_reports || [])
+                            .filter((s) => s.kind === "ecarts")
+                            .slice(-3).reverse().map((s, i) => (
+                            <div key={i} className="flex justify-between gap-2 text-[10px] text-muted-foreground"
+                                 data-testid={`sent-report-${i}`}>
+                              <span className="truncate">✉ {s.to_email}</span>
+                              <span className="num shrink-0">
+                                {new Date(s.sent_at).toLocaleDateString("fr-FR")}{" "}
+                                {new Date(s.sent_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       )}
                       {reconcile && !reconcile.applied && reconcile.can_reconcile && (
                         <div className="border border-amber-500/40 bg-amber-500/10 rounded-sm p-2 grid gap-1"
