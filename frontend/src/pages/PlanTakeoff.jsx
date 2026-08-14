@@ -17,7 +17,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, FileDown, History, Film, DoorOpen, Copy,
-  Hash, StickyNote, Triangle, MountainSnow, X, Mail,
+  Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +79,7 @@ export default function PlanTakeoff() {
   const [ecartsEmail, setEcartsEmail] = useState("");
   const [ecartsMessage, setEcartsMessage] = useState("");
   const [sendingEcarts, setSendingEcarts] = useState(false);
+  const [msgTemplates, setMsgTemplates] = useState([]);
   const [detectedWalls, setDetectedWalls] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
@@ -280,7 +281,7 @@ export default function PlanTakeoff() {
       setPoints(next);
     } else if (tool === TOOLS.DIST) {
       setPoints([...points, pt]);
-    } else if (tool === TOOLS.POLY || tool === TOOLS.ROOM) {
+    } else if (tool === TOOLS.POLY || tool === TOOLS.ROOM || tool === TOOLS.SURFACE) {
       setPoints([...points, pt]);
     } else if (tool === TOOLS.OPENING) {
       const next = [...points, pt];
@@ -529,6 +530,34 @@ export default function PlanTakeoff() {
     } catch { toast.error("Renommage impossible"); }
   };
 
+  // Iter67 — modèles de message réutilisables (envoi de rapports)
+  useEffect(() => {
+    if (!sendEcartsDialog) return;
+    api.get("/emails/templates")
+      .then(({ data }) => setMsgTemplates(data.templates || []))
+      .catch(() => {});
+  }, [sendEcartsDialog]);
+
+  const saveMsgTemplate = async () => {
+    const body = ecartsMessage.trim();
+    if (!body) return toast.error("Écrivez d'abord un message à enregistrer");
+    const name = body.split("\n")[0].slice(0, 40) || "Modèle";
+    try {
+      const { data } = await api.post("/emails/templates", { name, body });
+      setMsgTemplates((prev) => [data.template, ...prev]);
+      toast.success(`Modèle enregistré : ${data.template.name}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Enregistrement impossible");
+    }
+  };
+
+  const deleteMsgTemplate = async (templateId) => {
+    try {
+      await api.delete(`/emails/templates/${templateId}`);
+      setMsgTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
+    } catch { toast.error("Suppression impossible"); }
+  };
+
   // Iter66 — renvoi 1 clic depuis l'historique des envois
   const resendReport = async (report) => {
     setSendingEcarts(true);
@@ -647,6 +676,20 @@ export default function PlanTakeoff() {
     setRoomDialog(true);
   };
 
+  // Iter67 — mesure de surface libre (polygone) en m²
+  const finishSurface = async (pts = points) => {
+    if (pts.length < 3) return toast.error("Une surface nécessite au moins 3 points");
+    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
+        page_index: pageIndex, kind: "polygon", points: pts,
+      });
+      toast.success(`Surface : ${data.area_m2} m² · périmètre ${data.perimeter_m} m`, { duration: 6000 });
+      setPoints([]);
+      await refreshPlan();
+    } catch { toast.error("Mesure de surface échouée"); }
+  };
+
   // Double-clic gauche : termine la cote/mesure en cours — le clic suivant
   // reprend une nouvelle mesure. Nettoie le point dupliqué par les 2 clics.
   const onCanvasDoubleClick = () => {
@@ -660,6 +703,8 @@ export default function PlanTakeoff() {
       finishDistance(chain);
     } else if (tool === TOOLS.POLY && chain.length >= 2) {
       finishPolyline(chain);
+    } else if (tool === TOOLS.SURFACE && chain.length >= 3) {
+      finishSurface(chain);
     } else if (tool === TOOLS.ROOM && chain.length >= 3) {
       setPoints(chain);
       finishRoom(chain);
@@ -1770,6 +1815,7 @@ export default function PlanTakeoff() {
             <ToolButton icon={Ruler} label="Calibrer" testId="tool-calibrate" active={tool === TOOLS.CALIB} onClick={() => { setTool(TOOLS.CALIB); setPoints([]); }} />
             <ToolButton icon={Move} label="Distance" testId="tool-distance" active={tool === TOOLS.DIST} onClick={() => { setTool(TOOLS.DIST); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Layers} label="Polyligne" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={Hexagon} label="Surface" testId="tool-surface" active={tool === TOOLS.SURFACE} onClick={() => { setTool(TOOLS.SURFACE); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Square} label="Pièce" testId="tool-room" active={tool === TOOLS.ROOM} onClick={() => { setTool(TOOLS.ROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Wand2} label="Auto-pièce" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={DoorOpen} label="Ouverture" testId="tool-opening" active={tool === TOOLS.OPENING} onClick={() => { setTool(TOOLS.OPENING); setPoints([]); }} disabled={!currentCalib || rooms.length === 0} />
@@ -1990,7 +2036,7 @@ export default function PlanTakeoff() {
           {points.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2 items-center">
               <Badge variant="outline" className="rounded-sm num" data-testid="points-count">{points.length} point{points.length > 1 ? "s" : ""}</Badge>
-              {(tool === TOOLS.DIST || tool === TOOLS.POLY || tool === TOOLS.ROOM) && (
+              {(tool === TOOLS.DIST || tool === TOOLS.POLY || tool === TOOLS.ROOM || tool === TOOLS.SURFACE) && (
                 <span className="text-[10px] text-muted-foreground" data-testid="dblclick-hint">
                   double-clic = terminer · clic suivant = nouvelle mesure
                 </span>
@@ -2003,6 +2049,11 @@ export default function PlanTakeoff() {
               {tool === TOOLS.POLY && points.length >= 2 && (
                 <Button size="sm" onClick={() => finishPolyline()} data-testid="tool-finish-polyline" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
                   <Save className="h-3 w-3" /> Terminer polyligne
+                </Button>
+              )}
+              {tool === TOOLS.SURFACE && points.length >= 3 && (
+                <Button size="sm" onClick={() => finishSurface()} data-testid="tool-finish-surface" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                  <Save className="h-3 w-3" /> Terminer surface
                 </Button>
               )}
               {tool === TOOLS.ROOM && points.length >= 3 && (
@@ -2705,10 +2756,38 @@ export default function PlanTakeoff() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="ecarts-message">Mot personnalisé (optionnel)</Label>
+              {msgTemplates.length > 0 && (
+                <div className="flex flex-wrap gap-1.5" data-testid="msg-templates-row">
+                  {msgTemplates.map((t) => (
+                    <span key={t.template_id}
+                          className="inline-flex items-center gap-1 border border-primary/40 bg-primary/5 rounded-sm px-2 py-0.5 text-[11px]">
+                      <button onClick={() => setEcartsMessage(t.body)}
+                              className="hover:text-primary transition max-w-[160px] truncate"
+                              title={t.body}
+                              data-testid={`msg-template-${t.template_id}`}>
+                        {t.name}
+                      </button>
+                      <button onClick={() => deleteMsgTemplate(t.template_id)}
+                              className="text-muted-foreground hover:text-destructive transition"
+                              title="Supprimer ce modèle"
+                              data-testid={`msg-template-delete-${t.template_id}`}>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <Textarea id="ecarts-message" rows={4}
                         placeholder="Bonjour, veuillez trouver ci-joint le rapport de contrôle des surfaces de votre projet…"
                         value={ecartsMessage} onChange={(e) => setEcartsMessage(e.target.value)}
                         data-testid="ecarts-message-input" className="rounded-sm" />
+              {ecartsMessage.trim() && (
+                <button onClick={saveMsgTemplate}
+                        className="justify-self-start text-[11px] text-primary hover:text-orange-600 transition underline underline-offset-2"
+                        data-testid="save-msg-template-btn">
+                  + Enregistrer ce message comme modèle
+                </button>
+              )}
             </div>
           </div>
           <DialogFooter>

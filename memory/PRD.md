@@ -1940,3 +1940,17 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 
 ### Backlog restant
 - P3 : wrap nav header ; factoriser downloadBlob ; légende PDF takeoff pour mesures multiples pages.
+
+---
+
+## Itération 67 (14/06/2026) — Nav propre, Surface polygone, Modèles de message
+
+### Livré (backend 17/17 pytest ; E2E Playwright validé)
+1. **Navigation Propre** (`Nav.jsx` réécrit) : liens scindés en PRIMARY (Tableau de bord, Estimateur, Plan 2D, Calculateurs, Prix matériaux, Coach IA, Tarifs) + menu déroulant « Plus » (`nav-more-btn`/`nav-more-menu`, DropdownMenu Radix) contenant les 7 liens secondaires + (si connecté, après séparateur) Suivi devis/Équipe/Parrainer. CAUSE RACINE du chevauchement : total > max-w-[1500px] à cause des 3 boutons droite → déplacés dans « Plus » (Suivi devis reste visible ≥1700px). Header stable à 65px, `whitespace-nowrap` partout. Mobile menu = tous les liens.
+2. **Surfaces Polygone** : nouvel outil `TOOLS.SURFACE` (icône Hexagon, `tool-surface`) → clics + double-clic (ou bouton `tool-finish-surface` ≥3 pts) → POST /measure kind=polygon (déjà supporté backend, maintenant persisté avec area_m2/perimeter_m/label). Canvas : polygone teal REMPLI (0.16 alpha) + label centroïde « libellé · X m² ». ObjectPanel : primary « Surface », badge m². Aperçu live area réutilisé (isAreaTool + SURFACE).
+3. **Modèles de message** (`routes/emails.py` +3 endpoints) : GET/POST/DELETE `/api/emails/templates` (collection `message_templates`, cap 20/user). Dialog d'envoi : chips des modèles (clic = applique, X = supprime, `msg-template-{id}`), lien « + Enregistrer ce message comme modèle » (`save-msg-template-btn`, nom = 1re ligne 40c). Chargés à l'ouverture du dialog.
+
+### Tests
+- `test_iter67_surface_templates.py` 6/6 (polygone 18 m² exact, 422 <3 pts, templates CRUD + auth) + iter65 11/11.
+- E2E : nav 1 ligne (header 65px) + menu Plus 10 entrées + navigation OK ; surface 25.6 m² via double-clic + polygone teal rempli « terrasse · 18.00 m² » ; modèle enregistré → chip → clic applique le message.
+- PIÈGE Playwright : OnboardingTour overlay (z-100) bloque les clics au premier passage sur /dashboard → cliquer « Passer le tour » d'abord.

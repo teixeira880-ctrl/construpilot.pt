@@ -61,7 +61,7 @@ padding:12px 24px;border-radius:4px;font-size:14px;font-weight:600;display:inlin
 Retour à ConstruPilot</a></div></div></body></html>"""
 
 
-@router.get("/unsubscribe/{token}")
+@router.get("/unsubscribe/{token}", response_class=HTMLResponse)
 async def unsubscribe(token: str):
     user_id = _verify(token)
     if not user_id:
@@ -89,3 +89,58 @@ async def unsubscribe(token: str):
 def _now_iso() -> str:
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat()
+
+
+# ============ MODÈLES DE MESSAGE (iter67) ============
+# Messages personnalisés réutilisables pour l'envoi de rapports par email.
+
+import secrets
+from datetime import datetime, timezone
+
+from fastapi import Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from core.security import current_user
+
+MAX_TEMPLATES = 20
+
+
+class TemplateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    body: str = Field(min_length=1, max_length=2000)
+
+
+@router.get("/templates")
+async def list_templates(user=Depends(current_user)) -> dict:
+    """Liste les modèles de message de l'utilisateur (plus récents en premier)."""
+    docs = await db.message_templates.find(
+        {"user_id": user["user_id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(MAX_TEMPLATES)
+    return {"templates": docs}
+
+
+@router.post("/templates")
+async def create_template(body: TemplateIn, user=Depends(current_user)) -> dict:
+    """Enregistre un modèle de message (max 20 par utilisateur)."""
+    count = await db.message_templates.count_documents({"user_id": user["user_id"]})
+    if count >= MAX_TEMPLATES:
+        raise HTTPException(422, f"Maximum {MAX_TEMPLATES} modèles — supprimez-en un d'abord")
+    doc = {
+        "template_id": f"tpl_{secrets.token_hex(6)}",
+        "user_id": user["user_id"],
+        "name": body.name.strip()[:60],
+        "body": body.body.strip()[:2000],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.message_templates.insert_one({**doc})
+    return {"ok": True, "template": doc}
+
+
+@router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, user=Depends(current_user)) -> dict:
+    """Supprime un modèle de message."""
+    res = await db.message_templates.delete_one(
+        {"template_id": template_id, "user_id": user["user_id"]})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Modèle introuvable")
+    return {"ok": True}

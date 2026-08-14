@@ -225,11 +225,17 @@ export default function PlanCanvas({
     (measurements || []).forEach((m) => {
       const pts = m.points || [];
       if (pts.length < 2) return;
+      const isPoly = m.kind === "polygon";
       ctx.strokeStyle = "rgba(13, 148, 136, 0.95)";
       ctx.lineWidth = 2 / zoom;
       ctx.setLineDash([]);
       ctx.beginPath();
       pts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1])));
+      if (isPoly) {
+        ctx.closePath();
+        ctx.fillStyle = "rgba(13, 148, 136, 0.16)";
+        ctx.fill();
+      }
       ctx.stroke();
       ctx.fillStyle = "rgba(13, 148, 136, 1)";
       pts.forEach((p) => {
@@ -237,11 +243,19 @@ export default function PlanCanvas({
         ctx.arc(p[0], p[1], 3 / zoom, 0, Math.PI * 2);
         ctx.fill();
       });
-      const midIdx = Math.floor((pts.length - 1) / 2);
-      const [ax, ay] = pts[midIdx];
-      const [bx, by] = pts[Math.min(midIdx + 1, pts.length - 1)];
-      const mx = (ax + bx) / 2, my = (ay + by) / 2;
-      const val = `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
+      let mx, my;
+      if (isPoly) {
+        mx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+        my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+      } else {
+        const midIdx = Math.floor((pts.length - 1) / 2);
+        const [ax, ay] = pts[midIdx];
+        const [bx, by] = pts[Math.min(midIdx + 1, pts.length - 1)];
+        mx = (ax + bx) / 2; my = (ay + by) / 2;
+      }
+      const val = isPoly
+        ? `${Number(m.area_m2 ?? 0).toFixed(2)} m²`
+        : `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
       const label = m.label ? `${m.label} · ${val}` : val;
       ctx.font = `bold ${12 / zoom}px system-ui`;
       const w = ctx.measureText(label).width + 8 / zoom;
@@ -438,8 +452,8 @@ export default function PlanCanvas({
         ctx.strokeStyle = "hsl(24, 96%, 55%)";
       });
 
-      // LIVE AREA readout (QuoterPlan-like) — pour outils polygone/pièce
-      const isAreaTool = tool === TOOLS.ROOM || tool === TOOLS.POLY;
+      // LIVE AREA readout (QuoterPlan-like) — pour outils polygone/pièce/surface
+      const isAreaTool = tool === TOOLS.ROOM || tool === TOOLS.POLY || tool === TOOLS.SURFACE;
       if (isAreaTool && ppm && points.length >= 2) {
         // Polygon area via Shoelace (using current points + hoverPoint as preview)
         const preview = hoverPoint && points.length >= 2 ? [...points, hoverPoint] : points;

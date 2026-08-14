@@ -3,7 +3,7 @@
 export const TOOLS = {
   SELECT: "select", DIST: "distance", POLY: "polyline",
   ROOM: "room", CALIB: "calibrate", AUTOROOM: "autoroom",
-  OPENING: "opening",
+  OPENING: "opening", SURFACE: "surface",
   // Iter 57 — QuoterPlan-like tools
   COUNTER: "counter", NOTE: "note", ANGLE: "angle", PITCH: "pitch",
 };
