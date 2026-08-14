@@ -160,3 +160,85 @@ class TestPcTracking:
     def test_pixel_unknown_track_id_still_200(self):
         px = requests.get(f"{BASE_URL}/api/pc/track/pct_inconnu", timeout=30)
         assert px.status_code == 200
+
+
+class TestPcLevelsAndGantt:
+    def test_levels_breakdown_in_study(self, pro_headers):
+        r = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study",
+                         headers=pro_headers, timeout=30)
+        study = r.json()["pc_study"]
+        lb = study.get("levels_breakdown")
+        assert lb and lb[0]["name"] == "Fondations"
+        assert len(lb) >= 2  # Fondations + RDC au minimum
+        # cohérence : somme des HT niveaux == HT global
+        assert sum(l["ht"] for l in lb) == pytest.approx(study["totals"]["ht"], abs=0.05)
+
+    def test_levels_engine_sums_match_global(self):
+        import sys
+        sys.path.insert(0, "/app/backend")
+        from engines.pc_study import compute_gros_oeuvre, compute_levels_breakdown
+        i = {"perimeter_m": 34.0, "refends_m": 8.0, "levels": 2, "wall_height_m": 2.5,
+             "ground_floor_area_m2": 70.0, "upper_floors_area_m2": 50.0,
+             "openings_count": 14, "avg_opening_width_m": 1.2,
+             "openings_area_m2": 24.0, "stairs_count": 1}
+        lb = compute_levels_breakdown(i)
+        g = compute_gros_oeuvre(i)["totals"]
+        assert [l["name"] for l in lb] == ["Fondations", "RDC", "R+1"]
+        assert sum(l["ht"] for l in lb) == pytest.approx(g["ht"], abs=0.05)
+        assert sum(l["acier_kg"] for l in lb) == pytest.approx(g["acier_kg"], abs=0.5)
+
+    def test_schedule_with_dates_skips_weekends(self):
+        import sys
+        sys.path.insert(0, "/app/backend")
+        from engines.pc_study import (compute_gros_oeuvre, compute_planning,
+                                      schedule_with_dates)
+        i = {"perimeter_m": 34.0, "refends_m": 8.0, "levels": 2, "wall_height_m": 2.5,
+             "ground_floor_area_m2": 70.0, "upper_floors_area_m2": 50.0,
+             "openings_count": 14, "avg_opening_width_m": 1.2,
+             "openings_area_m2": 24.0, "stairs_count": 1}
+        pl = compute_planning(compute_gros_oeuvre(i)["lots"])
+        # samedi 2026-09-05 → démarrage lundi 07/09
+        rows = schedule_with_dates(pl, "2026-09-05")
+        assert rows[0]["work_start"] == "2026-09-07"
+        from datetime import date
+        for r in rows:
+            assert date.fromisoformat(r["work_start"]).weekday() < 5
+
+    def test_pdf_with_start_param(self, pro_headers):
+        r = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study/pdf?start=2026-09-07",
+                         headers=pro_headers, timeout=60)
+        assert r.status_code == 200 and r.content[:4] == b"%PDF"
+        r2 = requests.get(f"{BASE_URL}/api/takeoffs/{PLAN_ID}/pc-study/pdf?start=pas-une-date",
+                          headers=pro_headers, timeout=60)
+        assert r2.status_code == 200  # date invalide ignorée proprement
+
+
+class TestPcReminders:
+    def test_reminder_settings_roundtrip(self, pro_headers):
+        r = requests.put(f"{BASE_URL}/api/pc/settings", json={"reminder_days": 5},
+                         headers=pro_headers, timeout=30)
+        assert r.status_code == 200
+        r = requests.get(f"{BASE_URL}/api/pc/settings", headers=pro_headers, timeout=30)
+        assert r.json()["settings"]["reminder_days"] == 5
+        assert r.json()["defaults"]["reminder_days"] == 3
+        requests.delete(f"{BASE_URL}/api/pc/settings", headers=pro_headers, timeout=30)
+
+    def test_reminder_days_bounds(self, pro_headers):
+        r = requests.put(f"{BASE_URL}/api/pc/settings", json={"reminder_days": 99},
+                         headers=pro_headers, timeout=30)
+        assert r.status_code == 422
+
+    def test_reminders_run_requires_admin(self, pro_headers):
+        r = requests.post(f"{BASE_URL}/api/pc/reminders/run",
+                          headers=pro_headers, timeout=30)
+        assert r.status_code in (401, 403)
+
+    def test_reminders_run_idempotent(self):
+        # Un envoi déjà relancé (reminder_sent=True) ne doit pas être relancé 2×
+        r = requests.post(f"{BASE_URL}/api/auth/login", json={
+            "email": "admin@construpilot.fr", "password": "Construpilot2026!"},
+            timeout=30)
+        admin = {"Authorization": f"Bearer {r.json()['token']}"}
+        out = requests.post(f"{BASE_URL}/api/pc/reminders/run",
+                            headers=admin, timeout=60).json()
+        assert out["sent"] == 0, "les envois déjà relancés/ouverts ne doivent pas repartir"

@@ -2006,3 +2006,18 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 ### Tests
 - `test_iter70_pc_extras.py` étendu : TestPcSettings (PUT→recompute TTC↑→reset TTC de base, 422 crew 99, 401 sans auth) + TestPcTracking (pixel public gif, idempotent 2 hits, opened_at persisté, track inconnu→200).
 - E2E visuel : Gantt 4 barres + fin « dimanche 6 septembre 2026 » (recalcul au 01/09 → 24/09), réglages 38→45 €/m² → toast recalcul 12 513 €, badge « Ouvert le 14/08/2026 ».
+
+---
+
+## Itération 72 (14/06/2026) — Étude PC : multi-niveaux, relance auto, Gantt PDF
+
+### Livré (pytest 30/30 + E2E backend curl + vérif visuelle UI & PDF)
+1. **Étude Multi-Niveaux** : `pc_study.py::compute_levels_breakdown` — quantités par niveau (Fondations / RDC / R+1…) : béton m³, aciers kg, briques, murs m², HT par niveau + lignes détaillées (somme niveaux == total global au centime, testé). Stocké dans `pc_study.levels_breakdown` (build_study + recompute, backfillé sur les études existantes). UI : section `pc-levels-breakdown` avec <details> dépliables par niveau. Tables résumé ajoutées au PDF et au Word.
+2. **Relance Client Auto** : réglage `reminder_days` (0-30, défaut 3, 0=off) dans pc_settings + input UI `pc-settings-reminder-input`. Job APScheduler `pc_study_reminders` (6 h) → `_run_pc_reminders` (plans_pc.py, ré-exporté via plans.py) : relance les envois non ouverts après N jours (email + PDF rejoint + même pixel), marque `reminder_sent/reminder_at` (idempotent, 1 seule relance). Endpoint admin `POST /api/pc/reminders/run`. Badge ambre « Relancé le … » (`pc-sent-{i}-reminder`) dans la liste des envois. Testé E2E réel (envoi vieilli → job → sent:1 → reminder_sent=True).
+3. **Gantt dans PDF** : `pc_study.py::schedule_with_dates` (jours ouvrés WE sautés + séchage calendaire) + `pc_export.py::_gantt_drawing` (reportlab Drawing : barres pleines + translucides séchage, 5 couleurs). PDF/DOCX acceptent `start_date` ; routes `?start=YYYY-MM-DD` (date invalide ignorée) ; envoi email transmet `start_date` (choisi via le date picker du Gantt UI, état remonté dans PcStudyDialog) + ligne « Démarrage prévu le … — fin estimée le … » dans l'email. Vérifié en image (page 2 du PDF).
+
+### Pièges corrigés
+- Éditions parallèles concurrentes ont corrompu 2 fichiers (duplication fin de PcSettingsDialog.jsx → « Compiled with problems », champ reminder_days perdu dans PcSettingsIn → 500). Toujours vérifier `ruff --select F821` + grep après batch d'éditions parallèles sur le MÊME fichier.
+
+### Tests
+- `test_iter70_pc_extras.py` : +TestPcLevelsAndGantt (sommes niveaux==global, WE sautés, ?start invalide toléré) +TestPcReminders (roundtrip settings, bornes 422, admin-only, idempotence sent:0).

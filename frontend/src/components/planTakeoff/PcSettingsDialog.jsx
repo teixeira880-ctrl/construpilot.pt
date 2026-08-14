@@ -29,6 +29,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
   const [prices, setPrices] = useState({});
   const [crew, setCrew] = useState(3);
   const [rate, setRate] = useState(45);
+  const [reminderDays, setReminderDays] = useState(3);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       setPrices(merged);
       setCrew(s.crew_size ?? d.crew_size ?? 3);
       setRate(s.hourly_rate_eur ?? d.hourly_rate_eur ?? 45);
+      setReminderDays(s.reminder_days ?? d.reminder_days ?? 3);
     }).catch(() => toast.error("Chargement des réglages impossible"));
   }, [open]);
 
@@ -60,6 +62,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       await api.put("/pc/settings", {
         unit_prices, crew_size: parseInt(crew, 10) || 3,
         hourly_rate_eur: parseFloat(rate) || 45,
+        reminder_days: Math.max(0, parseInt(reminderDays, 10) || 0),
       });
       toast.success("Réglages enregistrés");
       onSaved?.();
@@ -103,6 +106,14 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
             <Input id="pc-rate" type="number" min="20" max="150" value={rate}
                    onChange={(e) => setRate(e.target.value)}
                    data-testid="pc-settings-rate-input" className="rounded-sm num" />
+          </div>
+          <div className="grid gap-1.5 col-span-2">
+            <Label htmlFor="pc-reminder" className="text-xs">
+              Relance auto du client si l'étude n'est pas ouverte après (jours) — 0 = désactivée
+            </Label>
+            <Input id="pc-reminder" type="number" min="0" max="30" value={reminderDays}
+                   onChange={(e) => setReminderDays(e.target.value)}
+                   data-testid="pc-settings-reminder-input" className="rounded-sm num w-32" />
           </div>
         </div>
 

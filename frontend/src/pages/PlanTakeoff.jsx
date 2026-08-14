@@ -590,11 +590,12 @@ export default function PlanTakeoff() {
     } catch (e) { toast.error(e?.response?.data?.detail || "Étude PC impossible"); }
     finally { setPcBusy(false); }
   };
-  const downloadPcFile = async (fmt) => {
+  const downloadPcFile = async (fmt, start) => {
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
       const token = localStorage.getItem("construpilot_token");
-      const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/pc-study/${fmt}`,
+      const qs = start ? `?start=${start}` : "";
+      const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/pc-study/${fmt}${qs}`,
         { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
       if (!res.ok) throw new Error("Export impossible");
       const blob = await res.blob();

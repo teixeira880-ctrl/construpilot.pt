@@ -3,13 +3,58 @@ from __future__ import annotations
 
 from io import BytesIO
 
+from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
+from engines.pc_study import schedule_with_dates
 from engines.pdf_takeoff import (_fmt, _styles, _table, _story_header_branding,
                                  _story_footer, ORANGE, DARK, LIGHT_GREY)
 from reportlab.lib import colors
+
+GANTT_COLORS = [colors.HexColor(c) for c in
+                ("#f59e0b", "#f97316", "#0ea5e9", "#10b981", "#8b5cf6")]
+
+
+def _fr(iso: str) -> str:
+    return f"{iso[8:10]}/{iso[5:7]}"
+
+
+def _fr_long(iso: str) -> str:
+    return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}"
+
+
+def _gantt_drawing(rows: list[dict], width: float = 178 * mm) -> Drawing:
+    """Frise Gantt colorée : plein = jours ouvrés, translucide = séchage béton."""
+    from datetime import date
+    t0 = date.fromisoformat(rows[0]["work_start"]).toordinal()
+    span = max(1, date.fromisoformat(rows[-1]["cure_end"]).toordinal() + 1 - t0)
+    label_w, row_h = 80 * mm, 9 * mm
+    bar_w = width - label_w
+    h = row_h * len(rows) + 2 * mm
+    d = Drawing(width, h)
+    for idx, r in enumerate(rows):
+        y = h - (idx + 1) * row_h + 2 * mm
+        d.add(String(0, y + 3.6 * mm, r["name"][:58],
+                     fontName="Helvetica-Bold", fontSize=6.3, fillColor=DARK))
+        dates = f"{_fr(r['work_start'])} → {_fr(r['work_end'])}"
+        if r["cure_days"]:
+            dates += f" · séchage → {_fr(r['cure_end'])}"
+        d.add(String(0, y - 0.6 * mm, dates, fontName="Helvetica", fontSize=5.6,
+                     fillColor=colors.HexColor("#64748B")))
+        ws = date.fromisoformat(r["work_start"]).toordinal()
+        we = date.fromisoformat(r["work_end"]).toordinal() + 1
+        ce = date.fromisoformat(r["cure_end"]).toordinal() + 1
+        col = GANTT_COLORS[idx % len(GANTT_COLORS)]
+        x0 = label_w + bar_w * (ws - t0) / span
+        xw = max(1.5 * mm, bar_w * (we - ws) / span)
+        d.add(Rect(x0, y, xw, 5 * mm, fillColor=col, strokeColor=None))
+        if ce > we:
+            d.add(Rect(x0 + xw, y, bar_w * (ce - we) / span, 5 * mm,
+                       fillColor=colors.Color(col.red, col.green, col.blue, alpha=0.3),
+                       strokeColor=None))
+    return d
 
 
 def _hypotheses_rows(study: dict) -> list[list[str]]:
@@ -33,7 +78,8 @@ RULES_TEXT = ("Règles fixes appliquées : semelles filantes 60 × 30 cm (périm
               "dalle ST25C + chapeaux (14 kg/m²), escalier 100 kg/m³, chaînages 4 HA10 (3,6 kg/ml).")
 
 
-def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None) -> bytes:
+def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
+                 start_date: str | None = None) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
                             topMargin=16 * mm, bottomMargin=16 * mm)
@@ -74,6 +120,21 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None) -> bytes
                              ("ALIGN", (2, 1), (-1, -1), "RIGHT")], repeat_rows=1))
 
     t = study.get("totals", {})
+    lb = study.get("levels_breakdown") or []
+    if lb:
+        story.append(Paragraph("Quantités par niveau — pour phaser vos commandes", S["h2"]))
+        rows = [["Niveau", "Béton", "Aciers", "Briques", "Murs", "Total HT"]]
+        for l in lb:
+            rows.append([l["name"], _fmt(l["beton_m3"], "m³"), _fmt(l["acier_kg"], "kg", 0),
+                         _fmt(l["briques_u"], "u", 0) if l["briques_u"] else "—",
+                         _fmt(l["murs_m2"], "m²") if l["murs_m2"] else "—",
+                         _fmt(l["ht"], "€")])
+        story.append(_table(rows, [34 * mm, 26 * mm, 26 * mm, 26 * mm, 26 * mm, 36 * mm],
+                            [("BACKGROUND", (0, 0), (-1, 0), DARK),
+                             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                             ("FONTSIZE", (0, 0), (-1, -1), 8),
+                             ("ALIGN", (1, 1), (-1, -1), "RIGHT")]))
+
     story.append(Paragraph("Récapitulatif", S["h2"]))
     story.append(_table([
         ["Béton total", _fmt(t.get("beton_m3"), "m³"),
@@ -97,12 +158,23 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None) -> bytes
     pl = study.get("planning")
     if pl and pl.get("phases"):
         story.append(Paragraph("Planning de chantier — gros œuvre", S["h2"]))
+        sched = schedule_with_dates(pl, start_date) if start_date else None
+        if sched:
+            story.append(Paragraph(
+                f"Démarrage prévu le <b>{_fr_long(sched[0]['work_start'])}</b> — "
+                f"fin de chantier estimée le <b>{_fr_long(sched[-1]['cure_end'])}</b> "
+                "(plein = jours ouvrés, translucide = séchage béton).", S["body"]))
+            story.append(Spacer(1, 3))
+            story.append(_gantt_drawing(sched))
+            story.append(Spacer(1, 4))
         rows = [["Phase", "Jours ouvrés", "Séchage", "Début", "Fin"]]
-        for ph in pl["phases"]:
+        for i_ph, ph in enumerate(pl["phases"]):
+            deb = _fr_long(sched[i_ph]["work_start"]) if sched else f"J{ph['start_day']}"
+            fin = _fr_long(sched[i_ph]["cure_end"]) if sched else f"J{ph['end_day']}"
             rows.append([Paragraph(ph["name"], S["body"]), str(ph["work_days"]),
                          f"+{ph['cure_days']} j" if ph["cure_days"] else "—",
-                         f"J{ph['start_day']}", f"J{ph['end_day']}"])
-        story.append(_table(rows, [92 * mm, 22 * mm, 20 * mm, 20 * mm, 20 * mm],
+                         deb, fin])
+        story.append(_table(rows, [86 * mm, 20 * mm, 18 * mm, 25 * mm, 25 * mm],
                             [("BACKGROUND", (0, 0), (-1, 0), DARK),
                              ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                              ("FONTSIZE", (0, 0), (-1, -1), 8),
@@ -118,7 +190,8 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None) -> bytes
     return buf.getvalue()
 
 
-def build_pc_docx(plan: dict, study: dict, branding: dict | None = None) -> bytes:
+def build_pc_docx(plan: dict, study: dict, branding: dict | None = None,
+                  start_date: str | None = None) -> bytes:
     """Export Word (.docx) de l'étude PC — même contenu que le PDF."""
     from docx import Document
     from docx.shared import Pt, RGBColor
@@ -169,6 +242,22 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None) -> byte
             cells[5].text = _fmt(ln["total"])
 
     t = study.get("totals", {})
+    lb = study.get("levels_breakdown") or []
+    if lb:
+        doc.add_heading("Quantités par niveau — pour phaser vos commandes", level=1)
+        tbl = doc.add_table(rows=1 + len(lb), cols=6)
+        tbl.style = "Light Grid Accent 1"
+        for c, v in enumerate(["Niveau", "Béton m³", "Aciers kg", "Briques", "Murs m²", "Total HT €"]):
+            tbl.rows[0].cells[c].text = v
+        for r, l in enumerate(lb, start=1):
+            cells = tbl.rows[r].cells
+            cells[0].text = l["name"]
+            cells[1].text = _fmt(l["beton_m3"])
+            cells[2].text = _fmt(l["acier_kg"], "", 0)
+            cells[3].text = _fmt(l["briques_u"], "", 0) if l["briques_u"] else "—"
+            cells[4].text = _fmt(l["murs_m2"]) if l["murs_m2"] else "—"
+            cells[5].text = _fmt(l["ht"])
+
     doc.add_heading("Récapitulatif", level=1)
     recap = doc.add_table(rows=4, cols=2)
     recap.style = "Light Grid Accent 1"
@@ -189,6 +278,11 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None) -> byte
     pl = study.get("planning")
     if pl and pl.get("phases"):
         doc.add_heading("Planning de chantier — gros œuvre", level=1)
+        sched = schedule_with_dates(pl, start_date) if start_date else None
+        if sched:
+            doc.add_paragraph(
+                f"Démarrage prévu le {_fr_long(sched[0]['work_start'])} — "
+                f"fin de chantier estimée le {_fr_long(sched[-1]['cure_end'])}.")
         tbl = doc.add_table(rows=1 + len(pl["phases"]), cols=5)
         tbl.style = "Light Grid Accent 1"
         for c, v in enumerate(["Phase", "Jours ouvrés", "Séchage", "Début", "Fin"]):
@@ -198,8 +292,8 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None) -> byte
             cells[0].text = ph["name"]
             cells[1].text = str(ph["work_days"])
             cells[2].text = f"+{ph['cure_days']} j" if ph["cure_days"] else "—"
-            cells[3].text = f"J{ph['start_day']}"
-            cells[4].text = f"J{ph['end_day']}"
+            cells[3].text = _fr_long(sched[r - 1]["work_start"]) if sched else f"J{ph['start_day']}"
+            cells[4].text = _fr_long(sched[r - 1]["cure_end"]) if sched else f"J{ph['end_day']}"
         doc.add_paragraph(
             f"Équipe de {pl['crew_size']} compagnons — {pl['total_work_days']} jours ouvrés "
             f"+ {pl['total_cure_days']} jours de séchage béton, soit ≈ {pl['total_days']} "

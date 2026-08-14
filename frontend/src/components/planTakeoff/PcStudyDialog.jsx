@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart, Settings2, MailCheck, MailX } from "lucide-react";
+import { FileDown, FileText, Sparkles, Sheet, AlertTriangle, Mail, CalendarRange, ShoppingCart, Settings2, MailCheck, MailX, Layers, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -19,6 +19,7 @@ const RULES_LABELS = [
 export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDownload, onDownloadXlsx, planId, onSent, onCompareSuppliers, sentReports = [], onRecompute }) {
   const [sendOpen, setSendOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [ganttStart, setGanttStart] = useState(() => new Date().toISOString().slice(0, 10));
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="pc-study-dialog">
@@ -47,11 +48,11 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
           </Button>
           {study && (
             <>
-              <Button variant="outline" onClick={() => onDownload("pdf")} data-testid="pc-study-download-pdf"
+              <Button variant="outline" onClick={() => onDownload("pdf", ganttStart)} data-testid="pc-study-download-pdf"
                       className="rounded-sm gap-2">
                 <FileDown className="h-4 w-4" /> PDF
               </Button>
-              <Button variant="outline" onClick={() => onDownload("docx")} data-testid="pc-study-download-docx"
+              <Button variant="outline" onClick={() => onDownload("docx", ganttStart)} data-testid="pc-study-download-docx"
                       className="rounded-sm gap-2">
                 <FileText className="h-4 w-4" /> Word
               </Button>
@@ -67,7 +68,7 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
           )}
         </div>
         <PcSendDialog open={sendOpen} onClose={() => setSendOpen(false)}
-                      planId={planId} onSent={onSent} />
+                      planId={planId} onSent={onSent} startDate={ganttStart} />
         <PcSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)}
                           onSaved={() => study && onRecompute?.()} />
 
@@ -169,6 +170,51 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
               Comparer les prix fournisseurs (briques, aciers, treillis, béton)
             </Button>
 
+            {study.levels_breakdown?.length > 0 && (
+              <section data-testid="pc-levels-breakdown">
+                <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
+                  <Layers className="h-4 w-4 text-primary" /> Quantités par niveau — pour phaser vos commandes
+                </h3>
+                <table className="w-full text-xs border border-border">
+                  <thead>
+                    <tr className="bg-muted text-left">
+                      <th className="p-1.5">Niveau</th>
+                      <th className="p-1.5 text-right">Béton</th>
+                      <th className="p-1.5 text-right">Aciers</th>
+                      <th className="p-1.5 text-right">Briques</th>
+                      <th className="p-1.5 text-right">Murs</th>
+                      <th className="p-1.5 text-right">Total HT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {study.levels_breakdown.map((l, i) => (
+                      <tr key={i} className="border-t border-border align-top" data-testid={`pc-level-${i}`}>
+                        <td className="p-1.5">
+                          <details>
+                            <summary className="font-medium cursor-pointer select-none">{l.name}</summary>
+                            <ul className="mt-1 text-[10px] text-muted-foreground space-y-0.5">
+                              {l.lines.map((ln, j) => (
+                                <li key={j}>• {ln.designation} — <span className="num">{num(ln.qty, 2)} {ln.unit}</span></li>
+                              ))}
+                            </ul>
+                          </details>
+                        </td>
+                        <td className="p-1.5 text-right num">{num(l.beton_m3, 2)} m³</td>
+                        <td className="p-1.5 text-right num">{num(l.acier_kg)} kg</td>
+                        <td className="p-1.5 text-right num">{l.briques_u ? `${num(l.briques_u)} u` : "—"}</td>
+                        <td className="p-1.5 text-right num">{l.murs_m2 ? `${num(l.murs_m2, 1)} m²` : "—"}</td>
+                        <td className="p-1.5 text-right num font-semibold">{eur(l.ht)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Cliquez sur un niveau pour voir le détail des lignes. Idéal pour commander
+                  les matériaux phase par phase.
+                </p>
+              </section>
+            )}
+
             {study.planning?.phases?.length > 0 && (
               <section data-testid="pc-study-planning">
                 <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
@@ -177,7 +223,7 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                     <Badge variant="outline" className="text-[10px] rounded-sm">prix personnalisés</Badge>
                   )}
                 </h3>
-                <PcGantt planning={study.planning} />
+                <PcGantt planning={study.planning} start={ganttStart} onStartChange={setGanttStart} />
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
@@ -234,6 +280,13 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                           <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-muted-foreground"
                                  data-testid={`pc-sent-${i}-status`}>
                             <MailX className="h-3 w-3" /> Non ouvert
+                          </Badge>
+                        )}
+                        {s.reminder_sent && (
+                          <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-amber-600 border-amber-500/40"
+                                 data-testid={`pc-sent-${i}-reminder`}>
+                            <BellRing className="h-3 w-3" />
+                            Relancé le {new Date(s.reminder_at).toLocaleDateString("fr-FR")}
                           </Badge>
                         )}
                       </span>

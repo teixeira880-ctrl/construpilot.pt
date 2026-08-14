@@ -383,6 +383,106 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
                        "ttc": round(ht + tva, 2)}}
 
 
+def compute_levels_breakdown(i: dict, prices: dict | None = None,
+                             stairs_steps: int | None = None) -> list[dict]:
+    """Quantités détaillées niveau par niveau (Fondations, RDC, R+1…) pour phaser
+    les commandes. Mêmes règles fixes que le devis global."""
+    R = RULES
+    P = prices or PC_UNIT_PRICES
+    per, ref, lv, h = i["perimeter_m"], i["refends_m"], i["levels"], i["wall_height_m"]
+    L_sem = round(per + ref, 2)
+    n_raid = max(4, round(per / 5))
+    open_per_lvl = round(i["openings_area_m2"] / lv, 2)
+    n_open_lvl = max(1, round(i["openings_count"] / lv))
+    lint_lvl = round(n_open_lvl * (i["avg_opening_width_m"] + 0.40), 2)
+    stairs_left = i["stairs_count"]
+
+    def summarize(name: str, lines: list[dict], briques: int, murs_m2: float) -> dict:
+        return {"name": name, "lines": lines,
+                "beton_m3": round(sum(ln["qty"] for ln in lines if ln["unit"] == "m³"
+                                      and "Fouilles" not in ln["designation"]), 2),
+                "acier_kg": round(sum(ln["qty"] for ln in lines if ln["unit"] == "kg"), 1),
+                "briques_u": briques, "murs_m2": murs_m2,
+                "ht": round(sum(ln["total"] for ln in lines), 2)}
+
+    out = [summarize("Fondations", [
+        _line("Fouilles en rigole 60 × 60 cm", f"{L_sem} ml", "m³",
+              L_sem * 0.6 * 0.6, "fouilles", P),
+        _line("Béton de propreté ép. 5 cm", "C16/20", "m³",
+              L_sem * 0.6 * 0.05, "beton_proprete", P),
+        _line("Semelles filantes BA 60 × 30 cm", f"{L_sem} ml", "m³",
+              L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle", P),
+        _line("Aciers semelles (3+3 HA10 + cadres HA6)", f"{R['acier_semelle_kg_ml']} kg/ml",
+              "kg", L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
+    ], 0, 0.0)]
+
+    for k in range(lv):
+        name = "RDC" if k == 0 else f"R+{k}"
+        slab_area = i["ground_floor_area_m2"] if k == 0 else (
+            round(i["upper_floors_area_m2"] / max(1, lv - 1), 2))
+        wall_net = round(max(0.0, (per + ref) * h - open_per_lvl), 2)
+        briques = math.ceil(wall_net * R["bricks_per_m2"])
+        ch_ml = round((per + ref) + n_raid * h, 2)
+        lines = [
+            _line(f"Dalle / plancher BA ép. {int(R['slab_thickness_m'] * 100)} cm",
+                  f"{slab_area} m²", "m³", slab_area * R["slab_thickness_m"],
+                  "beton_dalle", P),
+            _line("Treillis soudé ST25C + chapeaux", f"{R['acier_dalle_kg_m2']} kg/m²",
+                  "kg", slab_area * R["acier_dalle_kg_m2"], "treillis_dalle", P),
+        ]
+        if k == 0:
+            lines.append(_line("Coffrage de rives de dalle", "périmètre RDC", "ml",
+                               per, "coffrage_rive", P))
+        lines += [
+            _line(f"Murs brique isobrique ép. {int(R['wall_thickness_m'] * 100)} cm",
+                  f"{briques} briques", "m²", wall_net, "mur_isobrique", P),
+            _line("Chaînages CH + CV (BA 20 × 20)", f"{ch_ml} ml", "m³",
+                  ch_ml * 0.2 * 0.2, "chainage_beton", P),
+            _line("Aciers chaînages (4 HA10 + cadres HA6)",
+                  f"{R['acier_chainage_kg_ml']} kg/ml", "kg",
+                  ch_ml * R["acier_chainage_kg_ml"], "acier_chainage", P),
+            _line("Linteaux BA sur ouvertures", f"{n_open_lvl} ouvertures", "ml",
+                  lint_lvl, "linteau", P),
+        ]
+        if stairs_left > 0 and k < lv - 1:
+            vol = _stair_volume(h, stairs_steps)
+            lines += [
+                _line(f"Escalier béton {name} → R+{k + 1}", "paillasse 15 + marches 17×28",
+                      "m³", vol, "escalier_beton", P),
+                _line("Aciers escalier", f"{R['acier_escalier_kg_m3']} kg/m³", "kg",
+                      vol * R["acier_escalier_kg_m3"], "acier_escalier", P),
+            ]
+            stairs_left -= 1
+        out.append(summarize(name, lines, briques, wall_net))
+    return out
+
+
+def schedule_with_dates(planning: dict, start_iso: str) -> list[dict]:
+    """Dates réelles des phases : jours ouvrés (week-ends sautés) + séchage calendaire."""
+    from datetime import date, timedelta
+
+    def skip_we(x: "date") -> "date":
+        while x.weekday() >= 5:
+            x += timedelta(days=1)
+        return x
+
+    cursor = skip_we(date.fromisoformat(start_iso))
+    rows = []
+    for ph in planning.get("phases") or []:
+        ws = skip_we(cursor)
+        e = ws
+        remaining = ph["work_days"] - 1
+        while remaining > 0:
+            e += timedelta(days=1)
+            if e.weekday() < 5:
+                remaining -= 1
+        ce = e + timedelta(days=ph["cure_days"])
+        rows.append({**ph, "work_start": ws.isoformat(), "work_end": e.isoformat(),
+                     "cure_end": ce.isoformat()})
+        cursor = ce + timedelta(days=1)
+    return rows
+
+
 def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
                 pages_analyzed: list[int] | None = None,
                 settings: dict | None = None) -> dict:
@@ -394,6 +494,7 @@ def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
     inputs, sources = _resolve_inputs(merged, overrides, rooms_surface_m2)
     computed = compute_gros_oeuvre(inputs, merged.get("stairs_steps"), prices)
     planning = compute_planning(computed["lots"], crew, rate)
+    levels_breakdown = compute_levels_breakdown(inputs, prices, merged.get("stairs_steps"))
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "pages_analyzed": pages_analyzed or [],
@@ -407,5 +508,6 @@ def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
         "rules": RULES,
         "custom_pricing": bool(settings.get("unit_prices")),
         "planning": planning,
+        "levels_breakdown": levels_breakdown,
         **computed,
     }

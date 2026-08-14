@@ -212,6 +212,11 @@ async def seed():
     scheduler.add_job(plans_routes._run_reminders,
                       "interval", hours=6, id="quote_reminders",
                       max_instances=1, coalesce=True)
+    # Relance auto Étude PC (toutes les 6 h) : relance les études envoyées mais
+    # jamais ouvertes après N jours (réglable par utilisateur, défaut 3 j).
+    scheduler.add_job(plans_routes._run_pc_reminders,
+                      "interval", hours=6, id="pc_study_reminders",
+                      max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

@@ -21,6 +21,7 @@ from routes import plans_render as _render  # noqa: F401
 from routes import plans_export as _export  # noqa: F401
 from routes import plans_pc as _pc  # noqa: F401
 from routes.plans_pc import pc_router  # noqa: F401
+from routes.plans_pc import _run_pc_reminders  # noqa: F401 - scheduler entry point
 
 from routes.plans_common import (  # noqa: F401 - re-exports
     build_client_portal_token,

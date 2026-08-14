@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -8,8 +8,7 @@ const fmt = (d) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-dig
 const fmtLong = (d) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const COLORS = ["#f59e0b", "#f97316", "#0ea5e9", "#10b981", "#8b5cf6"];
 
-export default function PcGantt({ planning }) {
-  const [start, setStart] = useState(() => new Date().toISOString().slice(0, 10));
+export default function PcGantt({ planning, start, onStartChange }) {
 
   const rows = useMemo(() => {
     let cursor = skipWE(new Date(start + "T00:00:00"));
@@ -37,7 +36,7 @@ export default function PcGantt({ planning }) {
       <div className="flex items-center gap-2">
         <Label htmlFor="pc-gantt-start" className="text-xs shrink-0">Démarrage chantier :</Label>
         <Input id="pc-gantt-start" type="date" value={start}
-               onChange={(e) => e.target.value && setStart(e.target.value)}
+               onChange={(e) => e.target.value && onStartChange(e.target.value)}
                data-testid="pc-gantt-start-input"
                className="rounded-sm h-8 w-40 text-xs num" />
       </div>
