@@ -606,6 +606,23 @@ export default function PlanTakeoff() {
       toast.success(`Étude PC ${fmt.toUpperCase()} téléchargée`);
     } catch (e) { toast.error(e.message || "Export impossible"); }
   };
+  const comparePcSuppliers = (study) => {
+    const t = study?.totals || {};
+    const slabArea = Math.round((study?.inputs?.ground_floor_area_m2 || 0) +
+                                (study?.inputs?.upper_floors_area_m2 || 0));
+    const items = [
+      { name: "Brique isobrique 20 cm", search: "brique isobrique 20 cm", quantity: t.briques_u || 0, unit: "u" },
+      { name: "Acier HA fer à béton", search: "fer à béton HA10 barre 6m", quantity: Math.round(t.acier_kg || 0), unit: "kg" },
+      { name: "Treillis soudé ST25C", search: "treillis soudé ST25C panneau", quantity: slabArea, unit: "m²" },
+      { name: "Béton prêt à l'emploi C25/30", search: "béton prêt à l'emploi C25/30", quantity: t.beton_m3 || 0, unit: "m³" },
+    ].filter((it) => it.quantity > 0);
+    if (!items.length) return toast.error("Aucune quantité à comparer — lancez d'abord l'étude");
+    sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
+      ts: Date.now(), project_name: `Étude PC — ${plan?.filename || "plan"}`,
+      total_avg: t.ht || 0, items,
+    }));
+    nav("/prix");
+  };
 
   // Iter67 — modèles de message réutilisables (envoi de rapports)
   useEffect(() => {
@@ -1751,7 +1768,9 @@ export default function PlanTakeoff() {
           <PcStudyDialog open={pcDialog} onClose={() => setPcDialog(false)}
                          study={plan?.pc_study || null} busy={pcBusy}
                          onRun={runPcStudy} onDownload={downloadPcFile}
-                         onDownloadXlsx={downloadXlsx} />
+                         onDownloadXlsx={downloadXlsx}
+                         planId={plan?.plan_id} onSent={refreshPlan}
+                         onCompareSuppliers={comparePcSuppliers} />
           <Button variant="outline"
                   onClick={() => { setEstimateDialog(true); setEstimateResult(null); }}
                   data-testid="plan-estimate-btn"

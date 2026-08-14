@@ -1979,3 +1979,16 @@ Plan seedé plan_494e7f317d82 (calibré auto cotes 50 px/m) : 1 clic → badge �
 
 ### Backlog restant (P3)
 - Deep-link /plan?id=<pid> (QA), MAX_PC_PAGES en config, factoriser downloadBlob, légende PDF mesures multi-pages.
+
+---
+
+## Itération 70 (14/06/2026) — Étude PC : envoi client, planning chantier, comparateur fournisseurs
+
+### Livré (pytest 16/16 + E2E Playwright complet validé)
+1. **Envoi Étude Client** : `POST /api/takeoffs/{id}/pc-study/send` {to_email, message} → PDF joint (Resend), récap béton/aciers/briques/TTC + durée chantier dans l'email, historique `sent_reports` kind="pc_study". UI : `PcSendDialog.jsx` (bouton `pc-study-send-btn` dans PcStudyDialog) avec chips modèles de message réutilisables (/emails/templates : appliquer, supprimer, enregistrer). Testé en réel vers delivered@resend.dev (sink).
+2. **Planning Gros Œuvre** : `pc_study.py::compute_planning` — 5 phases séquentielles (fouilles → fondations +7j séchage → dalle +7j → élévations +2j → escalier +7j), durées = heures MO (PU MO ÷ 45 €/h) ÷ (équipe 3 × 8 h). Stocké dans `pc_study.planning` (build_study), rétro-rempli sur les 3 études existantes. Affiché dans le dialog (`pc-study-planning`, résumé `pc-planning-summary`) + tableaux dans PDF et Word.
+3. **Comparateur Fournisseurs** : bouton `pc-study-compare-btn` → construit un batch sessionStorage `construpilot_price_search_batch` (Brique isobrique 20 cm × briques_u, Fer à béton HA10 × acier_kg, Treillis ST25C × m² dalle, Béton C25/30 × m³) → navigation /prix → panneau « Matériaux de votre estimation » (mécanisme Smart Project réutilisé) avec recherche auto du 1er item.
+
+### Tests
+- `tests/test_iter70_pc_extras.py` 7/7 (planning arithmétique total_days = Σ(work+cure), phases séquentielles, 422/404/401 send, historique pc_study) + iter69 9/9 régression.
+- E2E Playwright : dialog → planning affiché (22 j / 4,4 sem) → dialog envoi OK → comparer → /prix avec 4 items quantifiés + recherche auto lancée.

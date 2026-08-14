@@ -93,6 +93,26 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None) -> bytes
         story.append(Paragraph("Avertissements IA", S["h2"]))
         for w in study["warnings"][:8]:
             story.append(Paragraph(f"• {w}", S["muted"]))
+
+    pl = study.get("planning")
+    if pl and pl.get("phases"):
+        story.append(Paragraph("Planning de chantier — gros œuvre", S["h2"]))
+        rows = [["Phase", "Jours ouvrés", "Séchage", "Début", "Fin"]]
+        for ph in pl["phases"]:
+            rows.append([Paragraph(ph["name"], S["body"]), str(ph["work_days"]),
+                         f"+{ph['cure_days']} j" if ph["cure_days"] else "—",
+                         f"J{ph['start_day']}", f"J{ph['end_day']}"])
+        story.append(_table(rows, [92 * mm, 22 * mm, 20 * mm, 20 * mm, 20 * mm],
+                            [("BACKGROUND", (0, 0), (-1, 0), DARK),
+                             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                             ("FONTSIZE", (0, 0), (-1, -1), 8),
+                             ("ALIGN", (1, 1), (-1, -1), "CENTER")]))
+        story.append(Spacer(1, 3))
+        story.append(Paragraph(
+            f"Équipe de {pl['crew_size']} compagnons — {pl['total_work_days']} jours ouvrés "
+            f"de travail + {pl['total_cure_days']} jours de séchage béton, "
+            f"soit ≈ {pl['total_days']} jours ({pl['total_weeks']} semaines) de chantier.",
+            S["muted"]))
     _story_footer(story, S)
     doc.build(story)
     return buf.getvalue()
@@ -165,6 +185,25 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None) -> byte
         doc.add_heading("Avertissements IA", level=1)
         for w in study["warnings"][:8]:
             doc.add_paragraph(w, style="List Bullet")
+
+    pl = study.get("planning")
+    if pl and pl.get("phases"):
+        doc.add_heading("Planning de chantier — gros œuvre", level=1)
+        tbl = doc.add_table(rows=1 + len(pl["phases"]), cols=5)
+        tbl.style = "Light Grid Accent 1"
+        for c, v in enumerate(["Phase", "Jours ouvrés", "Séchage", "Début", "Fin"]):
+            tbl.rows[0].cells[c].text = v
+        for r, ph in enumerate(pl["phases"], start=1):
+            cells = tbl.rows[r].cells
+            cells[0].text = ph["name"]
+            cells[1].text = str(ph["work_days"])
+            cells[2].text = f"+{ph['cure_days']} j" if ph["cure_days"] else "—"
+            cells[3].text = f"J{ph['start_day']}"
+            cells[4].text = f"J{ph['end_day']}"
+        doc.add_paragraph(
+            f"Équipe de {pl['crew_size']} compagnons — {pl['total_work_days']} jours ouvrés "
+            f"+ {pl['total_cure_days']} jours de séchage béton, soit ≈ {pl['total_days']} "
+            f"jours ({pl['total_weeks']} semaines) de chantier.")
 
     buf = BytesIO()
     doc.save(buf)

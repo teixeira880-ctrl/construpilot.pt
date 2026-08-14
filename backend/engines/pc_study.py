@@ -55,6 +55,46 @@ PC_UNIT_PRICES = {
 
 TVA_RATE = 0.20  # construction neuve
 
+# ---- Planning de chantier ---------------------------------------------
+CREW_SIZE = 3
+HOURLY_RATE_EUR = 45.0  # coût horaire MO — convertit les PU MO en heures
+
+PLANNING_PHASES = [
+    ("Terrassement — fouilles en rigole", ["Fouilles"], 0),
+    ("Fondations — béton de propreté + semelles filantes 60×30 + aciers",
+     ["propreté", "Semelles filantes", "Aciers semelles"], 7),
+    ("Dalle / plancher BA ép. 15 cm + treillis",
+     ["Dalle / plancher", "Treillis", "Coffrage de rives"], 7),
+    ("Élévations — murs brique isobrique + chaînages + linteaux",
+     ["brique isobrique", "Chaînages", "Linteaux"], 2),
+    ("Escalier béton armé", ["Escalier béton", "Aciers escalier"], 7),
+]
+
+
+def compute_planning(lots: list[dict], crew_size: int = CREW_SIZE) -> dict:
+    """Planning séquentiel des corps d'état : durées issues des heures MO + séchages."""
+    all_lines = [ln for l in lots for ln in l["lines"]]
+    phases: list[dict] = []
+    cursor = 1
+    for name, keys, cure in PLANNING_PHASES:
+        tasks = [ln for ln in all_lines
+                 if any(k.lower() in ln["designation"].lower() for k in keys)]
+        if not tasks:
+            continue
+        hours = sum(ln["total_mo"] for ln in tasks) / HOURLY_RATE_EUR
+        work_days = max(1, math.ceil(hours / (crew_size * 8)))
+        phases.append({"name": name, "tasks": [t["designation"] for t in tasks],
+                       "hours": round(hours, 1), "work_days": work_days,
+                       "cure_days": cure, "start_day": cursor,
+                       "end_day": cursor + work_days - 1})
+        cursor += work_days + cure
+    return {"crew_size": crew_size, "hourly_rate_eur": HOURLY_RATE_EUR,
+            "phases": phases,
+            "total_work_days": sum(p["work_days"] for p in phases),
+            "total_cure_days": sum(p["cure_days"] for p in phases),
+            "total_days": cursor - 1,
+            "total_weeks": round((cursor - 1) / 5, 1)}
+
 PC_PROMPT = """Tu es un **économiste de la construction expert en Permis de Construire (PC) français**
 avec 25 ans d'expérience. Tu analyses UNE page d'un dossier de permis de construire
 (plan de masse, plan de niveau, façade, coupe, notice descriptive, CERFA…).
@@ -334,6 +374,7 @@ def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
     """Assemble l'étude complète : demandes lues + hypothèses + devis quantifié."""
     inputs, sources = _resolve_inputs(merged, overrides, rooms_surface_m2)
     computed = compute_gros_oeuvre(inputs, merged.get("stairs_steps"))
+    planning = compute_planning(computed["lots"])
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "pages_analyzed": pages_analyzed or [],
@@ -345,5 +386,6 @@ def build_study(merged: dict, overrides: dict, rooms_surface_m2: float = 0.0,
         "inputs": inputs,
         "input_sources": sources,
         "rules": RULES,
+        "planning": planning,
         **computed,
     }

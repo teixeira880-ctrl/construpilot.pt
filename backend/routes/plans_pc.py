@@ -6,7 +6,7 @@ import logging
 
 from fastapi import Depends, HTTPException
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
 from core.security import current_user
@@ -108,3 +108,54 @@ async def export_pc_docx(plan_id: str, user=Depends(current_user)):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition":
                  f'attachment; filename="etude-pc-{plan_id}.docx"'})
+
+
+class PcSendIn(BaseModel):
+    to_email: EmailStr
+    message: str = Field(default="", max_length=2000)
+
+
+@router.post("/{plan_id}/pc-study/send")
+async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)) -> dict:
+    """Envoie l'étude PC (PDF joint) au client, avec un mot personnalisé."""
+    import html as _html
+    from engines.emailer import send_email_with_pdf, wrap_html
+
+    p = await _plan_and_study(plan_id, user["user_id"])
+    study = p["pc_study"]
+    branding = await _resolve_branding(user["user_id"])
+    pdf = build_pc_pdf(p, study, branding)
+
+    t = study.get("totals") or {}
+    pl = study.get("planning") or {}
+    filename = p.get("filename") or "permis de construire"
+    perso = _html.escape(body.message.strip()).replace("\n", "<br/>")
+    intro = f"<p>{perso}</p>" if perso else ""
+    recap = (f"<p><b>{t.get('beton_m3', 0)} m³</b> de béton · "
+             f"<b>{t.get('acier_kg', 0)} kg</b> d'aciers · "
+             f"<b>{t.get('briques_u', 0)}</b> briques isobrique — "
+             f"Total <b>{t.get('ttc', 0)} € TTC</b>.</p>")
+    if pl.get("total_days"):
+        recap += (f"<p>Durée de chantier estimée : <b>{pl['total_days']} jours</b> "
+                  f"({pl['total_weeks']} semaines), équipe de {pl['crew_size']}.</p>")
+    html_body = (
+        intro +
+        "<p>Veuillez trouver ci-joint l'<b>étude gros œuvre</b> établie à partir du "
+        f"permis de construire « {_html.escape(filename)} » : quantités de béton, "
+        "aciers, briques et devis détaillé par corps d'état.</p>" + recap)
+    html = wrap_html("Étude gros œuvre — Permis de construire", html_body)
+    try:
+        await send_email_with_pdf(
+            body.to_email, f"Étude gros œuvre — {filename}",
+            html, pdf, filename=f"etude-pc-{plan_id}.pdf")
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception:
+        raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$push": {"sent_reports": {"$each": [{
+            "kind": "pc_study", "to_email": body.to_email, "sent_at": _now(),
+            "ttc": t.get("ttc"), "beton_m3": t.get("beton_m3"),
+        }], "$slice": -20}}})
+    return {"ok": True, "sent_to": body.to_email, "ttc": t.get("ttc")}
