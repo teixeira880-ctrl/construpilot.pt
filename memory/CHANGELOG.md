@@ -1,5 +1,23 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 88 — 15/06/2026 (Visite guidée d'accueil multilingue)
+
+### 🌍 OnboardingTour traduit (7 langues)
+- Nouveau bloc `ONB_TRANSLATIONS` (16 clés `onb.*`) + refactor `OnboardingTour.jsx`
+  (STEPS → clés `s1..s4`, rendu via `t()`). Étapes, titres, corps, CTA, « Passer le tour »,
+  « Suivant », « Terminer » suivent la langue.
+- Vérifié (screenshot) : visite guidée en Allemand.
+
+### ⏳ Reste à faire
+- CRM clients + éditeur devis/factures + libellés PDF (7 langues).
+- Vue résultats Estimateur (`EstimationView`) + dialogues.
+- Emails (reset, relances, 2FA) dans la langue du destinataire.
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 87 — 15/06/2026 (Tableau de bord multilingue)
 
 ### 🌍 Dashboard traduit (7 langues)

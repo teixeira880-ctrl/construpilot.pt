@@ -1349,6 +1349,48 @@ for (const l of Object.keys(DASH_TRANSLATIONS)) {
   TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...DASH_TRANSLATIONS[l] };
 }
 
+const ONB_TRANSLATIONS = {
+  fr: { "onb.step": "Étape", "onb.skip": "Passer le tour", "onb.next": "Suivant", "onb.finish": "Terminer",
+    "onb.s1_title": "Smart Project — décrivez, on estime", "onb.s1_body": "Écrivez « Rénover salle de bain 8 m² » et l'IA génère lots, matériaux et budget en secondes.", "onb.s1_cta": "Essayer Smart Project",
+    "onb.s2_title": "Comparateur prix temps réel", "onb.s2_body": "10 enseignes analysées (Leroy Merlin, ManoMano, Castorama, Point.P…) — vous voyez le meilleur prix immédiatement.", "onb.s2_cta": "Ouvrir le comparateur",
+    "onb.s3_title": "Photos avant/après", "onb.s3_body": "Documentez votre chantier avec des photos comparatives. Slider avant/après pour partager la transformation.", "onb.s3_cta": "Voir mes projets",
+    "onb.s4_title": "Trouver un pro qualifié", "onb.s4_body": "Publiez votre projet et recevez des propositions de professionnels ConstruPilot Verified de votre région.", "onb.s4_cta": "Explorer le marketplace" },
+  en: { "onb.step": "Step", "onb.skip": "Skip tour", "onb.next": "Next", "onb.finish": "Finish",
+    "onb.s1_title": "Smart Project — describe, we estimate", "onb.s1_body": "Type \"Renovate 8 m² bathroom\" and AI generates trades, materials and budget in seconds.", "onb.s1_cta": "Try Smart Project",
+    "onb.s2_title": "Real-time price comparator", "onb.s2_body": "10 retailers analysed (Leroy Merlin, ManoMano, Castorama, Point.P…) — you see the best price instantly.", "onb.s2_cta": "Open the comparator",
+    "onb.s3_title": "Before/after photos", "onb.s3_body": "Document your site with comparative photos. Before/after slider to share the transformation.", "onb.s3_cta": "See my projects",
+    "onb.s4_title": "Find a qualified pro", "onb.s4_body": "Post your project and receive proposals from ConstruPilot Verified professionals in your area.", "onb.s4_cta": "Explore the marketplace" },
+  es: { "onb.step": "Paso", "onb.skip": "Saltar el tour", "onb.next": "Siguiente", "onb.finish": "Finalizar",
+    "onb.s1_title": "Smart Project — describa y estimamos", "onb.s1_body": "Escriba «Reformar baño de 8 m²» y la IA genera lotes, materiales y presupuesto en segundos.", "onb.s1_cta": "Probar Smart Project",
+    "onb.s2_title": "Comparador de precios en tiempo real", "onb.s2_body": "10 tiendas analizadas (Leroy Merlin, ManoMano, Castorama, Point.P…) — vea el mejor precio al instante.", "onb.s2_cta": "Abrir el comparador",
+    "onb.s3_title": "Fotos antes/después", "onb.s3_body": "Documente su obra con fotos comparativas. Control antes/después para compartir la transformación.", "onb.s3_cta": "Ver mis proyectos",
+    "onb.s4_title": "Encontrar un profesional cualificado", "onb.s4_body": "Publique su proyecto y reciba propuestas de profesionales ConstruPilot Verified de su región.", "onb.s4_cta": "Explorar el marketplace" },
+  pt: { "onb.step": "Passo", "onb.skip": "Saltar o tour", "onb.next": "Seguinte", "onb.finish": "Concluir",
+    "onb.s1_title": "Smart Project — descreva e estimamos", "onb.s1_body": "Escreva «Renovar casa de banho de 8 m²» e a IA gera lotes, materiais e orçamento em segundos.", "onb.s1_cta": "Experimentar o Smart Project",
+    "onb.s2_title": "Comparador de preços em tempo real", "onb.s2_body": "10 lojas analisadas (Leroy Merlin, ManoMano, Castorama, Point.P…) — veja o melhor preço de imediato.", "onb.s2_cta": "Abrir o comparador",
+    "onb.s3_title": "Fotos antes/depois", "onb.s3_body": "Documente a sua obra com fotos comparativas. Slider antes/depois para partilhar a transformação.", "onb.s3_cta": "Ver os meus projetos",
+    "onb.s4_title": "Encontrar um profissional qualificado", "onb.s4_body": "Publique o seu projeto e receba propostas de profissionais ConstruPilot Verified da sua região.", "onb.s4_cta": "Explorar o marketplace" },
+  it: { "onb.step": "Passo", "onb.skip": "Salta il tour", "onb.next": "Avanti", "onb.finish": "Fine",
+    "onb.s1_title": "Smart Project — descrivi, stimiamo noi", "onb.s1_body": "Scrivi «Ristrutturare bagno di 8 m²» e l'IA genera lotti, materiali e budget in secondi.", "onb.s1_cta": "Prova Smart Project",
+    "onb.s2_title": "Comparatore prezzi in tempo reale", "onb.s2_body": "10 rivenditori analizzati (Leroy Merlin, ManoMano, Castorama, Point.P…) — vedi subito il prezzo migliore.", "onb.s2_cta": "Apri il comparatore",
+    "onb.s3_title": "Foto prima/dopo", "onb.s3_body": "Documenta il tuo cantiere con foto comparative. Slider prima/dopo per condividere la trasformazione.", "onb.s3_cta": "Vedi i miei progetti",
+    "onb.s4_title": "Trova un professionista qualificato", "onb.s4_body": "Pubblica il tuo progetto e ricevi proposte da professionisti ConstruPilot Verified della tua zona.", "onb.s4_cta": "Esplora il marketplace" },
+  de: { "onb.step": "Schritt", "onb.skip": "Tour überspringen", "onb.next": "Weiter", "onb.finish": "Fertig",
+    "onb.s1_title": "Smart Project — beschreiben, wir schätzen", "onb.s1_body": "Schreiben Sie „8 m² Bad renovieren“ und die KI erstellt Gewerke, Materialien und Budget in Sekunden.", "onb.s1_cta": "Smart Project testen",
+    "onb.s2_title": "Echtzeit-Preisvergleich", "onb.s2_body": "10 Händler analysiert (Leroy Merlin, ManoMano, Castorama, Point.P…) — Sie sehen sofort den besten Preis.", "onb.s2_cta": "Vergleich öffnen",
+    "onb.s3_title": "Vorher/Nachher-Fotos", "onb.s3_body": "Dokumentieren Sie Ihre Baustelle mit Vergleichsfotos. Vorher/Nachher-Slider zum Teilen der Verwandlung.", "onb.s3_cta": "Meine Projekte ansehen",
+    "onb.s4_title": "Qualifizierten Profi finden", "onb.s4_body": "Veröffentlichen Sie Ihr Projekt und erhalten Sie Angebote von ConstruPilot-Verified-Profis aus Ihrer Region.", "onb.s4_cta": "Marktplatz erkunden" },
+  ar: { "onb.step": "الخطوة", "onb.skip": "تخطّي الجولة", "onb.next": "التالي", "onb.finish": "إنهاء",
+    "onb.s1_title": "Smart Project — صِف، ونحن نقدّر", "onb.s1_body": "اكتب «تجديد حمّام 8 م²» وينشئ الذكاء الاصطناعي البنود والمواد والميزانية في ثوانٍ.", "onb.s1_cta": "جرّب Smart Project",
+    "onb.s2_title": "مقارن الأسعار الفوري", "onb.s2_body": "تحليل 10 متاجر (Leroy Merlin, ManoMano, Castorama, Point.P…) — ترى أفضل سعر فورًا.", "onb.s2_cta": "افتح المقارن",
+    "onb.s3_title": "صور قبل/بعد", "onb.s3_body": "وثّق ورشتك بصور مقارنة. شريط قبل/بعد لمشاركة التحوّل.", "onb.s3_cta": "عرض مشاريعي",
+    "onb.s4_title": "ابحث عن محترف مؤهّل", "onb.s4_body": "انشر مشروعك واستقبل عروضًا من محترفي ConstruPilot Verified في منطقتك.", "onb.s4_cta": "استكشف السوق" },
+};
+
+for (const l of Object.keys(ONB_TRANSLATIONS)) {
+  TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...ONB_TRANSLATIONS[l] };
+}
+
 const STORAGE_KEY = "construpilot_lang";
 const SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"];
 const RTL_LANGS = ["ar"];
