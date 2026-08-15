@@ -5,6 +5,14 @@ import { HelmetProvider } from "react-helmet-async";
 import "@/index.css";
 import App from "@/App";
 
+// Force non-www (construpilot.fr) : aligne avec le canonical/sitemap ET garantit que
+// les appels API restent same-origin (évite les blocages CORS www -> non-www).
+if (typeof window !== "undefined" && window.location.hostname.startsWith("www.")) {
+  const target = new URL(window.location.href);
+  target.hostname = target.hostname.replace(/^www\./, "");
+  window.location.replace(target.toString());
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
