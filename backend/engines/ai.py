@@ -10,6 +10,8 @@ from engines.catalog import PROJECT_TYPES, LOTS, FINISH_LEVELS
 
 KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 PROVIDER, MODEL = "openai", "gpt-5.5"
+# Coach IA (chat conversationnel) → Claude Opus 4.8 via la clé LLM universelle Emergent
+CHAT_PROVIDER, CHAT_MODEL = "anthropic", "claude-opus-4-8"
 
 BRAND = (
     "Tu es ConstruPilot, l'expert travaux de l'plateforme ConstruPilot. "
@@ -22,9 +24,10 @@ BRAND = (
 )
 
 
-def _chat(system: str, session_id: str | None = None) -> LlmChat:
+def _chat(system: str, session_id: str | None = None,
+          provider: str = PROVIDER, model: str = MODEL) -> LlmChat:
     return LlmChat(api_key=KEY, session_id=session_id or str(uuid.uuid4()),
-                   system_message=system).with_model(PROVIDER, MODEL)
+                   system_message=system).with_model(provider, model)
 
 
 async def _complete(system: str, text: str, images: list[str] | None = None,
@@ -46,7 +49,7 @@ async def stream_chat(history: list[dict], message: str, session_id: str, contex
                       for m in history[-10:])
     prompt = (f"Historique de la conversation:\n{convo}\n\nNouveau message: {message}"
               if convo else message)
-    chat = _chat(system, session_id)
+    chat = _chat(system, session_id, CHAT_PROVIDER, CHAT_MODEL)
     async for ev in chat.stream_message(UserMessage(text=prompt)):
         if isinstance(ev, TextDelta):
             yield ev.content

@@ -1,5 +1,21 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 90 — 15/06/2026 (Claude Opus 4.8 sur le Coach IA)
+
+### 🤖 Intégration Claude Opus 4.8
+- Le **Coach IA (chat travaux)** utilise désormais **Claude Opus 4.8** (`anthropic` /
+  `claude-opus-4-8`) via emergentintegrations + `EMERGENT_LLM_KEY` (clé universelle, aucune
+  clé à fournir).
+- `engines/ai.py` : ajout `CHAT_PROVIDER/CHAT_MODEL` + `_chat()` accepte un override
+  provider/model ; `stream_chat()` (Coach) passe sur Claude. Les autres fonctions IA
+  (analyse Smart Project, conseils) restent sur gpt-5.5 (inchangées).
+- Testé : endpoint `POST /api/chat` renvoie bien un flux SSE Claude en streaming.
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 89 — 15/06/2026 (Revue de code — correctifs sûrs)
 
 ### 🧹 Nettoyage lint (code de production)
