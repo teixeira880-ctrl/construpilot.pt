@@ -46,6 +46,7 @@ import Referrals from "@/pages/Referrals";
 import ReviewCollect from "@/pages/ReviewCollect";
 import MyReviews from "@/pages/MyReviews";
 import Clients from "@/pages/Clients";
+import ClientDetail from "@/pages/ClientDetail";
 import Library from "@/pages/Library";
 import QuoteEditor from "@/pages/QuoteEditor";
 import { CITY_LIST } from "@/lib/cities";
@@ -105,6 +106,7 @@ function AppRouter() {
       <Route path="/devis" element={<Protected><Shell><QuoteTracking /></Shell></Protected>} />
       <Route path="/mes-avis" element={<Protected><Shell><MyReviews /></Shell></Protected>} />
       <Route path="/clients" element={<Protected><Shell><Clients /></Shell></Protected>} />
+      <Route path="/clients/:clientId" element={<Protected><Shell><ClientDetail /></Shell></Protected>} />
       <Route path="/bibliotheque" element={<Protected><Shell><Library /></Shell></Protected>} />
       <Route path="/devis-editeur" element={<Protected><Shell><QuoteEditor /></Shell></Protected>} />
       <Route path="/devis-editeur/:docId" element={<Protected><Shell><QuoteEditor /></Shell></Protected>} />

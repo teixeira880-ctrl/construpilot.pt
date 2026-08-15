@@ -47,6 +47,8 @@ export default function QuoteEditor() {
   const [status, setStatus] = useState("draft");
   const [number, setNumber] = useState(null);
   const [lines, setLines] = useState([blankLine()]);
+  const [docType, setDocType] = useState(
+    ["invoice", "credit_note"].includes(sp.get("type")) ? sp.get("type") : "quote");
 
   const applyDoc = useCallback((d) => {
     setDocId(d.doc_id);
@@ -56,6 +58,7 @@ export default function QuoteEditor() {
     setDepositPct(d.deposit_pct || 0);
     setStatus(d.status || "draft");
     setNumber(d.number || null);
+    setDocType(d.doc_type || "quote");
     setLines((d.lines || []).map((l) => ({ ...blankLine(), ...l, _saveToLib: false })));
   }, []);
 
@@ -113,7 +116,7 @@ export default function QuoteEditor() {
   };
 
   const payload = () => ({
-    doc_type: "quote", client_id: clientId || null, title, notes,
+    doc_type: docType, client_id: clientId || null, title, notes,
     deposit_pct: Number(depositPct) || 0, status,
     lines: lines.filter((l) => l.designation.trim()).map((l) => ({
       designation: l.designation, unit: l.unit, qty: Number(l.qty) || 0,
@@ -179,8 +182,12 @@ export default function QuoteEditor() {
           <button onClick={() => nav("/devis")} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-2" data-testid="editor-back">
             <ArrowLeft className="h-3 w-3" /> Suivi devis
           </button>
-          <SectionTitle over={number ? `Devis ${number}` : "Nouveau devis"} title="Éditeur de devis">
-            Créez un devis vide, importez-le depuis un plan analysé, piochez dans votre bibliothèque —
+          <SectionTitle
+            over={number
+              ? `${{ quote: "Devis", invoice: "Facture", credit_note: "Avoir" }[docType]} ${number}`
+              : `Nouveau ${{ quote: "devis", invoice: "facture", credit_note: "avoir" }[docType]}`}
+            title={`Éditeur de ${{ quote: "devis", invoice: "facture", credit_note: "avoir" }[docType]}`}>
+            Créez, importez depuis un plan analysé, piochez dans votre bibliothèque —
             modifiable à tout moment, même après envoi.
           </SectionTitle>
         </div>

@@ -122,7 +122,9 @@ export default function Clients() {
                     {(name(c) || "?").slice(0, 1).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-sm truncate">{name(c)}</p>
+                    <button onClick={() => nav(`/clients/${c.client_id}`)}
+                            className="font-bold text-sm truncate hover:text-primary text-left w-full"
+                            data-testid={`client-open-${c.client_id}`}>{name(c)}</button>
                     {c.company && (c.first_name || c.last_name) && (
                       <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
                         <Building2 className="h-3 w-3" />{c.company}

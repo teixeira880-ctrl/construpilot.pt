@@ -50,11 +50,27 @@
 - Testé : from-plan (4 lignes, TTC 7807,80 €), CRUD, PDF (DEV-2026-0001, multi-TVA, acompte),
   auto-save biblio, UI (TTC 573 € multi-taux) via curl + screenshot.
 
+### Étape 4 — Factures, avoirs, paiements & page client (livrée le 15/06)
+- Backend `routes/documents.py` :
+  - `POST /{quote_id}/to-invoice` (mode **total / prorata / acompte / détaillé**). Le mode
+    **acompte** reprend le % d'acompte du devis (ex : 30 %) + mention réglementaire.
+  - `POST /{invoice_id}/to-credit-note` (avoirs, numérotés AV-2026-xxxx).
+  - `POST /{doc_id}/payments` + `DELETE .../payments/{id}` : suivi des règlements
+    (statut auto partial/paid, reste dû).
+  - `GET /client-summary/{client_id}` : KPIs (CA signé, facturé, encaissé, reste à facturer,
+    reste à régler) + devis/factures/avoirs.
+- Frontend :
+  - Page **`/clients/:clientId`** (`ClientDetail.jsx`) : KPIs, sections Devis signés /
+    Factures (avec paiements) / Avoirs / devis refusés, dialogues « Facturer » (acompte 30 %
+    pré-rempli) et « Enregistrer un paiement ».
+  - Fiche client cliquable → page détaillée. Numérotation FAC-2026-xxxx.
+  - `QuoteEditor` généralisé (devis / facture / avoir) : édition possible même après émission.
+- Testé (curl) : conversion total/prorata 40 %/acompte 30 % (FAC-2026-0002, 3300 €),
+  paiement partiel (statut Partiel), avoir, synthèse client ; UI validée par screenshots.
+
 ### Reste à faire (roadmap Suite Pro)
-- Étape 4 — **Factures + page par client** : facturer un devis signé (total / **prorata** / détaillé),
-  **avoirs**, suivi paiements, factures acquittées, reste à facturer ; page dédiée par client
-  (devis signés/refusés, factures, encaissements).
-- Étape 5 — Certifications (Qualibat, RGE, QualiPAC, Qualifelec, Qualibois) + branding avancé.
+- Étape 5 — Certifications (Qualibat, RGE, QualiPAC, Qualifelec, Qualibois) + branding avancé
+  (logos affichés sur devis / factures / avoirs PDF).
 - Étape 4 — Factures (num. FAC-2026-0001, acomptes, TVA multi-taux 10/20/5,5 %).
 - Étape 5 — Certifications (Qualibat, RGE, QualiPAC, Qualifelec, Qualibois) + branding avancé.
 

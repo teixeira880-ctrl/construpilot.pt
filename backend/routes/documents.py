@@ -267,3 +267,190 @@ async def document_pdf(doc_id: str, user=Depends(current_user)):
     fname = f"{doc.get('number') or doc['doc_id']}.pdf"
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+# ============ FACTURES : conversions, paiements, avoirs ============
+
+class ToInvoiceIn(BaseModel):
+    mode: str = "total"          # total | prorata | detailed
+    pct: float = Field(default=100, ge=0, le=100)
+
+
+@router.post("/{doc_id}/to-invoice")
+async def quote_to_invoice(doc_id: str, body: ToInvoiceIn,
+                           user=Depends(current_user)) -> dict:
+    """Transforme un devis en facture (total, prorata %, ou détaillé à éditer ensuite)."""
+    from datetime import timedelta
+    q = await _get_owned(doc_id, user)
+    if q["doc_type"] != "quote":
+        raise HTTPException(400, "Seul un devis peut être transformé en facture")
+    scaled = body.mode in ("prorata", "acompte")
+    factor = (max(0.0, min(body.pct, 100)) / 100) if scaled else 1.0
+    note = q.get("notes") or ""
+    if scaled and factor < 1:
+        lines = [{**dict(ln), "qty": round((ln.get("qty") or 0) * factor, 4)}
+                 for ln in q.get("lines", [])]
+        if body.mode == "acompte":
+            title = f"Facture d'acompte {int(round(body.pct))}% — {q.get('title') or 'devis'}"
+            note = (f"Facture d'acompte de {int(round(body.pct))} % sur le devis "
+                    f"{q.get('number') or ''}. Le solde sera facturé à l'achèvement "
+                    f"des travaux.").strip()
+        else:
+            title = f"Facture situation {int(round(body.pct))}% — {q.get('title') or 'devis'}"
+    else:
+        lines = [dict(ln) for ln in q.get("lines", [])]
+        title = f"Facture — {q.get('title') or 'devis'}"
+    totals = _compute_totals(lines, 0)
+    now = _now()
+    number = await _next_number(user["user_id"], "invoice")
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": user["user_id"],
+        "doc_type": "invoice",
+        "number": number,
+        "title": title,
+        "client_id": q.get("client_id"),
+        "client": q.get("client"),
+        "status": "sent",
+        "lines": lines,
+        "notes": note,
+        "payment_terms": q.get("payment_terms") or "",
+        "deposit_pct": 0,
+        "totals": totals,
+        "payments": [],
+        "paid": 0.0,
+        "remaining_due": totals["ttc"],
+        "issue_date": now,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "source": "from_quote",
+        "parent_doc_id": doc_id,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.pro_documents.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@router.post("/{doc_id}/to-credit-note")
+async def invoice_to_credit_note(doc_id: str, user=Depends(current_user)) -> dict:
+    """Crée un avoir à partir d'une facture (montants à ajuster ensuite si partiel)."""
+    inv = await _get_owned(doc_id, user)
+    if inv["doc_type"] != "invoice":
+        raise HTTPException(400, "Seule une facture peut donner lieu à un avoir")
+    lines = [dict(ln) for ln in inv.get("lines", [])]
+    totals = _compute_totals(lines, 0)
+    now = _now()
+    number = await _next_number(user["user_id"], "credit_note")
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": user["user_id"],
+        "doc_type": "credit_note",
+        "number": number,
+        "title": f"Avoir — facture {inv.get('number') or ''}".strip(),
+        "client_id": inv.get("client_id"),
+        "client": inv.get("client"),
+        "status": "issued",
+        "lines": lines,
+        "notes": f"Avoir émis en référence à la facture {inv.get('number') or inv['doc_id']}.",
+        "payment_terms": "",
+        "deposit_pct": 0,
+        "totals": totals,
+        "issue_date": now,
+        "due_date": None,
+        "source": "from_invoice",
+        "parent_doc_id": doc_id,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.pro_documents.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+class PaymentIn(BaseModel):
+    amount: float = Field(gt=0)
+    method: str = "virement"
+    date: str | None = None
+    note: str = ""
+
+
+def _apply_payment_status(payments: list, ttc: float) -> tuple[float, float, str]:
+    paid = round(sum(p.get("amount", 0) for p in payments), 2)
+    remaining = round(ttc - paid, 2)
+    if ttc > 0 and paid + 0.01 >= ttc:
+        status = "paid"
+    elif paid > 0:
+        status = "partial"
+    else:
+        status = "sent"
+    return paid, remaining, status
+
+
+@router.post("/{doc_id}/payments")
+async def add_payment(doc_id: str, body: PaymentIn, user=Depends(current_user)) -> dict:
+    doc = await _get_owned(doc_id, user)
+    if doc["doc_type"] != "invoice":
+        raise HTTPException(400, "Les paiements ne concernent que les factures")
+    pay = {
+        "payment_id": "pay_" + secrets.token_hex(4),
+        "amount": round(body.amount, 2),
+        "method": (body.method or "virement").strip()[:40],
+        "date": body.date or _now(),
+        "note": (body.note or "").strip()[:200],
+    }
+    payments = doc.get("payments", []) + [pay]
+    ttc = doc.get("totals", {}).get("ttc", 0)
+    paid, remaining, status = _apply_payment_status(payments, ttc)
+    await db.pro_documents.update_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]},
+        {"$set": {"payments": payments, "paid": paid, "remaining_due": remaining,
+                  "status": status, "updated_at": _now()}})
+    return await _get_owned(doc_id, user)
+
+
+@router.delete("/{doc_id}/payments/{payment_id}")
+async def delete_payment(doc_id: str, payment_id: str,
+                         user=Depends(current_user)) -> dict:
+    doc = await _get_owned(doc_id, user)
+    payments = [p for p in doc.get("payments", []) if p.get("payment_id") != payment_id]
+    ttc = doc.get("totals", {}).get("ttc", 0)
+    paid, remaining, status = _apply_payment_status(payments, ttc)
+    await db.pro_documents.update_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]},
+        {"$set": {"payments": payments, "paid": paid, "remaining_due": remaining,
+                  "status": status, "updated_at": _now()}})
+    return await _get_owned(doc_id, user)
+
+
+@router.get("/client-summary/{client_id}")
+async def client_summary(client_id: str, user=Depends(current_user)) -> dict:
+    """Synthèse par client : devis signés/refusés, factures, encaissements, reste à facturer."""
+    docs = await db.pro_documents.find(
+        {"user_id": user["user_id"], "client_id": client_id}, {"_id": 0, "lines": 0}
+    ).sort("created_at", -1).to_list(3000)
+    quotes = [d for d in docs if d["doc_type"] == "quote"]
+    invoices = [d for d in docs if d["doc_type"] == "invoice"]
+    credits = [d for d in docs if d["doc_type"] == "credit_note"]
+
+    def _ttc(x):
+        return x.get("totals", {}).get("ttc", 0)
+
+    signed = [q for q in quotes if q.get("status") == "signed"]
+    ca_signed = round(sum(_ttc(q) for q in signed), 2)
+    invoiced = round(sum(_ttc(i) for i in invoices), 2)
+    paid = round(sum(i.get("paid", 0) for i in invoices), 2)
+    credited = round(sum(_ttc(c) for c in credits), 2)
+    return {
+        "kpis": {
+            "ca_signed": ca_signed,
+            "invoiced": invoiced,
+            "paid": paid,
+            "credited": credited,
+            "to_invoice": round(ca_signed - invoiced, 2),
+            "to_collect": round(invoiced - paid - credited, 2),
+        },
+        "quotes": quotes,
+        "invoices": invoices,
+        "credit_notes": credits,
+    }
