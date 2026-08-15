@@ -9,7 +9,10 @@ from emergentintegrations.llm.chat import (LlmChat, UserMessage, ImageContent,
 from engines.catalog import PROJECT_TYPES, LOTS, FINISH_LEVELS
 
 KEY = os.environ.get('EMERGENT_LLM_KEY', '')
-PROVIDER, MODEL = "openai", "gpt-5.5"
+PROVIDER, MODEL = "anthropic", "claude-sonnet-4-6"
+# Fonctions avec images (analyse photo / devis scanné) → modèle vision (Claude via clé
+# Emergent = texte uniquement)
+VISION_PROVIDER, VISION_MODEL = "openai", "gpt-5.5"
 # Coach IA (chat conversationnel) → Claude Sonnet 4.6 via la clé LLM universelle Emergent
 CHAT_PROVIDER, CHAT_MODEL = "anthropic", "claude-sonnet-4-6"
 
@@ -32,7 +35,9 @@ def _chat(system: str, session_id: str | None = None,
 
 async def _complete(system: str, text: str, images: list[str] | None = None,
                     session_id: str | None = None) -> str:
-    chat = _chat(system, session_id)
+    # Claude (texte) par défaut ; bascule vision OpenAI si des images sont fournies.
+    provider, model = (VISION_PROVIDER, VISION_MODEL) if images else (PROVIDER, MODEL)
+    chat = _chat(system, session_id, provider, model)
     contents = [ImageContent(image_base64=i) for i in (images or [])]
     out = []
     async for ev in chat.stream_message(UserMessage(text=text, file_contents=contents or None)):

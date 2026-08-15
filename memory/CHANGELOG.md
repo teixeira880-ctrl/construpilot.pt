@@ -1,5 +1,21 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 91 — 15/06/2026 (Claude Sonnet 4.6 étendu à tout le texte)
+
+### 🤖 Claude Sonnet 4.6 partout (texte)
+- `engines/ai.py` : `PROVIDER/MODEL = anthropic/claude-sonnet-4-6` → toutes les fonctions
+  **texte** passent sur Claude (Coach chat, `analyse_description`, `compare_quotes`,
+  `project_advice`).
+- Ajout `VISION_PROVIDER/VISION_MODEL = openai/gpt-5.5` : `_complete()` bascule
+  automatiquement sur le modèle vision quand des **images** sont fournies (`analyse_photo`,
+  `analyse_quote` avec image) — car Claude via clé Emergent = texte uniquement.
+- Testé : `/api/chat` (SSE Claude) et `/api/estimation/analyse` (peinture 30 m²) OK. ruff clean.
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 90 — 15/06/2026 (Claude Opus 4.8 sur le Coach IA)
 
 ### 🤖 Intégration Claude Opus 4.8
