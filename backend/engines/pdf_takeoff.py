@@ -105,9 +105,10 @@ def _decode_brand_logo(logo_b64_str: str, size_mm: float = 32):
 
 
 def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
-    """Section 1 — logo + photo de profil + company + contact line."""
+    """Section 1 — logo + photo de profil + company + contact line + certifications."""
     if not branding or not (branding.get("company_name") or branding.get("logo_b64")
-                            or branding.get("profile_photo_b64")):
+                            or branding.get("profile_photo_b64")
+                            or branding.get("certifications")):
         return
     logo_cell = _decode_brand_logo(branding["logo_b64"]) if branding.get("logo_b64") else None
     photo_cell = (_decode_brand_logo(branding["profile_photo_b64"], size_mm=18)
@@ -117,6 +118,16 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
         info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
     if branding.get("contact_line"):
         info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
+    certs = branding.get("certifications") or []
+    if certs:
+        _cert_labels = {"qualibat": "Qualibat", "rge": "RGE", "qualipac": "QualiPAC",
+                        "qualifelec": "Qualifelec", "qualibois": "Qualibois"}
+        parts = []
+        for c in certs:
+            lbl = _cert_labels.get(c.get("code"), (c.get("code") or "").upper())
+            parts.append(lbl + (f" (n° {c['number']})" if c.get("number") else ""))
+        info_lines.append(Paragraph(
+            "<b>Certifications :</b> " + " · ".join(parts), S["muted"]))
     cells = [logo_cell or "", info_lines]
     widths = [35 * mm, None]
     if photo_cell:

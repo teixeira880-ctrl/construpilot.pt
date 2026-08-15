@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import datetime, timezone
 
@@ -454,3 +455,59 @@ async def client_summary(client_id: str, user=Depends(current_user)) -> dict:
         "invoices": invoices,
         "credit_notes": credits,
     }
+
+
+# ============ RELANCE AUTOMATIQUE DES FACTURES IMPAYÉES (J+7 / J+15) ============
+
+async def run_invoice_reminders() -> int:
+    """Relance quotidienne des factures impayées à J+7 puis J+15, PDF en pièce jointe."""
+    from datetime import timedelta  # noqa: F401
+    from engines.pdf_docs import build_document_pdf
+    from engines.emailer import send_email_with_pdf, wrap_html
+    from routes.plans_common import _resolve_branding
+    log = logging.getLogger(__name__)
+    now = datetime.now(timezone.utc)
+    sent = 0
+    cur = db.pro_documents.find(
+        {"doc_type": "invoice", "status": {"$in": ["sent", "partial"]}})
+    async for inv in cur:
+        client = inv.get("client") or {}
+        email = (client.get("email") or "").strip()
+        if "@" not in email:
+            continue
+        try:
+            issued = datetime.fromisoformat(inv["issue_date"]) if inv.get("issue_date") else None
+        except Exception:  # noqa: BLE001
+            issued = None
+        if not issued:
+            continue
+        days = (now - issued).days
+        reminders = inv.get("reminders", {})
+        if days >= 15 and not reminders.get("j15"):
+            stage = "j15"
+        elif days >= 7 and not reminders.get("j7"):
+            stage = "j7"
+        else:
+            continue
+        try:
+            branding = await _resolve_branding(inv["user_id"])
+            pdf = build_document_pdf(inv, branding=branding)
+            remaining = inv.get("remaining_due", inv.get("totals", {}).get("ttc", 0)) or 0
+            name = client.get("first_name") or client.get("company") or ""
+            inner = (
+                f"<p>Bonjour {name},</p>"
+                f"<p>Sauf erreur de notre part, la facture <b>{inv.get('number')}</b>, "
+                f"d'un montant restant dû de <b>{remaining:.2f} €</b>, n'a pas encore été réglée.</p>"
+                f"<p>Vous en trouverez une copie en pièce jointe. Merci de procéder au "
+                f"règlement dès que possible.</p>")
+            html = wrap_html(f"Facture {inv.get('number')} en attente", inner)
+            await send_email_with_pdf(
+                email, f"Rappel — facture {inv.get('number')} en attente de règlement",
+                html, pdf, filename=f"{inv.get('number')}.pdf")
+            await db.pro_documents.update_one(
+                {"doc_id": inv["doc_id"]},
+                {"$set": {f"reminders.{stage}": now.isoformat()}})
+            sent += 1
+        except Exception as e:  # noqa: BLE001
+            log.warning("Invoice reminder failed for %s: %s", inv.get("doc_id"), e)
+    return sent

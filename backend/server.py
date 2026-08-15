@@ -191,6 +191,34 @@ async def seed():
                 await db.users.update_one(
                     {"email": owner_email},
                     {"$set": {"two_fa_enabled": False, "two_fa_seed_reset": True}})
+
+    # Second administrateur : info@construpilot.fr (gestion complète du site).
+    # Idempotent : promeut le compte existant (même Google) en admin ; le crée
+    # avec un mot de passe provisoire s'il n'existe pas ou n'en a pas encore.
+    second_admin_email = (os.environ.get("SECOND_ADMIN_EMAIL")
+                          or "info@construpilot.fr").lower().strip()
+    second_admin_pwd = os.environ.get("SECOND_ADMIN_PASSWORD") or "CP-Admin-2026!"
+    sa = await db.users.find_one({"email": second_admin_email})
+    if not sa:
+        await db.users.insert_one({
+            "email": second_admin_email, "name": "Administrateur ConstruPilot",
+            "role": "admin", "plan": "premium",
+            "password_hash": hash_password(second_admin_pwd),
+            "auth_provider": "password", "picture": None,
+            "user_id": new_user_id(), "must_change_password": True,
+            "two_fa_enabled": False, "two_fa_seed_reset": True,
+            "created_at": datetime.now(timezone.utc).isoformat()})
+        logger.info("Compte admin secondaire créé : %s", second_admin_email)
+    else:
+        upd = {}
+        if sa.get("role") != "admin":
+            upd["role"] = "admin"
+        if not sa.get("password_hash"):
+            upd["password_hash"] = hash_password(second_admin_pwd)
+            upd["must_change_password"] = True
+        if upd:
+            await db.users.update_one({"email": second_admin_email}, {"$set": upd})
+            logger.info("Compte admin secondaire mis à jour : %s", second_admin_email)
     # Migration one-shot : rendus 3D embarqués → collection plan_renders_3d
     # (les images base64 dans plans_takeoff dépassaient la limite BSON 16 Mo).
     async for p in db.plans_takeoff.find({"renders_3d.0": {"$exists": True}},
@@ -253,13 +281,26 @@ async def seed():
         exists = await db.plans.find_one({"plan_id": plan["plan_id"]})
         if not exists:
             await db.plans.insert_one(plan)
-    # Migration prix pro (12/02/2026) : Pro 49→99€ · Pro Business 99→199€
+    # Migration prix (15/06/2026) : Premium 19€/190€ · Pro 199€/2100€ · Pro Business 350€/3500€
     PRICE_MIGRATION = {
-        "pro_monthly": 9900, "pro_yearly": 99000,
-        "pro_business_monthly": 19900, "pro_business_yearly": 199000,
+        "premium_monthly": 1900, "premium_yearly": 19000,
+        "pro_monthly": 19900, "pro_yearly": 210000,
+        "pro_business_monthly": 35000, "pro_business_yearly": 350000,
     }
     for plan_id, cents in PRICE_MIGRATION.items():
         await db.plans.update_one({"plan_id": plan_id}, {"$set": {"amount_cents": cents}})
+    # Migration textes annuels (économies recalculées avec les nouveaux prix)
+    YEARLY_COPY = {
+        "premium_yearly": {"tagline": "Économisez ~17 %",
+                           "description": "Économisez environ 17 % avec l'abonnement annuel.",
+                           "features": ["Toutes les fonctionnalités Premium", "Économisez ~17 %"]},
+        "pro_yearly": {"tagline": "Économisez ~12 %",
+                       "description": "Facturation annuelle (~12 % d'économies)."},
+        "pro_business_yearly": {"tagline": "Économisez ~17 %",
+                                "description": "Facturation annuelle (~17 % d'économies)."},
+    }
+    for plan_id, copy in YEARLY_COPY.items():
+        await db.plans.update_one({"plan_id": plan_id}, {"$set": copy})
     if not await db.feature_flags.find_one({"_id": "global"}):
         await db.feature_flags.insert_one({"_id": "global", **DEFAULT_FEATURE_FLAGS})
 
@@ -295,6 +336,10 @@ async def seed():
     scheduler.add_job(plans_routes._run_pc_weekly_reports,
                       CronTrigger(day_of_week="mon", hour=7, minute=0),
                       id="pc_weekly_report", max_instances=1, coalesce=True)
+    # Relance auto des factures impayées (J+7 / J+15) — chaque jour à 09:00 UTC
+    scheduler.add_job(documents_routes.run_invoice_reminders,
+                      CronTrigger(hour=9, minute=0),
+                      id="invoice_reminders", max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

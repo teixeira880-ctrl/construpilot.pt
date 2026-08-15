@@ -117,6 +117,11 @@ class BrandingIn(BaseModel):
     company_name: str | None = None
     contact_line: str | None = None
     logo_b64: str | None = None
+    certifications: list[dict] | None = None
+
+
+CERT_LABELS = {"qualibat": "Qualibat", "rge": "RGE", "qualipac": "QualiPAC",
+               "qualifelec": "Qualifelec", "qualibois": "Qualibois"}
 
 
 class OrgJoinIn(BaseModel):
@@ -133,13 +138,14 @@ async def get_branding(user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
-                                  "brand_logo_b64": 1}) or {}
+                                  "brand_logo_b64": 1, "brand_certifications": 1}) or {}
     org_id = u.get("organization_id")
     if org_id:
         org = await db.organizations.find_one({"org_id": org_id},
                                                 {"_id": 0, "brand_company_name": 1,
                                                  "brand_contact_line": 1,
                                                  "brand_logo_b64": 1, "org_code": 1,
+                                                 "brand_certifications": 1,
                                                  "org_id": 1, "name": 1})
         if org:
             role = u.get("org_role", "member")
@@ -149,12 +155,14 @@ async def get_branding(user=Depends(current_user)) -> dict:
                     "company_name": org.get("brand_company_name"),
                     "contact_line": org.get("brand_contact_line"),
                     "has_logo": bool(org.get("brand_logo_b64")),
-                    "logo_b64": org.get("brand_logo_b64")}
+                    "logo_b64": org.get("brand_logo_b64"),
+                    "certifications": org.get("brand_certifications") or []}
     return {"source": "user", "can_edit": True,
             "company_name": u.get("brand_company_name"),
             "contact_line": u.get("brand_contact_line"),
             "has_logo": bool(u.get("brand_logo_b64")),
-            "logo_b64": u.get("brand_logo_b64")}
+            "logo_b64": u.get("brand_logo_b64"),
+            "certifications": u.get("brand_certifications") or []}
 
 
 @router.put("/users/me/branding")
@@ -169,6 +177,13 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         upd["brand_company_name"] = body.company_name.strip()[:120] or None
     if body.contact_line is not None:
         upd["brand_contact_line"] = body.contact_line.strip()[:200] or None
+    if body.certifications is not None:
+        certs = []
+        for c in (body.certifications or [])[:10]:
+            code = str(c.get("code", "")).lower().strip()
+            if code in CERT_LABELS:
+                certs.append({"code": code, "number": str(c.get("number", "")).strip()[:40]})
+        upd["brand_certifications"] = certs
     if body.logo_b64 is not None:
         # Limite raisonnable : ~500 ko en base64 = 375 ko fichier
         b64_clean = body.logo_b64.split(",")[-1] if body.logo_b64 else ""

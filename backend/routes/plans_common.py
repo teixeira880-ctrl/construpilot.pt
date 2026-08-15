@@ -108,28 +108,32 @@ async def _resolve_branding(user_id: str) -> dict | None:
     u = await db.users.find_one({"user_id": user_id},
                                  {"_id": 0, "organization_id": 1, "picture": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
-                                  "brand_logo_b64": 1})
+                                  "brand_logo_b64": 1, "brand_certifications": 1})
     if not u:
         return None
     photo = u.get("picture") if (u.get("picture") or "").startswith("data:image") else None
     if u.get("organization_id"):
         org = await db.organizations.find_one({"org_id": u["organization_id"]},
                                                 {"_id": 0, "brand_company_name": 1,
-                                                 "brand_contact_line": 1, "brand_logo_b64": 1})
+                                                 "brand_contact_line": 1, "brand_logo_b64": 1,
+                                                 "brand_certifications": 1})
         if org and any(org.get(k) for k in ("brand_company_name", "brand_contact_line",
-                                              "brand_logo_b64")):
+                                              "brand_logo_b64", "brand_certifications")):
             return {"company_name": org.get("brand_company_name"),
                     "contact_line": org.get("brand_contact_line"),
                     "logo_b64": org.get("brand_logo_b64"),
+                    "certifications": org.get("brand_certifications") or [],
                     "profile_photo_b64": photo}
-    if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64")):
+    if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64",
+                              "brand_certifications")):
         return {"company_name": u.get("brand_company_name"),
                 "contact_line": u.get("brand_contact_line"),
                 "logo_b64": u.get("brand_logo_b64"),
+                "certifications": u.get("brand_certifications") or [],
                 "profile_photo_b64": photo}
     if photo:
         return {"company_name": None, "contact_line": None, "logo_b64": None,
-                "profile_photo_b64": photo}
+                "certifications": [], "profile_photo_b64": photo}
     return None
 
 

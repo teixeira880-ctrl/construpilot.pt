@@ -1,0 +1,42 @@
+{
+  "summary": "Non-régression complète de la Suite Pro ConstruPilot (iter 77-78) exécutée. 17 tests pytest passés / 1 skip (from-plan : les plans admin n'ont pas de pièces mesurées, l'endpoint renvoie correctement HTTP 400 'Aucune pièce mesurée sur ce plan.', c'est un état de données pas un bug). Étape 5 (certifications + relances J+7/J+15) validée : PUT/GET /api/users/me/branding avec brand_certifications filtre bien les codes inconnus, run_invoice_reminders() sélectionne les factures 'sent' anciennes sans crasher. Multi-TVA (10/20/5.5), acompte 30%, numérotation DEV/FAC/AV-2026-xxxx, PDF valide, paiements partial→paid, KPIs client-summary, tous OK. Frontend testé sur Chromium : /clients, /bibliotheque (38 items seed visibles), /devis-editeur, /plan → détail plan → BrandingDialog (data-testid=branding-dialog, cert-toggle-{qualibat,rge,qualipac,qualifelec,qualibois} + branding-save-btn) — toast 'Identité pro enregistrée' affiché après save. Sélecteur langue lang-toggle propose PT.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/documents/from-plan/{plan_id}", "issue": "Les 20 premiers plans admin (sur 73) renvoient tous 400 'Aucune pièce mesurée sur ce plan.' — impossible de tester le happy path from-plan sans faire du takeoff manuel/IA sur un plan. Endpoint fonctionnel, juste manque de données seed avec takeoff complété."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Any page (React hydration warning)", "issues": ["Console warning: 'In HTML, <span> cannot be a child of <option>. This will cause a hydration error.' — probablement dans un <select> quelque part avec un composant qui rend un <span> à l'intérieur d'<option>. Non-bloquant mais à corriger."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter79_pro_suite.py",
+    "/app/test_reports/pytest/iter79_results.xml"
+  ],
+  "action_items": [
+    "(Optionnel) Corriger le warning React <span> dans <option> — probablement un composant Select shadcn qui rend une icône dans SelectItem inséré dans un <select> natif.",
+    "(Optionnel) Fournir un plan seed avec takeoff mesuré pour permettre le test happy-path de from-plan (côté données, pas code)."
+  ],
+  "critical_code_review_comments": [
+    "documents.py:run_invoice_reminders — logique correcte : filtre 'sent'/'partial', calcule days = (now - issue_date).days, marque reminders.j15 ou reminders.j7 uniquement APRÈS envoi email réussi. Bien : le flag n'est pas posé si l'email échoue → réessai le lendemain. Attention : si Resend est down plusieurs jours, une facture de J+30 sera toujours flaggée j15 (pas j7 puis j15) — comportement acceptable.",
+    "documents.py:_apply_payment_status — seuil de tolérance 0.01€ pour marquer 'paid' — OK.",
+    "documents.py:quote_to_invoice — le mode 'acompte' est traité comme un cas particulier de 'prorata' (scaled = mode in ('prorata','acompte')), title/notes personnalisés. OK.",
+    "library.py:_seed_if_needed — flag library_seeded persistant sur user : idempotent, bien.",
+    "clients.py:from-plan — dédoublonnage basique last_name+address, OK mais pourrait manquer des doublons avec typos.",
+    "phase7.py:update_branding — filtrage des codes cert avec whitelist CERT_LABELS + limite à 10 certifs — sécurisé."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter79_pro_suite.py (nouveau fichier)"
+  ],
+  "success_rate": {"backend": "94% (17/18, 1 skip data-dependent)", "frontend": "100% (5/5 pages testées OK)"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! (utilisé pour tous les tests)",
+  "seed_data_creation": "Le test crée puis nettoie automatiquement : 1 client TEST_Testeur79, 1 devis TEST_Devis Iter79, N factures issues du devis, N avoirs, N library items TEST_. Aucun résidu attendu.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Le test file /app/backend/tests/test_iter79_pro_suite.py couvre toute la Suite Pro (branding+certs, clients CRUD, library auto-seed + CRUD, documents multi-TVA + acompte 30% + PDF + issue numbering DEV/FAC/AV-2026-xxxx, to-invoice modes total/prorata/acompte, to-credit-note, paiements partial→paid + delete recalc, client-summary KPIs, run_invoice_reminders J+7/J+15). from-plan est skippé car les plans admin n'ont pas de pièces mesurées (endpoint OK, données incomplètes). BrandingDialog est bien monté uniquement sur /plan/{plan_id} — accessible en cliquant un data-testid='recent-plan-plan_xxx' depuis /plan.",
+  "rca of the issue": "N/A — aucun bug bloquant identifié. Seul warning React hydration mineur à investiguer côté frontend, sans impact fonctionnel."
+}

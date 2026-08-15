@@ -28,9 +28,11 @@ class LoginIn(BaseModel):
 
 
 def _public(u: dict) -> dict:
-    return {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
+    out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
                                   "two_fa_enabled", "created_at")}
+    out["has_password"] = bool(u.get("password_hash"))
+    return out
 
 
 async def _set_session(response: Response, user_id: str, token: str | None = None) -> str:
@@ -126,23 +128,28 @@ async def login(body: LoginIn, request: Request, response: Response) -> dict:
 
 
 class ChangePasswordIn(BaseModel):
-    current_password: str
+    current_password: str | None = None
     new_password: str
 
 
 @router.post("/change-password")
 async def change_password(body: ChangePasswordIn, request: Request,
                           user=Depends(current_user)) -> dict:
-    """Change le mot de passe (vérifie l'actuel) et révoque les autres sessions."""
+    """Change (ou définit) le mot de passe et révoque les autres sessions.
+
+    - Compte avec mot de passe : `current_password` requis et vérifié.
+    - Compte Google sans mot de passe : on autorise la DÉFINITION d'un mot de passe
+      sans ancien mot de passe (l'utilisateur ne peut pas en fournir).
+    """
     full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    if not full or not full.get("password_hash"):
-        raise HTTPException(status_code=400,
-                            detail="Compte Google — pas de mot de passe à changer")
-    if not verify_password(body.current_password, full["password_hash"]):
-        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    has_password = bool(full and full.get("password_hash"))
+    if has_password:
+        if not body.current_password or not verify_password(
+                body.current_password, full["password_hash"]):
+            raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400,
-                            detail="Nouveau mot de passe : 8 caractères minimum")
+                            detail="Mot de passe : 8 caractères minimum")
     await db.users.update_one(
         {"user_id": user["user_id"]},
         {"$set": {"password_hash": hash_password(body.new_password),
@@ -254,8 +261,9 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
     email = body.email.lower()
     user = await db.users.find_one({"email": email},
                                    {"_id": 0, "user_id": 1, "password_hash": 1, "name": 1})
-    if not user or not user.get("password_hash"):
+    if not user:
         return {"ok": True}
+    has_password = bool(user.get("password_hash"))
     hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
     recent = await db.password_reset_tokens.count_documents(
         {"email": email, "created_at": {"$gt": hour_ago}})
@@ -270,19 +278,26 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
     })
     origin = request.headers.get("origin") or os.environ.get("FRONTEND_URL", "")
     link = f"{origin}/reinitialiser?token={token}"
+    intro = ("Vous avez demandé la réinitialisation de votre mot de passe ConstruPilot."
+             if has_password else
+             "Vous pouvez définir un mot de passe pour votre compte ConstruPilot "
+             "(vous pourrez ainsi vous connecter par email en plus de Google).")
+    cta = "Choisir un nouveau mot de passe" if has_password else "Définir mon mot de passe"
     html = (
         f"<p>Bonjour {user.get('name') or ''},</p>"
-        f"<p>Vous avez demandé la réinitialisation de votre mot de passe ConstruPilot.</p>"
+        f"<p>{intro}</p>"
         f"<p><a href='{link}' style='background:#16a34a;color:#fff;padding:10px 18px;"
-        f"border-radius:4px;text-decoration:none'>Choisir un nouveau mot de passe</a></p>"
+        f"border-radius:4px;text-decoration:none'>{cta}</a></p>"
         f"<p style='font-size:12px;color:#666'>Ce lien est valable 1 heure et ne peut être "
         f"utilisé qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>"
     )
+    subject = ("Réinitialisation de votre mot de passe ConstruPilot" if has_password
+               else "Définissez votre mot de passe ConstruPilot")
 
     async def _send():
         from engines.emailer import send_email
         try:
-            await send_email(email, "Réinitialisation de votre mot de passe ConstruPilot", html)
+            await send_email(email, subject, html)
         except Exception:
             pass
     asyncio.create_task(_send())

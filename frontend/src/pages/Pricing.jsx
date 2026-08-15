@@ -135,8 +135,8 @@ export default function Pricing() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Tarifs — Gratuit pour les particuliers, dès 39 €/mois pour les artisans"
-        description="Estimation, calculateurs, comparateur de prix et coach IA : GRATUITS pour les particuliers. Devis PDF illimités, TVA 10 % auto, rendu 3D, signature client : dès 39 €/mois pour les pros. Sans engagement."
+        title="Tarifs — Gratuit pour les particuliers, Premium dès 19 €/mois"
+        description="Estimation, calculateurs, comparateur de prix et coach IA pour les particuliers. Devis PDF illimités, TVA 10 % auto, rendu 3D, signature client, CRM et facturation pour les pros. Premium dès 19 €/mois, sans engagement."
         keywords="prix logiciel devis, tarif construpilot, abonnement artisan, logiciel BTP gratuit, prix outil estimation travaux"
         canonical="/tarifs"
       />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Upload, Trash2, Save } from "lucide-react";
+import { Building2, Upload, Trash2, Save, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +11,19 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 
-/** Dialog de configuration du branding pro (logo + société + contact)
- *  utilisé dans le PDF Métré. */
+const CERTS = [
+  ["qualibat", "Qualibat"], ["rge", "RGE"], ["qualipac", "QualiPAC"],
+  ["qualifelec", "Qualifelec"], ["qualibois", "Qualibois"],
+];
+
+/** Dialog de configuration du branding pro (logo + société + contact + certifications)
+ *  utilisé dans les PDF Métré / Devis / Factures. */
 export function BrandingDialog({ trigger }) {
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [contactLine, setContactLine] = useState("");
   const [logoB64, setLogoB64] = useState("");
+  const [certSel, setCertSel] = useState({});
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState("user");
   const [orgName, setOrgName] = useState("");
@@ -29,6 +35,9 @@ export function BrandingDialog({ trigger }) {
       setCompanyName(data.company_name || "");
       setContactLine(data.contact_line || "");
       setLogoB64(data.logo_b64 || "");
+      const map = {};
+      (data.certifications || []).forEach((c) => { map[c.code] = c.number || ""; });
+      setCertSel(map);
       setSource(data.source || "user");
       setOrgName(data.org_name || "");
       setCanEdit(data.can_edit !== false);
@@ -44,11 +53,18 @@ export function BrandingDialog({ trigger }) {
     reader.readAsDataURL(file);
   };
 
+  const toggleCert = (code) => setCertSel((s) => {
+    const n = { ...s };
+    if (code in n) delete n[code]; else n[code] = "";
+    return n;
+  });
+
   const save = async () => {
     setBusy(true);
     try {
       await api.put("/users/me/branding", {
         company_name: companyName, contact_line: contactLine, logo_b64: logoB64 || null,
+        certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
       toast.success("Identité pro enregistrée");
       setOpen(false);
@@ -68,15 +84,15 @@ export function BrandingDialog({ trigger }) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="rounded-sm max-w-lg" data-testid="branding-dialog">
+      <DialogContent className="rounded-sm max-w-lg max-h-[88vh] overflow-y-auto" data-testid="branding-dialog">
         <DialogHeader>
-          <DialogTitle>Personnaliser le PDF Métré</DialogTitle>
+          <DialogTitle>Identité pro & certifications</DialogTitle>
           <DialogDescription>
             {source === "organization"
               ? <>Identité partagée avec l'équipe <b>{orgName}</b>. {canEdit
-                  ? "En tant qu'admin/propriétaire, vos modifications s'appliquent à tous les membres."
+                  ? "Vos modifications s'appliquent à tous les membres."
                   : "Seul un admin ou le propriétaire peut modifier ces informations."}</>
-              : "Ajoutez votre logo et vos coordonnées — ils apparaîtront en tête de chaque PDF que vous exportez."}
+              : "Logo, coordonnées et certifications — affichés en tête de chaque PDF (métré, devis, factures)."}
           </DialogDescription>
         </DialogHeader>
 
@@ -96,6 +112,34 @@ export function BrandingDialog({ trigger }) {
                       data-testid="branding-contact-input"
                       className="rounded-sm text-sm" rows={2} maxLength={200} />
           </div>
+
+          <div className="grid gap-2">
+            <Label className="flex items-center gap-1"><Award className="h-3.5 w-3.5 text-primary" /> Certifications</Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Sélectionnez vos qualifications et renseignez votre n° de certificat (optionnel).
+            </p>
+            <div className="grid gap-2" data-testid="branding-certs">
+              {CERTS.map(([code, label]) => {
+                const on = code in certSel;
+                return (
+                  <div key={code} className="flex items-center gap-2">
+                    <button type="button" onClick={() => canEdit && toggleCert(code)}
+                            disabled={!canEdit} data-testid={`cert-toggle-${code}`}
+                            className={`h-8 px-3 rounded-sm text-xs font-bold border transition min-w-[110px] ${on ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary"}`}>
+                      {label}
+                    </button>
+                    {on && (
+                      <Input value={certSel[code]} disabled={!canEdit}
+                             onChange={(e) => setCertSel((s) => ({ ...s, [code]: e.target.value }))}
+                             placeholder="N° de certificat (optionnel)"
+                             className="rounded-sm h-8 text-xs flex-1" data-testid={`cert-number-${code}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="grid gap-2">
             <Label>Logo (PNG/JPG, max 400 Ko)</Label>
             {logoB64 ? (
@@ -127,7 +171,7 @@ export function BrandingDialog({ trigger }) {
           </Button>
           {canEdit && (
             <Button onClick={save} disabled={busy} data-testid="branding-save-btn"
-                    className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+                    className="rounded-sm gap-2">
               <Save className="h-4 w-4" /> Enregistrer
             </Button>
           )}

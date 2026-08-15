@@ -1,5 +1,48 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 80 — 15/06/2026 (Tarifs + Correctifs Auth + Admin info@)
+
+### 💰 Nouveaux tarifs abonnements
+- Premium : 9,99 € → **19 €/mois** · annuel 79 € → **190 €/an** (~17 %).
+- Pro : 99 € → **199 €/mois** · annuel 990 € → **2100 €/an** (~12 %).
+- Pro Business : 299 € → **350 €/mois** · annuel 2990 € → **3500 €/an** (~17 %).
+- Source de vérité : `server.py::seed()` → `PRICE_MIGRATION` (force les montants à chaque
+  démarrage, idempotent) + `YEARLY_COPY` (recalcule les % d'économie affichés).
+  `monetization_catalog.py` mis à jour pour cohérence (nouveaux montants + taglines).
+- Front `/tarifs` lit `amount_cents` via `GET /api/plans` → propagation auto. Fixé le SEO
+  obsolète « dès 39 €/mois » → « Premium dès 19 €/mois ».
+- ⏳ **EN ATTENTE (non implémenté)** : Project Pass 19,90 € → **50 €** (3 rendus 3D offerts),
+  puis achats à l'unité (rendu 3D 5 €, vidéo 3D 10 €, maquette interactive 5 €), illimités
+  pour Pro/Pro Business. Mécanique de facturation à l'unité à développer.
+
+### 🔐 Correctifs Authentification (comptes Google)
+- **`change-password`** : `current_password` devient optionnel. Un compte Google (sans
+  `password_hash`) peut désormais **définir** un mot de passe sans ancien mot de passe.
+  Un compte avec mot de passe exige toujours l'ancien. (routes/auth.py)
+- **`forgot-password`** : ne bloque plus les comptes Google — le lien de reset est envoyé
+  à tout compte existant (permet de définir un mot de passe). Copie email adaptée
+  (« définir » vs « réinitialiser »). Anti-énumération conservée.
+- **`_public`** expose `has_password` → le front `/compte` (`PasswordForm.jsx`) affiche
+  « Définir un mot de passe » (sans champ ancien mot de passe) pour les comptes Google.
+- **Root cause « identifiants incorrects »** : compte Google = pas de mot de passe → le
+  login email/mot de passe échouait toujours. Résolu en permettant de définir un mot de passe.
+
+### 👤 Admin secondaire info@construpilot.fr
+- Seed idempotent dans `server.py::seed()` (hors `SEED_DEMO_DATA`) : crée/​promeut
+  `info@construpilot.fr` en `role=admin`. Override via `SECOND_ADMIN_EMAIL` /
+  `SECOND_ADMIN_PASSWORD`. Mot de passe provisoire `CP-Admin-2026!` (`must_change_password`).
+- Accès complet à `/admin` (Prix, Coeff, Fournisseurs, Utilisateurs, Projets, CRM/Devis,
+  Codes promo, KYC, Affiliation, Plans & Revenu, Revenue Cockpit, Demandes, Erreurs client).
+
+### Tests (auto-testés par l'agent principal)
+- Login `info@construpilot.fr` → role admin, /admin rendu complet (screenshot).
+- Compte Google : set-password sans ancien mot de passe → 200, puis login email OK.
+- `forgot-password` compte Google → crée bien un token de reset.
+- Prix `/api/plans` conformes (Premium 1900/19000, Pro 19900/210000, ProBusiness 35000/350000).
+- ⚠️ Ces changements doivent être **redéployés** pour s'appliquer sur www.construpilot.fr (prod).
+
+---
+
 ## Itération 78 — 15/06/2026 (Suite Pro — Étape 0 + Étape 1)
 
 ### Étape 0 — Langue Portugaise 🇵🇹
