@@ -28,6 +28,16 @@ root.render(
 // PWA : enregistrement du service worker (requis pour les push notifications)
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      // Force la vérification d'une nouvelle version à chaque chargement
+      reg.update();
+    }).catch(() => {});
+    // Quand un nouveau SW prend le contrôle, recharge une fois pour afficher la dernière version
+    let refreshed = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshed) return;
+      refreshed = true;
+      window.location.reload();
+    });
   });
 }
