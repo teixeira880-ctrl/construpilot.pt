@@ -1,5 +1,26 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 86 — 15/06/2026 (Menu / navigation multilingue complet)
+
+### 🌍 Navigation entièrement traduite (7 langues)
+- Nouveau bloc `NAV_TRANSLATIONS` (fusionné dans `TRANSLATIONS`) : `nav.more`, `nav.start`,
+  `nav.admin`, `nav.reviews`, `nav.clients`, `nav.library`, `nav.studies`, `nav.account`.
+- `Nav.jsx` : « Plus » → `t("nav.more")`, « Commencer » → `t("nav.start")`, « Admin »,
+  bouton rapide « Suivi devis », et **USER_LINKS** (Suivi devis, Avis clients, Clients,
+  Bibliothèque, Études PC, Équipe, Parrainer, Mon compte) dotés de clés `key` et rendus via
+  `t()` (menu déroulant desktop + menu mobile).
+- Vérifié (screenshot) : nav en Allemand (« Mehr », « Loslegen », liens traduits).
+
+### ⏳ Reste à faire
+- Tableau de bord, CRM clients, Facturation (7 langues).
+- Emails (reset, relances, 2FA) dans la langue du destinataire.
+- Widget 3D de la page d'accueil (labels « Hauteur murs », « Reset », « Vue dessus »…).
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 85 — 15/06/2026 (Formules multilingues)
 
 ### 🌍 Localisation du contenu des formules (backend)

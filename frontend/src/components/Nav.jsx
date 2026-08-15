@@ -39,14 +39,14 @@ const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 
 // Raccourcis utilisateur connecté — dans le menu « Plus » (plus de chevauchement header)
 const USER_LINKS = [
-  { to: "/devis", label: "Suivi devis", icon: LineChart },
-  { to: "/mes-avis", label: "Avis clients", icon: MessageSquare },
-  { to: "/clients", label: "Clients", icon: Contact },
-  { to: "/bibliotheque", label: "Bibliothèque", icon: Library },
-  { to: "/etudes-pc", label: "Études PC", icon: FileSearch },
-  { to: "/equipe", label: "Équipe", icon: Users },
-  { to: "/inviter", label: "Parrainer", icon: Sparkles },
-  { to: "/compte", label: "Mon compte", icon: KeyRound },
+  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart },
+  { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
+  { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
+  { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
+  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch },
+  { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
+  { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
+  { to: "/compte", label: "Mon compte", key: "nav.account", icon: KeyRound },
 ];
 
 export const Nav = () => {
@@ -99,7 +99,7 @@ export const Nav = () => {
                   moreActive ? "text-primary font-semibold" : "text-muted-foreground"
                 }`}
               >
-                Plus <ChevronDown className="h-3.5 w-3.5" />
+                {t("nav.more")} <ChevronDown className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="rounded-sm w-56" data-testid="nav-more-menu">
@@ -116,7 +116,7 @@ export const Nav = () => {
                   {USER_LINKS.map((l) => (
                     <DropdownMenuItem key={l.to} asChild className="rounded-sm cursor-pointer">
                       <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2">
-                        <l.icon className="h-4 w-4 text-primary" /> {l.label}
+                        <l.icon className="h-4 w-4 text-primary" /> {t(l.key, l.label)}
                       </Link>
                     </DropdownMenuItem>
                   ))}
@@ -138,14 +138,14 @@ export const Nav = () => {
           {user && (
             <Link to="/devis" data-testid="nav-link-tracking" className="hidden min-[1700px]:inline-flex">
               <Button variant="ghost" size="sm" className="rounded-sm gap-2 whitespace-nowrap">
-                <LineChart className="h-4 w-4 text-primary" /> Suivi devis
+                <LineChart className="h-4 w-4 text-primary" /> {t("nav.tracking")}
               </Button>
             </Link>
           )}
           {user?.role === "admin" && (
             <Link to="/admin" data-testid="nav-link-admin">
               <Button variant="outline" size="sm" className="rounded-sm gap-2">
-                <Shield className="h-4 w-4" /> Admin
+                <Shield className="h-4 w-4" /> {t("nav.admin")}
               </Button>
             </Link>
           )}
@@ -172,7 +172,7 @@ export const Nav = () => {
               <LangToggle />
               <Link to="/login" data-testid="nav-login-btn">
                 <Button size="sm" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                  <Sparkles className="h-4 w-4" /> Commencer
+                  <Sparkles className="h-4 w-4" /> {t("nav.start")}
                 </Button>
               </Link>
             </>

@@ -1216,6 +1216,34 @@ for (const l of Object.keys(EST_TRANSLATIONS)) {
   TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...EST_TRANSLATIONS[l] };
 }
 
+const NAV_TRANSLATIONS = {
+  fr: { "nav.more": "Plus", "nav.start": "Commencer", "nav.admin": "Admin",
+        "nav.reviews": "Avis clients", "nav.clients": "Clients", "nav.library": "Bibliothèque",
+        "nav.studies": "Études PC", "nav.account": "Mon compte" },
+  en: { "nav.more": "More", "nav.start": "Get started", "nav.admin": "Admin",
+        "nav.reviews": "Client reviews", "nav.clients": "Clients", "nav.library": "Library",
+        "nav.studies": "Permit studies", "nav.account": "My account" },
+  es: { "nav.more": "Más", "nav.start": "Empezar", "nav.admin": "Admin",
+        "nav.reviews": "Opiniones", "nav.clients": "Clientes", "nav.library": "Biblioteca",
+        "nav.studies": "Estudios de licencia", "nav.account": "Mi cuenta" },
+  pt: { "nav.more": "Mais", "nav.start": "Começar", "nav.admin": "Admin",
+        "nav.reviews": "Avaliações", "nav.clients": "Clientes", "nav.library": "Biblioteca",
+        "nav.studies": "Estudos de licença", "nav.account": "A minha conta" },
+  it: { "nav.more": "Altro", "nav.start": "Inizia", "nav.admin": "Admin",
+        "nav.reviews": "Recensioni", "nav.clients": "Clienti", "nav.library": "Libreria",
+        "nav.studies": "Studi permessi", "nav.account": "Il mio account" },
+  de: { "nav.more": "Mehr", "nav.start": "Loslegen", "nav.admin": "Admin",
+        "nav.reviews": "Kundenbewertungen", "nav.clients": "Kunden", "nav.library": "Bibliothek",
+        "nav.studies": "Genehmigungsstudien", "nav.account": "Mein Konto" },
+  ar: { "nav.more": "المزيد", "nav.start": "ابدأ", "nav.admin": "المشرف",
+        "nav.reviews": "آراء العملاء", "nav.clients": "العملاء", "nav.library": "المكتبة",
+        "nav.studies": "دراسات الرخص", "nav.account": "حسابي" },
+};
+
+for (const l of Object.keys(NAV_TRANSLATIONS)) {
+  TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...NAV_TRANSLATIONS[l] };
+}
+
 const STORAGE_KEY = "construpilot_lang";
 const SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"];
 const RTL_LANGS = ["ar"];
