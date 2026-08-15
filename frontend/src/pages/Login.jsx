@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/context/I18nContext";
 import { api, IMAGES } from "@/lib/api";
 
 export default function Login() {
   const { login, register, verify2fa, user } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const refCodeFromUrl = params.get("ref") || "";
@@ -34,7 +36,7 @@ export default function Login() {
       toast.success(`Connexion démo : ${acc.label}`, { position: "bottom-right", duration: 2500 });
       navigate("/dashboard");
     } catch (err) {
-      toast.error("Échec connexion démo — le compte a peut-être été modifié");
+      toast.error(t("login.demo_fail"));
     } finally { setBusy(false); }
   };
 
@@ -64,18 +66,18 @@ export default function Login() {
       }
       if (logged?.two_fa_required) {
         setTfa(logged);
-        toast.info("Un code de vérification vient de vous être envoyé par email", { duration: 5000 });
+        toast.info(t("login.tfa_sent"), { duration: 5000 });
         return;
       }
-      toast.success("Bienvenue chez ConstruPilot", { position: "bottom-right", duration: 2500 });
+      toast.success(t("login.welcome"), { position: "bottom-right", duration: 2500 });
       if (logged?.must_change_password) {
-        toast.warning("Mot de passe provisoire — merci de le changer maintenant", { duration: 6000 });
+        toast.warning(t("login.temp_pw"), { duration: 6000 });
         navigate("/compte");
       } else {
         navigate("/dashboard");
       }
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Échec de la connexion");
+      toast.error(err?.response?.data?.detail || t("login.fail"));
     } finally {
       setBusy(false);
     }
@@ -100,9 +102,9 @@ export default function Login() {
             <span className="font-display font-extrabold text-lg">Constru<span className="text-primary">Pilot</span></span>
           </Link>
           <div>
-            <p className="overline">Estimez. Comparez. Construisez.</p>
+            <p className="overline">{t("login.side_overline")}</p>
             <h2 className="mt-4 font-display text-4xl font-bold tracking-tighter max-w-md">
-              Des prix réels. Des conseils de pros. Un chantier mieux maîtrisé.
+              {t("login.side_title")}
             </h2>
           </div>
         </div>
@@ -111,11 +113,11 @@ export default function Login() {
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <Link to="/" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mb-8" data-testid="back-home-link">
-            <ArrowLeft className="h-3 w-3" /> Retour à l'accueil
+            <ArrowLeft className="h-3 w-3" /> {t("login.back_home")}
           </Link>
-          <h1 className="font-display text-3xl font-bold tracking-tight">Votre espace travaux</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">{t("login.h1")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sauvegardez vos projets, estimations, listes de matériaux et devis.
+            {t("login.sub")}
           </p>
 
           <Button
@@ -128,12 +130,12 @@ export default function Login() {
               <path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 010-4.22V7.05H2.18a11 11 0 000 9.9l3.66-2.84z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.05l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
             </svg>
-            Continuer avec Google
+            {t("login.google")}
           </Button>
 
           <div className="my-6 flex items-center gap-4">
             <span className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">ou par email</span>
+            <span className="text-xs text-muted-foreground">{t("login.or_email")}</span>
             <span className="h-px flex-1 bg-border" />
           </div>
 
@@ -143,29 +145,28 @@ export default function Login() {
               setBusy(true);
               try {
                 const u = await verify2fa(tfa.pending_token, tfaCode);
-                toast.success("Bienvenue chez ConstruPilot", { position: "bottom-right", duration: 2500 });
+                toast.success(t("login.welcome"), { position: "bottom-right", duration: 2500 });
                 if (u?.must_change_password) {
-                  toast.warning("Mot de passe provisoire — merci de le changer maintenant", { duration: 6000 });
+                  toast.warning(t("login.temp_pw"), { duration: 6000 });
                   navigate("/compte");
                 } else {
                   navigate("/dashboard");
                 }
               } catch (err) {
                 const d = err?.response?.data?.detail;
-                toast.error(typeof d === "string" ? d : "Code incorrect");
+                toast.error(typeof d === "string" ? d : t("login.tfa_wrong"));
               } finally {
                 setBusy(false);
               }
             }} className="grid gap-4" data-testid="tfa-form">
               <div>
-                <p className="font-semibold">Vérification en deux étapes</p>
+                <p className="font-semibold">{t("login.tfa_title")}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Un code à 6 chiffres vient d'être envoyé à votre adresse email.
-                  Il est valable 10 minutes.
+                  {t("login.tfa_desc")}
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label>Code de vérification</Label>
+                <Label>{t("login.tfa_label")}</Label>
                 <Input required inputMode="numeric" autoFocus maxLength={6}
                        value={tfaCode}
                        onChange={(e) => setTfaCode(e.target.value.replace(/\D/g, ""))}
@@ -175,7 +176,7 @@ export default function Login() {
               </div>
               <Button type="submit" disabled={busy || tfaCode.length !== 6}
                       className="rounded-sm h-11" data-testid="tfa-submit-btn">
-                {busy ? "Vérification…" : "Valider le code"}
+                {busy ? t("login.tfa_verifying") : t("login.tfa_validate")}
               </Button>
               <div className="flex items-center justify-between text-xs">
                 <button type="button" className="text-muted-foreground hover:text-primary"
@@ -183,47 +184,47 @@ export default function Login() {
                         onClick={async () => {
                           try {
                             await api.post("/auth/resend-2fa", { pending_token: tfa.pending_token });
-                            toast.success("Nouveau code envoyé");
+                            toast.success(t("login.tfa_resent"));
                           } catch (err) {
                             const d = err?.response?.data?.detail;
-                            toast.error(typeof d === "string" ? d : "Renvoi impossible");
+                            toast.error(typeof d === "string" ? d : t("login.tfa_resend_fail"));
                           }
                         }}>
-                  Renvoyer le code
+                  {t("login.tfa_resend")}
                 </button>
                 <button type="button" className="text-muted-foreground hover:text-primary"
                         data-testid="tfa-back-btn"
                         onClick={() => { setTfa(null); setTfaCode(""); }}>
-                  Retour à la connexion
+                  {t("login.tfa_back")}
                 </button>
               </div>
             </form>
           ) : (
           <Tabs defaultValue="login">
             <TabsList className="w-full rounded-sm">
-              <TabsTrigger value="login" className="flex-1 rounded-sm" data-testid="tab-login">Connexion</TabsTrigger>
-              <TabsTrigger value="register" className="flex-1 rounded-sm" data-testid="tab-register">Créer un compte</TabsTrigger>
+              <TabsTrigger value="login" className="flex-1 rounded-sm" data-testid="tab-login">{t("login.tab_login")}</TabsTrigger>
+              <TabsTrigger value="register" className="flex-1 rounded-sm" data-testid="tab-register">{t("login.tab_register")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
               <form onSubmit={submit("login")} className="grid gap-4 mt-6">
                 <div className="grid gap-2">
-                  <Label>Email</Label>
+                  <Label>{t("login.email")}</Label>
                   <Input required type="email" value={form.email} onChange={set("email")} data-testid="login-email-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Mot de passe</Label>
+                  <Label>{t("login.password")}</Label>
                   <Input required type="password" value={form.password} onChange={set("password")} data-testid="login-password-input" className="rounded-sm h-11" />
                   <Link to="/reinitialiser" className="text-xs text-muted-foreground hover:text-primary w-fit"
                         data-testid="forgot-password-link">
-                    Mot de passe oublié ?
+                    {t("login.forgot")}
                   </Link>
                 </div>
                 <Button type="submit" disabled={busy} data-testid="login-submit-btn" className="rounded-sm h-11 hover:bg-orange-600 hover:text-white">
-                  {busy ? "Connexion…" : "Se connecter"}
+                  {busy ? t("login.submitting") : t("login.submit")}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Compte de démonstration : <span className="num">demo@construpilot.fr</span> / <span className="num">Demo2026!</span>
+                  {t("login.demo_hint")} <span className="num">demo@construpilot.fr</span> / <span className="num">Demo2026!</span>
                 </p>
               </form>
             </TabsContent>
@@ -231,26 +232,26 @@ export default function Login() {
             <TabsContent value="register">
               <form onSubmit={submit("register")} className="grid gap-4 mt-6">
                 <div className="grid gap-2">
-                  <Label>Nom complet</Label>
+                  <Label>{t("login.name")}</Label>
                   <Input required value={form.name} onChange={set("name")} data-testid="register-name-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Email</Label>
+                  <Label>{t("login.email")}</Label>
                   <Input required type="email" value={form.email} onChange={set("email")} data-testid="register-email-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Mot de passe</Label>
+                  <Label>{t("login.password")}</Label>
                   <Input required type="password" minLength={6} value={form.password} onChange={set("password")} data-testid="register-password-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
                   <Label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Gift className="h-3 w-3" />
-                    Code parrainage (optionnel — 5 € offerts)
+                    {t("login.ref_label")}
                   </Label>
                   <Input value={form.ref} onChange={set("ref")} data-testid="register-ref-input" placeholder="CP-XXXXXX" className="rounded-sm h-11 font-mono uppercase" />
                 </div>
                 <Button type="submit" disabled={busy} data-testid="register-submit-btn" className="rounded-sm h-11 hover:bg-orange-600 hover:text-white">
-                  {busy ? "Création…" : "Créer mon compte gratuit"}
+                  {busy ? t("login.registering") : t("login.register_submit")}
                 </Button>
               </form>
             </TabsContent>
@@ -261,11 +262,10 @@ export default function Login() {
           <div className="mt-8 border-t border-border pt-6" data-testid="demo-access-panel">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-primary" />
-              <p className="overline">Accès démonstration — 1 clic</p>
+              <p className="overline">{t("login.demo_over")}</p>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
-              Testez immédiatement l'application avec un compte pré-configuré.
-              Idéal pour démonstrations ou évaluation.
+              {t("login.demo_desc")}
             </p>
             <div className="grid gap-2">
               {DEMO_ACCOUNTS.map((acc) => (

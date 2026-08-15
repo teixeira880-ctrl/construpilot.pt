@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/context/I18nContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 
@@ -19,17 +20,18 @@ const ICON = {
   PRO_BUSINESS_MONTHLY: Users, PRO_BUSINESS_YEARLY: Users,
 };
 
-const priceLabel = (p) => {
-  if (p.kind === "free") return { big: "0 €", small: "gratuit" };
+const priceLabel = (p, t) => {
+  if (p.kind === "free") return { big: "0 €", small: t("pricing.free") };
   const eur = (p.amount_cents / 100).toFixed(p.amount_cents % 100 ? 2 : 0);
-  if (p.interval === "month") return { big: `${eur} €`, small: "/ mois" };
-  if (p.interval === "year") return { big: `${eur} €`, small: "/ an" };
-  return { big: `${eur} €`, small: "paiement unique" };
+  if (p.interval === "month") return { big: `${eur} €`, small: t("pricing.per_month") };
+  if (p.interval === "year") return { big: `${eur} €`, small: t("pricing.per_year") };
+  return { big: `${eur} €`, small: t("pricing.one_time") };
 };
 
 const PlanCard = ({ plan, flags, busy, onSubscribe }) => {
+  const { t } = useI18n();
   const Icon = ICON[plan.code] || Sparkles;
-  const price = priceLabel(plan);
+  const price = priceLabel(plan, t);
   const hi = plan.highlight;
   return (
     <div
@@ -68,7 +70,7 @@ const PlanCard = ({ plan, flags, busy, onSubscribe }) => {
       <div className="mt-auto pt-4">
         {plan.kind === "free" ? (
           <Button variant="outline" className="w-full rounded-sm" data-testid={`plan-cta-${plan.plan_id}`} disabled>
-            Plan actuel
+            {t("pricing.current")}
           </Button>
         ) : (
           <Button
@@ -78,9 +80,9 @@ const PlanCard = ({ plan, flags, busy, onSubscribe }) => {
             className={`w-full rounded-sm gap-2 ${hi ? "hover:bg-orange-600" : ""}`}
             variant={hi ? "default" : "outline"}
           >
-            {busy === plan.plan_id ? "Redirection…" : (
+            {busy === plan.plan_id ? t("pricing.redirecting") : (
               <>
-                {plan.kind === "one_time" ? "Débloquer ce projet" : "Choisir cette formule"}
+                {plan.kind === "one_time" ? t("pricing.unlock_project") : t("pricing.choose")}
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
@@ -88,7 +90,7 @@ const PlanCard = ({ plan, flags, busy, onSubscribe }) => {
         )}
         {plan.kind === "subscription" && flags?.trial_enabled && plan.trial_days > 0 && (
           <p className="mt-2 text-[11px] text-muted-foreground text-center">
-            {plan.trial_days} jours d'essai gratuits · sans engagement
+            {plan.trial_days} {t("pricing.trial_suffix")}
           </p>
         )}
       </div>
@@ -98,6 +100,7 @@ const PlanCard = ({ plan, flags, busy, onSubscribe }) => {
 
 export default function Pricing() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [flags, setFlags] = useState({});
@@ -108,14 +111,14 @@ export default function Pricing() {
     api.get("/plans").then(({ data }) => {
       setPlans(data.plans || []);
       setFlags(data.flags || {});
-    }).catch(() => toast.error("Impossible de charger les formules"));
+    }).catch(() => toast.error(t("pricing.load_fail")));
   }, []);
 
   const filtered = useMemo(() => plans.filter((p) => p.audience === audience), [plans, audience]);
 
   const subscribe = async (plan) => {
     if (!user) {
-      toast.info("Connectez-vous pour souscrire");
+      toast.info(t("pricing.login_to_subscribe"));
       navigate("/login");
       return;
     }
@@ -127,7 +130,7 @@ export default function Pricing() {
       });
       window.location.href = data.url;
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Impossible d'initier le paiement");
+      toast.error(err?.response?.data?.detail || t("pricing.checkout_fail"));
       setBusy(null);
     }
   };
@@ -140,20 +143,17 @@ export default function Pricing() {
         keywords="prix logiciel devis, tarif construpilot, abonnement artisan, logiciel BTP gratuit, prix outil estimation travaux"
         canonical="/tarifs"
       />
-      <SectionTitle as="h1" over="Tarifs ConstruPilot" title="Choisissez la formule adaptée à votre projet">
-        Payez seulement pour ce dont vous avez besoin — un projet ponctuel ou un accès continu.
-        Toutes les formules incluent le moteur d'estimation, les calculateurs, la comparaison
-        de prix et l'export PDF de base. Le premium débloque l'analyse d'économies, les alertes
-        prix, l'IA avancée et bien plus.
+      <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
+        {t("pricing.subtitle")}
       </SectionTitle>
 
       <Tabs value={audience} onValueChange={setAudience}>
         <TabsList className="rounded-sm mx-auto">
           <TabsTrigger value="particulier" data-testid="pricing-tab-particulier" className="rounded-sm">
-            Particulier
+            {t("pricing.tab_particulier")}
           </TabsTrigger>
           <TabsTrigger value="pro" data-testid="pricing-tab-pro" className="rounded-sm">
-            Professionnel
+            {t("pricing.tab_pro")}
           </TabsTrigger>
         </TabsList>
 
@@ -170,30 +170,27 @@ export default function Pricing() {
         <div className="flex gap-3">
           <ShieldCheck className="h-6 w-6 text-primary shrink-0" />
           <div>
-            <p className="font-display font-semibold">Paiement sécurisé Stripe</p>
+            <p className="font-display font-semibold">{t("pricing.secure_title")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Vos paiements sont traités par Stripe, standard mondial de la sécurité PCI-DSS.
-              Vous pouvez annuler à tout moment.
+              {t("pricing.secure_desc")}
             </p>
           </div>
         </div>
         <div className="flex gap-3">
           <Sparkles className="h-6 w-6 text-primary shrink-0" />
           <div>
-            <p className="font-display font-semibold">Essai gratuit 7 jours</p>
+            <p className="font-display font-semibold">{t("pricing.trial_title")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Sur toutes les formules d'abonnement — testez sans engagement, résiliez d'un clic
-              depuis votre portail de facturation.
+              {t("pricing.trial_desc")}
             </p>
           </div>
         </div>
         <div className="flex gap-3">
           <Zap className="h-6 w-6 text-primary shrink-0" />
           <div>
-            <p className="font-display font-semibold">Project Pass à la carte</p>
+            <p className="font-display font-semibold">{t("pricing.pass_title")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Pas envie d'un abonnement ? Débloquez un projet unique pour 19,90 € et gardez
-              l'analyse complète pendant 90 jours.
+              {t("pricing.pass_desc")}
             </p>
           </div>
         </div>

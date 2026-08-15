@@ -217,5 +217,12 @@ export const Footer = () => (
         Estimations indicatives — ne constituent pas un devis contractuel.
       </p>
     </div>
+    <div className="border-t border-border">
+      <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-4 text-center" data-testid="footer-legal">
+        <p className="text-[11px] text-muted-foreground">
+          © {new Date().getFullYear()} ConstruPilot — Tous droits réservés · Brevet n° FR261104
+        </p>
+      </div>
+    </div>
   </footer>
 );

@@ -1,5 +1,33 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 83 — 15/06/2026 (i18n Phase 2 : Arabe/RTL, auto-détection, Login/Compte/Tarifs + brevet)
+
+### 🌍 Traduction Phase 2
+- **7ᵉ langue : Arabe (ar)** avec **mise en page RTL** (`document.documentElement.dir=rtl`
+  pour `ar`). Sélecteur : FR/EN/ES/PT/IT/DE/AR.
+- **Détection auto de la langue** du navigateur au 1ᵉʳ passage (`navigator.languages`),
+  mappée sur les langues supportées, sinon FR (`I18nContext.detectLang`).
+- **Pages entièrement traduites (7 langues)** : Login, Compte (page + bannière mot de
+  passe provisoire), Tarifs (titres, onglets, cartes, boutons, notifications, encarts).
+  Nouveau bloc d'augmentation `PAGE_TRANSLATIONS` (clés `login.*`, `account.*`, `pricing.*`)
+  fusionné dans `TRANSLATIONS`.
+- Testé (screenshots) : Login AR (RTL + textes), Tarifs AR (RTL + textes).
+- ⏳ Reste : Estimateur (+ vue résultats `EstimationView`) et autres pages/dialogues =
+  phases suivantes. Les **noms/features des formules** proviennent de la DB (contenu backend)
+  → localisation backend distincte à prévoir.
+
+### ⚖️ Mentions légales
+- Pied de page global (`Nav.jsx Footer`) : **« © {année} ConstruPilot — Tous droits réservés ·
+  Brevet n° FR261104 »** (visible sur toutes les pages via Shell).
+
+### 💶 Correctif tarif
+- Encart Tarifs : Project Pass « 19,90 € » → **50 €** (aligné sur le nouveau prix).
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 82 — 15/06/2026 (Coach→Estimateur + i18n Phase 1)
 
 ### 🔗 Copilot Travaux → Estimateur (avec extraction IA)
