@@ -21,6 +21,7 @@ import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
+import { useI18n } from "@/context/I18nContext";
 
 const CONDITION_LABEL = {
   neuf: "Neuf", bon: "Bon état", moyen: "État moyen", vetuste: "Vétuste",
@@ -30,6 +31,7 @@ const CONDITION_LABEL = {
 export default function Estimator() {
   const [params] = useSearchParams();
   const { has, tier } = useBilling();
+  const { t } = useI18n();
   const [catalog, setCatalog] = useState(null);
   const [step, setStep] = useState(0);
   const [est, setEst] = useState(null);
@@ -66,7 +68,7 @@ export default function Estimator() {
         condition: a.condition || f.condition,
         description: a.summary || a._raw || a.description || f.description,
       }));
-      toast.success("Projet importé depuis le Coach IA — vérifiez puis lancez le calcul");
+      toast.success(t("est.imported"));
     } catch { /* ignore */ }
   }, []);
 
@@ -86,7 +88,7 @@ export default function Estimator() {
       setStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
-      toast.error("Calcul impossible");
+      toast.error(t("est.compute_fail"));
     } finally {
       setBusy(false);
     }
@@ -101,10 +103,10 @@ export default function Estimator() {
         construction_year: Number(form.construction_year) || null,
         lots: form.lots.length ? form.lots : null, estimation: est,
       });
-      toast.success("Projet enregistré");
+      toast.success(t("est.saved"));
       navigate(`/projet/${data.project_id}`);
     } catch {
-      toast.error("Sauvegarde impossible");
+      toast.error(t("est.save_fail"));
     } finally {
       setBusy(false);
     }
@@ -123,9 +125,9 @@ export default function Estimator() {
       a.download = `Estimation-ConstruPilot-${name || "projet"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("PDF téléchargé");
+      toast.success(t("est.pdf_ok"));
     } catch {
-      toast.error("PDF indisponible");
+      toast.error(t("est.pdf_fail"));
     } finally {
       setBusy(false);
     }
@@ -133,14 +135,13 @@ export default function Estimator() {
 
   if (!catalog) return <div className="h-40 grid place-items-center"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  const steps = ["Projet", "Bâtiment", "Finitions"];
+  const steps = [t("est.step_project"), t("est.step_building"), t("est.step_finish")];
 
   return (
     <div className="grid gap-10">
       <SEO title="Estimateur travaux gratuit" description="Estimation gratuite de vos travaux de rénovation en 30 secondes. Prix par lot, TVA 10 %, durée estimée. Basé sur les prix France 2026." keywords="estimateur travaux gratuit, estimation rénovation en ligne, coût travaux, calcul devis, prix chantier" canonical="/estimation" />
-      <SectionTitle as="h1" over="Estimateur de travaux" title="Chiffrez votre chantier en 3 étapes">
-        Moteur d'estimation déterministe : prix de référence par lot, coefficients régionaux,
-        état du bâtiment et niveau de finition.
+      <SectionTitle as="h1" over={t("est.over")} title={t("est.title")}>
+        {t("est.subtitle")}
       </SectionTitle>
 
       {step < 3 && (
@@ -154,7 +155,7 @@ export default function Estimator() {
             {step === 0 && (
               <>
                 <div className="grid gap-2">
-                  <Label>Type de travaux</Label>
+                  <Label>{t("est.project_type")}</Label>
                   <Select value={form.project_type} onValueChange={(v) => set("project_type", v)}>
                     <SelectTrigger className="rounded-sm h-11" data-testid="select-project-type"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -164,7 +165,7 @@ export default function Estimator() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-6">
                   <div className="grid gap-2">
-                    <Label>Pays</Label>
+                    <Label>{t("est.country")}</Label>
                     <Select value={form.country} onValueChange={(v) => { set("country", v); set("region", v === "FR" ? "Île-de-France" : "Lisboa"); }}>
                       <SelectTrigger className="rounded-sm h-11" data-testid="select-country"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -174,7 +175,7 @@ export default function Estimator() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Région</Label>
+                    <Label>{t("est.region")}</Label>
                     <Select value={form.region} onValueChange={(v) => set("region", v)}>
                       <SelectTrigger className="rounded-sm h-11" data-testid="select-region"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -183,11 +184,11 @@ export default function Estimator() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Ville / code postal</Label>
-                    <Input value={form.city} onChange={(e) => set("city", e.target.value)} data-testid="input-city" className="rounded-sm h-11" placeholder="Ex : Nanterre 92000" />
+                    <Label>{t("est.city")}</Label>
+                    <Input value={form.city} onChange={(e) => set("city", e.target.value)} data-testid="input-city" className="rounded-sm h-11" placeholder={t("est.city_ph")} />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Surface concernée (m²)</Label>
+                    <Label>{t("est.surface")}</Label>
                     <Input type="number" min={1} value={form.surface} onChange={(e) => set("surface", e.target.value)} data-testid="input-surface" className="rounded-sm h-11 num" />
                   </div>
                 </div>
@@ -198,30 +199,30 @@ export default function Estimator() {
               <>
                 <div className="grid sm:grid-cols-3 gap-6">
                   <div className="grid gap-2">
-                    <Label>Type de bâtiment</Label>
+                    <Label>{t("est.building_type")}</Label>
                     <Select value={form.building_type} onValueChange={(v) => set("building_type", v)}>
                       <SelectTrigger className="rounded-sm h-11" data-testid="select-building-type"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {catalog.building_types.map((b) => <SelectItem key={b} value={b}>{b[0].toUpperCase() + b.slice(1)}</SelectItem>)}
+                        {catalog.building_types.map((b) => <SelectItem key={b} value={b}>{t("est.bt." + b, b[0].toUpperCase() + b.slice(1))}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Année de construction</Label>
+                    <Label>{t("est.year")}</Label>
                     <Input type="number" value={form.construction_year} onChange={(e) => set("construction_year", e.target.value)} data-testid="input-year" className="rounded-sm h-11 num" />
                   </div>
                   <div className="grid gap-2">
-                    <Label>État actuel</Label>
+                    <Label>{t("est.condition")}</Label>
                     <Select value={form.condition} onValueChange={(v) => set("condition", v)}>
                       <SelectTrigger className="rounded-sm h-11" data-testid="select-condition"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {catalog.conditions.map((c) => <SelectItem key={c} value={c}>{CONDITION_LABEL[c] || c}</SelectItem>)}
+                        {catalog.conditions.map((c) => <SelectItem key={c} value={c}>{t("est.cond." + c, CONDITION_LABEL[c] || c)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Description (optionnel)</Label>
+                  <Label>{t("est.description")}</Label>
                   <Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} data-testid="input-description" className="rounded-sm" />
                 </div>
               </>
@@ -230,7 +231,7 @@ export default function Estimator() {
             {step === 2 && (
               <>
                 <div className="grid gap-3">
-                  <Label>Niveau de finition</Label>
+                  <Label>{t("est.finish_level")}</Label>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {catalog.finish_levels.map((f) => (
                       <button
@@ -241,13 +242,13 @@ export default function Estimator() {
                         }`}
                       >
                         <p className="font-display font-semibold">{f.name}</p>
-                        <p className="num mt-1 text-xs text-muted-foreground">coefficient ×{f.coef}</p>
+                        <p className="num mt-1 text-xs text-muted-foreground">{t("est.coef")}{f.coef}</p>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="grid gap-3">
-                  <Label>Lots à inclure (vide = lots standards du type de projet)</Label>
+                  <Label>{t("est.lots")}</Label>
                   <div className="flex flex-wrap gap-2" data-testid="lots-picker">
                     {catalog.lots.map((l) => {
                       const on = form.lots.includes(l.key);
@@ -271,16 +272,16 @@ export default function Estimator() {
             <div className="flex gap-3 pt-4 border-t border-border">
               {step > 0 && (
                 <Button variant="outline" onClick={() => setStep(step - 1)} data-testid="wizard-prev-btn" className="rounded-sm gap-2">
-                  <ChevronLeft className="h-4 w-4" /> Retour
+                  <ChevronLeft className="h-4 w-4" /> {t("est.back")}
                 </Button>
               )}
               {step < 2 ? (
                 <Button onClick={() => setStep(step + 1)} data-testid="wizard-next-btn" className="ml-auto rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                  Continuer <ChevronRight className="h-4 w-4" />
+                  {t("est.next")} <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
                 <Button onClick={compute} disabled={busy} data-testid="wizard-compute-btn" className="ml-auto rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                  <Calculator className="h-4 w-4" /> {busy ? "Calcul…" : "Créer mon estimation"}
+                  <Calculator className="h-4 w-4" /> {busy ? t("est.computing") : t("est.compute")}
                 </Button>
               )}
             </div>
@@ -292,14 +293,14 @@ export default function Estimator() {
         <>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={() => setStep(0)} data-testid="edit-estimation-btn" className="rounded-sm gap-2">
-              <ChevronLeft className="h-4 w-4" /> Modifier les paramètres
+              <ChevronLeft className="h-4 w-4" /> {t("est.edit_params")}
             </Button>
-            <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="estimation-project-name" className="rounded-sm max-w-xs" placeholder="Nom du projet" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="estimation-project-name" className="rounded-sm max-w-xs" placeholder={t("est.project_name_ph")} />
             <Button onClick={save} disabled={busy} data-testid="save-estimation-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <Save className="h-4 w-4" /> Enregistrer le projet
+              <Save className="h-4 w-4" /> {t("est.save")}
             </Button>
             <Button variant="outline" onClick={downloadPdf} disabled={busy} data-testid="download-pdf-btn" className="rounded-sm gap-2">
-              <Download className="h-4 w-4" /> Télécharger le devis PDF
+              <Download className="h-4 w-4" /> {t("est.download_pdf")}
             </Button>
             <EmailPdfDialog project={{ name: name || "Mon projet", city: form.city, description: form.description }} estimation={est} />
             <WhatsAppShare project={{ name: name || "Mon projet", city: form.city, surface: Number(form.surface) }} estimation={est} />

@@ -1,5 +1,30 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 84 — 15/06/2026 (i18n : Estimateur + sélecteur Login)
+
+### 🌍 Traduction
+- **Estimateur (`Estimator.jsx`) entièrement traduit** dans les 7 langues (FR/EN/ES/PT/IT/DE/AR) :
+  titre, sous-titre, étapes (Projet/Bâtiment/Finitions), tous les labels de formulaire,
+  placeholders, boutons (Retour/Continuer/Créer/Enregistrer/PDF), états (`est.cond.*`),
+  types de bâtiment (`est.bt.*`), et toutes les notifications (calcul, PDF, sauvegarde, import Coach).
+  Nouveau bloc `EST_TRANSLATIONS` fusionné dans `TRANSLATIONS`.
+- **Sélecteur de langue ajouté sur la page Login** (`LangToggle`), utile pour les visiteurs
+  arabophones (la page Login n'a pas la nav globale).
+- Vérifié (screenshot) : Estimateur en Allemand.
+
+### ⏳ Reste à faire (prochaines passes)
+- **Vue résultats de l'Estimateur** (`EstimationView.jsx`) et dialogues associés
+  (LeadDialog, EmailPdfDialog…) : encore en français.
+- **Localisation des formules en base de données** (noms/descriptions/features des plans) :
+  NON FAIT ce tour-ci — nécessite un mécanisme backend (`/api/plans?lang=`) + traduction du
+  contenu des ~8 plans × 7 langues. À planifier.
+- Autres pages (Dashboard, CRM, Facturation, Plan 2D/3D…) = phases suivantes.
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 83 — 15/06/2026 (i18n Phase 2 : Arabe/RTL, auto-détection, Login/Compte/Tarifs + brevet)
 
 ### 🌍 Traduction Phase 2

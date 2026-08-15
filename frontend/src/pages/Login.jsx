@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { useI18n } from "@/context/I18nContext";
+import { useI18n, LangToggle } from "@/context/I18nContext";
 import { api, IMAGES } from "@/lib/api";
 
 export default function Login() {
@@ -112,9 +112,12 @@ export default function Login() {
 
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
-          <Link to="/" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mb-8" data-testid="back-home-link">
-            <ArrowLeft className="h-3 w-3" /> {t("login.back_home")}
-          </Link>
+          <div className="flex items-center justify-between mb-8">
+            <Link to="/" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1" data-testid="back-home-link">
+              <ArrowLeft className="h-3 w-3" /> {t("login.back_home")}
+            </Link>
+            <LangToggle />
+          </div>
           <h1 className="font-display text-3xl font-bold tracking-tight">{t("login.h1")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {t("login.sub")}
