@@ -13,8 +13,7 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
-from engines.monetization import (require_pro_business, require_3d_access,
-                                  consume_3d, user_tier)
+from engines.monetization import require_3d_access, consume_3d, user_tier
 
 from routes.plans_common import _now, _resolve_branding, router
 

@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 from core.db import db
 from core.security import current_user
 from engines import geometry as G
-from engines.monetization import require_pro_business
 from engines.plan_processor import auto_calibration_from_pdf_scale, process_upload
 
 from routes.plans_common import (

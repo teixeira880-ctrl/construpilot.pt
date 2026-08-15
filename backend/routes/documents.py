@@ -195,7 +195,7 @@ async def get_document(doc_id: str, user=Depends(current_user)) -> dict:
 @router.put("/{doc_id}")
 async def update_document(doc_id: str, body: DocIn,
                           user=Depends(current_user)) -> dict:
-    existing = await _get_owned(doc_id, user)
+    await _get_owned(doc_id, user)
     lines = [ln.model_dump() for ln in body.lines]
     upd = {
         "title": (body.title or "").strip()[:160],

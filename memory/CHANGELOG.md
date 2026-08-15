@@ -1,5 +1,24 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 89 — 15/06/2026 (Revue de code — correctifs sûrs)
+
+### 🧹 Nettoyage lint (code de production)
+- Supprimé 2 imports inutilisés `require_pro_business` (`plans_render.py`, `plans_crud.py`,
+  suite à l'ouverture de l'accès Plan) et 1 variable inutilisée `existing` (`documents.py`,
+  l'appel `_get_owned` reste comme garde d'ownership). **`ruff --select F,E9` = 0 erreur.**
+
+### ℹ️ Points de revue analysés = faux positifs (aucune action)
+- « Secrets en dur » : `plans_pc.py:529` = `"pcs_" + secrets.token_hex(8)` (jeton aléatoire) ;
+  fichiers de test = jetons de test (fixtures). Pas de vrai secret.
+- « 32 variables non définies » : `ruff F821 = 0`.
+
+### ⏭️ Volontairement non fait (risqué / cosmétique)
+- Refactors de complexité (`pc_export.py`, `pc_study.py`, `estimation.py`) — sprint dédié.
+- `is`→`==` : uniquement dans des fichiers de test.
+- Réduction d'imports des routes — refactor architectural.
+
+---
+
 ## Itération 88 — 15/06/2026 (Visite guidée d'accueil multilingue)
 
 ### 🌍 OnboardingTour traduit (7 langues)
