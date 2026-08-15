@@ -100,7 +100,7 @@ const PlanCard = ({ plan, flags, busy, onSubscribe }) => {
 
 export default function Pricing() {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [flags, setFlags] = useState({});
@@ -108,11 +108,11 @@ export default function Pricing() {
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
-    api.get("/plans").then(({ data }) => {
+    api.get(`/plans?lang=${lang}`).then(({ data }) => {
       setPlans(data.plans || []);
       setFlags(data.flags || {});
     }).catch(() => toast.error(t("pricing.load_fail")));
-  }, []);
+  }, [lang]);
 
   const filtered = useMemo(() => plans.filter((p) => p.audience === audience), [plans, audience]);
 

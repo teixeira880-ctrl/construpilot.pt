@@ -16,11 +16,14 @@ router = APIRouter(tags=["billing"])
 # ---------- Public : liste des plans ----------
 
 @router.get("/plans")
-async def list_plans(audience: str | None = None) -> dict:
+async def list_plans(audience: str | None = None, lang: str | None = None) -> dict:
     q = {"active": True}
     if audience:
         q["audience"] = audience
     plans = await db.plans.find(q, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    if lang and lang != "fr":
+        from engines.plan_i18n import localize_plan
+        plans = [localize_plan(p, lang) for p in plans]
     flags = await db.feature_flags.find_one({"_id": "global"}, {"_id": 0}) or {}
     return {"plans": plans, "flags": {
         "trial_enabled": flags.get("trial_enabled", True),

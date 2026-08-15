@@ -1,5 +1,27 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 85 — 15/06/2026 (Formules multilingues)
+
+### 🌍 Localisation du contenu des formules (backend)
+- Nouveau `engines/plan_i18n.py` : overlay `PLAN_I18N[lang][plan_id]` (name, tagline,
+  description, badge, features) pour EN/ES/PT/IT/DE/AR (FR = valeurs DB par défaut).
+- `GET /api/plans?lang=xx` applique `localize_plan()` sur chaque formule.
+- Frontend `Pricing.jsx` passe la langue courante (`useI18n().lang`) et **rafraîchit au
+  changement de langue** → cartes de formules entièrement traduites (nom, tagline,
+  description, badge, features, boutons).
+- Vérifié (screenshot) : Tarifs en Anglais (Free/Project Pass/Premium… + features EN),
+  et API en Arabe.
+
+### ⏳ Reste à faire (prochaines passes)
+- Vue résultats Estimateur (`EstimationView`) + dialogues (Lead/Email PDF).
+- Tableau de bord, CRM clients, Facturation.
+- Emails (reset, relances, 2FA) dans la langue du destinataire.
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 84 — 15/06/2026 (i18n : Estimateur + sélecteur Login)
 
 ### 🌍 Traduction
