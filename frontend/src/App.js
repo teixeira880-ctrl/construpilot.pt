@@ -46,6 +46,7 @@ import Referrals from "@/pages/Referrals";
 import ReviewCollect from "@/pages/ReviewCollect";
 import MyReviews from "@/pages/MyReviews";
 import Clients from "@/pages/Clients";
+import Library from "@/pages/Library";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
@@ -103,6 +104,7 @@ function AppRouter() {
       <Route path="/devis" element={<Protected><Shell><QuoteTracking /></Shell></Protected>} />
       <Route path="/mes-avis" element={<Protected><Shell><MyReviews /></Shell></Protected>} />
       <Route path="/clients" element={<Protected><Shell><Clients /></Shell></Protected>} />
+      <Route path="/bibliotheque" element={<Protected><Shell><Library /></Shell></Protected>} />
       <Route path="/scanner-devis" element={<Shell><QuoteScanner /></Shell>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/sign/:token" element={<SignQuote />} />

@@ -25,9 +25,19 @@
 - `from-plan` renvoie 400 clair si aucune info détectée (pas de 500).
 - Portugais validé (nav bascule, sélecteur fr/en/es/pt).
 
+### Étape 2 — Bibliothèque perso (livrée le 15/06)
+- Backend `routes/library.py` : collection `library_items` {type ouvrage|materiau, category, designation,
+  unit, unit_price_ht, vat_rate, notes}. CRUD + recherche + filtre par type.
+- Catalogue de départ (38 ouvrages/matériaux BTP, prix HT modifiables) auto-seedé une seule fois
+  par utilisateur (flag `library_seeded`). Endpoint `/library/reset-catalogue`.
+- Frontend : page `/bibliotheque` (`Library.jsx`) — table, filtres Tous/Ouvrages/Matériaux,
+  recherche, création/édition (dialog : type, catégorie, unité, PU HT, TVA 10/20/5,5 %), suppression.
+- Lien nav « Bibliothèque ». Testé (auto-seed 38, CRUD, filtre, recherche via curl + UI).
+
 ### Reste à faire (roadmap Suite Pro)
-- Étape 2 — Bibliothèque perso (ouvrages + matériaux, prix entreprise, catalogue pré-rempli, auto-save).
-- Étape 3 — Éditeur de devis (devis vide + devis IA modifiables, client + bibliothèque + logo + certifs).
+- Étape 3 — Éditeur de devis : devis vide + **import du devis généré par l'IA (plan/PC) en devis modifiable**,
+  sélection client, lignes depuis la bibliothèque (auto-save des nouvelles lignes), logo + certifs.
+  Inclut l'enchaînement **plan → fiche client → devis pré-rempli à son nom**.
 - Étape 4 — Factures (num. FAC-2026-0001, acomptes, TVA multi-taux 10/20/5,5 %).
 - Étape 5 — Certifications (Qualibat, RGE, QualiPAC, Qualifelec, Qualibois) + branding avancé.
 
