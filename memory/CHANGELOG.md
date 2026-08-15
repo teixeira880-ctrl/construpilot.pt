@@ -1,5 +1,25 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 87 — 15/06/2026 (Tableau de bord multilingue)
+
+### 🌍 Dashboard traduit (7 langues)
+- Nouveau bloc `DASH_TRANSLATIONS` (fusionné dans `TRANSLATIONS`) : ~32 clés `dash.*`.
+- `Dashboard.jsx` câblé : bandeau (Espace client / Bonjour / statut du plan), boutons
+  (Passer Premium, Nouvelle estimation), 4 statistiques, 4 onglets (Projets / Devis analysés /
+  Alertes prix / Demandes), états vides, cartes projet (Ouvrir, lots terminés), alertes
+  (Seuil, Objectif atteint / En surveillance), et toast « Projet supprimé ».
+- Vérifié (screenshot) : Dashboard en Allemand (Hallo, Meine Projekte, Neue Schätzung…).
+
+### ⏳ Reste à faire
+- Composant `OnboardingTour` (fenêtre d'accueil) encore en français.
+- CRM clients, éditeur devis/factures + libellés PDF (7 langues).
+- Emails (reset, relances, 2FA) dans la langue du destinataire (stocker `user.lang`).
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (Deploy) pour www.construpilot.fr.
+
+---
+
 ## Itération 86 — 15/06/2026 (Menu / navigation multilingue complet)
 
 ### 🌍 Navigation entièrement traduite (7 langues)

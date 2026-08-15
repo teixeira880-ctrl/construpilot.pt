@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, eur, num, IMAGES } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
+import { useI18n } from "@/context/I18nContext";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import PushToggle from "@/components/PushToggle";
 import { Stat } from "@/components/Bits";
@@ -20,6 +21,7 @@ const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
 export default function Dashboard() {
   const { user } = useAuth();
   const { tier, active, flags } = useBilling();
+  const { t } = useI18n();
   const [projects, setProjects] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -36,7 +38,7 @@ export default function Dashboard() {
 
   const remove = async (id) => {
     await api.delete(`/projects/${id}`);
-    toast.success("Projet supprimé");
+    toast.success(t("dash.project_deleted"));
     load();
   };
 
@@ -51,15 +53,15 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
         <div className="relative p-8 lg:p-10 flex flex-col lg:flex-row gap-6 lg:items-end justify-between">
           <div>
-            <p className="overline">Espace client</p>
+            <p className="overline">{t("dash.over")}</p>
             <h1 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-              Bonjour {user?.name?.split(" ")[0]}
+              {t("dash.hello")} {user?.name?.split(" ")[0]}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {tier === "free" ? (
-                <>Plan <b>Gratuit</b> · découvrez l'application, puis débloquez toutes les fonctionnalités.</>
+                <>{t("dash.plan")} <b>{t("dash.free_word")}</b> · {t("dash.free_desc")}</>
               ) : (
-                <>Plan <b className="text-primary">{active?.plan?.name || tier}</b> actif · toutes les fonctionnalités sont ouvertes.</>
+                <>{t("dash.plan")} <b className="text-primary">{active?.plan?.name || tier}</b> {t("dash.active_desc")}</>
               )}
             </p>
           </div>
@@ -67,7 +69,7 @@ export default function Dashboard() {
             {tier === "free" && (
               <Button onClick={() => navigate("/tarifs")} data-testid="upgrade-cta" variant="outline" className="rounded-sm gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground">
                 <TrendingUp className="h-4 w-4" />
-                Passer Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} j offerts` : ""}
+                {t("dash.upgrade")} {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} ${t("dash.days_free")}` : ""}
               </Button>
             )}
             <PushToggle />
@@ -75,27 +77,27 @@ export default function Dashboard() {
               <Sparkles className="h-4 w-4" /> Smart Project
             </Button>
             <Button variant="outline" onClick={() => navigate("/estimation")} data-testid="new-project-btn" className="rounded-sm gap-2">
-              <Plus className="h-4 w-4" /> Nouvelle estimation
+              <Plus className="h-4 w-4" /> {t("dash.new_est")}
             </Button>
           </div>
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <Stat label="Mes projets" value={num(projects.length)} testId="stat-projects" />
-        <Stat label="Budget cumulé" value={eur(totalBudget)} testId="stat-budget" accent />
-        <Stat label="Surface totale" value={`${num(totalSurface, 1)} m²`} testId="stat-surface" />
-        <Stat label="Demandes ConstruPilot" value={num(leads.length)} testId="stat-leads" />
+        <Stat label={t("dash.stat_projects")} value={num(projects.length)} testId="stat-projects" />
+        <Stat label={t("dash.stat_budget")} value={eur(totalBudget)} testId="stat-budget" accent />
+        <Stat label={t("dash.stat_surface")} value={`${num(totalSurface, 1)} m²`} testId="stat-surface" />
+        <Stat label={t("dash.stat_leads")} value={num(leads.length)} testId="stat-leads" />
       </div>
 
       <RevenueChart />
 
       <Tabs defaultValue="projects">
         <TabsList className="rounded-sm flex-wrap h-auto">
-          <TabsTrigger value="projects" className="rounded-sm" data-testid="dash-tab-projects">Mes projets</TabsTrigger>
-          <TabsTrigger value="quotes" className="rounded-sm" data-testid="dash-tab-quotes">Mes devis analysés</TabsTrigger>
-          <TabsTrigger value="alerts" className="rounded-sm" data-testid="dash-tab-alerts">Mes alertes prix</TabsTrigger>
-          <TabsTrigger value="leads" className="rounded-sm" data-testid="dash-tab-leads">Mes demandes ConstruPilot</TabsTrigger>
+          <TabsTrigger value="projects" className="rounded-sm" data-testid="dash-tab-projects">{t("dash.tab_projects")}</TabsTrigger>
+          <TabsTrigger value="quotes" className="rounded-sm" data-testid="dash-tab-quotes">{t("dash.tab_quotes")}</TabsTrigger>
+          <TabsTrigger value="alerts" className="rounded-sm" data-testid="dash-tab-alerts">{t("dash.tab_alerts")}</TabsTrigger>
+          <TabsTrigger value="leads" className="rounded-sm" data-testid="dash-tab-leads">{t("dash.tab_leads")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="projects" className="mt-6">
@@ -103,7 +105,7 @@ export default function Dashboard() {
             <div className="surface p-12 text-center" data-testid="projects-empty">
               <FolderOpen className="h-8 w-8 mx-auto text-muted-foreground" />
               <p className="mt-4 text-sm text-muted-foreground">
-                Aucun projet. Décrivez votre chantier avec Smart Project pour commencer.
+                {t("dash.projects_empty")}
               </p>
             </div>
           ) : (
@@ -129,12 +131,12 @@ export default function Dashboard() {
                       ))}
                     </div>
                     <p className="num mt-4 text-xs text-muted-foreground">
-                      <TrendingUp className="inline h-3 w-3 mr-1" />{done}/{total} lots terminés
+                      <TrendingUp className="inline h-3 w-3 mr-1" />{done}/{total} {t("dash.lots_done")}
                     </p>
                     <div className="mt-6 flex gap-2 pt-4 border-t border-border">
                       <Link to={`/projet/${p.project_id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full rounded-sm" data-testid={`open-project-${p.project_id}`}>
-                          Ouvrir le projet
+                          {t("dash.open_project")}
                         </Button>
                       </Link>
                       <Button variant="ghost" size="sm" onClick={() => remove(p.project_id)} data-testid={`delete-project-${p.project_id}`} className="rounded-sm">
@@ -153,14 +155,14 @@ export default function Dashboard() {
             <div className="surface p-12 text-center" data-testid="quotes-empty">
               <FileSearch className="h-8 w-8 mx-auto text-muted-foreground" />
               <p className="mt-4 text-sm text-muted-foreground">
-                Aucun devis analysé. <Link to="/scanner-devis" className="text-primary">Scanner un devis</Link>
+                {t("dash.quotes_empty")} <Link to="/scanner-devis" className="text-primary">{t("dash.scan_quote")}</Link>
               </p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="quotes-list">
               {quotes.map((q) => (
                 <div key={q.quote_id} className="surface p-6">
-                  <p className="overline text-muted-foreground">{q.company || "Entreprise"}</p>
+                  <p className="overline text-muted-foreground">{q.company || t("dash.company")}</p>
                   <p className="num mt-3 text-xl font-bold">{eur(q.analysis?.total_ttc || q.analysis?.total_ht)}</p>
                   <Badge variant="outline" className="mt-3 rounded-sm">{q.analysis?.verdict}</Badge>
                   <p className="mt-3 text-xs text-muted-foreground">{q.analysis?.verdict_label}</p>
@@ -175,7 +177,7 @@ export default function Dashboard() {
             <div className="surface p-12 text-center" data-testid="alerts-empty">
               <Bell className="h-8 w-8 mx-auto text-muted-foreground" />
               <p className="mt-4 text-sm text-muted-foreground">
-                Aucune alerte prix. <Link to="/prix" className="text-primary">Créer une alerte</Link>
+                {t("dash.alerts_empty")} <Link to="/prix" className="text-primary">{t("dash.create_alert")}</Link>
               </p>
             </div>
           ) : (
@@ -184,11 +186,11 @@ export default function Dashboard() {
                 <div key={a.alert_id} className="surface p-5 flex flex-wrap items-center gap-4">
                   <div className="flex-1 min-w-[200px]">
                     <p className="font-medium">{a.product}</p>
-                    <p className="num text-xs text-muted-foreground">Seuil : {eur(a.target_price)}</p>
+                    <p className="num text-xs text-muted-foreground">{t("dash.threshold")} {eur(a.target_price)}</p>
                   </div>
                   <p className="num text-lg font-bold">{a.best_price ? eur(a.best_price) : "—"}</p>
                   <Badge variant="outline" className={`rounded-sm ${a.triggered ? "border-emerald-500 text-emerald-500" : ""}`}>
-                    {a.triggered ? "Objectif atteint" : "En surveillance"}
+                    {a.triggered ? t("dash.target_reached") : t("dash.watching")}
                   </Badge>
                   <Button
                     variant="ghost" size="sm" className="rounded-sm"
@@ -207,14 +209,14 @@ export default function Dashboard() {
           {leads.length === 0 ? (
             <div className="surface p-12 text-center" data-testid="leads-empty">
               <HardHat className="h-8 w-8 mx-auto text-muted-foreground" />
-              <p className="mt-4 text-sm text-muted-foreground">Aucune demande envoyée à ConstruPilot.</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t("dash.leads_empty")}</p>
             </div>
           ) : (
             <div className="grid gap-3" data-testid="leads-list">
               {leads.map((l) => (
                 <div key={l.lead_id} className="surface p-5 flex flex-wrap items-center gap-4">
                   <div className="flex-1 min-w-[200px]">
-                    <p className="font-medium">{l.project_snapshot?.name || l.description?.slice(0, 60) || "Demande"}</p>
+                    <p className="font-medium">{l.project_snapshot?.name || l.description?.slice(0, 60) || t("dash.request")}</p>
                     <p className="text-xs text-muted-foreground">{l.address} · {l.phone}</p>
                   </div>
                   <p className="num font-bold">{eur(l.budget)}</p>
