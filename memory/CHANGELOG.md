@@ -1,5 +1,41 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 81 — 15/06/2026 (Facturation 3D à l'unité + Project Pass 50 €)
+
+### 💳 Project Pass 50 € + achats 3D à l'unité (option a : Plan ouvert à tous)
+- **Project Pass** : 19,90 € → **50 €**, inclut **3 rendus 3D offerts** (quota `free_renders_3d: 3`).
+- **Produits à l'unité** (nouveaux plans `one_time`, audience `addon`) : `render_credit_3d` (5 €),
+  `video_credit_3d` (10 €), `mockup_credit_3d` (5 €). Synchronisés dans Stripe via
+  `ensure_stripe_catalog`.
+- **Accès Plan 2D ouvert à tous les connectés** : retrait du gate `require_pro_business` sur
+  `plans_crud` (upload/duplicate) + retrait des features `plan_takeoff`/`render_3d` du gating
+  Pro Business dans `BillingContext`.
+- **Contrôle 3D par action** (`engines/monetization.py`) :
+  - `resolve_3d_access(user, kind)` → `unlimited` (admin/pro/pro_business) · `free` (Project Pass,
+    render only, 3 offerts) · `credit` · `denied`.
+  - `require_3d_access` lève **402** avec detail structuré `{error:'credit_required', kind,
+    price_cents, price_eur, credit_plan_id, message}`.
+  - `consume_3d` : `$inc render3d_free_used` (offert) ou `$dec credits_3d.<kind>` (crédit).
+  - `credits_3d_summary` → endpoint `GET /api/billing/credits-3d`.
+  - `_mark_paid` : un paiement d'un produit crédit incrémente `users.credits_3d.<kind>`
+    (sans changer le plan actif).
+- **Gating endpoints** (`plans_render.py`) : `render-3d` (kind render), `render-video`
+  (kind video), nouveau `POST /{plan_id}/interactive-3d` (kind mockup, déblocage par plan,
+  ré-ouverture gratuite via `interactive_unlocks`).
+- **Frontend** : compteur `credits-3d-counter` (offerts + crédits + tarifs), paywall
+  `credit-paywall` (402 → bouton « Acheter (X €) » → checkout Stripe), bouton « Maquette
+  interactive » passe par le déblocage backend. `PlanTakeoff` gère le 402 sur render/vidéo/maquette.
+
+### Tests (auto-testés backend)
+- `resolve/consume/summary` + `_mark_paid` crédit validés en Python.
+- API : `GET /billing/credits-3d` (free=0/pro_business=unlimited), `render-3d` free → **402**
+  structuré. Plans DB : Project Pass 5000 (free_renders_3d 3), crédits 500/1000/500.
+- UI : dialog 3D + compteur « illimité » (admin) OK (screenshot).
+- ⚠️ Le paiement Stripe réel (carte) n'est pas testable automatiquement en preview ; le crédit
+  est bien accordé au retour de checkout via `/billing/status` (sync_status → _mark_paid).
+
+---
+
 ## Itération 80 — 15/06/2026 (Tarifs + Correctifs Auth + Admin info@)
 
 ### 💰 Nouveaux tarifs abonnements

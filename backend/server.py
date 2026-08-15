@@ -282,13 +282,19 @@ async def seed():
         if not exists:
             await db.plans.insert_one(plan)
     # Migration prix (15/06/2026) : Premium 19€/190€ · Pro 199€/2100€ · Pro Business 350€/3500€
+    # + Project Pass 19,90€ → 50€ (accès Plan 2D + 3 rendus 3D offerts)
     PRICE_MIGRATION = {
         "premium_monthly": 1900, "premium_yearly": 19000,
         "pro_monthly": 19900, "pro_yearly": 210000,
         "pro_business_monthly": 35000, "pro_business_yearly": 350000,
+        "project_pass": 5000,
     }
     for plan_id, cents in PRICE_MIGRATION.items():
         await db.plans.update_one({"plan_id": plan_id}, {"$set": {"amount_cents": cents}})
+    # Project Pass : ajoute les 3 rendus 3D offerts (quota) même si le plan existe déjà en DB
+    await db.plans.update_one(
+        {"plan_id": "project_pass"},
+        {"$set": {"quotas.free_renders_3d": 3}})
     # Migration textes annuels (économies recalculées avec les nouveaux prix)
     YEARLY_COPY = {
         "premium_yearly": {"tagline": "Économisez ~17 %",

@@ -27,7 +27,10 @@ export function Render3dDialog({
   videoHistory, openVideoHistory,
   videoAddWatermark, setVideoAddWatermark,
   videoAddMusic, setVideoAddMusic,
+  credits3d, creditPaywall, setCreditPaywall, buyCredit, onInteractiveMode,
 }) {
+  const unlimited = credits3d?.unlimited;
+  const creditFor = (k) => credits3d?.credits?.[k] ?? 0;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-sm max-w-4xl max-h-[90vh] overflow-y-auto"
@@ -41,6 +44,40 @@ export function Render3dDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {credits3d && (
+          <div className="text-xs border border-border rounded-sm p-2 bg-secondary/30 flex flex-wrap gap-x-4 gap-y-1"
+               data-testid="credits-3d-counter">
+            {unlimited ? (
+              <span className="text-primary font-semibold">✓ Rendus, vidéos et maquettes illimités (Pro / Pro Business)</span>
+            ) : (
+              <>
+                <span data-testid="credits-free-render">🎁 Rendus offerts restants : <b>{credits3d.free_render_remaining ?? 0}</b></span>
+                <span>Crédits — rendu : <b>{creditFor("render")}</b> · vidéo : <b>{creditFor("video")}</b> · maquette : <b>{creditFor("mockup")}</b></span>
+                <span className="text-muted-foreground">Tarifs à l'unité : rendu 5 € · vidéo 10 € · maquette 5 €</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {creditPaywall && (
+          <div className="border border-primary/50 bg-primary/5 rounded-sm p-4 space-y-3 text-center"
+               data-testid="credit-paywall">
+            <p className="font-display font-bold">{creditPaywall.message}</p>
+            <p className="text-xs text-muted-foreground">
+              Paiement unique sécurisé. Le crédit est ajouté à votre compte dès le paiement validé.
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" className="rounded-sm"
+                      onClick={() => setCreditPaywall(null)}>Annuler</Button>
+              <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
+                      data-testid="credit-buy-btn"
+                      onClick={() => buyCredit(creditPaywall.credit_plan_id)}>
+                Acheter ({Number(creditPaywall.price_eur).toFixed(0)} €)
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 border-b border-border pb-2 flex-wrap">
           <Button size="sm" variant={render3dMode === "ai" ? "default" : "ghost"}
                   onClick={() => setRender3dMode("ai")}
@@ -49,7 +86,7 @@ export function Render3dDialog({
             <Sparkles className="h-3 w-3" /> Rendu IA
           </Button>
           <Button size="sm" variant={render3dMode === "interactive" ? "default" : "ghost"}
-                  onClick={() => setRender3dMode("interactive")}
+                  onClick={() => (onInteractiveMode ? onInteractiveMode() : setRender3dMode("interactive"))}
                   data-testid="render-3d-mode-interactive"
                   className={`rounded-sm gap-1 ${render3dMode === "interactive" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
             <Sparkles className="h-3 w-3" /> Maquette interactive

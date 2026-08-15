@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
-from engines.monetization import require_pro_business
+from engines.monetization import (require_pro_business, require_3d_access,
+                                  consume_3d, user_tier)
 
 from routes.plans_common import _now, _resolve_branding, router
 
@@ -139,7 +140,7 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
 @router.post("/{plan_id}/render-3d")
 async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)) -> dict:
     """Convertit la page du plan 2D en rendu 3D via Gemini Nano Banana."""
-    await require_pro_business(user)
+    mode = await require_3d_access(user, "render")
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "pages": 1, "filename": 1, "rooms": 1, "ai_analysis": 1}
@@ -178,6 +179,7 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)) 
                  .sort("created_at", -1).skip(10).to_list(50))
     if old:
         await db.plan_renders_3d.delete_many({"_id": {"$in": [o["_id"] for o in old]}})
+    await consume_3d(user["user_id"], "render", mode)
     return {"ok": True, "render_id": render_id, "style": body.style,
             "mime_type": mime, "image_b64": generated_b64,
             "prompt_used": prompt[:400]}
@@ -259,7 +261,7 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
     """Génère plusieurs rendus IA du plan avec différents styles et les assemble
     en un tour vidéo MP4 (Ken Burns + crossfade + filigrane + musique).
     """
-    await require_pro_business(user)
+    mode = await require_3d_access(user, "video")
     from engines.video_tour import build_video_tour
 
     _validate_video_styles(body.styles)
@@ -314,7 +316,32 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
         "created_at": _now(),
     }
     await db.plan_videos_3d.insert_one(doc)
+    await consume_3d(user["user_id"], "video", mode)
     return {"ok": True, **{k: v for k, v in doc.items() if k != "_id"}}
+
+
+@router.post("/{plan_id}/interactive-3d")
+async def unlock_interactive_3d(plan_id: str, user=Depends(current_user)) -> dict:
+    """Débloque la maquette 3D interactive pour ce plan (consomme 1 crédit maquette,
+    illimité pour Pro/Pro Business/admin, ré-ouverture gratuite une fois débloquée)."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    if (user or {}).get("role") == "admin":
+        return {"ok": True, "mode": "unlimited"}
+    tier = await user_tier(user["user_id"])
+    if tier in ("pro", "pro_business"):
+        return {"ok": True, "mode": "unlimited"}
+    existing = await db.interactive_unlocks.find_one(
+        {"user_id": user["user_id"], "plan_id": plan_id})
+    if existing:
+        return {"ok": True, "mode": "already_unlocked"}
+    mode = await require_3d_access(user, "mockup")
+    await consume_3d(user["user_id"], "mockup", mode)
+    await db.interactive_unlocks.insert_one(
+        {"user_id": user["user_id"], "plan_id": plan_id, "at": _now()})
+    return {"ok": True, "mode": mode}
 
 
 @router.get("/{plan_id}/videos-3d")

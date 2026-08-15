@@ -1,0 +1,35 @@
+{
+  "summary": "Iter82 — Correctifs auth (admin secondaire, set-password Google, forgot Google) et facturation 3D à l'unité (Project Pass 50€ + crédits render/video/mockup) : 15/15 tests backend PASSED + 4/4 flows UI OK. Aucun bug bloquant identifié.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter82_auth_credits3d.py",
+    "/app/test_reports/pytest/iter82_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "auth.py::change_password — traite proprement le cas has_password=False (compte Google) en autorisant la définition sans current_password ; conservé la contrainte 8 caractères. OK.",
+    "auth.py::forgot_password — retire correctement le short-circuit sur has_password : un compte Google reçoit maintenant bien un token de reset + email personnalisé (intro/cta 'Définir mon mot de passe'). Rate-limit 3/heure conservé. OK.",
+    "monetization.py::resolve_3d_access — logique claire : admin → unlimited, tier pro/pro_business → unlimited, project_pass → free jusqu'à 3 rendus, sinon crédits → denied avec detail structuré (error, kind, price_cents, credit_plan_id, message). OK.",
+    "monetization.py::_mark_paid — grant de crédit via quotas.credit_kind + credit_qty : $inc atomique sur credits_3d.{kind}. OK.",
+    "server.py — seed idempotent de info@construpilot.fr avec must_change_password=true et override SECOND_ADMIN_EMAIL/PASSWORD ; promotion d'un compte Google existant en admin correctement gérée.",
+    "PRICE_MIGRATION appliqué : premium 1900/19000, pro 19900/210000, pro_business 35000/350000, project_pass 5000 avec free_renders_3d=3. Les 3 addons render/video/mockup credit_3d présents (audience=addon, one_time, 500/1000/500)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter82_auth_credits3d.py (nouveau)"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% (4/4 flows: /reinitialiser sans/avec token, /tarifs prix migrés, /compte PasswordForm, /plan free sans paywall, Render3dDialog admin avec 'illimité')"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; info@construpilot.fr / CP-Admin-2026! ; pro@construpilot.fr / Pro2026! ; client@construpilot.fr / Client2026!",
+  "seed_data_creation": "Test crée dynamiquement des utilisateurs Google factices (email test.google.*@example.com) et nettoie automatiquement en teardown (delete users + sessions + reset_tokens).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Fichier /app/backend/tests/test_iter82_auth_credits3d.py couvre : (A) login admin secondaire info@construpilot.fr → role=admin + must_change_password=true ; (B) compte Google (auth_provider='google', pas de password_hash) peut appeler /auth/change-password sans current_password puis se relogger email/pwd ; (C) forgot-password crée un token pour compte Google ; (D) reset-password valide/invalide ; (E) /api/plans expose les nouveaux prix + 3 addons credit_3d ; (F) /billing/credits-3d retourne unlimited=false pour free / unlimited=true pour pro_business et admin ; (G) POST /takeoffs/*/render-3d retourne 402 credit_required structuré pour free, pas 402 pour admin/pro ; (H) /billing/checkout {plan_id:render_credit_3d} retourne une URL Stripe. Côté UI : /reinitialiser affiche forgot-form (sans ?token) ou reset-form (avec ?token=xxx) ; /compte affiche change-password-form avec current-password-input pour compte email ; /plan pour compte free NE montre PAS plan-paywall et affiche 'Importer mon plan' ; /admin login info@construpilot.fr affiche tous les onglets ; Render3dDialog en admin affiche 'illimité' dans credits-3d-counter.",
+  "rca of the issue": "N/A — pas de bug."
+}

@@ -90,6 +90,12 @@ async def my_billing(user=Depends(current_user)) -> dict:
     return {"tier": tier, "active": active, "history": history}
 
 
+@router.get("/billing/credits-3d")
+async def credits_3d(user=Depends(current_user)) -> dict:
+    """Résumé des droits 3D (rendus offerts restants + crédits achetés + tarifs)."""
+    return await monetization.credits_3d_summary(user)
+
+
 class PortalIn(BaseModel):
     return_url: str
 

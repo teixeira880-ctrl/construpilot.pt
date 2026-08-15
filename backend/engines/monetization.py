@@ -324,6 +324,14 @@ async def _mark_paid(session_id: str, s) -> None:
     plan = await db.plans.find_one({"plan_id": rec["plan_id"]}, {"_id": 0})
     if not plan:
         return
+    credit_kind = (plan.get("quotas") or {}).get("credit_kind")
+    if credit_kind:
+        qty = int((plan.get("quotas") or {}).get("credit_qty", 1) or 1)
+        await db.users.update_one(
+            {"user_id": rec["user_id"]},
+            {"$inc": {f"credits_3d.{credit_kind}": qty}})
+        logger.info(f"3D credit +{qty} {credit_kind} pour {rec['user_id']}")
+        return
     await grant_entitlement(rec["user_id"], plan, rec)
     await _consume_referral_bonus(rec["user_id"],
                                    int(rec.get("bonus_days_consumed", 0) or 0))
@@ -469,3 +477,96 @@ async def require_pro_business(user: dict) -> None:
             "Cette fonctionnalité (Plan 2D takeoff + rendu 3D) est réservée au plan "
             "Pro Business. Passez sur le plan Pro Business pour débloquer.",
         )
+
+
+
+# ---------- Crédits 3D à l'unité (rendu / vidéo / maquette) ----------
+
+CREDIT_KINDS = ("render", "video", "mockup")
+CREDIT_UNIT_CENTS = {"render": 500, "video": 1000, "mockup": 500}
+CREDIT_PLAN_ID = {"render": "render_credit_3d", "video": "video_credit_3d",
+                  "mockup": "mockup_credit_3d"}
+FREE_RENDERS_PROJECT_PASS = 3
+
+
+async def resolve_3d_access(user: dict, kind: str) -> dict:
+    """Détermine comment l'utilisateur peut réaliser une action 3D (render/video/mockup).
+
+    Retourne {"mode": "unlimited"|"free"|"credit"|"denied", ...}.
+    - admin / pro / pro_business  → unlimited
+    - project_pass (render only)  → free tant que free_used < 3
+    - sinon                       → credit si crédits > 0, sinon denied
+    """
+    if (user or {}).get("role") == "admin":
+        return {"mode": "unlimited"}
+    uid = user.get("user_id")
+    tier = await user_tier(uid)
+    if tier in ("pro", "pro_business"):
+        return {"mode": "unlimited"}
+    full = await db.users.find_one(
+        {"user_id": uid}, {"_id": 0, "render3d_free_used": 1, "credits_3d": 1}) or {}
+    free_used = int(full.get("render3d_free_used", 0) or 0)
+    credits = full.get("credits_3d") or {}
+    cred = int(credits.get(kind, 0) or 0)
+    if kind == "render" and tier == "project_pass":
+        free_remaining = max(0, FREE_RENDERS_PROJECT_PASS - free_used)
+        if free_remaining > 0:
+            return {"mode": "free", "free_remaining": free_remaining, "credits": cred}
+    if cred > 0:
+        return {"mode": "credit", "credits": cred}
+    return {"mode": "denied", "kind": kind,
+            "price_cents": CREDIT_UNIT_CENTS.get(kind, 0),
+            "credit_plan_id": CREDIT_PLAN_ID.get(kind)}
+
+
+async def require_3d_access(user: dict, kind: str) -> str:
+    """Vérifie l'accès à une action 3D. Lève 402 (detail structuré) si refusé.
+    Retourne le mode ('unlimited'|'free'|'credit') à consommer après succès."""
+    from fastapi import HTTPException
+    acc = await resolve_3d_access(user, kind)
+    if acc["mode"] == "denied":
+        labels = {"render": "un rendu 3D", "video": "une vidéo 3D",
+                  "mockup": "la maquette 3D interactive"}
+        price = acc["price_cents"] / 100
+        raise HTTPException(402, detail={
+            "error": "credit_required", "kind": kind,
+            "price_cents": acc["price_cents"], "price_eur": price,
+            "credit_plan_id": acc["credit_plan_id"],
+            "message": f"Pour générer {labels.get(kind, 'cette création 3D')}, "
+                       f"achetez un crédit ({price:.0f} €).",
+        })
+    return acc["mode"]
+
+
+async def consume_3d(user_id: str, kind: str, mode: str) -> None:
+    """Consomme une unité après une génération réussie (rien si unlimited)."""
+    if mode == "free":
+        await db.users.update_one({"user_id": user_id},
+                                  {"$inc": {"render3d_free_used": 1}})
+    elif mode == "credit":
+        await db.users.update_one(
+            {"user_id": user_id, f"credits_3d.{kind}": {"$gte": 1}},
+            {"$inc": {f"credits_3d.{kind}": -1}})
+
+
+async def credits_3d_summary(user: dict) -> dict:
+    """Résumé des droits 3D pour le compteur frontend."""
+    prices = dict(CREDIT_UNIT_CENTS)
+    plans = dict(CREDIT_PLAN_ID)
+    if (user or {}).get("role") == "admin":
+        return {"unlimited": True, "tier": "admin", "free_render_remaining": None,
+                "credits": {k: 0 for k in CREDIT_KINDS},
+                "prices_cents": prices, "credit_plans": plans}
+    uid = user.get("user_id")
+    tier = await user_tier(uid)
+    unlimited = tier in ("pro", "pro_business")
+    full = await db.users.find_one(
+        {"user_id": uid}, {"_id": 0, "render3d_free_used": 1, "credits_3d": 1}) or {}
+    free_used = int(full.get("render3d_free_used", 0) or 0)
+    free_remaining = (max(0, FREE_RENDERS_PROJECT_PASS - free_used)
+                      if tier == "project_pass" else 0)
+    credits = full.get("credits_3d") or {}
+    return {"unlimited": unlimited, "tier": tier,
+            "free_render_remaining": free_remaining,
+            "credits": {k: int(credits.get(k, 0) or 0) for k in CREDIT_KINDS},
+            "prices_cents": prices, "credit_plans": plans}

@@ -25,8 +25,8 @@ const FEATURE_TIER = {
   quote_analysis: PREMIUM_TIERS,
   savings_details: PREMIUM_TIERS,
   advanced_pdf: PREMIUM_TIERS,
-  plan_takeoff: PRO_BUSINESS_ONLY,   // Plan 2D upload + calibration + mesures
-  render_3d: PRO_BUSINESS_ONLY,       // Rendu 3D + Vidéo 3D
+  // Plan 2D + 3D ouverts à tous les utilisateurs connectés (rendus 3D payants à l'unité).
+  // Le contrôle fin (offerts / crédits / illimité) est géré côté backend par action.
 };
 
 export const BillingProvider = ({ children }) => {

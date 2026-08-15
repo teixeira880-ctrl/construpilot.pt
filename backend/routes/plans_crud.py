@@ -34,7 +34,7 @@ async def upload_plan(
     deskew: bool = Form(False),
     user=Depends(current_user),
 ):
-    await require_pro_business(user)
+    # Accès Plan ouvert à tous les utilisateurs connectés (rendus 3D payants à l'unité)
     data = await file.read()
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f"Fichier trop volumineux (>{MAX_UPLOAD_MB} Mo)")
@@ -157,7 +157,7 @@ async def duplicate_plan(plan_id: str, user=Depends(current_user)) -> dict:
     démarre propre. Le fichier PDF/image d'origine (pages avec image_png_b64) est bien
     conservé pour que le duplicata soit exploitable sans réimport.
     """
-    await require_pro_business(user)
+    # Accès Plan ouvert à tous les utilisateurs connectés (rendus 3D payants à l'unité)
     src = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0}
     )

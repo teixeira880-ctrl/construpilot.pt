@@ -125,6 +125,8 @@ export default function PlanTakeoff() {
   const [render3dImg, setRender3dImg] = useState(null);
   const [render3dHistory, setRender3dHistory] = useState([]);
   const [render3dMode, setRender3dMode] = useState("ai"); // ai | interactive | video
+  const [credits3d, setCredits3d] = useState(null);
+  const [creditPaywall, setCreditPaywall] = useState(null);
   // Video Tour (multi-styles) — assemble 4 IA renders into an MP4
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
@@ -1305,8 +1307,49 @@ export default function PlanTakeoff() {
     } catch { /* ignore */ }
   };
 
+  const loadCredits3d = async () => {
+    try {
+      const { data } = await api.get("/billing/credits-3d");
+      setCredits3d(data);
+    } catch { /* ignore */ }
+  };
+
+  const buyCredit = async (creditPlanId) => {
+    try {
+      const { data } = await api.post("/billing/checkout", {
+        plan_id: creditPlanId, origin_url: window.location.origin,
+      });
+      if (data?.url) window.location.href = data.url;
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Paiement indisponible (réessayez)");
+    }
+  };
+
+  const handle3dError = (e, fallbackMsg) => {
+    const d = e?.response?.data?.detail;
+    if (e?.response?.status === 402 && d && typeof d === "object" && d.error === "credit_required") {
+      setCreditPaywall(d);
+      return true;
+    }
+    toast.error(typeof d === "string" ? d : fallbackMsg);
+    return false;
+  };
+
+  const selectInteractiveMode = async () => {
+    if (!plan?.plan_id) { setRender3dMode("interactive"); return; }
+    try {
+      await api.post(`/takeoffs/${plan.plan_id}/interactive-3d`);
+      setCreditPaywall(null);
+      setRender3dMode("interactive");
+      loadCredits3d();
+    } catch (e) {
+      handle3dError(e, "Maquette interactive indisponible");
+    }
+  };
+
   const runRender3d = async () => {
     if (!plan?.plan_id) return;
+    setCreditPaywall(null);
     setRender3dBusy(true); setRender3dImg(null);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/render-3d`, {
@@ -1317,8 +1360,9 @@ export default function PlanTakeoff() {
       setRender3dImg(`data:${data.mime_type};base64,${data.image_b64}`);
       toast.success("Rendu 3D généré !");
       await loadRender3dHistory();
+      loadCredits3d();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Génération 3D échouée (réessayez)");
+      handle3dError(e, "Génération 3D échouée (réessayez)");
     } finally { setRender3dBusy(false); }
   };
 
@@ -1355,6 +1399,7 @@ export default function PlanTakeoff() {
 
   const runRenderVideo = async () => {
     if (!plan?.plan_id) return;
+    setCreditPaywall(null);
     setVideoBusy(true); setVideoUrl(null);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/render-video`, {
@@ -1367,8 +1412,9 @@ export default function PlanTakeoff() {
       setVideoUrl(videoBlobUrl(data.video_id));
       toast.success("Tour vidéo 3D généré !");
       await loadVideoHistory();
+      loadCredits3d();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Génération vidéo échouée (réessayez)");
+      handle3dError(e, "Génération vidéo échouée (réessayez)");
     } finally { setVideoBusy(false); }
   };
 
@@ -1800,7 +1846,7 @@ export default function PlanTakeoff() {
             <Sparkles className="h-4 w-4" /> Estimation
           </Button>
           <Button variant="outline"
-                  onClick={() => { setRender3dDialog(true); setRender3dImg(null); setVideoUrl(null); loadRender3dHistory(); loadVideoHistory(); }}
+                  onClick={() => { setRender3dDialog(true); setRender3dImg(null); setVideoUrl(null); setCreditPaywall(null); loadRender3dHistory(); loadVideoHistory(); loadCredits3d(); }}
                   data-testid="plan-render-3d-btn"
                   className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
             <Sparkles className="h-4 w-4" /> Voir en 3D
@@ -3214,6 +3260,8 @@ export default function PlanTakeoff() {
         videoHistory={videoHistory} openVideoHistory={openVideoHistory}
         videoAddWatermark={videoAddWatermark} setVideoAddWatermark={setVideoAddWatermark}
         videoAddMusic={videoAddMusic} setVideoAddMusic={setVideoAddMusic}
+        credits3d={credits3d} creditPaywall={creditPaywall} setCreditPaywall={setCreditPaywall}
+        buyCredit={buyCredit} onInteractiveMode={selectInteractiveMode}
       />
 
       <EstimateDialog
