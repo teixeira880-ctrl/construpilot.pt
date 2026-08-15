@@ -10,8 +10,8 @@ from engines.catalog import PROJECT_TYPES, LOTS, FINISH_LEVELS
 
 KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 PROVIDER, MODEL = "openai", "gpt-5.5"
-# Coach IA (chat conversationnel) → Claude Opus 4.8 via la clé LLM universelle Emergent
-CHAT_PROVIDER, CHAT_MODEL = "anthropic", "claude-opus-4-8"
+# Coach IA (chat conversationnel) → Claude Sonnet 4.6 via la clé LLM universelle Emergent
+CHAT_PROVIDER, CHAT_MODEL = "anthropic", "claude-sonnet-4-6"
 
 BRAND = (
     "Tu es ConstruPilot, l'expert travaux de l'plateforme ConstruPilot. "
