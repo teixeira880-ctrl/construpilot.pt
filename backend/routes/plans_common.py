@@ -222,7 +222,9 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
         "tva_rate": tva_rate, "tva": tva, "total_ttc": ttc,
     }
     branding = await _resolve_branding(user_id)
-    pdf_bytes = build_quote_pdf(quote, branding=branding)
+    from routes.reviews import get_reviews_for_user
+    reviews = await get_reviews_for_user(user_id)
+    pdf_bytes = build_quote_pdf(quote, branding=branding, reviews=reviews)
     return quote, pdf_bytes
 
 

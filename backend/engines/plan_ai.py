@@ -133,6 +133,33 @@ Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE s
      "quantity_hint": "42 m²" | null}
   ],
 
+  "electrical": {
+    // Symboles électriques repérés (norme NF C 15-100) — analyse les pictogrammes
+    "outlets": 0,            // prises de courant (cercle + 2 traits / "PC")
+    "switches": 0,           // interrupteurs (simple, va-et-vient, va-et-vient double)
+    "light_points": 0,       // points lumineux / plafonniers (croix ou "x" dans un cercle)
+    "spots": 0,              // spots encastrés
+    "panels": 0,             // tableaux électriques / GTL / coffrets
+    "network_tv": 0,         // prises RJ45 / TV / téléphone / fibre
+    "details": [
+      {"kind": "prise" | "interrupteur" | "point_lumineux" | "spot" | "tableau" | "rj45" | "tv" | "autre",
+       "room": "Salon" | ..., "count": 1, "symbol_note": "prise 16A / va-et-vient / applique / ..."}
+    ]
+  },
+
+  "plumbing": {
+    // Symboles plomberie / sanitaires repérés (pictogrammes des appareils)
+    "wc": 0, "washbasins": 0, "showers": 0, "bathtubs": 0,
+    "kitchen_sinks": 0, "water_heaters": 0, "washing_machines": 0,
+    "supply_points": 0,      // arrivées d'eau (EF/EC)
+    "drains": 0,             // évacuations / siphons de sol
+    "details": [
+      {"kind": "wc" | "lavabo" | "douche" | "baignoire" | "evier" | "chauffe_eau" |
+               "lave_linge" | "arrivee_eau" | "evacuation" | "autre",
+       "room": "Salle de bain" | ..., "count": 1, "symbol_note": "douche 90x90 / vasque double / ..."}
+    ]
+  },
+
   "totals_gros_oeuvre": {
     "linear_walls_m": 92.5,              // TOTAL linéaire murs (façades + intérieurs)
     "facade_walls_area_net_m2": 145.0,   // TOTAL m² murs extérieurs à ravaler/isoler
@@ -156,6 +183,11 @@ RÈGLES CRITIQUES :
   « VMC / gaine » = réservation technique.
 - **Recopie les textes verbatim** dans `materials_notes` pour tout ce qui décrit un matériau
   ou une spécification (« isolation laine roche 200 mm », « peinture mate blanche », etc.).
+- **Interprète les symboles techniques** : compte et localise les symboles **électriques**
+  (prises, interrupteurs, points lumineux, spots, tableau/GTL, RJ45/TV) dans `electrical`,
+  et les symboles **plomberie/sanitaires** (WC, lavabo, douche, baignoire, évier, chauffe-eau,
+  lave-linge, arrivées/évacuations d'eau) dans `plumbing`. Rattache chaque symbole à sa pièce.
+  Si aucun symbole technique n'est visible, laisse les compteurs à 0 et `details` vide.
 - Tu es EXPERT — utilise des ordres de grandeur réalistes (hauteur sous plafond 2.50m
   par défaut, épaisseur dalle 0.20m, porte 0.90×2.10, fenêtre 1.20×1.20…).
 - Si l'échelle est écrite (« 1:100 ») utilise-la pour affiner les longueurs.
@@ -170,13 +202,13 @@ RÈGLES CRITIQUES :
 
 
 async def _call_gpt_vision(image_b64_png: str, api_key: str) -> str:
-    """Send the plan image to GPT-4o Vision and return raw text response."""
+    """Send the plan image to the Gemini 3 Flash vision model and return raw text."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
     chat = LlmChat(
         api_key=api_key,
         session_id="plan-analyze",
         system_message="Tu réponds toujours en JSON strict, sans markdown.",
-    ).with_model("openai", "gpt-4o")
+    ).with_model("gemini", "gemini-3-flash-preview")
     msg = UserMessage(
         text=PROMPT,
         file_contents=[ImageContent(image_base64=image_b64_png)],
@@ -233,6 +265,12 @@ def _normalize_analysis(data: dict) -> dict:
     data["dimension_lines"] = _clean_dimension_lines(data.get("dimension_lines") or [])
     data.setdefault("wall_types", {})
     data.setdefault("materials_notes", [])
+    data.setdefault("electrical", {})
+    data.setdefault("plumbing", {})
+    if isinstance(data.get("electrical"), dict):
+        data["electrical"].setdefault("details", [])
+    if isinstance(data.get("plumbing"), dict):
+        data["plumbing"].setdefault("details", [])
     if isinstance(data.get("openings"), dict):
         data["openings"].setdefault("details", [])
         data["openings"].setdefault("reservations_visible", 0)

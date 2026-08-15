@@ -20,6 +20,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     errors as errors_routes,
                     emails as emails_routes,
                     plans as plans_routes,
+                    reviews as reviews_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -57,6 +58,7 @@ api_router.include_router(plans_routes.quote_router)
 api_router.include_router(plans_routes.pc_router)
 api_router.include_router(tool_presets_routes.router)
 api_router.include_router(referrals_routes.router)
+api_router.include_router(reviews_routes.router)
 api_router.include_router(errors_routes.router)
 api_router.include_router(emails_routes.router)
 app.include_router(api_router)
@@ -170,15 +172,19 @@ async def seed():
                 "plan": "premium", "password_hash": hash_password(owner_pwd),
                 "auth_provider": "password", "picture": None,
                 "user_id": new_user_id(), "must_change_password": True,
-                "two_fa_enabled": True,
+                "two_fa_enabled": False, "two_fa_seed_reset": True,
                 "created_at": datetime.now(timezone.utc).isoformat()})
             logger.info("Compte admin définitif créé : %s", owner_email)
         else:
             if existing.get("role") != "admin":
                 await db.users.update_one({"email": owner_email}, {"$set": {"role": "admin"}})
-            if "two_fa_enabled" not in existing:
-                await db.users.update_one({"email": owner_email},
-                                          {"$set": {"two_fa_enabled": True}})
+            # One-time : un seed précédent forçait le 2FA à True, ce qui bloquait la
+            # connexion (le code email n'est pas toujours délivrable). On repasse le 2FA
+            # en OPT-IN (désactivé) une seule fois — l'admin peut le réactiver depuis /compte.
+            if not existing.get("two_fa_seed_reset"):
+                await db.users.update_one(
+                    {"email": owner_email},
+                    {"$set": {"two_fa_enabled": False, "two_fa_seed_reset": True}})
     # Migration one-shot : rendus 3D embarqués → collection plan_renders_3d
     # (les images base64 dans plans_takeoff dépassaient la limite BSON 16 Mo).
     async for p in db.plans_takeoff.find({"renders_3d.0": {"$exists": True}},
@@ -195,6 +201,9 @@ async def seed():
     await db.two_fa_codes.create_index("expires_at", expireAfterSeconds=0)
     await db.two_fa_codes.create_index("pending_token")
     await db.known_devices.create_index("device_key")
+    await db.reviews.create_index("token")
+    await db.reviews.create_index("user_id")
+    await db.reviews.create_index("log_id")
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")

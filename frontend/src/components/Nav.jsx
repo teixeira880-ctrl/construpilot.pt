@@ -18,7 +18,7 @@ import { LangToggle, useI18n } from "@/context/I18nContext";
 const PRIMARY_LINKS = [
   { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
-  { to: "/plan", label: "Plan 2D", key: "nav.plan2d", icon: Ruler, auth: true },
+  { to: "/plan", label: "Mesurer", key: "nav.plan2d", icon: Ruler, auth: true },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
@@ -40,6 +40,7 @@ const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 // Raccourcis utilisateur connecté — dans le menu « Plus » (plus de chevauchement header)
 const USER_LINKS = [
   { to: "/devis", label: "Suivi devis", icon: LineChart },
+  { to: "/mes-avis", label: "Avis clients", icon: MessageSquare },
   { to: "/etudes-pc", label: "Études PC", icon: FileSearch },
   { to: "/equipe", label: "Équipe", icon: Users },
   { to: "/inviter", label: "Parrainer", icon: Sparkles },

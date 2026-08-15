@@ -17,7 +17,7 @@ import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Sparkles,
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
-  Wand2, Zap, FileDown, History, Film, DoorOpen, Copy,
+  Wand2, Zap, Droplet, FileDown, History, Film, DoorOpen, Copy,
   Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon, Sheet, FileSearch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -1551,7 +1551,7 @@ export default function PlanTakeoff() {
           <div>
             <p className="overline text-primary">Fonctionnalité Pro Business</p>
             <h1 className="font-display text-3xl lg:text-4xl font-bold tracking-tight mt-3">
-              Plan 2D takeoff + Rendu 3D
+              Mesurer + Rendu 3D
             </h1>
             <p className="text-sm text-muted-foreground mt-3 max-w-lg mx-auto">
               L'import de plans, la mesure automatique des surfaces, le takeoff calibré et
@@ -1944,7 +1944,7 @@ export default function PlanTakeoff() {
             <ToolButton icon={MousePointer2} label="Sélection" testId="tool-select" active={tool === TOOLS.SELECT} onClick={() => { setTool(TOOLS.SELECT); setPoints([]); }} />
             <ToolButton icon={Ruler} label="Calibrer" testId="tool-calibrate" active={tool === TOOLS.CALIB} onClick={() => { setTool(TOOLS.CALIB); setPoints([]); }} />
             <ToolButton icon={Move} label="Distance" testId="tool-distance" active={tool === TOOLS.DIST} onClick={() => { setTool(TOOLS.DIST); setPoints([]); }} disabled={!currentCalib} />
-            <ToolButton icon={Layers} label="Polyligne" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={Layers} label="Périmètre" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Hexagon} label="Surface" testId="tool-surface" active={tool === TOOLS.SURFACE} onClick={() => { setTool(TOOLS.SURFACE); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Square} label="Pièce" testId="tool-room" active={tool === TOOLS.ROOM} onClick={() => { setTool(TOOLS.ROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Wand2} label="Auto-pièce" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
@@ -2516,6 +2516,45 @@ export default function PlanTakeoff() {
                           conf. {Math.round((plan.ai_analysis.confidence || 0) * 100)}%
                         </Badge>
                       )}
+                    </div>
+                  )}
+
+                  {/* --- SYMBOLES DÉTECTÉS PAR L'IA (électricité + plomberie) --- */}
+                  {!plan.ai_analysis.error && (plan.ai_analysis.electrical || plan.ai_analysis.plumbing) && (
+                    <div className="border border-border p-2 rounded-sm grid gap-2" data-testid="ai-symbols">
+                      <p className="overline">Symboles détectés</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                            <Zap className="h-3 w-3 text-primary" /> Électricité
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {[["Prises", "outlets"], ["Inter.", "switches"], ["Pts lum.", "light_points"], ["Spots", "spots"], ["Tableau", "panels"], ["RJ45/TV", "network_tv"]]
+                              .map(([lbl, k]) => (plan.ai_analysis.electrical?.[k] ? (
+                                <Badge key={k} variant="outline" className="rounded-sm num text-[10px]">
+                                  {plan.ai_analysis.electrical[k]} {lbl}
+                                </Badge>) : null))}
+                            {!Object.values(plan.ai_analysis.electrical || {}).some((v) => typeof v === "number" && v > 0) && (
+                              <span className="text-[10px] text-muted-foreground">Aucun symbole</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                            <Droplet className="h-3 w-3 text-primary" /> Plomberie
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {[["WC", "wc"], ["Lavabos", "washbasins"], ["Douches", "showers"], ["Baignoires", "bathtubs"], ["Éviers", "kitchen_sinks"], ["Chauffe-eau", "water_heaters"], ["Lave-linge", "washing_machines"]]
+                              .map(([lbl, k]) => (plan.ai_analysis.plumbing?.[k] ? (
+                                <Badge key={k} variant="outline" className="rounded-sm num text-[10px]">
+                                  {plan.ai_analysis.plumbing[k]} {lbl}
+                                </Badge>) : null))}
+                            {!Object.values(plan.ai_analysis.plumbing || {}).some((v) => typeof v === "number" && v > 0) && (
+                              <span className="text-[10px] text-muted-foreground">Aucun symbole</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 

@@ -43,6 +43,8 @@ import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import LocalLanding from "@/pages/LocalLanding";
 import Referrals from "@/pages/Referrals";
+import ReviewCollect from "@/pages/ReviewCollect";
+import MyReviews from "@/pages/MyReviews";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
@@ -98,9 +100,11 @@ function AppRouter() {
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
       <Route path="/equipe" element={<Protected><Shell><Team /></Shell></Protected>} />
       <Route path="/devis" element={<Protected><Shell><QuoteTracking /></Shell></Protected>} />
+      <Route path="/mes-avis" element={<Protected><Shell><MyReviews /></Shell></Protected>} />
       <Route path="/scanner-devis" element={<Shell><QuoteScanner /></Shell>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/sign/:token" element={<SignQuote />} />
+      <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
       <Route path="/etudes-pc" element={<Protected><Shell><PcDashboard /></Shell></Protected>} />
       <Route path="/compte" element={<Protected><Shell><Account /></Shell></Protected>} />

@@ -13,6 +13,7 @@ import { useBilling } from "@/context/BillingContext";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import PushToggle from "@/components/PushToggle";
 import { Stat } from "@/components/Bits";
+import { RevenueChart } from "@/components/RevenueChart";
 
 const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
 
@@ -86,6 +87,8 @@ export default function Dashboard() {
         <Stat label="Surface totale" value={`${num(totalSurface, 1)} m²`} testId="stat-surface" />
         <Stat label="Demandes ConstruPilot" value={num(leads.length)} testId="stat-leads" />
       </div>
+
+      <RevenueChart />
 
       <Tabs defaultValue="projects">
         <TabsList className="rounded-sm flex-wrap h-auto">

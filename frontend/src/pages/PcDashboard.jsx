@@ -84,7 +84,7 @@ export default function PcDashboard() {
             Aucune étude PC pour l'instant — ouvrez un plan et cliquez « Étude PC ».
           </p>
           <Button onClick={() => nav("/plan")} className="rounded-sm" data-testid="pc-dashboard-goto-plan">
-            Ouvrir le Plan 2D
+            Ouvrir Mesurer
           </Button>
         </div>
       ) : (

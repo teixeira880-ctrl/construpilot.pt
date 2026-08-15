@@ -2,18 +2,27 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Send, Eye, CheckCircle2, FileText, Copy, ExternalLink, RefreshCw, Mail,
+  Download, FileDown, Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionTitle } from "@/components/Bits";
+import { RevenueChart } from "@/components/RevenueChart";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+
+const MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
+  "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
 export default function QuoteTracking() {
   const { user } = useAuth();
   const [sends, setSends] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
+  const [completed, setCompleted] = useState(new Set());
+  const now = new Date();
+  const [recapY, setRecapY] = useState(now.getFullYear());
+  const [recapM, setRecapM] = useState(now.getMonth() + 1);
 
   const load = async () => {
     setLoading(true);
@@ -21,6 +30,10 @@ export default function QuoteTracking() {
       const { data } = await api.get("/quotes/sends/all");
       setSends(data.sends || []);
       setStats(data.stats || {});
+      const done = new Set(
+        (data.sends || []).filter((s) => s.worksite_status === "completed" || s.review_requested)
+          .map((s) => s.log_id));
+      setCompleted(done);
     } catch { toast.error("Impossible de charger les devis"); }
     finally { setLoading(false); }
   };
@@ -41,9 +54,24 @@ export default function QuoteTracking() {
     }
   };
 
+  const exportRecapPdf = async () => {
+    try {
+      const res = await api.get(`/quotes/recap-pdf?year=${recapY}&month=${recapM}`,
+        { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `recap-comptable-${recapY}-${String(recapM).padStart(2, "0")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Rapport PDF téléchargé");
+    } catch {
+      toast.error("Génération impossible");
+    }
+  };
+
   const copySignLink = async (send) => {
     try {
-      // Create or reuse signature link
       const { data } = await api.post(
         `/takeoffs/${send.plan_id}/quote-sends/${send.log_id}/signature-link`
       );
@@ -53,6 +81,16 @@ export default function QuoteTracking() {
       toast.success("Lien de signature copié");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Génération impossible");
+    }
+  };
+
+  const markCompleted = async (send) => {
+    try {
+      await api.post(`/reviews/request/${send.log_id}`);
+      setCompleted((prev) => new Set(prev).add(send.log_id));
+      toast.success("Chantier terminé — demande d'avis envoyée au client 🎉");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Action impossible");
     }
   };
 
@@ -71,43 +109,62 @@ export default function QuoteTracking() {
     return `il y a ${d} j`;
   };
 
-  const Card = ({ send, colour }) => (
-    <div className={`border rounded-sm p-3 space-y-1 ${colour}`}
-         data-testid={`quote-card-${send.log_id}`}>
-      <p className="font-bold text-sm truncate">
-        {send.client_name || send.client_email}
-      </p>
-      <p className="text-[10px] text-muted-foreground truncate">
-        {send.client_email !== (send.client_name || send.client_email) && send.client_email}
-      </p>
-      <p className="text-[10px] text-muted-foreground truncate">
-        {send.plan_filename || send.plan_id}
-      </p>
-      <p className="num font-extrabold text-primary text-lg">{fmtEur(send.total_ttc)}</p>
-      <p className="text-[10px] num text-muted-foreground">
-        Envoyé {daysSince(send.created_at)}
-        {send.opened && send.opened_at && ` · ouvert ${daysSince(send.opened_at)}`}
-        {send.signed && send.signed_at && ` · signé ${daysSince(send.signed_at)}`}
-        {send.open_count > 1 && ` (${send.open_count} ouvertures)`}
-      </p>
-      <div className="flex gap-1 pt-1">
-        {!send.signed && (
-          <button onClick={() => copySignLink(send)}
-                  data-testid={`copy-sign-${send.log_id}`}
-                  className="text-[10px] text-primary hover:underline inline-flex items-center gap-1">
-            <Copy className="h-3 w-3" /> Lien signature
-          </button>
-        )}
-        {send.signature_token && (
-          <a href={`/sign/${send.signature_token}`} target="_blank" rel="noopener noreferrer"
-             data-testid={`open-sign-${send.log_id}`}
-             className="text-[10px] text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-            <ExternalLink className="h-3 w-3" /> Ouvrir
-          </a>
+  const Card = ({ send, colour, showComplete }) => {
+    const isDone = completed.has(send.log_id);
+    return (
+      <div className={`border rounded-sm p-3 space-y-1 ${colour}`}
+           data-testid={`quote-card-${send.log_id}`}>
+        <p className="font-bold text-sm truncate">
+          {send.client_name || send.client_email}
+        </p>
+        <p className="text-[10px] text-muted-foreground truncate">
+          {send.client_email !== (send.client_name || send.client_email) && send.client_email}
+        </p>
+        <p className="text-[10px] text-muted-foreground truncate">
+          {send.plan_filename || send.plan_id}
+        </p>
+        <p className="num font-extrabold text-primary text-lg">{fmtEur(send.total_ttc)}</p>
+        <p className="text-[10px] num text-muted-foreground">
+          Envoyé {daysSince(send.created_at)}
+          {send.opened && send.opened_at && ` · ouvert ${daysSince(send.opened_at)}`}
+          {send.signed && send.signed_at && ` · signé ${daysSince(send.signed_at)}`}
+          {send.open_count > 1 && ` (${send.open_count} ouvertures)`}
+        </p>
+        <div className="flex gap-1 pt-1 flex-wrap">
+          {!send.signed && (
+            <button onClick={() => copySignLink(send)}
+                    data-testid={`copy-sign-${send.log_id}`}
+                    className="text-[10px] text-primary hover:underline inline-flex items-center gap-1">
+              <Copy className="h-3 w-3" /> Lien signature
+            </button>
+          )}
+          {send.signature_token && (
+            <a href={`/sign/${send.signature_token}`} target="_blank" rel="noopener noreferrer"
+               data-testid={`open-sign-${send.log_id}`}
+               className="text-[10px] text-muted-foreground hover:text-primary inline-flex items-center gap-1">
+              <ExternalLink className="h-3 w-3" /> Ouvrir
+            </a>
+          )}
+        </div>
+        {showComplete && (
+          isDone ? (
+            <Badge variant="outline"
+                   className="rounded-sm border-primary/50 text-primary text-[10px] gap-1 mt-1"
+                   data-testid={`worksite-done-${send.log_id}`}>
+              <Star className="h-3 w-3" /> Avis demandé
+            </Badge>
+          ) : (
+            <Button size="sm" variant="outline"
+                    className="w-full rounded-sm gap-1 text-[11px] h-7 mt-1 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                    onClick={() => markCompleted(send)}
+                    data-testid={`worksite-complete-${send.log_id}`}>
+              <CheckCircle2 className="h-3 w-3" /> Chantier terminé → demander un avis
+            </Button>
+          )
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="grid gap-8">
@@ -116,11 +173,10 @@ export default function QuoteTracking() {
           Toutes les propositions envoyées à vos clients, organisées par état d'avancement.
           Relancez au bon moment grâce au suivi d'ouverture et de signature.
         </SectionTitle>
-        <Button variant="outline" onClick={exportCsv} className="rounded-sm gap-2"
-                data-testid="export-csv-btn">
-          <Download className="h-4 w-4" /> Exporter CSV (comptabilité)
-        </Button>
       </div>
+
+      {/* Chiffre d'affaires mensuel */}
+      <RevenueChart />
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -158,6 +214,46 @@ export default function QuoteTracking() {
           </div>
           <p className="num font-display text-3xl font-extrabold">{fmtEur(stats.total_ttc_pipeline)}</p>
           <p className="text-[10px] text-muted-foreground">à conclure</p>
+        </div>
+      </div>
+
+      {/* Export comptabilité */}
+      <div className="surface p-4 flex flex-wrap items-end gap-3" data-testid="accounting-export">
+        <div>
+          <p className="overline">Export comptable</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Rapport mensuel PDF prêt à envoyer à votre comptable, ou export CSV brut.
+          </p>
+        </div>
+        <div className="flex items-end gap-2 ml-auto flex-wrap">
+          <div className="flex flex-col">
+            <label className="text-[10px] text-muted-foreground mb-1">Mois</label>
+            <select value={recapM} onChange={(e) => setRecapM(Number(e.target.value))}
+                    data-testid="recap-month-select"
+                    className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary">
+              {MONTHS_FR.map((m, i) => (
+                <option key={i} value={i + 1}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-[10px] text-muted-foreground mb-1">Année</label>
+            <select value={recapY} onChange={(e) => setRecapY(Number(e.target.value))}
+                    data-testid="recap-year-select"
+                    className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary">
+              {[now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <Button onClick={exportRecapPdf} className="rounded-sm gap-2"
+                  data-testid="export-recap-pdf-btn">
+            <FileDown className="h-4 w-4" /> Rapport PDF comptable
+          </Button>
+          <Button variant="outline" onClick={exportCsv} className="rounded-sm gap-2"
+                  data-testid="export-csv-btn">
+            <Download className="h-4 w-4" /> Exporter CSV
+          </Button>
         </div>
       </div>
 
@@ -231,7 +327,7 @@ export default function QuoteTracking() {
                 Aucune signature pour l'instant.
               </p>
             )}
-            {signed.map(s => <Card key={s.log_id} send={s}
+            {signed.map(s => <Card key={s.log_id} send={s} showComplete
                                     colour="border-primary/40 bg-primary/5" />)}
           </div>
         </div>

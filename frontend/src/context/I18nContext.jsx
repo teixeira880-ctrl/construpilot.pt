@@ -6,7 +6,7 @@ const TRANSLATIONS = {
   fr: {
     "nav.dashboard": "Tableau de bord",
     "nav.estimator": "Estimateur",
-    "nav.plan2d": "Plan 2D",
+    "nav.plan2d": "Mesurer",
     "nav.calculators": "Calculateurs",
     "nav.prices": "Prix matériaux",
     "nav.diy": "Je le fais moi-même",
@@ -72,7 +72,7 @@ const TRANSLATIONS = {
   en: {
     "nav.dashboard": "Dashboard",
     "nav.estimator": "Estimator",
-    "nav.plan2d": "2D Plan",
+    "nav.plan2d": "Measure",
     "nav.calculators": "Calculators",
     "nav.prices": "Material prices",
     "nav.diy": "Do it myself",
@@ -138,7 +138,7 @@ const TRANSLATIONS = {
   es: {
     "nav.dashboard": "Panel",
     "nav.estimator": "Estimador",
-    "nav.plan2d": "Plano 2D",
+    "nav.plan2d": "Medir",
     "nav.calculators": "Calculadoras",
     "nav.prices": "Precios materiales",
     "nav.diy": "Lo hago yo mismo",

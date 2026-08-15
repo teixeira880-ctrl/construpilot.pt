@@ -933,6 +933,68 @@ async def list_all_quote_sends(user=Depends(current_user)) -> dict:
     return {"sends": docs, "stats": stats}
 
 
+@quote_router.get("/revenue/monthly")
+async def revenue_monthly(months: int = 12, user=Depends(current_user)) -> dict:
+    """CA mensuel des devis SIGNÉS (N derniers mois) — pour le graphique dashboard."""
+    from collections import OrderedDict
+    docs = await db.quote_sends.find(
+        {"user_id": user["user_id"], "signed": True},
+        {"_id": 0, "total_ttc": 1, "signed_at": 1, "created_at": 1},
+    ).to_list(5000)
+    labels = ["janv.", "févr.", "mars", "avr.", "mai", "juin",
+              "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+    now = datetime.now(timezone.utc)
+    months = max(1, min(months, 24))
+    buckets: "OrderedDict[str, dict]" = OrderedDict()
+    for i in range(months - 1, -1, -1):
+        mm = now.month - i
+        yy = now.year
+        while mm <= 0:
+            mm += 12
+            yy -= 1
+        key = f"{yy:04d}-{mm:02d}"
+        buckets[key] = {"month": key, "label": f"{labels[mm - 1]} {str(yy)[2:]}",
+                        "revenue": 0.0, "count": 0}
+    for d in docs:
+        dt = (d.get("signed_at") or d.get("created_at") or "")[:7]
+        if dt in buckets:
+            buckets[dt]["revenue"] += d.get("total_ttc") or 0
+            buckets[dt]["count"] += 1
+    data = list(buckets.values())
+    for b in data:
+        b["revenue"] = round(b["revenue"], 2)
+    return {"months": data,
+            "total": round(sum(b["revenue"] for b in data), 2),
+            "signed_count": sum(b["count"] for b in data)}
+
+
+@quote_router.get("/recap-pdf")
+async def recap_pdf(year: int, month: int, user=Depends(current_user)):
+    """Rapport comptable PDF mensuel prêt à envoyer au comptable."""
+    from fastapi.responses import Response
+    from engines.pdf_takeoff import build_accounting_recap_pdf
+    if not (1 <= month <= 12):
+        raise HTTPException(400, "Mois invalide")
+    prefix = f"{year:04d}-{month:02d}"
+    sends = await db.quote_sends.find(
+        {"user_id": user["user_id"]}, {"_id": 0, "signature_b64": 0},
+    ).to_list(5000)
+    rows = [s for s in sends
+            if (s.get("created_at") or "")[:7] == prefix
+            or (s.get("signed_at") or "")[:7] == prefix]
+    plan_ids = list({r["plan_id"] for r in rows if r.get("plan_id")})
+    plan_names = {p["plan_id"]: p.get("filename")
+                  for p in await db.plans_takeoff.find(
+                      {"plan_id": {"$in": plan_ids}},
+                      {"_id": 0, "plan_id": 1, "filename": 1}).to_list(2000)} if plan_ids else {}
+    branding = await _resolve_branding(user["user_id"]) or {}
+    pdf_bytes = build_accounting_recap_pdf(prefix, rows, plan_names, branding)
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="recap-comptable-{prefix}.pdf"'})
+
+
 @quote_router.get("/export.csv")
 async def export_clients_csv(user=Depends(current_user)):
     """Export comptabilité : devis métrés envoyés + études PC (CSV Excel FR)."""

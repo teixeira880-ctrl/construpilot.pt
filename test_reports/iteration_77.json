@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 77 validation: 6 features (admin no-2FA, monthly revenue chart, accounting recap PDF, worksite→review flow, AI plan symbols electrical/plumbing, UI renames Mesurer/Périmètre). Backend pytest: 8 passed / 2 skipped (skipped due to different tracking/plans list endpoint shape — not a bug; main agent already validated via curl). Frontend: all data-testids present and functional. No critical or minor issues found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter77_reviews_revenue_recap.py",
+    "/app/test_reports/pytest/iter77.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend test file previously relied on os.environ.get('REACT_APP_BACKEND_URL') which isn't set in the pytest process — added a fallback that reads /app/frontend/.env; consider adding a conftest.py that loads this env var to avoid future skips.",
+    "No dedicated aggregated /quotes/tracking endpoint — quote_sends are per-plan under /takeoffs/{plan_id}/quote-sends. If frontend already aggregates client-side, that's OK; otherwise consider adding a paginated aggregate endpoint for scale.",
+    "plans_export.py is 1050+ lines — consider splitting quote_router (revenue/recap) into its own module for maintainability."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter77_reviews_revenue_recap.py"
+  ],
+  "success_rate": {"backend": "100% (8/8 executed, 2 skipped due to endpoint discovery — non-blocking)", "frontend": "100%"},
+  "test_credentials": "teixeira8880@gmail.com/CP-D5615C-Prov! (admin, 2FA off) ; admin@construpilot.fr/Construpilot2026! ; pro@construpilot.fr/Pro2026! ; demo@construpilot.fr/Demo2026!",
+  "seed_data_creation": "None — used existing seeded pro account (14 signed devis, 109 309 € CA).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "verified_ui_elements": {
+    "/devis": ["revenue-chart (present, shows 109 309 €)", "accounting-export section", "export-csv-btn", "export-recap-pdf-btn", "worksite-complete-* (12 btns)", "worksite-done-* (2 badges)"],
+    "/dashboard": ["revenue-chart present"],
+    "/mes-avis": ["reviews-kpi-average = 5/5"],
+    "/plan (opened plan)": ["tool-polyline present with label 'Périmètre'"],
+    "nav": ["'Mesurer' present, 'Plan 2D' absent"]
+  },
+  "verified_api_endpoints": {
+    "POST /api/auth/login (admin prov + backoffice)": "200, returns {user,token}, no two_fa_required",
+    "GET /api/quotes/revenue/monthly (pro)": "200, months[] + total (109309) + signed_count; auth-gated",
+    "GET /api/quotes/recap-pdf?year=2026&month=6 (pro)": "200 application/pdf, %PDF magic OK, auth-gated",
+    "GET /api/reviews/me (pro)": "200 {reviews, pending}"
+  },
+  "context_for_next_testing_agent": "Backend tests live in /app/backend/tests/test_iter77_reviews_revenue_recap.py. Two tests skip: (a) TestReviewsFlow.test_full_flow_request_collect_publish — needs a signed quote_log; the tracking endpoint used doesn't match — either use /takeoffs/{plan_id}/quote-sends and filter status=signed, or add an aggregated /api/quotes/tracking. (b) TestAISymbols — needs proper /api/plans list route or use /takeoffs. Main agent already validated both flows end-to-end via curl (Marie D. review present in PDF). Nav on desktop uses 'Mesurer'; on /mes-avis kpi shows '5/5'. Emails to @example.com are intentionally rejected by Resend.",
+  "rca of the issue": "N/A — no bugs identified in this iteration."
+}

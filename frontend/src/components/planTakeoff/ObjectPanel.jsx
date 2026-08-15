@@ -422,8 +422,8 @@ export default function ObjectPanel({
                 key={m.measurement_id || idx}
                 icon={Ruler}
                 testId={`object-row-measure-${idx}`}
-                primary={m.label || (m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Surface" : "Polyligne")}
-                secondary={`${m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Surface" : "Polyligne"} · créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
+                primary={m.label || (m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Surface" : "Périmètre")}
+                secondary={`${m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Surface" : "Périmètre"} · créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
                 badge={m.kind === "polygon" ? `${(m.area_m2 || 0).toFixed(2)} m²` : `${(m.length_m || 0).toFixed(2)} m`}
                 badgeColor="#0d9488"
                 onFocus={() => onFocusObject?.({ kind: "measure", data: m })}

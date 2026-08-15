@@ -695,8 +695,28 @@ def _story_quote_footer(story: list, S: dict) -> None:
         "artisans pour comparer.", S["muted"]))
 
 
+def _story_quote_reviews(story: list, reviews: dict | None, S: dict) -> None:
+    """Bloc « Avis clients » — note moyenne + jusqu'à 3 commentaires publiés."""
+    if not reviews or not reviews.get("count"):
+        return
+    story.append(Spacer(1, 16))
+    avg = reviews.get("average", 0)
+    story.append(Paragraph(
+        f"Avis clients — note moyenne {avg}/5 sur {reviews.get('count')} avis vérifiés",
+        S["h2"]))
+    for it in (reviews.get("items") or [])[:3]:
+        comment = (it.get("comment") or "").strip()
+        if not comment:
+            continue
+        story.append(Paragraph(
+            f"<b>{it.get('rating')}/5</b> — « {comment} » "
+            f"<i>({it.get('author_name') or 'Client'})</i>", S["body"]))
+        story.append(Spacer(1, 4))
+
+
 def build_quote_pdf(quote: dict, branding: dict | None = None,
-                    signature: dict | None = None) -> bytes:
+                    signature: dict | None = None,
+                    reviews: dict | None = None) -> bytes:
     """Rend un PDF Devis à partir d'un quote (line_items + totaux).
 
     Complexité maîtrisée : chaque section est déléguée à un helper `_story_quote_*`.
@@ -714,6 +734,7 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
     _story_quote_line_items(story, quote.get("line_items", []), S)
     _story_quote_recap(story, quote, S)
     _story_quote_signature(story, signature, S)
+    _story_quote_reviews(story, reviews, S)
     _story_quote_footer(story, S)
 
     doc.build(story)
@@ -974,6 +995,105 @@ def build_tva_attestation_pdf(
     ], S)
     story.append(Spacer(1, 8))
     _tva_signature_and_footer(story, S)
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+
+# ============ RAPPORT COMPTABLE MENSUEL ============
+
+_FR_MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+              "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+def build_accounting_recap_pdf(period: str, rows: list[dict],
+                               plan_names: dict | None = None,
+                               branding: dict | None = None) -> bytes:
+    """Rapport comptable mensuel (PDF) prêt à transmettre au comptable.
+
+    period = "YYYY-MM". rows = liste de quote_sends du mois.
+    """
+    plan_names = plan_names or {}
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                            topMargin=16 * mm, bottomMargin=16 * mm)
+    S = _styles()
+    story: list = []
+
+    _story_header_branding(story, branding, S)
+    year, month = period.split("-")
+    month_label = _FR_MONTHS[int(month) - 1].capitalize()
+    story.append(Paragraph("RAPPORT COMPTABLE MENSUEL", S["kicker"]))
+    story.append(Paragraph(f"{month_label} {year}", S["h1"]))
+    story.append(Paragraph(
+        "Récapitulatif des devis envoyés et signés sur la période — "
+        "document à transmettre à votre comptable.", S["muted"]))
+    story.append(Spacer(1, 12))
+
+    header = ["Date", "Client", "Document", "TTC (€)", "Statut", "Signé le"]
+    trows = [header]
+    signed_ttc = 0.0
+    sent_ttc = 0.0
+    signed_n = 0
+    for r in sorted(rows, key=lambda x: x.get("created_at") or ""):
+        status = ("Signé" if r.get("signed")
+                  else "Ouvert" if r.get("opened") else "Envoyé")
+        ttc = r.get("total_ttc") or 0
+        sent_ttc += ttc
+        if r.get("signed"):
+            signed_ttc += ttc
+            signed_n += 1
+        trows.append([
+            (r.get("created_at") or "")[:10],
+            (r.get("client_name") or r.get("client_email") or "")[:26],
+            (plan_names.get(r.get("plan_id")) or r.get("plan_id") or "")[:22],
+            _fmt(ttc, "€"),
+            status,
+            (r.get("signed_at") or "")[:10],
+        ])
+    if len(trows) == 1:
+        trows.append(["—", "Aucun devis sur la période", "", "", "", ""])
+    story.append(_table(
+        trows, [22 * mm, 40 * mm, 36 * mm, 24 * mm, 20 * mm, 22 * mm],
+        style_extras=[
+            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
+            ("ALIGN", (3, 1), (3, -1), "RIGHT"),
+        ], repeat_rows=1))
+    story.append(Spacer(1, 16))
+
+    signed_ht = round(signed_ttc / 1.10, 2)
+    signed_tva = round(signed_ttc - signed_ht, 2)
+    story.append(Paragraph("Synthèse comptable", S["h2"]))
+    tot_rows = [
+        ["Devis envoyés (nombre)", str(len(rows))],
+        ["Devis signés (nombre)", str(signed_n)],
+        ["CA signé HT", _fmt(signed_ht, "€")],
+        ["TVA 10 % collectée", _fmt(signed_tva, "€")],
+        ["CA signé TTC", _fmt(signed_ttc, "€")],
+        ["Pipeline TTC (envoyé non signé)", _fmt(round(sent_ttc - signed_ttc, 2), "€")],
+    ]
+    story.append(_table(tot_rows, [110 * mm, 45 * mm], style_extras=[
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
+        ("BACKGROUND", (0, 4), (-1, 4), ORANGE),
+        ("TEXTCOLOR", (0, 4), (-1, 4), colors.white),
+        ("FONTNAME", (0, 4), (-1, 4), "Helvetica-Bold"),
+        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(Spacer(1, 16))
+    story.append(Paragraph(
+        "Document généré par ConstruPilot. La TVA affichée suppose le taux réduit de 10 % "
+        "(rénovation d'un logement de plus de 2 ans). Vérifiez le taux applicable à chaque "
+        "chantier avec votre comptable.", S["muted"]))
 
     doc.build(story)
     return buf.getvalue()
