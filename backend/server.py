@@ -20,6 +20,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     errors as errors_routes,
                     emails as emails_routes,
                     plans as plans_routes,
+                    clients as clients_routes,
                     reviews as reviews_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
@@ -58,6 +59,7 @@ api_router.include_router(plans_routes.quote_router)
 api_router.include_router(plans_routes.pc_router)
 api_router.include_router(tool_presets_routes.router)
 api_router.include_router(referrals_routes.router)
+api_router.include_router(clients_routes.router)
 api_router.include_router(reviews_routes.router)
 api_router.include_router(errors_routes.router)
 api_router.include_router(emails_routes.router)
@@ -204,6 +206,8 @@ async def seed():
     await db.reviews.create_index("token")
     await db.reviews.create_index("user_id")
     await db.reviews.create_index("log_id")
+    await db.clients.create_index("user_id")
+    await db.clients.create_index("client_id")
     await db.projects.create_index("project_id")
     await db.projects.create_index("user_id")
     await db.price_history.create_index("query")

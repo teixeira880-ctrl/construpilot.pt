@@ -1,5 +1,38 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 78 — 15/06/2026 (Suite Pro — Étape 0 + Étape 1)
+
+### Étape 0 — Langue Portugaise 🇵🇹
+- `context/I18nContext.jsx` : ajout du bloc `pt` (dictionnaire complet) + `PT` dans le sélecteur de langue.
+- La navigation et les zones internationalisées basculent en portugais (Painel, Medir, Preços de materiais…).
+- ⚠️ Note : les pages au texte codé en dur (français) ne sont pas encore traduites — traduction profonde page par page = lot ultérieur.
+
+### Étape 1 — CRM Clients + extraction IA
+- Backend `routes/clients.py` : CRUD complet des fiches clients (nom, prénom, société, email, tél,
+  adresse, CP, ville, SIRET, notes), scoped par `user_id`. Collection Mongo `clients`.
+  - `POST /api/clients`, `GET /api/clients?q=`, `GET/PUT/DELETE /api/clients/{id}`.
+  - `POST /api/clients/from-plan/{plan_id}` : crée automatiquement une fiche depuis le
+    cartouche / permis de construire détecté par l'IA (`ai_analysis.client_info`).
+- `engines/plan_ai.py` : nouvelle section `client_info` dans le prompt (maître d'ouvrage,
+  adresse projet, tél…) + normalisation.
+- Frontend :
+  - Page `/clients` (`Clients.jsx`) : recherche, création/édition (dialog), suppression, cartes.
+  - Lien nav « Clients » (icône Contact).
+  - PlanTakeoff : carte « Client détecté sur le plan » + bouton « Créer la fiche client » (IA).
+
+### Tests
+- CRUD Clients validé via curl (create/list/update/search/delete) + UI (création « Jean Martin »).
+- `from-plan` renvoie 400 clair si aucune info détectée (pas de 500).
+- Portugais validé (nav bascule, sélecteur fr/en/es/pt).
+
+### Reste à faire (roadmap Suite Pro)
+- Étape 2 — Bibliothèque perso (ouvrages + matériaux, prix entreprise, catalogue pré-rempli, auto-save).
+- Étape 3 — Éditeur de devis (devis vide + devis IA modifiables, client + bibliothèque + logo + certifs).
+- Étape 4 — Factures (num. FAC-2026-0001, acomptes, TVA multi-taux 10/20/5,5 %).
+- Étape 5 — Certifications (Qualibat, RGE, QualiPAC, Qualifelec, Qualibois) + branding avancé.
+
+---
+
 ## Itération 77 — 15/06/2026 (lot 6 demandes)
 
 ### 1. Compte admin débloqué (2FA OPT-IN)

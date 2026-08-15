@@ -133,6 +133,21 @@ Rends STRICTEMENT du JSON (pas de markdown, pas de texte hors JSON) avec CETTE s
      "quantity_hint": "42 m²" | null}
   ],
 
+  "client_info": {
+    // Infos client / maître d'ouvrage détectées dans le cartouche du plan ou l'imprimé
+    // Permis de Construire (souvent en bas de page ou en légende). Mets "detected": false
+    // si rien n'est lisible. Ne devine jamais : n'extrais que ce qui est écrit.
+    "detected": true | false,
+    "first_name": "Jean" | null,
+    "last_name": "Dupont" | null,
+    "company": "SCI ..." | null,
+    "email": null,
+    "phone": "06 12 34 56 78" | null,
+    "address": "12 rue des Lilas" | null,
+    "postal_code": "75011" | null,
+    "city": "Paris" | null
+  },
+
   "electrical": {
     // Symboles électriques repérés (norme NF C 15-100) — analyse les pictogrammes
     "outlets": 0,            // prises de courant (cercle + 2 traits / "PC")
@@ -267,6 +282,7 @@ def _normalize_analysis(data: dict) -> dict:
     data.setdefault("materials_notes", [])
     data.setdefault("electrical", {})
     data.setdefault("plumbing", {})
+    data.setdefault("client_info", {})
     if isinstance(data.get("electrical"), dict):
         data["electrical"].setdefault("details", [])
     if isinstance(data.get("plumbing"), dict):

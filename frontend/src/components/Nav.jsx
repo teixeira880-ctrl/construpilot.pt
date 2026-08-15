@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown,
+  Users, LineChart, ChevronDown, Contact,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +41,7 @@ const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 const USER_LINKS = [
   { to: "/devis", label: "Suivi devis", icon: LineChart },
   { to: "/mes-avis", label: "Avis clients", icon: MessageSquare },
+  { to: "/clients", label: "Clients", icon: Contact },
   { to: "/etudes-pc", label: "Études PC", icon: FileSearch },
   { to: "/equipe", label: "Équipe", icon: Users },
   { to: "/inviter", label: "Parrainer", icon: Sparkles },

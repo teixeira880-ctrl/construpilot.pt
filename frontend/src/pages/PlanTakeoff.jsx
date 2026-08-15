@@ -2558,6 +2558,38 @@ export default function PlanTakeoff() {
                     </div>
                   )}
 
+                  {!plan.ai_analysis.error && plan.ai_analysis.client_info?.detected &&
+                    (plan.ai_analysis.client_info.last_name || plan.ai_analysis.client_info.address) && (
+                    <div className="border border-primary/30 bg-primary/5 p-2 rounded-sm grid gap-2" data-testid="ai-client-info">
+                      <p className="overline flex items-center gap-1">
+                        <Wand2 className="h-3 w-3 text-primary" /> Client détecté sur le plan
+                      </p>
+                      <p className="text-xs font-bold">
+                        {[plan.ai_analysis.client_info.first_name, plan.ai_analysis.client_info.last_name].filter(Boolean).join(" ")}
+                        {plan.ai_analysis.client_info.company ? ` · ${plan.ai_analysis.client_info.company}` : ""}
+                      </p>
+                      {(plan.ai_analysis.client_info.address || plan.ai_analysis.client_info.city) && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {[plan.ai_analysis.client_info.address, plan.ai_analysis.client_info.postal_code, plan.ai_analysis.client_info.city].filter(Boolean).join(", ")}
+                        </p>
+                      )}
+                      <Button size="sm" variant="outline"
+                        className="rounded-sm gap-1 h-7 text-[11px] border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                        data-testid="ai-create-client-btn"
+                        onClick={async () => {
+                          try {
+                            const { data } = await api.post(`/clients/from-plan/${plan.plan_id}`);
+                            toast.success(data.duplicate ? "Fiche client déjà existante" : "Fiche client créée depuis le plan");
+                            nav("/clients");
+                          } catch (e) {
+                            toast.error(e?.response?.data?.detail || "Création impossible");
+                          }
+                        }}>
+                        <Wand2 className="h-3 w-3" /> Créer la fiche client
+                      </Button>
+                    </div>
+                  )}
+
                   {/* --- ACTIONS COTES & TEXTES (iter62) --- */}
                   {!plan.ai_analysis.error && (
                     <div className="border border-primary/30 bg-primary/5 p-2 rounded-sm grid gap-2"
