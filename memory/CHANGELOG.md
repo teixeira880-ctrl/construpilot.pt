@@ -1,5 +1,37 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 82 — 15/06/2026 (Coach→Estimateur + i18n Phase 1)
+
+### 🔗 Copilot Travaux → Estimateur (avec extraction IA)
+- Nouveau bouton **« Chiffrer ce projet dans l'estimateur »** dans le Coach IA
+  (`Coach.jsx`), visible dès qu'il y a une demande client.
+- Au clic : appel `POST /api/estimation/analyse` (IA `analyse_description`) sur la
+  concaténation des messages utilisateur → extraction **type de travaux + surface +
+  finition + état + lots + résumé**, stockée en `sessionStorage.estimator_prefill`,
+  puis navigation vers `/estimation?from=coach`.
+- `Estimator.jsx` lit le pré-remplissage au montage et remplit le formulaire
+  (type, surface, bâtiment, finition, état, description) + toast de confirmation.
+- Testé e2e (screenshot) : « Rénovation 70 m² Paris » → Estimateur pré-rempli
+  (type « Rénovation appartement », surface 70).
+
+### 🌍 Traduction — Phase 1 (i18n)
+- **2 nouvelles langues ajoutées : Italien (IT) + Allemand (DE)** → le sélecteur propose
+  désormais FR/EN/ES/PT/IT/DE (`I18nContext.jsx` LangToggle).
+- Blocs `it` et `de` complets pour toutes les clés déjà existantes
+  (nav, common, quote, team, landing).
+- **Page Coach IA entièrement traduite** dans les 6 langues (titre, sous-titre,
+  message d'accueil, 6 exemples, placeholder, boutons, barre estimateur, toasts,
+  erreurs micro) via nouvelles clés `coach.*`.
+- Vérifié (screenshot) : bascule DE/IT sur `/coach` (nav + exemples + placeholder traduits).
+- ⏳ **Reste à faire (Phases 2+)** : traduction propre des ~38 autres pages, dialogues et
+  notifications (Estimateur, Tarifs, Connexion/Compte, Tableau de bord, CRM, Facturation,
+  Plan 2D/3D…). Arabe (RTL) possible ultérieurement (nécessite mise en page dédiée).
+
+### ⚠️ Production
+- Nécessite un **redéploiement** (bouton Deploy) pour appliquer sur www.construpilot.fr.
+
+---
+
 ## Itération 81 — 15/06/2026 (Facturation 3D à l'unité + Project Pass 50 €)
 
 ### 💳 Project Pass 50 € + achats 3D à l'unité (option a : Plan ouvert à tous)

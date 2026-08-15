@@ -1,32 +1,49 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Send, Mic, MicOff, Sparkles, Volume2 } from "lucide-react";
+import { Send, Mic, MicOff, Sparkles, Volume2, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { API } from "@/lib/api";
+import { API, api } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
+import { useI18n } from "@/context/I18nContext";
 
-const EXAMPLES = [
-  "Combien coûte la rénovation d'un appartement de 70 m² ?",
-  "Combien de plaques de placo pour un mur de 5 m sur 2,50 m ?",
-  "Quelle épaisseur d'isolation choisir pour mes combles ?",
-  "Comment préparer un mur avant peinture ?",
-  "Quel carrelage choisir pour ma salle de bain ?",
-  "Pourquoi mon mur est humide ?",
-];
+const EXAMPLE_KEYS = ["coach.ex1", "coach.ex2", "coach.ex3", "coach.ex4", "coach.ex5", "coach.ex6"];
 
 export default function Coach() {
+  const { t } = useI18n();
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Bonjour, je suis ConstruPilot. Décrivez votre chantier ou posez-moi votre question travaux : estimation, matériaux, étapes, choix techniques." },
+    { role: "assistant", content: t("coach.greeting") },
   ]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [listening, setListening] = useState(false);
   const [speak, setSpeak] = useState(false);
+  const [sendingEst, setSendingEst] = useState(false);
   const bottom = useRef(null);
   const recognition = useRef(null);
+  const navigate = useNavigate();
+
+  const hasUserMsg = messages.some((m) => m.role === "user" && m.content.trim());
+
+  const goEstimate = async () => {
+    const desc = messages.filter((m) => m.role === "user").map((m) => m.content).join("\n").trim();
+    if (!desc || sendingEst) return;
+    setSendingEst(true);
+    try {
+      const { data } = await api.post("/estimation/analyse", { description: desc });
+      sessionStorage.setItem("estimator_prefill",
+        JSON.stringify({ ...(data.analysis || {}), _raw: desc }));
+      toast.success(t("coach.sent_toast"));
+      navigate("/estimation?from=coach");
+    } catch {
+      sessionStorage.setItem("estimator_prefill", JSON.stringify({ description: desc, _raw: desc }));
+      toast.message(t("coach.sent_toast_fallback"));
+      navigate("/estimation?from=coach");
+    } finally { setSendingEst(false); }
+  };
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -73,7 +90,7 @@ export default function Coach() {
         window.speechSynthesis.speak(u);
       }
     } catch {
-      toast.error("Le coach IA est momentanément indisponible");
+      toast.error(t("coach.unavailable"));
     } finally {
       setStreaming(false);
     }
@@ -81,7 +98,7 @@ export default function Coach() {
 
   const toggleMic = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return toast.error("Reconnaissance vocale non supportée par ce navigateur");
+    if (!SR) return toast.error(t("coach.mic_unsupported"));
     if (listening) {
       recognition.current?.stop();
       setListening(false);
@@ -96,7 +113,7 @@ export default function Coach() {
       send(text);
     };
     r.onend = () => setListening(false);
-    r.onerror = () => { setListening(false); toast.error("Micro indisponible"); };
+    r.onerror = () => { setListening(false); toast.error(t("coach.mic_error")); };
     recognition.current = r;
     r.start();
     setListening(true);
@@ -105,21 +122,35 @@ export default function Coach() {
   return (
     <div className="grid gap-8">
       <SEO title="Coach IA travaux" description="Posez vos questions travaux, rénovation, matériaux, TVA, permis à l'IA ConstruPilot. Réponse chiffrée en 30 secondes, à la voix ou au clavier. Gratuit." keywords="coach travaux, chatbot BTP, IA rénovation, aide artisan, questions travaux" canonical="/coach" />
-      <SectionTitle as="h1" over="Coach IA ConstruPilot" title="Votre copilote travaux, à la voix ou au clavier">
-        Explications, ordres de grandeur, matériaux, étapes et recommandations professionnelles.
-        Les chiffrages définitifs passent toujours par le moteur de calcul.
+      <SectionTitle as="h1" over={t("coach.over")} title={t("coach.title")}>
+        {t("coach.subtitle")}
       </SectionTitle>
 
       <div className="flex flex-wrap gap-2">
-        {EXAMPLES.map((e) => (
+        {EXAMPLE_KEYS.map((k) => (
           <button
-            key={e} onClick={() => send(e)} data-testid={`coach-example-${e.slice(0, 10)}`}
+            key={k} onClick={() => send(t(k))} data-testid={`coach-example-${k}`}
             className="px-3 py-1.5 text-xs rounded-sm border border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors"
           >
-            {e}
+            {t(k)}
           </button>
         ))}
       </div>
+
+      {hasUserMsg && (
+        <div className="flex items-center justify-between gap-3 flex-wrap surface p-3 border-primary/40"
+             data-testid="coach-to-estimator-bar">
+          <p className="text-sm text-muted-foreground">
+            {t("coach.to_estimator_hint")}
+          </p>
+          <Button onClick={goEstimate} disabled={sendingEst}
+                  data-testid="coach-to-estimator-btn"
+                  className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white shrink-0">
+            <Calculator className="h-4 w-4" />
+            {sendingEst ? t("coach.analyzing") : t("coach.to_estimator_btn")}
+          </Button>
+        </div>
+      )}
 
       <div className="surface flex flex-col h-[62vh]">
         <div className="flex-1 overflow-y-auto p-6 grid gap-5" data-testid="chat-messages">
@@ -161,7 +192,7 @@ export default function Coach() {
           <Input
             value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Posez votre question travaux…"
+            placeholder={t("coach.placeholder")}
             data-testid="chat-input" className="rounded-sm h-11"
           />
           <Button onClick={() => send()} disabled={streaming} data-testid="chat-send-btn" className="rounded-sm h-11 gap-2 hover:bg-orange-600 hover:text-white">

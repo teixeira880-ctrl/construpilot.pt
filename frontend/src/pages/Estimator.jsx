@@ -51,6 +51,25 @@ export default function Estimator() {
     api.get("/estimation/catalog").then(({ data }) => setCatalog(data));
   }, []);
 
+  useEffect(() => {
+    const raw = sessionStorage.getItem("estimator_prefill");
+    if (!raw) return;
+    sessionStorage.removeItem("estimator_prefill");
+    try {
+      const a = JSON.parse(raw);
+      setForm((f) => ({
+        ...f,
+        project_type: a.project_type || f.project_type,
+        surface: Number(a.surface) > 0 ? Number(a.surface) : f.surface,
+        building_type: a.building_type || f.building_type,
+        finish_level: a.finish_level || f.finish_level,
+        condition: a.condition || f.condition,
+        description: a.summary || a._raw || a.description || f.description,
+      }));
+      toast.success("Projet importé depuis le Coach IA — vérifiez puis lancez le calcul");
+    } catch { /* ignore */ }
+  }, []);
+
   const regions = (catalog?.regions || []).filter((r) => r.country === form.country);
 
   const compute = async () => {
