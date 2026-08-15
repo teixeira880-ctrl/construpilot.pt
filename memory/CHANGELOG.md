@@ -34,10 +34,27 @@
   recherche, création/édition (dialog : type, catégorie, unité, PU HT, TVA 10/20/5,5 %), suppression.
 - Lien nav « Bibliothèque ». Testé (auto-seed 38, CRUD, filtre, recherche via curl + UI).
 
+### Étape 3 — Éditeur de devis (livrée le 15/06)
+- Backend : modèle **générique** `pro_documents` (doc_type quote|invoice|credit_note) + compteurs
+  `doc_counters` (numérotation DEV-2026-0001). `routes/documents.py` : CRUD, `from-plan/{id}`
+  (import du métré IA en devis éditable), `/issue`, `/status`, `/pdf`. Totaux serveur : HT,
+  TVA **multi-taux** (10/20/5,5 %), TTC, **acompte**. `engines/pdf_docs.py` : PDF devis/facture/avoir.
+- Frontend `QuoteEditor.jsx` (`/devis-editeur` + `/devis-editeur/:docId`) :
+  - Devis vide, sélection client, titre, statut (brouillon/envoyé/signé/refusé).
+  - Lignes éditables (désignation/qté/unité/PU HT/TVA), ajout **depuis la bibliothèque** (picker),
+    **auto-enregistrement** des nouvelles lignes libres dans la bibliothèque.
+  - Récap live (HT, TVA par taux, TTC, acompte, reste à régler), export PDF.
+  - **Modifiable à tout moment** (même après envoi/signature).
+- Enchaînements : bouton « Créer un devis » (Suivi devis), « Devis » sur chaque fiche client
+  (`?client=`), et **plan → fiche client → devis pré-rempli** (`?plan=&client=`) depuis PlanTakeoff.
+- Testé : from-plan (4 lignes, TTC 7807,80 €), CRUD, PDF (DEV-2026-0001, multi-TVA, acompte),
+  auto-save biblio, UI (TTC 573 € multi-taux) via curl + screenshot.
+
 ### Reste à faire (roadmap Suite Pro)
-- Étape 3 — Éditeur de devis : devis vide + **import du devis généré par l'IA (plan/PC) en devis modifiable**,
-  sélection client, lignes depuis la bibliothèque (auto-save des nouvelles lignes), logo + certifs.
-  Inclut l'enchaînement **plan → fiche client → devis pré-rempli à son nom**.
+- Étape 4 — **Factures + page par client** : facturer un devis signé (total / **prorata** / détaillé),
+  **avoirs**, suivi paiements, factures acquittées, reste à facturer ; page dédiée par client
+  (devis signés/refusés, factures, encaissements).
+- Étape 5 — Certifications (Qualibat, RGE, QualiPAC, Qualifelec, Qualibois) + branding avancé.
 - Étape 4 — Factures (num. FAC-2026-0001, acomptes, TVA multi-taux 10/20/5,5 %).
 - Étape 5 — Certifications (Qualibat, RGE, QualiPAC, Qualifelec, Qualibois) + branding avancé.
 

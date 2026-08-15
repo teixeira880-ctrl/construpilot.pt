@@ -10,6 +10,7 @@ import { SectionTitle } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "react-router-dom";
 
 const MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
   "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -173,6 +174,11 @@ export default function QuoteTracking() {
           Toutes les propositions envoyées à vos clients, organisées par état d'avancement.
           Relancez au bon moment grâce au suivi d'ouverture et de signature.
         </SectionTitle>
+        <Link to="/devis-editeur">
+          <Button className="rounded-sm gap-2" data-testid="create-quote-btn">
+            <FileText className="h-4 w-4" /> Créer un devis
+          </Button>
+        </Link>
       </div>
 
       {/* Chiffre d'affaires mensuel */}

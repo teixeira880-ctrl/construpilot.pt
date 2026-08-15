@@ -14,6 +14,7 @@ import {
 import { SectionTitle } from "@/components/Bits";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const EMPTY = {
   first_name: "", last_name: "", company: "", email: "", phone: "",
@@ -22,6 +23,7 @@ const EMPTY = {
 
 export default function Clients() {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [clients, setClients] = useState([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
@@ -154,9 +156,14 @@ export default function Clients() {
                 )}
               </div>
               <div className="flex gap-2 mt-auto pt-2">
-                <Button size="sm" variant="outline" className="rounded-sm gap-1 flex-1"
+                <Button size="sm" className="rounded-sm flex-1"
+                        onClick={() => nav(`/devis-editeur?client=${c.client_id}`)}
+                        data-testid={`client-quote-${c.client_id}`}>
+                  Devis
+                </Button>
+                <Button size="sm" variant="outline" className="rounded-sm"
                         onClick={() => openEdit(c)} data-testid={`client-edit-${c.client_id}`}>
-                  <Pencil className="h-3 w-3" /> Modifier
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" variant="ghost" className="rounded-sm text-destructive"
                         onClick={() => remove(c)} data-testid={`client-delete-${c.client_id}`}>

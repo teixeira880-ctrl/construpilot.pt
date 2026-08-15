@@ -2579,13 +2579,13 @@ export default function PlanTakeoff() {
                         onClick={async () => {
                           try {
                             const { data } = await api.post(`/clients/from-plan/${plan.plan_id}`);
-                            toast.success(data.duplicate ? "Fiche client déjà existante" : "Fiche client créée depuis le plan");
-                            nav("/clients");
+                            toast.success(data.duplicate ? "Fiche client déjà existante — ouverture du devis" : "Fiche client créée — préparation du devis");
+                            nav(`/devis-editeur?plan=${plan.plan_id}&client=${data.client_id}`);
                           } catch (e) {
                             toast.error(e?.response?.data?.detail || "Création impossible");
                           }
                         }}>
-                        <Wand2 className="h-3 w-3" /> Créer la fiche client
+                        <Wand2 className="h-3 w-3" /> Créer client + devis
                       </Button>
                     </div>
                   )}
