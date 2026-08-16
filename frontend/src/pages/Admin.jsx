@@ -26,6 +26,7 @@ export default function Admin() {
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [leadStats, setLeadStats] = useState(null);
   const [suppliers, setSuppliers] = useState({ builtin: [], custom: [] });
   const [newSup, setNewSup] = useState({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
 
@@ -36,6 +37,7 @@ export default function Admin() {
     api.get("/admin/users").then(({ data }) => setUsers(data));
     api.get("/admin/projects").then(({ data }) => setProjects(data));
     api.get("/admin/leads").then(({ data }) => setLeads(data));
+    api.get("/admin/leads/stats").then(({ data }) => setLeadStats(data)).catch(() => {});
     api.get("/admin/suppliers").then(({ data }) => setSuppliers(data));
   };
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -340,16 +342,41 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="leads" className="mt-6">
+          {leadStats && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6" data-testid="admin-lead-stats">
+              {[
+                { label: "Total leads", value: leadStats.total, accent: false },
+                { label: "Via page d'accueil", value: leadStats.landing, accent: false },
+                { label: "Particuliers", value: leadStats.particulier, accent: true },
+                { label: "Pros", value: leadStats.pro, accent: true },
+                { label: "Nouveaux", value: leadStats.nouveau, accent: false },
+                { label: "Gagnés", value: leadStats.gagne, accent: false },
+              ].map((s) => (
+                <div key={s.label}
+                     className={`surface p-4 rounded-sm ${s.accent ? "border-primary/30" : ""}`}
+                     data-testid={`admin-lead-stat-${s.label}`}>
+                  <p className={`num text-2xl font-extrabold ${s.accent ? "text-primary" : "text-foreground"}`}>{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="grid gap-3" data-testid="admin-leads-list">
             {leads.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Aucune demande.</p>}
             {leads.map((l) => (
               <div key={l.lead_id} className="surface p-6 grid gap-3">
                 <div className="flex flex-wrap items-center gap-4">
                   <div>
-                    <p className="font-display font-semibold">{l.name}</p>
-                    <p className="num text-xs text-muted-foreground">{l.email} · {l.phone}</p>
+                    <p className="font-display font-semibold">{l.name || l.email}</p>
+                    <p className="num text-xs text-muted-foreground">{l.email}{l.phone ? " · " + l.phone : ""}</p>
                   </div>
-                  <p className="num ml-auto text-lg font-bold text-primary">{eur(l.budget)}</p>
+                  {l.source && (
+                    <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20"
+                          data-testid={`admin-lead-source-${l.lead_id}`}>
+                      {l.source.replace("landing-hero-", "")}
+                    </span>
+                  )}
+                  {l.budget ? <p className="num ml-auto text-lg font-bold text-primary">{eur(l.budget)}</p> : <span className="ml-auto" />}
                   <Select
                     value={l.status}
                     onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { status: v }); toast.success("Statut mis à jour"); load(); }}

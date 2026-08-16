@@ -183,6 +183,18 @@ async def all_leads():
     return await db.leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(300)
 
 
+@router.get("/leads/stats")
+async def leads_stats() -> dict:
+    total = await db.leads.count_documents({})
+    particulier = await db.leads.count_documents({"source": {"$regex": "particulier$"}})
+    pro = await db.leads.count_documents({"source": {"$regex": "pro$"}})
+    landing = await db.leads.count_documents({"source": {"$regex": "^landing"}})
+    nouveau = await db.leads.count_documents({"status": "nouveau"})
+    gagne = await db.leads.count_documents({"status": "gagné"})
+    return {"total": total, "particulier": particulier, "pro": pro,
+            "landing": landing, "nouveau": nouveau, "gagne": gagne}
+
+
 class LeadStatusIn(BaseModel):
     status: str
 

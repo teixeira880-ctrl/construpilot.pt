@@ -1,5 +1,16 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 96 — 16/06/2026 (Suivi des leads pub + relance auto)
+- **Suivi leads par source** : `GET /admin/leads/stats` (total, landing, particulier, pro, nouveau,
+  gagné) + tableau de bord dans Admin → CRM/Devis (cartes de stats + badge source par lead).
+  `pages/Admin.jsx` : state `leadStats`, fetch dans load(), cartes + badge `l.source`.
+- **Relance auto** : `routes/leads.py` envoie un e-mail de bienvenue (Resend, template HTML brandé)
+  dès qu'un lead est créé avec `source` commençant par "landing" (fire-and-forget). Champ `name`
+  optionnel géré.
+- Testé (preview) : POST /leads pro+particulier → stats correctes ; `_send_welcome` + send_email
+  renvoient Resend `ok:true` ; UI Admin affiche stats + badges. Nécessite un Deploy pour la prod.
+
+
 ## Itération 95 — 16/06/2026 (Page d'accueil orientée conversion pub)
 - Refonte du hero de `pages/Landing.jsx` (charte respectée : moss green / slate, Outfit/Manrope) :
   - **Sélecteur d'audience** particulier (défaut) / pro → change dynamiquement H1, sous-titre, CTA
