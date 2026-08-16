@@ -1,5 +1,12 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 103 — 16/08/2026 (Facturation depuis devis + Attribution leads + Raccourcis dashboard)
+- **Convertir en facture** : bouton sur chaque devis suivi (`/devis`) → `POST /quotes/sends/{log_id}/to-invoice` crée une facture (HT dérivé du TTC à 10 %, snapshot client), idempotent (badge « Voir la facture »). Vérifié curl : FAC-2026-0001, TTC 11000 / HT 10000, 2e appel → already:true.
+- **Attribution auto des leads** : champ `lead_source` sur les campagnes pub relie au champ `source` des leads CRM. Nouveaux endpoints `/ads/lead-sources` (distinct) ; `list/summary` renvoient `real_leads` + `real_cpl`. KPIs enrichis (Leads réels, CPL réel). Vérifié : 3 leads source=test → real_cpl 200€.
+- **Raccourcis Dashboard** : cartes « Nouveau devis » (/devis-editeur), « Nouvelle facture » (/devis-editeur?type=invoice), « Suivi facturation » (/factures) en haut du tableau de bord.
+- Testé : curl (tous flux backend + seed données), captures écran (cartes dashboard, dialogue campagne avec source CRM, KPIs 6 colonnes).
+
+
 ## Itération 102 — 16/08/2026 (Visibilité Devis/Factures)
 - Déplacé **« Suivi devis » (/devis)** et **« Factures » (/factures)** du menu déroulant « Plus » vers les liens principaux de la barre de navigation (visibles pour tout utilisateur connecté).
 - Retiré ces 2 entrées de `USER_LINKS` et supprimé le bouton fantôme « Suivi devis » redondant (min-[1700px]).

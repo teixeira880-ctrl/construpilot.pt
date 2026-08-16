@@ -11,11 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const PLATFORMS = ["google", "meta", "instagram", "linkedin", "tiktok", "other"];
-const EMPTY = { name: "", platform: "google", budget: "", spend: "", leads: "", revenue: "", status: "active" };
+const EMPTY = { name: "", platform: "google", budget: "", spend: "", leads: "", revenue: "", status: "active", lead_source: "" };
 
 export default function AdsPanel() {
   const [rows, setRows] = useState([]);
   const [sum, setSum] = useState(null);
+  const [sources, setSources] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
@@ -25,6 +26,7 @@ export default function AdsPanel() {
   const load = () => {
     api.get("/ads/campaigns").then(({ data }) => setRows(data));
     api.get("/ads/summary").then(({ data }) => setSum(data));
+    api.get("/ads/lead-sources").then(({ data }) => setSources(data)).catch(() => {});
   };
   useEffect(() => { load(); }, []);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -36,6 +38,7 @@ export default function AdsPanel() {
       name: c.name, platform: c.platform || "google", status: c.status || "active",
       budget: String(c.budget ?? ""), spend: String(c.spend ?? ""),
       leads: String(c.leads ?? ""), revenue: String(c.revenue ?? ""),
+      lead_source: c.lead_source || "",
     });
     setOpen(true);
   };
@@ -47,6 +50,7 @@ export default function AdsPanel() {
       name: form.name, platform: form.platform, status: form.status,
       budget: Number(form.budget) || 0, spend: Number(form.spend) || 0,
       leads: Number(form.leads) || 0, revenue: Number(form.revenue) || 0,
+      lead_source: form.lead_source || "",
     };
     try {
       if (editingId) {
@@ -76,11 +80,12 @@ export default function AdsPanel() {
       </div>
 
       {sum && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3" data-testid="ads-kpis">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3" data-testid="ads-kpis">
           <Stat label="Dépense totale" value={eur(sum.total_spend)} />
           <Stat label="Budget" value={eur(sum.total_budget)} />
-          <Stat label="Leads" value={num(sum.total_leads)} accent />
-          <Stat label="Coût / lead" value={sum.cpl != null ? eur(sum.cpl) : "—"} />
+          <Stat label="Leads (saisis)" value={num(sum.total_leads)} />
+          <Stat label="Leads réels (CRM)" value={num(sum.total_real_leads || 0)} accent />
+          <Stat label="CPL réel" value={sum.real_cpl != null ? eur(sum.real_cpl) : (sum.cpl != null ? eur(sum.cpl) : "—")} />
           <Stat label="ROAS" value={sum.roas != null ? `${sum.roas}×` : "—"} accent />
         </div>
       )}
@@ -124,11 +129,17 @@ export default function AdsPanel() {
               <div key={c.campaign_id} className="surface p-4 rounded-sm flex flex-wrap items-center gap-3" data-testid={`ads-row-${c.campaign_id}`}>
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-semibold">{c.name}</p>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{c.platform} · {c.status}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    {c.platform} · {c.status}
+                    {c.lead_source ? <span className="ml-1 text-primary normal-case">· CRM: {c.lead_source}</span> : null}
+                  </p>
                 </div>
                 <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Dépense</span><br /><span className="num font-bold">{eur(c.spend)}</span></div>
                 <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Leads</span><br /><span className="num font-bold">{num(c.leads)}</span></div>
-                <div className="text-right text-sm"><span className="text-muted-foreground text-xs">CPL</span><br /><span className="num font-bold text-primary">{cpl != null ? eur(cpl) : "—"}</span></div>
+                {c.lead_source ? (
+                  <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Leads réels</span><br /><span className="num font-bold text-emerald-500">{num(c.real_leads || 0)}</span></div>
+                ) : null}
+                <div className="text-right text-sm"><span className="text-muted-foreground text-xs">CPL {c.lead_source ? "réel" : ""}</span><br /><span className="num font-bold text-primary">{(c.lead_source && c.real_cpl != null) ? eur(c.real_cpl) : (cpl != null ? eur(cpl) : "—")}</span></div>
                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(c)} data-testid={`ads-edit-${c.campaign_id}`}><Pencil className="h-4 w-4" /></Button>
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => setToDelete(c)} data-testid={`ads-del-${c.campaign_id}`}><Trash2 className="h-4 w-4" /></Button>
               </div>
@@ -155,6 +166,18 @@ export default function AdsPanel() {
               <div><Label>Dépense (€)</Label><Input type="number" value={form.spend} onChange={set("spend")} className="rounded-sm mt-1 num" data-testid="ads-spend" /></div>
               <div><Label>Leads</Label><Input type="number" value={form.leads} onChange={set("leads")} className="rounded-sm mt-1 num" data-testid="ads-leads" /></div>
               <div><Label>CA attribué (€)</Label><Input type="number" value={form.revenue} onChange={set("revenue")} className="rounded-sm mt-1 num" data-testid="ads-revenue" /></div>
+            </div>
+            <div>
+              <Label>Source CRM (attribution auto)</Label>
+              <Input value={form.lead_source} onChange={set("lead_source")} list="ads-lead-sources"
+                placeholder="ex. landing-google, meta-printemps…"
+                className="rounded-sm mt-1" data-testid="ads-lead-source" />
+              <datalist id="ads-lead-sources">
+                {sources.map((s) => <option key={s} value={s} />)}
+              </datalist>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Reliez cette campagne au champ « source » de vos leads CRM pour calculer automatiquement le vrai coût par lead.
+              </p>
             </div>
           </div>
           <DialogFooter>

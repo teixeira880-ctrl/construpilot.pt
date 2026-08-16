@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Send, Eye, CheckCircle2, FileText, Copy, ExternalLink, RefreshCw, Mail,
-  Download, FileDown, Star,
+  Download, FileDown, Star, Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,13 +10,14 @@ import { SectionTitle } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
   "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
 export default function QuoteTracking() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [sends, setSends] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -95,6 +96,20 @@ export default function QuoteTracking() {
     }
   };
 
+  const [invoicing, setInvoicing] = useState(null);
+  const convertToInvoice = async (send) => {
+    setInvoicing(send.log_id);
+    try {
+      const { data } = await api.post(`/quotes/sends/${send.log_id}/to-invoice`);
+      toast.success(data.already
+        ? "Facture déjà créée — ouverture de l'éditeur"
+        : `Facture ${data.number || ""} créée depuis le devis 🎉`);
+      navigate(`/devis-editeur/${data.doc_id}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Conversion impossible");
+    } finally { setInvoicing(null); }
+  };
+
   if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
   if (loading) return <div className="surface p-10 text-center">Chargement…</div>;
 
@@ -147,6 +162,22 @@ export default function QuoteTracking() {
             </a>
           )}
         </div>
+        {send.invoice_doc_id ? (
+          <button onClick={() => navigate(`/devis-editeur/${send.invoice_doc_id}`)}
+                  data-testid={`open-invoice-${send.log_id}`}
+                  className="w-full inline-flex items-center justify-center gap-1 rounded-sm border border-primary/40 text-primary text-[11px] h-7 mt-1 hover:bg-primary hover:text-primary-foreground transition-colors">
+            <Receipt className="h-3 w-3" /> Voir la facture
+          </button>
+        ) : (
+          <Button size="sm" variant="outline"
+                  disabled={invoicing === send.log_id}
+                  className="w-full rounded-sm gap-1 text-[11px] h-7 mt-1"
+                  onClick={() => convertToInvoice(send)}
+                  data-testid={`convert-invoice-${send.log_id}`}>
+            <Receipt className="h-3 w-3" />
+            {invoicing === send.log_id ? "Conversion…" : "Convertir en facture"}
+          </Button>
+        )}
         {showComplete && (
           isDone ? (
             <Badge variant="outline"

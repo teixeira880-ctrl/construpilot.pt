@@ -20,17 +20,43 @@ class CampaignIn(BaseModel):
     platform: str = "google"          # google | meta | instagram | linkedin | other
     budget: float = 0                 # budget alloué (€)
     spend: float = 0                  # dépense réelle (€)
-    leads: int = 0                    # leads générés
+    leads: int = 0                    # leads saisis manuellement
     revenue: float = 0                # CA attribué (€)
     status: str = "active"            # active | paused | ended
+    lead_source: str = ""             # tag CRM (source des leads) pour attribution auto
     start_date: str | None = None
     end_date: str | None = None
 
 
+async def _real_leads_count(lead_source: str) -> int:
+    """Nombre de leads CRM dont le champ `source` correspond au tag de la campagne."""
+    if not lead_source:
+        return 0
+    return await db.leads.count_documents({"source": lead_source})
+
+
+def _enrich(row: dict, real: int) -> dict:
+    """Ajoute leads réels (CRM) + CPL réel à une campagne."""
+    row["real_leads"] = real
+    spend = row.get("spend", 0)
+    row["real_cpl"] = round(spend / real, 2) if real else None
+    return row
+
+
 @router.get("/campaigns")
 async def list_campaigns(user=Depends(current_user)):
-    return await db.ad_campaigns.find({"user_id": user["user_id"]}, {"_id": 0}) \
+    rows = await db.ad_campaigns.find({"user_id": user["user_id"]}, {"_id": 0}) \
         .sort("created_at", -1).to_list(500)
+    for r in rows:
+        _enrich(r, await _real_leads_count(r.get("lead_source", "")))
+    return rows
+
+
+@router.get("/lead-sources")
+async def lead_sources(user=Depends(current_user)):
+    """Sources de leads disponibles dans le CRM (pour l'attribution des campagnes)."""
+    sources = await db.leads.distinct("source")
+    return [s for s in sources if s]
 
 
 @router.post("/campaigns")
@@ -39,7 +65,7 @@ async def create_campaign(body: CampaignIn, user=Depends(current_user)):
            **body.model_dump(), "created_at": _now()}
     await db.ad_campaigns.insert_one(doc)
     doc.pop("_id", None)
-    return doc
+    return _enrich(doc, await _real_leads_count(body.lead_source))
 
 
 @router.put("/campaigns/{campaign_id}")
@@ -49,7 +75,8 @@ async def update_campaign(campaign_id: str, body: CampaignIn, user=Depends(curre
     if not r:
         raise HTTPException(404, "Campagne introuvable")
     await db.ad_campaigns.update_one({"campaign_id": campaign_id}, {"$set": body.model_dump()})
-    return await db.ad_campaigns.find_one({"campaign_id": campaign_id}, {"_id": 0})
+    doc = await db.ad_campaigns.find_one({"campaign_id": campaign_id}, {"_id": 0})
+    return _enrich(doc, await _real_leads_count(doc.get("lead_source", "")))
 
 
 @router.delete("/campaigns/{campaign_id}")
@@ -65,20 +92,27 @@ async def ads_summary(user=Depends(current_user)):
     budget = sum(r.get("budget", 0) for r in rows)
     leads = sum(r.get("leads", 0) for r in rows)
     revenue = sum(r.get("revenue", 0) for r in rows)
+    real_leads = 0
     by_platform: dict = {}
     for r in rows:
+        rl = await _real_leads_count(r.get("lead_source", ""))
+        real_leads += rl
         p = by_platform.setdefault(r.get("platform", "other"),
-                                   {"platform": r.get("platform", "other"), "spend": 0, "leads": 0, "revenue": 0})
+                                   {"platform": r.get("platform", "other"), "spend": 0,
+                                    "leads": 0, "real_leads": 0, "revenue": 0})
         p["spend"] += r.get("spend", 0)
         p["leads"] += r.get("leads", 0)
+        p["real_leads"] += rl
         p["revenue"] += r.get("revenue", 0)
     return {
         "campaigns": len(rows),
         "total_budget": round(budget, 2),
         "total_spend": round(spend, 2),
         "total_leads": leads,
+        "total_real_leads": real_leads,
         "total_revenue": round(revenue, 2),
         "cpl": round(spend / leads, 2) if leads else None,
+        "real_cpl": round(spend / real_leads, 2) if real_leads else None,
         "roas": round(revenue / spend, 2) if spend else None,
         "by_platform": list(by_platform.values()),
     }

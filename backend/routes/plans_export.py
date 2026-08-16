@@ -933,6 +933,59 @@ async def list_all_quote_sends(user=Depends(current_user)) -> dict:
     return {"sends": docs, "stats": stats}
 
 
+@quote_router.post("/sends/{log_id}/to-invoice")
+async def send_to_invoice(log_id: str, user=Depends(current_user)) -> dict:
+    """Convertit un devis suivi (envoyé au client) en facture dans l'espace Facturation."""
+    from routes.documents import _compute_totals, _next_number
+
+    send = await db.quote_sends.find_one(
+        {"log_id": log_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not send:
+        raise HTTPException(404, "Devis introuvable")
+    if send.get("invoice_doc_id"):
+        return {"doc_id": send["invoice_doc_id"], "already": True}
+
+    ttc = float(send.get("total_ttc") or 0)
+    vat_rate = 10.0  # rénovation logement > 2 ans
+    ht = round(ttc / (1 + vat_rate / 100), 2) if ttc else 0.0
+    label = send.get("plan_filename") or send.get("work_address") \
+        or send.get("client_name") or "Travaux de rénovation"
+    lines = [{"designation": f"Travaux — {label}", "unit": "forfait", "qty": 1,
+              "unit_price_ht": ht, "vat_rate": vat_rate, "category": ""}]
+    totals = _compute_totals(lines, 0)
+
+    name = (send.get("client_name") or "").strip()
+    parts = name.split(" ", 1)
+    client = {
+        "name": name, "company": "", "email": send.get("client_email") or "",
+        "phone": "", "address": send.get("client_address") or "",
+        "postal_code": "", "city": "", "siret": "",
+        "first_name": parts[0] if parts else "",
+        "last_name": parts[1] if len(parts) > 1 else "",
+    }
+    now = _now()
+    number = await _next_number(user["user_id"], "invoice")
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": user["user_id"], "doc_type": "invoice", "number": number,
+        "title": f"Facture — {label}", "client_id": None, "client": client,
+        "status": "sent", "lines": lines, "notes": "",
+        "payment_terms": "", "deposit_pct": 0, "totals": totals,
+        "payments": [], "paid": 0.0, "remaining_due": totals["ttc"],
+        "issue_date": now,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "source": "from_quote_send", "parent_log_id": log_id,
+        "created_at": now, "updated_at": now,
+    }
+    await db.pro_documents.insert_one(dict(doc))
+    await db.quote_sends.update_one(
+        {"log_id": log_id}, {"$set": {"invoice_doc_id": doc["doc_id"],
+                                       "invoiced_at": now}})
+    doc.pop("_id", None)
+    return {"doc_id": doc["doc_id"], "number": number}
+
+
+
 @quote_router.get("/revenue/monthly")
 async def revenue_monthly(months: int = 12, user=Depends(current_user)) -> dict:
     """CA mensuel des devis SIGNÉS (N derniers mois) — pour le graphique dashboard."""

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, FolderOpen, Trash2, FileSearch, Bell, HardHat, Sparkles, TrendingUp,
+  FileText, Receipt, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +82,32 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="dash-quick-actions">
+        {[
+          { to: "/devis-editeur", icon: FileText, title: "Nouveau devis", desc: "Créez un devis client détaillé en quelques clics", testid: "quick-new-quote" },
+          { to: "/devis-editeur?type=invoice", icon: Receipt, title: "Nouvelle facture", desc: "Éditez une facture conforme (Factur-X)", testid: "quick-new-invoice" },
+          { to: "/factures", icon: TrendingUp, title: "Suivi facturation", desc: "Encaissements, impayés et documents", testid: "quick-invoicing" },
+        ].map((a) => (
+          <button
+            key={a.to}
+            onClick={() => navigate(a.to)}
+            data-testid={a.testid}
+            className="group surface p-5 rounded-md text-left flex items-center gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50"
+          >
+            <span className="h-11 w-11 grid place-items-center rounded-sm bg-primary/10 text-primary shrink-0">
+              <a.icon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display font-semibold text-sm flex items-center gap-1">
+                {a.title}
+                <ArrowRight className="h-3.5 w-3.5 opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0" />
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{a.desc}</p>
+            </div>
+          </button>
+        ))}
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
