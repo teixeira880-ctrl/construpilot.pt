@@ -1,5 +1,20 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 93 — 16/06/2026 (2FA : e-mail de réception configurable)
+
+### 🔐 E-mail de réception des codes 2FA (Option B)
+- Nouveau champ user `two_fa_email` (optionnel). Si renseigné, les codes 2FA sont envoyés à cette
+  adresse ; sinon fallback sur l'e-mail du compte.
+- Backend `routes/auth.py` : `ProfileIn.two_fa_email` (+ validation), `_public` expose `two_fa_email`,
+  `_send_2fa_email` utilise `two_fa_email or email`, `_start_2fa` renvoie le destinataire masqué
+  (`_mask_email`) dans le message de connexion.
+- Frontend `components/account/TwoFaCard.jsx` : champ « E-mail de réception des codes 2FA » + bouton
+  Enregistrer (visible pour les admins), PUT `/auth/profile`.
+- Testé (preview) : enregistrement, rejet e-mail invalide (400), login 2FA → « Code envoyé à
+  mo*****@gmail.com ». Nécessite un **Deploy** pour la prod.
+
+
+
 ## Itération 92 — 16/06/2026 (Prod : SEO, cache & connexion sur domaine perso)
 
 ### 🐛 P0 — Connexion impossible en production (www vs non-www / CORS) — RÉSOLU

@@ -13,9 +13,26 @@ export const TwoFaCard = () => {
   const [pwd, setPwd] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tfaEmail, setTfaEmail] = useState(user?.two_fa_email || "");
+  const [savingEmail, setSavingEmail] = useState(false);
 
   if (user?.role !== "admin") return null;
   const enabled = !!user.two_fa_enabled;
+
+  const saveEmail = async (e) => {
+    e.preventDefault();
+    setSavingEmail(true);
+    try {
+      const { data } = await api.put("/auth/profile", { two_fa_email: tfaEmail.trim() });
+      setUser(data.user);
+      toast.success(tfaEmail.trim()
+        ? "Les codes 2FA seront envoyés à " + tfaEmail.trim()
+        : "Adresse de réception réinitialisée (email du compte)");
+    } catch (err) {
+      const d = err?.response?.data?.detail;
+      toast.error(typeof d === "string" ? d : "Enregistrement impossible");
+    } finally { setSavingEmail(false); }
+  };
 
   const enable = async () => {
     setBusy(true);
@@ -58,6 +75,26 @@ export const TwoFaCard = () => {
         À chaque connexion admin, un code à 6 chiffres vous est envoyé par email.
         Personne ne peut accéder à votre compte sans ce code, même avec votre mot de passe.
       </p>
+
+      <form onSubmit={saveEmail} className="space-y-2 rounded-sm border border-border/60 p-3">
+        <Label htmlFor="tfa-email" className="text-xs font-medium">
+          E-mail de réception des codes 2FA
+        </Label>
+        <p className="text-[11px] text-muted-foreground">
+          Laissez vide pour utiliser l'email du compte ({user.email}). Renseignez une autre adresse
+          (ex. votre Gmail) pour y recevoir les codes.
+        </p>
+        <div className="flex gap-2">
+          <Input id="tfa-email" type="email" value={tfaEmail}
+                 onChange={(e) => setTfaEmail(e.target.value)}
+                 placeholder={user.email}
+                 data-testid="twofa-email-input" className="rounded-sm" />
+          <Button type="submit" variant="outline" disabled={savingEmail}
+                  className="rounded-sm shrink-0" data-testid="twofa-email-save-btn">
+            Enregistrer
+          </Button>
+        </div>
+      </form>
       {!enabled ? (
         <Button type="button" onClick={enable} disabled={busy}
                 className="rounded-sm w-full gap-2" data-testid="twofa-enable-btn">

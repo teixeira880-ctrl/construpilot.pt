@@ -30,7 +30,7 @@ class LoginIn(BaseModel):
 def _public(u: dict) -> dict:
     out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
-                                  "two_fa_enabled", "created_at")}
+                                  "two_fa_enabled", "two_fa_email", "created_at")}
     out["has_password"] = bool(u.get("password_hash"))
     return out
 
@@ -171,6 +171,7 @@ class ProfileIn(BaseModel):
     name: str | None = None
     phone: str | None = None
     email: EmailStr | None = None
+    two_fa_email: str | None = None
     current_password: str | None = None
 
 
@@ -185,6 +186,11 @@ async def update_profile(body: ProfileIn, user=Depends(current_user)) -> dict:
         updates["name"] = name
     if body.phone is not None:
         updates["phone"] = body.phone.strip()[:20] or None
+    if body.two_fa_email is not None:
+        val = body.two_fa_email.strip().lower()
+        if val and ("@" not in val or "." not in val.split("@")[-1]):
+            raise HTTPException(status_code=400, detail="E-mail de réception 2FA invalide")
+        updates["two_fa_email"] = val or None
     if body.email is not None and body.email.lower() != user["email"]:
         full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
         if full.get("auth_provider") == "google":
@@ -367,6 +373,15 @@ async def _register_device(user: dict, request: Request) -> None:
 
 # ---- 2FA email (admin) -------------------------------------------------------
 
+def _mask_email(email: str) -> str:
+    try:
+        local, domain = email.split("@", 1)
+    except ValueError:
+        return email
+    shown = local[:2] if len(local) > 2 else local[:1]
+    return f"{shown}{'*' * max(1, len(local) - len(shown))}@{domain}"
+
+
 async def _send_2fa_email(user: dict, code: str) -> None:
     html = (
         f"<p>Bonjour {user.get('name') or ''},</p>"
@@ -378,7 +393,8 @@ async def _send_2fa_email(user: dict, code: str) -> None:
     async def _send():
         from engines.emailer import send_email
         try:
-            await send_email(user["email"],
+            recipient = user.get("two_fa_email") or user["email"]
+            await send_email(recipient,
                              f"{code} — votre code de connexion ConstruPilot", html)
         except Exception:
             pass
@@ -395,8 +411,10 @@ async def _start_2fa(user: dict) -> dict:
         "created_at": datetime.now(timezone.utc),
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10)})
     await _send_2fa_email(user, code)
+    recipient = user.get("two_fa_email") or user["email"]
+    masked = _mask_email(recipient)
     return {"two_fa_required": True, "pending_token": pending,
-            "message": "Code de vérification envoyé par email"}
+            "message": f"Code de vérification envoyé à {masked}"}
 
 
 class TwoFaVerifyIn(BaseModel):
