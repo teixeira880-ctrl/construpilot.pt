@@ -159,6 +159,7 @@ async def users():
 class UserIn(BaseModel):
     role: str | None = None
     plan: str | None = None
+    two_fa_enabled: bool | None = None
 
 
 @router.put("/users/{user_id}")

@@ -1,5 +1,38 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 92 — 16/06/2026 (Prod : SEO, cache & connexion sur domaine perso)
+
+### 🐛 P0 — Connexion impossible en production (www vs non-www / CORS) — RÉSOLU
+- **Cause racine** : les navigateurs mobiles **masquent le `www.`**. L'utilisateur était sur
+  `www.construpilot.fr` alors que le build appelle l'API en dur sur `https://construpilot.fr`
+  (non-www) → requêtes **cross-origin bloquées en CORS** (OPTIONS 400 "Disallowed CORS origin")
+  → TOUTES les actions échouaient (login, mot de passe oublié) avec message générique.
+- **Fix** : `frontend/src/index.js` — redirection automatique `www.*` → non-www (aligne avec le
+  canonical/sitemap et garantit des appels API same-origin, donc plus de CORS).
+- Vérifié : `www.construpilot.fr/api/login` = 200 (same-origin). Nouveau build `main.2552263e.js`
+  déployé, utilisateur confirme "tout fonctionne".
+
+### 🔄 P0 — "La dernière version ne s'affiche pas" — RÉSOLU
+- `frontend/public/sw.js` réécrit : HTML/navigation en **network-first** (au lieu de cache-first),
+  cache versionné `construpilot-v3`, assets hashés en cache-first, API network-first.
+- `frontend/src/index.js` : `reg.update()` + reload sur `controllerchange` → les appareils
+  bloqués se mettent à jour automatiquement.
+
+### 🔍 SEO / Google — RÉSOLU
+- Erreur Search Console "le sitemap est un fichier HTML" = l'URL soumise était la racine
+  `construpilot.fr/` au lieu de `construpilot.fr/sitemap.xml`. Corrigé côté GSC → 30 pages, statut
+  "Opération effectuée". Site indexé sur Bing. Google : indexation en cours (délai normal).
+- `frontend/public/sitemap.xml` nettoyé : retrait des pages protégées `/plan` et `/parrainage`.
+
+### ⚠️ Restant / connu
+- **Google Login sur domaine perso** : l'OAuth Emergent échoue sur `construpilot.fr`
+  ("Session Google invalide"). Contournement : e-mail/mot de passe. Nécessite le support Emergent.
+- **CORS backend** : la prod bloque encore le www en CORS (OPTIONS 400), mais sans impact grâce à
+  la redirection non-www. `CORS_ORIGINS` (.env) contient déjà www + non-www.
+- **Page Admin** : l'utilisateur avait signalé un souci non précisé — jamais détaillé (à revoir).
+
+
+
 ## Itération 91 — 15/06/2026 (Claude Sonnet 4.6 étendu à tout le texte)
 
 ### 🤖 Claude Sonnet 4.6 partout (texte)

@@ -229,6 +229,7 @@ export default function Admin() {
                   <TableHead>Rôle</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Auth</TableHead>
+                  <TableHead>2FA</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -260,6 +261,25 @@ export default function Admin() {
                       </Select>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">{u.auth_provider}</TableCell>
+                    <TableCell>
+                      {u.two_fa_enabled ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-sm h-8 text-xs"
+                          data-testid={`admin-disable-2fa-${u.user_id}`}
+                          onClick={async () => {
+                            await api.put(`/admin/users/${u.user_id}`, { two_fa_enabled: false });
+                            toast.success("2FA désactivée pour " + u.email);
+                            load();
+                          }}
+                        >
+                          Désactiver 2FA
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
