@@ -16,11 +16,12 @@ from engines.pdf_takeoff import (
     _styles, _table, _fmt, _story_header_branding, _story_quote_reviews,
     DARK, LIGHT_GREY, ORANGE,
 )
+from engines.pdf_i18n import pdf_labels
 
 DOC_LABELS = {"quote": "DEVIS", "invoice": "FACTURE", "credit_note": "AVOIR"}
 
 
-def _client_block(story: list, client: dict | None, S: dict) -> None:
+def _client_block(story: list, client: dict | None, S: dict, L: dict) -> None:
     if not client:
         return
     name = " ".join(x for x in [client.get("first_name"), client.get("last_name")] if x)
@@ -39,8 +40,8 @@ def _client_block(story: list, client: dict | None, S: dict) -> None:
         lines.append(client["phone"])
     if client.get("siret"):
         lines.append(f"SIRET {client['siret']}")
-    html = "<br/>".join(lines) or "Client"
-    tbl = _table([[Paragraph("<b>Adressé à</b><br/>" + html, S["body"])]], [88 * mm],
+    html = "<br/>".join(lines) or L["client"]
+    tbl = _table([[Paragraph(f"<b>{L['addressed_to']}</b><br/>" + html, S["body"])]], [88 * mm],
                  style_extras=[
                      ("BOX", (0, 0), (-1, -1), 0.6, LIGHT_GREY),
                      ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F7F7F5")),
@@ -53,9 +54,9 @@ def _client_block(story: list, client: dict | None, S: dict) -> None:
     story.append(Spacer(1, 10))
 
 
-def _lines_table(story: list, lines: list, S: dict) -> None:
-    story.append(Paragraph("Détail des prestations", S["h2"]))
-    rows = [["Désignation", "Qté", "Unité", "PU HT", "TVA", "Total HT"]]
+def _lines_table(story: list, lines: list, S: dict, L: dict) -> None:
+    story.append(Paragraph(L["lines_title"], S["h2"]))
+    rows = [[L["c_designation"], L["c_qty"], L["c_unit"], L["c_pu_ht"], L["c_vat"], L["c_total_ht"]]]
     for ln in lines:
         qty = ln.get("qty") or 0
         pu = ln.get("unit_price_ht") or 0
@@ -67,7 +68,7 @@ def _lines_table(story: list, lines: list, S: dict) -> None:
             _fmt(round(qty * pu, 2), "€"),
         ])
     if len(rows) == 1:
-        rows.append(["Aucune ligne", "", "", "", "", ""])
+        rows.append([L["no_line"], "", "", "", "", ""])
     story.append(_table(
         rows, [78 * mm, 16 * mm, 16 * mm, 22 * mm, 14 * mm, 26 * mm],
         style_extras=[
@@ -81,18 +82,18 @@ def _lines_table(story: list, lines: list, S: dict) -> None:
         ], repeat_rows=1))
 
 
-def _recap(story: list, doc: dict, S: dict) -> None:
+def _recap(story: list, doc: dict, S: dict, L: dict) -> None:
     t = doc.get("totals", {})
     story.append(Spacer(1, 12))
-    story.append(Paragraph("Récapitulatif", S["h2"]))
-    rows = [["Total HT", _fmt(t.get("ht", 0), "€")]]
+    story.append(Paragraph(L["recap"], S["h2"]))
+    rows = [[L["total_ht"], _fmt(t.get("ht", 0), "€")]]
     for rate, amount in (t.get("tva_breakdown") or {}).items():
-        rows.append([f"TVA {_fmt(float(rate))} %", _fmt(amount, "€")])
-    rows.append(["TOTAL TTC", _fmt(t.get("ttc", 0), "€")])
+        rows.append([L["vat"].format(rate=_fmt(float(rate))), _fmt(amount, "€")])
+    rows.append([L["total_ttc"], _fmt(t.get("ttc", 0), "€")])
     if (t.get("deposit_pct") or 0) > 0:
-        rows.append([f"Acompte demandé ({_fmt(t.get('deposit_pct'))} %)",
+        rows.append([L["deposit_asked"].format(pct=_fmt(t.get('deposit_pct'))),
                      _fmt(t.get("deposit_amount", 0), "€")])
-        rows.append(["Reste à régler", _fmt(t.get("remaining", 0), "€")])
+        rows.append([L["remaining"], _fmt(t.get("remaining", 0), "€")])
     ttc_row = 1 + len(t.get("tva_breakdown") or {})
     story.append(_table(rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
@@ -111,47 +112,46 @@ def _recap(story: list, doc: dict, S: dict) -> None:
 
 
 def build_document_pdf(doc: dict, branding: dict | None = None,
-                       reviews: dict | None = None) -> bytes:
+                       reviews: dict | None = None, lang: str | None = None) -> bytes:
     buf = BytesIO()
     pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
                             topMargin=18 * mm, bottomMargin=18 * mm)
     S = _styles()
+    L = pdf_labels(lang)
     story: list = []
 
     _story_header_branding(story, branding, S)
-    label = DOC_LABELS.get(doc.get("doc_type"), "DOCUMENT")
+    _doc_key = {"quote": "doc_quote", "invoice": "doc_invoice", "credit_note": "doc_credit"}
+    label = L[_doc_key.get(doc.get("doc_type"), "doc_generic")]
     story.append(Paragraph(label, S["kicker"]))
     story.append(Paragraph(doc.get("title") or doc.get("number") or label, S["h1"]))
     meta = []
     if doc.get("number"):
-        meta.append(f"N° <b>{doc['number']}</b>")
+        meta.append(f"{L['num']} <b>{doc['number']}</b>")
     if doc.get("issue_date"):
-        meta.append(f"Date : {doc['issue_date'][:10]}")
+        meta.append(f"{L['date']} : {doc['issue_date'][:10]}")
     if doc.get("due_date"):
-        meta.append(f"Échéance : {doc['due_date'][:10]}")
+        meta.append(f"{L['due']} : {doc['due_date'][:10]}")
     if meta:
         story.append(Paragraph(" · ".join(meta), S["muted"]))
     story.append(Spacer(1, 10))
 
-    _client_block(story, doc.get("client"), S)
-    _lines_table(story, doc.get("lines", []), S)
-    _recap(story, doc, S)
+    _client_block(story, doc.get("client"), S, L)
+    _lines_table(story, doc.get("lines", []), S, L)
+    _recap(story, doc, S, L)
 
     if doc.get("notes"):
         story.append(Spacer(1, 12))
-        story.append(Paragraph("Notes", S["h2"]))
+        story.append(Paragraph(L["notes"], S["h2"]))
         story.append(Paragraph(doc["notes"].replace("\n", "<br/>"), S["body"]))
 
     if doc.get("doc_type") == "quote":
         story.append(Spacer(1, 16))
-        story.append(Paragraph("Bon pour accord (date + signature) :", S["muted"]))
+        story.append(Paragraph(L["agreement"], S["muted"]))
         _story_quote_reviews(story, reviews, S)
 
     story.append(Spacer(1, 16))
-    story.append(Paragraph(
-        "Document émis via ConstruPilot. TVA applicable selon la nature des travaux "
-        "(10 % rénovation logement +2 ans, 20 % neuf, 5,5 % rénovation énergétique). "
-        "Conditions de règlement selon mentions ci-dessus.", S["muted"]))
+    story.append(Paragraph(L["footer"], S["muted"]))
 
     pdf.build(story)
     return buf.getvalue()

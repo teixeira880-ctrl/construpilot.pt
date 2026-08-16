@@ -351,7 +351,8 @@ async def get_ai_model() -> dict:
     return {
         "current": current,
         "options": [
-            {"tier": k, "label": v["label"], "desc": v["desc"], "model": v["model"]}
+            {"tier": k, "label": v["label"], "desc": v["desc"], "model": v["model"],
+             "quality": v.get("quality"), "speed": v.get("speed"), "cost": v.get("cost")}
             for k, v in ai.AI_TEXT_MODELS.items()
         ],
     }
@@ -365,3 +366,51 @@ async def set_ai_model(body: AiModelIn) -> dict:
         raise HTTPException(400, f"tier inconnu: {body.tier}")
     tier = await ai.set_text_tier(body.tier)
     return {"current": tier}
+
+
+# Libellés lisibles des fonctionnalités IA
+_AI_FEATURE_LABELS = {
+    "smart_project": "Estimation Smart Project",
+    "photo_analyse": "Analyse photo",
+    "quote_scan": "Scanner de devis",
+    "quote_compare": "Comparaison de devis",
+    "project_advice": "Conseils projet",
+    "coach": "Coach IA",
+    "misc": "Autre",
+}
+
+
+@router.get("/ai-usage")
+async def ai_usage() -> dict:
+    """Compteur d'appels IA par fonctionnalité et par modèle."""
+    from collections import defaultdict
+    rows = await db.ai_usage.find({}, {"_id": 0}).to_list(1000)
+    by_feature = defaultdict(int)
+    by_model = defaultdict(int)
+    total = 0
+    detail = []
+    for r in rows:
+        calls = r.get("calls", 0)
+        feat = r.get("feature", "misc")
+        model = r.get("model", "?")
+        by_feature[feat] += calls
+        by_model[model] += calls
+        total += calls
+        detail.append({
+            "feature": feat,
+            "feature_label": _AI_FEATURE_LABELS.get(feat, feat),
+            "provider": r.get("provider"),
+            "model": model,
+            "calls": calls,
+            "last_used": r.get("last_used"),
+        })
+    detail.sort(key=lambda x: x["calls"], reverse=True)
+    return {
+        "total_calls": total,
+        "by_feature": [{"feature": k, "feature_label": _AI_FEATURE_LABELS.get(k, k),
+                        "calls": v} for k, v in sorted(by_feature.items(),
+                                                       key=lambda i: -i[1])],
+        "by_model": [{"model": k, "calls": v} for k, v in sorted(by_model.items(),
+                                                                 key=lambda i: -i[1])],
+        "detail": detail,
+    }

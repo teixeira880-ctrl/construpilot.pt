@@ -264,7 +264,7 @@ async def document_pdf(doc_id: str, user=Depends(current_user)):
         doc["issue_date"] = doc.get("issue_date") or _now()
     branding = await _resolve_branding(user["user_id"])
     reviews = await get_reviews_for_user(user["user_id"]) if doc["doc_type"] == "quote" else None
-    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews)
+    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews, lang=user.get("lang"))
     fname = f"{doc.get('number') or doc['doc_id']}.pdf"
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
@@ -286,7 +286,7 @@ async def document_facturx(doc_id: str, user=Depends(current_user)):
             {"$set": {"number": doc["number"], "issue_date": doc.get("issue_date") or _now()}})
         doc["issue_date"] = doc.get("issue_date") or _now()
     branding = await _resolve_branding(user["user_id"])
-    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=None)
+    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=None, lang=user.get("lang"))
     fx = to_facturx(pdf_bytes, doc, branding)
     fname = f"{doc.get('number') or doc['doc_id']}-facturx.pdf"
     return Response(content=fx, media_type="application/pdf",
@@ -514,19 +514,21 @@ async def run_invoice_reminders() -> int:
             continue
         try:
             branding = await _resolve_branding(inv["user_id"])
-            pdf = build_document_pdf(inv, branding=branding)
+            pro = await db.users.find_one({"user_id": inv["user_id"]}, {"_id": 0, "lang": 1})
+            lang = (pro or {}).get("lang")
+            pdf = build_document_pdf(inv, branding=branding, lang=lang)
             remaining = inv.get("remaining_due", inv.get("totals", {}).get("ttc", 0)) or 0
             name = client.get("first_name") or client.get("company") or ""
+            from engines.email_i18n import T
+            number = inv.get("number")
             inner = (
-                f"<p>Bonjour {name},</p>"
-                f"<p>Sauf erreur de notre part, la facture <b>{inv.get('number')}</b>, "
-                f"d'un montant restant dû de <b>{remaining:.2f} €</b>, n'a pas encore été réglée.</p>"
-                f"<p>Vous en trouverez une copie en pièce jointe. Merci de procéder au "
-                f"règlement dès que possible.</p>")
-            html = wrap_html(f"Facture {inv.get('number')} en attente", inner)
+                f"<p>{T(lang, 'invrem.greeting', name=name)}</p>"
+                f"<p>{T(lang, 'invrem.body1', number=number, amount=f'{remaining:.2f} €')}</p>"
+                f"<p>{T(lang, 'invrem.body2')}</p>")
+            html = wrap_html(T(lang, "invrem.title", number=number), inner)
             await send_email_with_pdf(
-                email, f"Rappel — facture {inv.get('number')} en attente de règlement",
-                html, pdf, filename=f"{inv.get('number')}.pdf")
+                email, T(lang, "invrem.subject", number=number),
+                html, pdf, filename=f"{number}.pdf")
             await db.pro_documents.update_one(
                 {"doc_id": inv["doc_id"]},
                 {"$set": {f"reminders.{stage}": now.isoformat()}})

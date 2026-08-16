@@ -20,6 +20,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str
     referred_by_code: str | None = None
+    lang: str | None = None
 
 
 class LoginIn(BaseModel):
@@ -31,7 +32,7 @@ def _public(u: dict) -> dict:
     out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
-                                  "created_at")}
+                                  "lang", "created_at")}
     out["has_password"] = bool(u.get("password_hash"))
     return out
 
@@ -90,11 +91,13 @@ async def register(body: RegisterIn, response: Response) -> dict:
         raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Mot de passe : 6 caractères minimum")
+    from engines.email_i18n import norm_lang
     user = {
         "user_id": new_user_id(), "email": email, "name": body.name,
         "password_hash": hash_password(body.password), "picture": None,
         "role": "user", "plan": "free", "auth_provider": "password",
         "referred_by": (body.referred_by_code or "").upper().strip() or None,
+        "lang": norm_lang(body.lang),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(user)
@@ -174,6 +177,7 @@ class ProfileIn(BaseModel):
     email: EmailStr | None = None
     two_fa_email: str | None = None
     current_password: str | None = None
+    lang: str | None = None
 
 
 @router.put("/profile")
@@ -187,6 +191,9 @@ async def update_profile(body: ProfileIn, user=Depends(current_user)) -> dict:
         updates["name"] = name
     if body.phone is not None:
         updates["phone"] = body.phone.strip()[:20] or None
+    if body.lang is not None:
+        from engines.email_i18n import norm_lang
+        updates["lang"] = norm_lang(body.lang)
     if body.two_fa_email is not None:
         val = body.two_fa_email.strip().lower()
         if val and ("@" not in val or "." not in val.split("@")[-1]):
@@ -211,6 +218,19 @@ async def update_profile(body: ProfileIn, user=Depends(current_user)) -> dict:
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
     fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return {"user": _public(fresh)}
+
+
+class LanguageIn(BaseModel):
+    lang: str
+
+
+@router.put("/language")
+async def set_language(body: LanguageIn, user=Depends(current_user)) -> dict:
+    """Enregistre la langue préférée de l'utilisateur (sync auto depuis l'UI)."""
+    from engines.email_i18n import norm_lang
+    lang = norm_lang(body.lang)
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"lang": lang}})
+    return {"lang": lang}
 
 
 class PhotoIn(BaseModel):
@@ -265,12 +285,14 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
     """Envoie un lien de réinitialisation (réponse identique que le compte existe
     ou non — anti-énumération). Max 3 demandes/heure par email."""
     import os
+    from engines.email_i18n import T
     email = body.email.lower()
     user = await db.users.find_one({"email": email},
-                                   {"_id": 0, "user_id": 1, "password_hash": 1, "name": 1})
+                                   {"_id": 0, "user_id": 1, "password_hash": 1, "name": 1, "lang": 1})
     if not user:
         return {"ok": True}
     has_password = bool(user.get("password_hash"))
+    lang = user.get("lang")
     hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
     recent = await db.password_reset_tokens.count_documents(
         {"email": email, "created_at": {"$gt": hour_ago}})
@@ -285,21 +307,17 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
     })
     origin = request.headers.get("origin") or os.environ.get("FRONTEND_URL", "")
     link = f"{origin}/reinitialiser?token={token}"
-    intro = ("Vous avez demandé la réinitialisation de votre mot de passe ConstruPilot."
-             if has_password else
-             "Vous pouvez définir un mot de passe pour votre compte ConstruPilot "
-             "(vous pourrez ainsi vous connecter par email en plus de Google).")
-    cta = "Choisir un nouveau mot de passe" if has_password else "Définir mon mot de passe"
+    intro = T(lang, "reset.intro_has") if has_password else T(lang, "reset.intro_set")
+    cta = T(lang, "reset.cta_has") if has_password else T(lang, "reset.cta_set")
     html = (
-        f"<p>Bonjour {user.get('name') or ''},</p>"
+        f"<p>{T(lang, 'reset.greeting', name=user.get('name') or '')}</p>"
         f"<p>{intro}</p>"
         f"<p><a href='{link}' style='background:#16a34a;color:#fff;padding:10px 18px;"
         f"border-radius:4px;text-decoration:none'>{cta}</a></p>"
-        f"<p style='font-size:12px;color:#666'>Ce lien est valable 1 heure et ne peut être "
-        f"utilisé qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>"
+        f"<p style='font-size:12px;color:#666'>{T(lang, 'reset.note')}</p>"
     )
-    subject = ("Réinitialisation de votre mot de passe ConstruPilot" if has_password
-               else "Définissez votre mot de passe ConstruPilot")
+    subject = (T(lang, "reset.subject_has") if has_password
+               else T(lang, "reset.subject_set"))
 
     async def _send():
         from engines.emailer import send_email
@@ -384,19 +402,19 @@ def _mask_email(email: str) -> str:
 
 
 async def _send_2fa_email(user: dict, code: str) -> None:
+    from engines.email_i18n import T
+    lang = user.get("lang")
     html = (
-        f"<p>Bonjour {user.get('name') or ''},</p>"
-        f"<p>Votre code de connexion ConstruPilot :</p>"
+        f"<p>{T(lang, 'twofa.greeting', name=user.get('name') or '')}</p>"
+        f"<p>{T(lang, 'twofa.line')}</p>"
         f"<p style='font-size:32px;font-weight:bold;letter-spacing:8px'>{code}</p>"
-        f"<p style='font-size:12px;color:#666'>Valable 10 minutes. Si vous n'êtes pas à "
-        f"l'origine de cette connexion, changez votre mot de passe immédiatement.</p>")
+        f"<p style='font-size:12px;color:#666'>{T(lang, 'twofa.note')}</p>")
 
     async def _send():
         from engines.emailer import send_email
         try:
             recipient = user.get("two_fa_email") or user["email"]
-            await send_email(recipient,
-                             f"{code} — votre code de connexion ConstruPilot", html)
+            await send_email(recipient, T(lang, "twofa.subject", code=code), html)
         except Exception:
             pass
     asyncio.create_task(_send())

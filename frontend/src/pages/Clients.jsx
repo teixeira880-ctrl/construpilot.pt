@@ -14,6 +14,7 @@ import {
 import { SectionTitle } from "@/components/Bits";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/context/I18nContext";
 import { useNavigate } from "react-router-dom";
 
 const EMPTY = {
@@ -23,6 +24,7 @@ const EMPTY = {
 
 export default function Clients() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const nav = useNavigate();
   const [clients, setClients] = useState([]);
   const [q, setQ] = useState("");
@@ -37,7 +39,7 @@ export default function Clients() {
     try {
       const { data } = await api.get(`/clients?q=${encodeURIComponent(search)}`);
       setClients(data.clients || []);
-    } catch { toast.error("Impossible de charger les clients"); }
+    } catch { toast.error(t("crm.load_fail")); }
     finally { setLoading(false); }
   };
   useEffect(() => { if (user) load(); }, [user]);
@@ -53,7 +55,7 @@ export default function Clients() {
 
   const save = async () => {
     if (!(form.first_name || form.last_name || form.company || form.email)) {
-      return toast.error("Renseignez au moins un nom, une société ou un email");
+      return toast.error(t("crm.need_identity"));
     }
     setSaving(true);
     try {
@@ -64,51 +66,50 @@ export default function Clients() {
       };
       if (editing) await api.put(`/clients/${editing}`, payload);
       else await api.post("/clients", payload);
-      toast.success(editing ? "Client mis à jour" : "Client créé");
+      toast.success(editing ? t("crm.updated") : t("crm.created"));
       setOpen(false);
       load(q);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || t("crm.save_fail")); }
     finally { setSaving(false); }
   };
 
   const remove = async (c) => {
-    if (!window.confirm(`Supprimer la fiche de ${name(c)} ?`)) return;
-    try { await api.delete(`/clients/${c.client_id}`); toast.success("Client supprimé"); load(q); }
-    catch { toast.error("Suppression impossible"); }
+    if (!window.confirm(t("crm.confirm_delete").replace("{name}", name(c)))) return;
+    try { await api.delete(`/clients/${c.client_id}`); toast.success(t("crm.deleted")); load(q); }
+    catch { toast.error(t("crm.delete_fail")); }
   };
 
   const name = (c) =>
     [c.first_name, c.last_name].filter(Boolean).join(" ") || c.company || c.email || "Client";
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
+  if (!user) return <div className="surface p-10 text-center">{t("crm.login")}</div>;
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle over="Espace Pro" title="Vos clients">
-          Créez et gérez vos fiches clients — réutilisables dans vos devis et factures.
-          L'IA peut aussi créer une fiche automatiquement depuis le cartouche d'un plan analysé.
+        <SectionTitle over={t("crm.over")} title={t("crm.clients_title")}>
+          {t("crm.clients_sub")}
         </SectionTitle>
         <Button onClick={openNew} className="rounded-sm gap-2" data-testid="client-new-btn">
-          <Plus className="h-4 w-4" /> Nouveau client
+          <Plus className="h-4 w-4" /> {t("crm.new_client")}
         </Button>
       </div>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)}
-               placeholder="Rechercher (nom, société, email, ville…)"
+               placeholder={t("crm.search_ph")}
                className="pl-9 rounded-sm" data-testid="client-search-input" />
       </div>
 
       {loading ? (
-        <div className="surface p-10 text-center animate-pulse">Chargement…</div>
+        <div className="surface p-10 text-center animate-pulse">{t("crm.loading")}</div>
       ) : clients.length === 0 ? (
         <div className="surface p-10 text-center space-y-3" data-testid="clients-empty">
           <User className="h-10 w-10 mx-auto text-muted-foreground" />
-          <p className="font-display font-bold">Aucun client pour l'instant</p>
+          <p className="font-display font-bold">{t("crm.clients_empty_title")}</p>
           <p className="text-sm text-muted-foreground">
-            Cliquez sur « Nouveau client » pour créer votre première fiche.
+            {t("crm.clients_empty_sub")}
           </p>
         </div>
       ) : (
@@ -161,7 +162,7 @@ export default function Clients() {
                 <Button size="sm" className="rounded-sm flex-1"
                         onClick={() => nav(`/devis-editeur?client=${c.client_id}`)}
                         data-testid={`client-quote-${c.client_id}`}>
-                  Devis
+                  {t("crm.quote_btn")}
                 </Button>
                 <Button size="sm" variant="outline" className="rounded-sm"
                         onClick={() => openEdit(c)} data-testid={`client-edit-${c.client_id}`}>
@@ -180,47 +181,47 @@ export default function Clients() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg" data-testid="client-dialog">
           <DialogHeader>
-            <DialogTitle>{editing ? "Modifier le client" : "Nouveau client"}</DialogTitle>
+            <DialogTitle>{editing ? t("crm.edit_client") : t("crm.new_client")}</DialogTitle>
           </DialogHeader>
           <div className="grid sm:grid-cols-2 gap-3">
-            <div><Label>Prénom</Label>
+            <div><Label>{t("crm.firstname")}</Label>
               <Input value={form.first_name} onChange={set("first_name")}
                      className="rounded-sm mt-1" data-testid="client-firstname" /></div>
-            <div><Label>Nom</Label>
+            <div><Label>{t("crm.lastname")}</Label>
               <Input value={form.last_name} onChange={set("last_name")}
                      className="rounded-sm mt-1" data-testid="client-lastname" /></div>
-            <div className="sm:col-span-2"><Label>Société (optionnel)</Label>
+            <div className="sm:col-span-2"><Label>{t("crm.company_opt")}</Label>
               <Input value={form.company} onChange={set("company")}
                      className="rounded-sm mt-1" data-testid="client-company" /></div>
-            <div><Label>Email</Label>
+            <div><Label>{t("crm.email")}</Label>
               <Input value={form.email} onChange={set("email")} type="email"
                      className="rounded-sm mt-1" data-testid="client-email" /></div>
-            <div><Label>Téléphone</Label>
+            <div><Label>{t("crm.phone")}</Label>
               <Input value={form.phone} onChange={set("phone")}
                      className="rounded-sm mt-1" data-testid="client-phone" /></div>
-            <div className="sm:col-span-2"><Label>Adresse</Label>
+            <div className="sm:col-span-2"><Label>{t("crm.address")}</Label>
               <Input value={form.address} onChange={set("address")}
                      className="rounded-sm mt-1" data-testid="client-address" /></div>
-            <div><Label>Code postal</Label>
+            <div><Label>{t("crm.postal")}</Label>
               <Input value={form.postal_code} onChange={set("postal_code")}
                      className="rounded-sm mt-1" data-testid="client-postal" /></div>
-            <div><Label>Ville</Label>
+            <div><Label>{t("crm.city")}</Label>
               <Input value={form.city} onChange={set("city")}
                      className="rounded-sm mt-1" data-testid="client-city" /></div>
-            <div className="sm:col-span-2"><Label>SIRET (optionnel)</Label>
+            <div className="sm:col-span-2"><Label>{t("crm.siret_opt")}</Label>
               <Input value={form.siret} onChange={set("siret")}
                      className="rounded-sm mt-1" data-testid="client-siret" /></div>
-            <div className="sm:col-span-2"><Label>Notes</Label>
+            <div className="sm:col-span-2"><Label>{t("crm.notes")}</Label>
               <Textarea value={form.notes} onChange={set("notes")} rows={2}
                         className="rounded-sm mt-1 resize-none" data-testid="client-notes" /></div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} className="rounded-sm">
-              Annuler
+              {t("crm.cancel")}
             </Button>
             <Button onClick={save} disabled={saving} className="rounded-sm gap-2"
                     data-testid="client-save-btn">
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />} Enregistrer
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />} {t("crm.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

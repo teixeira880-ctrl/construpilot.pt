@@ -544,3 +544,25 @@
 - **Frontend** : nouvel onglet Admin « IA » (`admin-tab-ai`) + composant `AiModelTab.jsx` (3 cartes cliquables `admin-ai-option-{tier}`, palier actif surligné, maj immédiate via toast).
 - **Tests** : backend curl GET/PUT (persistance haiku→sonnet OK) · frontend screenshot (onglet + 3 options + « Actif » sur Sonnet).
 - Note : facturation électronique (SuperPDP/Factur-X) mise en pause à la demande de l'utilisateur.
+
+## Iter 84 (16/06/2026) — Emails multilingues + Suivi coûts IA + CRM multilingue (7 langues)
+Langues supportées : fr, en, es, pt, it, de, ar (fallback FR).
+
+### 1. Emails multilingues
+- Nouveau champ `user.lang` : rempli au register (`RegisterIn.lang`), modifiable via `PUT /api/auth/language` (sync auto depuis l'UI dans `I18nContext.setLang`) et via le profil. `_public` renvoie `lang`. `norm_lang()` normalise (fallback fr).
+- Module `engines/email_i18n.py` : table `EMAILS[lang][key]` + helper `T(lang,key,**kw)`. Traduit : reset mot de passe, code 2FA, relances facture J+7/J+15.
+- Câblé dans `routes/auth.py` (forgot_password, _send_2fa_email) et `routes/documents.py` (relances facture → langue du pro émetteur).
+
+### 2. Suivi des coûts IA (compteur d'appels, sans €)
+- `engines/ai.py` : `_log_usage(feature, provider, model)` incrémente `db.ai_usage` ($inc calls) à chaque appel `_complete`/`stream_chat`. Fonctionnalités taguées : smart_project, photo_analyse, quote_scan, quote_compare, project_advice, coach.
+- `AI_TEXT_MODELS` enrichi avec `quality/speed/cost` (1-3) pour le comparateur.
+- Endpoint `GET /api/admin/ai-usage` (total + by_feature + by_model + detail). `GET /api/admin/ai-model` renvoie désormais quality/speed/cost.
+- Frontend `AiModelTab.jsx` : barres vitesse/coût/qualité par palier + tableau de consommation (par fonctionnalité / par modèle).
+
+### 3. CRM multilingue
+- `frontend/src/lib/crmI18n.js` : `CRM_TRANSLATIONS` (7 langues, ~90 clés `crm.*`) fusionné dans `I18nContext`.
+- Pages câblées avec `t()` : `Clients.jsx`, `ClientDetail.jsx`, `Invoices.jsx`, `QuoteEditor.jsx`.
+- Libellés PDF : `engines/pdf_i18n.py` (`pdf_labels(lang)`), `build_document_pdf(doc, lang=...)` localise devis/facture/avoir ; `documents.py` passe `user.lang`.
+
+### Tests — iteration_83.json : backend 100% (9/9), frontend 100%. Aucun bug critique.
+Points optionnels non traités : warning hydration devtools sur un <select> QuoteEditor (non bloquant) ; chrome Admin reste en FR (hors scope).

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { CRM_TRANSLATIONS } from "@/lib/crmI18n";
 
 const I18nContext = createContext(null);
 
@@ -1391,6 +1392,10 @@ for (const l of Object.keys(ONB_TRANSLATIONS)) {
   TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...ONB_TRANSLATIONS[l] };
 }
 
+for (const l of Object.keys(CRM_TRANSLATIONS)) {
+  TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...CRM_TRANSLATIONS[l] };
+}
+
 const STORAGE_KEY = "construpilot_lang";
 const SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"];
 const RTL_LANGS = ["ar"];
@@ -1415,6 +1420,10 @@ export function I18nProvider({ children }) {
     setLangState(l);
     localStorage.setItem(STORAGE_KEY, l);
     applyDir(l);
+    // Sync best-effort vers le backend si l'utilisateur est connecté (emails multilingues).
+    if (localStorage.getItem("construpilot_token")) {
+      import("@/lib/api").then(({ api }) => api.put("/auth/language", { lang: l }).catch(() => {}));
+    }
   };
 
   useEffect(() => { applyDir(lang); }, [lang]);

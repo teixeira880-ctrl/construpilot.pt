@@ -10,26 +10,28 @@ import { SectionTitle } from "@/components/Bits";
 import { api, eur } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/context/I18nContext";
 import { toast } from "sonner";
 
 const STATUS = {
-  draft: { label: "Brouillon", cls: "bg-secondary text-muted-foreground" },
-  sent: { label: "Émise", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-  issued: { label: "Émise", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-  partial: { label: "Partiel", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  paid: { label: "Payée", cls: "bg-primary/15 text-primary" },
-  overdue: { label: "En retard", cls: "bg-red-500/15 text-red-600 dark:text-red-400" },
+  draft: { key: "crm.st_draft", cls: "bg-secondary text-muted-foreground" },
+  sent: { key: "crm.st_sent", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+  issued: { key: "crm.st_sent", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+  partial: { key: "crm.st_partial", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  paid: { key: "crm.st_paid", cls: "bg-primary/15 text-primary" },
+  overdue: { key: "crm.st_overdue", cls: "bg-red-500/15 text-red-600 dark:text-red-400" },
 };
 
-const StatusBadge = ({ s }) => {
+const StatusBadge = ({ s, t }) => {
   const cfg = STATUS[s] || STATUS.draft;
-  return <span className={`px-2.5 py-1 rounded-sm text-[11px] font-semibold uppercase tracking-wide ${cfg.cls}`}>{cfg.label}</span>;
+  return <span className={`px-2.5 py-1 rounded-sm text-[11px] font-semibold uppercase tracking-wide ${cfg.cls}`}>{t(cfg.key)}</span>;
 };
 
 export default function Invoices() {
   const nav = useNavigate();
   const { tier } = useBilling();
   const { user } = useAuth();
+  const { t } = useI18n();
   const isProBusiness = tier === "pro_business" || user?.role === "admin" || !!user?.invoicing_addon;
 
   const activateAddon = async () => {
@@ -38,7 +40,7 @@ export default function Invoices() {
         plan_id: "invoicing_addon_monthly", origin_url: window.location.origin,
       });
       if (data?.url) window.location.href = data.url;
-    } catch { toast.error("Activation impossible pour le moment"); }
+    } catch { toast.error(t("crm.addon_fail")); }
   };
   const [invoices, setInvoices] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -65,7 +67,7 @@ export default function Invoices() {
       const a = document.createElement("a");
       a.href = url; a.download = `${doc.number || "facture"}.pdf`; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Génération PDF impossible"); }
+    } catch { toast.error(t("crm.pdf_fail")); }
   };
 
   const downloadFacturx = async (doc) => {
@@ -75,18 +77,18 @@ export default function Invoices() {
       const a = document.createElement("a");
       a.href = url; a.download = `${doc.number || "facture"}-facturx.pdf`; a.click();
       URL.revokeObjectURL(url);
-      toast.success("Facture électronique Factur-X générée");
-    } catch { toast.error("Génération Factur-X impossible"); }
+      toast.success(t("crm.facturx_ok"));
+    } catch { toast.error(t("crm.facturx_fail")); }
   };
 
   const convertQuote = async (q) => {
     setBusyId(q.doc_id);
     try {
       const { data } = await api.post(`/documents/${q.doc_id}/to-invoice`, { mode: "total", pct: 100 });
-      toast.success("Facture créée depuis le devis " + (q.number || ""));
+      toast.success(t("crm.invoice_created").replace("{n}", q.number || ""));
       setConvOpen(false);
       nav(`/devis-editeur/${data.doc_id}`);
-    } catch { toast.error("Conversion impossible"); }
+    } catch { toast.error(t("crm.conv_fail")); }
     finally { setBusyId(""); }
   };
 
@@ -96,18 +98,16 @@ export default function Invoices() {
         <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-6">
           <Lock className="h-6 w-6 text-primary" />
         </div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">Facturation Pro Business</h1>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">{t("crm.paywall_title")}</h1>
         <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-          La gestion des factures (création, conversion de devis, suivi des paiements et
-          facturation électronique Factur-X) est <strong>incluse dans le plan Pro Business</strong>,
-          ou disponible en option à <strong>5 €/mois</strong> pour les autres abonnements pro.
+          {t("crm.paywall_desc")}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button className="rounded-sm gap-2" data-testid="invoices-activate-addon-btn" onClick={activateAddon}>
-            Activer l'option Facturation — 5 €/mois <ArrowRight className="h-4 w-4" />
+            {t("crm.activate_addon")} <ArrowRight className="h-4 w-4" />
           </Button>
           <Button variant="outline" className="rounded-sm gap-2" data-testid="invoices-upgrade-btn" onClick={() => nav("/tarifs")}>
-            Voir Pro Business (inclus)
+            {t("crm.see_pb")}
           </Button>
         </div>
       </div>
@@ -119,25 +119,25 @@ export default function Invoices() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-10" data-testid="invoices-page">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-        <SectionTitle over="Facturation" title="Mes factures" />
+        <SectionTitle over={t("crm.inv_over")} title={t("crm.inv_title")} />
         <div className="flex flex-wrap gap-2">
           <Dialog open={convOpen} onOpenChange={setConvOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="rounded-sm gap-2" data-testid="invoice-from-quote-btn">
-                <FileSignature className="h-4 w-4" /> Facturer un devis
+                <FileSignature className="h-4 w-4" /> {t("crm.bill_quote")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Créer une facture depuis un devis</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t("crm.conv_dialog_title")}</DialogTitle></DialogHeader>
               <div className="max-h-[60vh] overflow-y-auto space-y-2 mt-2">
-                {quotes.length === 0 && <p className="text-sm text-muted-foreground">Aucun devis disponible.</p>}
+                {quotes.length === 0 && <p className="text-sm text-muted-foreground">{t("crm.no_quotes")}</p>}
                 {quotes.map((q) => (
                   <button key={q.doc_id} disabled={busyId === q.doc_id}
                     onClick={() => convertQuote(q)} data-testid={`convert-quote-${q.doc_id}`}
                     className="w-full flex items-center justify-between gap-3 p-3 rounded-sm border border-border hover:border-primary/40 hover:bg-secondary/40 transition-colors text-left">
                     <div>
-                      <p className="font-semibold text-sm">{q.number || "Devis"} · {q.title || "Sans titre"}</p>
-                      <p className="text-xs text-muted-foreground">{q.client?.name || "Client non défini"}</p>
+                      <p className="font-semibold text-sm">{q.number || t("crm.quote_btn")} · {q.title || t("crm.untitled")}</p>
+                      <p className="text-xs text-muted-foreground">{q.client?.name || t("crm.client_undef")}</p>
                     </div>
                     <span className="num font-bold text-primary">{eur(q.totals?.ttc || 0)}</span>
                   </button>
@@ -147,24 +147,24 @@ export default function Invoices() {
           </Dialog>
           <Button className="rounded-sm gap-2" data-testid="new-invoice-btn"
             onClick={() => nav("/devis-editeur?type=invoice")}>
-            <Plus className="h-4 w-4" /> Nouvelle facture
+            <Plus className="h-4 w-4" /> {t("crm.new_invoice")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-        <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold">{invoices.length}</p><p className="text-xs text-muted-foreground mt-1">Factures</p></div>
-        <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold text-primary">{invoices.filter(i => i.status === "paid").length}</p><p className="text-xs text-muted-foreground mt-1">Payées</p></div>
-        <div className="surface p-4 rounded-sm border-amber-500/30"><p className="num text-2xl font-extrabold text-amber-600 dark:text-amber-400">{eur(totalDue)}</p><p className="text-xs text-muted-foreground mt-1">Reste à encaisser</p></div>
+        <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold">{invoices.length}</p><p className="text-xs text-muted-foreground mt-1">{t("crm.kpi_invoices")}</p></div>
+        <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold text-primary">{invoices.filter(i => i.status === "paid").length}</p><p className="text-xs text-muted-foreground mt-1">{t("crm.kpi_paid")}</p></div>
+        <div className="surface p-4 rounded-sm border-amber-500/30"><p className="num text-2xl font-extrabold text-amber-600 dark:text-amber-400">{eur(totalDue)}</p><p className="text-xs text-muted-foreground mt-1">{t("crm.kpi_due")}</p></div>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Chargement…</p>
+        <p className="text-muted-foreground">{t("crm.loading")}</p>
       ) : invoices.length === 0 ? (
         <div className="surface rounded-sm p-12 text-center">
           <FileText className="h-10 w-10 mx-auto text-muted-foreground/50" />
-          <p className="mt-4 font-semibold">Aucune facture pour le moment</p>
-          <p className="text-sm text-muted-foreground mt-1">Créez une facture ou transformez un devis existant.</p>
+          <p className="mt-4 font-semibold">{t("crm.inv_empty_title")}</p>
+          <p className="text-sm text-muted-foreground mt-1">{t("crm.inv_empty_sub")}</p>
         </div>
       ) : (
         <div className="grid gap-3" data-testid="invoices-list">
@@ -173,18 +173,18 @@ export default function Invoices() {
               transition={{ delay: idx * 0.03 }}
               className="surface rounded-sm p-4 flex flex-wrap items-center gap-4" data-testid={`invoice-row-${inv.doc_id}`}>
               <div className="min-w-0">
-                <p className="font-display font-semibold">{inv.number || "Brouillon"} · {inv.title || "Sans titre"}</p>
+                <p className="font-display font-semibold">{inv.number || t("crm.st_draft")} · {inv.title || t("crm.untitled")}</p>
                 <button onClick={() => inv.client_id && nav(`/clients/${inv.client_id}`)}
                   className="text-xs text-muted-foreground inline-flex items-center gap-1 hover:text-primary transition-colors"
                   data-testid={`invoice-client-${inv.doc_id}`}>
-                  <User className="h-3 w-3" /> {inv.client?.name || "Client non défini"}
+                  <User className="h-3 w-3" /> {inv.client?.name || t("crm.client_undef")}
                 </button>
               </div>
-              <StatusBadge s={inv.status} />
+              <StatusBadge s={inv.status} t={t} />
               <span className="num ml-auto text-lg font-bold text-primary">{eur(inv.totals?.ttc || 0)}</span>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="rounded-sm gap-1.5" data-testid={`invoice-open-${inv.doc_id}`}
-                  onClick={() => nav(`/devis-editeur/${inv.doc_id}`)}>Ouvrir</Button>
+                  onClick={() => nav(`/devis-editeur/${inv.doc_id}`)}>{t("crm.open")}</Button>
                 <Button size="sm" variant="ghost" className="rounded-sm gap-1.5" data-testid={`invoice-pdf-${inv.doc_id}`}
                   onClick={() => downloadPdf(inv)}><Download className="h-4 w-4" /></Button>
                 <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" data-testid={`invoice-facturx-${inv.doc_id}`}

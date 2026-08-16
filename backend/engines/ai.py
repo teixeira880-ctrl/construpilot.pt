@@ -2,6 +2,7 @@
 import os
 import json
 import uuid
+from datetime import datetime, timezone
 
 from emergentintegrations.llm.chat import (LlmChat, UserMessage, ImageContent,
                                           TextDelta, StreamDone)
@@ -22,11 +23,14 @@ CHAT_PROVIDER, CHAT_MODEL = "anthropic", "claude-sonnet-4-6"
 # (estimation Smart Project, coach IA, analyses). La vision reste sur VISION_MODEL.
 AI_TEXT_MODELS = {
     "opus": {"provider": "anthropic", "model": "claude-opus-4-8",
-             "label": "Claude Opus 4.8", "desc": "Qualité maximale · plus lent · plus cher"},
+             "label": "Claude Opus 4.8", "desc": "Qualité maximale · plus lent · plus cher",
+             "quality": 3, "speed": 1, "cost": 3},
     "sonnet": {"provider": "anthropic", "model": "claude-sonnet-4-6",
-               "label": "Claude Sonnet 4.6", "desc": "Équilibré · recommandé"},
+               "label": "Claude Sonnet 4.6", "desc": "Équilibré · recommandé",
+               "quality": 2, "speed": 2, "cost": 2},
     "haiku": {"provider": "anthropic", "model": "claude-haiku-4-5-20251001",
-              "label": "Claude Haiku 4.5", "desc": "Rapide & économique · qualité moindre"},
+              "label": "Claude Haiku 4.5", "desc": "Rapide & économique · qualité moindre",
+              "quality": 1, "speed": 3, "cost": 1},
 }
 DEFAULT_TEXT_TIER = "sonnet"
 _TEXT_TIER: str | None = None  # cache mémoire, chargé depuis db.app_settings au 1er appel
@@ -55,6 +59,18 @@ async def _text_provider_model() -> tuple[str, str]:
     cfg = AI_TEXT_MODELS[tier]
     return cfg["provider"], cfg["model"]
 
+
+async def _log_usage(feature: str, provider: str, model: str) -> None:
+    """Incrémente le compteur d'appels IA par fonctionnalité et par modèle."""
+    try:
+        await db.ai_usage.update_one(
+            {"feature": feature, "provider": provider, "model": model},
+            {"$inc": {"calls": 1},
+             "$set": {"last_used": datetime.now(timezone.utc).isoformat()}},
+            upsert=True)
+    except Exception:
+        pass
+
 BRAND = (
     "Tu es ConstruPilot, l'expert travaux de l'plateforme ConstruPilot. "
     "Tu réponds toujours en français, de façon professionnelle, concrète et chiffrée. "
@@ -73,12 +89,13 @@ def _chat(system: str, session_id: str | None = None,
 
 
 async def _complete(system: str, text: str, images: list[str] | None = None,
-                    session_id: str | None = None) -> str:
+                    session_id: str | None = None, feature: str = "misc") -> str:
     # Claude (texte) par défaut ; bascule vision OpenAI si des images sont fournies.
     if images:
         provider, model = VISION_PROVIDER, VISION_MODEL
     else:
         provider, model = await _text_provider_model()
+    await _log_usage(feature, provider, model)
     chat = _chat(system, session_id, provider, model)
     contents = [ImageContent(image_base64=i) for i in (images or [])]
     out = []
@@ -97,6 +114,7 @@ async def stream_chat(history: list[dict], message: str, session_id: str, contex
     prompt = (f"Historique de la conversation:\n{convo}\n\nNouveau message: {message}"
               if convo else message)
     chat_provider, chat_model = await _text_provider_model()
+    await _log_usage("coach", chat_provider, chat_model)
     chat = _chat(system, session_id, chat_provider, chat_model)
     async for ev in chat.stream_message(UserMessage(text=prompt)):
         if isinstance(ev, TextDelta):
@@ -193,7 +211,7 @@ async def analyse_description(description: str) -> dict:
     system = BRAND + (
         "\nTu analyses une description de projet et retournes UNIQUEMENT du JSON valide, sans texte autour."
     )
-    raw = await _complete(system, _analysis_prompt(description))
+    raw = await _complete(system, _analysis_prompt(description), feature="smart_project")
     return _normalize_analysis(_json(raw, {}), description)
 
 
@@ -212,7 +230,7 @@ Retourne ce JSON :
  "notes": "commentaire professionnel"
 }}
 Précision utilisateur : {note or 'aucune'}"""
-    raw = await _complete(system, prompt, images=[image_b64])
+    raw = await _complete(system, prompt, images=[image_b64], feature="photo_analyse")
     data = _json(raw, {})
     data.setdefault("room_type", "Pièce")
     data.setdefault("estimated_dimensions", {"length_m": 3, "width_m": 3, "height_m": 2.5, "floor_area_m2": 9})
@@ -245,7 +263,8 @@ Retourne ce JSON :
  "negotiation_tips": ["conseils de négociation"]
 }}
 Texte du devis : {text[:6000] or 'voir image'}"""
-    raw = await _complete(system, prompt, images=[image_b64] if image_b64 else None)
+    raw = await _complete(system, prompt, images=[image_b64] if image_b64 else None,
+                          feature="quote_scan")
     data = _json(raw, {})
     data.setdefault("verdict", "correct")
     data.setdefault("lines", [])
@@ -267,7 +286,7 @@ async def compare_quotes(quotes: list[dict]) -> dict:
  "recommendation": "recommandation finale ConstruPilot"
 }}
 Devis : {json.dumps(quotes, ensure_ascii=False)[:8000]}"""
-    raw = await _complete(system, prompt)
+    raw = await _complete(system, prompt, feature="quote_compare")
     data = _json(raw, {})
     data.setdefault("ranking", [])
     data.setdefault("differences", [])
@@ -287,4 +306,4 @@ async def project_advice(estimation: dict) -> str:
               "(6 à 10 puces courtes : ordre des travaux, points de vigilance, économies possibles, "
               "ce qui est faisable soi-même). Pas de markdown de titre, uniquement des puces '- '.\n"
               + json.dumps(slim, ensure_ascii=False))
-    return await _complete(system, prompt)
+    return await _complete(system, prompt, feature="project_advice")

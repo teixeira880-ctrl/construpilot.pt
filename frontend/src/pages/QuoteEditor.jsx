@@ -15,11 +15,12 @@ import {
 import { SectionTitle } from "@/components/Bits";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/context/I18nContext";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
 const VAT_RATES = [10, 20, 5.5];
 const STATUSES = [
-  ["draft", "Brouillon"], ["sent", "Envoyé"], ["signed", "Signé"], ["refused", "Refusé"],
+  ["draft", "crm.st_e_draft"], ["sent", "crm.st_e_sent"], ["signed", "crm.st_e_signed"], ["refused", "crm.st_e_refused"],
 ];
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const blankLine = () => ({
@@ -31,6 +32,7 @@ export default function QuoteEditor() {
   const [sp] = useSearchParams();
   const nav = useNavigate();
   const { user } = useAuth();
+  const { t } = useI18n();
 
   const [docId, setDocId] = useState(paramDocId || null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +85,7 @@ export default function QuoteEditor() {
           nav(`/devis-editeur/${data.doc_id}`, { replace: true });
         }
       } catch (e) {
-        toast.error(e?.response?.data?.detail || "Chargement impossible");
+        toast.error(e?.response?.data?.detail || t("crm.load_fail"));
       } finally { setLoading(false); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +114,7 @@ export default function QuoteEditor() {
       unit_price_ht: it.unit_price_ht, vat_rate: it.vat_rate, category: it.category, _saveToLib: false,
     }]);
     setPickerOpen(false);
-    toast.success("Ligne ajoutée depuis la bibliothèque");
+    toast.success(t("crm.line_added"));
   };
 
   const payload = () => ({
@@ -137,11 +139,11 @@ export default function QuoteEditor() {
         });
       } catch { /* ignore */ }
     }
-    if (toSave.length) toast.success(`${toSave.length} ouvrage(s) ajouté(s) à votre bibliothèque`);
+    if (toSave.length) toast.success(t("crm.lib_added").replace("{n}", toSave.length));
   };
 
   const save = async () => {
-    if (!lines.some((l) => l.designation.trim())) return toast.error("Ajoutez au moins une ligne");
+    if (!lines.some((l) => l.designation.trim())) return toast.error(t("crm.need_line"));
     setSaving(true);
     try {
       let d;
@@ -150,9 +152,9 @@ export default function QuoteEditor() {
       applyDoc(d);
       if (!paramDocId && d.doc_id) nav(`/devis-editeur/${d.doc_id}`, { replace: true });
       await autoSaveLibrary();
-      toast.success("Devis enregistré");
+      toast.success(t("crm.saved"));
       return d;
-    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || t("crm.save_fail")); }
     finally { setSaving(false); }
   };
 
@@ -165,12 +167,12 @@ export default function QuoteEditor() {
       const a = document.createElement("a");
       a.href = url; a.download = `devis.pdf`; a.click();
       URL.revokeObjectURL(url);
-      toast.success("PDF téléchargé");
-    } catch { toast.error("Génération PDF impossible"); }
+      toast.success(t("crm.pdf_ok"));
+    } catch { toast.error(t("crm.pdf_fail")); }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
-  if (loading) return <div className="surface p-10 text-center animate-pulse">Chargement…</div>;
+  if (!user) return <div className="surface p-10 text-center">{t("crm.login")}</div>;
+  if (loading) return <div className="surface p-10 text-center animate-pulse">{t("crm.loading")}</div>;
 
   const filteredLib = library.filter((i) =>
     !pickerQ.trim() || (i.designation + " " + i.category).toLowerCase().includes(pickerQ.toLowerCase()));
@@ -180,23 +182,22 @@ export default function QuoteEditor() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <button onClick={() => nav("/devis")} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-2" data-testid="editor-back">
-            <ArrowLeft className="h-3 w-3" /> Suivi devis
+            <ArrowLeft className="h-3 w-3" /> {t("crm.ed_back")}
           </button>
           <SectionTitle
             over={number
-              ? `${{ quote: "Devis", invoice: "Facture", credit_note: "Avoir" }[docType]} ${number}`
-              : `Nouveau ${{ quote: "devis", invoice: "facture", credit_note: "avoir" }[docType]}`}
-            title={`Éditeur de ${{ quote: "devis", invoice: "facture", credit_note: "avoir" }[docType]}`}>
-            Créez, importez depuis un plan analysé, piochez dans votre bibliothèque —
-            modifiable à tout moment, même après envoi.
+              ? `${{ quote: t("crm.doc_quote"), invoice: t("crm.doc_invoice"), credit_note: t("crm.doc_credit") }[docType]} ${number}`
+              : `${t("crm.ed_new")} ${{ quote: t("crm.doc_quote"), invoice: t("crm.doc_invoice"), credit_note: t("crm.doc_credit") }[docType]}`}
+            title={`${t("crm.ed_editor")} ${{ quote: t("crm.doc_quote"), invoice: t("crm.doc_invoice"), credit_note: t("crm.doc_credit") }[docType]}`}>
+            {t("crm.ed_sub")}
           </SectionTitle>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={downloadPdf} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
-            <Download className="h-4 w-4" /> PDF
+            <Download className="h-4 w-4" /> {t("crm.pdf")}
           </Button>
           <Button onClick={save} disabled={saving} className="rounded-sm gap-2" data-testid="editor-save-btn">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("crm.save")}
           </Button>
         </div>
       </div>
@@ -204,10 +205,10 @@ export default function QuoteEditor() {
       {/* Meta : client, titre, statut */}
       <div className="surface p-4 grid md:grid-cols-3 gap-3">
         <div>
-          <Label className="flex items-center gap-1"><User className="h-3 w-3" /> Client</Label>
+          <Label className="flex items-center gap-1"><User className="h-3 w-3" /> {t("crm.client_lbl")}</Label>
           <select value={clientId} onChange={(e) => setClientId(e.target.value)} data-testid="editor-client-select"
                   className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-            <option value="">— Aucun client —</option>
+            <option value="">{t("crm.no_client")}</option>
             {clients.map((c) => (
               <option key={c.client_id} value={c.client_id}>
                 {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.company || c.email}
@@ -216,15 +217,15 @@ export default function QuoteEditor() {
           </select>
         </div>
         <div>
-          <Label>Titre / objet</Label>
+          <Label>{t("crm.title_lbl")}</Label>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-sm mt-1"
-                 placeholder="Ex : Rénovation appartement" data-testid="editor-title" />
+                 placeholder={t("crm.title_ph")} data-testid="editor-title" />
         </div>
         <div>
-          <Label>Statut</Label>
+          <Label>{t("crm.status_lbl")}</Label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} data-testid="editor-status"
                   className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-            {STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            {STATUSES.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
           </select>
         </div>
       </div>
@@ -232,31 +233,31 @@ export default function QuoteEditor() {
       {/* Lignes */}
       <div className="surface p-4 grid gap-3">
         <div className="flex items-center justify-between">
-          <p className="font-display font-bold text-sm">Lignes du devis</p>
+          <p className="font-display font-bold text-sm">{t("crm.lines_title")}</p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={() => setPickerOpen(true)} data-testid="editor-add-from-lib">
-              <BookOpen className="h-3.5 w-3.5" /> Depuis la bibliothèque
+              <BookOpen className="h-3.5 w-3.5" /> {t("crm.from_lib")}
             </Button>
             <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={addLine} data-testid="editor-add-line">
-              <Plus className="h-3.5 w-3.5" /> Ligne
+              <Plus className="h-3.5 w-3.5" /> {t("crm.add_line")}
             </Button>
           </div>
         </div>
 
         <div className="hidden md:grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">
-          <span className="col-span-5">Désignation</span>
-          <span className="col-span-1 text-center">Qté</span>
-          <span className="col-span-1 text-center">Unité</span>
-          <span className="col-span-2 text-right">PU HT</span>
-          <span className="col-span-1 text-center">TVA</span>
-          <span className="col-span-1 text-right">Total</span>
+          <span className="col-span-5">{t("crm.col_designation")}</span>
+          <span className="col-span-1 text-center">{t("crm.col_qty")}</span>
+          <span className="col-span-1 text-center">{t("crm.col_unit")}</span>
+          <span className="col-span-2 text-right">{t("crm.col_price")}</span>
+          <span className="col-span-1 text-center">{t("crm.col_vat")}</span>
+          <span className="col-span-1 text-right">{t("crm.col_total")}</span>
           <span className="col-span-1" />
         </div>
 
         {lines.map((l, i) => (
           <div key={i} className="grid grid-cols-2 md:grid-cols-12 gap-2 items-center" data-testid={`editor-line-${i}`}>
             <Input value={l.designation} onChange={(e) => setLine(i, "designation", e.target.value)}
-                   placeholder="Désignation" className="rounded-sm col-span-2 md:col-span-5 h-9"
+                   placeholder={t("crm.col_designation")} className="rounded-sm col-span-2 md:col-span-5 h-9"
                    data-testid={`editor-line-designation-${i}`} />
             <Input type="number" step="0.01" value={l.qty} onChange={(e) => setLine(i, "qty", e.target.value)}
                    className="rounded-sm num h-9 md:col-span-1 text-right" data-testid={`editor-line-qty-${i}`} />
@@ -282,37 +283,37 @@ export default function QuoteEditor() {
           </div>
         ))}
         {lines.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">Aucune ligne — ajoutez-en une.</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t("crm.no_lines")}</p>
         )}
       </div>
 
       {/* Récap + acompte + notes */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="surface p-4 grid gap-3">
-          <Label>Notes / conditions</Label>
+          <Label>{t("crm.notes_cond")}</Label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4}
-                    className="rounded-sm resize-none" placeholder="Validité 30 jours, acompte à la commande…"
+                    className="rounded-sm resize-none" placeholder={t("crm.notes_ph")}
                     data-testid="editor-notes" />
           <div>
-            <Label>Acompte (%)</Label>
+            <Label>{t("crm.deposit_pct")}</Label>
             <Input type="number" step="1" min="0" max="100" value={depositPct}
                    onChange={(e) => setDepositPct(e.target.value)} className="rounded-sm num mt-1 max-w-[120px]"
                    data-testid="editor-deposit" />
           </div>
         </div>
         <div className="surface p-5 grid gap-2 content-start" data-testid="editor-totals">
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total HT</span><span className="num font-bold">{eur(totals.ht)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t("crm.total_ht")}</span><span className="num font-bold">{eur(totals.ht)}</span></div>
           {Object.entries(totals.tva).sort((a, b) => a[0] - b[0]).map(([r, v]) => (
-            <div key={r} className="flex justify-between text-xs"><span className="text-muted-foreground">TVA {r}%</span><span className="num">{eur(v)}</span></div>
+            <div key={r} className="flex justify-between text-xs"><span className="text-muted-foreground">{t("crm.col_vat")} {r}%</span><span className="num">{eur(v)}</span></div>
           ))}
           <div className="flex justify-between text-lg border-t border-border pt-2 mt-1">
-            <span className="font-display font-bold">Total TTC</span>
+            <span className="font-display font-bold">{t("crm.total_ttc")}</span>
             <span className="num font-extrabold text-primary" data-testid="editor-ttc">{eur(totals.ttc)}</span>
           </div>
           {Number(depositPct) > 0 && (
             <>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Acompte {depositPct}%</span><span className="num">{eur(totals.dep)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Reste à régler</span><span className="num font-bold">{eur(totals.remaining)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t("crm.deposit")} {depositPct}%</span><span className="num">{eur(totals.dep)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t("crm.remaining")}</span><span className="num font-bold">{eur(totals.remaining)}</span></div>
             </>
           )}
         </div>
@@ -321,11 +322,11 @@ export default function QuoteEditor() {
       {/* Library picker */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-w-xl" data-testid="editor-library-picker">
-          <DialogHeader><DialogTitle>Ajouter depuis la bibliothèque</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("crm.add_from_lib_title")}</DialogTitle></DialogHeader>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={pickerQ} onChange={(e) => setPickerQ(e.target.value)} autoFocus
-                   placeholder="Rechercher un ouvrage / matériau…" className="pl-9 rounded-sm"
+                   placeholder={t("crm.picker_ph")} className="pl-9 rounded-sm"
                    data-testid="editor-picker-search" />
           </div>
           <div className="max-h-[50vh] overflow-y-auto divide-y divide-border mt-2">
@@ -340,7 +341,7 @@ export default function QuoteEditor() {
                 <Badge variant="outline" className="rounded-sm num shrink-0">{eur(it.unit_price_ht)}</Badge>
               </button>
             ))}
-            {filteredLib.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Aucun résultat.</p>}
+            {filteredLib.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">{t("crm.no_result")}</p>}
           </div>
         </DialogContent>
       </Dialog>

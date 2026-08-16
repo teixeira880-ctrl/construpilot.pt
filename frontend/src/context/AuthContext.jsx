@@ -54,6 +54,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password, referredByCode = null) => {
     const payload = { name, email, password };
     if (referredByCode) payload.referred_by_code = referredByCode.trim().toUpperCase();
+    try { payload.lang = localStorage.getItem("construpilot_lang") || undefined; } catch { /* noop */ }
     const { data } = await api.post("/auth/register", payload);
     if (data.token) localStorage.setItem("construpilot_token", data.token);
     setUser(data.user);

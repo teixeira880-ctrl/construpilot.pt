@@ -1,0 +1,34 @@
+{
+  "summary": "Validated iter-83 features (multilingual emails infra, AI cost counter, CRM multilingual UI) end-to-end. Backend: 9/9 tests pass including language persistence via PUT /api/auth/language (es persists via GET /auth/me; invalid 'zz' normalizes to 'fr'), register-with-lang, GET/PUT /api/admin/ai-model (quality/speed/cost ints returned, haiku persists, invalid tier -> 400), GET /api/admin/ai-usage shape, real AI call via POST /api/estimation/analyse increments total_calls and by_feature['smart_project'] counter, and GET /api/documents/{id}/pdf returns 200 application/pdf. Frontend: Admin 'IA' tab renders 3 model cards (opus/sonnet/haiku) with speed/cost/quality bars, active tier highlighted (sonnet), usage section shows 'Total 2 appels', clicking haiku then sonnet updates it. CRM multilingual UI works on /clients ('Vos clients'/'Your clients'/'Tus clientes'), /devis-editeur ('Éditeur de devis'/'Editor — quote'/'Editor de presupuesto'), /factures ('Mes factures'/'My invoices'/'Mis facturas') with NO raw 'crm.*' or i18n key leaks in any language. Language choice persists across navigation (after set to 'es' on /factures, /admin lang-toggle value still 'es').",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "QuoteEditor <select> VAT_RATES options", "issues": ["Console hydration warning: '<span> cannot be child of <option>'. Caused by devtools/instrumentation wrapping the option text in a span (x-ve-dynamic). Not blocking but produces a hydration error in dev. Consider ensuring option children are plain strings only."]},
+      {"screen": "Admin panel labels (/admin)", "issues": ["Admin dashboard chrome (Administration, tab names, KPI labels) stays in French when lang=en/es. Out-of-scope per iter-83 (only CRM pages targeted) but flagging for consistency."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter83_multilang_ai.py",
+    "/app/test_reports/pytest/iter83_results.xml"
+  ],
+  "action_items": [
+    "Optional: fix QuoteEditor <option> children being wrapped by span (hydration warning).",
+    "Optional: extend i18n coverage to /admin chrome labels for full multilingual UX."
+  ],
+  "critical_code_review_comments": [
+    "AI usage log increments correctly via _log_usage() in engines/ai.py and admin route aggregates properly.",
+    "PUT /api/auth/language uses norm_lang() with FR fallback — good, invalid inputs normalized safely.",
+    "GET /api/admin/ai-model exposes quality/speed/cost integers per option — frontend uses them for bars correctly.",
+    "PDF endpoint responds 200 with application/pdf for existing documents (label localization not visually verifiable but body length >500 bytes).",
+    "test_iter83 file added following pytest conventions with class-scoped fixtures for admin/pro auth."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter83_multilang_ai.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; pro@construpilot.fr / Pro2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created one throwaway test user with lang=de via /api/auth/register for lang-on-register test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter-83 (multilingual + AI usage counter) fully validated. Real AI call takes ~10-20s; use POST /api/estimation/analyse with french description. Admin 'IA' tab is data-testid='admin-tab-ai'; options are 'admin-ai-option-opus/sonnet/haiku'; usage widget is 'admin-ai-usage'. Language selector 'lang-toggle' is a native <select> — use select_option()."
+}
