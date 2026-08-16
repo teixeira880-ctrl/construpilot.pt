@@ -19,6 +19,8 @@ const PRIMARY_LINKS = [
   { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/plan", label: "Mesurer", key: "nav.plan2d", icon: Ruler, auth: true },
+  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, auth: true },
+  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, auth: true },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
@@ -39,8 +41,6 @@ const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 
 // Raccourcis utilisateur connecté — dans le menu « Plus » (plus de chevauchement header)
 const USER_LINKS = [
-  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart },
-  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
   { to: "/rh", label: "RH — Chantier", key: "hr.nav", icon: Users },
@@ -137,13 +137,6 @@ export const Nav = () => {
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
-          {user && (
-            <Link to="/devis" data-testid="nav-link-tracking" className="hidden min-[1700px]:inline-flex">
-              <Button variant="ghost" size="sm" className="rounded-sm gap-2 whitespace-nowrap">
-                <LineChart className="h-4 w-4 text-primary" /> {t("nav.tracking")}
-              </Button>
-            </Link>
-          )}
           {user?.role === "admin" && (
             <Link to="/admin" data-testid="nav-link-admin">
               <Button variant="outline" size="sm" className="rounded-sm gap-2">

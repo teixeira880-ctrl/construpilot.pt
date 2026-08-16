@@ -1,5 +1,11 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 102 — 16/08/2026 (Visibilité Devis/Factures)
+- Déplacé **« Suivi devis » (/devis)** et **« Factures » (/factures)** du menu déroulant « Plus » vers les liens principaux de la barre de navigation (visibles pour tout utilisateur connecté).
+- Retiré ces 2 entrées de `USER_LINKS` et supprimé le bouton fantôme « Suivi devis » redondant (min-[1700px]).
+- Vérifié : les liens s'affichent en barre principale et la page /factures se charge correctement.
+
+
 ## Itération 101 — 16/08/2026 (Publicité v2 + Landing 100% multilingue)
 - **Graphique Publicité** : ajout d'un BarChart recharts bi-axes (Dépense € à gauche, Leads à droite) par plateforme dans `AdsPanel.jsx` (data-testid `ads-chart`).
 - **Édition de campagne** : bouton crayon sur chaque ligne (`ads-edit-<id>`) ouvre le dialogue pré-rempli ; `save()` gère POST (création) et PUT (édition). Vérifié via curl (PUT persiste name/platform/spend/leads).
