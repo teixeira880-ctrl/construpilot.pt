@@ -13,6 +13,7 @@ import {
 import { api, eur, num } from "@/lib/api";
 import { Stat, SectionTitle } from "@/components/Bits";
 import RevenueTab from "@/components/RevenueTab";
+import AiModelTab from "@/components/AiModelTab";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
 import { DevicesList } from "@/components/account/DevicesList";
@@ -99,10 +100,15 @@ export default function Admin() {
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">Affiliation</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">Plans & Revenu</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">Revenue Cockpit</TabsTrigger>
+          <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">IA</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">Demandes</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">Erreurs client</TabsTrigger>
           <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">Mon compte</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="ai" className="mt-6">
+          <AiModelTab />
+        </TabsContent>
 
         <TabsContent value="account" className="mt-6">
           <div className="max-w-lg space-y-6" data-testid="admin-account-section">

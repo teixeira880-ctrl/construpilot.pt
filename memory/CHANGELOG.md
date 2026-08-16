@@ -535,3 +535,12 @@
 ### Tests
 - `/app/backend/tests/test_iter77_reviews_revenue_recap.py` — 8 passed. Agent de test : 0 bug (backend 100%, frontend 100%).
 - Flux avis validé bout-en-bout (request → collect → me → présence dans le PDF devis).
+
+## Iter 83 (16/06/2026) — Sélecteur de Modèle IA (Admin)
+- **Backend** (`engines/ai.py`) : catalogue `AI_TEXT_MODELS` (3 paliers) + cache mémoire `_TEXT_TIER` chargé depuis `db.app_settings` (`_id:"ai"`, champ `text_tier`). Helpers `get_text_tier()` / `set_text_tier()` / `_text_provider_model()`.
+  - opus → `claude-opus-4-8` (qualité max) · sonnet → `claude-sonnet-4-6` (défaut, équilibré) · haiku → `claude-haiku-4-5-20251001` (rapide/éco).
+  - `_complete()` (non-vision) et `stream_chat()` (coach) utilisent désormais le modèle dynamique. La vision reste sur `gpt-5.5`.
+- **Endpoints Admin** (`routes/admin.py`) : `GET /api/admin/ai-model` (current + options) · `PUT /api/admin/ai-model` `{tier}` (persist + maj cache). Modèle Claude via clé LLM Emergent (playbook integration_expert, source verified).
+- **Frontend** : nouvel onglet Admin « IA » (`admin-tab-ai`) + composant `AiModelTab.jsx` (3 cartes cliquables `admin-ai-option-{tier}`, palier actif surligné, maj immédiate via toast).
+- **Tests** : backend curl GET/PUT (persistance haiku→sonnet OK) · frontend screenshot (onglet + 3 options + « Actif » sur Sonnet).
+- Note : facturation électronique (SuperPDP/Factur-X) mise en pause à la demande de l'utilisateur.

@@ -117,6 +117,8 @@ class BrandingIn(BaseModel):
     company_name: str | None = None
     contact_line: str | None = None
     logo_b64: str | None = None
+    siret: str | None = None
+    vat: str | None = None
     certifications: list[dict] | None = None
 
 
@@ -138,6 +140,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
+                                  "brand_siret": 1, "brand_vat": 1,
                                   "brand_logo_b64": 1, "brand_certifications": 1}) or {}
     org_id = u.get("organization_id")
     if org_id:
@@ -160,6 +163,8 @@ async def get_branding(user=Depends(current_user)) -> dict:
     return {"source": "user", "can_edit": True,
             "company_name": u.get("brand_company_name"),
             "contact_line": u.get("brand_contact_line"),
+            "siret": u.get("brand_siret"),
+            "vat": u.get("brand_vat"),
             "has_logo": bool(u.get("brand_logo_b64")),
             "logo_b64": u.get("brand_logo_b64"),
             "certifications": u.get("brand_certifications") or []}
@@ -177,6 +182,10 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         upd["brand_company_name"] = body.company_name.strip()[:120] or None
     if body.contact_line is not None:
         upd["brand_contact_line"] = body.contact_line.strip()[:200] or None
+    if body.siret is not None:
+        upd["brand_siret"] = "".join(ch for ch in body.siret if ch.isdigit())[:14] or None
+    if body.vat is not None:
+        upd["brand_vat"] = body.vat.strip().upper().replace(" ", "")[:20] or None
     if body.certifications is not None:
         certs = []
         for c in (body.certifications or [])[:10]:

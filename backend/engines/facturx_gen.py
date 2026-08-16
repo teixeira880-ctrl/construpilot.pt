@@ -37,8 +37,11 @@ def build_facturx_xml(doc: dict, branding: dict | None) -> bytes:
     number = escape(str(doc.get("number") or doc.get("doc_id") or "FACTURE"))
     issue = _date102(doc.get("issue_date"))
     seller_vat = escape(str(branding.get("vat") or branding.get("tva_intra") or ""))
+    seller_siret = escape(str(branding.get("siret") or ""))
     vat_block = (f'<ram:SpecifiedTaxRegistration><ram:ID schemeID="VA">{seller_vat}'
                  f'</ram:ID></ram:SpecifiedTaxRegistration>') if seller_vat else ""
+    legal_block = (f'<ram:SpecifiedLegalOrganization><ram:ID schemeID="0009">{seller_siret}'
+                   f'</ram:ID></ram:SpecifiedLegalOrganization>') if seller_siret else ""
 
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
@@ -56,6 +59,7 @@ def build_facturx_xml(doc: dict, branding: dict | None) -> bytes:
     <ram:ApplicableHeaderTradeAgreement>
       <ram:SellerTradeParty>
         <ram:Name>{seller}</ram:Name>
+        {legal_block}
         <ram:PostalTradeAddress><ram:CountryID>FR</ram:CountryID></ram:PostalTradeAddress>
         {vat_block}
       </ram:SellerTradeParty>

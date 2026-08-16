@@ -108,6 +108,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
     u = await db.users.find_one({"user_id": user_id},
                                  {"_id": 0, "organization_id": 1, "picture": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
+                                  "brand_siret": 1, "brand_vat": 1,
                                   "brand_logo_b64": 1, "brand_certifications": 1})
     if not u:
         return None
@@ -129,6 +130,8 @@ async def _resolve_branding(user_id: str) -> dict | None:
         return {"company_name": u.get("brand_company_name"),
                 "contact_line": u.get("brand_contact_line"),
                 "logo_b64": u.get("brand_logo_b64"),
+                "siret": u.get("brand_siret"),
+                "vat": u.get("brand_vat"),
                 "certifications": u.get("brand_certifications") or [],
                 "profile_photo_b64": photo}
     if photo:

@@ -166,6 +166,28 @@ export default function Pricing() {
         </TabsContent>
       </Tabs>
 
+      {audience === "pro" && (
+        <div className="surface p-6 md:p-8 rounded-sm border-primary/30 flex flex-col md:flex-row md:items-center gap-6" data-testid="invoicing-addon-banner">
+          <div className="flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Option</p>
+            <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Facturation & facturation électronique (Factur-X)</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
+              Créez des factures, convertissez vos devis en 1 clic, suivez les paiements et générez des
+              factures électroniques conformes Factur-X. <strong>Inclus gratuitement dans Pro Business</strong>,
+              ou en option pour les abonnés Premium et Pro.
+            </p>
+          </div>
+          <div className="text-center md:text-right shrink-0">
+            <p className="num text-3xl font-extrabold text-primary">5 €<span className="text-sm text-muted-foreground font-normal">/mois</span></p>
+            <Button className="rounded-sm mt-3 w-full md:w-auto" data-testid="pricing-invoicing-addon-cta"
+              disabled={busy === "invoicing_addon_monthly"}
+              onClick={() => subscribe({ plan_id: "invoicing_addon_monthly" })}>
+              {busy === "invoicing_addon_monthly" ? t("pricing.redirecting") : "Activer l'option"}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="surface p-8 grid md:grid-cols-3 gap-6">
         <div className="flex gap-3">
           <ShieldCheck className="h-6 w-6 text-primary shrink-0" />

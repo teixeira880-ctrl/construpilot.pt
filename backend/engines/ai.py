@@ -6,6 +6,7 @@ import uuid
 from emergentintegrations.llm.chat import (LlmChat, UserMessage, ImageContent,
                                           TextDelta, StreamDone)
 
+from core.db import db
 from engines.catalog import PROJECT_TYPES, LOTS, FINISH_LEVELS
 
 KEY = os.environ.get('EMERGENT_LLM_KEY', '')
@@ -15,6 +16,44 @@ PROVIDER, MODEL = "anthropic", "claude-sonnet-4-6"
 VISION_PROVIDER, VISION_MODEL = "openai", "gpt-5.5"
 # Coach IA (chat conversationnel) → Claude Sonnet 4.6 via la clé LLM universelle Emergent
 CHAT_PROVIDER, CHAT_MODEL = "anthropic", "claude-sonnet-4-6"
+
+# ---- Sélecteur de modèle IA (configurable par l'admin) ----
+# Chaque palier expose un compromis qualité / vitesse / coût pour la génération de TEXTE
+# (estimation Smart Project, coach IA, analyses). La vision reste sur VISION_MODEL.
+AI_TEXT_MODELS = {
+    "opus": {"provider": "anthropic", "model": "claude-opus-4-8",
+             "label": "Claude Opus 4.8", "desc": "Qualité maximale · plus lent · plus cher"},
+    "sonnet": {"provider": "anthropic", "model": "claude-sonnet-4-6",
+               "label": "Claude Sonnet 4.6", "desc": "Équilibré · recommandé"},
+    "haiku": {"provider": "anthropic", "model": "claude-haiku-4-5-20251001",
+              "label": "Claude Haiku 4.5", "desc": "Rapide & économique · qualité moindre"},
+}
+DEFAULT_TEXT_TIER = "sonnet"
+_TEXT_TIER: str | None = None  # cache mémoire, chargé depuis db.app_settings au 1er appel
+
+
+async def get_text_tier() -> str:
+    global _TEXT_TIER
+    if _TEXT_TIER is None:
+        doc = await db.app_settings.find_one({"_id": "ai"})
+        tier = (doc or {}).get("text_tier", DEFAULT_TEXT_TIER)
+        _TEXT_TIER = tier if tier in AI_TEXT_MODELS else DEFAULT_TEXT_TIER
+    return _TEXT_TIER
+
+
+async def set_text_tier(tier: str) -> str:
+    global _TEXT_TIER
+    if tier not in AI_TEXT_MODELS:
+        raise ValueError(f"tier inconnu: {tier}")
+    await db.app_settings.update_one({"_id": "ai"}, {"$set": {"text_tier": tier}}, upsert=True)
+    _TEXT_TIER = tier
+    return tier
+
+
+async def _text_provider_model() -> tuple[str, str]:
+    tier = await get_text_tier()
+    cfg = AI_TEXT_MODELS[tier]
+    return cfg["provider"], cfg["model"]
 
 BRAND = (
     "Tu es ConstruPilot, l'expert travaux de l'plateforme ConstruPilot. "
@@ -36,7 +75,10 @@ def _chat(system: str, session_id: str | None = None,
 async def _complete(system: str, text: str, images: list[str] | None = None,
                     session_id: str | None = None) -> str:
     # Claude (texte) par défaut ; bascule vision OpenAI si des images sont fournies.
-    provider, model = (VISION_PROVIDER, VISION_MODEL) if images else (PROVIDER, MODEL)
+    if images:
+        provider, model = VISION_PROVIDER, VISION_MODEL
+    else:
+        provider, model = await _text_provider_model()
     chat = _chat(system, session_id, provider, model)
     contents = [ImageContent(image_base64=i) for i in (images or [])]
     out = []
@@ -54,7 +96,8 @@ async def stream_chat(history: list[dict], message: str, session_id: str, contex
                       for m in history[-10:])
     prompt = (f"Historique de la conversation:\n{convo}\n\nNouveau message: {message}"
               if convo else message)
-    chat = _chat(system, session_id, CHAT_PROVIDER, CHAT_MODEL)
+    chat_provider, chat_model = await _text_provider_model()
+    chat = _chat(system, session_id, chat_provider, chat_model)
     async for ev in chat.stream_message(UserMessage(text=prompt)):
         if isinstance(ev, TextDelta):
             yield ev.content

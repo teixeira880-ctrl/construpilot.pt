@@ -336,3 +336,32 @@ async def revenue_dashboard() -> dict:
         "by_plan": [{"plan_id": k, **v} for k, v in by_plan.items()],
         "transactions_count": len(paid),
     }
+
+
+# ---------- Sélecteur de modèle IA ----------
+
+class AiModelIn(BaseModel):
+    tier: str
+
+
+@router.get("/ai-model")
+async def get_ai_model() -> dict:
+    from engines import ai
+    current = await ai.get_text_tier()
+    return {
+        "current": current,
+        "options": [
+            {"tier": k, "label": v["label"], "desc": v["desc"], "model": v["model"]}
+            for k, v in ai.AI_TEXT_MODELS.items()
+        ],
+    }
+
+
+@router.put("/ai-model")
+async def set_ai_model(body: AiModelIn) -> dict:
+    from fastapi import HTTPException
+    from engines import ai
+    if body.tier not in ai.AI_TEXT_MODELS:
+        raise HTTPException(400, f"tier inconnu: {body.tier}")
+    tier = await ai.set_text_tier(body.tier)
+    return {"current": tier}

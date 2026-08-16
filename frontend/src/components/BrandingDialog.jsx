@@ -22,6 +22,8 @@ export function BrandingDialog({ trigger }) {
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [contactLine, setContactLine] = useState("");
+  const [siret, setSiret] = useState("");
+  const [vat, setVat] = useState("");
   const [logoB64, setLogoB64] = useState("");
   const [certSel, setCertSel] = useState({});
   const [busy, setBusy] = useState(false);
@@ -34,6 +36,8 @@ export function BrandingDialog({ trigger }) {
     api.get("/users/me/branding").then(({ data }) => {
       setCompanyName(data.company_name || "");
       setContactLine(data.contact_line || "");
+      setSiret(data.siret || "");
+      setVat(data.vat || "");
       setLogoB64(data.logo_b64 || "");
       const map = {};
       (data.certifications || []).forEach((c) => { map[c.code] = c.number || ""; });
@@ -64,6 +68,7 @@ export function BrandingDialog({ trigger }) {
     try {
       await api.put("/users/me/branding", {
         company_name: companyName, contact_line: contactLine, logo_b64: logoB64 || null,
+        siret: siret, vat: vat,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
       toast.success("Identité pro enregistrée");
@@ -112,6 +117,23 @@ export function BrandingDialog({ trigger }) {
                       data-testid="branding-contact-input"
                       className="rounded-sm text-sm" rows={2} maxLength={200} />
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label>SIRET</Label>
+              <Input value={siret} onChange={(e) => setSiret(e.target.value)}
+                     placeholder="14 chiffres" disabled={!canEdit}
+                     data-testid="branding-siret-input" className="rounded-sm h-11 num" maxLength={14} />
+            </div>
+            <div className="grid gap-2">
+              <Label>TVA intracom.</Label>
+              <Input value={vat} onChange={(e) => setVat(e.target.value)}
+                     placeholder="FR12345678901" disabled={!canEdit}
+                     data-testid="branding-vat-input" className="rounded-sm h-11 num" maxLength={20} />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Requis pour des factures électroniques Factur-X 100 % conformes.</p>
+
 
           <div className="grid gap-2">
             <Label className="flex items-center gap-1"><Award className="h-3.5 w-3.5 text-primary" /> Certifications</Label>
