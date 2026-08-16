@@ -1,87 +1,101 @@
 {
-  "project_name": "ConstruPilot",
   "theme": "Architectural Slate & Muted Sage",
   "typography": {
     "headings": {
-      "font": "Outfit",
-      "weight": "font-extrabold to font-bold",
-      "tracking": "tracking-tight to tracking-tighter",
-      "usage": "Used for all H1, H2, H3 elements to maintain a modern, geometric tech-forward look."
+      "font_family": "Outfit",
+      "weight": "800 (extrabold)",
+      "letter_spacing": "tracking-tight",
+      "usage": "Use for all H1, H2, H3 elements. H1 must be highly impactful."
     },
     "body": {
-      "font": "Manrope",
-      "weight": "Regular",
-      "usage": "Used for general paragraphs, descriptions, and UI text for high legibility."
+      "font_family": "Manrope",
+      "weight": "400, 500, 600",
+      "usage": "Use for paragraphs, descriptions, input fields, and labels."
     },
     "monospace": {
-      "font": "JetBrains Mono",
-      "usage": "Used for data points, currency, numbers, and technical labels (tabular nums)."
+      "font_family": "JetBrains Mono",
+      "usage": "Use strictly for numbers, currency (e.g., estimates, prices), stats, or code-like technical elements."
     }
   },
   "colors": {
     "primary": {
-      "light": "hsl(140 25% 42%)",
-      "dark": "hsl(140 25% 50%)",
-      "description": "A calm, earthy Moss/Olive Green replacing the aggressive orange. Brings trust, calm, and an architectural/organic feel."
+      "name": "Moss/Olive Green",
+      "value": "hsl(140 25% 42%)",
+      "usage": "Use sparingly for primary CTAs (buttons) and key visual accents. Represents calm, growth, trust."
     },
-    "background": {
-      "light": "hsl(40 20% 98%) - Warm off-white/sand",
-      "dark": "hsl(222 25% 7%) - Deep architectural slate"
+    "background_light": {
+      "name": "Warm Off-White",
+      "value": "#F9F9F8",
+      "usage": "Base background for the light theme."
     },
-    "surface": {
-      "light": "hsl(0 0% 100%) with subtle border",
-      "dark": "hsl(224 25% 10%)"
+    "background_dark": {
+      "name": "Deep Architectural Slate",
+      "value": "#1A1D20",
+      "usage": "Base background for the dark theme."
     },
-    "rules": [
-      "Avoid pure black or pure white without tint.",
-      "Use primary color sparingly for CTAs, highlights, and active states.",
-      "Never use full-screen bright gradients. Stick to muted, transparent glows."
-    ]
-  },
-  "visual_enhancers": [
-    "Glassmorphism: Use backdrop-blur-xl with bg-white/70 or bg-black/60 for overlays, headers, and hero floating blocks.",
-    "Grain Texture: Added a subtle noise/grain texture (.grain class) to hero backgrounds to break the digital flatness.",
-    "Glow Rings: Soft, diffuse ambient shadows behind primary interactive blocks (e.g., the hero AI prompt block)."
-  ],
-  "layouts": {
-    "spacing": "Generous. Use py-24 or py-32 for section separation. Cramped designs look cheap.",
-    "hero": "Asymmetric Split: 5-col / 7-col layout. Left side text & prompt, Right side Interactive 3D.",
-    "features": "Bento Grid (Tetris Mode): Asymmetrical grid-cols-12. Varing col-spans (e.g., col-span-4 vs col-span-8) to create visual tension.",
-    "container": "Max-width 1500px to allow large imagery and bento grids to stretch comfortably."
-  },
-  "components": {
-    "Interactive3D": {
-      "path": "/app/frontend/src/components/Interactive3D.jsx",
-      "usage": "Embedded in the hero section to immediately deliver the '3D vision' requirement. Passed mock rooms/walls for default state."
-    },
-    "BentoCards": {
-      "usage": "Feature cards use relative positioning with hidden hover gradients that reveal on mouse over."
-    },
-    "LanguageToggle": {
-      "path": "/app/frontend/src/context/I18nContext.jsx",
-      "usage": "Maintains FR/EN/ES support seamlessly via context."
+    "surfaces": {
+      "glassmorphism_light": "backdrop-blur-xl bg-white/70 border border-white/20",
+      "glassmorphism_dark": "backdrop-blur-xl bg-[#1A1D20]/60 border border-white/10",
+      "rules": "Avoid pure black/white. No full-screen bright gradients. Muted transparent glows only. NEVER use a completely transparent background for floating elements."
     }
   },
-  "motion": {
-    "framer_motion": "Used for entry staggering. Container sets staggerChildren, items spring up.",
-    "hover_states": "Cards lift slightly (-translate-y-1) and reveal a soft gradient. Icons scale by 1.1x.",
-    "accordion": "FAQ section uses pure CSS max-height transition for performance, or framer-motion AnimatePresence if expanded."
+  "layouts_and_grids": {
+    "hero_section": "Dual-audience segment control ('Je suis un particulier' / 'Je suis un pro') positioned above the H1. The H1, subtitle, and CTA change dynamically based on intent. Must include a high-converting lead capture form visible ABOVE the fold (Input for project description + Email + Primary CTA).",
+    "trust_proofs": "A dedicated horizontal banner right below the hero displaying patent FR261104, certifications, and '10 000+ pros' trust badge. Use muted opacity (opacity-60) for logos to integrate cleanly.",
+    "key_features": "Bento grid protocol for features (AI Estimation, Supplier Pricing, 3D Plan, PDF Quote, CRM). High density, gap-6 or gap-8. Mix spans. Use glassmorphic cards with muted glows on hover.",
+    "categories_grid": "Grid layout for work categories (e.g., plumbing, electricity) linking to '/estimation?type='. Use hover lifts (-translate-y-1) and subtle shadows.",
+    "mobile_priority": "Mobile-first approach is CRITICAL. The lead capture CTA must become a sticky element at the bottom of the screen on mobile if scrolled past. Forms must have large tap targets (min 44px). The dual journey segment must stack cleanly."
   },
-  "accessibility": [
-    "All text meets APCA/WCAG contrast ratios against the new background colors.",
-    "data-testid added to every button, link, and interactive card for stable testing.",
-    "Focus rings: visible outline on all inputs and buttons when focused (focus-within:ring-2)."
+  "components_to_reuse": [
+    "Nav",
+    "Footer",
+    "TrustSection",
+    "MarketingTeaser",
+    "Interactive3D",
+    "SEO"
   ],
-  "3d_libraries": [
-    "three.js (existing in package.json, used inside Interactive3D.jsx)"
+  "accessibility_and_i18n": {
+    "i18n": "Use `useI18n` / `t()` hook for all text to support FR/EN/ES/PT/IT/DE/AR.",
+    "rtl": "Ensure layout flips correctly for AR (Arabic) using standard Tailwind `rtl:` variants or logical properties (e.g., `ms-`, `me-`, `ps-`).",
+    "testing": "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., `data-testid='hero-pro-segment-button'`)."
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1599707254554-027aeb4deacd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBjb25zdHJ1Y3Rpb24lMjBzaXRlJTIwYXJjaGl0ZWN0fGVufDB8fHx8MTc4Njg3NzMzNnww&ixlib=rb-4.1.0&q=85",
+      "description": "yellow crane near building during daytime",
+      "category": "Hero Background / Pro Persona"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1503387762-592deb58ef4e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwyfHxhcmNoaXRlY3R1cmFsJTIwYmx1ZXByaW50fGVufDB8fHx8MTc4Njg3NzMzNnww&ixlib=rb-4.1.0&q=85",
+      "description": "An architect working on a draft with a pencil and ruler",
+      "category": "Feature: 3D Plan / Architecture"
+    },
+    {
+      "url": "https://images.pexels.com/photos/36035073/pexels-photo-36035073.jpeg",
+      "description": "Spacious kitchen under renovation with ladder and tools, showcasing a fresh new design.",
+      "category": "Particulier Persona / Renovation Categories"
+    }
   ],
-  "image_urls": {},
-  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "Do not center-align the main App container (no .App { text-align: center; }).",
-    "Use generous padding (2x normal, e.g., p-8 or p-12 on cards).",
-    "Do not use fully transparent backgrounds under dropdowns or modals; always use solid colors or glassmorphism (backdrop-blur).",
-    "Use Sonner for toasts.",
-    "Always apply focus states and explicit hover colors (e.g., hover:text-white).",
-    "Respect the BTP (Construction) persona: modern, professional, avoiding overly playful 'startup' aesthetics (no purple/pink gradients, no emoji icons)."
+  "instructions_to_main_agent": [
+    "You are writing .js frontend files, not .tsx. Do not use TypeScript syntax.",
+    "Preserve all existing routes and functionality: Hero input must call `/smart-project`, category grid must link to `/estimation?type=`.",
+    "Implement the Dual Journey via a prominent Segmented Control (Toggle) in the Hero. 'Je suis un particulier' (default) / 'Je suis un pro'. This toggle must instantly swap the H1, subtitle, and form destination.",
+    "Lead capture form must be ABOVE the fold. Simple: Project description input + Email input + CTA button in primary Moss/Olive Green.",
+    "Implement Mobile Sticky CTA: On mobile screens, once the user scrolls past the hero form, a sticky CTA 'Estimer mon projet' must appear fixed at the bottom.",
+    "Strictly follow the color palette: Warm Off-White (#F9F9F8) for light mode bg, Deep Architectural Slate (#1A1D20) for dark mode bg. Avoid #000000 or #ffffff completely.",
+    "Do not use complete transparent backgrounds for surfaces with content underneath. Always use the specified glassmorphism rules.",
+    "Translate all copy via i18n hooks. Default to French (FR) strings in the UI implementation mapped to translation keys.",
+    "Ensure `data-testid` is added to all buttons, inputs, and toggles."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not converge toward generic, on-distribution outputs. Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "DO NOT apply universal transition (e.g., transition: all). Add transitions for specific interactive elements excluding transforms.",
+    "DO NOT center align the app container (.App { text-align: center; }).",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Use framer-motion where applicable.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Use lucide-react for standard icons.",
+    "NEVER use placeholder text for images or logos; rely on the provided image URLs.",
+    "Use sonner for toasts, if needed."
   ]
 }

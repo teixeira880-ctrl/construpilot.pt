@@ -5,9 +5,10 @@ import {
   ArrowRight, Sparkles, Calculator, Search, Wrench, ShieldCheck, FileText,
   MessageSquare, Camera, TrendingDown, Hammer, ChevronRight, Building2,
   HardHat, Home as HomeIcon, Store, GraduationCap, Factory, ChevronDown,
-  Globe2, PenTool, CheckCircle2, Cuboid
+  Globe2, PenTool, CheckCircle2, Cuboid, User, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Nav, Footer } from "@/components/Nav";
 import { SEO } from "@/components/SEO";
@@ -82,8 +83,33 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
+// Contenu dynamique du hero selon l'audience (particulier / pro)
+const HERO_CONTENT = {
+  particulier: {
+    badgeKey: "landing.hero.badge_part", badge: "Pour les particuliers",
+    h1aKey: "landing.hero.h1a_part", h1a: "Estimez le coût de",
+    h1bKey: "landing.hero.h1b_part", h1b: "vos travaux en 30 s.",
+    subKey: "landing.hero.sub_part",
+    sub: "Décrivez votre projet de rénovation. ConstruPilot calcule instantanément une estimation détaillée, poste par poste — avant même de contacter un artisan.",
+    ctaKey: "landing.hero.cta_part", cta: "Estimer mes travaux",
+    dest: "/smart-project",
+  },
+  pro: {
+    badgeKey: "landing.hero.badge_pro", badge: "Pour les pros du BTP",
+    h1aKey: "landing.hero.h1a_pro", h1a: "Chiffrez et éditez",
+    h1bKey: "landing.hero.h1b_pro", h1b: "vos devis en un éclair.",
+    subKey: "landing.hero.sub_pro",
+    sub: "Décrivez le chantier. ConstruPilot génère l'estimation, les quantités, les prix fournisseurs exacts et le devis client PDF avec plan 3D interactif.",
+    ctaKey: "landing.hero.cta_pro", cta: "Générer mon devis",
+    dest: "/estimation",
+  },
+};
+
 export default function Landing() {
   const [description, setDescription] = useState("");
+  const [email, setEmail] = useState("");
+  const [audience, setAudience] = useState("particulier");
+  const [showSticky, setShowSticky] = useState(false);
   const [types, setTypes] = useState([]);
   const [openFaq, setOpenFaq] = useState(0);
   const navigate = useNavigate();
@@ -95,10 +121,25 @@ export default function Landing() {
     if (ref) sessionStorage.setItem("construpilot_ref", ref.toUpperCase());
   }, []);
 
+  // Affiche le CTA collant sur mobile après avoir dépassé le hero
+  useEffect(() => {
+    const onScroll = () => setShowSticky(window.scrollY > 620);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const hero = HERO_CONTENT[audience];
+
   const launch = () => {
     const text = description.trim() || EXAMPLE;
     sessionStorage.setItem("construpilot_description", text);
-    navigate("/smart-project");
+    const mail = email.trim();
+    if (mail && mail.includes("@")) {
+      api.post("/leads", {
+        email: mail, description: text, source: `landing-hero-${audience}`,
+      }).catch(() => {});
+    }
+    navigate(hero.dest);
   };
 
   return (
@@ -134,19 +175,48 @@ export default function Landing() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary mb-6">
-                <Globe2 className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-bold uppercase tracking-widest">{t("landing.badge", "L'Intelligence Artificielle du BTP")}</span>
+              {/* Sélecteur d'audience : Particulier / Pro */}
+              <div className="inline-flex p-1 rounded-full bg-secondary/70 border border-border mb-6" role="tablist" data-testid="hero-audience-toggle">
+                <button
+                  role="tab"
+                  aria-selected={audience === "particulier"}
+                  data-testid="hero-audience-particulier"
+                  onClick={() => setAudience("particulier")}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${audience === "particulier" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <User className="h-4 w-4" /> {t("landing.hero.seg_part", "Je suis un particulier")}
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={audience === "pro"}
+                  data-testid="hero-audience-pro"
+                  onClick={() => setAudience("pro")}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${audience === "pro" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <HardHat className="h-4 w-4" /> {t("landing.hero.seg_pro", "Je suis un pro")}
+                </button>
               </div>
-              
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-tighter leading-[1.05]">
-                {t("landing.hero.h1a", "Estimez, chiffrez et")} <br className="hidden sm:block" />
-                <span className="text-primary italic">{t("landing.hero.h1b", "visualisez en 3D.")}</span>
-              </h1>
-              
-              <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
-                {t("landing.hero.subtitle", "Décrivez votre projet travaux. ConstruPilot génère instantanément l'estimation, les quantités, les prix fournisseurs exacts, et le plan 3D interactif pour vos clients.")}
-              </p>
+
+              <motion.h1
+                key={`h1-${audience}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+                className="font-display text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-tighter leading-[1.05]"
+              >
+                {t(hero.h1aKey, hero.h1a)} <br className="hidden sm:block" />
+                <span className="text-primary italic">{t(hero.h1bKey, hero.h1b)}</span>
+              </motion.h1>
+
+              <motion.p
+                key={`sub-${audience}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+                className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl"
+              >
+                {t(hero.subKey, hero.sub)}
+              </motion.p>
 
               <div className="mt-10 w-full max-w-xl relative">
                 <div className="absolute -inset-1 bg-primary/20 blur-2xl rounded-xl" aria-hidden="true" />
@@ -156,10 +226,21 @@ export default function Landing() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t("landing.hero.placeholder", `Décrivez votre projet — ex : « ${EXAMPLE} »`)}
-                    rows={4}
+                    rows={3}
                     className="resize-none border-0 bg-transparent text-base focus-visible:ring-0 rounded-lg"
                   />
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-2 pt-0 mt-2">
+                  <div className="relative px-1">
+                    <Mail className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      data-testid="hero-email-input"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t("landing.hero.email_ph", "Votre e-mail (pour recevoir votre estimation)")}
+                      className="ps-9 border-0 bg-background/60 rounded-lg h-11 focus-visible:ring-1 focus-visible:ring-primary/40"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-2 pt-2">
                     <button
                       onClick={() => setDescription(EXAMPLE)} data-testid="hero-example-btn"
                       className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
@@ -170,13 +251,17 @@ export default function Landing() {
                       onClick={launch} data-testid="hero-submit-btn"
                       className="rounded-lg gap-2 shadow-md hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
                     >
-                      <Sparkles className="h-4 w-4" /> {t("landing.hero.submit", "Générer mon estimation")}
+                      <Sparkles className="h-4 w-4" /> {t(hero.ctaKey, hero.cta)}
                     </Button>
                   </div>
                 </div>
+                <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                  {t("landing.hero.reassurance", "Gratuit et sans engagement — résultat en 30 secondes.")}
+                </p>
               </div>
 
-              <div className="mt-10 flex items-center gap-6 text-sm text-muted-foreground">
+              <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex -space-x-3">
                   {[1,2,3].map(i => (
                     <div key={i} className="h-10 w-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center">
@@ -185,7 +270,7 @@ export default function Landing() {
                   ))}
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-foreground">{t("landing.hero.trust_title", "Rejoignez 10 000+ pros")}</span>
+                  <span className="font-bold text-foreground num">{t("landing.hero.trust_title", "Rejoignez 10 000+ pros")}</span>
                   <span className="text-xs">{t("landing.hero.trust_subtitle", "Artisans & Architectes équipés")}</span>
                 </div>
               </div>
@@ -455,6 +540,22 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── CTA COLLANT MOBILE ─────────────────────────────── */}
+      <div
+        className={`lg:hidden fixed inset-x-0 bottom-0 z-40 p-3 transition-transform duration-300 ${showSticky ? "translate-y-0" : "translate-y-full"}`}
+        data-testid="mobile-sticky-cta"
+      >
+        <div className="mx-auto max-w-md rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-2xl p-2 flex items-center gap-2">
+          <Button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="flex-1 rounded-xl h-12 gap-2 text-base font-semibold"
+            data-testid="mobile-sticky-cta-btn"
+          >
+            <Sparkles className="h-4 w-4" /> {t("landing.sticky.cta", "Estimer mon projet")}
+          </Button>
+        </div>
+      </div>
 
       <Footer />
     </>

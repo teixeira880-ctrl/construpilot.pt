@@ -1,5 +1,20 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 95 — 16/06/2026 (Page d'accueil orientée conversion pub)
+- Refonte du hero de `pages/Landing.jsx` (charte respectée : moss green / slate, Outfit/Manrope) :
+  - **Sélecteur d'audience** particulier (défaut) / pro → change dynamiquement H1, sous-titre, CTA
+    et destination (particulier → /smart-project ; pro → /estimation).
+  - **Capture de lead** : champ e-mail ajouté au formulaire hero → `POST /leads`
+    `{email, description, source: "landing-hero-<audience>"}` (non bloquant, navigue quand même).
+  - Micro-copie de réassurance + trust badge.
+  - **CTA collant mobile** « Estimer mon projet » (apparaît au scroll > 620px, `lg:hidden`).
+- Backend `routes/leads.py` : `LeadIn.name`/`phone` rendus optionnels + champ `source` (compatible
+  ascendant) pour permettre la capture rapide au hero.
+- Testé (preview) : toggle audience OK, H1/CTA swap OK, POST /leads minimal 200 (source taguée),
+  CTA mobile visible au scroll, navigation particulier→/smart-project & pro→/estimation OK.
+  Nécessite un Deploy pour la prod.
+
+
 ## Itération 94 — 16/06/2026 (Admin : définir l'e-mail 2FA d'un utilisateur)
 - `routes/admin.py` `UserIn.two_fa_email` (+ normalisation) → un admin peut définir/effacer l'e-mail
   de réception des codes 2FA de n'importe quel utilisateur via `PUT /admin/users/{id}`.

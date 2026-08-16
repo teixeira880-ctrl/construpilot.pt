@@ -11,14 +11,15 @@ router = APIRouter(prefix="/leads", tags=["leads"])
 
 
 class LeadIn(BaseModel):
-    name: str
+    name: str = ""
     email: EmailStr
-    phone: str
+    phone: str = ""
     address: str = ""
     availability: str = ""
     budget: float | None = None
     description: str = ""
     project_id: str | None = None
+    source: str = ""
     photos: list[str] = []
     documents: list[dict] = []
 
