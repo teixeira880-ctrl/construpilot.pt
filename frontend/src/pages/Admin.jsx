@@ -262,23 +262,44 @@ export default function Admin() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">{u.auth_provider}</TableCell>
                     <TableCell>
-                      {u.two_fa_enabled ? (
+                      <div className="flex flex-col gap-1.5">
+                        {u.two_fa_enabled ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-sm h-8 text-xs"
+                            data-testid={`admin-disable-2fa-${u.user_id}`}
+                            onClick={async () => {
+                              await api.put(`/admin/users/${u.user_id}`, { two_fa_enabled: false });
+                              toast.success("2FA désactivée pour " + u.email);
+                              load();
+                            }}
+                          >
+                            Désactiver 2FA
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="rounded-sm h-8 text-xs"
-                          data-testid={`admin-disable-2fa-${u.user_id}`}
+                          variant="ghost"
+                          className="rounded-sm h-7 text-[11px] justify-start px-1 gap-1"
+                          data-testid={`admin-set-2fa-email-${u.user_id}`}
                           onClick={async () => {
-                            await api.put(`/admin/users/${u.user_id}`, { two_fa_enabled: false });
-                            toast.success("2FA désactivée pour " + u.email);
+                            const val = window.prompt(
+                              "E-mail de réception des codes 2FA pour " + u.email +
+                              "\n(laisser vide = e-mail du compte)", u.two_fa_email || "");
+                            if (val === null) return;
+                            const { data } = await api.put(`/admin/users/${u.user_id}`, { two_fa_email: val });
+                            toast.success(data.two_fa_email
+                              ? "Codes 2FA envoyés à " + data.two_fa_email
+                              : "E-mail 2FA réinitialisé");
                             load();
                           }}
                         >
-                          Désactiver 2FA
+                          <Mail className="h-3 w-3" /> {u.two_fa_email || "e-mail 2FA…"}
                         </Button>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

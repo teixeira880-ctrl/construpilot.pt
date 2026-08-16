@@ -160,11 +160,14 @@ class UserIn(BaseModel):
     role: str | None = None
     plan: str | None = None
     two_fa_enabled: bool | None = None
+    two_fa_email: str | None = None
 
 
 @router.put("/users/{user_id}")
 async def update_user(user_id: str, body: UserIn):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "two_fa_email" in updates:
+        updates["two_fa_email"] = updates["two_fa_email"].strip().lower() or None
     await db.users.update_one({"user_id": user_id}, {"$set": updates})
     return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
 

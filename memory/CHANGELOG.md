@@ -1,5 +1,14 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 94 — 16/06/2026 (Admin : définir l'e-mail 2FA d'un utilisateur)
+- `routes/admin.py` `UserIn.two_fa_email` (+ normalisation) → un admin peut définir/effacer l'e-mail
+  de réception des codes 2FA de n'importe quel utilisateur via `PUT /admin/users/{id}`.
+- `pages/Admin.jsx` (onglet Utilisateurs, colonne 2FA) : bouton ✉️ (icône lucide Mail) ouvrant un
+  prompt pour saisir l'e-mail 2FA. Utile car un admin avec 2FA activée + boîte inaccessible ne peut
+  pas le régler lui-même (self-service bloqué).
+- Testé (preview) : set `mteixeira@live.fr` + reset OK. Nécessite un Deploy pour la prod.
+
+
 ## Itération 93 — 16/06/2026 (2FA : e-mail de réception configurable)
 
 ### 🔐 E-mail de réception des codes 2FA (Option B)
