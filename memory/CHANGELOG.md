@@ -566,3 +566,26 @@ Langues supportées : fr, en, es, pt, it, de, ar (fallback FR).
 
 ### Tests — iteration_83.json : backend 100% (9/9), frontend 100%. Aucun bug critique.
 Points optionnels non traités : warning hydration devtools sur un <select> QuoteEditor (non bloquant) ; chrome Admin reste en FR (hors scope).
+
+## Iter 85 (16/06/2026) — Admin multilingue + Alerte budget IA + Relance J+2 + Graphique conso IA
+### 1. Admin multilingue (7 langues)
+- `frontend/src/lib/adminI18n.js` (`ADMIN_TRANSLATIONS`, ~42 clés `admin.*`) fusionné dans I18nContext.
+- `Admin.jsx` : titre + 16 onglets + 5 KPIs principaux traduits ; sous-panneaux (Plans/Revenu, Demandes, Erreurs, Affiliation) → KPIs traduits via `useI18n`. (Le contenu détaillé de certains panneaux reste FR — hors périmètre.)
+
+### 2. Alerte budget IA
+- `engines/ai.py check_ai_budget()` : somme mensuelle des appels (via `ai_usage_daily`), email d'alerte si seuil dépassé (1×/mois, verrou `budget_alert_month`).
+- Endpoints `GET/PUT /api/admin/ai-budget` (seuil + email d'alerte ; PUT réarme le verrou).
+- Job planifié `ai_budget_check` (interval 1h) dans server.py.
+- UI : formulaire seuil + email dans l'onglet IA (`AiModelTab.jsx`).
+
+### 3. Relance J+2 prospects
+- `routes/leads.py run_prospect_reminders()` : leads landing statut 'nouveau', créés il y a 2-4 j, sans estimation terminée → email de relance (`_j2_reminder_html`), flag `j2_reminded` (1×).
+- Job planifié `prospect_j2_reminders` (interval 6h).
+
+### 4. Graphique consommation IA (30 j)
+- `engines/ai.py _log_usage()` incrémente aussi `db.ai_usage_daily {_id:YYYY-MM-DD}`.
+- Endpoint `GET /api/admin/ai-usage-daily?days=30` (gap-fill 0, clamp 1..90).
+- UI : BarChart recharts dans l'onglet IA.
+
+### Tests — iteration_84.json : backend 100% (9/9 pytest), frontend 100%. Aucun bug critique.
+Fichier test : /app/backend/tests/test_iter84_ai_budget_daily_j2.py

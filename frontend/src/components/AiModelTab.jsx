@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Cpu, Check, Loader2, Gauge, Coins, Sparkles } from "lucide-react";
+import { Cpu, Check, Loader2, Gauge, Coins, Sparkles, Bell } from "lucide-react";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { api, num } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SectionTitle } from "@/components/Bits";
 
 function Rating({ icon: Icon, label, value }) {
@@ -23,16 +27,43 @@ function Rating({ icon: Icon, label, value }) {
 export default function AiModelTab() {
   const [data, setData] = useState(null);
   const [usage, setUsage] = useState(null);
+  const [daily, setDaily] = useState(null);
+  const [budget, setBudget] = useState(null);
+  const [threshold, setThreshold] = useState("");
+  const [alertEmail, setAlertEmail] = useState("");
+  const [savingBudget, setSavingBudget] = useState(false);
   const [saving, setSaving] = useState("");
 
   const load = () => {
     api.get("/admin/ai-model").then(({ data }) => setData(data));
     api.get("/admin/ai-usage").then(({ data }) => setUsage(data)).catch(() => {});
+    api.get("/admin/ai-usage-daily?days=30").then(({ data }) => setDaily(data)).catch(() => {});
+    api.get("/admin/ai-budget").then(({ data }) => {
+      setBudget(data);
+      setThreshold(data.threshold ? String(data.threshold) : "");
+      setAlertEmail(data.alert_email || "");
+    }).catch(() => {});
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  const saveBudget = async () => {
+    setSavingBudget(true);
+    try {
+      const { data: res } = await api.put("/admin/ai-budget", {
+        threshold: Number(threshold) || 0,
+        alert_email: alertEmail.trim(),
+      });
+      setBudget(res);
+      toast.success("Budget IA enregistré");
+    } catch {
+      toast.error("Enregistrement du budget impossible");
+    } finally {
+      setSavingBudget(false);
+    }
+  };
 
   const choose = async (tier) => {
     if (!data || tier === data.current || saving) return;
@@ -138,6 +169,63 @@ export default function AiModelTab() {
               </div>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* --- Graphique de consommation (30 j) --- */}
+      <div className="space-y-4" data-testid="admin-ai-daily">
+        <SectionTitle over="Tendance" title="Consommation IA — 30 derniers jours" />
+        {daily && daily.total > 0 ? (
+          <div className="surface p-4 rounded-sm" style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={daily.series} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)}
+                       interval="preserveStartEnd" minTickGap={20} />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={40} />
+                <Tooltip
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 4, fontSize: 12 }}
+                  labelStyle={{ color: "var(--foreground)" }}
+                  formatter={(v) => [`${v} appels`, "IA"]} />
+                <Bar dataKey="calls" fill="var(--primary)" radius={[3, 3, 0, 0]} maxBarSize={28} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground" data-testid="admin-ai-daily-empty">
+            Pas encore d'appels IA sur les 30 derniers jours.
+          </p>
+        )}
+      </div>
+
+      {/* --- Alerte budget IA --- */}
+      <div className="space-y-4" data-testid="admin-ai-budget">
+        <SectionTitle over="Maîtrise des coûts" title="Alerte budget IA">
+          Recevez un email lorsque le nombre d'appels IA du mois dépasse un seuil.
+          {budget && (
+            <> Ce mois-ci : <strong data-testid="admin-ai-budget-month">{num(budget.month_calls)}</strong> appels
+            {budget.threshold ? <> / {num(budget.threshold)} (seuil)</> : null}.</>
+          )}
+        </SectionTitle>
+        <div className="surface p-4 rounded-sm grid sm:grid-cols-3 gap-3 items-end">
+          <div>
+            <Label>Seuil d'appels / mois</Label>
+            <Input type="number" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)}
+                   placeholder="Ex : 500" className="rounded-sm num mt-1" data-testid="admin-ai-budget-threshold" />
+          </div>
+          <div>
+            <Label>Email d'alerte (optionnel)</Label>
+            <Input type="email" value={alertEmail} onChange={(e) => setAlertEmail(e.target.value)}
+                   placeholder="admin@construpilot.fr" className="rounded-sm mt-1" data-testid="admin-ai-budget-email" />
+          </div>
+          <Button onClick={saveBudget} disabled={savingBudget} className="rounded-sm gap-2" data-testid="admin-ai-budget-save">
+            {savingBudget ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />} Enregistrer
+          </Button>
+        </div>
+        {budget?.alert_sent_this_month && (
+          <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="admin-ai-budget-alerted">
+            ⚠️ Une alerte a déjà été envoyée ce mois-ci (seuil dépassé).
+          </p>
         )}
       </div>
     </div>

@@ -1,0 +1,37 @@
+{
+  "summary": "Iter-84 (AI daily chart, AI budget alert, J+2 prospect reminders, Admin multilingual) end-to-end validation. Backend: 9/9 pytest cases pass — GET /api/admin/ai-usage-daily shape/clamp/gap-fill correct, GET/PUT /api/admin/ai-budget persists threshold + alert_email and resets alert lock (budget_alert_month=null), real /api/estimation/analyse call increments today's daily bucket, engines.ai.check_ai_budget runs without exception when threshold exceeded (idempotent second run), landing lead aged 3 days is flagged j2_reminded=True by routes.leads.run_prospect_reminders and a lead created 'now' is NOT reminded. Frontend: on /admin, lang-toggle FR→EN→ES translates page title, 16 tab labels (Reference prices/Regional coefficients/Suppliers/Users/Projects/CRM Quotes/Searches/Promo codes/Pro KYC/Affiliation/Plans&Revenue/Revenue Cockpit/AI/Requests/Client errors/My account) and the 5 top KPI cards (Users/Projects/Quote requests/Quotes analyzed/Estimated volume). Sub-panels also translate their KPI Stat labels: Plans (Total revenue), Inbox (New leads), Errors (Total errors), Affiliate (Clicks/Redirects/Conversions/Revenue). NO raw admin.* i18n key leaks. Admin IA tab has all required test-ids (admin-ai-daily, admin-ai-budget-threshold, admin-ai-budget-email, admin-ai-budget-save, admin-ai-usage); saving budget shows 'Budget IA enregistré' success toast and persists.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin IA tab > admin-ai-daily chart", "issues": ["Recharts ResponsiveContainer emits console warning 'The width(-1) and height(-1) of chart should be greater than 0'. Container test-id is present but chart may briefly render with 0 dimensions when data buckets are empty (only 2 pre-existing ai_usage rows are not in daily buckets per iter-84 note). Suggest setting minWidth/minHeight or fixed height on the wrapping div."]},
+      {"screen": "Admin Affiliate panel body", "issues": ["'Configurations partenaires' section heading and table headers (Fournisseur/Réseau/Commission/Cookie/Actif) remain in French under EN/ES. Out-of-scope this iter per agent note (only Admin.jsx tabs/title/KPIs i18n'd), flagging for future consistency."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter84_ai_budget_daily_j2.py",
+    "/app/test_reports/pytest/iter84_results.xml"
+  ],
+  "action_items": [
+    "Optional: fix recharts BarChart wrapper to have a fixed height (or minHeight) to avoid width(-1) warning when data is empty.",
+    "Optional: extend i18n to remaining admin panel bodies (partner configs, table headers) beyond tabs/title/KPIs for full multilingual coverage."
+  ],
+  "critical_code_review_comments": [
+    "engines.ai._log_usage now maintains db.ai_usage_daily bucket {_id:YYYY-MM-DD} atomically alongside legacy ai_usage — good; keeps chart cheap.",
+    "GET /admin/ai-usage-daily properly clamps days to 1..90 and gap-fills 0 buckets in the returned series; series ordered ascending ending at today.",
+    "PUT /admin/ai-budget correctly resets budget_alert_month=null on every write so a new threshold un-locks the alert — matches spec.",
+    "engines.ai.check_ai_budget short-circuits when threshold missing/0, uses monthly regex on ai_usage_daily, and best-effort emails (silent on Resend failure). Idempotent via budget_alert_month == month guard.",
+    "routes.leads.run_prospect_reminders window is [now-4d, now-2d] and skips leads with project_snapshot.estimation (yet still flags them j2_reminded — prevents future reprocessing). Good.",
+    "Note: run_prospect_reminders sets j2_reminded=True even when send_email raises (RESEND missing). This is by design (avoid retry storms) but means 'sent' count can be 0 while flag is True — acceptable for scheduled job.",
+    "Frontend AiModelTab uses ResponsiveContainer without explicit height — can emit width(-1) console warning; consider wrapping in a div with h-64 or similar to ensure layout.",
+    "Language selector 'lang-toggle' is a native <select>; language persists across navigation and sessions (verified: FR-labeled first visit returned EN labels because session lang was 'en' from previous run)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter84_ai_budget_daily_j2.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Two throwaway landing leads created via POST /api/leads (source='landing-hero-test') and deleted after test; one aged to now-3d directly in Mongo (db.leads.created_at) for the J+2 flow. AI budget threshold set to 5 then 1 during tests.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All iter-84 features validated. Backend test file at /app/backend/tests/test_iter84_ai_budget_daily_j2.py includes a helper _run() that creates a fresh motor client bound to a fresh event loop per test — reuse this pattern when calling async engine functions from pytest, otherwise you'll hit 'Future attached to a different loop' errors with the shared server.db. When testing prospect reminders, use resend testing addresses (delivered+xxx@resend.dev) to keep send_email happy; j2_reminded flag is set regardless of email success. Admin i18n covers tabs/title/KPI cards only — panel body headings still FR. Language selector persists in localStorage, so login sessions can carry over prior language."
+}

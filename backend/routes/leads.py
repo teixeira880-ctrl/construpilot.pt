@@ -83,3 +83,61 @@ async def create_lead(body: LeadIn, user=Depends(optional_user)):
 async def my_leads(user=Depends(current_user)):
     return await db.leads.find({"user_id": user["user_id"]}, {"_id": 0}) \
         .sort("created_at", -1).to_list(100)
+
+
+def _j2_reminder_html(name: str) -> str:
+    hello = f"Bonjour {name}," if name else "Bonjour,"
+    return f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">
+<tr><td style="background:#3f7d54;padding:24px 32px;color:#fff;font-size:20px;font-weight:800;">ConstruPilot</td></tr>
+<tr><td style="padding:32px;color:#1a1d20;font-size:15px;line-height:1.6;">
+<p>{hello}</p>
+<p>Vous avez commencé une estimation de travaux sur <strong>ConstruPilot</strong> il y a quelques jours,
+mais il semble que vous ne l'ayez pas terminée.</p>
+<p>Bonne nouvelle : il ne vous reste que quelques secondes pour obtenir une estimation détaillée,
+poste par poste — <strong>gratuitement et sans engagement</strong>.</p>
+<p style="text-align:center;margin:32px 0;">
+<a href="https://construpilot.fr/smart-project" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Terminer mon estimation</a>
+</p>
+<p style="color:#78716c;font-size:13px;">Une question ? Répondez simplement à cet e-mail, nous sommes là pour vous aider.</p>
+<p style="color:#78716c;font-size:13px;">— L'équipe ConstruPilot</p>
+</td></tr>
+<tr><td style="background:#fafaf9;padding:16px 32px;color:#a8a29e;font-size:11px;">ConstruPilot — Estimez. Comparez. Construisez. · Brevet FR261104</td></tr>
+</table></td></tr></table></body></html>"""
+
+
+async def run_prospect_reminders() -> int:
+    """Relance à J+2 les prospects (leads landing, statut 'nouveau') qui n'ont pas
+    terminé leur estimation. Envoyée une seule fois (flag j2_reminded)."""
+    from datetime import timedelta
+    from engines.emailer import send_email
+    now = datetime.now(timezone.utc)
+    lo = (now - timedelta(days=4)).isoformat()
+    hi = (now - timedelta(days=2)).isoformat()
+    cursor = db.leads.find({
+        "source": {"$regex": "^landing"},
+        "status": "nouveau",
+        "j2_reminded": {"$ne": True},
+        "email": {"$nin": [None, ""]},
+        "created_at": {"$gte": lo, "$lte": hi},
+    }, {"_id": 0, "lead_id": 1, "email": 1, "name": 1, "project_snapshot": 1})
+    sent = 0
+    async for lead in cursor:
+        # « n'ont pas terminé leur estimation » : pas de total d'estimation calculé
+        snap = lead.get("project_snapshot") or {}
+        if snap.get("estimation"):
+            await db.leads.update_one({"lead_id": lead["lead_id"]},
+                                      {"$set": {"j2_reminded": True}})
+            continue
+        try:
+            await send_email(lead["email"],
+                             "Il ne vous reste qu'un clic — terminez votre estimation ConstruPilot",
+                             _j2_reminder_html(lead.get("name") or ""))
+            sent += 1
+        except Exception:
+            pass
+        await db.leads.update_one({"lead_id": lead["lead_id"]},
+                                  {"$set": {"j2_reminded": True,
+                                            "j2_reminded_at": now.isoformat()}})
+    return sent

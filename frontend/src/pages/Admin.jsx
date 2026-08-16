@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { api, eur, num } from "@/lib/api";
+import { useI18n } from "@/context/I18nContext";
 import { Stat, SectionTitle } from "@/components/Bits";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
@@ -20,6 +21,7 @@ import { DevicesList } from "@/components/account/DevicesList";
 import { TwoFaCard } from "@/components/account/TwoFaCard";
 
 export default function Admin() {
+  const { t } = useI18n();
   const [stats, setStats] = useState(null);
   const [prices, setPrices] = useState([]);
   const [edits, setEdits] = useState({});
@@ -74,36 +76,36 @@ export default function Admin() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Back-office ConstruPilot" title="Administration">
-        Prix de référence, coefficients régionaux, fournisseurs, utilisateurs, projets et demandes de devis.
+      <SectionTitle over={t("admin.over")} title={t("admin.title")}>
+        {t("admin.subtitle")}
       </SectionTitle>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
-        <Stat label="Utilisateurs" value={num(stats.users)} testId="admin-stat-users" />
-        <Stat label="Projets" value={num(stats.projects)} testId="admin-stat-projects" />
-        <Stat label="Demandes de devis" value={num(stats.leads)} testId="admin-stat-leads" accent />
-        <Stat label="Devis analysés" value={num(stats.quote_analyses)} testId="admin-stat-quotes" />
-        <Stat label="Volume estimé" value={eur(stats.estimated_volume)} testId="admin-stat-volume" />
+        <Stat label={t("admin.k_users")} value={num(stats.users)} testId="admin-stat-users" />
+        <Stat label={t("admin.k_projects")} value={num(stats.projects)} testId="admin-stat-projects" />
+        <Stat label={t("admin.k_quote_requests")} value={num(stats.leads)} testId="admin-stat-leads" accent />
+        <Stat label={t("admin.k_quotes_analyzed")} value={num(stats.quote_analyses)} testId="admin-stat-quotes" />
+        <Stat label={t("admin.k_estimated_volume")} value={eur(stats.estimated_volume)} testId="admin-stat-volume" />
       </div>
 
       <Tabs defaultValue="prices">
         <TabsList className="rounded-sm flex-wrap h-auto">
-          <TabsTrigger value="prices" className="rounded-sm" data-testid="admin-tab-prices">Prix de référence</TabsTrigger>
-          <TabsTrigger value="regions" className="rounded-sm" data-testid="admin-tab-regions">Coefficients régionaux</TabsTrigger>
-          <TabsTrigger value="suppliers" className="rounded-sm" data-testid="admin-tab-suppliers">Fournisseurs</TabsTrigger>
-          <TabsTrigger value="users" className="rounded-sm" data-testid="admin-tab-users">Utilisateurs</TabsTrigger>
-          <TabsTrigger value="projects" className="rounded-sm" data-testid="admin-tab-projects">Projets</TabsTrigger>
-          <TabsTrigger value="leads" className="rounded-sm" data-testid="admin-tab-leads">CRM / Devis</TabsTrigger>
-          <TabsTrigger value="searches" className="rounded-sm" data-testid="admin-tab-searches">Recherches</TabsTrigger>
-          <TabsTrigger value="promos" className="rounded-sm" data-testid="admin-tab-promos">Codes promo</TabsTrigger>
-          <TabsTrigger value="kyc" className="rounded-sm" data-testid="admin-tab-kyc">KYC pros</TabsTrigger>
-          <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">Affiliation</TabsTrigger>
-          <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">Plans & Revenu</TabsTrigger>
-          <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">Revenue Cockpit</TabsTrigger>
-          <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">IA</TabsTrigger>
-          <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">Demandes</TabsTrigger>
-          <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">Erreurs client</TabsTrigger>
-          <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">Mon compte</TabsTrigger>
+          <TabsTrigger value="prices" className="rounded-sm" data-testid="admin-tab-prices">{t("admin.t_prices")}</TabsTrigger>
+          <TabsTrigger value="regions" className="rounded-sm" data-testid="admin-tab-regions">{t("admin.t_regions")}</TabsTrigger>
+          <TabsTrigger value="suppliers" className="rounded-sm" data-testid="admin-tab-suppliers">{t("admin.t_suppliers")}</TabsTrigger>
+          <TabsTrigger value="users" className="rounded-sm" data-testid="admin-tab-users">{t("admin.t_users")}</TabsTrigger>
+          <TabsTrigger value="projects" className="rounded-sm" data-testid="admin-tab-projects">{t("admin.t_projects")}</TabsTrigger>
+          <TabsTrigger value="leads" className="rounded-sm" data-testid="admin-tab-leads">{t("admin.t_leads")}</TabsTrigger>
+          <TabsTrigger value="searches" className="rounded-sm" data-testid="admin-tab-searches">{t("admin.t_searches")}</TabsTrigger>
+          <TabsTrigger value="promos" className="rounded-sm" data-testid="admin-tab-promos">{t("admin.t_promos")}</TabsTrigger>
+          <TabsTrigger value="kyc" className="rounded-sm" data-testid="admin-tab-kyc">{t("admin.t_kyc")}</TabsTrigger>
+          <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">{t("admin.t_affiliate")}</TabsTrigger>
+          <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
+          <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
+          <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
+          <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
+          <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
+          <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">{t("admin.t_account")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="ai" className="mt-6">
@@ -576,6 +578,7 @@ function PromoCodesPanel() {
 
 /* ---------- Plans & Revenue ---------- */
 function PlansRevenuePanel() {
+  const { t } = useI18n();
   const [plans, setPlans] = useState([]);
   const [revenue, setRevenue] = useState(null);
   const [flags, setFlags] = useState({});
@@ -611,10 +614,10 @@ function PlansRevenuePanel() {
     <div className="grid gap-6">
       {revenue && (
         <div className="grid md:grid-cols-4 gap-4" data-testid="admin-revenue-stats">
-          <Stat label="Revenu total" value={eur(revenue.total_revenue_eur)} accent />
-          <Stat label="Abonnements actifs" value={num(revenue.active_subscriptions)} />
-          <Stat label="Project Pass actifs" value={num(revenue.active_project_pass)} />
-          <Stat label="Transactions" value={num(revenue.transactions_count)} />
+          <Stat label={t("admin.k_total_revenue")} value={eur(revenue.total_revenue_eur)} accent />
+          <Stat label={t("admin.k_active_subs")} value={num(revenue.active_subscriptions)} />
+          <Stat label={t("admin.k_active_pass")} value={num(revenue.active_project_pass)} />
+          <Stat label={t("admin.k_transactions")} value={num(revenue.transactions_count)} />
         </div>
       )}
 
@@ -737,6 +740,7 @@ function KycPanel() {
 
 /* ---------- Inbox — Demandes & activité ---------- */
 function InboxPanel() {
+  const { t } = useI18n();
   const [hours, setHours] = useState(168);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -753,12 +757,12 @@ function InboxPanel() {
   return (
     <div className="grid gap-6" data-testid="admin-inbox-panel">
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Stat label="Nouveaux leads" value={num(data?.counts?.new_leads || 0)} accent={data?.counts?.new_leads > 0} />
-        <Stat label="Nouveaux users" value={num(data?.counts?.new_users || 0)} />
-        <Stat label="Devis envoyés" value={num(data?.counts?.quotes_sent || 0)} />
-        <Stat label="Devis signés" value={num(data?.counts?.quotes_signed || 0)} accent />
-        <Stat label="Devis ouverts" value={num(data?.counts?.quotes_opened || 0)} />
-        <Stat label="Erreurs client" value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} />
+        <Stat label={t("admin.k_new_leads")} value={num(data?.counts?.new_leads || 0)} accent={data?.counts?.new_leads > 0} />
+        <Stat label={t("admin.k_new_users")} value={num(data?.counts?.new_users || 0)} />
+        <Stat label={t("admin.k_quotes_sent")} value={num(data?.counts?.quotes_sent || 0)} />
+        <Stat label={t("admin.k_quotes_signed")} value={num(data?.counts?.quotes_signed || 0)} accent />
+        <Stat label={t("admin.k_quotes_opened")} value={num(data?.counts?.quotes_opened || 0)} />
+        <Stat label={t("admin.k_client_errors")} value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} />
       </div>
 
       <div className="surface p-4 flex gap-2 items-center flex-wrap">
@@ -963,6 +967,7 @@ function LeadRow({ lead, onUpdated }) {
 
 /* ---------- Client Errors (ErrorBoundary reports) ---------- */
 function ClientErrorsPanel() {
+  const { t } = useI18n();
   const [hours, setHours] = useState(24);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -981,10 +986,10 @@ function ClientErrorsPanel() {
     <div className="grid gap-6" data-testid="admin-client-errors-panel">
       <div className="flex items-center justify-between">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
-          <Stat label="Erreurs totales" value={num(data?.total || 0)} accent={(data?.total || 0) > 0} />
-          <Stat label="Messages uniques" value={num(data?.top_messages?.length || 0)} />
-          <Stat label="Fenêtre" value={`${hours}h`} />
-          <Stat label="Utilisateurs touchés" value={num(
+          <Stat label={t("admin.k_total_errors")} value={num(data?.total || 0)} accent={(data?.total || 0) > 0} />
+          <Stat label={t("admin.k_unique_msgs")} value={num(data?.top_messages?.length || 0)} />
+          <Stat label={t("admin.k_window")} value={`${hours}h`} />
+          <Stat label={t("admin.k_users_affected")} value={num(
             new Set((data?.items || []).map((i) => i.user_id).filter(Boolean)).size)} />
         </div>
       </div>
@@ -1086,6 +1091,7 @@ function ClientErrorsPanel() {
 
 /* ---------- Affiliate ---------- */
 function AffiliatePanel() {
+  const { t } = useI18n();
   const [configs, setConfigs] = useState([]);
   const [stats, setStats] = useState(null);
   const load = () => {
@@ -1101,10 +1107,10 @@ function AffiliatePanel() {
     <div className="grid gap-6" data-testid="affiliate-panel">
       {stats && (
         <div className="grid md:grid-cols-4 gap-4">
-          <Stat label="Clics (30j)" value={num(stats.totals.affiliate_click || 0)} />
-          <Stat label="Redirections" value={num(stats.totals.supplier_redirect || 0)} />
-          <Stat label="Conversions" value={num(stats.totals.purchase_confirmed || 0)} />
-          <Stat label="Revenu (€)" value={eur(stats.revenue_eur)} accent />
+          <Stat label={t("admin.k_clicks")} value={num(stats.totals.affiliate_click || 0)} />
+          <Stat label={t("admin.k_redirects")} value={num(stats.totals.supplier_redirect || 0)} />
+          <Stat label={t("admin.k_conversions")} value={num(stats.totals.purchase_confirmed || 0)} />
+          <Stat label={t("admin.k_revenue_eur")} value={eur(stats.revenue_eur)} accent />
         </div>
       )}
       <div className="surface p-6">

@@ -414,3 +414,52 @@ async def ai_usage() -> dict:
                                                                  key=lambda i: -i[1])],
         "detail": detail,
     }
+
+
+@router.get("/ai-usage-daily")
+async def ai_usage_daily(days: int = 30) -> dict:
+    """Appels IA par jour sur les N derniers jours (pour le graphique de consommation)."""
+    from datetime import datetime, timezone, timedelta
+    days = max(1, min(days, 90))
+    today = datetime.now(timezone.utc).date()
+    rows = await db.ai_usage_daily.find({}, {"_id": 1, "calls": 1}).to_list(200)
+    by_day = {r["_id"]: r.get("calls", 0) for r in rows}
+    series = []
+    for i in range(days - 1, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        series.append({"date": d, "calls": by_day.get(d, 0)})
+    return {"days": days, "series": series, "total": sum(s["calls"] for s in series)}
+
+
+class AiBudgetIn(BaseModel):
+    threshold: int | None = None
+    alert_email: str | None = None
+
+
+@router.get("/ai-budget")
+async def get_ai_budget() -> dict:
+    from datetime import datetime, timezone
+    doc = await db.app_settings.find_one({"_id": "ai"}) or {}
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    rows = await db.ai_usage_daily.find({"_id": {"$regex": f"^{month}"}}).to_list(40)
+    month_calls = sum(r.get("calls", 0) for r in rows)
+    return {
+        "threshold": doc.get("budget_threshold"),
+        "alert_email": doc.get("budget_email"),
+        "month": month,
+        "month_calls": month_calls,
+        "alert_sent_this_month": doc.get("budget_alert_month") == month,
+    }
+
+
+@router.put("/ai-budget")
+async def set_ai_budget(body: AiBudgetIn) -> dict:
+    updates = {}
+    if body.threshold is not None:
+        updates["budget_threshold"] = max(0, int(body.threshold))
+    if body.alert_email is not None:
+        updates["budget_email"] = body.alert_email.strip() or None
+    # Réinitialise le verrou d'alerte quand le seuil change (nouvelle config)
+    updates["budget_alert_month"] = None
+    await db.app_settings.update_one({"_id": "ai"}, {"$set": updates}, upsert=True)
+    return await get_ai_budget()

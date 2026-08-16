@@ -61,13 +61,49 @@ async def _text_provider_model() -> tuple[str, str]:
 
 
 async def _log_usage(feature: str, provider: str, model: str) -> None:
-    """Incrémente le compteur d'appels IA par fonctionnalité et par modèle."""
+    """Incrémente le compteur d'appels IA (total par fonctionnalité/modèle + bucket journalier)."""
     try:
+        now = datetime.now(timezone.utc)
         await db.ai_usage.update_one(
             {"feature": feature, "provider": provider, "model": model},
-            {"$inc": {"calls": 1},
-             "$set": {"last_used": datetime.now(timezone.utc).isoformat()}},
+            {"$inc": {"calls": 1}, "$set": {"last_used": now.isoformat()}},
             upsert=True)
+        day = now.date().isoformat()
+        await db.ai_usage_daily.update_one(
+            {"_id": day}, {"$inc": {"calls": 1}}, upsert=True)
+    except Exception:
+        pass
+
+
+async def check_ai_budget() -> None:
+    """Alerte email si le nombre d'appels IA du mois dépasse le seuil défini par l'admin.
+    Envoyé une seule fois par mois (tant que le seuil reste dépassé)."""
+    try:
+        doc = await db.app_settings.find_one({"_id": "ai"}) or {}
+        threshold = doc.get("budget_threshold")
+        if not threshold or threshold <= 0:
+            return
+        month = datetime.now(timezone.utc).strftime("%Y-%m")
+        rows = await db.ai_usage_daily.find({"_id": {"$regex": f"^{month}"}}).to_list(40)
+        total = sum(r.get("calls", 0) for r in rows)
+        if total < threshold or doc.get("budget_alert_month") == month:
+            return
+        email = doc.get("budget_email")
+        if not email:
+            admin = await db.users.find_one({"role": "admin"}, {"_id": 0, "email": 1})
+            email = admin["email"] if admin else None
+        if not email:
+            return
+        from engines.emailer import send_email
+        html = (f"<p>Bonjour,</p>"
+                f"<p>Le nombre d'appels IA de ConstruPilot pour le mois <b>{month}</b> a atteint "
+                f"<b>{total}</b>, dépassant le seuil configuré de <b>{threshold}</b>.</p>"
+                f"<p>Vous pouvez ajuster ce seuil ou changer de modèle IA depuis "
+                f"l'onglet « IA » du back-office.</p>"
+                f"<p>— ConstruPilot</p>")
+        await send_email(email, f"⚠️ Budget IA dépassé — {total} appels en {month}", html)
+        await db.app_settings.update_one({"_id": "ai"},
+                                         {"$set": {"budget_alert_month": month}}, upsert=True)
     except Exception:
         pass
 

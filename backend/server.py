@@ -346,6 +346,15 @@ async def seed():
     scheduler.add_job(documents_routes.run_invoice_reminders,
                       CronTrigger(hour=9, minute=0),
                       id="invoice_reminders", max_instances=1, coalesce=True)
+    # Relance J+2 des prospects (leads landing) qui n'ont pas terminé leur estimation
+    scheduler.add_job(leads.run_prospect_reminders,
+                      "interval", hours=6, id="prospect_j2_reminders",
+                      max_instances=1, coalesce=True)
+    # Vérification du budget IA (seuil mensuel d'appels) — toutes les heures
+    from engines import ai as ai_engine
+    scheduler.add_job(ai_engine.check_ai_budget,
+                      "interval", hours=1, id="ai_budget_check",
+                      max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { CRM_TRANSLATIONS } from "@/lib/crmI18n";
+import { ADMIN_TRANSLATIONS } from "@/lib/adminI18n";
 
 const I18nContext = createContext(null);
 
@@ -1394,6 +1395,10 @@ for (const l of Object.keys(ONB_TRANSLATIONS)) {
 
 for (const l of Object.keys(CRM_TRANSLATIONS)) {
   TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...CRM_TRANSLATIONS[l] };
+}
+
+for (const l of Object.keys(ADMIN_TRANSLATIONS)) {
+  TRANSLATIONS[l] = { ...(TRANSLATIONS[l] || {}), ...ADMIN_TRANSLATIONS[l] };
 }
 
 const STORAGE_KEY = "construpilot_lang";
