@@ -2,6 +2,15 @@
 
 > **Rebranding 12/02/2026** : l'app était initialement nommée « CMRENOV Travaux AI ». Elle est renommée **ConstruPilot** — tagline : *Estimez. Comparez. Construisez.*
 
+> **État prod 16/06/2026** : incidents production résolus — (1) connexion impossible = domaine `www`
+> masqué par les navigateurs → requêtes cross-origin bloquées (CORS) ; fix = redirection auto
+> `www`→non-www (`frontend/src/index.js`). (2) « dernière version non affichée » = Service Worker
+> cache-first → réécrit en network-first (`frontend/public/sw.js`). (3) SEO = sitemap soumis à la
+> racine au lieu de `/sitemap.xml` (corrigé côté GSC, 30 pages OK, indexé Bing). (4) 2FA admin bloquante
+> = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
+> (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
+
+
 ## 1. Problème & vision
 Application web (et mobile-ready) qui aide particuliers et pros du bâtiment à :
 - Décrire un projet en langage naturel et obtenir une **estimation structurée** (lots, matériaux, main d'œuvre, coût total).
