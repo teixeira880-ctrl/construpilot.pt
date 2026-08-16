@@ -17,6 +17,9 @@ export default function AdsPanel() {
   const [rows, setRows] = useState([]);
   const [sum, setSum] = useState(null);
   const [sources, setSources] = useState([]);
+  const [filters, setFilters] = useState({ platforms: [], months: [] });
+  const [fPlatform, setFPlatform] = useState("");
+  const [fMonth, setFMonth] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
@@ -24,11 +27,15 @@ export default function AdsPanel() {
   const [toDelete, setToDelete] = useState(null);
 
   const load = () => {
-    api.get("/ads/campaigns").then(({ data }) => setRows(data));
-    api.get("/ads/summary").then(({ data }) => setSum(data));
+    const params = {};
+    if (fPlatform) params.platform = fPlatform;
+    if (fMonth) params.month = fMonth;
+    api.get("/ads/campaigns", { params }).then(({ data }) => setRows(data));
+    api.get("/ads/summary", { params }).then(({ data }) => setSum(data));
     api.get("/ads/lead-sources").then(({ data }) => setSources(data)).catch(() => {});
+    api.get("/ads/filters").then(({ data }) => setFilters(data)).catch(() => {});
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [fPlatform, fMonth]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const openNew = () => { setEditingId(null); setForm(EMPTY); setOpen(true); };
@@ -77,6 +84,24 @@ export default function AdsPanel() {
         <Button onClick={openNew} className="rounded-sm gap-2" data-testid="ads-new-btn">
           <Plus className="h-4 w-4" /> Nouvelle campagne
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2" data-testid="ads-filters">
+        <span className="text-xs text-muted-foreground">Filtrer :</span>
+        <select value={fPlatform} onChange={(e) => setFPlatform(e.target.value)} data-testid="ads-filter-platform"
+          className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm">
+          <option value="">Toutes plateformes</option>
+          {filters.platforms.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <select value={fMonth} onChange={(e) => setFMonth(e.target.value)} data-testid="ads-filter-month"
+          className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm">
+          <option value="">Toute la période</option>
+          {filters.months.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        {(fPlatform || fMonth) && (
+          <button onClick={() => { setFPlatform(""); setFMonth(""); }} data-testid="ads-filter-reset"
+            className="text-xs text-primary hover:underline">Réinitialiser</button>
+        )}
       </div>
 
       {sum && (

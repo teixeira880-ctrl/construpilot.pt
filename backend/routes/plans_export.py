@@ -933,8 +933,13 @@ async def list_all_quote_sends(user=Depends(current_user)) -> dict:
     return {"sends": docs, "stats": stats}
 
 
+class SendToInvoiceIn(BaseModel):
+    vat_rate: float = 10.0     # 5.5 | 10 | 20
+
+
 @quote_router.post("/sends/{log_id}/to-invoice")
-async def send_to_invoice(log_id: str, user=Depends(current_user)) -> dict:
+async def send_to_invoice(log_id: str, body: SendToInvoiceIn | None = None,
+                          user=Depends(current_user)) -> dict:
     """Convertit un devis suivi (envoyé au client) en facture dans l'espace Facturation."""
     from routes.documents import _compute_totals, _next_number
 
@@ -945,8 +950,10 @@ async def send_to_invoice(log_id: str, user=Depends(current_user)) -> dict:
     if send.get("invoice_doc_id"):
         return {"doc_id": send["invoice_doc_id"], "already": True}
 
+    vat_rate = float(body.vat_rate) if body else 10.0
+    if vat_rate not in (5.5, 10.0, 20.0):
+        vat_rate = 10.0
     ttc = float(send.get("total_ttc") or 0)
-    vat_rate = 10.0  # rénovation logement > 2 ans
     ht = round(ttc / (1 + vat_rate / 100), 2) if ttc else 0.0
     label = send.get("plan_filename") or send.get("work_address") \
         or send.get("client_name") or "Travaux de rénovation"

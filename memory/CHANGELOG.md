@@ -1,5 +1,12 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 104 — 16/08/2026 (TVA ajustable + Filtre période pub + Attribution UTM)
+- **TVA ajustable** : la conversion devis→facture ouvre un dialogue de choix du taux (5,5 % / 10 % / 20 %). Backend `POST /quotes/sends/{log_id}/to-invoice` accepte `vat_rate`. Vérifié : TTC 12000 @ 20 % → HT 10000 / TVA 2000.
+- **Filtre période publicité** : sélecteurs Plateforme + Mois sur le dashboard pub. Backend `/ads/campaigns` & `/ads/summary` acceptent `platform` & `month` ; nouvel endpoint `/ads/filters` (plateformes + mois dispo). Vérifié filtrage (google → 1 campagne).
+- **Attribution UTM** : la landing capture `utm_source/medium/campaign` (sessionStorage) et les envoie au lead ; `source` du lead prend l'utm_source pour matcher le tag campagne. Backend `LeadIn` étendu. Vérifié : lead source=adwords-brand.
+- Testé : curl (tous flux + seed nettoyé), captures écran (dialogue TVA 3 taux, barre de filtres pub).
+
+
 ## Itération 103 — 16/08/2026 (Facturation depuis devis + Attribution leads + Raccourcis dashboard)
 - **Convertir en facture** : bouton sur chaque devis suivi (`/devis`) → `POST /quotes/sends/{log_id}/to-invoice` crée une facture (HT dérivé du TTC à 10 %, snapshot client), idempotent (badge « Voir la facture »). Vérifié curl : FAC-2026-0001, TTC 11000 / HT 10000, 2e appel → already:true.
 - **Attribution auto des leads** : champ `lead_source` sur les campagnes pub relie au champ `source` des leads CRM. Nouveaux endpoints `/ads/lead-sources` (distinct) ; `list/summary` renvoient `real_leads` + `real_cpl`. KPIs enrichis (Leads réels, CPL réel). Vérifié : 3 leads source=test → real_cpl 200€.

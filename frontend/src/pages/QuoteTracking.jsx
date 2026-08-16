@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { SectionTitle } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
 import { api } from "@/lib/api";
@@ -97,13 +98,19 @@ export default function QuoteTracking() {
   };
 
   const [invoicing, setInvoicing] = useState(null);
-  const convertToInvoice = async (send) => {
+  const [invoiceSend, setInvoiceSend] = useState(null);
+  const [invoiceVat, setInvoiceVat] = useState("10");
+  const convertToInvoice = async () => {
+    if (!invoiceSend) return;
+    const send = invoiceSend;
     setInvoicing(send.log_id);
     try {
-      const { data } = await api.post(`/quotes/sends/${send.log_id}/to-invoice`);
+      const { data } = await api.post(`/quotes/sends/${send.log_id}/to-invoice`,
+        { vat_rate: Number(invoiceVat) });
       toast.success(data.already
         ? "Facture déjà créée — ouverture de l'éditeur"
         : `Facture ${data.number || ""} créée depuis le devis 🎉`);
+      setInvoiceSend(null);
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Conversion impossible");
@@ -172,7 +179,7 @@ export default function QuoteTracking() {
           <Button size="sm" variant="outline"
                   disabled={invoicing === send.log_id}
                   className="w-full rounded-sm gap-1 text-[11px] h-7 mt-1"
-                  onClick={() => convertToInvoice(send)}
+                  onClick={() => { setInvoiceVat("10"); setInvoiceSend(send); }}
                   data-testid={`convert-invoice-${send.log_id}`}>
             <Receipt className="h-3 w-3" />
             {invoicing === send.log_id ? "Conversion…" : "Convertir en facture"}
@@ -369,6 +376,41 @@ export default function QuoteTracking() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!invoiceSend} onOpenChange={(o) => !o && setInvoiceSend(null)}>
+        <DialogContent className="max-w-sm" data-testid="invoice-vat-dialog">
+          <DialogHeader>
+            <DialogTitle>Convertir en facture</DialogTitle>
+            <DialogDescription>
+              Choisissez le taux de TVA à appliquer. Le montant TTC du devis est conservé
+              ({fmtEur(invoiceSend?.total_ttc)}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <label className="text-xs text-muted-foreground">Taux de TVA</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[["5.5", "5,5 % — 1ère nécessité"], ["10", "10 % — Rénovation"], ["20", "20 % — Neuf"]].map(([v, lbl]) => (
+                <button key={v} onClick={() => setInvoiceVat(v)}
+                  data-testid={`vat-opt-${v}`}
+                  className={`rounded-sm border px-2 py-3 text-center transition-colors ${
+                    invoiceVat === v ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
+                  }`}>
+                  <span className="num font-bold text-base block">{v.replace(".", ",")} %</span>
+                  <span className="text-[10px] text-muted-foreground">{lbl.split("—")[1]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="rounded-sm" onClick={() => setInvoiceSend(null)}
+                    data-testid="invoice-vat-cancel">Annuler</Button>
+            <Button className="rounded-sm gap-2" onClick={convertToInvoice}
+                    disabled={!!invoicing} data-testid="invoice-vat-confirm">
+              <Receipt className="h-4 w-4" /> Créer la facture
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

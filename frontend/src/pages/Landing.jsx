@@ -117,8 +117,13 @@ export default function Landing() {
 
   useEffect(() => {
     api.get("/estimation/catalog").then(({ data }) => setTypes(data.project_types)).catch(() => {});
-    const ref = new URLSearchParams(window.location.search).get("ref");
+    const sp = new URLSearchParams(window.location.search);
+    const ref = sp.get("ref");
     if (ref) sessionStorage.setItem("construpilot_ref", ref.toUpperCase());
+    ["utm_source", "utm_medium", "utm_campaign"].forEach((k) => {
+      const v = sp.get(k);
+      if (v) sessionStorage.setItem(`construpilot_${k}`, v);
+    });
   }, []);
 
   // Affiche le CTA collant sur mobile après avoir dépassé le hero
@@ -135,8 +140,13 @@ export default function Landing() {
     sessionStorage.setItem("construpilot_description", text);
     const mail = email.trim();
     if (mail && mail.includes("@")) {
+      const utm_source = sessionStorage.getItem("construpilot_utm_source") || "";
+      const utm_medium = sessionStorage.getItem("construpilot_utm_medium") || "";
+      const utm_campaign = sessionStorage.getItem("construpilot_utm_campaign") || "";
       api.post("/leads", {
-        email: mail, description: text, source: `landing-hero-${audience}`,
+        email: mail, description: text,
+        source: utm_source || `landing-hero-${audience}`,
+        utm_source, utm_medium, utm_campaign,
       }).catch(() => {});
     }
     navigate(hero.dest);

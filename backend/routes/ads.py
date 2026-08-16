@@ -43,13 +43,37 @@ def _enrich(row: dict, real: int) -> dict:
     return row
 
 
+def _period(row: dict) -> str:
+    return (row.get("start_date") or row.get("created_at") or "")[:7]
+
+
+def _match(row: dict, platform: str, month: str) -> bool:
+    if platform and row.get("platform") != platform:
+        return False
+    if month and _period(row) != month:
+        return False
+    return True
+
+
 @router.get("/campaigns")
-async def list_campaigns(user=Depends(current_user)):
+async def list_campaigns(platform: str = "", month: str = "", user=Depends(current_user)):
     rows = await db.ad_campaigns.find({"user_id": user["user_id"]}, {"_id": 0}) \
         .sort("created_at", -1).to_list(500)
+    rows = [r for r in rows if _match(r, platform, month)]
     for r in rows:
         _enrich(r, await _real_leads_count(r.get("lead_source", "")))
     return rows
+
+
+@router.get("/filters")
+async def ads_filters(user=Depends(current_user)):
+    """Options de filtre disponibles (plateformes + mois) pour le dashboard pub."""
+    rows = await db.ad_campaigns.find({"user_id": user["user_id"]},
+                                      {"_id": 0, "platform": 1, "start_date": 1,
+                                       "created_at": 1}).to_list(500)
+    platforms = sorted({r.get("platform") for r in rows if r.get("platform")})
+    months = sorted({_period(r) for r in rows if _period(r)}, reverse=True)
+    return {"platforms": platforms, "months": months}
 
 
 @router.get("/lead-sources")
@@ -86,8 +110,9 @@ async def delete_campaign(campaign_id: str, user=Depends(current_user)):
 
 
 @router.get("/summary")
-async def ads_summary(user=Depends(current_user)):
+async def ads_summary(platform: str = "", month: str = "", user=Depends(current_user)):
     rows = await db.ad_campaigns.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(500)
+    rows = [r for r in rows if _match(r, platform, month)]
     spend = sum(r.get("spend", 0) for r in rows)
     budget = sum(r.get("budget", 0) for r in rows)
     leads = sum(r.get("leads", 0) for r in rows)

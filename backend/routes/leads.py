@@ -50,6 +50,9 @@ class LeadIn(BaseModel):
     description: str = ""
     project_id: str | None = None
     source: str = ""
+    utm_source: str = ""
+    utm_medium: str = ""
+    utm_campaign: str = ""
     photos: list[str] = []
     documents: list[dict] = []
 
