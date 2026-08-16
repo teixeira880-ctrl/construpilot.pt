@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Megaphone, Trash2, Loader2 } from "lucide-react";
+import { Plus, Megaphone, Trash2, Loader2, Pencil, BarChart3 } from "lucide-react";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { api, eur, num } from "@/lib/api";
 import { SectionTitle, Stat } from "@/components/Bits";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export default function AdsPanel() {
   const [sum, setSum] = useState(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
@@ -27,16 +29,34 @@ export default function AdsPanel() {
   useEffect(() => { load(); }, []);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const openNew = () => { setEditingId(null); setForm(EMPTY); setOpen(true); };
+  const openEdit = (c) => {
+    setEditingId(c.campaign_id);
+    setForm({
+      name: c.name, platform: c.platform || "google", status: c.status || "active",
+      budget: String(c.budget ?? ""), spend: String(c.spend ?? ""),
+      leads: String(c.leads ?? ""), revenue: String(c.revenue ?? ""),
+    });
+    setOpen(true);
+  };
+
   const save = async () => {
     if (!form.name.trim()) return toast.error("Nom requis");
     setSaving(true);
+    const payload = {
+      name: form.name, platform: form.platform, status: form.status,
+      budget: Number(form.budget) || 0, spend: Number(form.spend) || 0,
+      leads: Number(form.leads) || 0, revenue: Number(form.revenue) || 0,
+    };
     try {
-      await api.post("/ads/campaigns", {
-        name: form.name, platform: form.platform, status: form.status,
-        budget: Number(form.budget) || 0, spend: Number(form.spend) || 0,
-        leads: Number(form.leads) || 0, revenue: Number(form.revenue) || 0,
-      });
-      toast.success("Campagne ajoutée"); setOpen(false); setForm(EMPTY); load();
+      if (editingId) {
+        await api.put(`/ads/campaigns/${editingId}`, payload);
+        toast.success("Campagne modifiée");
+      } else {
+        await api.post("/ads/campaigns", payload);
+        toast.success("Campagne ajoutée");
+      }
+      setOpen(false); setForm(EMPTY); setEditingId(null); load();
     } catch { toast.error("Erreur"); } finally { setSaving(false); }
   };
   const del = async () => {
@@ -50,7 +70,7 @@ export default function AdsPanel() {
         <SectionTitle over="Marketing" title="Publicité & acquisition">
           Suivez vos campagnes publicitaires : dépenses, leads générés, coût par lead et ROI.
         </SectionTitle>
-        <Button onClick={() => setOpen(true)} className="rounded-sm gap-2" data-testid="ads-new-btn">
+        <Button onClick={openNew} className="rounded-sm gap-2" data-testid="ads-new-btn">
           <Plus className="h-4 w-4" /> Nouvelle campagne
         </Button>
       </div>
@@ -62,6 +82,32 @@ export default function AdsPanel() {
           <Stat label="Leads" value={num(sum.total_leads)} accent />
           <Stat label="Coût / lead" value={sum.cpl != null ? eur(sum.cpl) : "—"} />
           <Stat label="ROAS" value={sum.roas != null ? `${sum.roas}×` : "—"} accent />
+        </div>
+      )}
+
+      {sum && sum.by_platform && sum.by_platform.length > 0 && (
+        <div className="surface p-5 rounded-sm" data-testid="ads-chart">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            <p className="text-sm font-display font-semibold">Dépenses vs leads par plateforme</p>
+          </div>
+          <div style={{ width: "100%", height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sum.by_platform} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="platform" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10 }} width={48}
+                  tickFormatter={(v) => `${v}€`} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} allowDecimals={false} width={32} />
+                <Tooltip
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 4, fontSize: 12 }}
+                  formatter={(value, name) => name === "Dépense (€)" ? [eur(value), name] : [num(value), name]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="left" dataKey="spend" name="Dépense (€)" fill="var(--primary)" radius={[3, 3, 0, 0]} maxBarSize={40} />
+                <Bar yAxisId="right" dataKey="leads" name="Leads" fill="#f59e0b" radius={[3, 3, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -83,6 +129,7 @@ export default function AdsPanel() {
                 <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Dépense</span><br /><span className="num font-bold">{eur(c.spend)}</span></div>
                 <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Leads</span><br /><span className="num font-bold">{num(c.leads)}</span></div>
                 <div className="text-right text-sm"><span className="text-muted-foreground text-xs">CPL</span><br /><span className="num font-bold text-primary">{cpl != null ? eur(cpl) : "—"}</span></div>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(c)} data-testid={`ads-edit-${c.campaign_id}`}><Pencil className="h-4 w-4" /></Button>
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => setToDelete(c)} data-testid={`ads-del-${c.campaign_id}`}><Trash2 className="h-4 w-4" /></Button>
               </div>
             );
@@ -92,7 +139,7 @@ export default function AdsPanel() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Nouvelle campagne</DialogTitle>
+          <DialogHeader><DialogTitle>{editingId ? "Modifier la campagne" : "Nouvelle campagne"}</DialogTitle>
             <DialogDescription>Renseignez la dépense et les leads pour calculer le coût par lead.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">

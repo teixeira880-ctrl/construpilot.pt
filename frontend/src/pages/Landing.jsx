@@ -47,30 +47,30 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { icon: Calculator, title: "Calculateurs pros", text: "Peinture, carrelage, placo, béton, isolation : quantités exactes avec marges.", to: "/calculateurs", span: "md:col-span-4" },
-  { icon: Search, title: "Comparateur de prix", text: "10 fournisseurs, livraison, stock, historique et alertes prix.", to: "/prix", span: "md:col-span-4" },
-  { icon: Cuboid, title: "Génération 3D", text: "Visualisez votre projet en trois dimensions à partir d'un simple plan 2D.", to: "/plan", span: "md:col-span-8 lg:col-span-4" },
-  { icon: Wrench, title: "Mode « je le fais moi-même »", text: "Matériaux calculés + guide professionnel étape par étape.", to: "/diy", span: "md:col-span-4 lg:col-span-4" },
-  { icon: Camera, title: "Estimation par photo", text: "L'IA identifie la pièce, son état et les travaux probables.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
-  { icon: FileText, title: "Scanner de devis", text: "Prix bas, correct, élevé : l'IA analyse et compare vos devis.", to: "/scanner-devis", span: "md:col-span-4 lg:col-span-4" },
+  { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculateurs pros", dKey: "landing.feat.calc_d", text: "Peinture, carrelage, placo, béton, isolation : quantités exactes avec marges.", to: "/calculateurs", span: "md:col-span-4" },
+  { icon: Search, tKey: "landing.feat.price_t", title: "Comparateur de prix", dKey: "landing.feat.price_d", text: "10 fournisseurs, livraison, stock, historique et alertes prix.", to: "/prix", span: "md:col-span-4" },
+  { icon: Cuboid, tKey: "landing.feat.threed_t", title: "Génération 3D", dKey: "landing.feat.threed_d", text: "Visualisez votre projet en trois dimensions à partir d'un simple plan 2D.", to: "/plan", span: "md:col-span-8 lg:col-span-4" },
+  { icon: Wrench, tKey: "landing.feat.diy_t", title: "Mode « je le fais moi-même »", dKey: "landing.feat.diy_d", text: "Matériaux calculés + guide professionnel étape par étape.", to: "/diy", span: "md:col-span-4 lg:col-span-4" },
+  { icon: Camera, tKey: "landing.feat.photo_t", title: "Estimation par photo", dKey: "landing.feat.photo_d", text: "L'IA identifie la pièce, son état et les travaux probables.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
+  { icon: FileText, tKey: "landing.feat.scan_t", title: "Scanner de devis", dKey: "landing.feat.scan_d", text: "Prix bas, correct, élevé : l'IA analyse et compare vos devis.", to: "/scanner-devis", span: "md:col-span-4 lg:col-span-4" },
 ];
 
 const AUDIENCES = [
   { icon: HardHat, key: "landing.for_pro", title: "Artisans BTP", textKey: "landing.for_pro_text", text: "Générez vos devis client en 30 s avec attestation TVA 10 %, signature électronique et suivi ouverture." },
   { icon: HomeIcon, key: "landing.for_particulier", title: "Particuliers", textKey: "landing.for_particulier_text", text: "Estimez votre rénovation avant de contacter un pro. Comparez les devis reçus." },
-  { icon: Building2, title: "Architectes", text: "Métré 2D auto depuis vos plans PDF/DXF, chiffrage instantané par lot, rendu 3D pour vos clients." },
-  { icon: Store, title: "Marchands", text: "Vos prix, comparés en temps réel. Générez la liste de courses depuis un plan." },
-  { icon: GraduationCap, title: "Écoles BTP", text: "Un terrain de jeu pédagogique : IA, calculateurs et guides métier accessibles gratuitement." },
-  { icon: Factory, title: "Promoteurs", text: "Chiffrage rapide pour vos offres. Devis multi-plans consolidé, tour vidéo 3D à joindre." },
+  { icon: Building2, key: "landing.aud.arch_t", title: "Architectes", textKey: "landing.aud.arch_d", text: "Métré 2D auto depuis vos plans PDF/DXF, chiffrage instantané par lot, rendu 3D pour vos clients." },
+  { icon: Store, key: "landing.aud.merch_t", title: "Marchands", textKey: "landing.aud.merch_d", text: "Vos prix, comparés en temps réel. Générez la liste de courses depuis un plan." },
+  { icon: GraduationCap, key: "landing.aud.school_t", title: "Écoles BTP", textKey: "landing.aud.school_d", text: "Un terrain de jeu pédagogique : IA, calculateurs et guides métier accessibles gratuitement." },
+  { icon: Factory, key: "landing.aud.dev_t", title: "Promoteurs", textKey: "landing.aud.dev_d", text: "Chiffrage rapide pour vos offres. Devis multi-plans consolidé, tour vidéo 3D à joindre." },
 ];
 
 const FAQ = [
-  { q: "Combien coûte une rénovation complète au m² en 2026 ?", a: "En rénovation lourde en France, comptez 900 à 1 800 €/m² selon la région et la gamme. ConstruPilot calcule votre estimation exacte en 30 secondes." },
-  { q: "ConstruPilot est-il gratuit ?", a: "Oui pour les particuliers. Une offre Pro (devis PDF illimités, signature client, rendu 3D IA, tour vidéo) est disponible pour les artisans dès 39 €/mois." },
-  { q: "Comment fonctionne le métré 2D automatique ?", a: "Uploadez votre plan (PDF, PNG, DXF). Notre moteur détecte automatiquement les murs, les portes et calcule les surfaces." },
-  { q: "Puis-je générer un devis avec attestation TVA à 10 % ?", a: "Oui. ConstruPilot génère l'attestation requise pour la rénovation de logement de plus de 2 ans. Le client la signe en ligne." },
-  { q: "Vos prix matériaux sont-ils à jour ?", a: "Nous croisons les catalogues des principales enseignes du BTP mis à jour hebdomadairement, avec l'historique 12 mois." },
-  { q: "L'IA remplace-t-elle un artisan ?", a: "Non. Elle fournit une estimation instantanée. Pour un chantier complexe, un professionnel reste indispensable." },
+  { qKey: "landing.faq.q1", q: "Combien coûte une rénovation complète au m² en 2026 ?", aKey: "landing.faq.a1", a: "En rénovation lourde en France, comptez 900 à 1 800 €/m² selon la région et la gamme. ConstruPilot calcule votre estimation exacte en 30 secondes." },
+  { qKey: "landing.faq.q2", q: "ConstruPilot est-il gratuit ?", aKey: "landing.faq.a2", a: "Oui pour les particuliers. Une offre Pro (devis PDF illimités, signature client, rendu 3D IA, tour vidéo) est disponible pour les artisans dès 39 €/mois." },
+  { qKey: "landing.faq.q3", q: "Comment fonctionne le métré 2D automatique ?", aKey: "landing.faq.a3", a: "Uploadez votre plan (PDF, PNG, DXF). Notre moteur détecte automatiquement les murs, les portes et calcule les surfaces." },
+  { qKey: "landing.faq.q4", q: "Puis-je générer un devis avec attestation TVA à 10 % ?", aKey: "landing.faq.a4", a: "Oui. ConstruPilot génère l'attestation requise pour la rénovation de logement de plus de 2 ans. Le client la signe en ligne." },
+  { qKey: "landing.faq.q5", q: "Vos prix matériaux sont-ils à jour ?", aKey: "landing.faq.a5", a: "Nous croisons les catalogues des principales enseignes du BTP mis à jour hebdomadairement, avec l'historique 12 mois." },
+  { qKey: "landing.faq.q6", q: "L'IA remplace-t-elle un artisan ?", aKey: "landing.faq.a6", a: "Non. Elle fournit une estimation instantanée. Pour un chantier complexe, un professionnel reste indispensable." },
 ];
 
 const containerVariants = {
@@ -286,8 +286,8 @@ export default function Landing() {
                <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent rounded-2xl pointer-events-none" />
                <div className="relative h-full w-full rounded-2xl border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden bg-card/50 backdrop-blur-sm p-4">
                   <div className="absolute top-6 left-6 z-20 flex flex-col gap-1 pointer-events-none">
-                     <span className="text-[10px] uppercase font-bold tracking-widest text-primary">Vue en direct</span>
-                     <span className="text-sm font-semibold">Génération Plan 3D</span>
+                     <span className="text-[10px] uppercase font-bold tracking-widest text-primary">{t("landing.hero.live_view", "Vue en direct")}</span>
+                     <span className="text-sm font-semibold">{t("landing.hero.plan3d", "Génération Plan 3D")}</span>
                   </div>
                   {/* Reuse the existing Interactive3D component with mock data */}
                   <div className="h-full w-full overflow-hidden rounded-xl bg-background/50">
@@ -314,10 +314,10 @@ export default function Landing() {
       {/* ── BENTO FEATURES GRID ────────────────────────────── */}
       <section className="mx-auto max-w-[1500px] px-6 lg:px-10 py-24 lg:py-32">
         <div className="max-w-2xl">
-          <p className="overline">L'arsenal Complet</p>
+          <p className="overline">{t("landing.feat.overline", "L'arsenal complet")}</p>
           <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            Des outils de professionnel, <br className="hidden md:block" />
-            <span className="text-muted-foreground">repensés pour l'efficacité.</span>
+            {t("landing.feat.title_a", "Des outils de professionnel,")} <br className="hidden md:block" />
+            <span className="text-muted-foreground">{t("landing.feat.title_b", "repensés pour l'efficacité.")}</span>
           </h2>
         </div>
 
@@ -340,8 +340,8 @@ export default function Landing() {
                   <f.icon className="h-6 w-6 text-primary group-hover:scale-110 transition-transform duration-300" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="font-display text-xl font-bold text-foreground">{f.title}</h3>
-                  <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{f.text}</p>
+                  <h3 className="font-display text-xl font-bold text-foreground">{t(f.tKey, f.title)}</h3>
+                  <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{t(f.dKey, f.text)}</p>
                 </div>
               </div>
               {/* Subtle hover gradient */}
@@ -356,13 +356,13 @@ export default function Landing() {
         <div className="mx-auto max-w-[1500px] px-6 lg:px-10 py-24 lg:py-32">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
             <div className="max-w-xl">
-              <p className="overline">Catalogue travaux</p>
+              <p className="overline">{t("landing.cat.overline", "Catalogue travaux")}</p>
               <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-                Démarrez sur de bonnes bases
+                {t("landing.cat.title", "Démarrez sur de bonnes bases")}
               </h2>
             </div>
             <Button variant="outline" onClick={() => navigate('/smart-project')} className="rounded-full">
-              Voir tous les modèles <ArrowRight className="ml-2 h-4 w-4" />
+              {t("landing.cat.all_btn", "Voir tous les modèles")} <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
 
@@ -373,16 +373,16 @@ export default function Landing() {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {types.length > 0 ? types.map((t, i) => (
+            {types.length > 0 ? types.map((pt, i) => (
               <motion.button
                 variants={itemVariants}
-                key={t.key}
-                data-testid={`category-card-${t.key}`}
-                onClick={() => navigate(`/estimation?type=${t.key}`)}
+                key={pt.key}
+                data-testid={`category-card-${pt.key}`}
+                onClick={() => navigate(`/estimation?type=${pt.key}`)}
                 className="group relative h-64 w-full overflow-hidden rounded-2xl text-left border border-white/10"
               >
                 <img
-                  src={IMAGES[t.image] || IMAGES.project_card_interior} alt={t.name}
+                  src={IMAGES[pt.image] || IMAGES.project_card_interior} alt={pt.name}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
@@ -391,9 +391,9 @@ export default function Landing() {
                     <p className="num text-xs text-white/90 font-medium">{String(i + 1).padStart(2, "0")}</p>
                   </div>
                   <div>
-                    <h3 className="font-display text-2xl font-semibold text-white leading-tight">{t.name}</h3>
+                    <h3 className="font-display text-2xl font-semibold text-white leading-tight">{pt.name}</h3>
                     <div className="mt-3 flex items-center gap-2 text-sm text-primary font-medium opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                      Estimer maintenant <ArrowRight className="h-4 w-4" />
+                      {t("landing.cat.estimate_now", "Estimer maintenant")} <ArrowRight className="h-4 w-4" />
                     </div>
                   </div>
                 </div>
@@ -415,24 +415,24 @@ export default function Landing() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border mb-6">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-foreground">Prise de décision</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-foreground">{t("landing.cmp.badge", "Prise de décision")}</span>
               </div>
               <h2 className="font-display text-3xl lg:text-4xl font-bold tracking-tight">
-                Faire vous-même ou <br className="hidden sm:block" />engager un pro ?
+                {t("landing.cmp.title_a", "Faire vous-même ou")} <br className="hidden sm:block" />{t("landing.cmp.title_b", "engager un pro ?")}
               </h2>
               <p className="mt-6 text-base text-muted-foreground leading-relaxed">
-                ConstruPilot compare en temps réel le coût matériel pur et le coût avec main-d'œuvre. Évaluez le temps nécessaire, la complexité et les risques. 
-                <strong className="text-foreground"> Le système vous alerte automatiquement</strong> quand un professionnel qualifié est indispensable (structure, électricité, amiante).
+                {t("landing.cmp.desc_1", "ConstruPilot compare en temps réel le coût matériel pur et le coût avec main-d'œuvre. Évaluez le temps nécessaire, la complexité et les risques. ")}
+                <strong className="text-foreground">{t("landing.cmp.desc_strong", "Le système vous alerte automatiquement")}</strong>{t("landing.cmp.desc_2", " quand un professionnel qualifié est indispensable (structure, électricité, amiante).")}
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link to="/diy">
                   <Button className="rounded-full px-8 shadow-md">
-                    <Wrench className="mr-2 h-4 w-4" /> Mode Autonomie
+                    <Wrench className="mr-2 h-4 w-4" /> {t("landing.cmp.diy_btn", "Mode Autonomie")}
                   </Button>
                 </Link>
                 <Link to="/estimation">
                   <Button variant="secondary" className="rounded-full px-8">
-                    <PenTool className="mr-2 h-4 w-4" /> Devis Artisan
+                    <PenTool className="mr-2 h-4 w-4" /> {t("landing.cmp.pro_btn", "Devis Artisan")}
                   </Button>
                 </Link>
               </div>
@@ -441,24 +441,24 @@ export default function Landing() {
             {/* Visual Data Comparison */}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="p-6 border border-border rounded-2xl bg-background/50 backdrop-blur-sm flex flex-col justify-center">
-                <p className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-4">Coût Artisan</p>
+                <p className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-4">{t("landing.cmp.artisan_cost", "Coût Artisan")}</p>
                 <p className="num text-3xl font-extrabold text-foreground">{eur(10500)}</p>
-                <p className="text-sm text-muted-foreground mt-2">Main d'œuvre incluse, garanti décennale.</p>
+                <p className="text-sm text-muted-foreground mt-2">{t("landing.cmp.artisan_sub", "Main d'œuvre incluse, garantie décennale.")}</p>
               </div>
               
               <div className="p-6 border border-primary/30 rounded-2xl bg-primary/5 backdrop-blur-sm flex flex-col justify-center shadow-inner relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
-                <p className="text-xs uppercase font-bold tracking-wider text-primary mb-4">Coût DIY (Matériaux purs)</p>
+                <p className="text-xs uppercase font-bold tracking-wider text-primary mb-4">{t("landing.cmp.diy_cost", "Coût DIY (Matériaux purs)")}</p>
                 <p className="num text-3xl font-extrabold text-primary">{eur(5800)}</p>
                 <div className="mt-4 inline-flex items-center text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-md w-fit">
-                  <TrendingDown className="h-3 w-3 mr-1" /> Économie {eur(4700)}
+                  <TrendingDown className="h-3 w-3 mr-1" /> {t("landing.cmp.savings", "Économie")} {eur(4700)}
                 </div>
               </div>
               
               <div className="sm:col-span-2 p-5 border border-border rounded-2xl bg-background/50 flex items-start gap-4">
                 <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">Analyse IA (SDB 8m²) :</strong> Peinture et finitions réalisables par un débutant. Plomberie et tableau électrique à confier à un professionnel RGE.
+                  <strong className="text-foreground">{t("landing.cmp.ai_label", "Analyse IA (SDB 8 m²) :")}</strong> {t("landing.cmp.ai_text", "Peinture et finitions réalisables par un débutant. Plomberie et tableau électrique à confier à un professionnel RGE.")}
                 </p>
               </div>
             </div>
@@ -469,9 +469,9 @@ export default function Landing() {
       {/* ── AUDIENCES / POUR QUI ───────────────────────────── */}
       <section className="mx-auto max-w-[1500px] px-6 lg:px-10 pb-24 lg:pb-32">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <p className="overline">Pour qui ?</p>
+          <p className="overline">{t("landing.aud.overline", "Pour qui ?")}</p>
           <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-            Un écosystème connecté pour tous les acteurs du BTP
+            {t("landing.aud.title", "Un écosystème connecté pour tous les acteurs du BTP")}
           </h2>
         </div>
         
@@ -492,9 +492,9 @@ export default function Landing() {
                 <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center shadow-sm">
                   <a.icon className="h-5 w-5 text-primary" aria-hidden="true" />
                 </div>
-                <h3 className="font-display text-xl font-semibold">{a.key ? t(a.key, a.title) : a.title}</h3>
+                <h3 className="font-display text-xl font-semibold">{t(a.key, a.title)}</h3>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{a.textKey ? t(a.textKey, a.text) : a.text}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{t(a.textKey, a.text)}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -504,9 +504,9 @@ export default function Landing() {
       <section className="border-t border-border bg-background" id="faq">
         <div className="mx-auto max-w-[1000px] px-6 lg:px-10 py-24 lg:py-32">
           <div className="text-center mb-16">
-            <p className="overline">Questions fréquentes</p>
+            <p className="overline">{t("landing.faq.overline", "Questions fréquentes")}</p>
             <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-              Tout ce que vous devez savoir
+              {t("landing.faq.title", "Tout ce que vous devez savoir")}
             </h2>
           </div>
           
@@ -520,7 +520,7 @@ export default function Landing() {
                     aria-expanded={open}
                     className="w-full text-left flex items-center justify-between p-6 focus:outline-none"
                   >
-                    <span className="font-display font-semibold text-lg pr-8 text-foreground">{item.q}</span>
+                    <span className="font-display font-semibold text-lg pr-8 text-foreground">{t(item.qKey, item.q)}</span>
                     <div className={`h-8 w-8 rounded-full border flex items-center justify-center shrink-0 transition-colors ${open ? 'border-primary bg-primary text-white' : 'border-border text-muted-foreground'}`}>
                       <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
                     </div>
@@ -531,7 +531,7 @@ export default function Landing() {
                     className={`overflow-hidden transition-all duration-300 ease-in-out ${open ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
                   >
                     <div className="px-6 pb-6 pt-2 text-base text-muted-foreground leading-relaxed border-t border-border/50">
-                      {item.a}
+                      {t(item.aKey, item.a)}
                     </div>
                   </div>
                 </div>

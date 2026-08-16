@@ -1,5 +1,13 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 101 — 16/08/2026 (Publicité v2 + Landing 100% multilingue)
+- **Graphique Publicité** : ajout d'un BarChart recharts bi-axes (Dépense € à gauche, Leads à droite) par plateforme dans `AdsPanel.jsx` (data-testid `ads-chart`).
+- **Édition de campagne** : bouton crayon sur chaque ligne (`ads-edit-<id>`) ouvre le dialogue pré-rempli ; `save()` gère POST (création) et PUT (édition). Vérifié via curl (PUT persiste name/platform/spend/leads).
+- **Landing 100% multilingue** : toutes les sections (fonctionnalités, catalogue, comparaison DIY/pro, audiences, FAQ, hero 3D) branchées sur `t()`. ~55 nouvelles clés × 7 langues (fr/en/es/pt/it/de/ar) dans `landingI18n.js`.
+- Correctif : renommé le paramètre `t` de `types.map` en `pt` pour éviter le shadowing de la fonction i18n `t`.
+- Testé : curl (CRUD + PUT), captures écran (chart, dialogue édition, FAQ/features EN).
+
+
 ## Itération 100 — 16/08/2026 (Module Publicité / Marketing v1)
 - Câblé `AdsPanel` dans `/admin` (nouvel onglet « Publicité », entre AI et Requests).
 - KPIs : Dépense totale, Budget, Leads, Coût/lead (CPL), ROAS + agrégat par plateforme.
