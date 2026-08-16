@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Loader2, Users, Clock, MessageSquareWarning, BarChart3, ArrowRight, Check, X, KeyRound, UserX, MapPin } from "lucide-react";
+import { Plus, Loader2, Users, Clock, MessageSquareWarning, BarChart3, ArrowRight, Check, X, KeyRound, UserX, MapPin, Download, FileText, ImagePlus } from "lucide-react";
 import { api, num } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
@@ -193,6 +193,11 @@ function TimesheetsTab({ t }) {
             </p>
           </div>
           <span className="num font-bold">{r.hours != null ? `${r.hours} h` : "—"}</span>
+          {r.out_of_zone && (
+            <span className="px-2 py-1 rounded-sm text-[10px] font-semibold uppercase bg-red-500/15 text-red-600 dark:text-red-400" data-testid={`hr-outofzone-${r.entry_id}`} title={r.distance_in_m ? `${Math.round(r.distance_in_m)} m` : ""}>
+              ⚠ {t("hr.out_of_zone")}
+            </span>
+          )}
           <span className={`px-2.5 py-1 rounded-sm text-[11px] font-semibold uppercase ${ST_CLS[r.status] || ""}`}>{t(ST_KEY[r.status] || "")}</span>
           {r.status === "pending" && (
             <div className="flex gap-1">
@@ -208,8 +213,12 @@ function TimesheetsTab({ t }) {
 
 function NotesTab({ t }) {
   const [rows, setRows] = useState([]);
+  const [photos, setPhotos] = useState([]);
   const [replies, setReplies] = useState({});
-  const load = () => api.get("/hr/site-notes").then(({ data }) => setRows(data));
+  const load = () => {
+    api.get("/hr/site-notes").then(({ data }) => setRows(data));
+    api.get("/hr/site-photos").then(({ data }) => setPhotos(data)).catch(() => {});
+  };
   useEffect(() => { load(); }, []);
   const send = async (id) => {
     const reply = replies[id];
@@ -217,30 +226,51 @@ function NotesTab({ t }) {
     try { await api.post(`/hr/site-notes/${id}/reply`, { reply }); toast.success(t("hr.replied")); load(); }
     catch { toast.error("Erreur"); }
   };
-  if (rows.length === 0) return <div className="surface p-10 text-center text-muted-foreground" data-testid="hr-notes-empty">{t("hr.no_notes")}</div>;
   return (
-    <div className="grid gap-3 max-w-2xl" data-testid="hr-notes">
-      {rows.map((n) => (
-        <div key={n.note_id} className="surface p-4 rounded-sm" data-testid={`hr-note-${n.note_id}`}>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className={`px-2 py-0.5 rounded-sm ${n.type === "question" ? "bg-amber-500/15 text-amber-600" : "bg-secondary"}`}>
-              {n.type === "question" ? t("hr.type_question") : t("hr.type_comment")}
-            </span>
-            <span>{n.worker_name}{n.project_name ? ` · ${n.project_name}` : ""}</span>
-            <span className="ml-auto">{n.status === "answered" ? t("hr.answered") : t("hr.open_status")}</span>
-          </div>
-          <p className="mt-2 text-sm">{n.message}</p>
-          {n.reply ? (
-            <p className="mt-3 text-sm border-l-2 border-primary pl-3 text-muted-foreground">↳ {n.reply}</p>
-          ) : (
-            <div className="mt-3 flex gap-2">
-              <Input value={replies[n.note_id] || ""} onChange={(e) => setReplies((r) => ({ ...r, [n.note_id]: e.target.value }))}
-                placeholder={t("hr.reply_ph")} className="rounded-sm" data-testid={`hr-reply-input-${n.note_id}`} />
-              <Button className="rounded-sm" onClick={() => send(n.note_id)} data-testid={`hr-reply-btn-${n.note_id}`}>{t("hr.reply")}</Button>
+    <div className="grid gap-6 max-w-3xl">
+      <div className="grid gap-3" data-testid="hr-notes">
+        {rows.length === 0 && <div className="surface p-8 text-center text-muted-foreground" data-testid="hr-notes-empty">{t("hr.no_notes")}</div>}
+        {rows.map((n) => (
+          <div key={n.note_id} className="surface p-4 rounded-sm" data-testid={`hr-note-${n.note_id}`}>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className={`px-2 py-0.5 rounded-sm ${n.type === "question" ? "bg-amber-500/15 text-amber-600" : "bg-secondary"}`}>
+                {n.type === "question" ? t("hr.type_question") : t("hr.type_comment")}
+              </span>
+              <span>{n.worker_name}{n.project_name ? ` · ${n.project_name}` : ""}</span>
+              <span className="ml-auto">{n.status === "answered" ? t("hr.answered") : t("hr.open_status")}</span>
             </div>
-          )}
-        </div>
-      ))}
+            <p className="mt-2 text-sm">{n.message}</p>
+            {n.reply ? (
+              <p className="mt-3 text-sm border-l-2 border-primary pl-3 text-muted-foreground">↳ {n.reply}</p>
+            ) : (
+              <div className="mt-3 flex gap-2">
+                <Input value={replies[n.note_id] || ""} onChange={(e) => setReplies((r) => ({ ...r, [n.note_id]: e.target.value }))}
+                  placeholder={t("hr.reply_ph")} className="rounded-sm" data-testid={`hr-reply-input-${n.note_id}`} />
+                <Button className="rounded-sm" onClick={() => send(n.note_id)} data-testid={`hr-reply-btn-${n.note_id}`}>{t("hr.reply")}</Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div data-testid="hr-photos">
+        <p className="font-display font-bold text-sm mb-3">{t("hr.photos_title")}</p>
+        {photos.length === 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid="hr-photos-empty">{t("hr.no_photos")}</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {photos.map((p) => (
+              <div key={p.photo_id} className="surface rounded-sm overflow-hidden" data-testid={`hr-photo-${p.photo_id}`}>
+                <Selfie path={p.path} />
+                <div className="p-2">
+                  <p className="text-xs truncate">{p.caption || "—"}</p>
+                  <p className="text-[10px] text-muted-foreground">{p.worker_name} · {p.project_name || ""}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -248,9 +278,26 @@ function NotesTab({ t }) {
 function DashboardTab({ t }) {
   const [data, setData] = useState(null);
   useEffect(() => { api.get("/hr/dashboard").then(({ data }) => setData(data)); }, []);
+  const dl = async (fmt) => {
+    try {
+      const res = await api.get(`/hr/export/${fmt}`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url; a.download = `paie.${fmt}`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Export impossible"); }
+  };
   if (!data) return null;
   return (
     <div className="grid gap-6" data-testid="hr-dashboard">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => dl("csv")} data-testid="hr-export-csv">
+          <Download className="h-4 w-4" /> {t("hr.export_csv")}
+        </Button>
+        <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => dl("pdf")} data-testid="hr-export-pdf">
+          <FileText className="h-4 w-4" /> {t("hr.export_pdf")}
+        </Button>
+      </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold">{data.total_hours} h</p><p className="text-xs text-muted-foreground mt-1">{t("hr.total_hours")}</p></div>
         <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold">{num(data.entries)}</p><p className="text-xs text-muted-foreground mt-1">{t("hr.entries")}</p></div>
@@ -273,6 +320,45 @@ function DashboardTab({ t }) {
           ))}
           {data.by_project.length === 0 && <p className="text-sm text-muted-foreground">—</p>}
         </div>
+      </div>
+      <GeofenceManager t={t} />
+    </div>
+  );
+}
+
+function GeofenceManager({ t }) {
+  const [projects, setProjects] = useState([]);
+  const load = () => api.get("/hr/projects").then(({ data }) => setProjects(data));
+  useEffect(() => { load(); }, []);
+  const setZone = (p) => {
+    if (!navigator.geolocation) return toast.error(t("hr.w_gps_off"));
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        await api.put(`/hr/projects/${p.project_id}/geofence`, {
+          lat: pos.coords.latitude, lng: pos.coords.longitude, radius: 300,
+        });
+        toast.success(t("hr.geofence_saved")); load();
+      } catch { toast.error("Erreur"); }
+    }, () => toast.error(t("hr.w_gps_off")), { enableHighAccuracy: true, timeout: 10000 });
+  };
+  return (
+    <div className="surface p-4 rounded-sm" data-testid="hr-geofence">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-3 flex items-center gap-1.5">
+        <MapPin className="h-3.5 w-3.5" /> {t("hr.geofence")}
+      </p>
+      <div className="grid gap-2">
+        {projects.map((p) => (
+          <div key={p.project_id} className="flex items-center justify-between gap-2 text-sm py-1" data-testid={`hr-geofence-${p.project_id}`}>
+            <span className="min-w-0 truncate">{p.name}</span>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {p.site_lat != null ? `${p.site_lat.toFixed(4)}, ${p.site_lng.toFixed(4)} · ${p.geofence_radius || 300} m` : t("hr.no_geo")}
+            </span>
+            <Button size="sm" variant="outline" className="rounded-sm gap-1 h-7 text-[11px] shrink-0" onClick={() => setZone(p)} data-testid={`hr-setzone-${p.project_id}`}>
+              <MapPin className="h-3 w-3" /> {t("hr.use_my_pos")}
+            </Button>
+          </div>
+        ))}
+        {projects.length === 0 && <p className="text-sm text-muted-foreground">—</p>}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, MapPin, LogIn, LogOut, Loader2, Clock, MessageSquareWarning, Send, Power } from "lucide-react";
+import { Camera, MapPin, LogIn, LogOut, Loader2, Clock, MessageSquareWarning, Send, Power, ImagePlus } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
@@ -21,7 +21,10 @@ export default function WorkerApp() {
   const [mine, setMine] = useState([]);
   const [notes, setNotes] = useState([]);
   const [doubt, setDoubt] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [caption, setCaption] = useState("");
   const fileRef = useRef();
+  const photoRef = useRef();
 
   const isWorker = user?.role === "worker";
 
@@ -74,6 +77,23 @@ export default function WorkerApp() {
     try {
       await api.post("/hr/site-notes", { project_id: openTs?.project_id || projectId || null, type: "question", message: doubt });
       toast.success(t("hr.w_doubt_sent")); setDoubt(""); refresh();
+    } catch { toast.error("Erreur"); }
+    finally { setBusy(false); }
+  };
+
+  const onPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhoto(reader.result);
+    reader.readAsDataURL(file);
+  };
+  const sendPhoto = async () => {
+    if (!photo) return;
+    setBusy(true);
+    try {
+      await api.post("/hr/site-photos", { project_id: openTs?.project_id || projectId || null, photo, caption });
+      toast.success(t("hr.w_photo_sent")); setPhoto(null); setCaption("");
     } catch { toast.error("Erreur"); }
     finally { setBusy(false); }
   };
@@ -139,6 +159,27 @@ export default function WorkerApp() {
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />} {t("hr.w_clock_in")}
           </Button>
         )}
+
+        {/* Site progress photo */}
+        <div className="surface p-4 rounded-sm grid gap-2" data-testid="worker-photo-section">
+          <p className="text-sm font-semibold flex items-center gap-1.5"><ImagePlus className="h-4 w-4 text-primary" /> {t("hr.w_add_photo")}</p>
+          {photo && <img src={photo} alt="preview" className="w-full rounded-sm object-cover max-h-48" data-testid="worker-photo-preview" />}
+          <input ref={photoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto} data-testid="worker-photo-input" />
+          <div className="flex gap-2">
+            <Button variant="outline" className="rounded-sm gap-2 flex-1" onClick={() => photoRef.current?.click()} data-testid="worker-pick-photo">
+              <ImagePlus className="h-4 w-4" /> {photo ? t("hr.w_retake") : t("hr.w_add_photo")}
+            </Button>
+          </div>
+          {photo && (
+            <>
+              <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder={t("hr.w_photo_caption")}
+                className="w-full rounded-sm border border-border bg-background px-3 py-2 text-sm" data-testid="worker-photo-caption" />
+              <Button className="rounded-sm gap-2" disabled={busy} onClick={sendPhoto} data-testid="worker-photo-send">
+                <Send className="h-4 w-4" /> {t("hr.w_send_photo")}
+              </Button>
+            </>
+          )}
+        </div>
 
         {/* Doubt */}
         <div className="surface p-4 rounded-sm grid gap-2">

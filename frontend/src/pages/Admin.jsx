@@ -76,9 +76,24 @@ export default function Admin() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over={t("admin.over")} title={t("admin.title")}>
-        {t("admin.subtitle")}
-      </SectionTitle>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SectionTitle over={t("admin.over")} title={t("admin.title")}>
+          {t("admin.subtitle")}
+        </SectionTitle>
+        <button
+          data-testid="admin-demo-unlock-btn"
+          onClick={async () => {
+            try {
+              const { data } = await api.post("/admin/demo-unlock");
+              toast.success(`Mode démo activé — ${data.tier} · toutes les options débloquées`);
+              setTimeout(() => window.location.reload(), 900);
+            } catch { toast.error("Activation du mode démo impossible"); }
+          }}
+          className="shrink-0 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 text-sm font-semibold transition-colors">
+          🎬 Mode démo — tout débloquer
+          <span className="block text-[11px] font-normal text-muted-foreground">Stripe test · carte 4242 4242 4242 4242</span>
+        </button>
+      </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
         <Stat label={t("admin.k_users")} value={num(stats.users)} testId="admin-stat-users" />

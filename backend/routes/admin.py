@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from core.db import db
-from core.security import admin_user
+from core.security import admin_user, current_user
 from engines.catalog import LOTS, REGIONS
 from engines import price_search
 
@@ -463,3 +463,38 @@ async def set_ai_budget(body: AiBudgetIn) -> dict:
     updates["budget_alert_month"] = None
     await db.app_settings.update_one({"_id": "ai"}, {"$set": updates}, upsert=True)
     return await get_ai_budget()
+
+
+# ---------- Mode démo : débloquer toutes les options (Pro Business) ----------
+
+@router.post("/demo-unlock")
+async def demo_unlock(user=Depends(current_user)) -> dict:
+    """Octroie au compte courant une entitlement Pro Business (démo, 10 ans) + l'add-on
+    Facturation, pour débloquer toutes les options sans passer par Stripe.
+    Stripe reste en mode test : la carte 4242 4242 4242 4242 fonctionne aussi dans le checkout."""
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    ent = {
+        "entitlement_id": f"demo_{user['user_id']}",
+        "user_id": user["user_id"], "plan_id": "pro_business_yearly",
+        "status": "active", "source": "demo",
+        "granted_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=3650)).isoformat(),
+    }
+    await db.entitlements.update_one(
+        {"entitlement_id": ent["entitlement_id"]}, {"$set": ent}, upsert=True)
+    await db.users.update_one({"user_id": user["user_id"]},
+                              {"$set": {"invoicing_addon": True, "demo_mode": True}})
+    from engines.monetization import user_tier
+    return {"ok": True, "tier": await user_tier(user["user_id"]),
+            "invoicing_addon": True, "card": "4242 4242 4242 4242 (Stripe test)"}
+
+
+@router.post("/demo-lock")
+async def demo_lock(user=Depends(current_user)) -> dict:
+    """Désactive le mode démo (retire l'entitlement démo + l'add-on)."""
+    await db.entitlements.delete_one({"entitlement_id": f"demo_{user['user_id']}"})
+    await db.users.update_one({"user_id": user["user_id"]},
+                              {"$set": {"invoicing_addon": False, "demo_mode": False}})
+    from engines.monetization import user_tier
+    return {"ok": True, "tier": await user_tier(user["user_id"])}

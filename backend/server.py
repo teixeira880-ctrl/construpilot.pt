@@ -357,6 +357,11 @@ async def seed():
     scheduler.add_job(ai_engine.check_ai_budget,
                       "interval", hours=1, id="ai_budget_check",
                       max_instances=1, coalesce=True)
+    # Alerte pointage oublié (entrée sans sortie > 12h) — chaque jour à 20:00 UTC
+    from routes import hr as hr_routes
+    scheduler.add_job(hr_routes.run_forgotten_clockouts,
+                      CronTrigger(hour=20, minute=0), id="hr_forgotten_clockouts",
+                      max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

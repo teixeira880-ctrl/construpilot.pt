@@ -609,3 +609,18 @@ Réservé au plan Pro Business (admin autorisé). Ouvriers = comptes dédiés (r
 Fichier test : /app/backend/tests/test_iter85_hr_module.py
 Credentials : ouvrier@construpilot.fr / Ouvrier2026! (worker, employeur=admin).
 Non bloquant : warning hydration <span> dans <option> (artefact instrumentation) ; a11y DialogDescription corrigé.
+
+## Iter 87 (16/06/2026) — Mode démo paiement + 4 extensions RH
+### Mode démo (paiement)
+- Stripe déjà en mode TEST (sk_test_) → carte 4242 4242 4242 4242 fonctionne dans le checkout (déblocage au retour via sync_status, sans dépendre du webhook).
+- Nouveau : `POST /api/admin/demo-unlock` (+ /demo-lock) octroie une entitlement Pro Business (10 ans) + invoicing_addon → TOUTES les options débloquées instantanément. Bouton "🎬 Mode démo" dans l'Admin.
+
+### Extensions RH
+- **Photos de chantier** : POST/GET /api/hr/site-photos (ouvrier upload base64 + légende → object storage). Galerie côté patron (onglet Chantier), upload côté ouvrier (input capture=environment).
+- **Export paie** : GET /api/hr/export/csv (UTF-8 BOM, ; sep) + /export/pdf (reportlab, agrégé par ouvrier, heures validées × taux = montant). Boutons dans le dashboard RH.
+- **Alerte pointage oublié** : job `run_forgotten_clockouts` (cron 20:00) → email patron si pointage 'open' > 12h (flag alerted_forgotten).
+- **Géo-clôture** : PUT /api/hr/projects/{id}/geofence (lat/lng/radius). clock-in/out calculent la distance (haversine) et flag `out_of_zone`. Badge "Hors zone" dans les pointages + gestionnaire géofence ("Use my location") dans le dashboard.
+- Nouvelles clés i18n HR (HR_EXTRA, 7 langues).
+
+### Tests : backend validé par curl (géofence hors-zone détecté à 440km, photos, CSV/PDF générés, job sans crash, demo-unlock→tier pro_business). Frontend smoke screenshot OK.
+### EN ATTENTE (non fait ce tour) : page d'accueil multilingue (contenu codé en dur FR) + dashboard leads Admin — à traiter au prochain tour.
