@@ -1,5 +1,20 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 97 — 16/06/2026 (Écosystème Factures Pro Business — Phase 1)
+- Nouvelle page **`/factures`** (`pages/Invoices.jsx`) : liste des factures (`GET /documents?doc_type=invoice`),
+  stats (nb, payées, reste à encaisser), **Nouvelle facture** (→ `/devis-editeur?type=invoice`),
+  **Facturer un devis** (dialog listant les devis → `POST /documents/{id}/to-invoice` mode total →
+  ouvre l'éditeur), PDF (blob), badge statut, **accès direct fiche client** depuis chaque facture.
+- Gate **Pro Business** (`tier === "pro_business"` OU `role === "admin"` — cohérent avec le bypass
+  admin backend `require_pro_business`) ; sinon écran d'upsell vers `/tarifs`.
+- Nav : lien **Factures** ajouté (USER_LINKS, icône FileText). Route protégée dans App.js.
+- Le backend existait déjà (documents devis/facture/avoir, numérotation DEV/FAC/AV, conversion,
+  paiements, PDF). L'éditeur `QuoteEditor` gère `?type=invoice` et `?plan=` (devis provisoire depuis
+  analyse de plan/PC via PlanTakeoff — client/prix/ouvrages modifiables).
+- Testé (preview, compte admin) : page rend, dialog conversion, éditeur facture (client/lignes/totaux),
+  API to-invoice OK. Nécessite un Deploy pour la prod. **Phase 2 (Factur-X / e-invoicing) en attente.**
+
+
 ## Itération 96 — 16/06/2026 (Suivi des leads pub + relance auto)
 - **Suivi leads par source** : `GET /admin/leads/stats` (total, landing, particulier, pro, nouveau,
   gagné) + tableau de bord dans Admin → CRM/Devis (cartes de stats + badge source par lead).

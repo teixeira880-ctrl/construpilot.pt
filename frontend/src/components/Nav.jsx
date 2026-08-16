@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown, Contact, Library,
+  Users, LineChart, ChevronDown, Contact, Library, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,7 @@ const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 // Raccourcis utilisateur connecté — dans le menu « Plus » (plus de chevauchement header)
 const USER_LINKS = [
   { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart },
+  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
   { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
