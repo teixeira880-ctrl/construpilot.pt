@@ -30,7 +30,16 @@ export default function Invoices() {
   const nav = useNavigate();
   const { tier } = useBilling();
   const { user } = useAuth();
-  const isProBusiness = tier === "pro_business" || user?.role === "admin";
+  const isProBusiness = tier === "pro_business" || user?.role === "admin" || !!user?.invoicing_addon;
+
+  const activateAddon = async () => {
+    try {
+      const { data } = await api.post("/billing/checkout", {
+        plan_id: "invoicing_addon_monthly", origin_url: window.location.origin,
+      });
+      if (data?.url) window.location.href = data.url;
+    } catch { toast.error("Activation impossible pour le moment"); }
+  };
   const [invoices, setInvoices] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,11 +99,17 @@ export default function Invoices() {
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Facturation Pro Business</h1>
         <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
           La gestion des factures (création, conversion de devis, suivi des paiements et
-          facturation électronique) est réservée au plan <strong>Pro Business</strong>.
+          facturation électronique Factur-X) est <strong>incluse dans le plan Pro Business</strong>,
+          ou disponible en option à <strong>5 €/mois</strong> pour les autres abonnements pro.
         </p>
-        <Button className="mt-8 rounded-sm gap-2" data-testid="invoices-upgrade-btn" onClick={() => nav("/tarifs")}>
-          Passer à Pro Business <ArrowRight className="h-4 w-4" />
-        </Button>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button className="rounded-sm gap-2" data-testid="invoices-activate-addon-btn" onClick={activateAddon}>
+            Activer l'option Facturation — 5 €/mois <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" className="rounded-sm gap-2" data-testid="invoices-upgrade-btn" onClick={() => nav("/tarifs")}>
+            Voir Pro Business (inclus)
+          </Button>
+        </div>
       </div>
     );
   }

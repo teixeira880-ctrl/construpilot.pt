@@ -30,7 +30,8 @@ class LoginIn(BaseModel):
 def _public(u: dict) -> dict:
     out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
-                                  "two_fa_enabled", "two_fa_email", "created_at")}
+                                  "two_fa_enabled", "two_fa_email", "invoicing_addon",
+                                  "created_at")}
     out["has_password"] = bool(u.get("password_hash"))
     return out
 

@@ -1,5 +1,19 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 99 — 16/06/2026 (Option Facturation payante pour les pros)
+- Modèle : **Pro Business = Facturation incluse (gratuit)** ; **autres pros = option 5 €/mois**.
+- Nouveau plan `invoicing_addon_monthly` (5 €/mois, audience "addon", quota `{addon:"invoicing"}`)
+  dans `engines/monetization_catalog.py` (auto-seedé au démarrage via server.py).
+- `engines/monetization.py` (fulfillment) : branche add-on → set `user.invoicing_addon=True`
+  (ne remplace pas le plan principal).
+- `routes/auth.py` `_public` expose `invoicing_addon`.
+- `pages/Invoices.jsx` : gate = admin OU tier pro_business OU `user.invoicing_addon` ; écran
+  verrouillé avec CTA **« Activer l'option Facturation — 5 €/mois »** → `POST /billing/checkout`
+  (plan `invoicing_addon_monthly`) → Stripe.
+- Testé (preview) : checkout addon → HTTP 200 + URL Stripe valide ; `invoicing_addon` remonte dans
+  `/auth/me` ; compilation OK. Nécessite Deploy (le seed du plan se fait au démarrage).
+
+
 ## Itération 98 — 16/06/2026 (Facturation électronique — Factur-X, Phase 2)
 - Plateforme agréée retenue : **SuperPDP** (0,0025 €/facture, API) — raccordement en attente de la
   clé API (compte à créer par l'utilisateur sur superpdp.tech).

@@ -185,6 +185,26 @@ DEFAULT_PLANS = [
         "quotas": {"seats": 5, "projects": -1},
         "sort_order": 51, "active": True, "highlight": False,
     },
+    # -------- Option Facturation (add-on abonnement mensuel) --------
+    {
+        "plan_id": "invoicing_addon_monthly",
+        "code": "INVOICING_ADDON_MONTHLY",
+        "name": "Option Facturation",
+        "tagline": "Factures + facturation électronique",
+        "description": "Débloque la gestion des factures et la facturation électronique Factur-X. Inclus gratuitement dans Pro Business.",
+        "audience": "addon",
+        "kind": "subscription",
+        "amount_cents": 500, "currency": "eur", "interval": "month",
+        "lookup_key": "construpilot_invoicing_addon_monthly",
+        "features": [
+            "Création de factures",
+            "Conversion devis → facture",
+            "Suivi des paiements",
+            "Facturation électronique Factur-X",
+        ],
+        "quotas": {"addon": "invoicing"},
+        "sort_order": 65, "active": True, "highlight": False,
+    },
     # -------- Achats 3D à l'unité (audience="addon", paiement unique) --------
     {
         "plan_id": "render_credit_3d",

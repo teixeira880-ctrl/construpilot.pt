@@ -332,6 +332,13 @@ async def _mark_paid(session_id: str, s) -> None:
             {"$inc": {f"credits_3d.{credit_kind}": qty}})
         logger.info(f"3D credit +{qty} {credit_kind} pour {rec['user_id']}")
         return
+    if (plan.get("quotas") or {}).get("addon") == "invoicing":
+        await db.users.update_one(
+            {"user_id": rec["user_id"]},
+            {"$set": {"invoicing_addon": True,
+                      "invoicing_addon_sub": rec.get("stripe_subscription_id")}})
+        logger.info(f"Option Facturation activée pour {rec['user_id']}")
+        return
     await grant_entitlement(rec["user_id"], plan, rec)
     await _consume_referral_bonus(rec["user_id"],
                                    int(rec.get("bonus_days_consumed", 0) or 0))
