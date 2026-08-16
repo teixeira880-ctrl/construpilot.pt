@@ -43,6 +43,7 @@ const USER_LINKS = [
   { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
+  { to: "/rh", label: "RH — Chantier", key: "hr.nav", icon: Users },
   { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
   { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch },
   { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },

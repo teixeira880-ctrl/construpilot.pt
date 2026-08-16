@@ -50,6 +50,8 @@ import ClientDetail from "@/pages/ClientDetail";
 import Library from "@/pages/Library";
 import QuoteEditor from "@/pages/QuoteEditor";
 import Invoices from "@/pages/Invoices";
+import HR from "@/pages/HR";
+import WorkerApp from "@/pages/WorkerApp";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
@@ -106,6 +108,8 @@ function AppRouter() {
       <Route path="/equipe" element={<Protected><Shell><Team /></Shell></Protected>} />
       <Route path="/devis" element={<Protected><Shell><QuoteTracking /></Shell></Protected>} />
       <Route path="/factures" element={<Protected><Shell><Invoices /></Shell></Protected>} />
+      <Route path="/rh" element={<Protected><Shell><HR /></Shell></Protected>} />
+      <Route path="/pointage" element={<Protected><WorkerApp /></Protected>} />
       <Route path="/mes-avis" element={<Protected><Shell><MyReviews /></Shell></Protected>} />
       <Route path="/clients" element={<Protected><Shell><Clients /></Shell></Protected>} />
       <Route path="/clients/:clientId" element={<Protected><Shell><ClientDetail /></Shell></Protected>} />

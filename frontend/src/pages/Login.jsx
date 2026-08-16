@@ -46,7 +46,10 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      navigate(user.must_change_password ? "/compte" : "/dashboard", { replace: true });
+      const dest = user.role === "worker"
+        ? "/pointage"
+        : (user.must_change_password ? "/compte" : "/dashboard");
+      navigate(dest, { replace: true });
     }
   }, [user, navigate]);
 

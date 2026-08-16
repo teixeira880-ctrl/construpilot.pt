@@ -1,0 +1,39 @@
+{
+  "summary": "Iter-85 HR module (Pointage & présence chantier, Pro Business gated) — end-to-end validation. Backend: 22/22 pytest cases pass on /api/hr/* — paywall gating (client → 402), workers CRUD (create/list/reset-password/duplicate 409/deactivate), worker /me/projects and /me/status, clock-in requires selfie (400) and valid project (404), full clock-in + clock-out with hours computed (>=0) and status pending, /me/timesheets contains entry, selfie ACL (employer 200 / owner worker 200 / other user 403), employer /timesheets lists worker entries, /timesheets/{id}/validate switches to 'validated' and rejects invalid status (400), /dashboard shape (total_hours/entries/pending/by_worker/by_project), site-notes create + employer reply + worker sees reply, empty message 400. Frontend: paywall (data-testid=hr-paywall + hr-upgrade-btn) shown to client user; admin sees data-testid=hr-page with all 4 tabs (workers/timesheets/notes/dashboard) and 0 raw hr.* keys leak; lang-toggle to EN translates title to 'Site clock-in & attendance' with 0 leaks; new worker created via hr-new-worker-btn dialog (name/email/password/poste/rate → hr-worker-save) appears in list, duplicate email produces 409 + error toast. Worker login redirects to /pointage rendering data-testid=worker-app; clock-in without selfie shows error text; after selfie upload (set_input_files on worker-selfie-input) selfie-preview appears, worker-clock-in creates worker-open-ts, worker-clock-out closes it and worker-ts-* entries appear; worker-doubt-input + worker-doubt-send posts a question visible in list. Admin /rh Pointages tab shows hr-ts-* rows with hr-validate-* and hr-reject-* actions (validate toast appears); Chantier tab shows hr-note-* with hr-reply-input-* + hr-reply-btn-* (Reply sent toast + reply persists); Tableau de bord shows data-testid=hr-dashboard with by-worker/by-site breakdowns.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "WorkerApp /pointage — worker-project-select <option> rendering", "issues": ["React hydration console error: 'In HTML, <span> cannot be a child of <option>' inside <select data-testid=worker-project-select> (WorkerApp.jsx line ~108). The project name text is being wrapped by the runtime instrumentation into a <span> inside <option>. Native <option> elements cannot contain span children — will emit hydration warnings on every render. Suggest wrapping the option content in a Fragment or using dangerouslySetInnerHTML/plain string only."]},
+      {"screen": "HR Ouvriers dialog (hr-new-worker-btn Dialog)", "issues": ["A11y warning: 'Missing Description or aria-describedby={undefined} for {DialogContent}'. Add <DialogDescription> inside the new-worker DialogHeader to satisfy Radix a11y contract."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter85_hr_module.py",
+    "/app/test_reports/pytest/iter85_results.xml"
+  ],
+  "action_items": [
+    "Non-blocking: fix the <span> inside <option> hydration warning in WorkerApp.jsx worker-project-select (line ~108) — render {p.name} without wrapping instrumentation, or move the select to a shadcn <Select> component.",
+    "Non-blocking: add <DialogDescription> inside HR.jsx new-worker DialogHeader (and any other DialogContent without one) to remove Radix aria-describedby warnings."
+  ],
+  "critical_code_review_comments": [
+    "routes/hr.py: _require_employer delegates to engines.monetization.require_pro_business, which returns HTTP 402 (Payment Required) for non-Pro users. Spec says 'paywall' — 402 is semantically correct, but if the frontend paywall page expects a specific error contract from other API calls it should tolerate both 402 and 403. Currently HR.jsx uses BillingContext tier locally, so the frontend never hits 402 — fine.",
+    "clock_in decodes and stores selfie BEFORE inserting the timesheet doc; if put_object fails halfway, no orphan DB row is created. Good. Reverse case (DB insert then storage) would leak. Keep as-is.",
+    "hours computed via (clock_out - clock_in)/3600 with fromisoformat + tz coerce — robust for both naive and aware ISO stored timestamps.",
+    "selfie ACL: `role != 'worker' and employer_id == user.user_id` blocks other employers correctly; owner worker also allowed; role=='admin' is a redundant OR (admin is not role='worker' and would need to be the concerned employer, which the seeded admin is). The extra `role=='admin'` clause means ANY admin user in the system could read any selfie via /hr/selfie — verify this is intended (currently OK because there's only one admin; if secondary admins are created, they'd see all selfies).",
+    "list_timesheets date filter: `q['clock_in']=rng` is built as an ISO string range comparison — works because clock_in is stored as ISO 8601 which sorts lexicographically. Fine.",
+    "storage.put_object is wrapped with asyncio.to_thread — good, avoids blocking event loop.",
+    "HR.jsx WorkersTab: validation only checks `name/email/password` truthy — no client-side email format or password length validation before POST. Backend enforces min 6 chars; UI shows generic error. Acceptable.",
+    "WorkerApp.jsx does not clear the file <input> value after successful clock-in, so if the user re-taps the same file it may not re-trigger onChange. Not blocking (state is cleared via setSelfie(null)) but the underlying input.files still holds the previous file — a subsequent identical selection won't fire. Consider setting fileRef.current.value = '' after read.",
+    "HR.jsx Selfie component fetches blob per row without any caching — with 100 rows this triggers 100 requests. For MVP this is fine; consider a shared cache map or IntersectionObserver-based lazy load later."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter85_hr_module.py"],
+  "success_rate": {"backend": "100% (22/22)", "frontend": "100% (all critical UI flows passed)"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! ; client@construpilot.fr / Client2026! ; test workers created dynamically per test run (email prefix TEST_/ui_worker_*).",
+  "seed_data_creation": "Backend pytest creates a fresh worker 'TEST Worker Iter85' (unique email each run) and deactivates it at the end. Frontend UI test creates another worker ui_worker_<hex>@construpilot.fr (left active — not automatically deleted, cheap noise but not harmful). One TEST timesheet + one TEST doubt persist under the admin employer, plus one reply 'Réponse UI test'.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "HR module fully green. Backend test file /app/backend/tests/test_iter85_hr_module.py must be run with `-o addopts=''` (or `-p no:xdist`) because pytest-xdist splits tests across two workers and this suite passes state via `pytest.hr_last_entry_id` between tests, which doesn't cross worker boundaries. Small 1x1 PNG data URL is enough for selfie upload — storage engine accepts it. Worker login via demo `ouvrier@construpilot.fr / Ouvrier2026!` works; must_change_password=true triggers a benign 'temporary password' banner (not a bug). Two console warnings remain (a11y DialogDescription + <span> in <option> hydration) — non-blocking cosmetic fixes listed in action_items.",
+  "rca of the issue": "N/A — no critical bugs found. The paywall returns HTTP 402 (Payment Required) instead of 403 which is semantically correct for a subscription paywall (Stripe/Emergent monetization convention). Frontend guards on tier locally so 402 is never surfaced. If E1 wants HR endpoints to return 403 for consistency, override _require_employer to catch the 402 and re-raise 403 — but current behavior is more precise."
+}

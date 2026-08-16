@@ -589,3 +589,23 @@ Points optionnels non traités : warning hydration devtools sur un <select> Quot
 
 ### Tests — iteration_84.json : backend 100% (9/9 pytest), frontend 100%. Aucun bug critique.
 Fichier test : /app/backend/tests/test_iter84_ai_budget_daily_j2.py
+
+## Iter 86 (16/06/2026) — Module RH : Pointage & présence chantier (Pro Business)
+Réservé au plan Pro Business (admin autorisé). Ouvriers = comptes dédiés (role='worker', employer_id).
+
+### Backend
+- `routes/hr.py` (préfixe /api/hr) : gestion ouvriers (CRUD + reset mdp + désactivation), pointage entrée/sortie (selfie base64 + GPS + horodatage, calcul auto des heures), liste + validation des pointages, tableau de bord (heures par ouvrier/chantier + à valider), commentaires/doutes de chantier (ouvrier signale, employeur répond), endpoint selfie protégé (ACL employeur/ouvrier).
+- Auth : réutilise `core/security.py` (hash_password/make_jwt/current_user) — pas de nouveau système ; l'ouvrier se connecte via /auth/login. `_public` renvoie role.
+- Stockage selfies : `engines/storage.py` (Emergent object storage) via `asyncio.to_thread`. Refs dans `db.hr_files`.
+- Collections : users(role=worker), hr_timesheets, hr_notes, hr_files.
+- Gating : `engines.monetization.require_pro_business` (402 si non éligible ; le front gate localement via tier).
+
+### Frontend
+- `pages/HR.jsx` (employeur, route /rh) : onglets Ouvriers / Pointages / Chantier (doutes) / Tableau de bord + paywall Pro Business. Composant Selfie (blob authentifié).
+- `pages/WorkerApp.jsx` (ouvrier, route /pointage, mobile) : choix chantier, selfie (input capture), GPS (geolocation), clock-in/out, doutes, mes heures. Login ouvrier → redirection /pointage.
+- `lib/hrI18n.js` (7 langues) fusionné dans I18nContext ; lien nav "RH — Chantier".
+
+### Tests — iteration_85.json : backend 100% (22/22 pytest), frontend 100%. Aucun bug critique.
+Fichier test : /app/backend/tests/test_iter85_hr_module.py
+Credentials : ouvrier@construpilot.fr / Ouvrier2026! (worker, employeur=admin).
+Non bloquant : warning hydration <span> dans <option> (artefact instrumentation) ; a11y DialogDescription corrigé.
