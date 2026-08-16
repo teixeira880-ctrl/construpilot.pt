@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User } from "lucide-react";
+import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -57,6 +57,17 @@ export default function Invoices() {
       a.href = url; a.download = `${doc.number || "facture"}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Génération PDF impossible"); }
+  };
+
+  const downloadFacturx = async (doc) => {
+    try {
+      const res = await api.get(`/documents/${doc.doc_id}/factur-x`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${doc.number || "facture"}-facturx.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Facture électronique Factur-X générée");
+    } catch { toast.error("Génération Factur-X impossible"); }
   };
 
   const convertQuote = async (q) => {
@@ -161,6 +172,8 @@ export default function Invoices() {
                   onClick={() => nav(`/devis-editeur/${inv.doc_id}`)}>Ouvrir</Button>
                 <Button size="sm" variant="ghost" className="rounded-sm gap-1.5" data-testid={`invoice-pdf-${inv.doc_id}`}
                   onClick={() => downloadPdf(inv)}><Download className="h-4 w-4" /></Button>
+                <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" data-testid={`invoice-facturx-${inv.doc_id}`}
+                  onClick={() => downloadFacturx(inv)}><FileCheck2 className="h-4 w-4" /> Factur-X</Button>
               </div>
             </motion.div>
           ))}

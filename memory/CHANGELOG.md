@@ -1,5 +1,16 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 98 — 16/06/2026 (Facturation électronique — Factur-X, Phase 2)
+- Plateforme agréée retenue : **SuperPDP** (0,0025 €/facture, API) — raccordement en attente de la
+  clé API (compte à créer par l'utilisateur sur superpdp.tech).
+- **Génération Factur-X** (format légal FR) codée : `engines/facturx_gen.py` (XML CII profil MINIMUM
+  + embarquage via lib `factur-x` → PDF/A-3). Endpoint `GET /documents/{id}/factur-x` (factures only).
+- Frontend `pages/Invoices.jsx` : bouton **Factur-X** par facture (téléchargement du PDF électronique).
+- Deps : `factur-x==6.7`, `python-stdnum==2.2` (ajoutés à requirements.txt).
+- Testé (preview) : facture créée → `/factur-x` HTTP 200, XML `factur-x.xml` embarqué et extrait OK.
+  Nécessite un Deploy pour la prod. **Reste : raccordement API SuperPDP (clé API utilisateur).**
+
+
 ## Itération 97 — 16/06/2026 (Écosystème Factures Pro Business — Phase 1)
 - Nouvelle page **`/factures`** (`pages/Invoices.jsx`) : liste des factures (`GET /documents?doc_type=invoice`),
   stats (nb, payées, reste à encaisser), **Nouvelle facture** (→ `/devis-editeur?type=invoice`),

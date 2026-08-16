@@ -144,3 +144,5 @@ watchfiles==1.2.0
 websockets==16.1.1
 yarl==1.24.5
 zipp==4.1.0
+factur-x==6.7
+python-stdnum==2.2
