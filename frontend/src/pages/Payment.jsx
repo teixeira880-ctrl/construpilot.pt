@@ -3,10 +3,18 @@ import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { CheckCircle2, XCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useBilling } from "@/context/BillingContext";
+
+const PLAN_LABELS = {
+  pro_business_monthly: "Pro Business", pro_business_yearly: "Pro Business",
+  pro_monthly: "Pro", pro_yearly: "Pro", premium_monthly: "Premium", premium_yearly: "Premium",
+  project_pass: "Project Pass", invoicing_addon_monthly: "Option Facturation",
+};
 
 export function PaymentSuccess() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { refresh } = useBilling();
   const sessionId = params.get("session_id");
   const [status, setStatus] = useState("checking");
   const [rec, setRec] = useState(null);
@@ -20,14 +28,20 @@ export function PaymentSuccess() {
         const { data } = await api.get(`/billing/status/${sessionId}`);
         if (cancelled) return;
         setRec(data);
-        if (data.payment_status === "paid") { setStatus("ok"); return; }
+        if (data.payment_status === "paid") {
+          setStatus("ok");
+          refresh?.();  // met à jour le tier dans toute l'app (débloque les options)
+          return;
+        }
         if (tries++ < 15) setTimeout(poll, 2000);
         else setStatus("pending");
       } catch { setStatus("error"); }
     };
     poll();
     return () => { cancelled = true; };
-  }, [sessionId]);
+  }, [sessionId, refresh]);
+
+  const planName = PLAN_LABELS[rec?.plan_id] || (rec?.mode === "subscription" ? "Votre abonnement" : "Votre achat");
 
   return (
     <div className="max-w-lg mx-auto surface p-8 mt-16 grid gap-6 text-center" data-testid="payment-success-page">
@@ -42,10 +56,10 @@ export function PaymentSuccess() {
         <>
           <CheckCircle2 className="h-14 w-14 mx-auto text-emerald-500" />
           <div>
-            <p className="font-display text-2xl font-bold">Merci !</p>
+            <p className="font-display text-2xl font-bold" data-testid="ps-plan-activated">🎉 {planName} activé</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Votre {rec?.mode === "subscription" ? "abonnement" : "achat"} est confirmé.
-              Toutes les fonctionnalités sont désormais activées sur votre compte.
+              Toutes les fonctionnalités de votre formule sont désormais débloquées sur votre compte.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">

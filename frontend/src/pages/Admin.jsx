@@ -15,6 +15,7 @@ import { useI18n } from "@/context/I18nContext";
 import { Stat, SectionTitle } from "@/components/Bits";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
+import AdsPanel from "@/components/AdsPanel";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
 import { DevicesList } from "@/components/account/DevicesList";
@@ -30,6 +31,7 @@ export default function Admin() {
   const [projects, setProjects] = useState([]);
   const [leads, setLeads] = useState([]);
   const [leadStats, setLeadStats] = useState(null);
+  const [leadFilter, setLeadFilter] = useState("all");
   const [suppliers, setSuppliers] = useState({ builtin: [], custom: [] });
   const [newSup, setNewSup] = useState({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
 
@@ -118,6 +120,7 @@ export default function Admin() {
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
+          <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicité</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
           <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">{t("admin.t_account")}</TabsTrigger>
@@ -125,6 +128,10 @@ export default function Admin() {
 
         <TabsContent value="ai" className="mt-6">
           <AiModelTab />
+        </TabsContent>
+
+        <TabsContent value="ads" className="mt-6">
+          <AdsPanel />
         </TabsContent>
 
         <TabsContent value="account" className="mt-6">
@@ -384,9 +391,23 @@ export default function Admin() {
               ))}
             </div>
           )}
+          <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="admin-leads-filter">
+            {[["all", "Tous"], ["nouveau", "Nouveaux"], ["contacté", "Contactés"],
+              ["devis envoyé", "Devis envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
+              ["j2", "Relancés J+2"]].map(([v, lbl]) => (
+              <button key={v} onClick={() => setLeadFilter(v)} data-testid={`admin-leads-filter-${v}`}
+                className={`px-3 py-1.5 rounded-sm text-xs font-semibold border transition-colors ${leadFilter === v ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/40"}`}>
+                {lbl}
+              </button>
+            ))}
+          </div>
           <div className="grid gap-3" data-testid="admin-leads-list">
-            {leads.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Aucune demande.</p>}
-            {leads.map((l) => (
+            {(() => {
+              const shown = leads.filter((l) =>
+                leadFilter === "all" ? true : leadFilter === "j2" ? l.j2_reminded : l.status === leadFilter);
+              return (<>
+                {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Aucune demande.</p>}
+                {shown.map((l) => (
               <div key={l.lead_id} className="surface p-6 grid gap-3">
                 <div className="flex flex-wrap items-center gap-4">
                   <div>
@@ -397,6 +418,12 @@ export default function Admin() {
                     <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20"
                           data-testid={`admin-lead-source-${l.lead_id}`}>
                       {l.source.replace("landing-hero-", "")}
+                    </span>
+                  )}
+                  {l.j2_reminded && (
+                    <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                          data-testid={`admin-lead-j2-${l.lead_id}`} title={l.j2_reminded_at || ""}>
+                      ✉ Relancé J+2
                     </span>
                   )}
                   {l.budget ? <p className="num ml-auto text-lg font-bold text-primary">{eur(l.budget)}</p> : <span className="ml-auto" />}
@@ -422,6 +449,8 @@ export default function Admin() {
                 )}
               </div>
             ))}
+              </>);
+            })()}
           </div>
         </TabsContent>
 

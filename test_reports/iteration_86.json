@@ -1,0 +1,26 @@
+{
+  "summary": "E2E tested the new Admin > Publicité (Ads) tab. Backend endpoints (/api/ads/campaigns GET/POST/DELETE and /api/ads/summary) return correct data with auth. Frontend UI flow verified: admin login → /admin → 'Publicité' tab loads AdsPanel with KPI cards and empty state; creating a campaign (TEST_Campaign_Google, google, budget 1000, spend 500, leads 25, revenue 3000) adds a row and updates KPIs correctly (Dépense 500€, Budget 1000€, Leads 25, CPL 20€, ROAS 6×); deleting the campaign (via window.confirm auto-accepted) removes the row, restores empty state and resets KPIs to 0/—. Test campaign was cleaned up.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin > Publicité", "issues": ["Delete confirmation uses native window.confirm() instead of a shadcn AlertDialog — inconsistent with the rest of the admin UI and cannot be styled/tested via data-testid. Consider replacing with AlertDialog for consistency."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: replace window.confirm() in AdsPanel delete flow with a shadcn AlertDialog for UX consistency and easier E2E testing."
+  ],
+  "critical_code_review_comments": [
+    "AdsPanel uses window.confirm — not consistent with the rest of the admin surface which uses AlertDialog; also blocks tests without a page.on('dialog') handler.",
+    "All required data-testids are present and stable (ads-panel, ads-new-btn, ads-name, ads-platform, ads-budget, ads-spend, ads-leads, ads-revenue, ads-save, ads-kpis, ads-list, ads-empty, ads-row-<id>, ads-del-<id>)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026!",
+  "seed_data_creation": "Created one test campaign 'TEST_Campaign_Google' during the test and deleted it at the end — DB is clean.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Ads module fully green. KPI math verified (CPL = spend/leads, ROAS = revenue/spend). Only cosmetic remark: delete uses window.confirm; Playwright must register page.on('dialog', lambda d: d.accept()) to test delete."
+}

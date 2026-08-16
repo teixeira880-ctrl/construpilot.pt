@@ -69,6 +69,8 @@ api_router.include_router(errors_routes.router)
 api_router.include_router(emails_routes.router)
 from routes import hr as hr_routes
 api_router.include_router(hr_routes.router)
+from routes import ads as ads_routes
+api_router.include_router(ads_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(

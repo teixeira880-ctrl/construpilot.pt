@@ -1,5 +1,14 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 100 — 16/08/2026 (Module Publicité / Marketing v1)
+- Câblé `AdsPanel` dans `/admin` (nouvel onglet « Publicité », entre AI et Requests).
+- KPIs : Dépense totale, Budget, Leads, Coût/lead (CPL), ROAS + agrégat par plateforme.
+- CRUD campagnes via `/api/ads/campaigns` (GET/POST/PUT/DELETE) + `/api/ads/summary` (routes/ads.py déjà registré dans server.py).
+- Corrigé un bug de syntaxe JSX du bouton « Enregistrer » dans `AdsPanel.jsx`.
+- Remplacé `window.confirm` par un `AlertDialog` shadcn pour la suppression (cohérence UI).
+- Testé : testing_agent iteration_86 (backend 100 %, frontend 100 %) + captures d'écran. CPL/ROAS vérifiés.
+
+
 ## Itération 99 — 16/06/2026 (Option Facturation payante pour les pros)
 - Modèle : **Pro Business = Facturation incluse (gratuit)** ; **autres pros = option 5 €/mois**.
 - Nouveau plan `invoicing_addon_monthly` (5 €/mois, audience "addon", quota `{addon:"invoicing"}`)
@@ -624,3 +633,10 @@ Non bloquant : warning hydration <span> dans <option> (artefact instrumentation)
 
 ### Tests : backend validé par curl (géofence hors-zone détecté à 440km, photos, CSV/PDF générés, job sans crash, demo-unlock→tier pro_business). Frontend smoke screenshot OK.
 ### EN ATTENTE (non fait ce tour) : page d'accueil multilingue (contenu codé en dur FR) + dashboard leads Admin — à traiter au prochain tour.
+
+## 2026-08-16 — Module Publicité / Marketing (v1)
+- Câblé le panneau `AdsPanel` dans /admin (nouvel onglet « Publicité »).
+- KPIs: Dépense totale, Budget, Leads, Coût/lead (CPL), ROAS + agrégat par plateforme.
+- CRUD campagnes via `/api/ads/campaigns` (+ `/api/ads/summary`). Corrigé bug JSX du bouton Enregistrer.
+- Remplacé window.confirm par AlertDialog shadcn pour la suppression.
+- Testé: testing_agent iteration_86 (backend 100
