@@ -119,6 +119,10 @@ class BrandingIn(BaseModel):
     logo_b64: str | None = None
     siret: str | None = None
     vat: str | None = None
+    address: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
     certifications: list[dict] | None = None
 
 
@@ -141,6 +145,8 @@ async def get_branding(user=Depends(current_user)) -> dict:
                                  {"_id": 0, "organization_id": 1, "org_role": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
                                   "brand_siret": 1, "brand_vat": 1,
+                                  "brand_address": 1, "brand_city": 1,
+                                  "brand_postal": 1, "brand_country": 1,
                                   "brand_logo_b64": 1, "brand_certifications": 1}) or {}
     org_id = u.get("organization_id")
     if org_id:
@@ -165,6 +171,10 @@ async def get_branding(user=Depends(current_user)) -> dict:
             "contact_line": u.get("brand_contact_line"),
             "siret": u.get("brand_siret"),
             "vat": u.get("brand_vat"),
+            "address": u.get("brand_address"),
+            "city": u.get("brand_city"),
+            "postal_code": u.get("brand_postal"),
+            "country": u.get("brand_country"),
             "has_logo": bool(u.get("brand_logo_b64")),
             "logo_b64": u.get("brand_logo_b64"),
             "certifications": u.get("brand_certifications") or []}
@@ -186,6 +196,14 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         upd["brand_siret"] = "".join(ch for ch in body.siret if ch.isdigit())[:14] or None
     if body.vat is not None:
         upd["brand_vat"] = body.vat.strip().upper().replace(" ", "")[:20] or None
+    if body.address is not None:
+        upd["brand_address"] = body.address.strip()[:160] or None
+    if body.city is not None:
+        upd["brand_city"] = body.city.strip()[:80] or None
+    if body.postal_code is not None:
+        upd["brand_postal"] = body.postal_code.strip()[:12] or None
+    if body.country is not None:
+        upd["brand_country"] = body.country.strip().upper()[:2] or None
     if body.certifications is not None:
         certs = []
         for c in (body.certifications or [])[:10]:

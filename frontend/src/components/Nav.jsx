@@ -28,6 +28,7 @@ const PRIMARY_LINKS = [
 ];
 
 const MORE_LINKS = [
+  { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: LineChart, auth: true },
   { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
   { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
   { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },

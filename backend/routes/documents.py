@@ -6,6 +6,9 @@
 """
 from __future__ import annotations
 
+import base64
+import hashlib
+import json
 import logging
 import secrets
 from datetime import datetime, timezone
@@ -182,7 +185,7 @@ async def list_documents(doc_type: str = "", client_id: str = "", status: str = 
         query["client_id"] = client_id
     if status:
         query["status"] = status
-    docs = await db.pro_documents.find(query, {"_id": 0, "lines": 0}).sort(
+    docs = await db.pro_documents.find(query, {"_id": 0, "lines": 0, "facturx_pdf_b64": 0}).sort(
         "created_at", -1).to_list(2000)
     return {"documents": docs, "count": len(docs)}
 
@@ -207,6 +210,8 @@ async def update_document(doc_id: str, body: DocIn,
         "deposit_pct": body.deposit_pct or 0,
         "totals": _compute_totals(lines, body.deposit_pct),
         "updated_at": _now(),
+        # Invalide le cache Factur-X : les lignes/totaux ont changé.
+        "facturx_pdf_b64": None, "facturx_validation": None, "facturx_hash": None,
     }
     if body.status:
         upd["status"] = body.status
@@ -239,13 +244,19 @@ async def delete_document(doc_id: str, user=Depends(current_user)) -> dict:
 
 @router.post("/{doc_id}/issue")
 async def issue_document(doc_id: str, user=Depends(current_user)) -> dict:
-    """Attribue un numéro définitif + date d'émission."""
+    """Attribue un numéro définitif + date d'émission. Valide le Factur-X (best-effort)."""
     doc = await _get_owned(doc_id, user)
     number = doc.get("number") or await _next_number(user["user_id"], doc["doc_type"])
     await db.pro_documents.update_one(
         {"doc_id": doc_id, "user_id": user["user_id"]},
         {"$set": {"number": number, "issue_date": doc.get("issue_date") or _now(),
                   "updated_at": _now()}})
+    # Contrôle de conformité Factur-X automatique (factures uniquement), non bloquant.
+    if doc.get("doc_type") == "invoice":
+        try:
+            await _ensure_facturx(doc_id, user, force=True)
+        except Exception as exc:  # quota, réseau, données incomplètes → badge "non vérifié"
+            logging.getLogger("documents").info("Auto Factur-X à l'émission ignoré: %s", exc)
     return await _get_owned(doc_id, user)
 
 
@@ -272,47 +283,76 @@ async def document_pdf(doc_id: str, user=Depends(current_user)):
 
 @router.get("/{doc_id}/factur-x")
 async def document_facturx(doc_id: str, user=Depends(current_user)):
-    """Facture électronique au format Factur-X (PDF/A-3 + XML CII, profil MINIMUM)."""
-    from engines.pdf_docs import build_document_pdf
-    from engines.facturx_gen import to_facturx
-    from routes.plans_common import _resolve_branding
+    """Facture électronique Factur-X PDF/A-3 conforme (via facturxapi, repli local)."""
+    _doc, fx, _report, _src = await _ensure_facturx(doc_id, user)
     doc = await _get_owned(doc_id, user)
-    if doc.get("doc_type") != "invoice":
-        raise HTTPException(status_code=400, detail="Factur-X réservé aux factures")
-    if not doc.get("number"):
-        doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
-        await db.pro_documents.update_one(
-            {"doc_id": doc_id, "user_id": user["user_id"]},
-            {"$set": {"number": doc["number"], "issue_date": doc.get("issue_date") or _now()}})
-        doc["issue_date"] = doc.get("issue_date") or _now()
-    branding = await _resolve_branding(user["user_id"])
-    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=None, lang=user.get("lang"))
-    fx = to_facturx(pdf_bytes, doc, branding)
     fname = f"{doc.get('number') or doc['doc_id']}-facturx.pdf"
     return Response(content=fx, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
-@router.post("/{doc_id}/factur-x/validate")
-async def validate_document_facturx(doc_id: str, user=Depends(current_user)):
-    """Valide/certifie le Factur-X généré via facturxapi.com (XSD + Schematron EN16931)."""
+def _facturx_hash(doc: dict, branding: dict | None) -> str:
+    payload = {
+        "lines": doc.get("lines"),
+        "totals": doc.get("totals"),
+        "number": doc.get("number"),
+        "client": doc.get("client"),
+        "b": {k: (branding or {}).get(k) for k in
+              ("company_name", "siret", "vat", "address", "city", "postal_code", "country")},
+    }
+    raw = json.dumps(payload, sort_keys=True, default=str).encode()
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+async def _ensure_facturx(doc_id: str, user: dict, force: bool = False):
+    """Génère (ou réutilise en cache) le Factur-X PDF/A-3 conforme + son rapport.
+
+    Retourne (doc, pdf_bytes, report, source). source ∈ cache|convert|local.
+    """
     from engines.pdf_docs import build_document_pdf
     from engines.facturx_gen import to_facturx
-    from engines.facturx_validator import validate_facturx, FacturxValidationError
+    from engines.facturx_converter import build_invoice_data, convert_facturx, FacturxConvertError
     from routes.plans_common import _resolve_branding
+
     doc = await _get_owned(doc_id, user)
     if doc.get("doc_type") != "invoice":
         raise HTTPException(status_code=400, detail="Factur-X réservé aux factures")
     if not doc.get("number"):
         doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
+        doc["issue_date"] = doc.get("issue_date") or _now()
         await db.pro_documents.update_one(
             {"doc_id": doc_id, "user_id": user["user_id"]},
-            {"$set": {"number": doc["number"], "issue_date": doc.get("issue_date") or _now()}})
-        doc["issue_date"] = doc.get("issue_date") or _now()
+            {"$set": {"number": doc["number"], "issue_date": doc["issue_date"]}})
+
     branding = await _resolve_branding(user["user_id"])
+    h = _facturx_hash(doc, branding)
+    if not force and doc.get("facturx_hash") == h and doc.get("facturx_pdf_b64"):
+        return doc, base64.b64decode(doc["facturx_pdf_b64"]), doc.get("facturx_validation") or {}, "cache"
+
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=None, lang=user.get("lang"))
-    fx = to_facturx(pdf_bytes, doc, branding)
-    fname = f"{doc.get('number') or doc['doc_id']}-facturx.pdf"
+    try:
+        fx, report = await convert_facturx(pdf_bytes, build_invoice_data(doc, branding))
+        source = "convert"
+    except FacturxConvertError as exc:
+        logging.getLogger("documents").warning("Factur-X convert fallback: %s", exc)
+        fx = to_facturx(pdf_bytes, doc, branding)
+        report = {"valid": False, "profile": "MINIMUM", "error_count": None,
+                  "warning_count": 0, "issues": [], "source": "local", "fallback_reason": str(exc)}
+        source = "local"
+    report["checked_at"] = _now()
+    await db.pro_documents.update_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]},
+        {"$set": {"facturx_pdf_b64": base64.b64encode(fx).decode(),
+                  "facturx_validation": report, "facturx_hash": h}})
+    return doc, fx, report, source
+
+
+@router.post("/{doc_id}/factur-x/validate")
+async def validate_document_facturx(doc_id: str, user=Depends(current_user)):
+    """Valide/certifie le Factur-X conforme (rapport détaillé XSD + Schematron EN16931)."""
+    from engines.facturx_validator import validate_facturx, FacturxValidationError
+    _doc, fx, _report, _src = await _ensure_facturx(doc_id, user)
+    fname = f"{_doc.get('number') or _doc['doc_id']}-facturx.pdf"
     try:
         report = await validate_facturx(fx, fname)
     except FacturxValidationError as exc:

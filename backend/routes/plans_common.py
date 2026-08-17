@@ -109,6 +109,8 @@ async def _resolve_branding(user_id: str) -> dict | None:
                                  {"_id": 0, "organization_id": 1, "picture": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
                                   "brand_siret": 1, "brand_vat": 1,
+                                  "brand_address": 1, "brand_city": 1,
+                                  "brand_postal": 1, "brand_country": 1,
                                   "brand_logo_b64": 1, "brand_certifications": 1})
     if not u:
         return None
@@ -117,12 +119,21 @@ async def _resolve_branding(user_id: str) -> dict | None:
         org = await db.organizations.find_one({"org_id": u["organization_id"]},
                                                 {"_id": 0, "brand_company_name": 1,
                                                  "brand_contact_line": 1, "brand_logo_b64": 1,
+                                                 "brand_siret": 1, "brand_vat": 1,
+                                                 "brand_address": 1, "brand_city": 1,
+                                                 "brand_postal": 1, "brand_country": 1,
                                                  "brand_certifications": 1})
         if org and any(org.get(k) for k in ("brand_company_name", "brand_contact_line",
                                               "brand_logo_b64", "brand_certifications")):
             return {"company_name": org.get("brand_company_name"),
                     "contact_line": org.get("brand_contact_line"),
                     "logo_b64": org.get("brand_logo_b64"),
+                    "siret": org.get("brand_siret"),
+                    "vat": org.get("brand_vat"),
+                    "address": org.get("brand_address"),
+                    "city": org.get("brand_city"),
+                    "postal_code": org.get("brand_postal"),
+                    "country": org.get("brand_country"),
                     "certifications": org.get("brand_certifications") or [],
                     "profile_photo_b64": photo}
     if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64",
@@ -132,6 +143,10 @@ async def _resolve_branding(user_id: str) -> dict | None:
                 "logo_b64": u.get("brand_logo_b64"),
                 "siret": u.get("brand_siret"),
                 "vat": u.get("brand_vat"),
+                "address": u.get("brand_address"),
+                "city": u.get("brand_city"),
+                "postal_code": u.get("brand_postal"),
+                "country": u.get("brand_country"),
                 "certifications": u.get("brand_certifications") or [],
                 "profile_photo_b64": photo}
     if photo:

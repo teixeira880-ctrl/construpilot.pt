@@ -732,3 +732,25 @@ Non bloquant : warning hydration <span> dans <option> (artefact instrumentation)
   - UI Invoices.jsx : bouton "Valider" (pastille verte/rouge) + dialog "Non-conformités détectées" listant code/sévérité/stage/message.
   - Testé e2e (admin) : rapport réel renvoyé — 2 erreurs détectées sur facture non-brandée (PDFA_NOT_COMPLIANT + BR-CO-26 SIRET/TVA vendeur manquant). Le validateur remonte donc bien les vraies non-conformités.
 - ⚠️ À NOTER : les factures actuellement générées ne passent pas encore la validation (PDF/A-3 non conforme + il faut renseigner SIRET/TVA dans le branding). La brique de VALIDATION fonctionne ; l'amélioration de la GÉNÉRATION Factur-X (PDF/A-3 strict + champs vendeur) reste à faire si conformité totale souhaitée.
+
+## 2026-08-17 (2) — Factur-X 100% conforme + Badge auto + Facturation à l'avancement (situations)
+
+### 1. Factur-X PDF/A-3 conforme (via facturxapi.com /convert)
+- Engine `backend/engines/facturx_converter.py` : `build_invoice_data()` (EN16931) + `convert_facturx()` (POST /api/v1/convert, output=facturx_pdfa3, validation_target=en16931). Renvoie un vrai PDF/A-3 conforme + validation.
+- `documents.py` : `_ensure_facturx()` avec CACHE (`facturx_pdf_b64` + `facturx_validation` + `facturx_hash` sur le doc ; invalidé à chaque PUT). Repli local `to_facturx` si API indispo/quota.
+- `/documents/{id}/factur-x` (download) et `/factur-x/validate` (rapport détaillé) utilisent le cache → quota minimal.
+- Branding étendu : adresse structurée vendeur (`brand_address/city/postal/country`) dans BrandingIn, get/update_branding, `_resolve_branding` (user + org). BrandingDialog.jsx : champs Adresse/CP/Ville/Pays.
+- ✅ Testé (curl, admin + SIRET test 10000000900017 / TVA FR88100000009) : émission → `{"valid":true,"profile":"EN16931","error_count":0}`.
+
+### 2. Badge conformité auto
+- `/documents/{id}/issue` déclenche `_ensure_facturx(force=True)` (best-effort, non bloquant) → peuple `facturx_validation`.
+- Invoices.jsx : badge vert "Conforme EN16931" / rouge "Non conforme" dans la liste (depuis inv.facturx_validation). ✅ vérifié en capture.
+- ⚠️ QUOTA : chaque émission consomme 1 crédit facturxapi (sandbox limité). Repli silencieux si 429/erreur.
+
+### 3. Facturation à l'avancement — Situations de travaux
+- `backend/routes/situations.py` (router `/situations`) : GET /marches, GET ?marche_id, POST (calcule delta d'avancement par ligne depuis la situation précédente, génère une facture de situation), DELETE.
+- Retenue de garantie OPTIONNELLE (0-10%, bouton "5% standard") : montant plein facturé, `net_due` = TTC - retenue (note sur la facture). Collection `situations`.
+- Frontend `pages/Situations.jsx` (route `/situations`, gate pro_business/admin) : sélecteur marché, tableau % précédent/cumulé/montant, création, historique. Lien dans Nav (menu Plus) + bouton sur /factures.
+- ✅ Testé (curl) : Situation 1 (GO 30%+Plomb 50%) = 25000€ HT / 29000€ TTC / retenue 1250€ / net 27750€ ; Situation 2 delta correct (GO 30%=15000€, Plomb 0€). Page vérifiée en capture.
+
+NOTE : branding de test posé sur admin@construpilot.fr (SIRET/TVA/adresse fictifs) pour prouver la conformité verte. Le vrai user (teixeira) doit renseigner ses SIRET/TVA/adresse réels dans /compte.

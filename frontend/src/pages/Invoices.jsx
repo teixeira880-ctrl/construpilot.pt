@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
+import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2, ShieldCheck, ShieldAlert, Loader2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -137,6 +137,10 @@ export default function Invoices() {
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <SectionTitle over={t("crm.inv_over")} title={t("crm.inv_title")} />
         <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" className="rounded-sm gap-2" data-testid="invoices-situations-link"
+            onClick={() => nav("/situations")}>
+            <TrendingUp className="h-4 w-4" /> Situations de travaux
+          </Button>
           <Dialog open={convOpen} onOpenChange={setConvOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="rounded-sm gap-2" data-testid="invoice-from-quote-btn">
@@ -197,6 +201,17 @@ export default function Invoices() {
                 </button>
               </div>
               <StatusBadge s={inv.status} t={t} />
+              {inv.facturx_validation && (
+                inv.facturx_validation.valid ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[11px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" data-testid={`facturx-badge-ok-${inv.doc_id}`}>
+                    <ShieldCheck className="h-3.5 w-3.5" /> Conforme EN16931
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[11px] font-semibold bg-red-500/15 text-red-600 dark:text-red-400" data-testid={`facturx-badge-ko-${inv.doc_id}`}>
+                    <ShieldAlert className="h-3.5 w-3.5" /> Non conforme
+                  </span>
+                )
+              )}
               <span className="num ml-auto text-lg font-bold text-primary">{eur(inv.totals?.ttc || 0)}</span>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="rounded-sm gap-1.5" data-testid={`invoice-open-${inv.doc_id}`}

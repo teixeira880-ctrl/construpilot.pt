@@ -73,6 +73,8 @@ from routes import ads as ads_routes
 api_router.include_router(ads_routes.router)
 from routes import site as site_routes
 api_router.include_router(site_routes.router)
+from routes import situations as situations_routes
+api_router.include_router(situations_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(

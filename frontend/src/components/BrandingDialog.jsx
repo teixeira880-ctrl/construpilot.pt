@@ -24,6 +24,10 @@ export function BrandingDialog({ trigger }) {
   const [contactLine, setContactLine] = useState("");
   const [siret, setSiret] = useState("");
   const [vat, setVat] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("FR");
   const [logoB64, setLogoB64] = useState("");
   const [certSel, setCertSel] = useState({});
   const [busy, setBusy] = useState(false);
@@ -38,6 +42,10 @@ export function BrandingDialog({ trigger }) {
       setContactLine(data.contact_line || "");
       setSiret(data.siret || "");
       setVat(data.vat || "");
+      setAddress(data.address || "");
+      setCity(data.city || "");
+      setPostalCode(data.postal_code || "");
+      setCountry(data.country || "FR");
       setLogoB64(data.logo_b64 || "");
       const map = {};
       (data.certifications || []).forEach((c) => { map[c.code] = c.number || ""; });
@@ -69,6 +77,7 @@ export function BrandingDialog({ trigger }) {
       await api.put("/users/me/branding", {
         company_name: companyName, contact_line: contactLine, logo_b64: logoB64 || null,
         siret: siret, vat: vat,
+        address: address, city: city, postal_code: postalCode, country: country,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
       toast.success("Identité pro enregistrée");
@@ -133,6 +142,33 @@ export function BrandingDialog({ trigger }) {
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground">Requis pour des factures électroniques Factur-X 100 % conformes.</p>
+
+          <div className="grid gap-2">
+            <Label>Adresse (rue)</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)}
+                   placeholder="12 rue de la Paix" disabled={!canEdit}
+                   data-testid="branding-address-input" className="rounded-sm h-11" maxLength={160} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-2">
+              <Label>Code postal</Label>
+              <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)}
+                     placeholder="75002" disabled={!canEdit}
+                     data-testid="branding-postal-input" className="rounded-sm h-11 num" maxLength={12} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Ville</Label>
+              <Input value={city} onChange={(e) => setCity(e.target.value)}
+                     placeholder="Paris" disabled={!canEdit}
+                     data-testid="branding-city-input" className="rounded-sm h-11" maxLength={80} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Pays</Label>
+              <Input value={country} onChange={(e) => setCountry(e.target.value.toUpperCase())}
+                     placeholder="FR" disabled={!canEdit}
+                     data-testid="branding-country-input" className="rounded-sm h-11 num" maxLength={2} />
+            </div>
+          </div>
 
 
           <div className="grid gap-2">
