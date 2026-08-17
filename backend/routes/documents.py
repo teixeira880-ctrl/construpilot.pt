@@ -250,6 +250,36 @@ async def delete_document(doc_id: str, user=Depends(current_user)) -> dict:
     return {"ok": True}
 
 
+@router.post("/issue-batch")
+async def issue_batch(body: dict, user=Depends(current_user)) -> dict:
+    """Émet plusieurs documents d'un coup + contrôle de conformité Factur-X (best-effort)."""
+    from engines import activity
+    doc_ids = (body or {}).get("doc_ids") or []
+    results = []
+    for did in doc_ids[:50]:
+        doc = await db.pro_documents.find_one(
+            {"doc_id": did, "user_id": user["user_id"]}, {"_id": 0, "doc_type": 1, "number": 1})
+        if not doc:
+            results.append({"doc_id": did, "ok": False, "error": "Introuvable"})
+            continue
+        number = doc.get("number") or await _next_number(user["user_id"], doc["doc_type"])
+        await db.pro_documents.update_one(
+            {"doc_id": did, "user_id": user["user_id"]},
+            {"$set": {"number": number, "issue_date": _now(), "updated_at": _now()}})
+        conforme = None
+        if doc.get("doc_type") == "invoice":
+            try:
+                _d, _fx, rep, _s = await _ensure_facturx(did, user, force=True)
+                conforme = bool(rep.get("valid"))
+            except Exception:
+                conforme = None
+        await activity.log(user, "invoice.issue", "document", number, {"doc_id": did, "batch": True})
+        results.append({"doc_id": did, "ok": True, "number": number, "conforme": conforme})
+    issued = sum(1 for r in results if r.get("ok"))
+    conformes = sum(1 for r in results if r.get("conforme"))
+    return {"results": results, "issued": issued, "conformes": conformes, "count": len(results)}
+
+
 @router.post("/{doc_id}/issue")
 async def issue_document(doc_id: str, user=Depends(current_user)) -> dict:
     """Attribue un numéro définitif + date d'émission. Valide le Factur-X (best-effort)."""

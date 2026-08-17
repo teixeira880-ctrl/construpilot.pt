@@ -794,3 +794,11 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
   - Retenue de garantie : POST `/{marche_id}/reception` (date réception → échéance +1 an), GET `/retentions`, POST `/retentions/{id}/release`, POST `/retentions/{id}/remind` (email Resend).
   - Compte prorata : GET/PUT `/{marche_id}/prorata` (taux % + dépenses → répartition auto par lot).
 - ⚠️ RESTE À FAIRE : brancher le FRONTEND (onglets Avancement / Retenue / Prorata dans Situations.jsx) + fonctionnalité "Émission groupée" (POST /documents/issue-batch + UI cases à cocher sur /factures). Non commencés.
+
+## 2026-08-17 (6) — Les 4 fonctionnalités Situations/Facturation branchées (UI) + Émission groupée
+- **Situations.jsx** refait en onglets : Nouvelle situation | Avancement | Compte prorata | Retenue de garantie (sélecteur de marché partagé).
+- **Avancement (cumulé)** : KPIs (marché/facturé/restant/retenue) + barre d'avancement global + tableau par lot (facturé vs restant). GET /situations/summary. ✅ vérifié capture (57,1%).
+- **Compte prorata** : taux % + dépenses communes éditables → cagnotte répartie auto par lot (quote-part). GET/PUT /situations/{id}/prorata. ✅ vérifié capture (2% + 600€ → 2000€, 71,43/28,57%).
+- **Retenue de garantie** : liste globale des retenues détenues, saisie date de réception (→ échéance +1 an), bouton Libérer + Relancer (email). GET /situations/retentions, POST reception/release/remind. ✅ backend testé (release_due 2027-06-01).
+- **Émission groupée** : `POST /documents/issue-batch` (émet N docs + contrôle conformité Factur-X en lot). UI /factures : cases à cocher sur les brouillons + barre "Émettre la sélection". ✅ testé (2 émises, 2 conformes EN16931).
+- Tous les endpoints backend testés via curl ; onglets Avancement + Prorata vérifiés en capture.

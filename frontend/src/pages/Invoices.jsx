@@ -60,6 +60,19 @@ export default function Invoices() {
   const [fxBusyId, setFxBusyId] = useState("");
   const [fxReport, setFxReport] = useState(null);
   const [fxOpen, setFxOpen] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  const toggleSel = (id) => setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
+  const issueBatch = async () => {
+    setBatchBusy(true);
+    try {
+      const { data } = await api.post("/documents/issue-batch", { doc_ids: selected });
+      toast.success(`${data.issued} facture(s) émise(s) · ${data.conformes} conforme(s) EN16931`);
+      setSelected([]); load();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Émission groupée impossible"); }
+    finally { setBatchBusy(false); }
+  };
 
   const load = () => {
     Promise.all([
@@ -200,10 +213,26 @@ export default function Invoices() {
         </div>
       ) : (
         <div className="grid gap-3" data-testid="invoices-list">
+          {selected.length > 0 && (
+            <div className="surface rounded-sm p-3 flex flex-wrap items-center gap-3 border-primary/40 sticky top-16 z-10" data-testid="batch-bar">
+              <span className="text-sm font-semibold">{selected.length} sélectionnée(s)</span>
+              <span className="text-xs text-muted-foreground">Émission + contrôle de conformité Factur-X en lot</span>
+              <div className="ml-auto flex gap-2">
+                <Button size="sm" variant="ghost" className="rounded-sm" onClick={() => setSelected([])} data-testid="batch-clear">Annuler</Button>
+                <Button size="sm" className="rounded-sm gap-2" disabled={batchBusy} onClick={issueBatch} data-testid="batch-issue-btn">
+                  {batchBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />} Émettre la sélection
+                </Button>
+              </div>
+            </div>
+          )}
           {invoices.map((inv, idx) => (
             <motion.div key={inv.doc_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.03 }}
               className="surface rounded-sm p-4 flex flex-wrap items-center gap-4" data-testid={`invoice-row-${inv.doc_id}`}>
+              {(inv.status === "draft" || !inv.number) && (
+                <input type="checkbox" checked={selected.includes(inv.doc_id)} onChange={() => toggleSel(inv.doc_id)}
+                  className="h-4 w-4 accent-primary cursor-pointer" data-testid={`invoice-select-${inv.doc_id}`} title="Sélectionner pour émission groupée" />
+              )}
               <div className="min-w-0">
                 <p className="font-display font-semibold">{inv.number || t("crm.st_draft")} · {inv.title || t("crm.untitled")}</p>
                 <button onClick={() => inv.client_id && nav(`/clients/${inv.client_id}`)}
