@@ -2189,3 +2189,11 @@ NOTE : un email d'alerte « TestDevice/1.0, IP 127.0.0.1 » a été envoyé à t
 5. **Tests** : `tests/test_iter76_2fa_devices_csv.py` (7 tests, comptes JETABLES — leçon : ne JAMAIS muter demo/admin partagés en parallèle xdist : logout-others/2FA sur comptes partagés avaient cassé 8 tests en vol) ; **suite complète 764 passed / 0 failed**. UI vérifiée : écran 2FA au login teixeira, DevicesList sur /compte, TwoFaCard masquée pour non-admins.
 NOTE émails de test réels envoyés à teixeira8880@gmail.com : 1 lien reset (~22h05 UTC), 2-3 codes 2FA, 1-2 alertes appareil — c'est l'agent, pas une intrusion. `demo` token_version=3 (JWT anciens invalidés — sans impact).
 PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur construpilot.fr.
+
+## Changelog Iter 88 (17/06/2026) — Fix détection murs vs traits de cote
+- **Bug utilisateur** : la détection auto des murs (Plan 2D → 3D) comptait les traits de cote (lignes de mesure) comme des murs.
+- **Cause racine** (reproduite via plan synthétique) : `engines/plan_cv.py::filter_cote_segments` échouait sans analyse IA — (1) `_has_parallel_partner` avec `min_gap=2` prenait les DOUBLES BORDS Canny d'une même ligne fine (~1-3 px) pour un mur double-trait ; (2) deux cotes empilées dans la marge se validaient mutuellement.
+- **Correctif** : `min_gap` 2 → 4.5 px (ignore échos Canny) ; `thin_px` 2.2 → 3.0 ; nouveau critère 4 = emprise du bâti (`_wall_footprint` sur segments épais) → toute ligne fine hors de l'emprise (± marge 4%) est rejetée comme cote/annotation. Marche désormais SANS analyse IA (le signal IA `dimension_lines` reste un bonus).
+- **Résultat repro** : 0 → 16 cotes filtrées, aucune cote résiduelle, murs conservés.
+- **Tests** : `tests/test_iter88_cote_filter.py` (unitaire pur, sans serveur) + non-régression iter62 (11 passed) + iter22/iter13 walls (55 passed).
+- PROD : nécessite un REDÉPLOIEMENT (Deploy Now) pour être actif sur construpilot.fr.

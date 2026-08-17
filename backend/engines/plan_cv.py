@@ -131,10 +131,15 @@ def _in_text_zone(seg: dict, text_zones: list[dict], pad: float = 2.0) -> bool:
 
 
 def _has_parallel_partner(seg: dict, others: list[dict],
-                          min_gap: float = 2.0, max_gap: float = 28.0,
+                          min_gap: float = 4.5, max_gap: float = 28.0,
                           min_overlap: float = 0.35) -> bool:
     """Les murs « creux » sont dessinés en 2 traits parallèles proches.
-    Un trait fin ISOLÉ (sans partenaire parallèle) est très probablement une cote."""
+    Un trait fin ISOLÉ (sans partenaire parallèle) est très probablement une cote.
+
+    ⚠️ `min_gap` doit rester ≥ ~4 px : Canny détecte les DEUX bords d'un même
+    trait fin (échos à 1-3 px). Sans ce plancher, une ligne de cote isolée
+    « trouve » son propre écho Canny comme faux partenaire et échappe au filtre
+    (bug corrigé iter88 — les cotes étaient comptées comme des murs)."""
     mx = (seg["x1"] + seg["x2"]) / 2
     my = (seg["y1"] + seg["y2"]) / 2
     for o in others:
@@ -156,26 +161,59 @@ def _has_parallel_partner(seg: dict, others: list[dict],
     return False
 
 
+def _wall_footprint(segments: list[dict], thick_px: float = 3.0) -> tuple | None:
+    """Bounding box (x0, y0, x1, y1) de la masse des VRAIS murs (traits épais).
+
+    Sert de référence pour rejeter les traits fins situés dans les marges
+    (cotes, annotations, cartouche). Retourne None si trop peu de murs épais
+    pour définir une emprise fiable (plans dessinés en traits fins uniquement)."""
+    thick = [s for s in segments if s.get("thickness_px", 0) >= thick_px]
+    if len(thick) < 4:
+        return None
+    xs = [c for s in thick for c in (s["x1"], s["x2"])]
+    ys = [c for s in thick for c in (s["y1"], s["y2"])]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _outside_footprint(seg: dict, fp: tuple, margin: float) -> bool:
+    """Le milieu du segment est-il hors de l'emprise du bâti (± marge) ?"""
+    mx, my = (seg["x1"] + seg["x2"]) / 2, (seg["y1"] + seg["y2"]) / 2
+    x0, y0, x1, y1 = fp
+    return (mx < x0 - margin or mx > x1 + margin
+            or my < y0 - margin or my > y1 + margin)
+
+
 def filter_cote_segments(segments: list[dict], dim_zones: list | None = None,
                          text_zones: list | None = None,
-                         thin_px: float = 2.2) -> tuple[list[dict], int]:
+                         thin_px: float = 3.0) -> tuple[list[dict], int]:
     """Sépare vrais murs / traits de cote. Retourne (murs, nb_cotes_filtrées).
 
-    3 critères d'exclusion :
+    4 critères d'exclusion :
     1. proche + parallèle d'un trait de cote localisé par l'IA (bbox_norm)
     2. milieu du segment dans une zone de texte du plan (PDF vectoriel)
-    3. trait très fin (< thin_px) SANS partenaire parallèle (mur creux = 2 traits)
+    3. trait fin (< thin_px) SANS partenaire parallèle réel (mur creux = 2 traits
+       espacés de ≥4 px, pas les échos Canny d'une même ligne).
+    4. trait fin situé HORS de l'emprise du bâti (marges = zone des cotes). Attrape
+       les cotes empilées qui se prennent mutuellement pour un mur double-trait.
     """
+    fp = _wall_footprint(segments)
+    margin = 0.0
+    if fp:
+        margin = 0.04 * max(fp[2] - fp[0], fp[3] - fp[1])
     kept: list[dict] = []
     removed = 0
     for s in segments:
+        thin = s.get("thickness_px", 99) < thin_px
         if dim_zones and _matches_dim_zone(s, dim_zones):
             removed += 1
             continue
         if text_zones and _in_text_zone(s, text_zones):
             removed += 1
             continue
-        if s.get("thickness_px", 99) < thin_px and not _has_parallel_partner(s, segments):
+        if fp and thin and _outside_footprint(s, fp, margin):
+            removed += 1
+            continue
+        if thin and not _has_parallel_partner(s, segments):
             removed += 1
             continue
         kept.append(s)
