@@ -169,6 +169,22 @@ export default function PlanCanvas({
           });
         }
       });
+      (structure.beams || []).forEach((b) => {
+        const sel = selectedStruct?.type === "beam" && selectedStruct?.id === b.beam_id;
+        ctx.strokeStyle = "rgba(99,40,150,0.95)";
+        ctx.lineWidth = 4 / zoom;
+        ctx.setLineDash([10 / zoom, 6 / zoom]);
+        if (sel) { ctx.shadowColor = "rgba(99,40,150,0.9)"; ctx.shadowBlur = 14 / zoom; }
+        ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+        ctx.setLineDash([]); ctx.shadowBlur = 0;
+        if (sel) {
+          ctx.fillStyle = "rgba(255,255,255,1)";
+          [[b.x1, b.y1], [b.x2, b.y2]].forEach(([hx, hy]) => {
+            ctx.beginPath(); ctx.arc(hx, hy, 6 / zoom, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "rgba(99,40,150,1)"; ctx.lineWidth = 2 / zoom; ctx.stroke();
+          });
+        }
+      });
     }
 
     // AI DIMENSION LINES OVERLAY (traits de cote détectés par l'IA)
@@ -675,6 +691,7 @@ export default function PlanCanvas({
   const _structItems = () => ([
     ...((structure?.walls || []).map((w) => ({ type: "wall", id: w.wall_id, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 }))),
     ...((structure?.openings || []).map((o) => ({ type: "opening", id: o.opening_id, x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2 }))),
+    ...((structure?.beams || []).map((b) => ({ type: "beam", id: b.beam_id, x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 }))),
   ]);
   const hitStructEndpoint = (rx, ry) => {
     const tol = 12 / zoom;

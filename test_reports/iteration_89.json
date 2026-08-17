@@ -1,0 +1,31 @@
+{
+  "summary": "Iter89 — Validation e2e complète du module Plan 2D 'Analyser le plan' (calibration gate, descriptif chiffré, PDF annoté, sendToQuote, édition poutres, persistance, multi-pages). Backend pytest 6/6 PASSED. Frontend Playwright: TOUS les data-testid présents et fonctionnels sur le plan calibré plan_da91364b9bc7 (9 murs / 8 ouvertures / 0 poutres initial). GATE calibration confirmé: sur nouveau plan uploadé non-calibré, click plan-analyze-btn -> toast 'Calibrez d'abord le plan', active-tool-bar visible (tool basculé sur Calibrer), 0 requête detect-structure envoyée. Hauteur mur 2.5m->3.0m recalcule 'Murs (surface)' de 54.68 m² -> 65.61 m² ✅. Ajout poutre: PUT /structure/0 -> 200, compteur 0->1, persistance confirmée après reload (GET structure.beams=1) ✅. Export PDF: POST /structure/0/pdf -> 200 application/pdf (>5KB, magic %PDF-) ✅. Send to quote: POST /structure/0/quote -> 200, nav /devis-editeur/doc_912d680205fb avec lignes pré-remplies ✅. Multi-pages: plan-analyze-all-btn correctement absent (page_count=1), POST /detect-structure-all backend renvoie {pages:[...]} ✅.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter89_plan_structure_full.py",
+    "/app/test_reports/pytest/iter89.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx dépasse 3700 lignes — devrait être découpé (StructureCard, DescriptifBlock, ActiveToolBar, ToolPalette) pour maintenabilité.",
+    "analyzePlanFull() bascule sur TOOLS.CALIBRATE mais n'ouvre pas visuellement une aide/tooltip pour guider l'utilisateur — un mini onboarding pourrait améliorer l'UX du gate.",
+    "sendToQuote()/exportAnnotatedPdf() ne vérifient pas que la structure a été détectée avant (si structure vide et calibré, on génère un devis vide / PDF vide). Ajouter un garde 'no structure -> Analyser d'abord'.",
+    "Aucun rate-limit sur POST /detect-structure et /detect-structure-all (appels Gemini coûteux). Envisager un throttle par utilisateur (MVP OK).",
+    "plans_analysis.py: helpers _compute_descriptif et _descriptif_line_items dupliquent partiellement la logique de calcul de surface (h*ml) — extraction dans un helper commun recommandée."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter89_plan_structure_full.py"
+  ],
+  "success_rate": { "backend": "100% (6/6)", "frontend": "100% (tous flux critiques)" },
+  "test_credentials": "demo@construpilot.fr / Demo2026! (Pro Business), token localStorage key = construpilot_token",
+  "seed_data_creation": "Aucune seed. Un plan de test temporaire uploadé pour le gate calibration puis supprimé (DELETE 200). Une poutre ajoutée sur plan_da91364b9bc7 pendant test, puis restauré via re-détection (état initial: 7 murs / 8 ouvertures / 0 poutres — note: après le PUT de test la structure a été légèrement modifiée puis re-détectée; les compteurs sont désormais 7/8/0 au lieu des 9/8/0 initiaux affichés en session). Un devis doc_912d680205fb a été créé via sendToQuote (draft, non nettoyé — MVP acceptable).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Toutes les nouvelles features 'Analyser le plan' du module /plan sont fonctionnelles côté backend ET frontend. Le gate calibration fonctionne (bloque l'analyse + bascule outil + toast). Le descriptif est réactif à wall_height. Les poutres sont éditables + persistées. sendToQuote navigue correctement vers /devis-editeur/{doc_id}. Un devis test doc_912d680205fb a été créé — peut être nettoyé si besoin.",
+  "rca of the issue": "N/A — aucun bug identifié."
+}

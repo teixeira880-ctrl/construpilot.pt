@@ -22,7 +22,7 @@ from engines.plan_structure import detect_structure
 from engines.plan_processor import auto_calibration_from_pdf_scale
 
 from routes.plans_common import (
-    _diff_rooms, _now, _snapshot, router,
+    _diff_rooms, _now, _snapshot, _resolve_branding, router,
 )
 
 logger = logging.getLogger(__name__)
@@ -397,6 +397,7 @@ async def detect_structure_route(plan_id: str, page_index: int = 0,
 class StructureIn(BaseModel):
     walls: list[dict] = Field(default_factory=list)
     openings: list[dict] = Field(default_factory=list)
+    beams: list[dict] = Field(default_factory=list)
     image_width: int | None = None
     image_height: int | None = None
 
@@ -404,15 +405,16 @@ class StructureIn(BaseModel):
 @router.put("/{plan_id}/structure/{page_index}")
 async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
                                user=Depends(current_user)):
-    """Sauvegarde la structure éditée manuellement (murs/ouvertures ajoutés,
+    """Sauvegarde la structure éditée manuellement (murs/ouvertures/poutres ajoutés,
     supprimés, déplacés ou reclassés porte↔fenêtre)."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
     payload = {
-        "walls": body.walls, "openings": body.openings,
+        "walls": body.walls, "openings": body.openings, "beams": body.beams,
         "wall_count": len(body.walls), "opening_count": len(body.openings),
+        "beam_count": len(body.beams),
         "image_width": body.image_width, "image_height": body.image_height,
         "edited_at": _now(),
     }
@@ -420,6 +422,170 @@ async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
         {"plan_id": plan_id},
         {"$set": {f"structure.{page_index}": payload, "updated_at": _now()}})
     return {"ok": True, **payload}
+
+
+# ===== ANALYSE COMPLÈTE : descriptif chiffré (planchers, murs, ouvertures, poutres) =====
+
+def _seg_len_px(it: dict) -> float:
+    import math
+    return math.hypot(it.get("x2", 0) - it.get("x1", 0), it.get("y2", 0) - it.get("y1", 0))
+
+
+def _page_ppm(p: dict, page_index: int) -> float | None:
+    calib = (p.get("calibrations") or {}).get(str(page_index)) or {}
+    ppm = calib.get("pixels_per_meter")
+    return float(ppm) if ppm else None
+
+
+def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
+                        wall_height: float = 2.5) -> dict:
+    from collections import Counter
+    walls = structure.get("walls") or []
+    openings = structure.get("openings") or []
+    beams = structure.get("beams") or []
+    murs_ml = round(sum(_seg_len_px(w) for w in walls) / ppm, 2) if ppm else 0.0
+    poutres_ml = round(sum(_seg_len_px(b) for b in beams) / ppm, 2) if ppm else 0.0
+    ouv_ml = round(sum(_seg_len_px(o) for o in openings) / ppm, 2) if ppm else 0.0
+    kinds = Counter((o.get("kind") or "fenetre") for o in openings)
+    planchers = round(sum(r.get("surface_m2", 0) or 0 for r in rooms), 2)
+    porteur_ml = round(sum(_seg_len_px(w) for w in walls if w.get("type") == "porteur") / ppm, 2) if ppm else 0.0
+    cloison_ml = round(murs_ml - porteur_ml, 2)
+    return {
+        "wall_height_m": round(float(wall_height), 2),
+        "planchers_m2": planchers,
+        "murs_ml": murs_ml, "murs_porteurs_ml": porteur_ml, "cloisons_ml": max(cloison_ml, 0.0),
+        "murs_surface_m2": round(murs_ml * wall_height, 2),
+        "portes": int(kinds.get("porte", 0)),
+        "fenetres": int(kinds.get("fenetre", 0)),
+        "baies": int(kinds.get("baie", 0)),
+        "ouvertures_total": len(openings),
+        "ouvertures_largeur_ml": ouv_ml,
+        "poutres_ml": poutres_ml,
+        "calibrated": bool(ppm),
+    }
+
+
+def _descriptif_line_items(d: dict) -> list[dict]:
+    lines = []
+
+    def add(desig, qty, unit, cat="Depuis analyse plan"):
+        if qty and qty > 0:
+            lines.append({"designation": desig, "unit": unit, "qty": round(qty, 2),
+                          "unit_price_ht": 0, "vat_rate": 10, "category": cat})
+    add("Plancher / sol (surface au sol)", d.get("planchers_m2"), "m²")
+    add("Murs porteurs (maçonnerie)", d.get("murs_porteurs_ml"), "ml")
+    add("Cloisons", d.get("cloisons_ml"), "ml")
+    add(f"Murs — enduit/peinture (h={d.get('wall_height_m')} m)", d.get("murs_surface_m2"), "m²")
+    add("Fournitures et pose — Portes", d.get("portes"), "u")
+    add("Fournitures et pose — Fenêtres", d.get("fenetres"), "u")
+    add("Fournitures et pose — Baies vitrées", d.get("baies"), "u")
+    add("Poutres / linteaux", d.get("poutres_ml"), "ml")
+    return lines
+
+
+@router.get("/{plan_id}/analysis/{page_index}")
+async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
+                       user=Depends(current_user)) -> dict:
+    """Renvoie la structure + le descriptif chiffré (nécessite une calibration)."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages.image_png_b64": 0})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    ppm = _page_ppm(p, page_index)
+    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height)
+    return {"structure": structure, "descriptif": descriptif,
+            "calibrated": bool(ppm), "pixels_per_meter": ppm}
+
+
+@router.post("/{plan_id}/detect-structure-all")
+async def detect_structure_all(plan_id: str, user=Depends(current_user)) -> dict:
+    """Lance la détection IA sur TOUTES les pages du plan (PDF multi-pages)."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    results = []
+    for idx, page in enumerate(pages):
+        img = page.get("image_png_b64")
+        if not img:
+            results.append({"page_index": idx, "error": "image manquante"})
+            continue
+        w, h = _page_dims(page)
+        res = await detect_structure(img, w, h)
+        await db.plans_takeoff.update_one(
+            {"plan_id": plan_id},
+            {"$set": {f"structure.{idx}": {**res, "detected_at": _now()}}})
+        results.append({"page_index": idx, "wall_count": res.get("wall_count", 0),
+                        "opening_count": res.get("opening_count", 0),
+                        "beam_count": res.get("beam_count", 0), "error": res.get("error")})
+    await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {"updated_at": _now()}})
+    return {"pages": results, "page_count": len(pages)}
+
+
+@router.post("/{plan_id}/structure/{page_index}/pdf")
+async def annotated_plan_pdf(plan_id: str, page_index: int, wall_height: float = 2.5,
+                             user=Depends(current_user)):
+    """PDF du plan annoté (murs rouges / fenêtres jaunes / portes violettes / poutres)
+    + légende + tableau descriptif — à joindre au devis client."""
+    from fastapi.responses import Response
+    from engines.plan_annot_pdf import build_annotated_plan_pdf
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if page_index < 0 or page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    if not (structure.get("walls") or structure.get("openings")):
+        raise HTTPException(400, "Lancez d'abord « Analyser le plan ».")
+    ppm = _page_ppm(p, page_index)
+    rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height)
+    branding = await _resolve_branding(user["user_id"])
+    pdf = build_annotated_plan_pdf(pages[page_index]["image_png_b64"], structure,
+                                   descriptif, p.get("filename") or "plan", branding)
+    return Response(content=pdf, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="plan-annote-{plan_id}.pdf"'})
+
+
+@router.post("/{plan_id}/structure/{page_index}/quote")
+async def structure_to_quote(plan_id: str, page_index: int, wall_height: float = 2.5,
+                             client_id: str | None = None, user=Depends(current_user)) -> dict:
+    """Crée un devis brouillon à partir du descriptif (planchers, murs, ouvertures, poutres)."""
+    import secrets
+    from routes.documents import _client_snapshot, _compute_totals
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages.image_png_b64": 0})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    ppm = _page_ppm(p, page_index)
+    if not ppm:
+        raise HTTPException(400, "Calibrez d'abord le plan avant de générer le devis.")
+    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height)
+    lines = _descriptif_line_items(descriptif)
+    if not lines:
+        raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": user["user_id"], "doc_type": "quote", "number": None,
+        "title": f"Devis — {p.get('filename') or 'plan'}",
+        "client_id": client_id, "client": await _client_snapshot(client_id, user),
+        "status": "draft", "lines": lines, "notes": "",
+        "payment_terms": "", "deposit_pct": 0,
+        "totals": _compute_totals(lines, 0),
+        "issue_date": None, "due_date": None,
+        "source": "plan_structure", "plan_id": plan_id,
+        "created_at": _now(), "updated_at": _now(),
+    }
+    await db.pro_documents.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
 
 
 class WallTypeIn(BaseModel):

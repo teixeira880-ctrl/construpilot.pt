@@ -38,6 +38,11 @@ Rends STRICTEMENT du JSON (aucun markdown, aucun texte hors JSON) :
      "hinge": {"x": 0.30, "y": 0.12} | null,   // gond de la porte si identifiable
      "swing": {"x": 0.40, "y": 0.20} | null}    // point vers lequel la porte s'ouvre
   ],
+  "beams": [
+    // POUTRES / linteaux visibles (souvent traits en POINTILLÉS ou double trait fin
+    // au-dessus d'une ouverture / traversant une pièce). Segment de la poutre.
+    {"x1": 0.20, "y1": 0.40, "x2": 0.70, "y2": 0.40}
+  ],
   "confidence": 0.0-1.0
 }
 
@@ -46,6 +51,7 @@ RÈGLES :
   Petites cloisons fines = "cloison".
 - Les ouvertures sont des TROUS dans les murs : une porte a un arc de battement (quart de cercle) ;
   une fenêtre est un rectangle/double-trait dans l'épaisseur du mur ; une baie est large.
+- Les poutres/linteaux sont généralement en POINTILLÉS. N'invente PAS de poutre sans indice net.
 - Aligne bien chaque ouverture sur la ligne du mur qui la contient.
 - N'invente pas d'ouverture sans indice visuel. Sois précis sur les positions.
 - Réponds UNIQUEMENT le JSON.
@@ -113,10 +119,22 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
             "swing": ({"x": round(_clamp(swing.get("x")) * w),
                        "y": round(_clamp(swing.get("y")) * h)} if swing else None),
         })
+    beams = []
+    for b in structure.get("beams") or []:
+        seg = _norm_seg(b) if isinstance(b, dict) else None
+        if not seg:
+            continue
+        x1, y1, x2, y2 = seg
+        beams.append({
+            "beam_id": "sb_" + uuid.uuid4().hex[:6],
+            "x1": round(x1 * w), "y1": round(y1 * h),
+            "x2": round(x2 * w), "y2": round(y2 * h),
+        })
     return {
         "image_width": int(w), "image_height": int(h),
-        "walls": walls, "openings": openings,
+        "walls": walls, "openings": openings, "beams": beams,
         "wall_count": len(walls), "opening_count": len(openings),
+        "beam_count": len(beams),
         "confidence": structure.get("confidence"),
     }
 

@@ -19,7 +19,7 @@ import {
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, Droplet, FileDown, History, Film, DoorOpen, Copy,
   Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon, Sheet, FileSearch,
-  ArrowLeft, Eraser, Plus,
+  ArrowLeft, Eraser, Plus, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +88,19 @@ export default function PlanTakeoff() {
   const [showStructure, setShowStructure] = useState(true);
   const [structBusy, setStructBusy] = useState(false);
   const [selectedStruct, setSelectedStruct] = useState(null);
+  const [descriptif, setDescriptif] = useState(null);
+  const [wallHeight, setWallHeight] = useState(2.5);
+  const [analysisBusy, setAnalysisBusy] = useState(false);
+  useEffect(() => {
+    if (!plan?.plan_id) { setDescriptif(null); return; }
+    const s = plan.structure?.[String(pageIndex)];
+    if (!s || !(s.walls?.length || s.openings?.length || s.beams?.length)) { setDescriptif(null); return; }
+    let cancel = false;
+    api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}`)
+      .then(({ data }) => { if (!cancel) setDescriptif(data.descriptif); }).catch(() => {});
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.plan_id, pageIndex, wallHeight]);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
   const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
@@ -1049,26 +1062,83 @@ export default function PlanTakeoff() {
   };
 
   // ===== STRUCTURE IA (murs rouges + ouvertures jaunes/violettes) =====
-  const detectStructure = async () => {
+  const loadDescriptif = async (height = wallHeight) => {
+    try {
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${height}`);
+      setDescriptif(data.descriptif);
+    } catch { /* silencieux */ }
+  };
+
+  // Bouton principal : « Analyser le plan » — calibration obligatoire, puis détection IA complète
+  const analyzePlanFull = async () => {
     if (!plan?.plan_id) return;
-    setStructBusy(true);
+    if (!currentCalib) {
+      toast.error("Calibrez d'abord le plan : l'échelle est indispensable pour calculer les quantités.");
+      setTool(TOOLS.CALIBRATE);
+      return;
+    }
+    setAnalysisBusy(true);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure?page_index=${pageIndex}`);
-      if (data.error) { toast.warning("IA : " + data.error); }
+      if (data.error) toast.warning("IA : " + data.error);
       setStructure(data);
       setShowStructure(true);
       setSelectedStruct(null);
-      toast.success(`Structure détectée — ${data.wall_count || 0} murs · ${data.opening_count || 0} ouvertures`);
+      await loadDescriptif();
+      toast.success(`Plan analysé — ${data.wall_count || 0} murs · ${data.opening_count || 0} ouvertures · ${data.beam_count || 0} poutres`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Détection structure impossible");
-    } finally { setStructBusy(false); }
+      toast.error(e?.response?.data?.detail || "Analyse impossible");
+    } finally { setAnalysisBusy(false); }
   };
+
+  const analyzeAllPages = async () => {
+    if (!plan?.plan_id) return;
+    setAnalysisBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure-all`);
+      await refreshPlan();
+      toast.success(`${data.page_count} page(s) analysée(s)`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Analyse multi-pages impossible");
+    } finally { setAnalysisBusy(false); }
+  };
+
+  const _hasStructure = () => !!(structure && ((structure.walls || []).length || (structure.openings || []).length || (structure.beams || []).length));
+
+  const sendToQuote = async () => {
+    if (!currentCalib) { toast.error("Calibrez d'abord le plan"); return; }
+    if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}`);
+      toast.success("Devis créé depuis le descriptif");
+      nav(`/devis-editeur/${data.doc_id}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Génération du devis impossible");
+    }
+  };
+
+  const exportAnnotatedPdf = async () => {
+    if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
+    try {
+      const res = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/pdf?wall_height=${wallHeight}`,
+        {}, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `plan-annote-${plan.plan_id}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF du plan annoté téléchargé");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Export PDF impossible");
+    }
+  };
+
+  const detectStructure = analyzePlanFull;
 
   const persistStructure = async (next) => {
     setStructure(next);
     try {
       await api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
-        walls: next.walls || [], openings: next.openings || [],
+        walls: next.walls || [], openings: next.openings || [], beams: next.beams || [],
         image_width: next.image_width, image_height: next.image_height,
       });
     } catch { toast.error("Sauvegarde de la structure impossible"); }
@@ -1077,7 +1147,7 @@ export default function PlanTakeoff() {
   const commitStructure = () => setStructure((prev) => {
     if (prev && plan?.plan_id) {
       api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
-        walls: prev.walls || [], openings: prev.openings || [],
+        walls: prev.walls || [], openings: prev.openings || [], beams: prev.beams || [],
         image_width: prev.image_width, image_height: prev.image_height,
       }).catch(() => {});
     }
@@ -1087,8 +1157,8 @@ export default function PlanTakeoff() {
   const dragStructPoint = (type, id, ep, [ix, iy]) => {
     setStructure((prev) => {
       if (!prev) return prev;
-      const key = type === "wall" ? "walls" : "openings";
-      const idKey = type === "wall" ? "wall_id" : "opening_id";
+      const key = type === "wall" ? "walls" : type === "beam" ? "beams" : "openings";
+      const idKey = type === "wall" ? "wall_id" : type === "beam" ? "beam_id" : "opening_id";
       const arr = (prev[key] || []).map((it) => {
         if (it[idKey] !== id) return it;
         return ep === 0 ? { ...it, x1: ix, y1: iy } : { ...it, x2: ix, y2: iy };
@@ -1099,11 +1169,11 @@ export default function PlanTakeoff() {
 
   const deleteStructItem = () => {
     if (!selectedStruct || !structure) return;
-    const key = selectedStruct.type === "wall" ? "walls" : "openings";
-    const idKey = selectedStruct.type === "wall" ? "wall_id" : "opening_id";
+    const key = selectedStruct.type === "wall" ? "walls" : selectedStruct.type === "beam" ? "beams" : "openings";
+    const idKey = selectedStruct.type === "wall" ? "wall_id" : selectedStruct.type === "beam" ? "beam_id" : "opening_id";
     const next = { ...structure, [key]: (structure[key] || []).filter((it) => it[idKey] !== selectedStruct.id) };
     setSelectedStruct(null);
-    persistStructure(next);
+    persistStructure(next).then(() => loadDescriptif());
   };
 
   const toggleStructType = () => {
@@ -1111,12 +1181,12 @@ export default function PlanTakeoff() {
     if (selectedStruct.type === "wall") {
       const next = { ...structure, walls: (structure.walls || []).map((w) =>
         w.wall_id === selectedStruct.id ? { ...w, type: w.type === "porteur" ? "cloison" : "porteur" } : w) };
-      persistStructure(next);
-    } else {
+      persistStructure(next).then(() => loadDescriptif());
+    } else if (selectedStruct.type === "opening") {
       const cycle = { fenetre: "porte", porte: "baie", baie: "fenetre" };
       const next = { ...structure, openings: (structure.openings || []).map((o) =>
         o.opening_id === selectedStruct.id ? { ...o, kind: cycle[o.kind] || "fenetre" } : o) };
-      persistStructure(next);
+      persistStructure(next).then(() => loadDescriptif());
     }
   };
 
@@ -1125,11 +1195,23 @@ export default function PlanTakeoff() {
     const cx = Math.round(w / 2), cy = Math.round(h / 2);
     const item = { wall_id: "sw_" + Math.random().toString(16).slice(2, 8),
                    x1: cx - 80, y1: cy, x2: cx + 80, y2: cy, type: "cloison" };
-    const next = { ...(structure || { walls: [], openings: [], image_width: w, image_height: h }) };
+    const next = { ...(structure || { walls: [], openings: [], beams: [], image_width: w, image_height: h }) };
     next.walls = [...(next.walls || []), item];
     setSelectedStruct({ type: "wall", id: item.wall_id });
-    persistStructure(next);
+    persistStructure(next).then(() => loadDescriptif());
     toast.info("Mur ajouté — glissez ses extrémités pour le placer");
+  };
+
+  const addStructBeam = () => {
+    const w = structure?.image_width || 1000, h = structure?.image_height || 1000;
+    const cx = Math.round(w / 2), cy = Math.round(h / 2);
+    const item = { beam_id: "sb_" + Math.random().toString(16).slice(2, 8),
+                   x1: cx - 100, y1: cy - 40, x2: cx + 100, y2: cy - 40 };
+    const next = { ...(structure || { walls: [], openings: [], beams: [], image_width: w, image_height: h }) };
+    next.beams = [...(next.beams || []), item];
+    setSelectedStruct({ type: "beam", id: item.beam_id });
+    persistStructure(next).then(() => loadDescriptif());
+    toast.info("Poutre ajoutée — glissez ses extrémités pour la placer");
   };
 
   const addStructOpening = (kind) => {
@@ -1137,10 +1219,10 @@ export default function PlanTakeoff() {
     const cx = Math.round(w / 2), cy = Math.round(h / 2);
     const item = { opening_id: "so_" + Math.random().toString(16).slice(2, 8),
                    kind, x1: cx - 40, y1: cy, x2: cx + 40, y2: cy, swing: null };
-    const next = { ...(structure || { walls: [], openings: [], image_width: w, image_height: h }) };
+    const next = { ...(structure || { walls: [], openings: [], beams: [], image_width: w, image_height: h }) };
     next.openings = [...(next.openings || []), item];
     setSelectedStruct({ type: "opening", id: item.opening_id });
-    persistStructure(next);
+    persistStructure(next).then(() => loadDescriptif());
     toast.info(`${kind === "porte" ? "Porte" : "Fenêtre"} ajoutée — glissez ses extrémités pour la placer`);
   };
 
@@ -1944,18 +2026,19 @@ export default function PlanTakeoff() {
                   title="Créer une copie de ce plan (pièces, ouvertures, calibrations)">
             <Copy className="h-4 w-4" /> Dupliquer
           </Button>
-          <Button variant="outline" onClick={detectWalls} disabled={cvBusy} data-testid="plan-detect-walls-btn"
-                  title="Détection brute OpenCV (rapide) — sans distinction porte/fenêtre"
-                  className="rounded-sm gap-2 border-cyan-500/50 text-cyan-500 hover:bg-cyan-500 hover:text-white">
-            <Zap className={`h-4 w-4 ${cvBusy ? "animate-pulse" : ""}`} />
-            {cvBusy ? "…" : "Détecter les murs"}
+          <Button variant="outline" onClick={analyzePlanFull} disabled={analysisBusy} data-testid="plan-analyze-btn"
+                  title="Analyse IA complète : planchers, murs (ml+m²), ouvertures, poutres + descriptif chiffré. Calibration requise."
+                  className="rounded-sm gap-2 border-red-500/60 text-red-500 hover:bg-red-500 hover:text-white font-semibold">
+            <Sparkles className={`h-4 w-4 ${analysisBusy ? "animate-pulse" : ""}`} />
+            {analysisBusy ? "Analyse en cours…" : "Analyser le plan"}
           </Button>
-          <Button variant="outline" onClick={detectStructure} disabled={structBusy} data-testid="plan-detect-structure-btn"
-                  title="Détection IA : murs (rouge) + fenêtres (jaune) + portes (violet), éditable"
-                  className="rounded-sm gap-2 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white">
-            <Sparkles className={`h-4 w-4 ${structBusy ? "animate-pulse" : ""}`} />
-            {structBusy ? "Analyse…" : "Murs + ouvertures (IA)"}
-          </Button>
+          {(plan?.page_count || 1) > 1 && (
+            <Button variant="outline" onClick={analyzeAllPages} disabled={analysisBusy} data-testid="plan-analyze-all-btn"
+                    title="Lance l'analyse IA sur toutes les pages du PDF"
+                    className="rounded-sm gap-2 border-red-500/40 text-red-500 hover:bg-red-500 hover:text-white">
+              <Layers className="h-4 w-4" /> Toutes les pages
+            </Button>
+          )}
           <Button variant="outline" onClick={downloadPdf} data-testid="plan-pdf-export-btn"
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" /> Métré PDF
@@ -2566,7 +2649,7 @@ export default function PlanTakeoff() {
           )}
 
           {/* STRUCTURE IA — édition murs / ouvertures */}
-          {structure && (structure.walls?.length > 0 || structure.openings?.length > 0) && (
+          {structure && (structure.walls?.length > 0 || structure.openings?.length > 0 || structure.beams?.length > 0) && (
             <div className="mt-3 border border-red-500/30 rounded-sm p-3 bg-red-500/5" data-testid="structure-card">
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <p className="overline flex items-center gap-2">
@@ -2585,7 +2668,7 @@ export default function PlanTakeoff() {
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-2">
+              <div className="grid grid-cols-3 gap-2 mb-2">
                 <div className="border border-red-500/40 rounded-sm p-2 text-red-500" data-testid="structure-wall-count">
                   <p className="text-[10px] uppercase font-bold tracking-wider">Murs</p>
                   <p className="num text-lg font-extrabold">{structure.walls?.length || 0}</p>
@@ -2594,19 +2677,63 @@ export default function PlanTakeoff() {
                   <p className="text-[10px] uppercase font-bold tracking-wider">Ouvertures</p>
                   <p className="num text-lg font-extrabold">{structure.openings?.length || 0}</p>
                 </div>
+                <div className="border border-purple-800/40 rounded-sm p-2 text-purple-800" data-testid="structure-beam-count">
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Poutres</p>
+                  <p className="num text-lg font-extrabold">{structure.beams?.length || 0}</p>
+                </div>
               </div>
+
+              {/* Descriptif chiffré */}
+              {descriptif && (
+                <div className="mb-2 border border-border rounded-sm p-2 bg-background" data-testid="structure-descriptif">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="overline">Descriptif chiffré</p>
+                    <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      Hauteur murs
+                      <input type="number" step="0.1" min="1" max="6" value={wallHeight}
+                             onChange={(e) => setWallHeight(parseFloat(e.target.value) || 2.5)}
+                             data-testid="structure-wall-height"
+                             className="w-14 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
+                    </label>
+                  </div>
+                  {!descriptif.calibrated && (
+                    <p className="text-[10px] text-destructive mb-1">⚠️ Plan non calibré — quantités indisponibles.</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
+                    <span className="text-muted-foreground">Planchers (sol)</span><span className="num text-right">{descriptif.planchers_m2} m²</span>
+                    <span className="text-muted-foreground">Murs porteurs</span><span className="num text-right">{descriptif.murs_porteurs_ml} ml</span>
+                    <span className="text-muted-foreground">Cloisons</span><span className="num text-right">{descriptif.cloisons_ml} ml</span>
+                    <span className="text-muted-foreground">Murs (surface)</span><span className="num text-right">{descriptif.murs_surface_m2} m²</span>
+                    <span className="text-muted-foreground">Portes / Fenêtres / Baies</span><span className="num text-right">{descriptif.portes} / {descriptif.fenetres} / {descriptif.baies}</span>
+                    <span className="text-muted-foreground">Poutres</span><span className="num text-right">{descriptif.poutres_ml} ml</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Button size="sm" onClick={sendToQuote} data-testid="structure-to-quote"
+                            className="rounded-sm h-7 text-xs gap-1 flex-1">
+                      <ArrowRight className="h-3 w-3" /> Envoyer vers le devis
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={exportAnnotatedPdf} data-testid="structure-export-pdf"
+                            className="rounded-sm h-7 text-xs gap-1">
+                      <FileDown className="h-3 w-3" /> PDF annoté
+                    </Button>
+                  </div>
+                </div>
+              )}
               <p className="text-[10px] text-muted-foreground mb-2">
                 Cliquez un mur/ouverture pour le sélectionner, puis glissez ses extrémités (points blancs) pour l'ajuster.
               </p>
               {selectedStruct && (
                 <div className="flex items-center gap-2 flex-wrap mb-2 p-2 rounded-sm bg-background border border-border" data-testid="structure-selected-actions">
                   <Badge variant="outline" className="rounded-sm text-[10px]">
-                    {selectedStruct.type === "wall" ? "Mur sélectionné" : "Ouverture sélectionnée"}
+                    {selectedStruct.type === "wall" ? "Mur sélectionné"
+                      : selectedStruct.type === "beam" ? "Poutre sélectionnée" : "Ouverture sélectionnée"}
                   </Badge>
-                  <Button size="sm" variant="outline" onClick={toggleStructType}
-                          data-testid="structure-toggle-type" className="rounded-sm h-7 text-xs gap-1">
-                    {selectedStruct.type === "wall" ? "Porteur ↔ Cloison" : "Porte ↔ Fenêtre ↔ Baie"}
-                  </Button>
+                  {selectedStruct.type !== "beam" && (
+                    <Button size="sm" variant="outline" onClick={toggleStructType}
+                            data-testid="structure-toggle-type" className="rounded-sm h-7 text-xs gap-1">
+                      {selectedStruct.type === "wall" ? "Porteur ↔ Cloison" : "Porte ↔ Fenêtre ↔ Baie"}
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={deleteStructItem}
                           data-testid="structure-delete" className="rounded-sm h-7 text-xs gap-1 border-destructive/50 text-destructive hover:bg-destructive hover:text-white">
                     <Trash2 className="h-3 w-3" /> Supprimer
@@ -2625,6 +2752,10 @@ export default function PlanTakeoff() {
                 <Button size="sm" variant="outline" onClick={() => addStructOpening("porte")}
                         data-testid="structure-add-door" className="rounded-sm h-7 text-xs gap-1 text-purple-600 border-purple-500/40">
                   <Plus className="h-3 w-3" /> Porte
+                </Button>
+                <Button size="sm" variant="outline" onClick={addStructBeam}
+                        data-testid="structure-add-beam" className="rounded-sm h-7 text-xs gap-1 text-purple-800 border-purple-800/40">
+                  <Plus className="h-3 w-3" /> Poutre
                 </Button>
               </div>
             </div>

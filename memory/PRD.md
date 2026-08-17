@@ -2207,3 +2207,14 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Suggestions IA devis** : `POST /api/documents/ai/describe` (Claude) + bouton `editor-line-ai-{i}` dans QuoteEditor → remplit la description en puces.
 - **Tests** : testing agent iter88 — backend 6/6, frontend 100% flux critiques, 0 bug. Warning React mineur préexistant (span dans option du select TVA, non bloquant).
 - PROD : nécessite un REDÉPLOIEMENT (Deploy Now).
+
+## Changelog Iter 89 (17/06/2026) — « Analyser le plan » complet + PDF annoté + multi-pages + devis
+- **Bouton unique « Analyser le plan »** (remplace 'Détecter les murs' CV) : calibration OBLIGATOIRE (sinon toast + bascule outil Calibrer), puis détection IA murs+ouvertures+poutres et calcul du descriptif chiffré.
+- **Poutres (poutres/linteaux)** : ajoutées au moteur `plan_structure.detect_structure` (rendu violet foncé pointillés) + éditables (ajout/glisser/suppression).
+- **Descriptif chiffré** (carte structure) : planchers m², murs porteurs/cloisons ml, murs surface m² (hauteur ajustable), portes/fenêtres/baies, poutres ml. Réactif à la hauteur de mur (GET `/analysis/{page}?wall_height=`).
+- **Envoyer vers le devis** : POST `/takeoffs/{id}/structure/{page}/quote` crée un devis brouillon (lignes murs/ouvertures/planchers/poutres) → nav `/devis-editeur/{doc_id}`.
+- **Export PDF plan annoté** : POST `/takeoffs/{id}/structure/{page}/pdf` (`engines/plan_annot_pdf.py`) — image avec overlay rouge/jaune/violet + légende + tableau descriptif.
+- **Multi-pages** : POST `/takeoffs/{id}/detect-structure-all` (bouton 'Toutes les pages' si page_count>1).
+- Gardes ajoutés : sendToQuote/exportAnnotatedPdf bloquent si non calibré / non analysé.
+- **Tests** : testing agent iter89 — backend 6/6, frontend 100% (gate calibration, descriptif réactif, PDF 200, devis, poutres+persistance). 0 bug.
+- PROD : nécessite REDÉPLOIEMENT (Deploy Now).
