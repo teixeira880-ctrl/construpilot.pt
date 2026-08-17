@@ -722,3 +722,13 @@ Non bloquant : warning hydration <span> dans <option> (artefact instrumentation)
 - CRUD campagnes via `/api/ads/campaigns` (+ `/api/ads/summary`). Corrigé bug JSX du bouton Enregistrer.
 - Remplacé window.confirm par AlertDialog shadcn pour la suppression.
 - Testé: testing_agent iteration_86 (backend 100
+## 2026-08-17 — Comparatif concurrents + Validation Factur-X (facturxapi.com)
+- **Test Suivi de chantier** : e2e testing_agent iteration_87 → backend 12/12, frontend 11/11 flows. Module validé pour prod (route /suivi-chantier, gating admin OR pro_business).
+- **Page /comparatif** (publique, SEO) : `frontend/src/pages/Comparatif.jsx` — tableau comparatif ConstruPilot vs Costructor/Obat/Tolteck/Graneet/Batigest/OptimBTP/ProGBat (15 lignes), 4 raisons différenciantes, note de transparence, CTA. JSON-LD FAQPage. Route ajoutée dans App.js + lien "Comparatif" dans Nav (MORE_LINKS).
+- **Validation Factur-X** : intégration facturxapi.com (POST https://api.facturxapi.com/api/v1/validate, Bearer + multipart).
+  - Clé stockée dans backend/.env → `FACTURX_API_KEY` (jamais en dur).
+  - Engine `backend/engines/facturx_validator.py` (httpx async, validation_target=en16931, lang=fr, rapport simplifié valid/profile/error_count/issues).
+  - Endpoint `POST /api/documents/{doc_id}/factur-x/validate` : régénère le Factur-X et le soumet au validateur, stocke `facturx_validation` sur le doc.
+  - UI Invoices.jsx : bouton "Valider" (pastille verte/rouge) + dialog "Non-conformités détectées" listant code/sévérité/stage/message.
+  - Testé e2e (admin) : rapport réel renvoyé — 2 erreurs détectées sur facture non-brandée (PDFA_NOT_COMPLIANT + BR-CO-26 SIRET/TVA vendeur manquant). Le validateur remonte donc bien les vraies non-conformités.
+- ⚠️ À NOTER : les factures actuellement générées ne passent pas encore la validation (PDF/A-3 non conforme + il faut renseigner SIRET/TVA dans le branding). La brique de VALIDATION fonctionne ; l'amélioration de la GÉNÉRATION Factur-X (PDF/A-3 strict + champs vendeur) reste à faire si conformité totale souhaitée.

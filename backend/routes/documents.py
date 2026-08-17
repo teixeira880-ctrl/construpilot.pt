@@ -293,6 +293,37 @@ async def document_facturx(doc_id: str, user=Depends(current_user)):
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
+@router.post("/{doc_id}/factur-x/validate")
+async def validate_document_facturx(doc_id: str, user=Depends(current_user)):
+    """Valide/certifie le Factur-X généré via facturxapi.com (XSD + Schematron EN16931)."""
+    from engines.pdf_docs import build_document_pdf
+    from engines.facturx_gen import to_facturx
+    from engines.facturx_validator import validate_facturx, FacturxValidationError
+    from routes.plans_common import _resolve_branding
+    doc = await _get_owned(doc_id, user)
+    if doc.get("doc_type") != "invoice":
+        raise HTTPException(status_code=400, detail="Factur-X réservé aux factures")
+    if not doc.get("number"):
+        doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
+        await db.pro_documents.update_one(
+            {"doc_id": doc_id, "user_id": user["user_id"]},
+            {"$set": {"number": doc["number"], "issue_date": doc.get("issue_date") or _now()}})
+        doc["issue_date"] = doc.get("issue_date") or _now()
+    branding = await _resolve_branding(user["user_id"])
+    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=None, lang=user.get("lang"))
+    fx = to_facturx(pdf_bytes, doc, branding)
+    fname = f"{doc.get('number') or doc['doc_id']}-facturx.pdf"
+    try:
+        report = await validate_facturx(fx, fname)
+    except FacturxValidationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    report["checked_at"] = _now()
+    await db.pro_documents.update_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]},
+        {"$set": {"facturx_validation": report}})
+    return report
+
+
 # ============ FACTURES : conversions, paiements, avoirs ============
 
 class ToInvoiceIn(BaseModel):

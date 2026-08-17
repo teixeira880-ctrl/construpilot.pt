@@ -55,6 +55,7 @@ import WorkerApp from "@/pages/WorkerApp";
 import SharedCalc from "@/pages/SharedCalc";
 import PriceCatalog from "@/pages/PriceCatalog";
 import SiteTracking from "@/pages/SiteTracking";
+import Comparatif from "@/pages/Comparatif";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
@@ -100,6 +101,7 @@ function AppRouter() {
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
+      <Route path="/comparatif" element={<Shell><Comparatif /></Shell>} />
       <Route path="/blog" element={<Shell><Blog /></Shell>} />
       <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />
       <Route path="/devis-travaux-:city" element={<Shell><LocalLanding /></Shell>} />

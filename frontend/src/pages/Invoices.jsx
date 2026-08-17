@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2 } from "lucide-react";
+import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -47,6 +47,9 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [convOpen, setConvOpen] = useState(false);
   const [busyId, setBusyId] = useState("");
+  const [fxBusyId, setFxBusyId] = useState("");
+  const [fxReport, setFxReport] = useState(null);
+  const [fxOpen, setFxOpen] = useState(false);
 
   const load = () => {
     Promise.all([
@@ -79,6 +82,19 @@ export default function Invoices() {
       URL.revokeObjectURL(url);
       toast.success(t("crm.facturx_ok"));
     } catch { toast.error(t("crm.facturx_fail")); }
+  };
+
+  const validateFacturx = async (doc) => {
+    setFxBusyId(doc.doc_id);
+    try {
+      const { data } = await api.post(`/documents/${doc.doc_id}/factur-x/validate`);
+      setFxReport({ ...data, number: doc.number });
+      setFxOpen(true);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Validation Factur-X impossible");
+    } finally {
+      setFxBusyId("");
+    }
   };
 
   const convertQuote = async (q) => {
@@ -189,11 +205,68 @@ export default function Invoices() {
                   onClick={() => downloadPdf(inv)}><Download className="h-4 w-4" /></Button>
                 <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" data-testid={`invoice-facturx-${inv.doc_id}`}
                   onClick={() => downloadFacturx(inv)}><FileCheck2 className="h-4 w-4" /> Factur-X</Button>
+                <Button size="sm" variant="ghost" className="rounded-sm gap-1.5" disabled={fxBusyId === inv.doc_id} data-testid={`invoice-facturx-validate-${inv.doc_id}`}
+                  onClick={() => validateFacturx(inv)}>
+                  {fxBusyId === inv.doc_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                  {inv.facturx_validation && (
+                    <span className={`h-2 w-2 rounded-full ${inv.facturx_validation.valid ? "bg-emerald-500" : "bg-red-500"}`} />
+                  )}
+                  Valider
+                </Button>
               </div>
             </motion.div>
           ))}
         </div>
       )}
+
+      <Dialog open={fxOpen} onOpenChange={setFxOpen}>
+        <DialogContent className="max-w-lg" data-testid="facturx-report-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {fxReport?.valid ? (
+                <><ShieldCheck className="h-5 w-5 text-emerald-500" /> Facture conforme</>
+              ) : (
+                <><ShieldAlert className="h-5 w-5 text-red-500" /> Non-conformités détectées</>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {fxReport && (
+            <div className="space-y-4 mt-1" data-testid="facturx-report-body">
+              <div className={`rounded-sm p-4 border ${fxReport.valid ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"}`}>
+                <p className="text-sm">
+                  Facture <b>{fxReport.number || "—"}</b> · profil détecté{" "}
+                  <b>{fxReport.profile || "inconnu"}</b>
+                </p>
+                <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                  <span><b className="text-red-600 dark:text-red-400">{fxReport.error_count}</b> erreur(s)</span>
+                  <span><b className="text-amber-600 dark:text-amber-400">{fxReport.warning_count}</b> avertissement(s)</span>
+                </div>
+              </div>
+              {fxReport.valid ? (
+                <p className="text-sm text-muted-foreground">
+                  Le fichier Factur-X respecte le socle XSD + Schematron EN16931. Diagnostic technique — ne vaut pas acceptation par une Plateforme Agréée.
+                </p>
+              ) : (
+                <div className="max-h-[45vh] overflow-y-auto space-y-2" data-testid="facturx-issues">
+                  {fxReport.issues?.map((it, i) => (
+                    <div key={i} className="rounded-sm border border-border p-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${it.severity === "error" ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"}`}>{it.severity}</span>
+                        {it.code && <span className="num text-xs text-muted-foreground">{it.code}</span>}
+                        {it.stage && <span className="text-[10px] text-muted-foreground">· {it.stage}</span>}
+                      </div>
+                      <p className="mt-1.5 text-muted-foreground">{it.message}</p>
+                    </div>
+                  ))}
+                  {(!fxReport.issues || fxReport.issues.length === 0) && (
+                    <p className="text-sm text-muted-foreground">Aucun détail d'erreur fourni par le validateur.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

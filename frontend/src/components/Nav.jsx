@@ -28,6 +28,7 @@ const PRIMARY_LINKS = [
 ];
 
 const MORE_LINKS = [
+  { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
   { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
   { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
   { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
