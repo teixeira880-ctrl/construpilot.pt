@@ -13,6 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
 from core.security import current_user, hash_password, new_user_id
+from engines import activity
 
 router = APIRouter(prefix="/company", tags=["company"])
 
@@ -155,6 +156,8 @@ async def create_employee(body: EmployeeIn, user=Depends(current_user)) -> dict:
     if is_worker:
         doc["employer_id"] = user["user_id"]
     await db.users.insert_one(doc)
+    await activity.log(user, "employee.create", "employee", doc["name"],
+                       {"role": body.role, "email": doc["email"]})
     return {"user_id": doc["user_id"], "name": doc["name"], "email": doc["email"],
             "role": body.role, "role_label": ROLE_LABELS.get(body.role), "active": True}
 
@@ -188,6 +191,7 @@ async def update_member(member_user_id: str, body: MemberUpdate, user=Depends(cu
         upd["company_active"] = bool(body.active)
     if upd:
         await db.users.update_one({"user_id": member_user_id}, {"$set": upd})
+        await activity.log(user, "member.update", "employee", m.get("name") or member_user_id, upd)
     return {"ok": True, **upd}
 
 
@@ -208,3 +212,17 @@ async def remove_member(member_user_id: str, user=Depends(current_user)) -> dict
         {"$unset": {"organization_id": "", "org_role": "", "company_active": "",
                     "joined_org_at": "", "employer_id": ""}})
     return {"ok": True}
+
+
+
+@router.get("/activity")
+async def company_activity(action: str = "", user=Depends(current_user)):
+    """Journal d'activité de l'entreprise (qui a fait quoi). Réservé owner/admin en organisation."""
+    u = await _me(user)
+    if u.get("organization_id"):
+        if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
+            raise HTTPException(403, "Réservé au propriétaire ou à un administrateur.")
+        org_id = u["organization_id"]
+    else:
+        org_id = f"solo:{user['user_id']}"
+    return await activity.recent(org_id, 150, action)

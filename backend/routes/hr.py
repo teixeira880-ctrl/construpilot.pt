@@ -236,6 +236,8 @@ async def clock_in(body: ClockIn, user=Depends(current_user)):
     }
     await db.hr_timesheets.insert_one(entry)
     entry.pop("_id", None)
+    from engines import activity
+    await activity.log(user, "clock.in", "pointage", proj.get("name") or "Chantier")
     return entry
 
 
@@ -262,6 +264,9 @@ async def clock_out(body: ClockOut, user=Depends(current_user)):
                   "selfie_out": selfie_path, "gps_out": gps_out,
                   "distance_out_m": zone["distance_m"],
                   "out_of_zone": ts.get("out_of_zone") or zone["out_of_zone"]}})
+    from engines import activity
+    await activity.log(user, "clock.out", "pointage",
+                       f"{ts.get('project_name') or 'Chantier'} · {hours}h")
     return await db.hr_timesheets.find_one({"entry_id": ts["entry_id"]}, {"_id": 0})
 
 

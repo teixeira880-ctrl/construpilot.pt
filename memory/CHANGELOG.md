@@ -780,3 +780,17 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Corrige le chevauchement du cluster droit (thème/langue/notifs/user) causé par trop de liens inline.
 - Gating par permissions conservé dans tous les menus (desktop + mobile).
 - ✅ Vérifié en capture : nav propre sans débordement, menu Espace Pro déroule 11 modules avec icônes.
+
+## 2026-08-17 (5) — Journal d'activité par entreprise (audit léger)
+- `engines/activity.py` : `log(user, action, entity, label, meta)` best-effort (résout org via organization_id ou employer_id → journal partagé entreprise ; sinon solo:{uid}). `recent(org_id)`.
+- Instrumentation : documents (quote/invoice.create, invoice.issue, document.delete), situations (situation.create, retention.release), company (employee.create, member.update), hr (clock.in / clock.out).
+- `GET /company/activity` (owner/admin) → 150 derniers événements de l'org.
+- Frontend : section "Activité récente" dans `pages/Entreprise.jsx` (timeline avatar + action + libellé + date FR).
+- ✅ Testé (curl + capture) : création devis, ajout employé, suppression doc bien journalisés et affichés.
+
+## 2026-08-17 (5b) — Endpoints backend Situations avancées (UI non encore branchée)
+- `routes/situations.py` ajouts (backend OK, testés partiellement) :
+  - GET `/situations/summary?marche_id=` → avancement cumulé (par lot : contrat/cumul%/facturé/restant + globaux, retenue détenue).
+  - Retenue de garantie : POST `/{marche_id}/reception` (date réception → échéance +1 an), GET `/retentions`, POST `/retentions/{id}/release`, POST `/retentions/{id}/remind` (email Resend).
+  - Compte prorata : GET/PUT `/{marche_id}/prorata` (taux % + dépenses → répartition auto par lot).
+- ⚠️ RESTE À FAIRE : brancher le FRONTEND (onglets Avancement / Retenue / Prorata dans Situations.jsx) + fonctionnalité "Émission groupée" (POST /documents/issue-batch + UI cases à cocher sur /factures). Non commencés.

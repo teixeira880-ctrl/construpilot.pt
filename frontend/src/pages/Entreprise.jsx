@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Building2, Lock, ArrowRight, Users, UserPlus, Trash2, FileText, Layers,
-  HardHat, ClipboardList, Tag, Crown, ShieldCheck, TrendingUp, Wallet, CheckCircle2, XCircle,
+  HardHat, ClipboardList, Tag, Crown, ShieldCheck, TrendingUp, Wallet, CheckCircle2, XCircle, History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ export default function Entreprise() {
   const isProBusiness = tier === "pro_business" || user?.role === "admin" || !!user?.invoicing_addon;
 
   const [data, setData] = useState(null);
+  const [activity, setActivity] = useState([]);
   const [emp, setEmp] = useState({ name: "", email: "", password: "", role: "member" });
   const [openEmp, setOpenEmp] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,6 +56,7 @@ export default function Entreprise() {
   const load = () => {
     if (!isManager) return;
     api.get("/company/dashboard").then(({ data }) => setData(data)).catch(() => {});
+    api.get("/company/activity").then(({ data }) => setActivity(data)).catch(() => {});
   };
   useEffect(() => { if (isProBusiness) load(); /* eslint-disable-next-line */ }, [isProBusiness, isManager]);
 
@@ -200,6 +202,28 @@ export default function Entreprise() {
                 Aucun employé pour l'instant. Créez une organisation depuis <button className="text-primary underline" onClick={() => nav("/equipe")}>Équipe</button>, puis ajoutez vos employés.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {isManager && activity.length > 0 && (
+        <div data-testid="entreprise-activity">
+          <p className="overline mb-3 flex items-center gap-2"><History className="h-4 w-4" /> Activité récente</p>
+          <div className="surface rounded-md divide-y divide-border/60">
+            {activity.slice(0, 30).map((a) => (
+              <div key={a.log_id} className="flex items-center gap-3 px-4 py-3" data-testid={`activity-${a.log_id}`}>
+                <div className="h-8 w-8 rounded-full bg-primary/10 grid place-items-center shrink-0">
+                  <span className="text-[11px] font-bold text-primary">{(a.actor_name || "?").slice(0, 1).toUpperCase()}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm truncate">
+                    <b>{a.actor_name}</b> {a.action_label}
+                    {a.label ? <span className="text-muted-foreground"> · {a.label}</span> : ""}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0">{new Date(a.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

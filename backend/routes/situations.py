@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from core.db import db
 from core.security import current_user
 from routes.documents import _compute_totals, _next_number, _now, _client_snapshot
-from engines import emailer
+from engines import emailer, activity
 
 router = APIRouter(prefix="/situations", tags=["situations"])
 
@@ -150,6 +150,9 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
     }
     await db.situations.insert_one(dict(sit))
     sit.pop("_id", None)
+    await activity.log(user, "situation.create", "situation",
+                       f"Situation n°{seq} — {marche_label}",
+                       {"invoice_number": number, "total_ttc": totals["ttc"]})
     return sit
 
 
@@ -275,6 +278,8 @@ async def release_retention(marche_id: str, user=Depends(current_user)):
     await db.pro_documents.update_one(
         {"doc_id": marche_id, "user_id": _uid(user)},
         {"$set": {"retention_released": True, "retention_released_at": _now()}})
+    await activity.log(user, "retention.release", "retention",
+                       base.get("number") or base.get("title") or marche_id)
     return {"ok": True, "released_at": _now()}
 
 

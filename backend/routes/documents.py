@@ -127,6 +127,9 @@ async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     }
     await db.pro_documents.insert_one(dict(doc))
     doc.pop("_id", None)
+    from engines import activity
+    await activity.log(user, f"{dtype}.create", "document", doc.get("title") or dtype,
+                       {"doc_id": doc["doc_id"]})
     return doc
 
 
@@ -235,10 +238,15 @@ async def set_status(doc_id: str, body: StatusIn, user=Depends(current_user)) ->
 
 @router.delete("/{doc_id}")
 async def delete_document(doc_id: str, user=Depends(current_user)) -> dict:
+    doc = await db.pro_documents.find_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0, "title": 1, "number": 1})
     res = await db.pro_documents.delete_one(
         {"doc_id": doc_id, "user_id": user["user_id"]})
     if not res.deleted_count:
         raise HTTPException(404, "Document introuvable")
+    from engines import activity
+    await activity.log(user, "document.delete", "document",
+                       (doc or {}).get("number") or (doc or {}).get("title") or doc_id)
     return {"ok": True}
 
 
@@ -257,6 +265,9 @@ async def issue_document(doc_id: str, user=Depends(current_user)) -> dict:
             await _ensure_facturx(doc_id, user, force=True)
         except Exception as exc:  # quota, réseau, données incomplètes → badge "non vérifié"
             logging.getLogger("documents").info("Auto Factur-X à l'émission ignoré: %s", exc)
+    from engines import activity
+    await activity.log(user, "invoice.issue" if doc.get("doc_type") == "invoice" else "quote.update",
+                       "document", number, {"doc_id": doc_id})
     return await _get_owned(doc_id, user)
 
 
