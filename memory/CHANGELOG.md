@@ -1,5 +1,12 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 106 — 17/08/2026 (Calculateurs : compare Carrelage + Devis multi-calculs + PDF prix)
+- **Comparaison Carrelage** : comparaison multi-formats généralisée (config `COMPARE_CONFIG`) — formats 30/45/60/60×120/90, pertes de pose incluses, budget + format le moins cher surligné. Fonctionne aussi pour Placo.
+- **Devis multi-calculs** : panier « Ma sélection » (bouton « Ajouter à la sélection ») accumule plusieurs calculs (placo + peinture + béton…) puis « Créer le devis groupé » génère un devis unique avec chaque calcul en catégorie. Vérifié UI (2 calculs).
+- **PDF avec prix fournisseurs** : quand les meilleurs prix ont été trouvés, le PDF inclut un tableau « Devis matériaux — prix fournisseurs » (produit/qté/fournisseur/PU/total) + total réel. Endpoint `CalcPdfIn` étendu (`priced_lines`, `priced_total`). Vérifié curl (HTTP 200).
+- Fichiers : `backend/routes/tools.py`, `frontend/src/pages/Calculators.jsx`.
+
+
 ## Itération 105 — 17/08/2026 (Calculateurs : multi-formats + PDF + Ajouter au devis)
 - **Comparaison multi-formats (Placo)** : bouton « Comparer les formats » → tableau plaques + budget pour 200/250/260/300×120, meilleur prix surligné (frontend, appels parallèles au calc).
 - **Export PDF** : endpoint `POST /calculators-pdf` (reportlab/platypus) → fiche de calcul brandée (paramètres, résultats, liste de courses, budget, disclaimer). Bouton « Exporter en PDF ». Vérifié : HTTP 200, application/pdf, 2,3 Ko.

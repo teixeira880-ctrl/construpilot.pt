@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Calculator, Search, ShoppingCart, FileDown, FilePlus2, Columns3, Loader2 } from "lucide-react";
+import { Calculator, Search, ShoppingCart, FileDown, FilePlus2, Columns3, Loader2, ListPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,12 +15,31 @@ import { useAuth } from "@/context/AuthContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 
-const DRYWALL_FORMATS = [
-  { plate_length: 200, plate_width: 120 },
-  { plate_length: 250, plate_width: 120 },
-  { plate_length: 260, plate_width: 120 },
-  { plate_length: 300, plate_width: 120 },
-];
+const COMPARE_CONFIG = {
+  drywall: {
+    variants: [
+      { plate_length: 200, plate_width: 120 },
+      { plate_length: 250, plate_width: 120 },
+      { plate_length: 260, plate_width: 120 },
+      { plate_length: 300, plate_width: 120 },
+    ],
+    label: (v) => `${v.plate_length}×${v.plate_width} cm`,
+    metric: { title: "Plaques nécessaires", match: /plaque/i },
+    caption: "Ossature, vis et enduit inclus. Le format le moins cher est surligné.",
+  },
+  tile: {
+    variants: [
+      { tile_length: 30, tile_width: 30 },
+      { tile_length: 45, tile_width: 45 },
+      { tile_length: 60, tile_width: 60 },
+      { tile_length: 60, tile_width: 120 },
+      { tile_length: 90, tile_width: 90 },
+    ],
+    label: (v) => `${v.tile_length}×${v.tile_width} cm`,
+    metric: { title: "Carreaux", match: /carreau/i },
+    caption: "Pertes de pose incluses selon le type de pose sélectionné. Le format le moins cher est surligné.",
+  },
+};
 
 export default function Calculators() {
   const navigate = useNavigate();
@@ -31,6 +50,7 @@ export default function Calculators() {
   const [result, setResult] = useState(null);
   const [optim, setOptim] = useState(null);
   const [compare, setCompare] = useState(null);
+  const [cart, setCart] = useState([]);
   const [busy, setBusy] = useState(false);
   const [busyPdf, setBusyPdf] = useState(false);
   const [addingQuote, setAddingQuote] = useState(false);
@@ -64,19 +84,47 @@ export default function Calculators() {
   };
 
   const compareFormats = async () => {
+    const cfg = COMPARE_CONFIG[active.key];
+    if (!cfg) return;
     setBusy(true);
     try {
-      const runs = await Promise.all(DRYWALL_FORMATS.map((fmt) =>
-        api.post(`/calculators/${active.key}`, { params: { ...params, ...fmt } })
+      const runs = await Promise.all(cfg.variants.map((v) =>
+        api.post(`/calculators/${active.key}`, { params: { ...params, ...v } })
           .then(({ data }) => ({
-            format: `${fmt.plate_length}×${fmt.plate_width} cm`,
-            plates: data.results.find((r) => /plaque/i.test(r.label))?.value ?? "—",
+            format: cfg.label(v),
+            metric: data.results.find((r) => cfg.metric.match.test(r.label))?.value ?? "—",
             budget: data.estimated_budget,
           }))
       ));
-      setCompare(runs);
+      setCompare({ rows: runs, cfg });
     } catch { toast.error("Comparaison impossible"); }
     finally { setBusy(false); }
+  };
+
+  const addToSelection = () => {
+    setCart((c) => [...c, {
+      id: Date.now() + Math.random(),
+      name: active.name,
+      materials: result.materials.map((m) => ({ name: m.name, quantity: m.quantity, unit: m.unit })),
+    }]);
+    toast.success(`« ${active.name} » ajouté à la sélection`);
+  };
+
+  const buildGroupedQuote = async () => {
+    if (!user) { toast.info("Connectez-vous pour créer un devis"); navigate("/login"); return; }
+    setAddingQuote(true);
+    try {
+      const lines = cart.flatMap((entry) => entry.materials.map((m) => ({
+        designation: m.name, unit: m.unit, qty: Math.ceil(m.quantity),
+        unit_price_ht: 0, vat_rate: 10, category: entry.name,
+      })));
+      const { data } = await api.post("/documents", {
+        doc_type: "quote", title: `Devis — ${cart.map((e) => e.name).join(" + ")}`, lines,
+      });
+      toast.success("Devis groupé créé — complétez les prix");
+      navigate(`/devis-editeur/${data.doc_id}`);
+    } catch { toast.error("Création du devis impossible"); }
+    finally { setAddingQuote(false); }
   };
 
   const exportPdf = async () => {
@@ -85,13 +133,21 @@ export default function Calculators() {
       const inputs = active.fields.map((f) => ({
         label: f.label, value: String(params[f.name] ?? f.default ?? "—").replace(/_/g, " "),
       }));
-      const { data } = await api.post("/calculators-pdf", {
+      const payload = {
         name: active.name,
         inputs,
         results: result.results,
         materials: result.materials.map((m) => ({ name: m.name, quantity: Math.round(m.quantity * 100) / 100, unit: m.unit })),
         estimated_budget: result.estimated_budget,
-      }, { responseType: "blob" });
+      };
+      if (optim?.lines?.length) {
+        payload.priced_lines = optim.lines.map((l) => ({
+          name: l.name, quantity: l.quantity, supplier: l.supplier,
+          unit_price: l.unit_price, total: l.total,
+        }));
+        payload.priced_total = optim.multi_supplier?.total ?? null;
+      }
+      const { data } = await api.post("/calculators-pdf", payload, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
       const a = document.createElement("a");
       a.href = url; a.download = `fiche-calcul-${active.key}.pdf`;
@@ -155,6 +211,33 @@ export default function Calculators() {
         ))}
       </div>
 
+      {cart.length > 0 && (
+        <div className="surface p-5 rounded-md border-primary/40" data-testid="calc-cart">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="overline flex items-center gap-2"><ShoppingCart className="h-3.5 w-3.5" /> Ma sélection ({cart.length} {cart.length > 1 ? "calculs" : "calcul"})</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {cart.map((e, i) => (
+                  <span key={e.id} className="inline-flex items-center gap-1.5 text-sm bg-muted/50 border border-border rounded-full pl-3 pr-1.5 py-1" data-testid={`calc-cart-item-${i}`}>
+                    {e.name} <span className="text-xs text-muted-foreground">· {e.materials.length} lignes</span>
+                    <button onClick={() => setCart((c) => c.filter((x) => x.id !== e.id))} data-testid={`calc-cart-remove-${i}`}
+                      className="grid place-items-center h-5 w-5 rounded-full hover:bg-red-500/20 text-muted-foreground hover:text-red-500">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="rounded-sm text-muted-foreground" onClick={() => setCart([])} data-testid="calc-cart-clear">Vider</Button>
+              <Button className="rounded-sm gap-2" disabled={addingQuote} onClick={buildGroupedQuote} data-testid="calc-cart-quote-btn">
+                {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Créer le devis groupé
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="surface p-6 grid gap-5 h-fit" data-testid="calculator-form">
           {active.fields.map((f) => (
@@ -210,12 +293,16 @@ export default function Calculators() {
 
                 <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
                   <Button onClick={exportPdf} disabled={busyPdf} variant="outline" className="rounded-sm gap-2" data-testid="calc-export-pdf-btn">
-                    {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Exporter en PDF
+                    {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                    {optim ? "Exporter PDF (avec prix)" : "Exporter en PDF"}
                   </Button>
                   <Button onClick={addToQuote} disabled={addingQuote} className="rounded-sm gap-2" data-testid="calc-add-quote-btn">
                     {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Ajouter au devis
                   </Button>
-                  {active.key === "drywall" && (
+                  <Button onClick={addToSelection} variant="outline" className="rounded-sm gap-2" data-testid="calc-add-selection-btn">
+                    <ListPlus className="h-4 w-4" /> Ajouter à la sélection
+                  </Button>
+                  {COMPARE_CONFIG[active.key] && (
                     <Button onClick={compareFormats} disabled={busy} variant="outline" className="rounded-sm gap-2" data-testid="calc-compare-btn">
                       <Columns3 className="h-4 w-4" /> Comparer les formats
                     </Button>
@@ -225,23 +312,26 @@ export default function Calculators() {
 
               {compare && (
                 <div className="surface overflow-x-auto" data-testid="calc-compare-table">
-                  <div className="px-6 pt-5"><p className="overline">Comparaison des formats de plaque</p></div>
+                  <div className="px-6 pt-5">
+                    <p className="overline">Comparaison des formats</p>
+                    <p className="text-xs text-muted-foreground mt-1">{compare.cfg.caption}</p>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                        <TableHead>Format plaque</TableHead>
-                        <TableHead className="text-right">Plaques nécessaires</TableHead>
+                        <TableHead>Format</TableHead>
+                        <TableHead className="text-right">{compare.cfg.metric.title}</TableHead>
                         <TableHead className="text-right">Budget estimé</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {compare.map((c, i) => {
-                        const best = Math.min(...compare.map((x) => x.budget || Infinity));
+                      {compare.rows.map((c, i) => {
+                        const best = Math.min(...compare.rows.map((x) => x.budget || Infinity));
                         const isBest = (c.budget || Infinity) === best;
                         return (
                           <TableRow key={i} className={isBest ? "bg-primary/10" : "even:bg-muted/30"}>
                             <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ le moins cher</span>}</TableCell>
-                            <TableCell className="num text-right">{num(c.plates, 0)}</TableCell>
+                            <TableCell className="num text-right">{num(c.metric, 0)}</TableCell>
                             <TableCell className="num text-right font-semibold text-primary">{eur(c.budget)}</TableCell>
                           </TableRow>
                         );

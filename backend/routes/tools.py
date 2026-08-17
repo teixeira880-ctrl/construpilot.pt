@@ -47,6 +47,8 @@ class CalcPdfIn(BaseModel):
     results: list[dict] = []
     materials: list[dict] = []
     estimated_budget: float = 0
+    priced_lines: list[dict] = []       # [{name, quantity, supplier, unit_price, total}]
+    priced_total: float | None = None   # total devis prix fournisseurs
 
 
 @router.post("/calculators-pdf")
@@ -120,8 +122,31 @@ async def calculator_pdf(body: CalcPdfIn):
         flow.append(t)
 
     flow.append(Spacer(1, 10))
-    flow.append(Paragraph(f"Budget matériaux estimé : <b>{body.estimated_budget:,.0f} €</b>".replace(",", " "),
-                          ParagraphStyle("bud", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
+    if body.priced_lines:
+        flow.append(Paragraph("Devis matériaux — prix fournisseurs", sec))
+        rows = [["Produit", "Qté", "Fournisseur", "PU", "Total"]]
+        for l in body.priced_lines:
+            rows.append([str(l.get("name", "")), str(l.get("quantity", "")),
+                         str(l.get("supplier", "")),
+                         f"{float(l.get('unit_price', 0)):.2f} €",
+                         f"{float(l.get('total', 0)):.2f} €"])
+        t = Table(rows, colWidths=[64 * mm, 16 * mm, 40 * mm, 26 * mm, 28 * mm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5), ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT]),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5), ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        flow.append(t)
+        flow.append(Spacer(1, 8))
+        flow.append(Paragraph(
+            f"Total devis matériaux (prix fournisseurs) : <b>{(body.priced_total or 0):,.2f} €</b>".replace(",", " "),
+            ParagraphStyle("bud2", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
+    else:
+        flow.append(Paragraph(f"Budget matériaux estimé : <b>{body.estimated_budget:,.0f} €</b>".replace(",", " "),
+                              ParagraphStyle("bud", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
     flow.append(Spacer(1, 16))
     flow.append(Paragraph(
         "Estimation indicative avec marges de sécurité incluses. Les quantités peuvent varier selon la mise "
