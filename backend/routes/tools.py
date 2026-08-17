@@ -1,9 +1,12 @@
 import io
+import secrets
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from core.db import db
 from engines import calculators, diy
 
 router = APIRouter(tags=["tools"])
@@ -158,6 +161,34 @@ async def calculator_pdf(body: CalcPdfIn):
     return StreamingResponse(buf, media_type="application/pdf",
                              headers={"Content-Disposition": 'attachment; filename="fiche-calcul-construpilot.pdf"'})
 
+
+
+class ShareCalcIn(BaseModel):
+    name: str = "Calcul matériaux"
+    inputs: list[dict] = []
+    results: list[dict] = []
+    materials: list[dict] = []
+    estimated_budget: float = 0
+    priced_lines: list[dict] = []
+    priced_total: float | None = None
+    contractor: str = ""
+
+
+@router.post("/calculators-share")
+async def share_calculator(body: ShareCalcIn):
+    share_id = secrets.token_urlsafe(9)
+    doc = {"share_id": share_id, **body.model_dump(),
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.shared_calcs.insert_one(doc)
+    return {"share_id": share_id}
+
+
+@router.get("/calculators-shared/{share_id}")
+async def get_shared_calculator(share_id: str):
+    doc = await db.shared_calcs.find_one({"share_id": share_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
+    return doc
 
 
 @router.get("/diy/tasks")

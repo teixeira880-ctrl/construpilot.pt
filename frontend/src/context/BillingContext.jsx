@@ -25,6 +25,7 @@ const FEATURE_TIER = {
   quote_analysis: PREMIUM_TIERS,
   savings_details: PREMIUM_TIERS,
   advanced_pdf: PREMIUM_TIERS,
+  calculator_pro_tools: PREMIUM_TIERS,
   // Plan 2D + 3D ouverts à tous les utilisateurs connectés (rendus 3D payants à l'unité).
   // Le contrôle fin (offerts / crédits / illimité) est géré côté backend par action.
 };

@@ -1,5 +1,20 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 108 — 17/08/2026 (Paywall fonctions premium calculateurs)
+- **Verrouillage freemium** des fonctions premium des calculateurs (Export PDF, Ajouter au devis, Comparer les formats, Devis groupé, Partager la fiche) via `useBilling().has("calculator_pro_tools")` — nouvelle clé ajoutée à `FEATURE_TIER` (BillingContext) mappée sur `PREMIUM_TIERS = {project_pass, premium, pro, pro_business}`.
+- Comportement : le calcul de base reste **gratuit** (acquisition particuliers) ; les fonctions premium affichent une **bannière « Passer Premium »** + verrou. Clic en gratuit → redirection `/tarifs` (connecté) ou `/login` (déconnecté). Payant pour particuliers (Premium + Project pass), inclus Pro/Business, bypass admin.
+- Vérifié : utilisateur gratuit → bannière + redirection ; capture d'écran.
+- Fichiers : `frontend/src/pages/Calculators.jsx`, `frontend/src/context/BillingContext.jsx`.
+- **Accès au code** : orienté vers « Save to GitHub » + ajout du collaborateur hichamon306@gmail.com sur le dépôt GitHub (via support).
+
+
+## Itération 107 — 17/08/2026 (Persistance panier + Fiche partageable)
+- **Persistance sélection** : le panier « Ma sélection » est sauvegardé en localStorage (`construpilot_calc_cart`) et rechargé au retour sur la page.
+- **Fiche partageable** : bouton « Partager la fiche » → `POST /calculators-share` crée une fiche publique (token) ; page publique `/fiche/:shareId` (`SharedCalc.jsx`) affiche paramètres, résultats, matériaux/prix, budget + « Préparé par [entreprise] » + CTA. Dialogue de partage avec copie de lien, SMS et e-mail. Endpoints `POST /calculators-share` + `GET /calculators-shared/{id}` (404 si absent). Vérifié curl + capture.
+- Fichiers : `backend/routes/tools.py`, `frontend/src/pages/Calculators.jsx`, `frontend/src/pages/SharedCalc.jsx`, `frontend/src/App.js`.
+- **Prix réels fournisseurs (tâche 2)** : EN ATTENTE — Point P / Leroy Merlin n'exposent pas d'API prix publique ; clarification demandée à l'utilisateur (catalogue prix admin vs scraper vs API partenaire).
+
+
 ## Itération 106 — 17/08/2026 (Calculateurs : compare Carrelage + Devis multi-calculs + PDF prix)
 - **Comparaison Carrelage** : comparaison multi-formats généralisée (config `COMPARE_CONFIG`) — formats 30/45/60/60×120/90, pertes de pose incluses, budget + format le moins cher surligné. Fonctionne aussi pour Placo.
 - **Devis multi-calculs** : panier « Ma sélection » (bouton « Ajouter à la sélection ») accumule plusieurs calculs (placo + peinture + béton…) puis « Créer le devis groupé » génère un devis unique avec chaque calcul en catégorie. Vérifié UI (2 calculs).

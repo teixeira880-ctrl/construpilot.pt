@@ -52,6 +52,7 @@ import QuoteEditor from "@/pages/QuoteEditor";
 import Invoices from "@/pages/Invoices";
 import HR from "@/pages/HR";
 import WorkerApp from "@/pages/WorkerApp";
+import SharedCalc from "@/pages/SharedCalc";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
@@ -119,6 +120,7 @@ function AppRouter() {
       <Route path="/scanner-devis" element={<Shell><QuoteScanner /></Shell>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/sign/:token" element={<SignQuote />} />
+      <Route path="/fiche/:shareId" element={<SharedCalc />} />
       <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
       <Route path="/etudes-pc" element={<Protected><Shell><PcDashboard /></Shell></Protected>} />

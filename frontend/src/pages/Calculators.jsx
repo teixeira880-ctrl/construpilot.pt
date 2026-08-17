@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Calculator, Search, ShoppingCart, FileDown, FilePlus2, Columns3, Loader2, ListPlus, X } from "lucide-react";
+import { Calculator, Search, ShoppingCart, FileDown, FilePlus2, Columns3, Loader2, ListPlus, X, Share2, Copy, Mail, MessageSquare, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, eur, eur2, num } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useBilling } from "@/context/BillingContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 
@@ -44,16 +48,38 @@ const COMPARE_CONFIG = {
 export default function Calculators() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { has } = useBilling();
+  const isPremium = has("calculator_pro_tools");
+  const gate = () => {
+    if (isPremium) return true;
+    if (!user) {
+      toast.info("Créez un compte et passez Premium pour débloquer cette fonction");
+      navigate("/login");
+      return false;
+    }
+    toast.info("Fonction Premium — passez à une offre payante pour l'utiliser 🔒");
+    navigate("/tarifs");
+    return false;
+  };
   const [calcs, setCalcs] = useState([]);
   const [active, setActive] = useState(null);
   const [params, setParams] = useState({});
   const [result, setResult] = useState(null);
   const [optim, setOptim] = useState(null);
   const [compare, setCompare] = useState(null);
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("construpilot_calc_cart") || "[]"); }
+    catch { return []; }
+  });
   const [busy, setBusy] = useState(false);
   const [busyPdf, setBusyPdf] = useState(false);
   const [addingQuote, setAddingQuote] = useState(false);
+  const [shareUrl, setShareUrl] = useState(null);
+  const [sharing, setSharing] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem("construpilot_calc_cart", JSON.stringify(cart)); } catch { /* ignore */ }
+  }, [cart]);
 
   useEffect(() => {
     api.get("/calculators").then(({ data }) => {
@@ -84,6 +110,7 @@ export default function Calculators() {
   };
 
   const compareFormats = async () => {
+    if (!gate()) return;
     const cfg = COMPARE_CONFIG[active.key];
     if (!cfg) return;
     setBusy(true);
@@ -101,6 +128,31 @@ export default function Calculators() {
     finally { setBusy(false); }
   };
 
+  const shareSheet = async () => {
+    if (!gate()) return;
+    setSharing(true);
+    try {
+      const inputs = active.fields.map((f) => ({
+        label: f.label, value: String(params[f.name] ?? f.default ?? "—").replace(/_/g, " "),
+      }));
+      const payload = {
+        name: active.name, inputs, results: result.results,
+        materials: result.materials.map((m) => ({ name: m.name, quantity: Math.round(m.quantity * 100) / 100, unit: m.unit })),
+        estimated_budget: result.estimated_budget,
+        contractor: user ? (user.company || user.name || "") : "",
+      };
+      if (optim?.lines?.length) {
+        payload.priced_lines = optim.lines.map((l) => ({
+          name: l.name, quantity: l.quantity, supplier: l.supplier, unit_price: l.unit_price, total: l.total,
+        }));
+        payload.priced_total = optim.multi_supplier?.total ?? null;
+      }
+      const { data } = await api.post("/calculators-share", payload);
+      setShareUrl(`${window.location.origin}/fiche/${data.share_id}`);
+    } catch { toast.error("Partage impossible"); }
+    finally { setSharing(false); }
+  };
+
   const addToSelection = () => {
     setCart((c) => [...c, {
       id: Date.now() + Math.random(),
@@ -111,6 +163,7 @@ export default function Calculators() {
   };
 
   const buildGroupedQuote = async () => {
+    if (!gate()) return;
     if (!user) { toast.info("Connectez-vous pour créer un devis"); navigate("/login"); return; }
     setAddingQuote(true);
     try {
@@ -128,6 +181,7 @@ export default function Calculators() {
   };
 
   const exportPdf = async () => {
+    if (!gate()) return;
     setBusyPdf(true);
     try {
       const inputs = active.fields.map((f) => ({
@@ -158,6 +212,7 @@ export default function Calculators() {
   };
 
   const addToQuote = async () => {
+    if (!gate()) return;
     if (!user) {
       toast.info("Connectez-vous pour créer un devis");
       navigate("/login");
@@ -292,8 +347,16 @@ export default function Calculators() {
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
+                  {!isPremium && (
+                    <button onClick={() => navigate("/tarifs")} data-testid="calc-premium-banner"
+                      className="w-full mb-1 flex items-center gap-2 text-sm bg-primary/10 border border-primary/30 text-primary rounded-sm px-4 py-2.5 hover:bg-primary/15 transition-colors">
+                      <Lock className="h-4 w-4" />
+                      <span>Export PDF, devis et partage sont <b>Premium</b> — débloquez-les.</span>
+                      <span className="ml-auto font-semibold underline">Passer Premium →</span>
+                    </button>
+                  )}
                   <Button onClick={exportPdf} disabled={busyPdf} variant="outline" className="rounded-sm gap-2" data-testid="calc-export-pdf-btn">
-                    {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                    {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : (!isPremium ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />)}
                     {optim ? "Exporter PDF (avec prix)" : "Exporter en PDF"}
                   </Button>
                   <Button onClick={addToQuote} disabled={addingQuote} className="rounded-sm gap-2" data-testid="calc-add-quote-btn">
@@ -301,6 +364,9 @@ export default function Calculators() {
                   </Button>
                   <Button onClick={addToSelection} variant="outline" className="rounded-sm gap-2" data-testid="calc-add-selection-btn">
                     <ListPlus className="h-4 w-4" /> Ajouter à la sélection
+                  </Button>
+                  <Button onClick={shareSheet} disabled={sharing} variant="outline" className="rounded-sm gap-2" data-testid="calc-share-btn">
+                    {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Partager la fiche
                   </Button>
                   {COMPARE_CONFIG[active.key] && (
                     <Button onClick={compareFormats} disabled={busy} variant="outline" className="rounded-sm gap-2" data-testid="calc-compare-btn">
@@ -416,6 +482,32 @@ export default function Calculators() {
           )}
         </div>
       </div>
+
+      <Dialog open={!!shareUrl} onOpenChange={(o) => !o && setShareUrl(null)}>
+        <DialogContent className="max-w-md" data-testid="calc-share-dialog">
+          <DialogHeader>
+            <DialogTitle>Partager la fiche de calcul</DialogTitle>
+            <DialogDescription>Envoyez ce lien à votre client par SMS ou e-mail. Il pourra consulter la fiche sans compte.</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Input readOnly value={shareUrl || ""} className="rounded-sm num text-xs" data-testid="calc-share-url" />
+            <Button variant="outline" className="rounded-sm gap-1 shrink-0" data-testid="calc-share-copy"
+              onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Lien copié"); }}>
+              <Copy className="h-4 w-4" /> Copier
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            <a href={`sms:?&body=${encodeURIComponent(`Votre fiche de calcul ConstruPilot : ${shareUrl}`)}`}
+               data-testid="calc-share-sms">
+              <Button variant="outline" className="w-full rounded-sm gap-2"><MessageSquare className="h-4 w-4" /> SMS</Button>
+            </a>
+            <a href={`mailto:?subject=${encodeURIComponent("Votre fiche de calcul — ConstruPilot")}&body=${encodeURIComponent(`Bonjour,\n\nVoici votre fiche de calcul détaillée : ${shareUrl}\n\nCordialement.`)}`}
+               data-testid="calc-share-email">
+              <Button variant="outline" className="w-full rounded-sm gap-2"><Mail className="h-4 w-4" /> E-mail</Button>
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,0 +1,150 @@
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Loader2, HardHat, ArrowRight } from "lucide-react";
+import { api, eur, eur2, num } from "@/lib/api";
+
+export default function SharedCalc() {
+  const { shareId } = useParams();
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    api.get(`/calculators-shared/${shareId}`)
+      .then(({ data }) => setData(data))
+      .catch(() => setError(true));
+  }, [shareId]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background text-center px-6">
+        <div>
+          <p className="font-display text-2xl font-bold">Fiche introuvable</p>
+          <p className="text-muted-foreground mt-2">Ce lien a peut-être expiré.</p>
+          <Link to="/" className="text-primary mt-4 inline-block">Aller sur ConstruPilot →</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground" data-testid="shared-calc-page">
+      <header className="border-b border-border">
+        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
+          <span className="h-9 w-9 rounded-md grid place-items-center text-white font-display font-extrabold"
+                style={{ background: "linear-gradient(135deg,#22c55e,#a3e635)" }}>C</span>
+          <span className="font-display font-extrabold text-lg">Constru<span className="text-primary">Pilot</span></span>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-6 py-10 grid gap-8">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-primary font-semibold">Fiche de calcul</p>
+          <h1 className="font-display text-3xl font-bold mt-2">{data.name}</h1>
+          {data.contractor ? (
+            <p className="text-sm text-muted-foreground mt-2 inline-flex items-center gap-2">
+              <HardHat className="h-4 w-4 text-primary" /> Préparé par {data.contractor}
+            </p>
+          ) : null}
+        </div>
+
+        {data.inputs?.length > 0 && (
+          <section>
+            <p className="overline mb-3">Paramètres</p>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {data.inputs.map((i, k) => (
+                <div key={k} className="flex justify-between border border-border rounded-sm px-4 py-2.5 text-sm">
+                  <span className="text-muted-foreground">{i.label}</span>
+                  <span className="font-medium">{i.value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {data.results?.length > 0 && (
+          <section>
+            <p className="overline mb-3">Résultats</p>
+            <div className="grid sm:grid-cols-2 gap-3" data-testid="shared-results">
+              {data.results.map((r, k) => (
+                <div key={k} className="p-4 border border-border rounded-sm">
+                  <p className="text-xs text-muted-foreground">{r.label}</p>
+                  <p className="num mt-1 text-lg font-bold">{num(r.value, 2)} <span className="text-sm font-normal text-muted-foreground">{r.unit}</span></p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {data.priced_lines?.length > 0 ? (
+          <section>
+            <p className="overline mb-3">Devis matériaux — prix fournisseurs</p>
+            <div className="border border-border rounded-sm overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/60">
+                  <tr>
+                    <th className="text-left px-4 py-2.5">Produit</th>
+                    <th className="text-right px-4 py-2.5">Qté</th>
+                    <th className="text-left px-4 py-2.5">Fournisseur</th>
+                    <th className="text-right px-4 py-2.5">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.priced_lines.map((l, k) => (
+                    <tr key={k} className="even:bg-muted/30 border-t border-border">
+                      <td className="px-4 py-2.5">{l.name}</td>
+                      <td className="px-4 py-2.5 num text-right">{l.quantity}</td>
+                      <td className="px-4 py-2.5">{l.supplier}</td>
+                      <td className="px-4 py-2.5 num text-right font-semibold text-primary">{eur2(l.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="num mt-4 text-right">Total : <span className="text-primary font-bold text-lg">{eur(data.priced_total)}</span></p>
+          </section>
+        ) : (
+          <section>
+            <p className="overline mb-3">Liste de courses matériaux</p>
+            <div className="border border-border rounded-sm overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/60">
+                  <tr>
+                    <th className="text-left px-4 py-2.5">Matériau</th>
+                    <th className="text-right px-4 py-2.5">Quantité</th>
+                    <th className="text-left px-4 py-2.5">Unité</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data.materials || []).map((m, k) => (
+                    <tr key={k} className="even:bg-muted/30 border-t border-border">
+                      <td className="px-4 py-2.5 font-medium">{m.name}</td>
+                      <td className="px-4 py-2.5 num text-right">{num(m.quantity, 2)}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{m.unit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="num mt-4 text-right">Budget matériaux estimé : <span className="text-primary font-bold text-lg">{eur(data.estimated_budget)}</span></p>
+          </section>
+        )}
+
+        <p className="text-xs text-muted-foreground border-t border-border pt-6">
+          Estimation indicative, marges de sécurité incluses. Les quantités peuvent varier selon la mise en œuvre.
+        </p>
+
+        <Link to="/calculateurs" className="surface p-5 rounded-md flex items-center justify-between group hover:border-primary/50 transition-colors" data-testid="shared-cta">
+          <div>
+            <p className="font-display font-semibold">Estimez votre projet gratuitement</p>
+            <p className="text-sm text-muted-foreground">Calculateurs de matériaux, devis et prix — avec ConstruPilot.</p>
+          </div>
+          <ArrowRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform" />
+        </Link>
+      </main>
+    </div>
+  );
+}
