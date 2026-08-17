@@ -2227,3 +2227,10 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Tests** : testing agent iter90 — backend 5/5, frontend 100%. 0 bug.
 - Suggestion sécurité (non fait) : rate-limit/captcha sur POST /leads public (trafic pubs Instagram).
 - PROD : nécessite REDÉPLOIEMENT (Deploy Now).
+
+## Changelog Iter 91 (17/06/2026) — PDF estimation B2C auto-envoyé au particulier
+- **Auto-envoi PDF estimation** : le particulier venu de `/particuliers` reçoit automatiquement son estimation par e-mail après le calcul. LandingParticuliers stocke `estimator_prefill` (description) + `construpilot_lead_email/name` ; Estimator.compute() appelle `autoEmailIfLead()` → POST `/estimation/pdf/email` (audience='particulier').
+- **E-mail + PDF rassurants B2C** : `estimation_pdf_email` accepte `audience` + `client_name` ; message chaleureux (fourchette min/max, encart vert « gratuit et sans engagement ») et note rassurante intégrée au PDF. Ton Pro conservé pour les autres cas.
+- Vérifié : compute (14 lots, 54 732 €), build PDF 200 (%PDF valide), endpoint email OK (échec seulement sur example.com bloqué par Resend en test). Flux front: submit → prefill importé + e-mail mémorisé → auto-envoi au compute.
+- Limite : l'e-mail part une fois le calcul lancé (le particulier complète l'estimateur rapide). Envoi non bloquant (silencieux si échec réseau).
+- PROD : nécessite REDÉPLOIEMENT (Deploy Now).

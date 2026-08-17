@@ -87,11 +87,31 @@ export default function Estimator() {
       setName(`${catalog.project_types.find((p) => p.key === form.project_type)?.name} ${form.city || ""}`.trim());
       setStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
+      autoEmailIfLead(data);
     } catch (e) {
       toast.error(t("est.compute_fail"));
     } finally {
       setBusy(false);
     }
+  };
+
+  // Auto-envoi du PDF d'estimation au particulier venu de la landing /particuliers
+  const autoEmailIfLead = async (estimation) => {
+    const to = sessionStorage.getItem("construpilot_lead_email");
+    if (!to) return;
+    sessionStorage.removeItem("construpilot_lead_email");
+    const leadName = sessionStorage.getItem("construpilot_lead_name") || "";
+    sessionStorage.removeItem("construpilot_lead_name");
+    try {
+      await api.post("/estimation/pdf/email", {
+        to,
+        client_name: leadName,
+        audience: "particulier",
+        project: { name: `Estimation ${form.city || ""}`.trim() || "Votre projet", city: form.city, description: form.description },
+        estimation,
+      });
+      toast.success(`Votre estimation détaillée vient de vous être envoyée par e-mail à ${to} ✉️`);
+    } catch { /* envoi silencieux, non bloquant */ }
   };
 
   const save = async () => {

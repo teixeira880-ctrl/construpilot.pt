@@ -139,36 +139,67 @@ class PdfEmailIn(BaseModel):
     advice: str = ""
     to: str
     message: str = ""
+    audience: str = ""       # "particulier" -> ton rassurant B2C
+    client_name: str = ""
 
 
 @router.post("/pdf/email")
 async def estimation_pdf_email(body: PdfEmailIn) -> dict:
-    """Envoie le PDF de devis par email via Resend (route publique)."""
+    """Envoie le PDF d'estimation par email via Resend (route publique)."""
     if not body.estimation or not body.estimation.get("lots"):
         raise HTTPException(status_code=400, detail="Estimation requise")
     from engines import emailer
     name = (body.project or {}).get("name") or "Votre projet"
-    data = pdf.build_estimation_pdf(body.project or {}, body.estimation,
-                                    body.estimation.get("planning") or [],
-                                    body.advice or "", None)
-    safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
     total = body.estimation.get("total_avg", 0)
+    total_min = body.estimation.get("total_min", 0)
+    total_max = body.estimation.get("total_max", 0)
     surface = body.estimation.get("surface", 0)
-    extra = f"<p style='margin-top:20px;padding:16px;background:#f8fafc;border-left:3px solid #FF5A00'>{body.message}</p>" if body.message else ""
-    html = emailer.wrap_html(
-        f"Votre estimation : {name}",
-        f"""<p>Bonjour,</p>
+    b2c = body.audience == "particulier"
+    # Note rassurante intégrée au PDF pour les particuliers
+    advice = body.advice
+    if b2c and not advice:
+        advice = ("Cette estimation est indicative et gratuite : elle vous donne une fourchette "
+                  "de budget réaliste pour préparer votre projet et comparer sereinement les devis "
+                  "d'artisans. Aucun engagement de votre part.")
+    data = pdf.build_estimation_pdf(body.project or {}, body.estimation,
+                                    body.estimation.get("planning") or [], advice or "", None)
+    safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
+    fmt = lambda v: f"{v:,.0f}".replace(",", " ")
+    if b2c:
+        hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
+        fourchette = (f"<li><b>Fourchette de budget</b> : {fmt(total_min)} € à {fmt(total_max)} €</li>"
+                      if total_min and total_max else "")
+        subject = f"Votre estimation travaux — {fmt(total)} € (indicatif)"
+        html = emailer.wrap_html(
+            "Votre estimation de budget travaux",
+            f"""<p>{hello}</p>
+<p>Merci pour votre demande sur <b>ConstruPilot</b> 👋 Voici votre estimation, calculée à partir de votre description.</p>
+<ul>
+<li><b>Surface</b> : {surface} m²</li>
+<li><b>Budget moyen estimé</b> : {fmt(total)} €</li>
+{fourchette}
+</ul>
+<p>Le PDF joint détaille chaque poste (peinture, sol, plomberie…), une durée indicative et les prix des matériaux.</p>
+<p style='margin-top:16px;padding:14px;background:#f0fdf4;border-left:3px solid #10b981;border-radius:6px'>
+<b>Pas de mauvaise surprise :</b> cette estimation est <b>gratuite et sans engagement</b>. Elle vous aide à préparer votre projet et à comparer les devis d'artisans en toute confiance.</p>
+<p>Vous pouvez affiner votre estimation à tout moment sur l'application.</p>
+<p style='color:#64748b;font-size:13px'>À très vite,<br/>L'équipe ConstruPilot</p>""")
+    else:
+        subject = f"Estimation ConstruPilot — {name}"
+        extra = (f"<p style='margin-top:20px;padding:16px;background:#f8fafc;border-left:3px solid #FF5A00'>{body.message}</p>"
+                 if body.message else "")
+        html = emailer.wrap_html(
+            f"Votre estimation : {name}",
+            f"""<p>Bonjour,</p>
 <p>Vous trouverez en pièce jointe l'estimation détaillée générée par <b>ConstruPilot</b>.</p>
 <ul>
 <li><b>Surface</b> : {surface} m²</li>
-<li><b>Coût moyen estimé</b> : {total:,.0f} €</li>
+<li><b>Coût moyen estimé</b> : {fmt(total)} €</li>
 </ul>
 <p>Le PDF détaille chaque lot, le planning, les matériaux et les recommandations.</p>{extra}
-<p>Pour affiner ou obtenir une intervention ConstruPilot, revenez sur l'application.</p>""".replace(",", " "))
+<p>Pour affiner ou obtenir une intervention ConstruPilot, revenez sur l'application.</p>""")
     try:
-        await emailer.send_email_with_pdf(body.to,
-                                          f"Estimation ConstruPilot — {name}",
-                                          html, data,
+        await emailer.send_email_with_pdf(body.to, subject, html, data,
                                           filename=f"Estimation-ConstruPilot-{safe}.pdf")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Envoi impossible: {e}")
