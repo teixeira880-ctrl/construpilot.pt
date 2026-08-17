@@ -1,14 +1,50 @@
 """Module Suivi de chantier (pack Business) — comptes-rendus, réserves, checklist."""
+import asyncio
+import base64
+import io
 import secrets
+import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user
+from engines import storage, emailer
 
 router = APIRouter(prefix="/site", tags=["site"])
+
+
+async def _store_photos(photos: list[str], folder: str, uid: str) -> list[str]:
+    """Convertit des data URLs base64 en objets stockés, renvoie les chemins."""
+    out = []
+    for p in (photos or [])[:12]:
+        if not isinstance(p, str) or "base64," not in p:
+            if isinstance(p, str) and p:
+                out.append(p)  # déjà un chemin stocké
+            continue
+        header, b64 = p.split("base64,", 1)
+        ext = "png" if "image/png" in header else "jpg"
+        try:
+            raw = base64.b64decode(b64)
+        except Exception:
+            continue
+        if len(raw) > 8 * 1024 * 1024:
+            raise HTTPException(413, "Photo trop volumineuse (max 8 Mo)")
+        path = f"{storage.APP_NAME}/site/{uid}/{folder}/{uuid.uuid4().hex}.{ext}"
+        ct = storage.MIME.get(ext, "image/jpeg")
+        res = await asyncio.to_thread(storage.put_object, path, raw, ct)
+        out.append(res.get("path", path))
+    return out
+
+
+@router.get("/file")
+async def serve_file(path: str):
+    data, ct = await asyncio.to_thread(storage.get_object, path)
+    return StreamingResponse(io.BytesIO(data), media_type=ct,
+                             headers={"Cache-Control": "public, max-age=86400"})
 
 
 def _now():
