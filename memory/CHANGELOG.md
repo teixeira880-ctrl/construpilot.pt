@@ -773,3 +773,10 @@ NOTE : branding de test posé sur admin@construpilot.fr (SIRET/TVA/adresse ficti
 - ✅ Testé (curl + captures) : owner = perms complètes + KPIs ; chef_chantier = Factures/Entreprise masqués en nav + `/factures` → NoAccess + `/suivi-chantier` OK ; tier pro_business hérité.
 
 RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libérée (levée 1 an), Situations cumulées (dashboard marché), Émission groupée, Compte prorata.
+
+## 2026-08-17 (4) — Refonte barre de navigation (fix débordement + design moderne/relief)
+- `components/Nav.jsx` restructurée : liens réorganisés en NAV_MAIN (inline : Dashboard, Estimateur, Calculateurs, Prix), 2 menus déroulants NAV_PRO ("Espace Pro", auth + perm) et NAV_DISCOVER ("Découvrir"), + Tarifs inline. ACCOUNT_LINKS via avatar→/compte. Mobile = ALL_LINKS filtrés (auth+perm), breakpoint lg.
+- Design relief/3D : header glass + shadow, pill active `bg-primary` + shadow, hover lift (-translate-y-0.5), badges d'icônes arrondis dans les menus, logo en badge arrondi animé.
+- Corrige le chevauchement du cluster droit (thème/langue/notifs/user) causé par trop de liens inline.
+- Gating par permissions conservé dans tous les menus (desktop + mobile).
+- ✅ Vérifié en capture : nav propre sans débordement, menu Espace Pro déroule 11 modules avec icônes.

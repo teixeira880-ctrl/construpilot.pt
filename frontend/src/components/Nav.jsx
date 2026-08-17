@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2,
+  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,48 +15,48 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { LangToggle, useI18n } from "@/context/I18nContext";
 import { usePermissions } from "@/context/PermissionContext";
 
-// Iter67 — nav scindée : liens principaux visibles + menu « Plus » (fin des retours à la ligne)
-const PRIMARY_LINKS = [
+// Nav v2 — menus groupés + relief (fin du débordement header)
+const NAV_MAIN = [
   { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
-  { to: "/entreprise", label: "Entreprise", key: "nav.company", icon: Building2, auth: true, perm: "entreprise" },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
-  { to: "/plan", label: "Mesurer", key: "nav.plan2d", icon: Ruler, auth: true },
-  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, auth: true, perm: "devis" },
-  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, auth: true, perm: "factures" },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
-  { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
-  { to: "/tarifs", label: "Tarifs", key: "nav.pricing", icon: Sparkles },
 ];
 
-const MORE_LINKS = [
-  { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: LineChart, auth: true },
-  { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
-  { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
+const NAV_PRO = [
+  { to: "/entreprise", label: "Espace Entreprise", key: "nav.company", icon: Building2, perm: "entreprise" },
+  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, perm: "devis" },
+  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, perm: "factures" },
+  { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations" },
+  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
+  { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
+  { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
+  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
+  { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
+  { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
+  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch },
+];
+
+const NAV_DISCOVER = [
+  { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
+  { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true },
   { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
   { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
+  { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
+  { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
   { to: "/marketplace", label: "Trouver un pro", key: "nav.marketplace", icon: Wrench },
-  { to: "/pro", label: "Espace pro", key: "nav.pro", icon: Handshake },
-  { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch },
   { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
+  { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch },
 ];
 
-const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
-
-// Raccourcis utilisateur connecté — dans le menu « Plus » (plus de chevauchement header)
-const USER_LINKS = [
-  { to: "/entreprise", label: "Espace Entreprise", key: "nav.company", icon: Building2, perm: "entreprise" },
+const ACCOUNT_LINKS = [
+  { to: "/tarifs", label: "Tarifs & abonnement", key: "nav.pricing", icon: Sparkles },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
-  { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
-  { to: "/rh", label: "RH — Chantier", key: "hr.nav", icon: Users, perm: "rh" },
-  { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
-  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
-  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
-  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch },
-  { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
   { to: "/compte", label: "Mon compte", key: "nav.account", icon: KeyRound },
 ];
+
+const ALL_LINKS = [...NAV_MAIN, ...NAV_PRO, ...NAV_DISCOVER, ...ACCOUNT_LINKS];
 
 export const Nav = () => {
   const { user, logout } = useAuth();
@@ -74,13 +74,20 @@ export const Nav = () => {
     setDark(isDark);
   };
 
-  const moreActive = MORE_LINKS.some((l) => location.pathname === l.to);
+  const pill = (active) =>
+    `px-3 py-2 rounded-lg text-sm inline-flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 ${
+      active
+        ? "bg-primary text-primary-foreground shadow-md shadow-primary/30 font-semibold"
+        : "text-muted-foreground hover:text-primary hover:bg-secondary/70 hover:-translate-y-0.5"}`;
+  const groupActive = (items) => items.some((l) => location.pathname === l.to);
+  const proItems = NAV_PRO.filter((l) => !l.perm || can(l.perm));
+  const discoverItems = NAV_DISCOVER.filter((l) => !l.auth || user);
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/75 border-b border-border/60">
-      <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-6">
-        <Link to="/" className="flex items-center gap-2 shrink-0" data-testid="nav-logo">
-          <span className="h-8 w-8 grid place-items-center bg-primary rounded-sm">
+    <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
+      <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-4">
+        <Link to="/" className="flex items-center gap-2 shrink-0 group" data-testid="nav-logo">
+          <span className="h-9 w-9 grid place-items-center bg-primary rounded-xl shadow-md shadow-primary/30 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-3">
             <Hammer className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
           </span>
           <span className="font-display font-extrabold tracking-tight text-lg">
@@ -88,52 +95,54 @@ export const Nav = () => {
           </span>
         </Link>
 
-        <nav className="hidden xl:flex items-center gap-1 flex-1 min-w-0">
-          {PRIMARY_LINKS.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm))).map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              data-testid={`nav-link-${l.to.slice(1)}`}
-              className={`px-3 py-2 text-sm rounded-sm whitespace-nowrap transition-colors hover:text-primary ${
-                location.pathname === l.to ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              {t(l.key, l.label)}
+        <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0">
+          {NAV_MAIN.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm))).map((l) => (
+            <Link key={l.to} to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className={pill(location.pathname === l.to)}>
+              <l.icon className="h-4 w-4" /> {t(l.key, l.label)}
             </Link>
           ))}
+
+          {user && proItems.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button data-testid="nav-pro-btn" className={pill(groupActive(NAV_PRO))}>
+                  <Building2 className="h-4 w-4" /> {t("nav.pro_space", "Espace Pro")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-pro-menu">
+                {proItems.map((l) => (
+                  <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
+                    <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
+                      <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
+                      {t(l.key, l.label)}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                data-testid="nav-more-btn"
-                className={`px-3 py-2 text-sm rounded-sm whitespace-nowrap inline-flex items-center gap-1 transition-colors hover:text-primary ${
-                  moreActive ? "text-primary font-semibold" : "text-muted-foreground"
-                }`}
-              >
-                {t("nav.more")} <ChevronDown className="h-3.5 w-3.5" />
+              <button data-testid="nav-more-btn" className={pill(groupActive(NAV_DISCOVER))}>
+                <Sparkles className="h-4 w-4" /> {t("nav.discover", "Découvrir")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="rounded-sm w-56" data-testid="nav-more-menu">
-              {MORE_LINKS.filter((l) => !l.perm || can(l.perm)).map((l) => (
-                <DropdownMenuItem key={l.to} asChild className="rounded-sm cursor-pointer">
-                  <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2">
-                    <l.icon className="h-4 w-4 text-primary" /> {t(l.key, l.label)}
+            <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-more-menu">
+              {discoverItems.map((l) => (
+                <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
+                  <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
+                    <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
+                    {t(l.key, l.label)}
                   </Link>
                 </DropdownMenuItem>
               ))}
-              {user && (
-                <>
-                  <DropdownMenuSeparator />
-                  {USER_LINKS.filter((l) => !l.perm || can(l.perm)).map((l) => (
-                    <DropdownMenuItem key={l.to} asChild className="rounded-sm cursor-pointer">
-                      <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2">
-                        <l.icon className="h-4 w-4 text-primary" /> {t(l.key, l.label)}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Link to="/tarifs" data-testid="nav-link-tarifs" className={pill(location.pathname === "/tarifs")}>
+            <Sparkles className="h-4 w-4" /> {t("nav.pricing", "Tarifs")}
+          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2 shrink-0">
@@ -156,13 +165,13 @@ export const Nav = () => {
             <>
               <LangToggle />
               <NotificationsBell />
-              <span className="hidden 2xl:flex items-center gap-2 text-sm text-muted-foreground max-w-[170px]">
+              <Link to="/compte" data-testid="nav-account-link" className="hidden 2xl:flex items-center gap-2 text-sm text-muted-foreground max-w-[170px] hover:text-primary transition-colors">
                 {user.picture && (
                   <img src={user.picture} alt="" data-testid="nav-avatar"
-                       className="h-7 w-7 rounded-full object-cover border border-border shrink-0" />
+                       className="h-8 w-8 rounded-full object-cover border-2 border-primary/30 shrink-0" />
                 )}
                 <span className="truncate">{user.name}</span>
-              </span>
+              </Link>
               <Button
                 variant="ghost" size="sm" data-testid="logout-btn" className="rounded-sm"
                 onClick={async () => { await logout(); navigate("/"); }}
@@ -181,7 +190,7 @@ export const Nav = () => {
             </>
           )}
           <button
-            className="xl:hidden h-9 w-9 grid place-items-center rounded-sm border border-border"
+            className="lg:hidden h-9 w-9 grid place-items-center rounded-lg border border-border"
             onClick={() => setOpen(!open)}
             data-testid="mobile-menu-btn"
             aria-label="Menu"
@@ -192,13 +201,13 @@ export const Nav = () => {
       </div>
 
       {open && (
-        <div className="xl:hidden border-t border-border bg-background px-5 py-4 grid gap-1" data-testid="mobile-menu">
-          {[...LINKS.filter((l) => !l.auth || user), ...(user ? USER_LINKS : [])].filter((l) => !l.perm || can(l.perm)).map((l) => (
+        <div className="lg:hidden border-t border-border bg-background px-5 py-4 grid gap-1 max-h-[75vh] overflow-y-auto" data-testid="mobile-menu">
+          {ALL_LINKS.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm))).map((l) => (
             <Link
               key={l.to} to={l.to} onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-3 py-3 text-sm rounded-sm hover:bg-secondary transition-colors"
+              className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg hover:bg-secondary transition-colors"
             >
-              <l.icon className="h-4 w-4 text-primary" /> {t(l.key, l.label)}
+              <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span> {t(l.key, l.label)}
             </Link>
           ))}
         </div>
