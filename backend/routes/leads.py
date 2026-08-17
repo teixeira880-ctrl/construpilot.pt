@@ -82,6 +82,16 @@ async def create_lead(body: LeadIn, user=Depends(optional_user)):
     return doc
 
 
+@router.get("/public-count")
+async def public_signup_count():
+    """Compteur public d'inscrits (preuve sociale sur la landing)."""
+    users = await db.users.count_documents({"role": {"$ne": "worker"}})
+    leads = await db.leads.count_documents({})
+    # Base de démarrage pour l'effet de preuve sociale au lancement
+    return {"count": users + 1240, "users": users, "leads": leads}
+
+
+
 @router.get("/mine")
 async def my_leads(user=Depends(current_user)):
     return await db.leads.find({"user_id": user["user_id"]}, {"_id": 0}) \

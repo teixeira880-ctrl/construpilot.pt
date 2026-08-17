@@ -24,7 +24,7 @@ const STATUSES = [
 ];
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const blankLine = () => ({
-  designation: "", unit: "u", qty: 1, unit_price_ht: 0, vat_rate: 10, category: "", _saveToLib: true,
+  designation: "", description: "", unit: "u", qty: 1, unit_price_ht: 0, vat_rate: 10, category: "", _saveToLib: true,
 });
 
 export default function QuoteEditor() {
@@ -121,7 +121,7 @@ export default function QuoteEditor() {
     doc_type: docType, client_id: clientId || null, title, notes,
     deposit_pct: Number(depositPct) || 0, status,
     lines: lines.filter((l) => l.designation.trim()).map((l) => ({
-      designation: l.designation, unit: l.unit, qty: Number(l.qty) || 0,
+      designation: l.designation, description: l.description || "", unit: l.unit, qty: Number(l.qty) || 0,
       unit_price_ht: Number(l.unit_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
       category: l.category || "",
     })),
@@ -255,7 +255,8 @@ export default function QuoteEditor() {
         </div>
 
         {lines.map((l, i) => (
-          <div key={i} className="grid grid-cols-2 md:grid-cols-12 gap-2 items-center" data-testid={`editor-line-${i}`}>
+          <div key={i} className="space-y-1.5 border-b border-border/40 pb-2" data-testid={`editor-line-${i}`}>
+            <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-center">
             <Input value={l.designation} onChange={(e) => setLine(i, "designation", e.target.value)}
                    placeholder={t("crm.col_designation")} className="rounded-sm col-span-2 md:col-span-5 h-9"
                    data-testid={`editor-line-designation-${i}`} />
@@ -280,6 +281,10 @@ export default function QuoteEditor() {
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
+            </div>
+            <Input value={l.description || ""} onChange={(e) => setLine(i, "description", e.target.value)}
+                   placeholder="Description / détail de l'ouvrage (optionnel — archivé en bibliothèque)"
+                   className="rounded-sm h-9 text-sm w-full" data-testid={`editor-line-desc-${i}`} />
           </div>
         ))}
         {lines.length === 0 && (

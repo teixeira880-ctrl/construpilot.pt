@@ -83,6 +83,19 @@ async def lead_sources(user=Depends(current_user)):
     return [s for s in sources if s]
 
 
+@router.get("/channels")
+async def channels(user=Depends(current_user)):
+    """Répartition des leads/inscrits par canal d'acquisition (UTM)."""
+    pipe = [{"$group": {"_id": {"$ifNull": ["$utm_source", ""]}, "leads": {"$sum": 1}}},
+            {"$sort": {"leads": -1}}]
+    rows = await db.leads.aggregate(pipe).to_list(100)
+    out = []
+    for r in rows:
+        src = (r["_id"] or "direct").lower()
+        out.append({"channel": src, "leads": r["leads"]})
+    return out
+
+
 @router.post("/campaigns")
 async def create_campaign(body: CampaignIn, user=Depends(current_user)):
     doc = {"campaign_id": f"ad_{uuid.uuid4().hex[:12]}", "user_id": user["user_id"],

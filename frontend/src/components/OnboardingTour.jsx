@@ -43,12 +43,21 @@ export const OnboardingTour = () => {
   if (!open) return null;
   const s = STEPS[step];
   const Icon = s.icon;
+  const ch = (typeof window !== "undefined" ? (sessionStorage.getItem("construpilot_utm_source") || "") : "").toLowerCase();
+  const chMsg = ch.includes("linkedin") ? "Bienvenue depuis LinkedIn 👋"
+    : ch.includes("instagram") ? "Bienvenue depuis Instagram 👋"
+    : ch.includes("facebook") ? "Bienvenue depuis Facebook 👋" : "";
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm grid place-items-center p-4" data-testid="onboarding-overlay">
       <div className="surface p-8 max-w-lg w-full grid gap-6 relative animate-rise" data-testid="onboarding-tour">
         <button onClick={skip} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-sm hover:bg-secondary" aria-label="Fermer" data-testid="onboarding-skip">
           <X className="h-4 w-4" />
         </button>
+        {step === 0 && chMsg && (
+          <div className="rounded-sm bg-primary/10 border border-primary/20 px-4 py-2.5 text-sm text-primary font-semibold flex items-center gap-2" data-testid="onboarding-channel">
+            <Sparkles className="h-4 w-4" /> {chMsg} — profitez de l'accès <b>100% gratuit</b> pendant le lancement 🎉
+          </div>
+        )}
         <div className="flex items-center gap-2 justify-center">
           {STEPS.map((_, i) => (
             <span key={i} className={`h-1.5 rounded-full transition-all ${

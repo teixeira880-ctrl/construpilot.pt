@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { SignupCounter } from "@/components/SignupCounter";
 import { motion } from "framer-motion";
 import {
   ArrowRight, Sparkles, Calculator, Search, Wrench, ShieldCheck, FileText,
@@ -176,6 +177,7 @@ export default function Landing() {
         🎉 100% GRATUIT pendant la phase de lancement — toutes les fonctionnalités Pro débloquées, sans carte bancaire.
         <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">J'en profite →</Link>
       </div>
+      <SignupCounter />
 
 
       {/* ── HERO SECTION (SPLIT 3D) ───────────────────────── */}

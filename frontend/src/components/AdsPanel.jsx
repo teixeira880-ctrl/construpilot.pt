@@ -17,6 +17,7 @@ export default function AdsPanel() {
   const [rows, setRows] = useState([]);
   const [sum, setSum] = useState(null);
   const [sources, setSources] = useState([]);
+  const [channels, setChannels] = useState([]);
   const [filters, setFilters] = useState({ platforms: [], months: [] });
   const [fPlatform, setFPlatform] = useState("");
   const [fMonth, setFMonth] = useState("");
@@ -34,6 +35,7 @@ export default function AdsPanel() {
     api.get("/ads/summary", { params }).then(({ data }) => setSum(data));
     api.get("/ads/lead-sources").then(({ data }) => setSources(data)).catch(() => {});
     api.get("/ads/filters").then(({ data }) => setFilters(data)).catch(() => {});
+    api.get("/ads/channels").then(({ data }) => setChannels(data)).catch(() => {});
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [fPlatform, fMonth]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -112,6 +114,23 @@ export default function AdsPanel() {
           <Stat label="Leads réels (CRM)" value={num(sum.total_real_leads || 0)} accent />
           <Stat label="CPL réel" value={sum.real_cpl != null ? eur(sum.real_cpl) : (sum.cpl != null ? eur(sum.cpl) : "—")} />
           <Stat label="ROAS" value={sum.roas != null ? `${sum.roas}×` : "—"} accent />
+        </div>
+      )}
+
+      {channels && channels.length > 0 && (
+        <div className="surface p-5 rounded-sm" data-testid="ads-channels">
+          <p className="text-sm font-display font-semibold mb-3">Leads par canal d'acquisition</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {channels.map((c) => (
+              <div key={c.channel} className="rounded-sm border border-border p-3 flex items-center justify-between" data-testid={`channel-${c.channel}`}>
+                <span className="text-sm capitalize flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${c.channel === "linkedin" ? "bg-[#0a66c2]" : c.channel === "instagram" ? "bg-pink-500" : c.channel === "facebook" ? "bg-blue-600" : "bg-muted-foreground"}`} />
+                  {c.channel}
+                </span>
+                <b className="num text-primary">{num(c.leads)}</b>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

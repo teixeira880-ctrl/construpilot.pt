@@ -821,3 +821,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - **Journal PDF** : GET `/company/activity/pdf?actor_id=` (reportlab) + bouton "PDF" dans Entreprise.jsx (à côté de CSV). ✅ testé (2,1 Ko).
 - **UTM (déjà présent)** : Landing.jsx capture utm_source/medium/campaign → leads.py + AdsPanel. Liens pub à utiliser : `https://construpilot.fr/?utm_source=linkedin&utm_medium=social&utm_campaign=lancement`.
 - **Onboarding (déjà présent)** : OnboardingTour.jsx (tour de bienvenue affiché 1×/user).
+
+## 2026-08-17 (10) — Compteur inscrits + onboarding ciblé + description éditeur + dashboard canal
+- **Compteur inscrits (preuve sociale)** : GET public `/leads/public-count` (users hors worker + base 1240). Composant `components/SignupCounter.jsx` (refresh 15s, pastille pulsante) sous le bandeau de la landing. ✅ vérifié (1 384).
+- **Onboarding ciblé** : OnboardingTour.jsx lit sessionStorage `construpilot_utm_source` → bannière dédiée "Bienvenue depuis LinkedIn/Instagram/Facebook + accès 100% gratuit" à l'étape 1.
+- **Description éditeur** : champ `description` par ligne dans QuoteEditor.jsx (textarea sous chaque ligne), ajouté au modèle DocLine (backend), envoyé au save et archivé automatiquement dans la bibliothèque (notes).
+- **Dashboard canal** : GET `/ads/channels` (agrégation leads par utm_source) + carte "Leads par canal d'acquisition" dans AdsPanel.jsx (pastilles LinkedIn/Instagram/Facebook). ✅ endpoint testé.
