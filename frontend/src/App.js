@@ -4,6 +4,7 @@ import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BillingProvider } from "@/context/BillingContext";
+import { PermissionProvider } from "@/context/PermissionContext";
 import { WhiteLabelProvider } from "@/context/WhiteLabelContext";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
@@ -57,6 +58,7 @@ import PriceCatalog from "@/pages/PriceCatalog";
 import SiteTracking from "@/pages/SiteTracking";
 import Comparatif from "@/pages/Comparatif";
 import Situations from "@/pages/Situations";
+import Entreprise from "@/pages/Entreprise";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
@@ -117,6 +119,7 @@ function AppRouter() {
       <Route path="/devis" element={<Protected><Shell><QuoteTracking /></Shell></Protected>} />
       <Route path="/factures" element={<Protected><Shell><Invoices /></Shell></Protected>} />
       <Route path="/situations" element={<Protected><Shell><Situations /></Shell></Protected>} />
+      <Route path="/entreprise" element={<Protected><Shell><Entreprise /></Shell></Protected>} />
       <Route path="/rh" element={<Protected><Shell><HR /></Shell></Protected>} />
       <Route path="/pointage" element={<Protected><WorkerApp /></Protected>} />
       <Route path="/mes-avis" element={<Protected><Shell><MyReviews /></Shell></Protected>} />
@@ -166,10 +169,12 @@ function App() {
           <I18nProvider>
             <AuthProvider>
               <BillingProvider>
-                <WhiteLabelProvider>
-                  <AppRouter />
-                  <Toaster position="top-right" richColors />
-                </WhiteLabelProvider>
+                <PermissionProvider>
+                  <WhiteLabelProvider>
+                    <AppRouter />
+                    <Toaster position="top-right" richColors />
+                  </WhiteLabelProvider>
+                </PermissionProvider>
               </BillingProvider>
             </AuthProvider>
           </I18nProvider>

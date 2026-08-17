@@ -9,9 +9,18 @@ import {
 import { SectionTitle } from "@/components/Bits";
 import { api, eur } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
+import { usePermissions } from "@/context/PermissionContext";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
 import { toast } from "sonner";
+
+export const NoAccess = ({ title = "Accès non autorisé" }) => (
+  <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="no-access">
+    <div className="h-14 w-14 rounded-xl bg-red-500/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-red-500" /></div>
+    <h1 className="font-display text-3xl font-bold">{title}</h1>
+    <p className="text-muted-foreground mt-3">Votre rôle dans l'entreprise ne donne pas accès à ce module. Contactez le responsable de votre société.</p>
+  </div>
+);
 
 const STATUS = {
   draft: { key: "crm.st_draft", cls: "bg-secondary text-muted-foreground" },
@@ -30,6 +39,7 @@ const StatusBadge = ({ s, t }) => {
 export default function Invoices() {
   const nav = useNavigate();
   const { tier } = useBilling();
+  const { can, in_org } = usePermissions();
   const { user } = useAuth();
   const { t } = useI18n();
   const isProBusiness = tier === "pro_business" || user?.role === "admin" || !!user?.invoicing_addon;
@@ -131,6 +141,8 @@ export default function Invoices() {
   }
 
   const totalDue = invoices.filter(i => i.status !== "paid").reduce((s, i) => s + (i.totals?.ttc || 0) - (i.paid || 0), 0);
+
+  if (in_org && !can("factures")) return <NoAccess title="Factures non autorisées" />;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10" data-testid="invoices-page">

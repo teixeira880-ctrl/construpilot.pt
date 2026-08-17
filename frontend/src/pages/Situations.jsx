@@ -10,13 +10,16 @@ import {
 import { SectionTitle } from "@/components/Bits";
 import { api, eur } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
+import { usePermissions } from "@/context/PermissionContext";
 import { useAuth } from "@/context/AuthContext";
+import { NoAccess } from "@/pages/Invoices";
 import { toast } from "sonner";
 
 export default function Situations() {
   const nav = useNavigate();
   const { tier } = useBilling();
   const { user } = useAuth();
+  const { can, in_org } = usePermissions();
   const isProBusiness = tier === "pro_business" || user?.role === "admin" || !!user?.invoicing_addon;
 
   const [marches, setMarches] = useState([]);
@@ -81,6 +84,8 @@ export default function Situations() {
       loadMarche(marcheId);
     } catch { toast.error("Suppression impossible"); }
   };
+
+  if (in_org && !can("situations")) return <NoAccess title="Situations non autorisées" />;
 
   if (!isProBusiness) {
     return (

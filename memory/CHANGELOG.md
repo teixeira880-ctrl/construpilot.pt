@@ -754,3 +754,22 @@ Non bloquant : warning hydration <span> dans <option> (artefact instrumentation)
 - ✅ Testé (curl) : Situation 1 (GO 30%+Plomb 50%) = 25000€ HT / 29000€ TTC / retenue 1250€ / net 27750€ ; Situation 2 delta correct (GO 30%=15000€, Plomb 0€). Page vérifiée en capture.
 
 NOTE : branding de test posé sur admin@construpilot.fr (SIRET/TVA/adresse fictifs) pour prouver la conformité verte. Le vrai user (teixeira) doit renseigner ses SIRET/TVA/adresse réels dans /compte.
+
+## 2026-08-17 (3) — Espace Entreprise (hub + rôles/permissions + gestion des employés)
+
+### Backend
+- `routes/company.py` (prefix `/company`) : rôles owner/admin/chef_chantier/comptable/member/ouvrier avec mapping de permissions (features: dashboard, devis, factures, situations, chantier, rh, catalogue, entreprise, pointage).
+  - `GET /company/me` → rôle + permissions (gating frontend ; admin plateforme & solo = accès complet).
+  - `GET /company/dashboard` → KPIs org-wide (CA TTC, encours, factures conformes, devis, situations, chantiers, réserves, membres/ouvriers) + liste membres + rôles assignables.
+  - `POST /company/employees` → le patron crée un compte employé (hash_password, rôle, mdp provisoire, must_change_password). Ouvrier → role=worker + employer_id.
+  - `PUT /company/members/{id}` → change rôle et/ou active (désactivation d'accès). `DELETE` → retire de l'org.
+- `billing.py` `/billing/me` : les membres d'une org **héritent du tier du propriétaire** (max tier) → les employés accèdent aux modules Business. ✅ testé : collègue hérite `pro_business`.
+
+### Frontend
+- `context/PermissionContext.jsx` : `can(feature)` (solo/owner/admin = tout ; rôles limités restreignent). Provider ajouté dans App.js.
+- `pages/Entreprise.jsx` (route `/entreprise`, gate pro_business) : hub central — KPIs, 6 cartes modules (gated par can()), gestion équipe (créer employé, changer rôle, désactiver/réactiver, retirer), branding, abonnement.
+- Nav : lien "Entreprise" + **gating par permissions** (PRIMARY/MORE/USER/mobile filtrés par `perm`).
+- Gating au niveau page (défense en profondeur) : Invoices/Situations/SiteTracking → `NoAccess` si `in_org && !can(feature)`.
+- ✅ Testé (curl + captures) : owner = perms complètes + KPIs ; chef_chantier = Factures/Entreprise masqués en nav + `/factures` → NoAccess + `/suivi-chantier` OK ; tier pro_business hérité.
+
+RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libérée (levée 1 an), Situations cumulées (dashboard marché), Émission groupée, Compte prorata.

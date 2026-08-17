@@ -75,6 +75,8 @@ from routes import site as site_routes
 api_router.include_router(site_routes.router)
 from routes import situations as situations_routes
 api_router.include_router(situations_routes.router)
+from routes import company as company_routes
+api_router.include_router(company_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(

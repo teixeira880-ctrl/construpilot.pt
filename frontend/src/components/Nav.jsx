@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat,
+  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,14 +13,16 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LangToggle, useI18n } from "@/context/I18nContext";
+import { usePermissions } from "@/context/PermissionContext";
 
 // Iter67 — nav scindée : liens principaux visibles + menu « Plus » (fin des retours à la ligne)
 const PRIMARY_LINKS = [
   { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
+  { to: "/entreprise", label: "Entreprise", key: "nav.company", icon: Building2, auth: true, perm: "entreprise" },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/plan", label: "Mesurer", key: "nav.plan2d", icon: Ruler, auth: true },
-  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, auth: true },
-  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, auth: true },
+  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, auth: true, perm: "devis" },
+  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, auth: true, perm: "factures" },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
@@ -43,12 +45,13 @@ const LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 
 // Raccourcis utilisateur connecté — dans le menu « Plus » (plus de chevauchement header)
 const USER_LINKS = [
+  { to: "/entreprise", label: "Espace Entreprise", key: "nav.company", icon: Building2, perm: "entreprise" },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
-  { to: "/rh", label: "RH — Chantier", key: "hr.nav", icon: Users },
+  { to: "/rh", label: "RH — Chantier", key: "hr.nav", icon: Users, perm: "rh" },
   { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
-  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag },
-  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat },
+  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
+  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
   { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch },
   { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
@@ -58,6 +61,7 @@ const USER_LINKS = [
 export const Nav = () => {
   const { user, logout } = useAuth();
   const { t } = useI18n();
+  const { can } = usePermissions();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const location = useLocation();
@@ -85,7 +89,7 @@ export const Nav = () => {
         </Link>
 
         <nav className="hidden xl:flex items-center gap-1 flex-1 min-w-0">
-          {PRIMARY_LINKS.filter((l) => !l.auth || user).map((l) => (
+          {PRIMARY_LINKS.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm))).map((l) => (
             <Link
               key={l.to}
               to={l.to}
@@ -109,7 +113,7 @@ export const Nav = () => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="rounded-sm w-56" data-testid="nav-more-menu">
-              {MORE_LINKS.map((l) => (
+              {MORE_LINKS.filter((l) => !l.perm || can(l.perm)).map((l) => (
                 <DropdownMenuItem key={l.to} asChild className="rounded-sm cursor-pointer">
                   <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2">
                     <l.icon className="h-4 w-4 text-primary" /> {t(l.key, l.label)}
@@ -119,7 +123,7 @@ export const Nav = () => {
               {user && (
                 <>
                   <DropdownMenuSeparator />
-                  {USER_LINKS.map((l) => (
+                  {USER_LINKS.filter((l) => !l.perm || can(l.perm)).map((l) => (
                     <DropdownMenuItem key={l.to} asChild className="rounded-sm cursor-pointer">
                       <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2">
                         <l.icon className="h-4 w-4 text-primary" /> {t(l.key, l.label)}
@@ -189,7 +193,7 @@ export const Nav = () => {
 
       {open && (
         <div className="xl:hidden border-t border-border bg-background px-5 py-4 grid gap-1" data-testid="mobile-menu">
-          {[...LINKS.filter((l) => !l.auth || user), ...(user ? USER_LINKS : [])].map((l) => (
+          {[...LINKS.filter((l) => !l.auth || user), ...(user ? USER_LINKS : [])].filter((l) => !l.perm || can(l.perm)).map((l) => (
             <Link
               key={l.to} to={l.to} onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-3 py-3 text-sm rounded-sm hover:bg-secondary transition-colors"

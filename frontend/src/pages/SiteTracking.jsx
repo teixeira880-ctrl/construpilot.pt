@@ -9,11 +9,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
+import { usePermissions } from "@/context/PermissionContext";
+import { NoAccess } from "@/pages/Invoices";
 import { SectionTitle } from "@/components/Bits";
 
 export default function SiteTracking() {
   const navigate = useNavigate();
   const { has } = useBilling();
+  const { can, in_org } = usePermissions();
   const allowed = has("site_tracking");
   const [project, setProject] = useState("");
   const [reports, setReports] = useState([]);
@@ -42,6 +45,8 @@ export default function SiteTracking() {
     api.get(`/site/checklist${p}`).then(({ data }) => setChecklist(data)).catch(() => {});
   };
   useEffect(() => { if (allowed) load(); /* eslint-disable-next-line */ }, [project, allowed]);
+
+  if (in_org && !can("chantier")) return <NoAccess title="Suivi de chantier non autorisé" />;
 
   if (!allowed) {
     return (

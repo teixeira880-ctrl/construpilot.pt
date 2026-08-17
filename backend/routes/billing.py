@@ -83,10 +83,23 @@ async def stripe_webhook(request: Request):
 
 # ---------- Portail utilisateur ----------
 
+_TIER_RANK = {"free": 0, "project_pass": 1, "premium": 2, "pro": 3, "pro_business": 4}
+
+
 @router.get("/billing/me")
 async def my_billing(user=Depends(current_user)) -> dict:
     active = await monetization.user_active_plan(user["user_id"])
     tier = await monetization.user_tier(user["user_id"])
+    # Les membres d'une entreprise héritent du tier de leur propriétaire (accès partagé).
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "organization_id": 1, "org_role": 1})
+    if u and u.get("organization_id") and u.get("org_role") not in (None, "owner"):
+        org = await db.organizations.find_one({"org_id": u["organization_id"]},
+                                                {"_id": 0, "owner_user_id": 1})
+        if org and org.get("owner_user_id"):
+            owner_tier = await monetization.user_tier(org["owner_user_id"])
+            if _TIER_RANK.get(owner_tier, 0) > _TIER_RANK.get(tier, 0):
+                tier = owner_tier
     history = await db.payment_transactions.find(
         {"user_id": user["user_id"]}, {"_id": 0}
     ).sort("created_at", -1).to_list(50)
