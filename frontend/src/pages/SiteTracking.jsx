@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Trash2, ClipboardList, CheckCircle2, Circle, AlertTriangle, Lock, HardHat } from "lucide-react";
+import { Plus, Trash2, ClipboardList, CheckCircle2, Circle, AlertTriangle, Lock, HardHat, FileDown, Camera, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,8 +20,20 @@ export default function SiteTracking() {
   const [reserves, setReserves] = useState([]);
   const [checklist, setChecklist] = useState([]);
   const [rep, setRep] = useState({ title: "", notes: "" });
-  const [res, setRes] = useState({ lot: "", description: "", company: "" });
+  const [res, setRes] = useState({ lot: "", description: "", company: "", company_email: "" });
   const [ck, setCk] = useState({ lot: "", label: "" });
+  const [repPhotos, setRepPhotos] = useState([]);
+  const [resPhotos, setResPhotos] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const FILE = process.env.REACT_APP_BACKEND_URL + "/api/site/file?path=";
+
+  const readFiles = (files, setter) => {
+    Array.from(files).slice(0, 8).forEach((f) => {
+      const r = new FileReader();
+      r.onload = () => setter((p) => [...p, r.result]);
+      r.readAsDataURL(f);
+    });
+  };
 
   const load = () => {
     const p = project ? `?project=${encodeURIComponent(project)}` : "";
@@ -46,18 +58,38 @@ export default function SiteTracking() {
 
   const addReport = async () => {
     if (!need()) return;
-    await api.post("/site/reports", { project, title: rep.title, notes: rep.notes });
-    setRep({ title: "", notes: "" }); toast.success("Compte-rendu ajouté"); load();
+    await api.post("/site/reports", { project, title: rep.title, notes: rep.notes, photos: repPhotos });
+    setRep({ title: "", notes: "" }); setRepPhotos([]); toast.success("Compte-rendu ajouté"); load();
   };
   const addReserve = async () => {
     if (!need() || !res.description.trim()) return toast.error("Description requise");
-    await api.post("/site/reserves", { project, ...res });
-    setRes({ lot: "", description: "", company: "" }); toast.success("Réserve créée"); load();
+    await api.post("/site/reserves", { project, ...res, photos: resPhotos });
+    setRes({ lot: "", description: "", company: "", company_email: "" }); setResPhotos([]); toast.success("Réserve créée"); load();
   };
   const addCk = async () => {
     if (!need() || !ck.label.trim()) return toast.error("Libellé requis");
     await api.post("/site/checklist", { project, ...ck });
     setCk({ lot: "", label: "" }); toast.success("Point ajouté"); load();
+  };
+
+  const exportPdf = async () => {
+    if (!need()) return;
+    setBusy(true);
+    try {
+      const { data } = await api.get(`/site/report-pdf?project=${encodeURIComponent(project)}`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+      const a = document.createElement("a"); a.href = url; a.download = `chantier-${project}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    } catch { toast.error("Export impossible"); } finally { setBusy(false); }
+  };
+  const remind = async () => {
+    if (!need()) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/site/reserves/remind?project=${encodeURIComponent(project)}`);
+      if (data.emails_sent) toast.success(`${data.emails_sent} e-mail(s) envoyé(s) aux entreprises`);
+      else toast.info("Aucune entreprise avec e-mail sur les réserves en cours");
+    } catch { toast.error("Envoi impossible"); } finally { setBusy(false); }
   };
 
   const openCount = reserves.filter((r) => r.status !== "lifted").length;
@@ -67,10 +99,13 @@ export default function SiteTracking() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-6" data-testid="site-tracking-page">
       <SectionTitle overline="Pack Business" title="Suivi de chantier" />
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <HardHat className="h-4 w-4 text-primary" />
         <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Nom du chantier (ex. Villa Dupont)"
           className="rounded-sm max-w-sm" data-testid="site-project" />
+        <Button variant="outline" className="rounded-sm gap-2" disabled={busy} onClick={exportPdf} data-testid="site-pdf-btn">
+          <FileDown className="h-4 w-4" /> Export PDF chantier
+        </Button>
       </div>
 
       <Tabs defaultValue="reports">
@@ -84,11 +119,20 @@ export default function SiteTracking() {
           <div className="surface p-5 rounded-md grid gap-3">
             <Input value={rep.title} onChange={(e) => setRep({ ...rep, title: e.target.value })} placeholder="Titre / date de visite" className="rounded-sm" data-testid="report-title" />
             <Textarea value={rep.notes} onChange={(e) => setRep({ ...rep, notes: e.target.value })} placeholder="Observations, avancement, points bloquants…" rows={3} className="rounded-sm" data-testid="report-notes" />
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-primary" data-testid="report-photo-label">
+                <Camera className="h-4 w-4" /> Ajouter des photos
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => readFiles(e.target.files, setRepPhotos)} data-testid="report-photo-input" />
+              </label>
+              {repPhotos.map((p, i) => <img key={i} src={p} alt="" className="h-12 w-12 object-cover rounded" />)}
+            </div>
             <Button onClick={addReport} className="rounded-sm gap-2 w-fit" data-testid="report-add"><Plus className="h-4 w-4" /> Ajouter le compte-rendu</Button>
           </div>
           {reports.map((r) => (
             <div key={r.report_id} className="surface p-4 rounded-md flex justify-between gap-4" data-testid={`report-${r.report_id}`}>
-              <div><p className="font-display font-semibold">{r.title || "Visite"}</p><p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">{r.notes}</p><p className="text-xs text-muted-foreground mt-2">{new Date(r.created_at).toLocaleDateString("fr-FR")}</p></div>
+              <div className="flex-1"><p className="font-display font-semibold">{r.title || "Visite"}</p><p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">{r.notes}</p>
+                {r.photos?.length > 0 && <div className="flex gap-2 mt-2 flex-wrap">{r.photos.map((ph, i) => <img key={i} src={FILE + encodeURIComponent(ph)} alt="" className="h-16 w-16 object-cover rounded border border-border" />)}</div>}
+                <p className="text-xs text-muted-foreground mt-2">{new Date(r.created_at).toLocaleDateString("fr-FR")}</p></div>
               <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 shrink-0" onClick={() => api.delete(`/site/reports/${r.report_id}`).then(load)} data-testid={`report-del-${r.report_id}`}><Trash2 className="h-4 w-4" /></Button>
             </div>
           ))}
@@ -99,7 +143,17 @@ export default function SiteTracking() {
             <Input value={res.lot} onChange={(e) => setRes({ ...res, lot: e.target.value })} placeholder="Lot (ex. Plomberie)" className="rounded-sm" data-testid="reserve-lot" />
             <Input value={res.description} onChange={(e) => setRes({ ...res, description: e.target.value })} placeholder="Description de la réserve" className="rounded-sm md:col-span-2" data-testid="reserve-desc" />
             <Input value={res.company} onChange={(e) => setRes({ ...res, company: e.target.value })} placeholder="Entreprise" className="rounded-sm" data-testid="reserve-company" />
-            <Button onClick={addReserve} className="rounded-sm gap-2 w-fit md:col-span-4" data-testid="reserve-add"><Plus className="h-4 w-4" /> Créer la réserve</Button>
+            <Input value={res.company_email} onChange={(e) => setRes({ ...res, company_email: e.target.value })} placeholder="E-mail entreprise (pour relance)" className="rounded-sm md:col-span-2" data-testid="reserve-email" />
+            <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-primary">
+              <Camera className="h-4 w-4" /> Photos {resPhotos.length > 0 && `(${resPhotos.length})`}
+              <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => readFiles(e.target.files, setResPhotos)} data-testid="reserve-photo-input" />
+            </label>
+            <Button onClick={addReserve} className="rounded-sm gap-2 w-fit" data-testid="reserve-add"><Plus className="h-4 w-4" /> Créer la réserve</Button>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" className="rounded-sm gap-2" disabled={busy} onClick={remind} data-testid="reserve-remind-btn">
+              <Send className="h-4 w-4" /> Relancer les entreprises
+            </Button>
           </div>
           {reserves.map((r) => (
             <div key={r.reserve_id} className="surface p-4 rounded-md flex items-center justify-between gap-4" data-testid={`reserve-${r.reserve_id}`}>
@@ -110,6 +164,7 @@ export default function SiteTracking() {
                 <div>
                   <p className={`font-medium ${r.status === "lifted" ? "line-through text-muted-foreground" : ""}`}>{r.description}</p>
                   <p className="text-xs text-muted-foreground">{[r.lot, r.company].filter(Boolean).join(" · ") || "—"}</p>
+                  {r.photos?.length > 0 && <div className="flex gap-2 mt-2">{r.photos.map((ph, i) => <img key={i} src={FILE + encodeURIComponent(ph)} alt="" className="h-12 w-12 object-cover rounded border border-border" />)}</div>}
                 </div>
               </div>
               <div className="flex items-center gap-2">

@@ -1,0 +1,33 @@
+{
+  "summary": "Validation e2e complète du module Suivi de chantier (Site Tracking - pack Business). Backend: 12/12 tests pytest passent (auth, gating, CRUD reports/reserves/checklist, toggle, upload photos + serve file, PDF export, reminder, delete, unauth 401). Frontend: parcours complet vérifié avec Playwright — gating client (site-locked visible + bouton upgrade), accès admin (site-tracking-page), création CR/réserve/checklist, toggle réserve (badge 'Levée' + barré), toggle checklist (avancement 0%→100%), export PDF (200 application/pdf), relance entreprises (200 avec JSON structuré emails_sent/companies/reserves_without_email), suppression des 3 types d'items. Aucun bug bloquant détecté.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PATCH /api/site/reserves/{id} & /api/site/checklist/{id}", "issue": "Renvoie 200 avec {ok: false} si l'item n'existe pas au lieu de 404. Non bloquant mais incohérent (delete renvoie aussi 200)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "SiteTracking (dark theme)", "issues": ["Onglets non-sélectionnés (Comptes-rendus / Réserves) légèrement peu contrastés en dark — cosmétique uniquement"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_site_tracking.py", "/app/test_reports/pytest/iter87_site.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "site.py L20-40 _store_photos: si base64 invalide, l'exception est silencieusement ignorée (continue). OK pour dev, envisager un log warning.",
+    "site.py L122-129 toggle_reserve: renvoyer 404 quand la réserve n'existe pas serait plus REST-conforme (actuellement {ok: false}).",
+    "site.py L247-269 remind: try/except silencieux autour de send_email — les erreurs Resend sont masquées. Ajouter un log serait utile pour debug prod.",
+    "SiteTracking.jsx: le composant fait 200 lignes — acceptable, mais 3 sous-formulaires pourraient être extraits en sous-composants pour maintenabilité future.",
+    "SiteTracking.jsx L44 useEffect: si `project` est vide, on charge quand même toutes les données (par utilisateur). Filtre côté UI seulement — attention si un utilisateur a beaucoup de chantiers."
+  ],
+  "updated_files": ["/app/backend/tests/test_site_tracking.py"],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (11/11 flows)"},
+  "test_credentials": "admin@construpilot.fr / Construpilot2026! (admin bypass gating) — client@construpilot.fr / Client2026! (free, doit voir site-locked)",
+  "seed_data_creation": "Données de test créées avec préfixe TEST_ puis supprimées à la fin (fixture cleanup + suppressions UI)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Module Suivi de chantier validé pour prod. Tests backend dans /app/backend/tests/test_site_tracking.py réutilisables en régression. Route frontend: /suivi-chantier (Protected). Gating: role=admin bypass OR tier=pro_business (BillingContext L57/L29). Endpoints backend /api/site/* tous OK (reports, reserves, checklist, report-pdf, reserves/remind, file). L'envoi d'emails Resend renvoie emails_sent=0 en preview (clé possiblement absente/inactive) — comportement attendu selon la review request.",
+  "rca of the issue": "N/A — aucun bug identifié"
+}

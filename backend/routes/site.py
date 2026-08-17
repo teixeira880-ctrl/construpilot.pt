@@ -74,8 +74,9 @@ async def list_reports(project: str = "", user=Depends(current_user)):
 
 @router.post("/reports")
 async def create_report(body: ReportIn, user=Depends(current_user)):
+    photos = await _store_photos(body.photos, "reports", _uid(user))
     doc = {"report_id": "cr_" + secrets.token_hex(6), "user_id": _uid(user),
-           **body.model_dump(), "created_at": _now()}
+           **body.model_dump(), "photos": photos, "created_at": _now()}
     await db.site_reports.insert_one(dict(doc))
     doc.pop("_id", None)
     return doc
@@ -93,6 +94,8 @@ class ReserveIn(BaseModel):
     lot: str = ""
     description: str
     company: str = ""
+    company_email: str = ""
+    photos: list[str] = []
 
 
 @router.get("/reserves")
@@ -105,8 +108,10 @@ async def list_reserves(project: str = "", user=Depends(current_user)):
 
 @router.post("/reserves")
 async def create_reserve(body: ReserveIn, user=Depends(current_user)):
+    photos = await _store_photos(body.photos, "reserves", _uid(user))
     doc = {"reserve_id": "rs_" + secrets.token_hex(6), "user_id": _uid(user),
-           **body.model_dump(), "status": "open", "created_at": _now(), "lifted_at": None}
+           **body.model_dump(), "photos": photos, "status": "open",
+           "created_at": _now(), "lifted_at": None}
     await db.site_reserves.insert_one(dict(doc))
     doc.pop("_id", None)
     return doc
@@ -176,3 +181,90 @@ async def list_projects(user=Depends(current_user)):
     for coll in (db.site_reports, db.site_reserves, db.site_checklist):
         names.update(await coll.distinct("project", {"user_id": uid}))
     return sorted(n for n in names if n)
+
+
+@router.get("/report-pdf")
+async def report_pdf(project: str, user=Depends(current_user)):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    uid = _uid(user)
+    reports = await db.site_reports.find({"user_id": uid, "project": project}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    reserves = await db.site_reserves.find({"user_id": uid, "project": project}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    checklist = await db.site_checklist.find({"user_id": uid, "project": project}, {"_id": 0}).to_list(500)
+    done = sum(1 for c in checklist if c.get("done"))
+    pct = round(done / len(checklist) * 100) if checklist else 0
+    GREEN, DARK, GREY, LIGHT = colors.HexColor("#16a34a"), colors.HexColor("#0f172a"), colors.HexColor("#64748b"), colors.HexColor("#f1f5f9")
+    st = getSampleStyleSheet()
+    h1 = ParagraphStyle("h", parent=st["Title"], textColor=DARK, fontSize=20)
+    sub = ParagraphStyle("s", parent=st["Normal"], textColor=GREY, fontSize=10, spaceAfter=12)
+    sec = ParagraphStyle("sec", parent=st["Heading2"], textColor=GREEN, fontSize=12, spaceBefore=14, spaceAfter=6)
+    body = ParagraphStyle("b", parent=st["Normal"], fontSize=9.5, leading=13)
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=16*mm, bottomMargin=14*mm)
+    flow = [Paragraph("Compte-rendu de chantier", h1),
+            Paragraph(f"{project} — {datetime.now(timezone.utc).strftime('%d/%m/%Y')} · Avancement global : {pct}%", sub)]
+    flow.append(Paragraph("Comptes-rendus de visite", sec))
+    if reports:
+        for r in reports:
+            flow.append(Paragraph(f"<b>{r.get('title') or 'Visite'}</b> — {r.get('created_at','')[:10]}", body))
+            if r.get("notes"):
+                flow.append(Paragraph(r["notes"].replace("\n", "<br/>"), body))
+            flow.append(Spacer(1, 4))
+    else:
+        flow.append(Paragraph("Aucun compte-rendu.", body))
+    flow.append(Paragraph(f"Réserves ({sum(1 for x in reserves if x.get('status')!='lifted')} en cours / {len(reserves)})", sec))
+    if reserves:
+        rows = [["Lot", "Description", "Entreprise", "Statut"]]
+        for r in reserves:
+            rows.append([r.get("lot", ""), r.get("description", ""), r.get("company", ""),
+                         "Levée" if r.get("status") == "lifted" else "En cours"])
+        t = Table(rows, colWidths=[28*mm, 78*mm, 38*mm, 30*mm])
+        t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), DARK), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                               ("FONTSIZE", (0,0), (-1,-1), 8.5), ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+                               ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, LIGHT]),
+                               ("BOTTOMPADDING", (0,0), (-1,-1), 5), ("TOPPADDING", (0,0), (-1,-1), 5),
+                               ("VALIGN", (0,0), (-1,-1), "TOP")]))
+        flow.append(t)
+    else:
+        flow.append(Paragraph("Aucune réserve.", body))
+    if checklist:
+        flow.append(Paragraph(f"Checklist d'avancement — {pct}%", sec))
+        for c in checklist:
+            mark = "[x]" if c.get("done") else "[ ]"
+            flow.append(Paragraph(f"{mark} {c.get('label','')}" + (f" · {c.get('lot')}" if c.get("lot") else ""), body))
+    flow.append(Spacer(1, 14))
+    flow.append(Paragraph("Généré par ConstruPilot · construpilot.fr", ParagraphStyle("f", parent=st["Normal"], textColor=GREY, fontSize=8)))
+    doc.build(flow)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/pdf",
+                             headers={"Content-Disposition": f'attachment; filename="chantier-{project[:30]}.pdf"'})
+
+
+@router.post("/reserves/remind")
+async def remind_companies(project: str, user=Depends(current_user)):
+    uid = _uid(user)
+    reserves = await db.site_reserves.find(
+        {"user_id": uid, "project": project, "status": {"$ne": "lifted"}}, {"_id": 0}).to_list(500)
+    by_email: dict = {}
+    for r in reserves:
+        em = (r.get("company_email") or "").strip()
+        if em and "@" in em:
+            by_email.setdefault(em, {"company": r.get("company", ""), "items": []})
+            by_email[em]["items"].append(r)
+    sent, skipped = 0, len(reserves)
+    for email, grp in by_email.items():
+        lis = "".join(f"<li>{r.get('lot','')} — {r.get('description','')}</li>" for r in grp["items"])
+        html = (f"<p>Bonjour {grp['company'] or ''},</p>"
+                f"<p>Réserves à lever sur le chantier <b>{project}</b> :</p><ul>{lis}</ul>"
+                f"<p>Merci de planifier leur reprise au plus vite.</p><p>— {user.get('name') or 'ConstruPilot'}</p>")
+        try:
+            await emailer.send_email(email, f"Réserves à lever — {project}", html)
+            sent += 1
+            skipped -= len(grp["items"])
+        except Exception:
+            pass
+    return {"emails_sent": sent, "companies": len(by_email), "reserves_without_email": skipped}
