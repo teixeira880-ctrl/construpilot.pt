@@ -25,6 +25,7 @@ emergentintegrations==0.2.0
 et_xmlfile==2.0.0
 execnet==2.1.2
 ezdxf==1.4.4
+factur-x==6.7
 fastapi==0.110.1
 fastuuid==0.14.0
 filelock==3.32.2
@@ -106,9 +107,11 @@ python-docx==1.2.0
 python-dotenv==1.2.2
 python-jose==3.5.0
 python-multipart==0.0.32
+python-stdnum==2.2
 pytokens==0.4.1
 pywebpush==2.4.0
 PyYAML==6.0.3
+qrcode==8.2
 referencing==0.37.0
 regex==2026.7.19
 reportlab==5.0.0
@@ -144,5 +147,3 @@ watchfiles==1.2.0
 websockets==16.1.1
 yarl==1.24.5
 zipp==4.1.0
-factur-x==6.7
-python-stdnum==2.2

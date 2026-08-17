@@ -22,6 +22,21 @@ log = logging.getLogger(__name__)
 PRICE_MIN_EUR = 3.0
 PRICE_MAX_EUR = 3000.0
 
+# Coefficients de prix régionaux indicatifs (main-d'œuvre + matériaux) par grande zone.
+DEPARTMENT_COEFF = [
+    {"code": "IDF", "name": "Île-de-France (75, 92, 93, 94...)", "coefficient": 1.15},
+    {"code": "PACA", "name": "PACA / Côte d'Azur (06, 13, 83...)", "coefficient": 1.10},
+    {"code": "AURA", "name": "Auvergne-Rhône-Alpes (69, 38, 74...)", "coefficient": 1.06},
+    {"code": "OCC", "name": "Occitanie (31, 34...)", "coefficient": 1.02},
+    {"code": "NAQ", "name": "Nouvelle-Aquitaine (33, 64...)", "coefficient": 1.02},
+    {"code": "GES", "name": "Grand Est (67, 57...)", "coefficient": 1.00},
+    {"code": "HDF", "name": "Hauts-de-France (59, 62...)", "coefficient": 0.98},
+    {"code": "BRE", "name": "Bretagne / Pays de la Loire (35, 44...)", "coefficient": 0.99},
+    {"code": "AUTRE", "name": "Autre / Moyenne nationale", "coefficient": 1.00},
+    {"code": "DOM", "name": "Outre-mer (971, 972, 974...)", "coefficient": 1.25},
+]
+
+
 SUPPLIERS = [
     {"key": "leroymerlin", "name": "Leroy Merlin", "domain": "leroymerlin.fr", "shipping": 29.9,
      "free_from": 300, "min_order": 0, "delivery_days": 3, "rating": 4.2, "stores": 140},
@@ -255,12 +270,18 @@ def _catalog_match(catalog, name, query):
     return None
 
 
-def optimize_cart(items: list[dict], catalog: list[dict] | None = None) -> dict:
+def optimize_cart(items: list[dict], catalog: list[dict] | None = None,
+                  coefficient: float = 1.0) -> dict:
     """items: [{query, quantity}] -> comparaison mono-fournisseur vs multi-fournisseurs.
-    Si `catalog` (prix réels de l'utilisateur) contient une correspondance, ce prix prime."""
+    Si `catalog` (prix réels de l'utilisateur) contient une correspondance, ce prix prime.
+    `coefficient` : ajustement régional appliqué aux prix estimés (démo), pas au catalogue."""
+    coef = coefficient if coefficient and 0.5 <= coefficient <= 2.0 else 1.0
     per_item = []
     for it in items:
         offers = demo_search(it["query"], len(SUPPLIERS))
+        if coef != 1.0:
+            for o in offers:
+                o["price"] = round(o["price"] * coef, 2)
         per_item.append({"query": it["query"], "quantity": it.get("quantity", 1),
                          "name": it.get("name") or offers[0]["product"], "offers": offers})
 

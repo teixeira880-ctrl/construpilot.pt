@@ -191,6 +191,18 @@ async def get_shared_calculator(share_id: str):
     return doc
 
 
+@router.get("/qr")
+async def qr_code(data: str):
+    """PNG QR code d'une URL/texte (pour partager une fiche sur chantier)."""
+    import qrcode
+    img = qrcode.make(data[:1200], box_size=8, border=2)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="image/png",
+                             headers={"Cache-Control": "public, max-age=86400"})
+
+
 @router.get("/diy/tasks")
 async def diy_tasks() -> list:
     return [{"key": t["key"], "name": t["name"], "difficulty": t["difficulty"],

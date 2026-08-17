@@ -1,18 +1,37 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Loader2, HardHat, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
+import { Loader2, HardHat, ArrowRight, FileDown } from "lucide-react";
 import { api, eur, eur2, num } from "@/lib/api";
 
 export default function SharedCalc() {
   const { shareId } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
+  const [busyPdf, setBusyPdf] = useState(false);
 
   useEffect(() => {
     api.get(`/calculators-shared/${shareId}`)
       .then(({ data }) => setData(data))
       .catch(() => setError(true));
   }, [shareId]);
+
+  const downloadPdf = async () => {
+    setBusyPdf(true);
+    try {
+      const { data: pdf } = await api.post("/calculators-pdf", {
+        name: data.name, inputs: data.inputs, results: data.results,
+        materials: data.materials, estimated_budget: data.estimated_budget,
+        priced_lines: data.priced_lines || [], priced_total: data.priced_total ?? null,
+      }, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "fiche-calcul-construpilot.pdf";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Téléchargement impossible"); }
+    finally { setBusyPdf(false); }
+  };
 
   if (error) {
     return (
@@ -49,6 +68,12 @@ export default function SharedCalc() {
               <HardHat className="h-4 w-4 text-primary" /> Préparé par {data.contractor}
             </p>
           ) : null}
+          <div className="mt-5">
+            <button onClick={downloadPdf} disabled={busyPdf} data-testid="shared-pdf-btn"
+              className="inline-flex items-center gap-2 rounded-sm border border-primary/40 text-primary px-4 py-2.5 text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors">
+              {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Télécharger en PDF
+            </button>
+          </div>
         </div>
 
         {data.inputs?.length > 0 && (

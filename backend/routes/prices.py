@@ -3,6 +3,7 @@ import io
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.db import db
@@ -45,6 +46,13 @@ async def history(query: str):
 
 class CartIn(BaseModel):
     items: list[dict]
+    coefficient: float = 1.0     # coefficient de prix régional (départemental)
+
+
+@router.get("/departments")
+async def departments():
+    """Coefficients de prix régionaux (indicatifs) pour ajuster les estimations."""
+    return price_search.DEPARTMENT_COEFF
 
 
 @router.post("/optimize")
@@ -54,7 +62,39 @@ async def optimize(body: CartIn, user=Depends(optional_user)):
     catalog = None
     if user:
         catalog = await db.price_catalog.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(1000)
-    return price_search.optimize_cart(body.items, catalog=catalog)
+    coef = body.coefficient if 0.5 <= body.coefficient <= 2.0 else 1.0
+    return price_search.optimize_cart(body.items, catalog=catalog, coefficient=coef)
+
+
+@router.get("/catalog/template")
+async def catalog_template():
+    """Modèle Excel prêt à remplir pour l'import de tarifs."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Tarifs"
+    headers = ["nom", "prix", "unité", "fournisseur", "catégorie"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="16A34A")
+    examples = [
+        ["Plaque BA13 250x120", 6.50, "plaque", "Point P", "Placo"],
+        ["Rail R48 (barre 3m)", 3.20, "barre", "Point P", "Placo"],
+        ["Carrelage grès 60x60", 24.90, "m²", "Leroy Merlin", "Carrelage"],
+        ["Peinture blanche 10L", 45.90, "pot", "Leroy Merlin", "Peinture"],
+    ]
+    for row in examples:
+        ws.append(row)
+    for col, w in zip("ABCDE", (28, 10, 10, 16, 16)):
+        ws.column_dimensions[col].width = w
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="modele-tarifs-construpilot.xlsx"'})
 
 
 # ─────────────────────────── Catalogue de prix perso ───────────────────────────

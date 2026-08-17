@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Upload, Loader2, Tag, Search } from "lucide-react";
+import { Plus, Trash2, Upload, Loader2, Tag, Search, Download, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,10 +16,29 @@ export default function PriceCatalog() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [q, setQ] = useState("");
+  const [depts, setDepts] = useState([]);
+  const [deptCode, setDeptCode] = useState(() => localStorage.getItem("construpilot_dept_code") || "AUTRE");
   const fileRef = useRef(null);
 
   const load = () => api.get("/prices/catalog").then(({ data }) => setRows(data));
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.get("/prices/departments").then(({ data }) => setDepts(data)).catch(() => {});
+  }, []);
+
+  const currentCoef = depts.find((d) => d.code === deptCode)?.coefficient ?? 1;
+  const onDept = (code) => {
+    setDeptCode(code);
+    const coef = depts.find((d) => d.code === code)?.coefficient ?? 1;
+    localStorage.setItem("construpilot_dept_code", code);
+    localStorage.setItem("construpilot_dept_coef", String(coef));
+    toast.success(`Coefficient régional appliqué : ×${coef}`);
+  };
+
+  const downloadTemplate = () => {
+    window.open(`${process.env.REACT_APP_BACKEND_URL}/api/prices/catalog/template`, "_blank");
+  };
+
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const save = async () => {
@@ -63,6 +82,20 @@ export default function PriceCatalog() {
         Saisissez vos vrais prix fournisseurs (ou importez un fichier de votre négoce). Le comparateur et les devis utiliseront automatiquement ces prix quand le nom du matériau correspond.
       </p>
 
+      <div className="surface p-5 rounded-md flex flex-wrap items-center gap-4" data-testid="dept-coef">
+        <div className="flex items-center gap-2 text-sm">
+          <MapPin className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Région / département :</span>
+        </div>
+        <select value={deptCode} onChange={(e) => onDept(e.target.value)} data-testid="dept-select"
+          className="rounded-sm border border-border bg-background px-3 py-2 text-sm min-w-[280px]">
+          {depts.map((d) => <option key={d.code} value={d.code}>{d.name} (×{d.coefficient})</option>)}
+        </select>
+        <span className="text-sm">
+          Coefficient appliqué aux estimations : <b className="text-primary num">×{currentCoef}</b>
+        </span>
+      </div>
+
       <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-6 items-end" data-testid="catalog-form">
         <div className="md:col-span-2"><Label>Matériau *</Label><Input value={form.name} onChange={set("name")} placeholder="Plaque BA13 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
         <div><Label>Prix (€) *</Label><Input type="number" value={form.price} onChange={set("price")} className="rounded-sm mt-1 num" data-testid="catalog-price" /></div>
@@ -80,6 +113,9 @@ export default function PriceCatalog() {
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={onFile} className="hidden" data-testid="catalog-file-input" />
+          <Button variant="ghost" className="rounded-sm gap-2 text-muted-foreground" onClick={downloadTemplate} data-testid="catalog-template-btn">
+            <Download className="h-4 w-4" /> Modèle Excel
+          </Button>
           <Button variant="outline" className="rounded-sm gap-2" disabled={importing} onClick={() => fileRef.current?.click()} data-testid="catalog-import-btn">
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importer CSV / Excel
           </Button>

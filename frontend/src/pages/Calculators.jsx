@@ -236,7 +236,9 @@ export default function Calculators() {
   const findPrices = async () => {
     setBusy(true);
     try {
+      const coefficient = Number(localStorage.getItem("construpilot_dept_coef") || 1) || 1;
       const { data } = await api.post("/prices/optimize", {
+        coefficient,
         items: result.materials.map((m) => ({ query: m.search, quantity: Math.ceil(m.quantity), name: m.name })),
       });
       setOptim(data);
@@ -496,6 +498,14 @@ export default function Calculators() {
               <Copy className="h-4 w-4" /> Copier
             </Button>
           </div>
+          {shareUrl && (
+            <div className="flex flex-col items-center gap-2 py-2" data-testid="calc-share-qr">
+              <img src={`${process.env.REACT_APP_BACKEND_URL}/api/qr?data=${encodeURIComponent(shareUrl)}`}
+                   alt="QR code de la fiche" width="150" height="150"
+                   className="rounded-md bg-white p-2 border border-border" />
+              <p className="text-xs text-muted-foreground">Scannez pour ouvrir la fiche sur le chantier</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-1">
             <a href={`sms:?&body=${encodeURIComponent(`Votre fiche de calcul ConstruPilot : ${shareUrl}`)}`}
                data-testid="calc-share-sms">

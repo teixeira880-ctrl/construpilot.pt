@@ -1,5 +1,13 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 110 — 17/08/2026 (Fiche PDF publique + QR + Modèle Excel + Coefficient régional)
+- **Fiche partagée PDF** : bouton « Télécharger en PDF » sur la page publique `/fiche/:id` (réutilise `POST /calculators-pdf` avec les données partagées, prix inclus). Vérifié + capture.
+- **QR code de partage** : nouvel endpoint `GET /qr?data=` (lib `qrcode`, PNG). Affiché dans le dialogue de partage des calculateurs (« Scannez pour ouvrir sur le chantier »). Vérifié (PNG 200) + capture.
+- **Modèle Excel** : `GET /prices/catalog/template` génère un .xlsx pré-formaté (en-têtes + exemples). Bouton « Modèle Excel » dans Mon catalogue. Vérifié (xlsx 200).
+- **Coefficient départemental** : `GET /prices/departments` (10 zones, ex. IDF ×1.15, DOM ×1.25) ; sélecteur région dans Mon catalogue (persisté localStorage) ; `optimize_cart(..., coefficient)` applique le coef aux prix estimés (démo), pas au catalogue réel. Vérifié (ciment 7,37 → 8,48 € à ×1.15).
+- Dépendance ajoutée : `qrcode[pil]` (requirements.txt). Fichiers : `tools.py`, `prices.py`, `price_search.py`, `SharedCalc.jsx`, `Calculators.jsx`, `PriceCatalog.jsx`.
+
+
 ## Itération 109 — 17/08/2026 (Catalogue Prix Admin + Import Tarifs Excel/CSV)
 - **Catalogue de prix perso** : page `/mon-catalogue` (`PriceCatalog.jsx`) + lien menu « Catalogue prix » — saisie/édition/suppression de prix réels (nom, prix, unité, fournisseur, catégorie), recherche. Backend `GET/POST/DELETE /prices/catalog` (scopé user_id, upsert par nom).
 - **Intégration comparateur** : `/prices/optimize` récupère le catalogue de l'utilisateur (optional_user) ; `optimize_cart(items, catalog)` remplace le prix démo par le prix réel quand le nom correspond (`source="catalog"`, fournisseur = négoce saisi, pas de frais de port). Vérifié : « Plaque BA13 » → Point P 6,50 € (source catalog).
