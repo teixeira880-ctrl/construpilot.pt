@@ -1,5 +1,15 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 111 — 17/08/2026 (Module Suivi de chantier — pack Business)
+- Nouveau module **Suivi de chantier** (`/suivi-chantier`, `SiteTracking.jsx`, lien menu « Suivi de chantier ») réservé au **pack Business** (feature `site_tracking` = `PRO_BUSINESS_ONLY` ; free/premium/pro voient un écran « Passer au pack Business » ; admin bypass).
+- 3 onglets par chantier (sélecteur nom de chantier) :
+  - **Comptes-rendus de visite** (titre + notes + date).
+  - **Réserves** (lot, description, entreprise ; bascule En cours ↔ Levée ; suppression).
+  - **Checklist d'avancement** (points par lot, cochables, barre de % globale).
+- Backend `routes/site.py` (prefix `/site`, registré dans server.py) : CRUD `reports`, `reserves` (PATCH toggle), `checklist` (PATCH toggle) + `/site/projects`. Scopé user_id. Vérifié via curl (create/toggle/list) + capture d'écran (compte Business).
+- Fichiers : `backend/routes/site.py`, `backend/server.py`, `frontend/src/pages/SiteTracking.jsx`, `frontend/src/App.js`, `frontend/src/components/Nav.jsx`, `frontend/src/context/BillingContext.jsx`.
+
+
 ## Itération 110 — 17/08/2026 (Fiche PDF publique + QR + Modèle Excel + Coefficient régional)
 - **Fiche partagée PDF** : bouton « Télécharger en PDF » sur la page publique `/fiche/:id` (réutilise `POST /calculators-pdf` avec les données partagées, prix inclus). Vérifié + capture.
 - **QR code de partage** : nouvel endpoint `GET /qr?data=` (lib `qrcode`, PNG). Affiché dans le dialogue de partage des calculateurs (« Scannez pour ouvrir sur le chantier »). Vérifié (PNG 200) + capture.

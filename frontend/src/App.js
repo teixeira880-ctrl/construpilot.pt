@@ -54,6 +54,7 @@ import HR from "@/pages/HR";
 import WorkerApp from "@/pages/WorkerApp";
 import SharedCalc from "@/pages/SharedCalc";
 import PriceCatalog from "@/pages/PriceCatalog";
+import SiteTracking from "@/pages/SiteTracking";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
@@ -94,6 +95,7 @@ function AppRouter() {
       <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
       <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
       <Route path="/mon-catalogue" element={<Protected><Shell><PriceCatalog /></Shell></Protected>} />
+      <Route path="/suivi-chantier" element={<Protected><Shell><SiteTracking /></Shell></Protected>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
