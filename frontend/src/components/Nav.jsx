@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown, Contact, Library, FileText,
+  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +45,7 @@ const USER_LINKS = [
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
   { to: "/rh", label: "RH — Chantier", key: "hr.nav", icon: Users },
   { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
+  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag },
   { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch },
   { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },

@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
+import io
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 
 from core.db import db
@@ -46,10 +48,121 @@ class CartIn(BaseModel):
 
 
 @router.post("/optimize")
-async def optimize(body: CartIn):
+async def optimize(body: CartIn, user=Depends(optional_user)):
     if not body.items:
         raise HTTPException(status_code=400, detail="Panier vide")
-    return price_search.optimize_cart(body.items)
+    catalog = None
+    if user:
+        catalog = await db.price_catalog.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(1000)
+    return price_search.optimize_cart(body.items, catalog=catalog)
+
+
+# ─────────────────────────── Catalogue de prix perso ───────────────────────────
+
+class CatalogItemIn(BaseModel):
+    name: str
+    price: float
+    unit: str = "u"
+    supplier: str = ""
+    category: str = ""
+
+
+@router.get("/catalog")
+async def catalog_list(user=Depends(current_user)):
+    rows = await db.price_catalog.find({"user_id": user["user_id"]}, {"_id": 0}) \
+        .sort("name", 1).to_list(2000)
+    return rows
+
+
+@router.post("/catalog")
+async def catalog_upsert(body: CatalogItemIn, user=Depends(current_user)):
+    if not body.name.strip():
+        raise HTTPException(422, "Nom requis")
+    now = datetime.now(timezone.utc).isoformat()
+    existing = await db.price_catalog.find_one(
+        {"user_id": user["user_id"], "name_lc": body.name.lower().strip()}, {"_id": 0, "catalog_id": 1})
+    doc = {"user_id": user["user_id"], "name": body.name.strip(), "name_lc": body.name.lower().strip(),
+           "price": round(float(body.price), 2), "unit": body.unit, "supplier": body.supplier,
+           "category": body.category, "updated_at": now}
+    if existing:
+        await db.price_catalog.update_one({"catalog_id": existing["catalog_id"]}, {"$set": doc})
+        return {**doc, "catalog_id": existing["catalog_id"]}
+    doc["catalog_id"] = "pc_" + secrets.token_hex(6)
+    await db.price_catalog.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@router.delete("/catalog/{catalog_id}")
+async def catalog_delete(catalog_id: str, user=Depends(current_user)):
+    await db.price_catalog.delete_one({"catalog_id": catalog_id, "user_id": user["user_id"]})
+    return {"ok": True}
+
+
+@router.post("/catalog/import")
+async def catalog_import(file: UploadFile = File(...), user=Depends(current_user)):
+    """Import CSV ou Excel. Colonnes attendues : name/désignation, price/prix, unit/unité, supplier/fournisseur, category/catégorie."""
+    raw = await file.read()
+    fn = (file.filename or "").lower()
+    rows: list[dict] = []
+    try:
+        if fn.endswith(".xlsx") or fn.endswith(".xls"):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+            ws = wb.active
+            data = list(ws.iter_rows(values_only=True))
+            if not data:
+                raise HTTPException(400, "Fichier vide")
+            headers = [str(h or "").lower().strip() for h in data[0]]
+            for r in data[1:]:
+                rows.append({headers[i]: r[i] for i in range(min(len(headers), len(r)))})
+        else:
+            import csv
+            text = raw.decode("utf-8-sig", errors="ignore")
+            dialect = csv.Sniffer().sniff(text[:2000], delimiters=";,\t") if text.strip() else csv.excel
+            reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+            for r in reader:
+                rows.append({(k or "").lower().strip(): v for k, v in r.items()})
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, "Fichier illisible. Utilisez un CSV (;) ou un .xlsx avec en-têtes.")
+
+    def pick(d, *keys):
+        for k in keys:
+            if k in d and d[k] not in (None, ""):
+                return d[k]
+        return None
+
+    def to_float(v):
+        if v is None:
+            return None
+        s = str(v).replace("€", "").replace(",", ".").strip()
+        try:
+            return round(float(s), 2)
+        except ValueError:
+            return None
+
+    now = datetime.now(timezone.utc).isoformat()
+    ops, imported, skipped = [], 0, 0
+    for d in rows:
+        name = pick(d, "name", "nom", "désignation", "designation", "libellé", "libelle", "produit", "matériau", "materiau")
+        price = to_float(pick(d, "price", "prix", "prix ht", "prix_ht", "tarif", "pu"))
+        if not name or price is None:
+            skipped += 1
+            continue
+        unit = pick(d, "unit", "unité", "unite", "u") or "u"
+        supplier = pick(d, "supplier", "fournisseur", "négoce", "negoce") or ""
+        category = pick(d, "category", "catégorie", "categorie", "corps d'état", "lot") or ""
+        doc = {"user_id": user["user_id"], "name": str(name).strip(), "name_lc": str(name).lower().strip(),
+               "price": price, "unit": str(unit), "supplier": str(supplier), "category": str(category),
+               "updated_at": now, "catalog_id": "pc_" + secrets.token_hex(6)}
+        await db.price_catalog.update_one(
+            {"user_id": user["user_id"], "name_lc": doc["name_lc"]},
+            {"$set": {k: v for k, v in doc.items() if k != "catalog_id"},
+             "$setOnInsert": {"catalog_id": doc["catalog_id"]}}, upsert=True)
+        imported += 1
+    return {"imported": imported, "skipped": skipped}
 
 
 @router.get("/stores")

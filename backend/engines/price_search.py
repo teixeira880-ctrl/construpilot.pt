@@ -243,8 +243,21 @@ async def history(query: str) -> dict:
     }
 
 
-def optimize_cart(items: list[dict]) -> dict:
-    """items: [{query, quantity}] -> comparaison mono-fournisseur vs multi-fournisseurs."""
+def _catalog_match(catalog, name, query):
+    """Cherche un prix réel du catalogue par correspondance de nom (insensible casse)."""
+    if not catalog:
+        return None
+    hay = f"{name} {query}".lower()
+    for c in catalog:
+        key = (c.get("name") or "").lower().strip()
+        if key and (key in hay or hay in key):
+            return c
+    return None
+
+
+def optimize_cart(items: list[dict], catalog: list[dict] | None = None) -> dict:
+    """items: [{query, quantity}] -> comparaison mono-fournisseur vs multi-fournisseurs.
+    Si `catalog` (prix réels de l'utilisateur) contient une correspondance, ce prix prime."""
     per_item = []
     for it in items:
         offers = demo_search(it["query"], len(SUPPLIERS))
@@ -274,12 +287,24 @@ def optimize_cart(items: list[dict]) -> dict:
     by_supplier = {}
     lines = []
     for entry in per_item:
+        cat = _catalog_match(catalog, entry["name"], entry["query"])
+        if cat:
+            price = round(float(cat.get("price") or 0), 2)
+            cost = round(price * entry["quantity"], 2)
+            lines.append({"name": entry["name"], "query": entry["query"], "quantity": entry["quantity"],
+                          "unit_price": price, "supplier": cat.get("supplier") or "Mon catalogue",
+                          "supplier_key": "catalog", "total": cost,
+                          "unit": cat.get("unit") or entry["offers"][0]["unit"],
+                          "stock": True, "url": None, "source": "catalog"})
+            by_supplier.setdefault("catalog", 0.0)
+            by_supplier["catalog"] += cost
+            continue
         best = min(entry["offers"], key=lambda o: o["price"])
         cost = round(best["price"] * entry["quantity"], 2)
         lines.append({"name": entry["name"], "query": entry["query"], "quantity": entry["quantity"],
                       "unit_price": best["price"], "supplier": best["supplier"],
                       "supplier_key": best["supplier_key"], "total": cost, "unit": best["unit"],
-                      "stock": best["stock"], "url": best["url"]})
+                      "stock": best["stock"], "url": best["url"], "source": "demo"})
         by_supplier.setdefault(best["supplier_key"], 0.0)
         by_supplier[best["supplier_key"]] += cost
 
@@ -287,7 +312,12 @@ def optimize_cart(items: list[dict]) -> dict:
     multi_shipping = 0.0
     baskets = []
     for key, amount in by_supplier.items():
-        s = SUPPLIERS_BY_KEY[key]
+        s = SUPPLIERS_BY_KEY.get(key)
+        if s is None:  # ligne issue du catalogue perso (aucun frais de port)
+            baskets.append({"supplier": "Mon catalogue", "supplier_key": key,
+                            "products": round(amount, 2), "shipping": 0.0,
+                            "total": round(amount, 2), "below_min_order": False})
+            continue
         ship = 0.0 if amount >= s["free_from"] else s["shipping"]
         multi_shipping += ship
         baskets.append({"supplier": s["name"], "supplier_key": key, "products": round(amount, 2),

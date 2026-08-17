@@ -1,5 +1,12 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 109 — 17/08/2026 (Catalogue Prix Admin + Import Tarifs Excel/CSV)
+- **Catalogue de prix perso** : page `/mon-catalogue` (`PriceCatalog.jsx`) + lien menu « Catalogue prix » — saisie/édition/suppression de prix réels (nom, prix, unité, fournisseur, catégorie), recherche. Backend `GET/POST/DELETE /prices/catalog` (scopé user_id, upsert par nom).
+- **Intégration comparateur** : `/prices/optimize` récupère le catalogue de l'utilisateur (optional_user) ; `optimize_cart(items, catalog)` remplace le prix démo par le prix réel quand le nom correspond (`source="catalog"`, fournisseur = négoce saisi, pas de frais de port). Vérifié : « Plaque BA13 » → Point P 6,50 € (source catalog).
+- **Import Tarifs** : `POST /prices/catalog/import` accepte CSV (délimiteurs `;`/`,`/tab, décimales virgule, en-têtes FR : nom/prix/unité/fournisseur/catégorie) ET Excel `.xlsx` (openpyxl). Upsert par nom. Vérifié : CSV 3 lignes + XLSX 2 lignes importées.
+- Fichiers : `backend/routes/prices.py`, `backend/engines/price_search.py`, `frontend/src/pages/PriceCatalog.jsx`, `frontend/src/App.js`, `frontend/src/components/Nav.jsx`.
+
+
 ## Itération 108 — 17/08/2026 (Paywall fonctions premium calculateurs)
 - **Verrouillage freemium** des fonctions premium des calculateurs (Export PDF, Ajouter au devis, Comparer les formats, Devis groupé, Partager la fiche) via `useBilling().has("calculator_pro_tools")` — nouvelle clé ajoutée à `FEATURE_TIER` (BillingContext) mappée sur `PREMIUM_TIERS = {project_pass, premium, pro, pro_business}`.
 - Comportement : le calcul de base reste **gratuit** (acquisition particuliers) ; les fonctions premium affichent une **bannière « Passer Premium »** + verrou. Clic en gratuit → redirection `/tarifs` (connecté) ou `/login` (déconnecté). Payant pour particuliers (Premium + Project pass), inclus Pro/Business, bypass admin.
