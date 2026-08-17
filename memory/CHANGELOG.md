@@ -802,3 +802,8 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - **Retenue de garantie** : liste globale des retenues détenues, saisie date de réception (→ échéance +1 an), bouton Libérer + Relancer (email). GET /situations/retentions, POST reception/release/remind. ✅ backend testé (release_due 2027-06-01).
 - **Émission groupée** : `POST /documents/issue-batch` (émet N docs + contrôle conformité Factur-X en lot). UI /factures : cases à cocher sur les brouillons + barre "Émettre la sélection". ✅ testé (2 émises, 2 conformes EN16931).
 - Tous les endpoints backend testés via curl ; onglets Avancement + Prorata vérifiés en capture.
+
+## 2026-08-17 (7) — Décompte de situation PDF (format maîtrise d'œuvre)
+- `engines/situation_pdf.py` : build_situation_pdf(sit, branding, client) → PDF reportlab (en-tête entreprise SIRET/TVA, titre "DÉCOMPTE DE SITUATION N°x", tableau par lot [Marché HT / % préc. / % cumulé / Cumul HT / Situation HT], totaux HT/TVA/TTC + retenue + NET À PAYER en vert, mention légale libération 1 an).
+- Endpoint `GET /situations/{situation_id}/pdf`. Frontend : bouton "Décompte PDF" sur chaque situation de l'historique (Situations.jsx).
+- ✅ Testé : PDF valide 2,7 Ko, contenu vérifié (figures cohérentes, TVA multi-taux 20%/10% = 4000€, net 27 750€).

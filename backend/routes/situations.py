@@ -169,7 +169,23 @@ async def delete_situation(situation_id: str, user=Depends(current_user)):
     return {"ok": True}
 
 
-
+@router.get("/{situation_id}/pdf")
+async def situation_pdf(situation_id: str, user=Depends(current_user)):
+    """Décompte de situation PDF (format maîtrise d'œuvre)."""
+    from fastapi import Response
+    from engines.situation_pdf import build_situation_pdf
+    from routes.plans_common import _resolve_branding
+    sit = await db.situations.find_one(
+        {"situation_id": situation_id, "user_id": _uid(user)}, {"_id": 0})
+    if not sit:
+        raise HTTPException(404, "Situation introuvable")
+    base = await db.pro_documents.find_one(
+        {"doc_id": sit.get("marche_id"), "user_id": _uid(user)}, {"_id": 0, "client": 1})
+    branding = await _resolve_branding(user["user_id"])
+    pdf = build_situation_pdf(sit, branding, (base or {}).get("client"))
+    fname = f"situation-{sit.get('seq')}-{sit.get('invoice_number') or situation_id}.pdf"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 # ─────────────────────────  1. Avancement cumulé (dashboard marché)  ─────────────────────────
 
 @router.get("/summary")
