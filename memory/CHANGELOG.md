@@ -814,3 +814,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - **Nouveau logo** : icône générée → /public/construpilot-icon.png. Intégré dans Nav (badge), favicon (index.html), page Login. Logos aussi dans /public/construpilot-logo.png.
 - **Certificat de paiement** : `situation_pdf.build_payment_certificate()` + GET `/situations/{id}/certificate` (montant certifié "Bon à payer" + bloc visa maître d'œuvre). Bouton "Certificat" dans Situations.jsx. ✅ testé (PDF 2,3 Ko).
 - **Journal exportable** : GET `/company/activity/export?actor_id=` (CSV BOM ; ; filtrable employé) + `recent(actor_id)`. UI Entreprise.jsx : filtre par employé + bouton "Export CSV". ✅ testé.
+
+## 2026-08-17 (9) — Auto-bibliothèque + bandeau gratuit + journal PDF (UTM & onboarding déjà présents)
+- **Auto-enregistrement bibliothèque** : `library.auto_save_from_lines()` appelé à la création ET modification de document (documents.py). Chaque poste (désignation, unité, prix, TVA, catégorie, DESCRIPTION) est upserté dans library_items (dédup par désignation, insensible à la casse). Lignes de situation ignorées. Champ `description` ajouté au modèle DocLine. ✅ testé.
+- **Bandeau "100% gratuit"** : bannière verte en haut de Landing.jsx avec CTA /inscription. ✅ vérifié capture.
+- **Journal PDF** : GET `/company/activity/pdf?actor_id=` (reportlab) + bouton "PDF" dans Entreprise.jsx (à côté de CSV). ✅ testé (2,1 Ko).
+- **UTM (déjà présent)** : Landing.jsx capture utm_source/medium/campaign → leads.py + AdsPanel. Liens pub à utiliser : `https://construpilot.fr/?utm_source=linkedin&utm_medium=social&utm_campaign=lancement`.
+- **Onboarding (déjà présent)** : OnboardingTour.jsx (tour de bienvenue affiché 1×/user).

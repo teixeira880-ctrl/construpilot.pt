@@ -73,6 +73,15 @@ export default function Entreprise() {
       URL.revokeObjectURL(url);
     } catch { toast.error("Export impossible"); }
   };
+  const exportJournalPdf = async () => {
+    try {
+      const q = actorFilter && actorFilter !== "all" ? `?actor_id=${actorFilter}` : "";
+      const { data } = await api.get(`/company/activity/pdf${q}`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+      const a = document.createElement("a"); a.href = url; a.download = "journal-activite.pdf"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Export PDF impossible"); }
+  };
   useEffect(() => { if (isProBusiness) load(); /* eslint-disable-next-line */ }, [isProBusiness, isManager]);
 
   const createEmp = async () => {
@@ -233,7 +242,8 @@ export default function Entreprise() {
                   {(data?.members || []).map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.name || m.email}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={exportJournal} data-testid="activity-export"><Download className="h-4 w-4" /> Export CSV</Button>
+              <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={exportJournal} data-testid="activity-export"><Download className="h-4 w-4" /> CSV</Button>
+              <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={exportJournalPdf} data-testid="activity-export-pdf"><FileText className="h-4 w-4" /> PDF</Button>
             </div>
           </div>
           <div className="surface rounded-md divide-y divide-border/60">

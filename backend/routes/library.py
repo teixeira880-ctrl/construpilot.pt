@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import re
 import secrets
 from datetime import datetime, timezone
 
@@ -185,3 +186,43 @@ async def reset_catalogue(user=Depends(current_user)) -> dict:
     await _seed_if_needed(fresh or user)
     count = await db.library_items.count_documents({"user_id": user["user_id"]})
     return {"ok": True, "count": count}
+
+
+
+async def auto_save_from_lines(user_id: str, lines: list[dict]) -> int:
+    """Enregistre/actualise automatiquement les postes d'un devis dans la bibliothèque de l'entreprise."""
+    saved = 0
+    for ln in lines or []:
+        desig = (ln.get("designation") or "").strip()
+        if len(desig) < 3:
+            continue
+        cat = (ln.get("category") or "").strip()
+        if cat.lower().startswith("situation") or cat.lower().startswith("avancement"):
+            continue  # on n'archive pas les lignes de situation
+        set_fields = {
+            "designation": desig,
+            "type": "ouvrage",
+            "category": cat or "Depuis devis",
+            "unit": ln.get("unit") or "u",
+            "unit_price_ht": round(float(ln.get("unit_price_ht") or 0), 2),
+            "vat_rate": float(ln.get("vat_rate") or 10),
+            "updated_at": _now(),
+        }
+        desc = (ln.get("description") or ln.get("notes") or "").strip()
+        if desc:
+            set_fields["notes"] = desc[:500]
+        existing = await db.library_items.find_one(
+            {"user_id": user_id,
+             "designation": {"$regex": f"^{re.escape(desig)}$", "$options": "i"}},
+            {"_id": 0, "item_id": 1})
+        if existing:
+            await db.library_items.update_one(
+                {"user_id": user_id, "item_id": existing["item_id"]}, {"$set": set_fields})
+        else:
+            await db.library_items.insert_one({
+                "item_id": "lib_" + secrets.token_hex(6), "user_id": user_id,
+                "source": "devis", "notes": set_fields.pop("notes", ""),
+                "created_at": _now(), **set_fields,
+            })
+        saved += 1
+    return saved

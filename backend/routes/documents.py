@@ -33,6 +33,7 @@ def _now() -> str:
 
 class DocLine(BaseModel):
     designation: str = ""
+    description: str = ""
     unit: str = "u"
     qty: float = 1
     unit_price_ht: float = 0
@@ -130,6 +131,11 @@ async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     from engines import activity
     await activity.log(user, f"{dtype}.create", "document", doc.get("title") or dtype,
                        {"doc_id": doc["doc_id"]})
+    try:
+        from routes.library import auto_save_from_lines
+        await auto_save_from_lines(user["user_id"], doc.get("lines"))
+    except Exception:
+        pass
     return doc
 
 
@@ -220,6 +226,11 @@ async def update_document(doc_id: str, body: DocIn,
         upd["status"] = body.status
     await db.pro_documents.update_one(
         {"doc_id": doc_id, "user_id": user["user_id"]}, {"$set": upd})
+    try:
+        from routes.library import auto_save_from_lines
+        await auto_save_from_lines(user["user_id"], upd.get("lines"))
+    except Exception:
+        pass
     return await _get_owned(doc_id, user)
 
 

@@ -250,3 +250,49 @@ async def export_activity(actor_id: str = "", user=Depends(current_user)):
                     r.get("action_label", ""), r.get("label", "")])
     return Response(content="\ufeff" + buf.getvalue(), media_type="text/csv",
                     headers={"Content-Disposition": 'attachment; filename="journal-activite.csv"'})
+
+
+@router.get("/activity/pdf")
+async def export_activity_pdf(actor_id: str = "", user=Depends(current_user)):
+    """Export PDF du journal d'activité (remise officielle)."""
+    import io
+    from fastapi import Response
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    u = await _me(user)
+    if u.get("organization_id"):
+        if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
+            raise HTTPException(403, "Réservé au propriétaire ou à un administrateur.")
+        org_id = u["organization_id"]
+    else:
+        org_id = f"solo:{user['user_id']}"
+    rows = await activity.recent(org_id, 500, "", actor_id)
+    styles = getSampleStyleSheet()
+    small = ParagraphStyle("s", parent=styles["Normal"], fontSize=8)
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                            topMargin=16 * mm, bottomMargin=16 * mm)
+    data = [["Date", "Employé", "Action", "Détail"]]
+    for r in rows:
+        data.append([r.get("created_at", "")[:16].replace("T", " "),
+                     Paragraph(r.get("actor_name", ""), small),
+                     Paragraph(r.get("action_label", ""), small),
+                     Paragraph(r.get("label", ""), small)])
+    tbl = Table(data, colWidths=[30 * mm, 38 * mm, 46 * mm, 64 * mm], repeatRows=1)
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    E = [Paragraph("<b>Journal d'activité — ConstruPilot</b>", styles["Title"]),
+         Spacer(1, 8), tbl]
+    doc.build(E)
+    return Response(content=buf.getvalue(), media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="journal-activite.pdf"'})
