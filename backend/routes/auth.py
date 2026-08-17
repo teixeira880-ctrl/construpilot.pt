@@ -101,6 +101,17 @@ async def register(body: RegisterIn, response: Response) -> dict:
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(user)
+    # E-mail de bienvenue (best-effort, ne bloque jamais l'inscription)
+    try:
+        from engines import emailer
+        html = ("<p>Bienvenue sur <b>ConstruPilot</b> !</p>"
+                "<p>Votre compte est actif et <b>100% gratuit pendant la phase de lancement</b> — "
+                "toutes les fonctionnalités Pro sont débloquées.</p>"
+                "<p>Créez votre premier devis, générez un rendu 3D ou estimez un chantier par photo dès maintenant.</p>"
+                "<p>À très vite,<br/>L'équipe ConstruPilot</p>")
+        await emailer.send_email(email, "Bienvenue sur ConstruPilot 🎉", html)
+    except Exception:
+        pass
     # Credit the referrer (silent no-op if code invalid) — routed via referrals module
     if body.referred_by_code:
         from routes.referrals import credit_referrer

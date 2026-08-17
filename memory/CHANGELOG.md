@@ -827,3 +827,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - **Onboarding ciblé** : OnboardingTour.jsx lit sessionStorage `construpilot_utm_source` → bannière dédiée "Bienvenue depuis LinkedIn/Instagram/Facebook + accès 100% gratuit" à l'étape 1.
 - **Description éditeur** : champ `description` par ligne dans QuoteEditor.jsx (textarea sous chaque ligne), ajouté au modèle DocLine (backend), envoyé au save et archivé automatiquement dans la bibliothèque (notes).
 - **Dashboard canal** : GET `/ads/channels` (agrégation leads par utm_source) + carte "Leads par canal d'acquisition" dans AdsPanel.jsx (pastilles LinkedIn/Instagram/Facebook). ✅ endpoint testé.
+
+## 2026-08-17 (11) — Pub Instagram + e-mail bienvenue + description multi-ligne + générateur UTM
+- **Pub Instagram particuliers** : 2 visuels générés (carré + story) — homeowners, offre gratuite, logo/branding.
+- **E-mail de bienvenue** : envoyé à l'inscription (auth.register, best-effort emailer, mentionne l'offre 100% gratuite).
+- **Description multi-ligne** : QuoteEditor.jsx → textarea (rows=2) par ligne (persisté + archivé en bibliothèque). NB: suggestions IA d'ouvrages NON incluses (multi-ligne seulement).
+- **Générateur de lien UTM** : carte dans AdsPanel (réseau + campagne → lien construpilot.fr prêt à copier) + carte "Leads par canal".
+- ✅ register testé (token OK), bundle compile (login OK).

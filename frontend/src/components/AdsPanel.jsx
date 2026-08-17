@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Megaphone, Trash2, Loader2, Pencil, BarChart3 } from "lucide-react";
+import { Plus, Megaphone, Trash2, Loader2, Pencil, BarChart3, Copy } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { api, eur, num } from "@/lib/api";
 import { SectionTitle, Stat } from "@/components/Bits";
@@ -18,6 +18,9 @@ export default function AdsPanel() {
   const [sum, setSum] = useState(null);
   const [sources, setSources] = useState([]);
   const [channels, setChannels] = useState([]);
+  const [utm, setUtm] = useState({ source: "instagram", campaign: "lancement" });
+  const utmLink = `https://construpilot.fr/?utm_source=${utm.source}&utm_medium=social&utm_campaign=${encodeURIComponent(utm.campaign || "lancement")}`;
+  const copyUtm = () => { navigator.clipboard.writeText(utmLink); toast.success("Lien copié — collez-le dans votre pub"); };
   const [filters, setFilters] = useState({ platforms: [], months: [] });
   const [fPlatform, setFPlatform] = useState("");
   const [fMonth, setFMonth] = useState("");
@@ -116,6 +119,29 @@ export default function AdsPanel() {
           <Stat label="ROAS" value={sum.roas != null ? `${sum.roas}×` : "—"} accent />
         </div>
       )}
+
+      <div className="surface p-5 rounded-sm" data-testid="ads-utm-generator">
+        <p className="text-sm font-display font-semibold mb-3">Générateur de lien publicitaire (UTM)</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="grid gap-1">
+            <label className="text-xs text-muted-foreground">Réseau</label>
+            <select value={utm.source} onChange={(e) => setUtm({ ...utm, source: e.target.value })}
+              className="rounded-sm h-9 border border-input bg-background px-2 text-sm" data-testid="utm-source">
+              <option value="instagram">Instagram</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="facebook">Facebook</option>
+              <option value="tiktok">TikTok</option>
+            </select>
+          </div>
+          <div className="grid gap-1 flex-1 min-w-[160px]">
+            <label className="text-xs text-muted-foreground">Nom de campagne</label>
+            <input value={utm.campaign} onChange={(e) => setUtm({ ...utm, campaign: e.target.value })}
+              className="rounded-sm h-9 border border-input bg-background px-2 text-sm w-full" data-testid="utm-campaign" placeholder="lancement" />
+          </div>
+          <Button size="sm" className="rounded-sm gap-2" onClick={copyUtm} data-testid="utm-copy"><Copy className="h-4 w-4" /> Copier le lien</Button>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground break-all num" data-testid="utm-preview">{utmLink}</p>
+      </div>
 
       {channels && channels.length > 0 && (
         <div className="surface p-5 rounded-sm" data-testid="ads-channels">

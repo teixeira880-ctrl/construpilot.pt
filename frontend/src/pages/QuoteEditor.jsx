@@ -282,9 +282,10 @@ export default function QuoteEditor() {
               </Button>
             </div>
             </div>
-            <Input value={l.description || ""} onChange={(e) => setLine(i, "description", e.target.value)}
+            <textarea value={l.description || ""} onChange={(e) => setLine(i, "description", e.target.value)}
                    placeholder="Description / détail de l'ouvrage (optionnel — archivé en bibliothèque)"
-                   className="rounded-sm h-9 text-sm w-full" data-testid={`editor-line-desc-${i}`} />
+                   rows={2}
+                   className="rounded-sm text-sm w-full bg-background border border-input px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary" data-testid={`editor-line-desc-${i}`} />
           </div>
         ))}
         {lines.length === 0 && (
