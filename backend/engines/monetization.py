@@ -455,6 +455,8 @@ async def user_has_feature(user_id: str | None, feature: str) -> bool:
 
 async def user_tier(user_id: str | None) -> str:
     """Retourne 'free' | 'project_pass' | 'premium' | 'pro' | 'pro_business'."""
+    if os.environ.get("FREE_PROMO_MODE") == "true" and user_id:
+        return "pro_business"  # Phase de lancement gratuite : tout débloqué
     if not user_id:
         return "free"
     active = await user_active_plan(user_id)

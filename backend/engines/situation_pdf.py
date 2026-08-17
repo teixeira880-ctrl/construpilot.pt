@@ -114,3 +114,61 @@ def build_situation_pdf(sit: dict, branding: dict | None, client: dict | None) -
 
     doc.build(E)
     return buf.getvalue()
+
+
+def build_payment_certificate(sit: dict, branding: dict | None, client: dict | None) -> bytes:
+    """Certificat de paiement (état d'acompte) avec visa maître d'œuvre."""
+    branding = branding or {}
+    client = client or {}
+    styles = getSampleStyleSheet()
+    small = ParagraphStyle("small", parent=styles["Normal"], fontSize=8, textColor=colors.HexColor("#475569"))
+    h = ParagraphStyle("h", parent=styles["Normal"], fontSize=16, textColor=DARK, spaceAfter=2, fontName="Helvetica-Bold")
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=16 * mm, bottomMargin=16 * mm)
+    E = [Paragraph(branding.get("company_name") or "ConstruPilot", h)]
+    ids = " · ".join(filter(None, [f"SIRET {branding.get('siret')}" if branding.get("siret") else None,
+                                   f"TVA {branding.get('vat')}" if branding.get("vat") else None]))
+    if ids:
+        E.append(Paragraph(ids, small))
+    E.append(Spacer(1, 10))
+    E.append(Paragraph(f"CERTIFICAT DE PAIEMENT N°{sit.get('seq')}", h))
+    E.append(Paragraph(f"Marché : {sit.get('marche_label') or '—'} · Facture liée : {sit.get('invoice_number') or '—'}", small))
+    cname = client.get("name") or client.get("company") or ""
+    if cname:
+        E.append(Paragraph(f"Maître d'ouvrage : {cname}", small))
+    E.append(Spacer(1, 12))
+
+    ht = float(sit.get("total_ht") or 0)
+    ttc = float(sit.get("total_ttc") or 0)
+    ret = float(sit.get("retention_amount") or 0)
+    net = float(sit.get("net_due") or (ttc - ret))
+    rows = [
+        ["Montant des travaux (situation) HT", _eur(ht)],
+        ["Montant TTC", _eur(ttc)],
+        [f"Retenue de garantie ({float(sit.get('retention_pct') or 0):g}%)", "- " + _eur(ret)],
+        ["MONTANT CERTIFIÉ — BON À PAYER (TTC)", _eur(net)],
+    ]
+    tt = Table(rows, colWidths=[120 * mm, 48 * mm])
+    last = len(rows) - 1
+    tt.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 10), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("LINEABOVE", (0, last), (-1, last), 0.8, DARK),
+        ("BACKGROUND", (0, last), (-1, last), GREEN),
+        ("TEXTCOLOR", (0, last), (-1, last), colors.white),
+        ("FONTNAME", (0, last), (-1, last), "Helvetica-Bold"),
+        ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    E.append(tt)
+    E.append(Spacer(1, 24))
+    E.append(Paragraph("Je soussigné, maître d'œuvre, certifie que les travaux correspondant au présent "
+                       "décompte ont été exécutés et donne bon à payer pour le montant certifié ci-dessus.", small))
+    E.append(Spacer(1, 20))
+    sign = Table([["Date : ______________________", "Visa & cachet du maître d'œuvre :"]],
+                 colWidths=[84 * mm, 84 * mm])
+    sign.setStyle(TableStyle([("FONTSIZE", (0, 0), (-1, -1), 9), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                              ("TOPPADDING", (0, 0), (-1, -1), 30)]))
+    E.append(sign)
+    doc.build(E)
+    return buf.getvalue()

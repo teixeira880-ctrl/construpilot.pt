@@ -87,9 +87,7 @@ export const Nav = () => {
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
       <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2 shrink-0 group" data-testid="nav-logo">
-          <span className="h-9 w-9 grid place-items-center bg-primary rounded-xl shadow-md shadow-primary/30 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-3">
-            <Hammer className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
-          </span>
+          <img src="/construpilot-icon.png" alt="ConstruPilot" className="h-9 w-9 rounded-xl object-cover shadow-md shadow-primary/30 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-3" />
           <span className="font-display font-extrabold tracking-tight text-lg">
             Constru<span className="text-primary">Pilot</span>
           </span>

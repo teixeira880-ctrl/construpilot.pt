@@ -216,7 +216,7 @@ async def remove_member(member_user_id: str, user=Depends(current_user)) -> dict
 
 
 @router.get("/activity")
-async def company_activity(action: str = "", user=Depends(current_user)):
+async def company_activity(action: str = "", actor_id: str = "", user=Depends(current_user)):
     """Journal d'activité de l'entreprise (qui a fait quoi). Réservé owner/admin en organisation."""
     u = await _me(user)
     if u.get("organization_id"):
@@ -225,4 +225,28 @@ async def company_activity(action: str = "", user=Depends(current_user)):
         org_id = u["organization_id"]
     else:
         org_id = f"solo:{user['user_id']}"
-    return await activity.recent(org_id, 150, action)
+    return await activity.recent(org_id, 150, action, actor_id)
+
+
+@router.get("/activity/export")
+async def export_activity(actor_id: str = "", user=Depends(current_user)):
+    """Export CSV du journal d'activité (filtrable par employé)."""
+    from fastapi import Response
+    u = await _me(user)
+    if u.get("organization_id"):
+        if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
+            raise HTTPException(403, "Réservé au propriétaire ou à un administrateur.")
+        org_id = u["organization_id"]
+    else:
+        org_id = f"solo:{user['user_id']}"
+    rows = await activity.recent(org_id, 2000, "", actor_id)
+    import csv
+    import io
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["Date", "Employé", "Action", "Détail"])
+    for r in rows:
+        w.writerow([r.get("created_at", "")[:19].replace("T", " "), r.get("actor_name", ""),
+                    r.get("action_label", ""), r.get("label", "")])
+    return Response(content="\ufeff" + buf.getvalue(), media_type="text/csv",
+                    headers={"Content-Disposition": 'attachment; filename="journal-activite.csv"'})

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Building2, Lock, ArrowRight, Users, UserPlus, Trash2, FileText, Layers,
-  HardHat, ClipboardList, Tag, Crown, ShieldCheck, TrendingUp, Wallet, CheckCircle2, XCircle, History,
+  HardHat, ClipboardList, Tag, Crown, ShieldCheck, TrendingUp, Wallet, CheckCircle2, XCircle, History, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,7 @@ export default function Entreprise() {
 
   const [data, setData] = useState(null);
   const [activity, setActivity] = useState([]);
+  const [actorFilter, setActorFilter] = useState("all");
   const [emp, setEmp] = useState({ name: "", email: "", password: "", role: "member" });
   const [openEmp, setOpenEmp] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -56,7 +57,21 @@ export default function Entreprise() {
   const load = () => {
     if (!isManager) return;
     api.get("/company/dashboard").then(({ data }) => setData(data)).catch(() => {});
-    api.get("/company/activity").then(({ data }) => setActivity(data)).catch(() => {});
+    loadActivity(actorFilter);
+  };
+  const loadActivity = (actor) => {
+    const q = actor && actor !== "all" ? `?actor_id=${actor}` : "";
+    api.get(`/company/activity${q}`).then(({ data }) => setActivity(data)).catch(() => {});
+  };
+  const onActorFilter = (v) => { setActorFilter(v); loadActivity(v); };
+  const exportJournal = async () => {
+    try {
+      const q = actorFilter && actorFilter !== "all" ? `?actor_id=${actorFilter}` : "";
+      const { data } = await api.get(`/company/activity/export${q}`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([data], { type: "text/csv" }));
+      const a = document.createElement("a"); a.href = url; a.download = "journal-activite.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Export impossible"); }
   };
   useEffect(() => { if (isProBusiness) load(); /* eslint-disable-next-line */ }, [isProBusiness, isManager]);
 
@@ -206,10 +221,23 @@ export default function Entreprise() {
         </div>
       )}
 
-      {isManager && activity.length > 0 && (
+      {isManager && activity.length >= 0 && (
         <div data-testid="entreprise-activity">
-          <p className="overline mb-3 flex items-center gap-2"><History className="h-4 w-4" /> Activité récente</p>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <p className="overline flex items-center gap-2"><History className="h-4 w-4" /> Activité récente</p>
+            <div className="flex items-center gap-2">
+              <Select value={actorFilter} onValueChange={onActorFilter}>
+                <SelectTrigger className="rounded-sm h-9 w-[180px]" data-testid="activity-filter"><SelectValue placeholder="Tous les employés" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les employés</SelectItem>
+                  {(data?.members || []).map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.name || m.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={exportJournal} data-testid="activity-export"><Download className="h-4 w-4" /> Export CSV</Button>
+            </div>
+          </div>
           <div className="surface rounded-md divide-y divide-border/60">
+            {activity.length === 0 && <p className="px-4 py-6 text-sm text-muted-foreground text-center">Aucune activité pour ce filtre.</p>}
             {activity.slice(0, 30).map((a) => (
               <div key={a.log_id} className="flex items-center gap-3 px-4 py-3" data-testid={`activity-${a.log_id}`}>
                 <div className="h-8 w-8 rounded-full bg-primary/10 grid place-items-center shrink-0">

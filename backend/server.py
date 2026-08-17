@@ -370,6 +370,11 @@ async def seed():
     scheduler.add_job(hr_routes.run_forgotten_clockouts,
                       CronTrigger(hour=20, minute=0), id="hr_forgotten_clockouts",
                       max_instances=1, coalesce=True)
+    # Relance auto des retenues de garantie proches de l'échéance (1 an) — chaque jour 08:30 UTC
+    from routes import situations as situations_routes
+    scheduler.add_job(situations_routes.run_retention_reminders,
+                      CronTrigger(hour=8, minute=30), id="retention_reminders",
+                      max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

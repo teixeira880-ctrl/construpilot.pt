@@ -101,6 +101,15 @@ export default function Situations() {
       URL.revokeObjectURL(url);
     } catch { toast.error("Génération du décompte impossible"); }
   };
+  const downloadCertificate = async (s) => {
+    try {
+      const { data } = await api.get(`/situations/${s.situation_id}/certificate`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `certificat-paiement-${s.seq}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Génération du certificat impossible"); }
+  };
 
   // ---- Prorata ----
   const saveProrata = async (cfg) => {
@@ -232,6 +241,7 @@ export default function Situations() {
                       </div>
                       <div className="ml-auto flex gap-2">
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" onClick={() => downloadSituationPdf(s)} data-testid={`situation-pdf-${s.situation_id}`}><FileText className="h-4 w-4" /> Décompte PDF</Button>
+                        <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => downloadCertificate(s)} data-testid={`situation-cert-${s.situation_id}`}><ShieldCheck className="h-4 w-4" /> Certificat</Button>
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => nav(`/devis-editeur/${s.invoice_doc_id}`)} data-testid={`situation-open-${s.situation_id}`}><FileText className="h-4 w-4" /> Facture</Button>
                         <Button size="sm" variant="ghost" className="rounded-sm text-red-500" onClick={() => del(s.situation_id)} data-testid={`situation-del-${s.situation_id}`}><Trash2 className="h-4 w-4" /></Button>
                       </div>

@@ -59,8 +59,10 @@ async def log(user: dict, action: str, entity: str = "", label: str = "", meta: 
         logger.info("activity log skipped: %s", exc)
 
 
-async def recent(org_id: str, limit: int = 100, action: str = "") -> list[dict]:
+async def recent(org_id: str, limit: int = 100, action: str = "", actor_id: str = "") -> list[dict]:
     q: dict = {"org_id": org_id}
     if action:
         q["action"] = action
+    if actor_id:
+        q["actor_id"] = actor_id
     return await db.activity_log.find(q, {"_id": 0}).sort("created_at", -1).to_list(limit)

@@ -99,9 +99,7 @@ export default function Login() {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20" />
         <div className="relative h-full p-12 flex flex-col justify-between">
           <Link to="/" className="flex items-center gap-2 w-fit">
-            <span className="h-8 w-8 grid place-items-center bg-primary rounded-sm">
-              <Hammer className="h-4 w-4 text-primary-foreground" />
-            </span>
+            <img src="/construpilot-icon.png" alt="ConstruPilot" className="h-9 w-9 rounded-lg object-cover" />
             <span className="font-display font-extrabold text-lg">Constru<span className="text-primary">Pilot</span></span>
           </Link>
           <div>

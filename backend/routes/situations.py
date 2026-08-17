@@ -8,7 +8,7 @@ paiement, pas une remise → montant plein facturé, net à payer réduit).
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -186,6 +186,25 @@ async def situation_pdf(situation_id: str, user=Depends(current_user)):
     fname = f"situation-{sit.get('seq')}-{sit.get('invoice_number') or situation_id}.pdf"
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+@router.get("/{situation_id}/certificate")
+async def situation_certificate(situation_id: str, user=Depends(current_user)):
+    """Certificat de paiement (visa maître d'œuvre) accompagnant le décompte."""
+    from fastapi import Response
+    from engines.situation_pdf import build_payment_certificate
+    from routes.plans_common import _resolve_branding
+    sit = await db.situations.find_one(
+        {"situation_id": situation_id, "user_id": _uid(user)}, {"_id": 0})
+    if not sit:
+        raise HTTPException(404, "Situation introuvable")
+    base = await db.pro_documents.find_one(
+        {"doc_id": sit.get("marche_id"), "user_id": _uid(user)}, {"_id": 0, "client": 1})
+    branding = await _resolve_branding(user["user_id"])
+    pdf = build_payment_certificate(sit, branding, (base or {}).get("client"))
+    fname = f"certificat-paiement-{sit.get('seq')}.pdf"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 # ─────────────────────────  1. Avancement cumulé (dashboard marché)  ─────────────────────────
 
 @router.get("/summary")
@@ -323,6 +342,46 @@ async def remind_retention(marche_id: str, user=Depends(current_user)):
     except Exception:
         sent = 0
     return {"emails_sent": sent, "held": held, "release_due": due, "to": email}
+
+
+async def run_retention_reminders() -> int:
+    """Job quotidien : relance auto des retenues arrivant à échéance (≤ 30 j), non libérées, non déjà relancées ce mois."""
+    today = datetime.now(timezone.utc).date()
+    horizon = (today + timedelta(days=30)).isoformat()
+    marches = await db.pro_documents.find(
+        {"retention_release_due": {"$lte": horizon}, "retention_released": {"$ne": True}},
+        {"_id": 0, "doc_id": 1, "user_id": 1, "number": 1, "title": 1, "client": 1,
+         "retention_release_due": 1, "retention_reminded_at": 1}).to_list(1000)
+    sent = 0
+    for m in marches:
+        last = m.get("retention_reminded_at")
+        if last and last[:7] == today.isoformat()[:7]:
+            continue  # déjà relancé ce mois
+        client = m.get("client") or {}
+        email = client.get("email")
+        if not email:
+            continue
+        sits = await db.situations.find(
+            {"user_id": m["user_id"], "marche_id": m["doc_id"], "retention_amount": {"$gt": 0}},
+            {"_id": 0, "retention_amount": 1}).to_list(500)
+        held = round(sum(s.get("retention_amount", 0) for s in sits), 2)
+        if held <= 0:
+            continue
+        label = m.get("number") or m.get("title") or m["doc_id"]
+        due = m.get("retention_release_due")
+        html = (f"<p>Bonjour,</p><p>La retenue de garantie du marché <b>{label}</b> "
+                f"({held:.2f} €) arrive à échéance de libération le <b>{due}</b>.</p>"
+                f"<p>Merci de bien vouloir procéder à sa libération.</p><p>Cordialement.</p>")
+        try:
+            await emailer.send_email(email, f"Échéance de retenue de garantie — {label}", html)
+            await db.pro_documents.update_one(
+                {"doc_id": m["doc_id"]}, {"$set": {"retention_reminded_at": _now()}})
+            sent += 1
+        except Exception:
+            pass
+    return sent
+
+
 
 
 # ─────────────────────────  4. Compte prorata (réparti entre les lots)  ─────────────────────────

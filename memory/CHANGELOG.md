@@ -807,3 +807,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - `engines/situation_pdf.py` : build_situation_pdf(sit, branding, client) → PDF reportlab (en-tête entreprise SIRET/TVA, titre "DÉCOMPTE DE SITUATION N°x", tableau par lot [Marché HT / % préc. / % cumulé / Cumul HT / Situation HT], totaux HT/TVA/TTC + retenue + NET À PAYER en vert, mention légale libération 1 an).
 - Endpoint `GET /situations/{situation_id}/pdf`. Frontend : bouton "Décompte PDF" sur chaque situation de l'historique (Situations.jsx).
 - ✅ Testé : PDF valide 2,7 Ko, contenu vérifié (figures cohérentes, TVA multi-taux 20%/10% = 4000€, net 27 750€).
+
+## 2026-08-17 (8) — Mode 100% gratuit (lancement) + relance auto retenue + logo + certificat + export journal
+- **Mode gratuit lancement** : `FREE_PROMO_MODE=true` (backend/.env). `monetization.user_tier()` renvoie `pro_business` pour tout utilisateur connecté → toutes les fonctions débloquées. ✅ testé (client free → pro_business). Pour DÉSACTIVER après la phase promo : FREE_PROMO_MODE=false + redéployer.
+- **Relance auto retenue** : `situations.run_retention_reminders()` (retenues échéance ≤30j, non libérées, 1 relance/mois max) + job scheduler quotidien 08:30 UTC (server.py). Bouton manuel "Relancer" déjà présent.
+- **Nouveau logo** : icône générée → /public/construpilot-icon.png. Intégré dans Nav (badge), favicon (index.html), page Login. Logos aussi dans /public/construpilot-logo.png.
+- **Certificat de paiement** : `situation_pdf.build_payment_certificate()` + GET `/situations/{id}/certificate` (montant certifié "Bon à payer" + bloc visa maître d'œuvre). Bouton "Certificat" dans Situations.jsx. ✅ testé (PDF 2,3 Ko).
+- **Journal exportable** : GET `/company/activity/export?actor_id=` (CSV BOM ; ; filtrable employé) + `recent(actor_id)`. UI Entreprise.jsx : filtre par employé + bouton "Export CSV". ✅ testé.
