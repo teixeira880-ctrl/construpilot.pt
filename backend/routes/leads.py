@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr
@@ -89,6 +89,35 @@ async def public_signup_count():
     leads = await db.leads.count_documents({})
     # Base de démarrage pour l'effet de preuve sociale au lancement
     return {"count": users + 1240, "users": users, "leads": leads}
+
+
+async def run_signup_followups() -> int:
+    """Relance J+3 : e-mail aux inscrits (par mot de passe) de ~3 jours n'ayant créé aucun devis."""
+    now = datetime.now(timezone.utc)
+    older = (now - timedelta(days=4)).isoformat()
+    newer = (now - timedelta(days=3)).isoformat()
+    users = await db.users.find(
+        {"auth_provider": "password", "welcome_followup": {"$ne": True},
+         "created_at": {"$gte": older, "$lte": newer}},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1}).to_list(500)
+    from engines import emailer
+    sent = 0
+    for u in users:
+        if await db.pro_documents.count_documents({"user_id": u["user_id"]}) > 0:
+            await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"welcome_followup": True}})
+            continue
+        html = (f"<p>Bonjour {u.get('name') or ''},</p>"
+                "<p>Vous avez rejoint <b>ConstruPilot</b> il y a quelques jours 🙂</p>"
+                "<p>Créez votre premier devis en 2 minutes — c'est <b>100% gratuit pendant le lancement</b>. "
+                "Nos calculateurs, prix matériaux et rendu 3D vous attendent !</p>"
+                "<p>À très vite,<br/>L'équipe ConstruPilot</p>")
+        try:
+            await emailer.send_email(u["email"], "Votre premier devis vous attend sur ConstruPilot", html)
+            await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"welcome_followup": True}})
+            sent += 1
+        except Exception:
+            pass
+    return sent
 
 
 

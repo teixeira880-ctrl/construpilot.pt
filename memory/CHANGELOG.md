@@ -834,3 +834,8 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - **Description multi-ligne** : QuoteEditor.jsx → textarea (rows=2) par ligne (persisté + archivé en bibliothèque). NB: suggestions IA d'ouvrages NON incluses (multi-ligne seulement).
 - **Générateur de lien UTM** : carte dans AdsPanel (réseau + campagne → lien construpilot.fr prêt à copier) + carte "Leads par canal".
 - ✅ register testé (token OK), bundle compile (login OK).
+
+## 2026-08-17 (12) — Pack visuels Instagram + relance J+3
+- Pack de 5 visuels Instagram générés (avant/après, témoignage, prix, 3D, 100% gratuit).
+- Relance J+3 : leads.run_signup_followups() + job scheduler quotidien 09:00 UTC (inscrits ~3j sans devis → e-mail, flag welcome_followup). ✅ backend sain.
+- NON FAITS (budget) : Suggestions IA d'ouvrages (nécessite intégration LLM), Landing dédiée particuliers (nouvelle page).

@@ -375,6 +375,10 @@ async def seed():
     scheduler.add_job(situations_routes.run_retention_reminders,
                       CronTrigger(hour=8, minute=30), id="retention_reminders",
                       max_instances=1, coalesce=True)
+    from routes import leads as leads_routes
+    scheduler.add_job(leads_routes.run_signup_followups,
+                      CronTrigger(hour=9, minute=0), id="signup_followups",
+                      max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search
