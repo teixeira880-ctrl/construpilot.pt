@@ -1,5 +1,12 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 105 — 17/08/2026 (Calculateurs : multi-formats + PDF + Ajouter au devis)
+- **Comparaison multi-formats (Placo)** : bouton « Comparer les formats » → tableau plaques + budget pour 200/250/260/300×120, meilleur prix surligné (frontend, appels parallèles au calc).
+- **Export PDF** : endpoint `POST /calculators-pdf` (reportlab/platypus) → fiche de calcul brandée (paramètres, résultats, liste de courses, budget, disclaimer). Bouton « Exporter en PDF ». Vérifié : HTTP 200, application/pdf, 2,3 Ko.
+- **Ajouter au devis** : bouton crée un devis (`POST /documents`, doc_type quote) pré-rempli avec les matériaux (prix à compléter) puis ouvre l'éditeur. Gate auth (redirige vers /login si non connecté). Vérifié via curl.
+- Fichiers : `backend/routes/tools.py`, `frontend/src/pages/Calculators.jsx`.
+
+
 ## Itération 104 — 16/08/2026 (TVA ajustable + Filtre période pub + Attribution UTM)
 - **TVA ajustable** : la conversion devis→facture ouvre un dialogue de choix du taux (5,5 % / 10 % / 20 %). Backend `POST /quotes/sends/{log_id}/to-invoice` accepte `vat_rate`. Vérifié : TTC 12000 @ 20 % → HT 10000 / TVA 2000.
 - **Filtre période publicité** : sélecteurs Plateforme + Mois sur le dashboard pub. Backend `/ads/campaigns` & `/ads/summary` acceptent `platform` & `month` ; nouvel endpoint `/ads/filters` (plateformes + mois dispo). Vérifié filtrage (google → 1 campagne).

@@ -1,4 +1,7 @@
+import io
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from engines import calculators, diy
@@ -36,6 +39,100 @@ async def run_calculator(key: str, body: CalcIn):
         args[f["name"]] = v
     args = {k: v for k, v in args.items() if k in allowed}
     return cfg["fn"](**args)
+
+
+class CalcPdfIn(BaseModel):
+    name: str = "Calcul matériaux"
+    inputs: list[dict] = []
+    results: list[dict] = []
+    materials: list[dict] = []
+    estimated_budget: float = 0
+
+
+@router.post("/calculators-pdf")
+async def calculator_pdf(body: CalcPdfIn):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (Paragraph, SimpleDocTemplate, Spacer, Table,
+                                    TableStyle)
+
+    GREEN = colors.HexColor("#16a34a")
+    DARK = colors.HexColor("#0f172a")
+    GREY = colors.HexColor("#64748b")
+    LIGHT = colors.HexColor("#f1f5f9")
+
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("h1", parent=styles["Title"], textColor=DARK, fontSize=20, spaceAfter=2)
+    sub = ParagraphStyle("sub", parent=styles["Normal"], textColor=GREY, fontSize=10, spaceAfter=14)
+    sec = ParagraphStyle("sec", parent=styles["Heading2"], textColor=GREEN, fontSize=12, spaceBefore=14, spaceAfter=6)
+    small = ParagraphStyle("small", parent=styles["Normal"], textColor=GREY, fontSize=8, leading=11)
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=16 * mm, bottomMargin=14 * mm, title="Fiche de calcul")
+    flow = [Paragraph("ConstruPilot — Fiche de calcul", h1), Paragraph(body.name, sub)]
+
+    if body.inputs:
+        flow.append(Paragraph("Paramètres", sec))
+        rows = [[str(i.get("label", "")), str(i.get("value", ""))] for i in body.inputs]
+        t = Table(rows, colWidths=[90 * mm, 84 * mm])
+        t.setStyle(TableStyle([
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("TEXTCOLOR", (0, 0), (0, -1), GREY),
+            ("TEXTCOLOR", (1, 0), (1, -1), DARK),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5), ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.4, LIGHT),
+        ]))
+        flow.append(t)
+
+    if body.results:
+        flow.append(Paragraph("Résultats", sec))
+        rows = [["Poste", "Quantité", "Unité"]]
+        for r in body.results:
+            rows.append([str(r.get("label", "")), str(r.get("value", "")), str(r.get("unit", ""))])
+        t = Table(rows, colWidths=[104 * mm, 40 * mm, 30 * mm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTSIZE", (0, 0), (-1, -1), 9), ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT]),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6), ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        flow.append(t)
+
+    if body.materials:
+        flow.append(Paragraph("Liste de courses matériaux", sec))
+        rows = [["Matériau", "Quantité", "Unité"]]
+        for m in body.materials:
+            rows.append([str(m.get("name", "")), str(m.get("quantity", "")), str(m.get("unit", ""))])
+        t = Table(rows, colWidths=[104 * mm, 40 * mm, 30 * mm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), GREEN),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTSIZE", (0, 0), (-1, -1), 9), ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT]),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6), ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        flow.append(t)
+
+    flow.append(Spacer(1, 10))
+    flow.append(Paragraph(f"Budget matériaux estimé : <b>{body.estimated_budget:,.0f} €</b>".replace(",", " "),
+                          ParagraphStyle("bud", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
+    flow.append(Spacer(1, 16))
+    flow.append(Paragraph(
+        "Estimation indicative avec marges de sécurité incluses. Les quantités peuvent varier selon la mise "
+        "en œuvre et les conditions de chantier. Vérifiez avant commande. — Généré par ConstruPilot · construpilot.fr",
+        small))
+
+    doc.build(flow)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/pdf",
+                             headers={"Content-Disposition": 'attachment; filename="fiche-calcul-construpilot.pdf"'})
+
 
 
 @router.get("/diy/tasks")

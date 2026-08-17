@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Calculator, Search, ShoppingCart } from "lucide-react";
+import { Calculator, Search, ShoppingCart, FileDown, FilePlus2, Columns3, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,16 +11,29 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, eur, eur2, num } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 
+const DRYWALL_FORMATS = [
+  { plate_length: 200, plate_width: 120 },
+  { plate_length: 250, plate_width: 120 },
+  { plate_length: 260, plate_width: 120 },
+  { plate_length: 300, plate_width: 120 },
+];
+
 export default function Calculators() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [calcs, setCalcs] = useState([]);
   const [active, setActive] = useState(null);
   const [params, setParams] = useState({});
   const [result, setResult] = useState(null);
   const [optim, setOptim] = useState(null);
+  const [compare, setCompare] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [busyPdf, setBusyPdf] = useState(false);
+  const [addingQuote, setAddingQuote] = useState(false);
 
   useEffect(() => {
     api.get("/calculators").then(({ data }) => {
@@ -32,6 +46,7 @@ export default function Calculators() {
     setActive(c);
     setResult(null);
     setOptim(null);
+    setCompare(null);
     const init = {};
     c.fields.forEach((f) => { if (f.default !== null && f.default !== undefined) init[f.name] = f.default; });
     setParams(init);
@@ -43,8 +58,68 @@ export default function Calculators() {
       const { data } = await api.post(`/calculators/${active.key}`, { params });
       setResult(data);
       setOptim(null);
+      setCompare(null);
     } catch { toast.error("Calcul impossible"); }
     finally { setBusy(false); }
+  };
+
+  const compareFormats = async () => {
+    setBusy(true);
+    try {
+      const runs = await Promise.all(DRYWALL_FORMATS.map((fmt) =>
+        api.post(`/calculators/${active.key}`, { params: { ...params, ...fmt } })
+          .then(({ data }) => ({
+            format: `${fmt.plate_length}×${fmt.plate_width} cm`,
+            plates: data.results.find((r) => /plaque/i.test(r.label))?.value ?? "—",
+            budget: data.estimated_budget,
+          }))
+      ));
+      setCompare(runs);
+    } catch { toast.error("Comparaison impossible"); }
+    finally { setBusy(false); }
+  };
+
+  const exportPdf = async () => {
+    setBusyPdf(true);
+    try {
+      const inputs = active.fields.map((f) => ({
+        label: f.label, value: String(params[f.name] ?? f.default ?? "—").replace(/_/g, " "),
+      }));
+      const { data } = await api.post("/calculators-pdf", {
+        name: active.name,
+        inputs,
+        results: result.results,
+        materials: result.materials.map((m) => ({ name: m.name, quantity: Math.round(m.quantity * 100) / 100, unit: m.unit })),
+        estimated_budget: result.estimated_budget,
+      }, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `fiche-calcul-${active.key}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Export PDF impossible"); }
+    finally { setBusyPdf(false); }
+  };
+
+  const addToQuote = async () => {
+    if (!user) {
+      toast.info("Connectez-vous pour créer un devis");
+      navigate("/login");
+      return;
+    }
+    setAddingQuote(true);
+    try {
+      const lines = result.materials.map((m) => ({
+        designation: m.name, unit: m.unit, qty: Math.ceil(m.quantity),
+        unit_price_ht: 0, vat_rate: 10, category: active.name,
+      }));
+      const { data } = await api.post("/documents", {
+        doc_type: "quote", title: `Devis — ${active.name}`, lines,
+      });
+      toast.success("Devis créé — complétez les prix");
+      navigate(`/devis-editeur/${data.doc_id}`);
+    } catch { toast.error("Création du devis impossible"); }
+    finally { setAddingQuote(false); }
   };
 
   const findPrices = async () => {
@@ -132,7 +207,49 @@ export default function Calculators() {
                 <p className="num mt-6 text-sm">
                   Budget matériaux estimé : <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
                 </p>
+
+                <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
+                  <Button onClick={exportPdf} disabled={busyPdf} variant="outline" className="rounded-sm gap-2" data-testid="calc-export-pdf-btn">
+                    {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Exporter en PDF
+                  </Button>
+                  <Button onClick={addToQuote} disabled={addingQuote} className="rounded-sm gap-2" data-testid="calc-add-quote-btn">
+                    {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Ajouter au devis
+                  </Button>
+                  {active.key === "drywall" && (
+                    <Button onClick={compareFormats} disabled={busy} variant="outline" className="rounded-sm gap-2" data-testid="calc-compare-btn">
+                      <Columns3 className="h-4 w-4" /> Comparer les formats
+                    </Button>
+                  )}
+                </div>
               </div>
+
+              {compare && (
+                <div className="surface overflow-x-auto" data-testid="calc-compare-table">
+                  <div className="px-6 pt-5"><p className="overline">Comparaison des formats de plaque</p></div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-secondary/60 hover:bg-secondary/60">
+                        <TableHead>Format plaque</TableHead>
+                        <TableHead className="text-right">Plaques nécessaires</TableHead>
+                        <TableHead className="text-right">Budget estimé</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {compare.map((c, i) => {
+                        const best = Math.min(...compare.map((x) => x.budget || Infinity));
+                        const isBest = (c.budget || Infinity) === best;
+                        return (
+                          <TableRow key={i} className={isBest ? "bg-primary/10" : "even:bg-muted/30"}>
+                            <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ le moins cher</span>}</TableCell>
+                            <TableCell className="num text-right">{num(c.plates, 0)}</TableCell>
+                            <TableCell className="num text-right font-semibold text-primary">{eur(c.budget)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
               <div className="surface overflow-x-auto">
                 <Table data-testid="calculator-materials">
