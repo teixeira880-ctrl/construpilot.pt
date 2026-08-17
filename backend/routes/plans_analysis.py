@@ -18,6 +18,7 @@ from engines import geometry as G
 from engines import plan_texts as T
 from engines.plan_ai import analyze_plan_image
 from engines.plan_cv import detect_all_rooms, detect_walls, flood_fill_room
+from engines.plan_structure import detect_structure
 from engines.plan_processor import auto_calibration_from_pdf_scale
 
 from routes.plans_common import (
@@ -354,10 +355,75 @@ async def detect_walls_route(plan_id: str, page_index: int = 0,
     return result
 
 
+def _page_dims(page: dict) -> tuple[int, int]:
+    w = int(page.get("width_px") or 0)
+    h = int(page.get("height_px") or 0)
+    if w and h:
+        return w, h
+    import base64 as _b64
+    import io as _io
+    from PIL import Image as _Image
+    img = _Image.open(_io.BytesIO(_b64.b64decode(page["image_png_b64"])))
+    return int(img.width), int(img.height)
+
+
+@router.post("/{plan_id}/detect-structure")
+async def detect_structure_route(plan_id: str, page_index: int = 0,
+                                 user=Depends(current_user)):
+    """Détection IA de la structure : murs (rouge) + ouvertures portes/fenêtres.
+
+    Produit un rendu sémantique propre, contrairement à /detect-walls (OpenCV brut).
+    """
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if page_index < 0 or page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    page = pages[page_index]
+    img = page.get("image_png_b64")
+    if not img:
+        raise HTTPException(500, "Image manquante")
+    w, h = _page_dims(page)
+    result = await detect_structure(img, w, h)
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {f"structure.{page_index}": {**result, "detected_at": _now()},
+                  "updated_at": _now()}})
+    return result
+
+
+class StructureIn(BaseModel):
+    walls: list[dict] = Field(default_factory=list)
+    openings: list[dict] = Field(default_factory=list)
+    image_width: int | None = None
+    image_height: int | None = None
+
+
+@router.put("/{plan_id}/structure/{page_index}")
+async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
+                               user=Depends(current_user)):
+    """Sauvegarde la structure éditée manuellement (murs/ouvertures ajoutés,
+    supprimés, déplacés ou reclassés porte↔fenêtre)."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    payload = {
+        "walls": body.walls, "openings": body.openings,
+        "wall_count": len(body.walls), "opening_count": len(body.openings),
+        "image_width": body.image_width, "image_height": body.image_height,
+        "edited_at": _now(),
+    }
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {f"structure.{page_index}": payload, "updated_at": _now()}})
+    return {"ok": True, **payload}
+
+
 class WallTypeIn(BaseModel):
     wall_type: str  # porteur | cloison | doublage
-
-
 @router.patch("/{plan_id}/walls/{page_index}/{wall_id}/type")
 async def update_wall_type(plan_id: str, page_index: int, wall_id: str,
                            body: WallTypeIn, user=Depends(current_user)) -> dict:

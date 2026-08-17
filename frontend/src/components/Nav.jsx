@@ -34,7 +34,7 @@ const NAV_PRO = [
   { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
   { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
   { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
-  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch },
+  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch, hint: "Permis de construire" },
 ];
 
 const NAV_DISCOVER = [
@@ -110,9 +110,10 @@ export const Nav = () => {
               <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-pro-menu">
                 {proItems.map((l) => (
                   <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
-                    <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
+                    <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} title={l.hint || undefined} className="flex items-center gap-2.5">
                       <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
                       {t(l.key, l.label)}
+                      {l.hint && <span className="ml-auto text-[10px] text-muted-foreground">{l.hint}</span>}
                     </Link>
                   </DropdownMenuItem>
                 ))}

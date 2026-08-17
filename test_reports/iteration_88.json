@@ -1,0 +1,37 @@
+{
+  "summary": "Iter88 — Validation e2e des nouvelles features Plan 2D + Devis: (A) Retour + Annuler dernier point dans active-tool-bar, (B) 'PC' + sous-titre 'Permis de construire', (C) Détection IA structure (murs rouges / fenêtres jaunes / portes violettes) + carte structure-card éditable + 'Tout effacer', (D) Suggestions IA descriptions devis. Backend 6/6 pytest passent (POST /api/takeoffs/{id}/detect-structure, PUT /api/takeoffs/{id}/structure/{page_index}, GET plan avec structure persistée, POST /api/documents/ai/describe). Frontend Playwright: tous les data-testid attendus présents avec les bons libellés/titles, la carte structure-card affiche les compteurs (persistés = 2 murs / 1 ouverture après l'édition précédente), les boutons d'ajout et le toggle overlay sont présents, la barre active-tool-bar apparaît en activant tool-calibrate avec Retour + 'Annuler le dernier point', 'Retour' fait bien disparaître la barre, le h1 PC contient bien '— Permis de construire', et le bouton 'Suggestions IA' du QuoteEditor remplit la description (~590 caractères avec puces).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "QuoteEditor (/devis-editeur)", "issues": ["React hydration warning: <span> ne peut pas être enfant de <option> dans le <select> VAT (VAT_RATES). L'app fonctionne mais console.error visible. Provient de x-source-editable/instrumentation autour de options générées."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter88_plan_structure.py",
+    "/app/test_reports/pytest/iter88_structure.xml"
+  ],
+  "action_items": [
+    "(Optionnel) Nettoyer le warning React 'span cannot be a child of option' dans QuoteEditor (VAT_RATES map) — probablement lié à l'instrumentation dev, non bloquant."
+  ],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx dépasse largement 700 lignes (>3100 lignes) — envisager de découper structure-card, active-tool-bar, tabs (rooms/materials/ai/history) en sous-composants.",
+    "plans_analysis.py::detect_structure_route: aucune protection anti-abus (appel Gemini coûteux non rate-limité par plan_id + délai 10-40s). OK MVP mais prévoir un throttle par utilisateur.",
+    "documents.py::ai_describe_line: retourne 502 si engine échoue, bien. Envisager un timeout explicite côté client (>15s) — actuellement la description s'affiche vers 5-10s.",
+    "PlanTakeoff.jsx: les outils de mesure sont disabled tant que non calibré — le libellé 'Calibration nécessaire' est présent, bien. tool-calibrate est bien toujours accessible."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter88_plan_structure.py"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (flux critiques)"},
+  "test_credentials": "demo@construpilot.fr / Demo2026! (Pro Business, gating plan OK)",
+  "seed_data_creation": "Aucune donnée créée en dehors de l'édition de la structure sur le plan existant (plan_da91364b9bc7). Ligne devis 'Peinture murs salon' non sauvegardée (draft éphémère).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend /api/takeoffs/{id}/detect-structure fonctionne (Gemini ~10-30s, renvoie walls/openings + counts). PUT structure persiste bien et GET plan renvoie 'structure' par page grâce à _plan_summary. Le QuoteEditor est en anglais dans l'UI actuelle (Log in, Editor — quote) : c'est un choix i18n, pas un bug. Pour tester active-tool-bar sans devoir calibrer d'abord, utiliser tool-calibrate qui est toujours actif (les autres tools sont disabled tant que non calibré, ce qui est le comportement attendu — libellé 'Calibration nécessaire' visible).",
+  "rca of the issue": "N/A — pas de bug identifié. Tous les flux couverts par la review request fonctionnent correctement."
+}

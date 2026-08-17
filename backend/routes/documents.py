@@ -102,6 +102,26 @@ async def _get_owned(doc_id: str, user: dict) -> dict:
     return doc
 
 
+class DescribeIn(BaseModel):
+    designation: str
+    context: str = ""
+
+
+@router.post("/ai/describe")
+async def ai_describe_line(body: DescribeIn, user=Depends(current_user)) -> dict:
+    """Suggestions IA : génère une description de prestations pour une ligne de devis."""
+    designation = (body.designation or "").strip()
+    if not designation:
+        raise HTTPException(400, "Indiquez d'abord une désignation de ligne")
+    from engines.ai import suggest_line_description
+    try:
+        text = await suggest_line_description(designation, (body.context or "").strip()[:400])
+    except Exception as e:
+        logging.getLogger("documents").exception("ai describe failed")
+        raise HTTPException(502, f"Suggestion IA indisponible : {type(e).__name__}")
+    return {"description": (text or "").strip()}
+
+
 @router.post("")
 async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     dtype = body.doc_type if body.doc_type in DOC_TYPES else "quote"

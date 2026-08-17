@@ -161,17 +161,26 @@ def _has_parallel_partner(seg: dict, others: list[dict],
     return False
 
 
-def _wall_footprint(segments: list[dict], thick_px: float = 3.0) -> tuple | None:
-    """Bounding box (x0, y0, x1, y1) de la masse des VRAIS murs (traits épais).
+def _wall_footprint(segments: list[dict], thick_px: float = 3.0,
+                    min_len_ratio: float = 0.28) -> tuple | None:
+    """Bounding box (x0, y0, x1, y1) de la masse des VRAIS murs structurels.
 
     Sert de référence pour rejeter les traits fins situés dans les marges
-    (cotes, annotations, cartouche). Retourne None si trop peu de murs épais
-    pour définir une emprise fiable (plans dessinés en traits fins uniquement)."""
-    thick = [s for s in segments if s.get("thickness_px", 0) >= thick_px]
-    if len(thick) < 4:
+    (cotes, annotations, cartouche, titre). On ne retient comme référence que
+    les segments à la fois ÉPAIS et LONGS (les grands murs porteurs/refends) —
+    sinon le titre en gras ou une cote totale fausserait l'emprise. Retourne
+    None si trop peu de murs fiables (plans dessinés en traits fins uniquement)."""
+    if not segments:
         return None
-    xs = [c for s in thick for c in (s["x1"], s["x2"])]
-    ys = [c for s in thick for c in (s["y1"], s["y2"])]
+    span = max((max(s["x1"], s["x2"]) for s in segments), default=0)
+    span = max(span, max((max(s["y1"], s["y2"]) for s in segments), default=0))
+    min_len = min_len_ratio * span
+    seeds = [s for s in segments
+             if s.get("thickness_px", 0) >= thick_px and s.get("length_px", 0) >= min_len]
+    if len(seeds) < 3:
+        return None
+    xs = [c for s in seeds for c in (s["x1"], s["x2"])]
+    ys = [c for s in seeds for c in (s["y1"], s["y2"])]
     return (min(xs), min(ys), max(xs), max(ys))
 
 
@@ -193,13 +202,16 @@ def filter_cote_segments(segments: list[dict], dim_zones: list | None = None,
     2. milieu du segment dans une zone de texte du plan (PDF vectoriel)
     3. trait fin (< thin_px) SANS partenaire parallèle réel (mur creux = 2 traits
        espacés de ≥4 px, pas les échos Canny d'une même ligne).
-    4. trait fin situé HORS de l'emprise du bâti (marges = zone des cotes). Attrape
-       les cotes empilées qui se prennent mutuellement pour un mur double-trait.
+    4. milieu du segment situé HORS de l'enveloppe du bâti (± marge). Les vrais
+       murs extérieurs sont SUR le bord de l'emprise (donc dans la marge) et les
+       cloisons à l'intérieur ; ce qui tombe dans les marges est cote / titre /
+       cartouche / annotation. Ce critère n'est appliqué que si l'emprise est
+       fiable (≥3 longs murs épais), sinon on ne rejette rien par position.
     """
     fp = _wall_footprint(segments)
     margin = 0.0
     if fp:
-        margin = 0.04 * max(fp[2] - fp[0], fp[3] - fp[1])
+        margin = 0.02 * max(fp[2] - fp[0], fp[3] - fp[1])
     kept: list[dict] = []
     removed = 0
     for s in segments:
@@ -210,7 +222,7 @@ def filter_cote_segments(segments: list[dict], dim_zones: list | None = None,
         if text_zones and _in_text_zone(s, text_zones):
             removed += 1
             continue
-        if fp and thin and _outside_footprint(s, fp, margin):
+        if fp and _outside_footprint(s, fp, margin):
             removed += 1
             continue
         if thin and not _has_parallel_partner(s, segments):

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User,
+  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ export default function QuoteEditor() {
   const [status, setStatus] = useState("draft");
   const [number, setNumber] = useState(null);
   const [lines, setLines] = useState([blankLine()]);
+  const [aiLineBusy, setAiLineBusy] = useState(null);
   const [docType, setDocType] = useState(
     ["invoice", "credit_note"].includes(sp.get("type")) ? sp.get("type") : "quote");
 
@@ -108,6 +109,25 @@ export default function QuoteEditor() {
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
   const addLine = () => setLines((ls) => [...ls, blankLine()]);
   const delLine = (i) => setLines((ls) => ls.filter((_, idx) => idx !== i));
+
+  const suggestDescription = async (i) => {
+    const l = lines[i];
+    if (!l?.designation.trim()) return toast.error("Renseignez d'abord la désignation");
+    setAiLineBusy(i);
+    try {
+      const { data } = await api.post("/documents/ai/describe", {
+        designation: l.designation, context: title || "",
+      });
+      const suggestion = (data.description || "").trim();
+      if (!suggestion) return toast.error("Aucune suggestion générée");
+      setLines((ls) => ls.map((ln, idx) => idx === i
+        ? { ...ln, description: ln.description?.trim() ? ln.description + "\n" + suggestion : suggestion }
+        : ln));
+      toast.success("Suggestions IA ajoutées à la description");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Suggestion IA indisponible");
+    } finally { setAiLineBusy(null); }
+  };
   const addFromLib = (it) => {
     setLines((ls) => [...ls, {
       designation: it.designation, unit: it.unit, qty: 1,
@@ -286,6 +306,14 @@ export default function QuoteEditor() {
                    placeholder="Description / détail de l'ouvrage (optionnel — archivé en bibliothèque)"
                    rows={2}
                    className="rounded-sm text-sm w-full bg-background border border-input px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary" data-testid={`editor-line-desc-${i}`} />
+            <div className="flex justify-end">
+              <Button size="sm" variant="outline" disabled={aiLineBusy === i || !l.designation.trim()}
+                      onClick={() => suggestDescription(i)} data-testid={`editor-line-ai-${i}`}
+                      className="rounded-sm gap-1 h-7 text-xs text-primary border-primary/40">
+                <Sparkles className={`h-3.5 w-3.5 ${aiLineBusy === i ? "animate-pulse" : ""}`} />
+                {aiLineBusy === i ? "Suggestion…" : "Suggestions IA"}
+              </Button>
+            </div>
           </div>
         ))}
         {lines.length === 0 && (

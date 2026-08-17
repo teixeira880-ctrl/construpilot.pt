@@ -2197,3 +2197,13 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Résultat repro** : 0 → 16 cotes filtrées, aucune cote résiduelle, murs conservés.
 - **Tests** : `tests/test_iter88_cote_filter.py` (unitaire pur, sans serveur) + non-régression iter62 (11 passed) + iter22/iter13 walls (55 passed).
 - PROD : nécessite un REDÉPLOIEMENT (Deploy Now) pour être actif sur construpilot.fr.
+
+## Changelog Iter 88b (17/06/2026) — Détection IA murs+ouvertures + outils mesure + PC + Suggestions IA
+- **Détection IA structure (murs rouges / fenêtres jaunes / portes violettes)** : nouveau moteur `engines/plan_structure.py` (Gemini vision, coords normalisées→pixels), routes `POST /api/takeoffs/{id}/detect-structure` + `PUT /api/takeoffs/{id}/structure/{page_index}`. Rendu sémantique propre sur le canvas + carte d'édition (sélection, glisser les extrémités, changer type porteur↔cloison / porte↔fenêtre↔baie, supprimer, ajouter mur/fenêtre/porte). Bouton `plan-detect-structure-btn` « Murs + ouvertures (IA) ». Persistance corrigée : `_plan_summary` renvoie désormais `structure`.
+- **Outils de mesure** : barre `active-tool-bar` avec « Annuler le dernier point » (undo) + « Retour » (retour Sélection) sur tous les outils.
+- **Bouton « Tout effacer »** (`plan-clear-all-btn`) : efface pièces + annotations + murs avant un nouveau devis.
+- **« Lire le plan (IA) »** : renommage du bouton d'analyse IA (`plan-ai-btn`).
+- **PC = Permis de construire** : sous-titre sur le tableau de bord PC + infobulles (Nav, bouton étude PC).
+- **Suggestions IA devis** : `POST /api/documents/ai/describe` (Claude) + bouton `editor-line-ai-{i}` dans QuoteEditor → remplit la description en puces.
+- **Tests** : testing agent iter88 — backend 6/6, frontend 100% flux critiques, 0 bug. Warning React mineur préexistant (span dans option du select TVA, non bloquant).
+- PROD : nécessite un REDÉPLOIEMENT (Deploy Now).

@@ -19,6 +19,7 @@ import {
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, Droplet, FileDown, History, Film, DoorOpen, Copy,
   Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon, Sheet, FileSearch,
+  ArrowLeft, Eraser, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { api, eur, num } from "@/lib/api";
 import PlanCanvas from "@/components/planTakeoff/PlanCanvas";
-import { TOOLS, CALIB_METHOD_LABELS, COUNTER_COLORS } from "@/components/planTakeoff/planConstants";
+import { TOOLS, TOOL_LABELS, CALIB_METHOD_LABELS, COUNTER_COLORS } from "@/components/planTakeoff/planConstants";
 
 
 // ============ MAIN PAGE ============
@@ -83,6 +84,10 @@ export default function PlanTakeoff() {
   const [msgTemplates, setMsgTemplates] = useState([]);
   const [detectedWalls, setDetectedWalls] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
+  const [structure, setStructure] = useState(null);
+  const [showStructure, setShowStructure] = useState(true);
+  const [structBusy, setStructBusy] = useState(false);
+  const [selectedStruct, setSelectedStruct] = useState(null);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
   const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
@@ -182,6 +187,8 @@ export default function PlanTakeoff() {
       setRotation(0);
       setAutoRotated(false);
       setDetectedWalls(null);
+      setStructure(plan.structure?.[String(pageIndex)] || null);
+      setSelectedStruct(null);
       // Load annotations for this page (QuoterPlan-like tools)
       const pageAnnotations = plan.annotations?.[String(pageIndex)] || {};
       setAnnotations({
@@ -849,6 +856,29 @@ export default function PlanTakeoff() {
     toast.success("Pièce supprimée");
   };
 
+  // Efface TOUTES les mesures/annotations de la page avant de passer au devis
+  const clearAllMeasures = async () => {
+    if (!plan?.plan_id) return;
+    const roomCount = rooms.length;
+    if (!window.confirm(
+      `Tout effacer sur cette page ?\n\n${roomCount} pièce(s), les annotations (compteurs, notes, angles, toitures) et les murs détectés seront supprimés. Cette action est irréversible.`
+    )) return;
+    try {
+      // Supprime toutes les pièces de la page côté serveur
+      await Promise.all(rooms.map((r) => api.delete(`/takeoffs/${plan.plan_id}/rooms/${r.room_id}`)));
+      // Vide les annotations (persistées via l'auto-save)
+      setAnnotations({ counters: [], notes: [], angles: [], pitched_surfaces: [] });
+      setDetectedWalls(null);
+      setWallsSummary(null);
+      setPoints([]);
+      setTool(TOOLS.SELECT);
+      await refreshPlan();
+      toast.success("Toutes les mesures ont été effacées — prêt pour un nouveau devis");
+    } catch (e) {
+      toast.error("Impossible de tout effacer");
+    }
+  };
+
   const importAiRooms = async () => {
     const aiRooms = plan?.ai_analysis?.rooms || [];
     if (!aiRooms.length) return toast.error("Aucune pièce IA à importer");
@@ -1016,6 +1046,102 @@ export default function PlanTakeoff() {
       await loadWallsSummary();
     } catch (e) { toast.error("Détection murs impossible"); }
     finally { setCvBusy(false); }
+  };
+
+  // ===== STRUCTURE IA (murs rouges + ouvertures jaunes/violettes) =====
+  const detectStructure = async () => {
+    if (!plan?.plan_id) return;
+    setStructBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure?page_index=${pageIndex}`);
+      if (data.error) { toast.warning("IA : " + data.error); }
+      setStructure(data);
+      setShowStructure(true);
+      setSelectedStruct(null);
+      toast.success(`Structure détectée — ${data.wall_count || 0} murs · ${data.opening_count || 0} ouvertures`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Détection structure impossible");
+    } finally { setStructBusy(false); }
+  };
+
+  const persistStructure = async (next) => {
+    setStructure(next);
+    try {
+      await api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
+        walls: next.walls || [], openings: next.openings || [],
+        image_width: next.image_width, image_height: next.image_height,
+      });
+    } catch { toast.error("Sauvegarde de la structure impossible"); }
+  };
+
+  const commitStructure = () => setStructure((prev) => {
+    if (prev && plan?.plan_id) {
+      api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
+        walls: prev.walls || [], openings: prev.openings || [],
+        image_width: prev.image_width, image_height: prev.image_height,
+      }).catch(() => {});
+    }
+    return prev;
+  });
+
+  const dragStructPoint = (type, id, ep, [ix, iy]) => {
+    setStructure((prev) => {
+      if (!prev) return prev;
+      const key = type === "wall" ? "walls" : "openings";
+      const idKey = type === "wall" ? "wall_id" : "opening_id";
+      const arr = (prev[key] || []).map((it) => {
+        if (it[idKey] !== id) return it;
+        return ep === 0 ? { ...it, x1: ix, y1: iy } : { ...it, x2: ix, y2: iy };
+      });
+      return { ...prev, [key]: arr };
+    });
+  };
+
+  const deleteStructItem = () => {
+    if (!selectedStruct || !structure) return;
+    const key = selectedStruct.type === "wall" ? "walls" : "openings";
+    const idKey = selectedStruct.type === "wall" ? "wall_id" : "opening_id";
+    const next = { ...structure, [key]: (structure[key] || []).filter((it) => it[idKey] !== selectedStruct.id) };
+    setSelectedStruct(null);
+    persistStructure(next);
+  };
+
+  const toggleStructType = () => {
+    if (!selectedStruct || !structure) return;
+    if (selectedStruct.type === "wall") {
+      const next = { ...structure, walls: (structure.walls || []).map((w) =>
+        w.wall_id === selectedStruct.id ? { ...w, type: w.type === "porteur" ? "cloison" : "porteur" } : w) };
+      persistStructure(next);
+    } else {
+      const cycle = { fenetre: "porte", porte: "baie", baie: "fenetre" };
+      const next = { ...structure, openings: (structure.openings || []).map((o) =>
+        o.opening_id === selectedStruct.id ? { ...o, kind: cycle[o.kind] || "fenetre" } : o) };
+      persistStructure(next);
+    }
+  };
+
+  const addStructWall = () => {
+    const w = structure?.image_width || 1000, h = structure?.image_height || 1000;
+    const cx = Math.round(w / 2), cy = Math.round(h / 2);
+    const item = { wall_id: "sw_" + Math.random().toString(16).slice(2, 8),
+                   x1: cx - 80, y1: cy, x2: cx + 80, y2: cy, type: "cloison" };
+    const next = { ...(structure || { walls: [], openings: [], image_width: w, image_height: h }) };
+    next.walls = [...(next.walls || []), item];
+    setSelectedStruct({ type: "wall", id: item.wall_id });
+    persistStructure(next);
+    toast.info("Mur ajouté — glissez ses extrémités pour le placer");
+  };
+
+  const addStructOpening = (kind) => {
+    const w = structure?.image_width || 1000, h = structure?.image_height || 1000;
+    const cx = Math.round(w / 2), cy = Math.round(h / 2);
+    const item = { opening_id: "so_" + Math.random().toString(16).slice(2, 8),
+                   kind, x1: cx - 40, y1: cy, x2: cx + 40, y2: cy, swing: null };
+    const next = { ...(structure || { walls: [], openings: [], image_width: w, image_height: h }) };
+    next.openings = [...(next.openings || []), item];
+    setSelectedStruct({ type: "opening", id: item.opening_id });
+    persistStructure(next);
+    toast.info(`${kind === "porte" ? "Porte" : "Fenêtre"} ajoutée — glissez ses extrémités pour la placer`);
   };
 
   const autoFillRoom = async (pt) => {
@@ -1809,14 +1935,26 @@ export default function PlanTakeoff() {
           <Button variant="outline" onClick={() => setPlan(null)} data-testid="plan-back-btn" className="rounded-sm gap-2">
             <Home className="h-4 w-4" /> Nouveau plan
           </Button>
+          <Button variant="outline" onClick={clearAllMeasures} data-testid="plan-clear-all-btn"
+                  title="Effacer toutes les pièces, annotations et murs de cette page avant de repartir sur un nouveau devis"
+                  className="rounded-sm gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-white">
+            <Eraser className="h-4 w-4" /> Tout effacer
+          </Button>
           <Button variant="outline" onClick={duplicatePlan} data-testid="plan-duplicate-btn" className="rounded-sm gap-2"
                   title="Créer une copie de ce plan (pièces, ouvertures, calibrations)">
             <Copy className="h-4 w-4" /> Dupliquer
           </Button>
           <Button variant="outline" onClick={detectWalls} disabled={cvBusy} data-testid="plan-detect-walls-btn"
+                  title="Détection brute OpenCV (rapide) — sans distinction porte/fenêtre"
                   className="rounded-sm gap-2 border-cyan-500/50 text-cyan-500 hover:bg-cyan-500 hover:text-white">
             <Zap className={`h-4 w-4 ${cvBusy ? "animate-pulse" : ""}`} />
             {cvBusy ? "…" : "Détecter les murs"}
+          </Button>
+          <Button variant="outline" onClick={detectStructure} disabled={structBusy} data-testid="plan-detect-structure-btn"
+                  title="Détection IA : murs (rouge) + fenêtres (jaune) + portes (violet), éditable"
+                  className="rounded-sm gap-2 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white">
+            <Sparkles className={`h-4 w-4 ${structBusy ? "animate-pulse" : ""}`} />
+            {structBusy ? "Analyse…" : "Murs + ouvertures (IA)"}
           </Button>
           <Button variant="outline" onClick={downloadPdf} data-testid="plan-pdf-export-btn"
                   className="rounded-sm gap-2">
@@ -1827,6 +1965,7 @@ export default function PlanTakeoff() {
             <Sheet className="h-4 w-4" /> Excel
           </Button>
           <Button variant="outline" onClick={() => setPcDialog(true)} data-testid="plan-pc-study-btn"
+                  title="Étude Permis de construire (PC) — béton, aciers, chiffrage réglementaire"
                   className="rounded-sm gap-2 border-emerald-500/60 text-emerald-600 hover:bg-emerald-500 hover:text-white">
             <FileSearch className="h-4 w-4" /> Étude PC
           </Button>
@@ -1862,9 +2001,10 @@ export default function PlanTakeoff() {
             <FileDown className="h-4 w-4" /> Multi-plans
           </Button>
           <BrandingDialog />
-          <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+          <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
+                  title="Lecture du plan par l'IA : pièces, cotes, surfaces, ouvertures et types de murs">
             <Sparkles className={`h-4 w-4 ${aiBusy ? "animate-pulse" : ""}`} />
-            {aiBusy ? "Analyse IA…" : "Analyse IA du plan"}
+            {aiBusy ? "Lecture du plan…" : "Lire le plan (IA)"}
           </Button>
         </div>
       </div>
@@ -2024,8 +2164,8 @@ export default function PlanTakeoff() {
                 </Button>
               </>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setPoints(points.slice(0, -1))} disabled={!points.length} className="rounded-sm gap-1">
-              <Undo2 className="h-3 w-3" /> Annuler
+            <Button size="sm" variant="ghost" onClick={() => setPoints(points.slice(0, -1))} disabled={!points.length} className="rounded-sm gap-1" title="Annuler le dernier point placé">
+              <Undo2 className="h-3 w-3" /> Annuler le dernier point
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.max(0.15, z / 1.2))} className="rounded-sm">
               <ZoomOut className="h-3 w-3" />
@@ -2093,6 +2233,12 @@ export default function PlanTakeoff() {
             onCanvasDoubleClick={onCanvasDoubleClick}
             showDeltas={showDeltas}
             measurements={pageMeasurements}
+            structure={structure}
+            showStructure={showStructure}
+            selectedStruct={selectedStruct}
+            onStructSelect={setSelectedStruct}
+            onStructDrag={dragStructPoint}
+            onStructDragEnd={commitStructure}
           />
 
           {/* Iter63 — panneau détail de la cote IA sélectionnée */}
@@ -2210,6 +2356,26 @@ export default function PlanTakeoff() {
             onOpenEstimate={generateRoomEstimate}
           />
 
+          {/* ACTIVE TOOL BAR — Retour + Annuler le dernier point (tous les outils de mesure) */}
+          {tool !== TOOLS.SELECT && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2"
+                 data-testid="active-tool-bar">
+              <Badge variant="outline" className="rounded-sm gap-1 border-primary/40 text-primary font-semibold">
+                Outil actif : {TOOL_LABELS[tool] || tool}
+              </Badge>
+              <span className="flex-1" />
+              <Button size="sm" variant="outline" onClick={() => setPoints(points.slice(0, -1))}
+                      disabled={!points.length} data-testid="tool-undo-point"
+                      className="rounded-sm gap-1 h-8">
+                <Undo2 className="h-3 w-3" /> Annuler le dernier point
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { setTool(TOOLS.SELECT); setPoints([]); }}
+                      data-testid="tool-back-select" className="rounded-sm gap-1 h-8">
+                <ArrowLeft className="h-3 w-3" /> Retour
+              </Button>
+            </div>
+          )}
+
           {/* CONTEXT ACTIONS */}
           {points.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2 items-center">
@@ -2277,7 +2443,7 @@ export default function PlanTakeoff() {
                   {points.length === 2 && "Cliquez sur la 2ᵉ branche"}
                 </span>
               )}
-              <Button size="sm" variant="ghost" onClick={() => setPoints([])} className="rounded-sm">Annuler</Button>
+              <Button size="sm" variant="ghost" onClick={() => setPoints([])} className="rounded-sm" title="Effacer tous les points de la mesure en cours">Annuler tout</Button>
             </div>
           )}
 
@@ -2373,6 +2539,93 @@ export default function PlanTakeoff() {
                     </div>
                   );
                 })}
+              </div>
+              {/* Distinction matériau porteur détectée par l'IA (brique / parpaing / béton) */}
+              {plan?.ai_analysis?.wall_types && (
+                <div className="mt-2 flex flex-wrap gap-1.5 items-center" data-testid="walls-material-hint">
+                  <span className="text-[10px] text-muted-foreground">Matériau des murs porteurs (IA) :</span>
+                  {plan.ai_analysis.wall_types.hatching_present &&
+                   plan.ai_analysis.wall_types.hatching_present !== "aucun" ? (
+                    <Badge variant="outline" className="rounded-sm text-[10px] capitalize border-red-500/40 text-red-500">
+                      {plan.ai_analysis.wall_types.hatching_present}
+                    </Badge>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground italic">
+                      non détecté — lancez « Lire le plan (IA) »
+                    </span>
+                  )}
+                  {plan.ai_analysis.wall_types.load_bearing_visible && (
+                    <Badge variant="outline" className="rounded-sm text-[10px] border-red-500/40 text-red-500">porteurs visibles</Badge>
+                  )}
+                  {plan.ai_analysis.wall_types.partition_visible && (
+                    <Badge variant="outline" className="rounded-sm text-[10px] border-primary/40 text-primary">cloisons visibles</Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STRUCTURE IA — édition murs / ouvertures */}
+          {structure && (structure.walls?.length > 0 || structure.openings?.length > 0) && (
+            <div className="mt-3 border border-red-500/30 rounded-sm p-3 bg-red-500/5" data-testid="structure-card">
+              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <p className="overline flex items-center gap-2">
+                  <Sparkles className="h-3 w-3 text-red-500" /> Structure IA
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground">
+                    <span className="text-red-500 font-bold">■</span> murs ·
+                    <span className="text-yellow-500 font-bold"> ■</span> fenêtres ·
+                    <span className="text-purple-500 font-bold"> ■</span> portes
+                  </span>
+                  <Button size="sm" variant={showStructure ? "default" : "outline"}
+                          onClick={() => setShowStructure((v) => !v)}
+                          data-testid="toggle-structure-overlay" className="rounded-sm gap-1 h-7 text-xs">
+                    <Layers className="h-3 w-3" /> {showStructure ? "Masquer" : "Afficher"}
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="border border-red-500/40 rounded-sm p-2 text-red-500" data-testid="structure-wall-count">
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Murs</p>
+                  <p className="num text-lg font-extrabold">{structure.walls?.length || 0}</p>
+                </div>
+                <div className="border border-yellow-500/40 rounded-sm p-2 text-yellow-600" data-testid="structure-opening-count">
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Ouvertures</p>
+                  <p className="num text-lg font-extrabold">{structure.openings?.length || 0}</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mb-2">
+                Cliquez un mur/ouverture pour le sélectionner, puis glissez ses extrémités (points blancs) pour l'ajuster.
+              </p>
+              {selectedStruct && (
+                <div className="flex items-center gap-2 flex-wrap mb-2 p-2 rounded-sm bg-background border border-border" data-testid="structure-selected-actions">
+                  <Badge variant="outline" className="rounded-sm text-[10px]">
+                    {selectedStruct.type === "wall" ? "Mur sélectionné" : "Ouverture sélectionnée"}
+                  </Badge>
+                  <Button size="sm" variant="outline" onClick={toggleStructType}
+                          data-testid="structure-toggle-type" className="rounded-sm h-7 text-xs gap-1">
+                    {selectedStruct.type === "wall" ? "Porteur ↔ Cloison" : "Porte ↔ Fenêtre ↔ Baie"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={deleteStructItem}
+                          data-testid="structure-delete" className="rounded-sm h-7 text-xs gap-1 border-destructive/50 text-destructive hover:bg-destructive hover:text-white">
+                    <Trash2 className="h-3 w-3" /> Supprimer
+                  </Button>
+                </div>
+              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={addStructWall}
+                        data-testid="structure-add-wall" className="rounded-sm h-7 text-xs gap-1">
+                  <Plus className="h-3 w-3" /> Mur
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => addStructOpening("fenetre")}
+                        data-testid="structure-add-window" className="rounded-sm h-7 text-xs gap-1 text-yellow-600 border-yellow-500/40">
+                  <Plus className="h-3 w-3" /> Fenêtre
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => addStructOpening("porte")}
+                        data-testid="structure-add-door" className="rounded-sm h-7 text-xs gap-1 text-purple-600 border-purple-500/40">
+                  <Plus className="h-3 w-3" /> Porte
+                </Button>
               </div>
             </div>
           )}

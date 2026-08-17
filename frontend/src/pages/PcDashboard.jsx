@@ -52,7 +52,9 @@ export default function PcDashboard() {
           <p className="overline flex items-center gap-2 text-primary">
             <HardHat className="h-4 w-4" /> Études Permis de Construire
           </p>
-          <h1 className="font-display text-3xl font-extrabold">Tableau de bord PC</h1>
+          <h1 className="font-display text-3xl font-extrabold" title="Permis de construire">
+            Tableau de bord PC <span className="text-muted-foreground font-normal text-lg">— Permis de construire</span>
+          </h1>
           <p className="text-sm text-muted-foreground">
             Toutes les études gros œuvre de votre équipe et leur statut client, au même endroit.
           </p>

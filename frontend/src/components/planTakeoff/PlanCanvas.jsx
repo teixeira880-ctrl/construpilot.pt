@@ -6,6 +6,8 @@ export default function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
   onCanvasClick, onZoomChange, onOffsetChange, onAutoRotate,
   detectedWalls, showWalls, pixelsPerMeter, orthoSnap = true, locked = false,
+  structure = null, showStructure = false, selectedStruct = null,
+  onStructSelect = null, onStructDrag = null, onStructDragEnd = null,
   dimensionLines = [], showDimensionLines = false,
   annotations = { counters: [], notes: [], angles: [], pitched_surfaces: [] },
   measurements = [],
@@ -20,6 +22,7 @@ export default function PlanCanvas({
   const imgRef = useRef(null);
   const dragRef = useRef(null);
   const movedRef = useRef(false);
+  const structDragRef = useRef(null);
   const [hoverPoint, setHoverPoint] = useState(null);
 
   // Wall endpoint snap : magnetic attraction to detected wall endpoints (within 15px screen)
@@ -121,6 +124,50 @@ export default function PlanCanvas({
         ctx.moveTo(s.x1, s.y1);
         ctx.lineTo(s.x2, s.y2);
         ctx.stroke();
+      });
+    }
+
+    // STRUCTURE overlay (IA) — murs rouges + fenêtres jaunes + portes violettes
+    if (showStructure && structure && (structure.walls?.length || structure.openings?.length)) {
+      ctx.lineCap = "round";
+      (structure.walls || []).forEach((w) => {
+        const sel = selectedStruct?.type === "wall" && selectedStruct?.id === w.wall_id;
+        ctx.strokeStyle = w.type === "porteur" ? "rgba(220,38,38,0.95)" : "rgba(248,113,113,0.95)";
+        ctx.lineWidth = (w.type === "porteur" ? 5 : 3) / zoom;
+        if (sel) { ctx.shadowColor = "rgba(220,38,38,0.9)"; ctx.shadowBlur = 14 / zoom; }
+        ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        if (sel) {
+          ctx.fillStyle = "rgba(255,255,255,1)";
+          [[w.x1, w.y1], [w.x2, w.y2]].forEach(([hx, hy]) => {
+            ctx.beginPath(); ctx.arc(hx, hy, 6 / zoom, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "rgba(220,38,38,1)"; ctx.lineWidth = 2 / zoom; ctx.stroke();
+          });
+        }
+      });
+      (structure.openings || []).forEach((o) => {
+        const sel = selectedStruct?.type === "opening" && selectedStruct?.id === o.opening_id;
+        const isDoor = o.kind === "porte";
+        ctx.strokeStyle = isDoor ? "rgba(168,85,247,0.95)" : "rgba(250,204,21,1)";
+        ctx.lineWidth = 6 / zoom;
+        if (sel) { ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 14 / zoom; }
+        ctx.beginPath(); ctx.moveTo(o.x1, o.y1); ctx.lineTo(o.x2, o.y2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        // Battement de porte (ligne vers le point d'ouverture)
+        if (isDoor && o.swing) {
+          ctx.strokeStyle = "rgba(168,85,247,0.5)"; ctx.lineWidth = 2 / zoom;
+          ctx.setLineDash([6 / zoom, 4 / zoom]);
+          ctx.beginPath(); ctx.moveTo(o.x1, o.y1); ctx.lineTo(o.swing.x, o.swing.y); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        if (sel) {
+          ctx.fillStyle = "rgba(255,255,255,1)";
+          [[o.x1, o.y1], [o.x2, o.y2]].forEach(([hx, hy]) => {
+            ctx.beginPath(); ctx.arc(hx, hy, 6 / zoom, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = isDoor ? "rgba(168,85,247,1)" : "rgba(202,138,4,1)";
+            ctx.lineWidth = 2 / zoom; ctx.stroke();
+          });
+        }
       });
     }
 
@@ -575,7 +622,8 @@ export default function PlanCanvas({
   }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
        calibration, detectedWalls, showWalls, pixelsPerMeter,
        dimensionLines, showDimensionLines, annotations, activeCounterId,
-       selectedCoteIndex, showDeltas, measurements]);
+       selectedCoteIndex, showDeltas, measurements,
+       structure, showStructure, selectedStruct]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -594,10 +642,17 @@ export default function PlanCanvas({
 
   const handleClick = (e) => {
     if (tool === TOOLS.SELECT) {
-      // Cotes IA cliquables : hit-test au clic (pas au drag)
-      if (movedRef.current || !onCoteClick) return;
-      if (!showDimensionLines || !dimensionLines?.length || !imgRef.current) return;
+      if (movedRef.current) return;
       const [rx, ry] = screenToImage(e.clientX, e.clientY);
+      // Priorité à la structure IA (murs / ouvertures) quand elle est affichée
+      if (showStructure && onStructSelect && structure) {
+        const hit = hitStructItem(rx, ry);
+        if (hit) { onStructSelect({ type: hit.type, id: hit.id }); return; }
+        onStructSelect(null);
+      }
+      // Cotes IA cliquables : hit-test au clic (pas au drag)
+      if (!onCoteClick) return;
+      if (!showDimensionLines || !dimensionLines?.length || !imgRef.current) return;
       const W = imgRef.current.naturalWidth, H = imgRef.current.naturalHeight;
       const tol = 12 / zoom;
       let best = null, bestD = Infinity;
@@ -616,6 +671,28 @@ export default function PlanCanvas({
     onCanvasClick([ix, iy]);
   };
 
+  // Structure IA — hit-tests
+  const _structItems = () => ([
+    ...((structure?.walls || []).map((w) => ({ type: "wall", id: w.wall_id, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 }))),
+    ...((structure?.openings || []).map((o) => ({ type: "opening", id: o.opening_id, x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2 }))),
+  ]);
+  const hitStructEndpoint = (rx, ry) => {
+    const tol = 12 / zoom;
+    for (const it of _structItems()) {
+      if (Math.hypot(rx - it.x1, ry - it.y1) < tol) return { ...it, ep: 0 };
+      if (Math.hypot(rx - it.x2, ry - it.y2) < tol) return { ...it, ep: 1 };
+    }
+    return null;
+  };
+  const hitStructItem = (rx, ry) => {
+    const tol = 10 / zoom; let best = null, bestD = Infinity;
+    for (const it of _structItems()) {
+      const d = pointSegDist(rx, ry, it.x1, it.y1, it.x2, it.y2);
+      if (d < tol && d < bestD) { best = it; bestD = d; }
+    }
+    return best;
+  };
+
   const handleWheel = (e) => {
     if (locked) return;
     e.preventDefault();
@@ -625,11 +702,29 @@ export default function PlanCanvas({
 
   const handleMouseDown = (e) => {
     if (locked) return;
+    // Glisser un point de la structure IA (murs/ouvertures) en mode Sélection
+    if (tool === TOOLS.SELECT && showStructure && onStructDrag && structure && e.button === 0) {
+      const [rx, ry] = screenToImage(e.clientX, e.clientY);
+      const ep = hitStructEndpoint(rx, ry);
+      if (ep) {
+        structDragRef.current = ep;
+        movedRef.current = false;
+        if (onStructSelect) onStructSelect({ type: ep.type, id: ep.id });
+        return;
+      }
+    }
     if (tool !== TOOLS.SELECT && e.button !== 1) return;
     movedRef.current = false;
     dragRef.current = { sx: e.clientX, sy: e.clientY, ox: offset.x, oy: offset.y };
   };
   const handleMouseMove = (e) => {
+    if (structDragRef.current) {
+      movedRef.current = true;
+      const [rx, ry] = screenToImage(e.clientX, e.clientY);
+      const s = structDragRef.current;
+      onStructDrag(s.type, s.id, s.ep, [Math.round(rx), Math.round(ry)]);
+      return;
+    }
     if (dragRef.current) {
       if (Math.hypot(e.clientX - dragRef.current.sx, e.clientY - dragRef.current.sy) > 3) {
         movedRef.current = true;
@@ -645,7 +740,10 @@ export default function PlanCanvas({
     }
   };
   const handleMouseLeave = () => { setHoverPoint(null); };
-  const handleMouseUp = () => { dragRef.current = null; };
+  const handleMouseUp = () => {
+    if (structDragRef.current && onStructDragEnd) onStructDragEnd();
+    dragRef.current = null; structDragRef.current = null;
+  };
 
   // Auto-size to container
   useEffect(() => {

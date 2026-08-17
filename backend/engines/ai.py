@@ -175,6 +175,20 @@ def _json(raw: str, fallback):
     return fallback
 
 
+async def suggest_line_description(designation: str, context: str = "") -> str:
+    """Génère une description professionnelle multi-lignes pour une ligne de devis BTP."""
+    system = (BRAND + " Tu rédiges des descriptions de lignes de devis BTP, concises, "
+              "professionnelles et vendables pour un client.")
+    prompt = (
+        f"Rédige la description détaillée d'une ligne de devis de travaux : « {designation} ».\n"
+        + (f"Contexte du devis : {context}\n" if context else "")
+        + "Donne 3 à 6 prestations courtes décrivant ce qui est inclus (préparation du support, "
+        "fournitures/matériaux, mise en œuvre, finitions, nettoyage). Adapté à un devis client, "
+        "sans prix ni quantité. Réponds en texte simple, UNE prestation par ligne, "
+        "commençant par « - », sans titre ni introduction.")
+    return await _complete(system, prompt, feature="quote_describe")
+
+
 def _analysis_prompt(description: str) -> str:
     """Construit le prompt JSON d'analyse (séparé pour lisibilité/testabilité)."""
     types = ", ".join(f"{p['key']}" for p in PROJECT_TYPES)

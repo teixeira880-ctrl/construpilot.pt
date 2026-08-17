@@ -8,6 +8,21 @@ export const TOOLS = {
   COUNTER: "counter", NOTE: "note", ANGLE: "angle", PITCH: "pitch",
 };
 
+export const TOOL_LABELS = {
+  select: "Sélection",
+  calibrate: "Calibrer",
+  distance: "Distance",
+  polyline: "Périmètre",
+  surface: "Surface",
+  room: "Pièce",
+  autoroom: "Auto-pièce",
+  opening: "Ouverture",
+  counter: "Compteur",
+  note: "Note",
+  angle: "Angle",
+  pitch: "Pente toit",
+};
+
 export const CALIB_METHOD_LABELS = {
   auto_pdf_scale: "échelle PDF",
   two_points: "2 points",
