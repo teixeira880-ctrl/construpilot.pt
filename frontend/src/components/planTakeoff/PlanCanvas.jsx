@@ -128,8 +128,22 @@ export default function PlanCanvas({
     }
 
     // STRUCTURE overlay (IA) — murs rouges + fenêtres jaunes + portes violettes
-    if (showStructure && structure && (structure.walls?.length || structure.openings?.length)) {
+    if (showStructure && structure && (structure.walls?.length || structure.openings?.length || structure.floors?.length)) {
       ctx.lineCap = "round";
+      // Planchers (surfaces de sol) — remplissage translucide sous les murs
+      (structure.floors || []).forEach((f) => {
+        const pts = f.points || [];
+        if (pts.length < 3) return;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(16,185,129,0.12)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(16,185,129,0.5)";
+        ctx.lineWidth = 1.2 / zoom;
+        ctx.stroke();
+      });
       (structure.walls || []).forEach((w) => {
         const sel = selectedStruct?.type === "wall" && selectedStruct?.id === w.wall_id;
         ctx.strokeStyle = w.type === "porteur" ? "rgba(220,38,38,0.95)" : "rgba(248,113,113,0.95)";

@@ -43,6 +43,12 @@ Rends STRICTEMENT du JSON (aucun markdown, aucun texte hors JSON) :
     // au-dessus d'une ouverture / traversant une pièce). Segment de la poutre.
     {"x1": 0.20, "y1": 0.40, "x2": 0.70, "y2": 0.40}
   ],
+  "floors": [
+    // SURFACES DE SOL (planchers) : une pièce = un polygone fermé qui suit l'INTÉRIEUR
+    // des murs. Donne 3 à 8 points dans l'ordre (sens horaire). Coordonnées normalisées 0-1.
+    {"name": "Séjour" | "Chambre" | "Cuisine" | ...,
+     "points": [[0.12, 0.14], [0.48, 0.14], [0.48, 0.50], [0.12, 0.50]]}
+  ],
   "confidence": 0.0-1.0
 }
 
@@ -52,6 +58,7 @@ RÈGLES :
 - Les ouvertures sont des TROUS dans les murs : une porte a un arc de battement (quart de cercle) ;
   une fenêtre est un rectangle/double-trait dans l'épaisseur du mur ; une baie est large.
 - Les poutres/linteaux sont généralement en POINTILLÉS. N'invente PAS de poutre sans indice net.
+- Les planchers (floors) suivent l'intérieur des murs de chaque pièce. Couvre TOUTES les pièces habitables.
 - Aligne bien chaque ouverture sur la ligne du mur qui la contient.
 - N'invente pas d'ouverture sans indice visuel. Sois précis sur les positions.
 - Réponds UNIQUEMENT le JSON.
@@ -130,11 +137,26 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
             "x1": round(x1 * w), "y1": round(y1 * h),
             "x2": round(x2 * w), "y2": round(y2 * h),
         })
+    floors = []
+    for f in structure.get("floors") or []:
+        if not isinstance(f, dict):
+            continue
+        pts = f.get("points") or []
+        clean = []
+        for p in pts:
+            if isinstance(p, (list, tuple)) and len(p) >= 2:
+                clean.append([round(_clamp(p[0]) * w), round(_clamp(p[1]) * h)])
+        if len(clean) >= 3:
+            floors.append({
+                "floor_id": "sf_" + uuid.uuid4().hex[:6],
+                "name": (f.get("name") or "Pièce")[:60],
+                "points": clean,
+            })
     return {
         "image_width": int(w), "image_height": int(h),
-        "walls": walls, "openings": openings, "beams": beams,
+        "walls": walls, "openings": openings, "beams": beams, "floors": floors,
         "wall_count": len(walls), "opening_count": len(openings),
-        "beam_count": len(beams),
+        "beam_count": len(beams), "floor_count": len(floors),
         "confidence": structure.get("confidence"),
     }
 

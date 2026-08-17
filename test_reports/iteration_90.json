@@ -1,0 +1,31 @@
+{
+  "summary": "Iter 90: validation e2e des 3 nouvelles fonctionnalités FR (Landing Particuliers, Planchers Auto IA, Prix Auto Descriptif) + non-régression structure. Backend: 5/5 tests pytest PASS. Frontend: /particuliers OK (hero+form+CTA -> lead POST + navigate /estimation, cta-final scroll top OK). Plan IA (plan_da91364b9bc7): badge AUTO IA visible, Planchers=13.29 m², envoi devis -> /devis-editeur/{docId} avec prix pré-remplis depuis bibliothèque (Plancher 55/m², Murs enduit 28/m², Portes 950/u, Fenêtres 550/u); murs porteurs/cloisons ml=0€ (pas d'item ml en catalogue, comportement attendu).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "LandingParticuliers /particuliers (et devis-editeur)", "issues": ["Nav affiche des libellés en anglais (Estimator, Calculators, Material prices, Get started, PDF, Save, No client, Draft) alors que la page est en français — probable détection navigator.language. À vérifier: forcer 'fr' par défaut pour la landing B2C ciblée sur pubs Instagram FR."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter90_particuliers_planchers_prices.py",
+    "/app/test_reports/pytest/iter90.xml"
+  ],
+  "action_items": [
+    "(mineur, non-bloquant) Forcer la langue FR par défaut sur la landing publique /particuliers (audience FR ciblée Instagram) et sur /devis-editeur pour éviter mélange FR/EN.",
+    "(non-bloquant) Console warning React: 'In HTML, <span> cannot be a child of <option>' sur AppRouter — hydration warning à nettoyer."
+  ],
+  "critical_code_review_comments": [
+    "leads.py POST /leads: bien, exclut _id. Pas de rate-limit sur endpoint public — risque spam via bots sur pubs Insta. Envisager captcha/rate-limit (ex: 5/min/IP).",
+    "LandingParticuliers.launch(): l'appel /api/leads est fire-and-forget (catch vide) puis navigate immédiat — un lead qui échoue silencieusement ne bloque pas l'UX (bien), mais aucun retry/persist local en cas d'échec réseau.",
+    "plans_analysis._compute_descriptif: fallback rooms->auto propre. planchers_source exposé côté API. Bon design."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter90_particuliers_planchers_prices.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "demo@construpilot.fr / Demo2026! (Pro Business, localStorage key 'construpilot_token')",
+  "seed_data_creation": "1 lead créé via test (email test_camille@example.com, source=landing-particuliers) + 1 lead UI (test_ui_camille@example.com). 1 devis brouillon créé (doc_789c5fa64a93) via structure/quote.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Les 3 features iter90 sont validées end-to-end (backend pytest + Playwright UI). Le plan de test demo est plan_da91364b9bc7 (calibré + analysé, contient 7 murs, 8 ouvertures, 4 floors polygones). GET /api/takeoffs/{id}/analysis/0 renvoie descriptif.planchers_source='auto', planchers_count=4, planchers_m2=13.29. POST /structure/0/quote renvoie priced_lines>0 avec price_source='bibliotheque'. La route /plan n'accepte pas d'id dans l'URL — utiliser [data-testid=recent-plan-{plan_id}] depuis /plan pour rouvrir."
+}

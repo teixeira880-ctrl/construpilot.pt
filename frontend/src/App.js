@@ -9,6 +9,7 @@ import { WhiteLabelProvider } from "@/context/WhiteLabelContext";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import Landing from "@/pages/Landing";
+import LandingParticuliers from "@/pages/LandingParticuliers";
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
@@ -91,6 +92,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/particuliers" element={<LandingParticuliers />} />
       <Route path="/login" element={<Login />} />
       <Route path="/inscription" element={<Login />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />

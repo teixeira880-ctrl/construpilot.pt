@@ -94,7 +94,7 @@ export default function PlanTakeoff() {
   useEffect(() => {
     if (!plan?.plan_id) { setDescriptif(null); return; }
     const s = plan.structure?.[String(pageIndex)];
-    if (!s || !(s.walls?.length || s.openings?.length || s.beams?.length)) { setDescriptif(null); return; }
+    if (!s || !(s.walls?.length || s.openings?.length || s.beams?.length || s.floors?.length)) { setDescriptif(null); return; }
     let cancel = false;
     api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}`)
       .then(({ data }) => { if (!cancel) setDescriptif(data.descriptif); }).catch(() => {});
@@ -1103,14 +1103,15 @@ export default function PlanTakeoff() {
     } finally { setAnalysisBusy(false); }
   };
 
-  const _hasStructure = () => !!(structure && ((structure.walls || []).length || (structure.openings || []).length || (structure.beams || []).length));
+  const _hasStructure = () => !!(structure && ((structure.walls || []).length || (structure.openings || []).length || (structure.beams || []).length || (structure.floors || []).length));
 
   const sendToQuote = async () => {
     if (!currentCalib) { toast.error("Calibrez d'abord le plan"); return; }
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}`);
-      toast.success("Devis créé depuis le descriptif");
+      const n = data.priced_lines || 0;
+      toast.success(n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif");
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Génération du devis impossible");
@@ -1139,6 +1140,7 @@ export default function PlanTakeoff() {
     try {
       await api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
         walls: next.walls || [], openings: next.openings || [], beams: next.beams || [],
+        floors: next.floors || [],
         image_width: next.image_width, image_height: next.image_height,
       });
     } catch { toast.error("Sauvegarde de la structure impossible"); }
@@ -1148,6 +1150,7 @@ export default function PlanTakeoff() {
     if (prev && plan?.plan_id) {
       api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
         walls: prev.walls || [], openings: prev.openings || [], beams: prev.beams || [],
+        floors: prev.floors || [],
         image_width: prev.image_width, image_height: prev.image_height,
       }).catch(() => {});
     }
@@ -2649,7 +2652,7 @@ export default function PlanTakeoff() {
           )}
 
           {/* STRUCTURE IA — édition murs / ouvertures */}
-          {structure && (structure.walls?.length > 0 || structure.openings?.length > 0 || structure.beams?.length > 0) && (
+          {structure && (structure.walls?.length > 0 || structure.openings?.length > 0 || structure.beams?.length > 0 || structure.floors?.length > 0) && (
             <div className="mt-3 border border-red-500/30 rounded-sm p-3 bg-red-500/5" data-testid="structure-card">
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <p className="overline flex items-center gap-2">
@@ -2700,7 +2703,11 @@ export default function PlanTakeoff() {
                     <p className="text-[10px] text-destructive mb-1">⚠️ Plan non calibré — quantités indisponibles.</p>
                   )}
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
-                    <span className="text-muted-foreground">Planchers (sol)</span><span className="num text-right">{descriptif.planchers_m2} m²</span>
+                    <span className="text-muted-foreground flex items-center gap-1">Planchers (sol)
+                      {descriptif.planchers_source === "auto" && (
+                        <span className="text-[9px] px-1 rounded-sm bg-emerald-500/15 text-emerald-600 font-bold" data-testid="planchers-auto-badge">AUTO IA</span>
+                      )}
+                    </span><span className="num text-right">{descriptif.planchers_m2} m²</span>
                     <span className="text-muted-foreground">Murs porteurs</span><span className="num text-right">{descriptif.murs_porteurs_ml} ml</span>
                     <span className="text-muted-foreground">Cloisons</span><span className="num text-right">{descriptif.cloisons_ml} ml</span>
                     <span className="text-muted-foreground">Murs (surface)</span><span className="num text-right">{descriptif.murs_surface_m2} m²</span>

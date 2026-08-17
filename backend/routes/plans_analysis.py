@@ -398,6 +398,7 @@ class StructureIn(BaseModel):
     walls: list[dict] = Field(default_factory=list)
     openings: list[dict] = Field(default_factory=list)
     beams: list[dict] = Field(default_factory=list)
+    floors: list[dict] = Field(default_factory=list)
     image_width: int | None = None
     image_height: int | None = None
 
@@ -405,16 +406,16 @@ class StructureIn(BaseModel):
 @router.put("/{plan_id}/structure/{page_index}")
 async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
                                user=Depends(current_user)):
-    """Sauvegarde la structure éditée manuellement (murs/ouvertures/poutres ajoutés,
-    supprimés, déplacés ou reclassés porte↔fenêtre)."""
+    """Sauvegarde la structure éditée manuellement (murs/ouvertures/poutres/planchers)."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
     payload = {
         "walls": body.walls, "openings": body.openings, "beams": body.beams,
+        "floors": body.floors,
         "wall_count": len(body.walls), "opening_count": len(body.openings),
-        "beam_count": len(body.beams),
+        "beam_count": len(body.beams), "floor_count": len(body.floors),
         "image_width": body.image_width, "image_height": body.image_height,
         "edited_at": _now(),
     }
@@ -429,6 +430,19 @@ async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
 def _seg_len_px(it: dict) -> float:
     import math
     return math.hypot(it.get("x2", 0) - it.get("x1", 0), it.get("y2", 0) - it.get("y1", 0))
+
+
+def _polygon_area_px(points: list) -> float:
+    """Aire d'un polygone (formule du lacet / shoelace), en pixels²."""
+    n = len(points)
+    if n < 3:
+        return 0.0
+    s = 0.0
+    for i in range(n):
+        x1, y1 = points[i][0], points[i][1]
+        x2, y2 = points[(i + 1) % n][0], points[(i + 1) % n][1]
+        s += x1 * y2 - x2 * y1
+    return abs(s) / 2.0
 
 
 def _page_ppm(p: dict, page_index: int) -> float | None:
@@ -447,12 +461,22 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
     poutres_ml = round(sum(_seg_len_px(b) for b in beams) / ppm, 2) if ppm else 0.0
     ouv_ml = round(sum(_seg_len_px(o) for o in openings) / ppm, 2) if ppm else 0.0
     kinds = Counter((o.get("kind") or "fenetre") for o in openings)
-    planchers = round(sum(r.get("surface_m2", 0) or 0 for r in rooms), 2)
+    # Planchers : priorité aux polygones de sol détectés par l'IA (sans tracer à la main),
+    # sinon repli sur les pièces mesurées manuellement.
+    floors = structure.get("floors") or []
+    if floors and ppm:
+        planchers = round(sum(_polygon_area_px(f.get("points") or []) for f in floors) / (ppm * ppm), 2)
+        planchers_source = "auto"
+    else:
+        planchers = round(sum(r.get("surface_m2", 0) or 0 for r in rooms), 2)
+        planchers_source = "rooms"
     porteur_ml = round(sum(_seg_len_px(w) for w in walls if w.get("type") == "porteur") / ppm, 2) if ppm else 0.0
     cloison_ml = round(murs_ml - porteur_ml, 2)
     return {
         "wall_height_m": round(float(wall_height), 2),
         "planchers_m2": planchers,
+        "planchers_source": planchers_source,
+        "planchers_count": len(floors),
         "murs_ml": murs_ml, "murs_porteurs_ml": porteur_ml, "cloisons_ml": max(cloison_ml, 0.0),
         "murs_surface_m2": round(murs_ml * wall_height, 2),
         "portes": int(kinds.get("porte", 0)),
@@ -463,6 +487,62 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "poutres_ml": poutres_ml,
         "calibrated": bool(ppm),
     }
+
+
+def _norm_tokens(s: str) -> set:
+    import re
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (s or "").lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    stop = {"sur", "des", "les", "de", "la", "le", "et", "en", "pose", "fourniture", "un", "une", "avec"}
+    out = set()
+    for w in re.split(r"[^a-z0-9]+", s):
+        if len(w) >= 3 and w not in stop:
+            if len(w) >= 5 and w.endswith("s"):
+                w = w[:-1]  # normalise le pluriel (murs->mur, cloisons->cloison)
+            out.add(w)
+    return out
+
+
+def _unit_family(unit: str) -> str:
+    u = (unit or "").strip().lower()
+    if u in ("m²", "m2", "m^2"):
+        return "area"
+    if u in ("ml", "m", "mètre", "metre", "ml."):
+        return "length"
+    if u in ("u", "unité", "unite", "pièce", "piece", "pc", "ens", "ensemble"):
+        return "count"
+    if u in ("forfait", "ft", "global"):
+        return "forfait"
+    return u or "?"
+
+
+async def _apply_library_prices(user_id: str, lines: list[dict]) -> tuple[list[dict], int]:
+    """Pré-remplit unit_price_ht/vat depuis la bibliothèque (match mots-clés + MÊME
+    famille d'unité pour éviter les prix aberrants). Retourne (lignes, nb_chiffrées)."""
+    items = await db.library_items.find(
+        {"user_id": user_id}, {"_id": 0, "designation": 1, "unit": 1,
+                               "unit_price_ht": 1, "vat_rate": 1}).to_list(5000)
+    if not items:
+        return lines, 0
+    idx = [(_norm_tokens(it.get("designation", "")), it) for it in items]
+    matched = 0
+    for ln in lines:
+        toks = _norm_tokens(ln.get("designation", ""))
+        fam = _unit_family(ln.get("unit"))
+        best, best_overlap = None, 0
+        for it_toks, it in idx:
+            if _unit_family(it.get("unit")) != fam:
+                continue  # ne pas mélanger m²/ml/u/forfait
+            overlap = len(toks & it_toks)
+            if overlap > best_overlap:
+                best, best_overlap = it, overlap
+        if best and best_overlap >= 1 and best.get("unit_price_ht"):
+            ln["unit_price_ht"] = best["unit_price_ht"]
+            ln["vat_rate"] = best.get("vat_rate", ln.get("vat_rate", 10))
+            ln["price_source"] = "bibliotheque"
+            matched += 1
+    return lines, matched
 
 
 def _descriptif_line_items(d: dict) -> list[dict]:
@@ -571,6 +651,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     lines = _descriptif_line_items(descriptif)
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
+    lines, priced = await _apply_library_prices(user["user_id"], lines)
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"], "doc_type": "quote", "number": None,
@@ -585,6 +666,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     }
     await db.pro_documents.insert_one(dict(doc))
     doc.pop("_id", None)
+    doc["priced_lines"] = priced
     return doc
 
 

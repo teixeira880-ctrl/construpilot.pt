@@ -1422,9 +1422,8 @@ const RTL_LANGS = ["ar"];
 function detectLang() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && SUPPORTED.includes(stored)) return stored;
-  const nav = (navigator.languages && navigator.languages[0]) || navigator.language || "fr";
-  const code = nav.slice(0, 2).toLowerCase();
-  return SUPPORTED.includes(code) ? code : "fr";
+  // Produit français-first (construpilot.fr) : FR par défaut, l'utilisateur peut changer.
+  return "fr";
 }
 
 export function I18nProvider({ children }) {

@@ -2218,3 +2218,12 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - Gardes ajoutés : sendToQuote/exportAnnotatedPdf bloquent si non calibré / non analysé.
 - **Tests** : testing agent iter89 — backend 6/6, frontend 100% (gate calibration, descriptif réactif, PDF 200, devis, poutres+persistance). 0 bug.
 - PROD : nécessite REDÉPLOIEMENT (Deploy Now).
+
+## Changelog Iter 90 (17/06/2026) — Planchers Auto + Landing Particuliers + Prix Auto + FR par défaut
+- **Planchers Auto** : `plan_structure.detect_structure` renvoie des polygones de sol (floors) ; `_compute_descriptif` calcule la surface via Shoelace (`_polygon_area_px`) → planchers_source='auto' (repli sur pièces mesurées sinon). Rendu vert translucide sur le canvas + badge 'AUTO IA' dans le descriptif. Floors éditables/persistés.
+- **Landing Particuliers** (`/particuliers`, publique) : page B2C conversion (hero + avant/après + 3 étapes + perks + témoignages + double CTA) avec formulaire lead (POST /leads source='landing-particuliers' + UTM) puis redirection /estimation. 3 visuels IA générés. Route ajoutée dans App.js.
+- **Prix Auto Descriptif** : `_apply_library_prices` pré-remplit unit_price_ht/vat des lignes du devis généré depuis le plan, par match mots-clés + MÊME famille d'unité (m²/ml/u/forfait) pour éviter les prix aberrants. structure_to_quote renvoie priced_lines. Toast indiquant le nb de lignes chiffrées.
+- **Langue FR par défaut** : `I18nContext.detectLang` renvoie 'fr' par défaut (produit français-first) au lieu de `navigator.language` — corrige le mélange FR/EN sur la Nav. Sélecteur de langue toujours dispo.
+- **Tests** : testing agent iter90 — backend 5/5, frontend 100%. 0 bug.
+- Suggestion sécurité (non fait) : rate-limit/captcha sur POST /leads public (trafic pubs Instagram).
+- PROD : nécessite REDÉPLOIEMENT (Deploy Now).
