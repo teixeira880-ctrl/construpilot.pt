@@ -807,16 +807,19 @@ def _beton_line_items(d: dict) -> list[dict]:
     La surface se réfère aux planchers détectés uniquement."""
     lines = []
 
-    def add(desig, qty, unit, cat="Gros œuvre — béton"):
+    def add(desig, qty, unit, elem=None, cat="Gros œuvre — béton"):
         if qty and qty > 0:
-            lines.append({"designation": desig, "unit": unit, "qty": round(qty, 2),
-                          "unit_price_ht": 0, "vat_rate": 20, "category": cat})
-    add(f"Béton — semelles / fondations ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³")
-    add("Béton de propreté (sous semelles, ép. 5 cm)", d.get("beton_proprete_m3"), "m³")
-    add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³")
-    add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³")
-    add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³")
-    add(f"Béton — voiles / murs porteurs ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³")
+            ln = {"designation": desig, "unit": unit, "qty": round(qty, 2),
+                  "unit_price_ht": 0, "vat_rate": 20, "category": cat}
+            if elem:
+                ln["elem"] = elem
+            lines.append(ln)
+    add(f"Béton — semelles / fondations ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³", elem="semelles")
+    add("Béton de propreté (sous semelles, ép. 5 cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
+    add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³", elem="poteaux")
+    add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³", elem="poutres")
+    add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
+    add(f"Béton — voiles / murs porteurs ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³", elem="voiles")
     _ar = d.get("acier_ratios") or {}
     _ratio_moy = (round(sum(_ar.values()) / len(_ar)) if _ar else 100)
     add(f"Aciers HA (ferraillage — env. {_ratio_moy} kg/m³)", d.get("acier_total_kg"), "kg")
@@ -878,8 +881,15 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
                             acier_semelles: float | None = None, acier_poteaux: float | None = None,
                             acier_poutres: float | None = None, acier_dalles: float | None = None,
                             acier_voiles: float | None = None,
+                            beton_price_m3: float = 0.0, acier_price_kg: float = 0.0,
+                            beton_price_semelles: float | None = None,
+                            beton_price_proprete: float | None = None,
+                            beton_price_poteaux: float | None = None,
+                            beton_price_poutres: float | None = None,
+                            beton_price_dalles: float | None = None,
+                            beton_price_voiles: float | None = None,
                             user=Depends(current_user)):
-    """Export Excel du métré béton (poteaux, poutres, dalles, voiles, semelles)."""
+    """Export Excel du métré béton (poteaux, poutres, dalles, voiles, semelles + coûts)."""
     from io import BytesIO
     from fastapi.responses import Response
     from openpyxl import Workbook
@@ -914,24 +924,51 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
     wb = Workbook()
     ws = wb.active
     ws.title = "Métré béton"
-    sheet_header(ws, ["Poste", "Détail", "Volume (m³)", "Ratio acier (kg/m³)", "Aciers (kg)"],
-                 [30, 40, 14, 18, 14])
+    sheet_header(ws, ["Poste", "Détail", "Volume (m³)", "Ratio acier (kg/m³)", "Aciers (kg)",
+                      "Prix béton (€/m³)", "Coût béton (€)", "Coût aciers (€)", "Coût total (€)"],
+                 [26, 38, 12, 15, 12, 15, 14, 14, 14])
     r = d.get("acier_ratios") or {}
-    ws.append(["Poteaux", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3", 0),
-               r.get("poteaux"), d.get("acier_poteaux_kg", 0)])
-    ws.append(["Poutres / linteaux",
-               f"{d.get('poutres_ml', 0)} ml · section {d.get('beton_poutre_section', '')}",
-               d.get("beton_poutres_m3", 0), r.get("poutres"), d.get("acier_poutres_kg", 0)])
-    ws.append(["Dalles / planchers",
-               f"{d.get('planchers_m2', 0)} m² · ép. {d.get('beton_dalle_ep_m', 0)} m",
-               d.get("beton_dalles_m3", 0), r.get("dalles"), d.get("acier_dalles_kg", 0)])
-    ws.append(["Voiles (murs porteurs)",
-               f"{d.get('murs_porteurs_ml', 0)} ml · ép. {d.get('beton_voile_ep_m', 0)} m · h {d.get('wall_height_m', 0)} m",
-               d.get("beton_voiles_m3", 0), r.get("voiles"), d.get("acier_voiles_kg", 0)])
-    ws.append(["Semelles / fondations", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3", 0),
-               r.get("semelles"), d.get("acier_semelles_kg", 0)])
+    # Prix : repli sur valeurs marché si non renseignés
+    bp, akg, _lab, _mg = _with_default_prices(beton_price_m3, acier_price_kg, 0.0, 0.0)
+    price_by_elem = {"semelles": beton_price_semelles, "proprete": beton_price_proprete,
+                     "poteaux": beton_price_poteaux, "poutres": beton_price_poutres,
+                     "dalles": beton_price_dalles, "voiles": beton_price_voiles}
+
+    def pe(elem):
+        v = price_by_elem.get(elem)
+        return float(v) if (v and v > 0) else bp
+
+    tot_cb = tot_ca = 0.0
+
+    def poste_row(label, detail, vol, elem, acier_kg):
+        nonlocal tot_cb, tot_ca
+        vol = vol or 0
+        acier_kg = acier_kg or 0
+        prix = pe(elem)
+        cb = round(vol * prix, 2)
+        ca = round(acier_kg * akg, 2)
+        tot_cb += cb
+        tot_ca += ca
+        ws.append([label, detail, vol, r.get(elem if elem != "proprete" else "semelles") if elem != "proprete" else "",
+                   acier_kg, prix, cb, ca, round(cb + ca, 2)])
+    poste_row("Semelles / fondations", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3"),
+              "semelles", d.get("acier_semelles_kg"))
+    poste_row("Béton de propreté", "sous semelles · ép. 5 cm", d.get("beton_proprete_m3"),
+              "proprete", 0)
+    poste_row("Poteaux", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3"),
+              "poteaux", d.get("acier_poteaux_kg"))
+    poste_row("Poutres / linteaux",
+              f"{d.get('poutres_ml', 0)} ml · section {d.get('beton_poutre_section', '')}",
+              d.get("beton_poutres_m3"), "poutres", d.get("acier_poutres_kg"))
+    poste_row("Dalles / planchers", f"{d.get('planchers_m2', 0)} m² · ép. {d.get('beton_dalle_ep_m', 0)} m",
+              d.get("beton_dalles_m3"), "dalles", d.get("acier_dalles_kg"))
+    poste_row("Voiles (murs porteurs)",
+              f"{d.get('murs_porteurs_ml', 0)} ml · ép. {d.get('beton_voile_ep_m', 0)} m · h {d.get('wall_height_m', 0)} m",
+              d.get("beton_voiles_m3"), "voiles", d.get("acier_voiles_kg"))
     ws.append([])
-    ws.append(["TOTAL BÉTON", "", d.get("beton_total_m3", 0), "", d.get("acier_total_kg", 0)])
+    beton_avec_proprete = round((d.get("beton_total_m3", 0) or 0) + (d.get("beton_proprete_m3", 0) or 0), 2)
+    ws.append(["TOTAL BÉTON", "", beton_avec_proprete, "", d.get("acier_total_kg", 0),
+               "", round(tot_cb, 2), round(tot_ca, 2), round(tot_cb + tot_ca, 2)])
     for cell in ws[ws.max_row]:
         cell.font = bold
 
@@ -1183,6 +1220,12 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              acier_voiles: float | None = None,
                              acier_price_kg: float = 0.0,
                              beton_price_m3: float = 0.0, labor_price_m3: float = 0.0,
+                             beton_price_semelles: float | None = None,
+                             beton_price_proprete: float | None = None,
+                             beton_price_poteaux: float | None = None,
+                             beton_price_poutres: float | None = None,
+                             beton_price_dalles: float | None = None,
+                             beton_price_voiles: float | None = None,
                              margin_pct: float = 0.0,
                              margin_beton: float | None = None, margin_acier: float | None = None,
                              margin_labor: float | None = None,
@@ -1220,13 +1263,19 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
             if "acier" in (ln.get("designation") or "").lower() and not ln.get("unit_price_ht"):
                 ln["unit_price_ht"] = round(float(acier_price_kg), 2)
                 priced += 1
-    # Prix béton au m³ — s'applique à la ligne « Béton coulé » ou à chaque poste béton (mode gros œuvre)
+    # Prix béton au m³ — global ou par poste (semelle, dalle, voile…) pour un chiffrage plus fin
+    beton_price_by_elem = {
+        "semelles": beton_price_semelles, "proprete": beton_price_proprete,
+        "poteaux": beton_price_poteaux, "poutres": beton_price_poutres,
+        "dalles": beton_price_dalles, "voiles": beton_price_voiles,
+    }
     if beton_price_m3 and beton_price_m3 > 0:
         for ln in lines:
             desig = (ln.get("designation") or "").lower()
             is_beton = ("béton coulé" in desig) or (desig.startswith("béton") and "main d'œuvre" not in desig)
             if is_beton and not ln.get("unit_price_ht"):
-                ln["unit_price_ht"] = round(float(beton_price_m3), 2)
+                pe = beton_price_by_elem.get(ln.get("elem"))
+                ln["unit_price_ht"] = round(float(pe if (pe and pe > 0) else beton_price_m3), 2)
                 priced += 1
     # Main d'œuvre béton (au m³)
     beton_total = descriptif.get("beton_total_m3") or 0

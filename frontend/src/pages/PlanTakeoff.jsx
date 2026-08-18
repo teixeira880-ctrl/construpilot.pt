@@ -98,6 +98,7 @@ export default function PlanTakeoff() {
   const [poutreH, setPoutreH] = useState(0.40);
   const [acierPriceKg, setAcierPriceKg] = useState(1.3);
   const [betonPriceM3, setBetonPriceM3] = useState(130);
+  const [betonPrices, setBetonPrices] = useState({ semelles: 130, proprete: 90, poteaux: 130, poutres: 130, dalles: 130, voiles: 130 });
   const [laborPriceM3, setLaborPriceM3] = useState(400);
   const [marginPct, setMarginPct] = useState(15);
   const [marginBeton, setMarginBeton] = useState("");
@@ -1087,6 +1088,9 @@ export default function PlanTakeoff() {
   const acierQuery = () =>
     `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}`;
 
+  const betonPriceQuery = () =>
+    `&beton_price_semelles=${betonPrices.semelles}&beton_price_proprete=${betonPrices.proprete}&beton_price_poteaux=${betonPrices.poteaux}&beton_price_poutres=${betonPrices.poutres}&beton_price_dalles=${betonPrices.dalles}&beton_price_voiles=${betonPrices.voiles}`;
+
   // Charge les réglages béton par défaut + presets, puis applique le dernier preset choisi
   useEffect(() => {
     (async () => {
@@ -1248,7 +1252,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
       const n = data.priced_lines || 0;
       toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
@@ -1266,7 +1270,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
       const res = await api.get(`/documents/${data.doc_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
@@ -1311,7 +1315,7 @@ export default function PlanTakeoff() {
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
       const token = localStorage.getItem("construpilot_token");
-      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`;
+      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&beton_price_m3=${betonPriceM3}&acier_price_kg=${acierPriceKg}${betonPriceQuery()}`;
       const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/structure/${pageIndex}/beton-xlsx?${q}`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("Export impossible");
@@ -3081,9 +3085,21 @@ export default function PlanTakeoff() {
                       <Save className="h-3 w-3" /> Enregistrer comme réglages par défaut
                     </Button>
                   </details>
-                  {descriptif.planchers_ngf?.length > 0 && (
-                    <p className="text-[10px] text-emerald-600 mb-1">Cote(s) NGF dalle : {descriptif.planchers_ngf.join(", ")}</p>
-                  )}
+                  {/* Prix béton par poste (€/m³) — chiffrage plus fin */}
+                  <details className="mb-1.5" data-testid="beton-prices-poste">
+                    <summary className="text-[10px] font-semibold cursor-pointer text-sky-600">Prix béton par poste (€/m³) — optionnel</summary>
+                    <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] text-muted-foreground">
+                      {[["semelles", "Semelles"], ["proprete", "Propreté"], ["poteaux", "Poteaux"], ["poutres", "Poutres"], ["dalles", "Dalles"], ["voiles", "Voiles"]].map(([k, lbl]) => (
+                        <label key={k} className="flex flex-col gap-0.5">{lbl}
+                          <input type="number" step="5" min="0" max="500" value={betonPrices[k]}
+                                 onChange={(e) => setBetonPrices((r) => ({ ...r, [k]: parseFloat(e.target.value) || 0 }))}
+                                 data-testid={`beton-price-${k}`}
+                                 className="w-full rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1">Laisser à 0 pour utiliser le prix béton global ({betonPriceM3} €/m³).</p>
+                  </details>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
                     <span className="text-muted-foreground flex items-center gap-1">Planchers (sol)
                       {descriptif.planchers_source === "auto" && (

@@ -954,3 +954,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Béton de propreté (backend plans_analysis.py) : _compute_descriptif calcule beton_proprete_m3 = emprise des semelles × 0,05 m (ép. 5 cm, non armé). _beton_line_items ajoute la ligne "Béton de propreté (sous semelles, ép. 5 cm)" juste sous les semelles dans le devis gros œuvre.
 - Vérifié e2e backend (plan_c56da42f0331, 5 semelles/15 poteaux/8 poutres) : détail par poste complet + propreté 1,72 m³ dans le devis, 8 lignes chiffrées, TTC 218 825 €. Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 130 - 18/06/2026 (Prix béton par poste + Excel métré détaillé)
+- Prix béton par poste : structure_to_quote + export_beton_xlsx acceptent beton_price_{semelles,proprete,poteaux,poutres,dalles,voiles}. _beton_line_items tague chaque ligne béton avec un champ elem ; le prix spécifique du poste s'applique si >0, sinon repli sur le prix béton global. Frontend : bloc repliable "Prix béton par poste (€/m³)" (data-testid="beton-prices-poste", 6 inputs) + helper betonPriceQuery() câblé dans les 2 boutons devis et l'export Excel.
+- Export Excel métré enrichi : feuille "Métré béton" avec ligne Béton de propreté + colonnes Prix béton (€/m³), Coût béton (€), Coût aciers (€), Coût total (€) par poste + ligne TOTAL (béton propreté incluse).
+- Vérifié e2e backend (plan_c56da42f0331) : prix par poste appliqués (dalles 160, voiles 140, propreté 90, semelles au global), Excel avec propreté + colonnes coûts, total béton 264,79 m³ / 67 243 € matière. Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
