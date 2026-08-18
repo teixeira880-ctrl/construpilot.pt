@@ -399,6 +399,7 @@ class StructureIn(BaseModel):
     openings: list[dict] = Field(default_factory=list)
     beams: list[dict] = Field(default_factory=list)
     floors: list[dict] = Field(default_factory=list)
+    columns: list[dict] = Field(default_factory=list)
     image_width: int | None = None
     image_height: int | None = None
 
@@ -413,9 +414,10 @@ async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
         raise HTTPException(404, "Plan introuvable")
     payload = {
         "walls": body.walls, "openings": body.openings, "beams": body.beams,
-        "floors": body.floors,
+        "floors": body.floors, "columns": body.columns,
         "wall_count": len(body.walls), "opening_count": len(body.openings),
         "beam_count": len(body.beams), "floor_count": len(body.floors),
+        "column_count": len(body.columns),
         "image_width": body.image_width, "image_height": body.image_height,
         "edited_at": _now(),
     }
@@ -485,6 +487,8 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "ouvertures_total": len(openings),
         "ouvertures_largeur_ml": ouv_ml,
         "poutres_ml": poutres_ml,
+        "poteaux": len(structure.get("columns") or []),
+        "plan_kind": structure.get("plan_kind") or "habitation",
         "calibrated": bool(ppm),
     }
 
@@ -560,6 +564,7 @@ def _descriptif_line_items(d: dict) -> list[dict]:
     add("Fournitures et pose — Fenêtres", d.get("fenetres"), "u")
     add("Fournitures et pose — Baies vitrées", d.get("baies"), "u")
     add("Poutres / linteaux", d.get("poutres_ml"), "ml")
+    add("Poteaux béton", d.get("poteaux"), "u")
     return lines
 
 

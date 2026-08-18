@@ -17,51 +17,53 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
-PROMPT = """Tu es un métreur expert. Analyse ce plan d'architecture 2D et extrais UNIQUEMENT
-la structure du bâti pour un rendu technique. NE compte PAS les meubles, sanitaires, textes,
-cotes (traits de mesure) ni le cartouche.
+PROMPT = """Tu es un métreur / ingénieur structure expert. Analyse ce plan 2D (plan d'ARCHITECTE
+d'habitation OU plan de COFFRAGE / structure béton) et extrais TOUTE la structure pour un
+métré. Sois EXHAUSTIF : sur un plan de coffrage dense, il y a souvent de NOMBREUX poteaux,
+poutres et dalles — liste-les TOUS. NE compte PAS les meubles, textes, cotes (traits de
+mesure), légendes ni cartouche.
 
 Rends STRICTEMENT du JSON (aucun markdown, aucun texte hors JSON) :
 
 {
   "walls": [
-    // Chaque segment de MUR (trait plein épais / hachuré). Un mur = une ligne droite.
-    // Décompose les murs longs en segments entre les angles. Coordonnées normalisées 0-1.
+    // Murs / VOILES / murs porteurs (traits pleins épais ou hachurés). Un mur = une ligne droite.
+    // Décompose les murs longs en segments entre angles. Coordonnées normalisées 0-1.
     {"x1": 0.10, "y1": 0.12, "x2": 0.90, "y2": 0.12, "type": "porteur" | "cloison"}
   ],
-  "openings": [
-    // Ouvertures dans les murs. Le segment [x1,y1]->[x2,y2] représente la LARGEUR de
-    // l'ouverture, posée SUR la ligne du mur concerné. Coordonnées normalisées 0-1.
-    // kind : "porte" (arc de battement visible) | "fenetre" | "baie" (grande baie vitrée)
-    {"kind": "porte" | "fenetre" | "baie",
-     "x1": 0.30, "y1": 0.12, "x2": 0.40, "y2": 0.12,
-     "hinge": {"x": 0.30, "y": 0.12} | null,   // gond de la porte si identifiable
-     "swing": {"x": 0.40, "y": 0.20} | null}    // point vers lequel la porte s'ouvre
+  "columns": [
+    // POTEAUX (plan de coffrage) : petits carrés/rectangles/cercles pleins, souvent répétés
+    // sur une trame. Donne les DEUX coins opposés de l'emprise du poteau. Liste-les TOUS.
+    {"x1": 0.20, "y1": 0.30, "x2": 0.23, "y2": 0.33}
   ],
   "beams": [
-    // POUTRES / linteaux visibles (souvent traits en POINTILLÉS ou double trait fin
-    // au-dessus d'une ouverture / traversant une pièce). Segment de la poutre.
+    // POUTRES / linteaux (souvent en pointillés, ou repères type "L20", "LN33"). Segment de la poutre.
     {"x1": 0.20, "y1": 0.40, "x2": 0.70, "y2": 0.40}
   ],
+  "openings": [
+    // Ouvertures dans les murs (plan d'habitation). Segment = largeur de l'ouverture SUR le mur.
+    // kind : "porte" (arc de battement) | "fenetre" | "baie"
+    {"kind": "porte" | "fenetre" | "baie",
+     "x1": 0.30, "y1": 0.12, "x2": 0.40, "y2": 0.12,
+     "swing": {"x": 0.40, "y": 0.20} | null}
+  ],
   "floors": [
-    // SURFACES DE SOL (planchers) : une pièce = un polygone fermé qui suit l'INTÉRIEUR
-    // des murs. Donne 3 à 8 points dans l'ordre (sens horaire). Coordonnées normalisées 0-1.
-    {"name": "Séjour" | "Chambre" | "Cuisine" | ...,
+    // SURFACES DE SOL / DALLES (planchers) : un polygone fermé par pièce/panneau de dalle,
+    // suivant l'intérieur des murs. 3 à 8 points (sens horaire). Coordonnées normalisées 0-1.
+    {"name": "Séjour" | "Dalle" | ...,
      "points": [[0.12, 0.14], [0.48, 0.14], [0.48, 0.50], [0.12, 0.50]]}
   ],
+  "plan_kind": "habitation" | "coffrage",
   "confidence": 0.0-1.0
 }
 
 RÈGLES :
-- Murs extérieurs (contour du bâtiment) = "porteur". Refends/murs épais intérieurs = "porteur".
-  Petites cloisons fines = "cloison".
-- Les ouvertures sont des TROUS dans les murs : une porte a un arc de battement (quart de cercle) ;
-  une fenêtre est un rectangle/double-trait dans l'épaisseur du mur ; une baie est large.
-- Les poutres/linteaux sont généralement en POINTILLÉS. N'invente PAS de poutre sans indice net.
-- Les planchers (floors) suivent l'intérieur des murs de chaque pièce. Couvre TOUTES les pièces habitables.
-- Aligne bien chaque ouverture sur la ligne du mur qui la contient.
-- N'invente pas d'ouverture sans indice visuel. Sois précis sur les positions.
-- Réponds UNIQUEMENT le JSON.
+- Murs extérieurs / refends épais / VOILES = "porteur". Cloisons fines = "cloison".
+- Poteaux = petits éléments pleins isolés, souvent alignés en trame — liste-les TOUS même s'il y en a 20+.
+- Poutres/linteaux : souvent pointillés ou repérés par un code. N'invente pas sans indice.
+- Planchers/dalles : couvre TOUTE la surface bâtie (un ou plusieurs panneaux).
+- Sur un plan de coffrage, il n'y a généralement PAS de portes/fenêtres → openings peut être vide.
+- Sois précis sur les positions. Réponds UNIQUEMENT le JSON.
 """
 
 
@@ -152,11 +154,24 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
                 "name": (f.get("name") or "Pièce")[:60],
                 "points": clean,
             })
+    columns = []
+    for c in structure.get("columns") or []:
+        seg = _norm_seg(c) if isinstance(c, dict) else None
+        if not seg:
+            continue
+        x1, y1, x2, y2 = seg
+        columns.append({
+            "column_id": "sc_" + uuid.uuid4().hex[:6],
+            "x1": round(x1 * w), "y1": round(y1 * h),
+            "x2": round(x2 * w), "y2": round(y2 * h),
+        })
     return {
         "image_width": int(w), "image_height": int(h),
         "walls": walls, "openings": openings, "beams": beams, "floors": floors,
+        "columns": columns,
         "wall_count": len(walls), "opening_count": len(openings),
-        "beam_count": len(beams), "floor_count": len(floors),
+        "beam_count": len(beams), "floor_count": len(floors), "column_count": len(columns),
+        "plan_kind": structure.get("plan_kind") or "habitation",
         "confidence": structure.get("confidence"),
     }
 

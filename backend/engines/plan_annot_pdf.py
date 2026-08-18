@@ -31,6 +31,10 @@ def _render_overlay(image_b64: str, structure: dict) -> bytes:
                fill=col + (255,), width=lw + (2 if w.get("type") == "porteur" else 0))
     for b in structure.get("beams") or []:
         d.line([(b["x1"], b["y1"]), (b["x2"], b["y2"])], fill=BEAM + (230,), width=lw)
+    for c in structure.get("columns") or []:
+        x0, y0 = min(c["x1"], c["x2"]), min(c["y1"], c["y2"])
+        x1, y1 = max(c["x1"], c["x2"]), max(c["y1"], c["y2"])
+        d.rectangle([x0, y0, x1, y1], fill=(126, 34, 206, 235), outline=(88, 24, 145, 255))
     for o in structure.get("openings") or []:
         col = PURPLE if o.get("kind") == "porte" else YELLOW
         d.line([(o["x1"], o["y1"]), (o["x2"], o["y2"])], fill=col + (255,), width=lw + 3)
@@ -94,6 +98,7 @@ def build_annotated_plan_pdf(image_b64: str, structure: dict, descriptif: dict,
     r("Fenêtres", d.get("fenetres"), "u")
     r("Baies vitrées", d.get("baies"), "u")
     r("Poutres / linteaux", d.get("poutres_ml"), "ml")
+    r("Poteaux béton", d.get("poteaux"), "u")
     t = Table(rows, colWidths=[110 * mm, 35 * mm, 25 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),

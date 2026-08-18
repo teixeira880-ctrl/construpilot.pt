@@ -128,8 +128,21 @@ export default function PlanCanvas({
     }
 
     // STRUCTURE overlay (IA) — murs rouges + fenêtres jaunes + portes violettes
-    if (showStructure && structure && (structure.walls?.length || structure.openings?.length || structure.floors?.length)) {
+    if (showStructure && structure && (structure.walls?.length || structure.openings?.length || structure.floors?.length || structure.columns?.length)) {
       ctx.lineCap = "round";
+      // Poteaux (plan de coffrage) — carrés pleins violets
+      (structure.columns || []).forEach((c) => {
+        const sel = selectedStruct?.type === "column" && selectedStruct?.id === c.column_id;
+        const x0 = Math.min(c.x1, c.x2), y0 = Math.min(c.y1, c.y2);
+        const w = Math.max(Math.abs(c.x2 - c.x1), 6 / zoom), h = Math.max(Math.abs(c.y2 - c.y1), 6 / zoom);
+        ctx.fillStyle = "rgba(126,34,206,0.85)";
+        if (sel) { ctx.shadowColor = "rgba(126,34,206,0.9)"; ctx.shadowBlur = 14 / zoom; }
+        ctx.fillRect(x0, y0, w, h);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = sel ? "rgba(255,255,255,1)" : "rgba(88,24,145,1)";
+        ctx.lineWidth = (sel ? 2 : 1) / zoom;
+        ctx.strokeRect(x0, y0, w, h);
+      });
       // Planchers (surfaces de sol) — remplissage translucide sous les murs
       (structure.floors || []).forEach((f) => {
         const pts = f.points || [];
@@ -706,6 +719,7 @@ export default function PlanCanvas({
     ...((structure?.walls || []).map((w) => ({ type: "wall", id: w.wall_id, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 }))),
     ...((structure?.openings || []).map((o) => ({ type: "opening", id: o.opening_id, x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2 }))),
     ...((structure?.beams || []).map((b) => ({ type: "beam", id: b.beam_id, x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 }))),
+    ...((structure?.columns || []).map((c) => ({ type: "column", id: c.column_id, x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2 }))),
   ]);
   const hitStructEndpoint = (rx, ry) => {
     const tol = 12 / zoom;

@@ -2234,3 +2234,11 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - Vérifié : compute (14 lots, 54 732 €), build PDF 200 (%PDF valide), endpoint email OK (échec seulement sur example.com bloqué par Resend en test). Flux front: submit → prefill importé + e-mail mémorisé → auto-envoi au compute.
 - Limite : l'e-mail part une fois le calcul lancé (le particulier complète l'estimateur rapide). Envoi non bloquant (silencieux si échec réseau).
 - PROD : nécessite REDÉPLOIEMENT (Deploy Now).
+
+## Changelog Iter 91b (18/06/2026) — Analyse plans de COFFRAGE/structure + POTEAUX
+- **Bug** : « Analyser le plan » lisait mal les plans de coffrage/structure béton (prompt orienté habitation).
+- **Fix** : `plan_structure.PROMPT` généralisé (habitation ET coffrage, consigne d'exhaustivité) + détection des **poteaux** (columns = 2 coins opposés) + `plan_kind`. Descriptif ajoute `poteaux` (u) ; ligne devis « Poteaux béton » ; PDF annoté dessine les poteaux (violet). Édition front complète (ajout/glisser/supprimer poteau, compteur, persistance).
+- **Vérifié (testing agent iter91, backend+frontend 100%, 0 bug)** : plan de coffrage plan_c56da42f0331 → plan_kind='coffrage', 7 poteaux, 10 poutres, 13 voiles, planchers 756,59 m² ; devis créé avec ligne Poteaux + prix bibliothèque ; PDF 200 ; non-régression résidentiel OK.
+- **« Envoyer vers le devis »** (déjà présent) confirmé : crée le devis avec toutes les lignes du descriptif (dont poteaux) + prix pré-remplis.
+- **Limite connue** : sur un A0 très dense (4967×7021 px), la vision IA sous-détecte (ex 7 poteaux vs davantage) → l'utilisateur complète manuellement via les boutons d'ajout. Non bloquant.
+- ⚠️ PROD (construpilot.fr) : nécessite un REDÉPLOIEMENT (Deploy Now) pour appliquer ce fix.
