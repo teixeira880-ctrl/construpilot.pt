@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Calculator, Save, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calculator, Save, Download, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import { EmailPdfDialog } from "@/components/EmailPdfDialog";
 import { WhatsAppShare } from "@/components/WhatsAppShare";
 import { SoftPaywall } from "@/components/SoftPaywall";
 import { SavingsCard } from "@/components/SavingsCard";
+import { SupplierOptimization } from "@/components/SupplierOptimization";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
@@ -36,6 +37,8 @@ export default function Estimator() {
   const [step, setStep] = useState(0);
   const [est, setEst] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [optim, setOptim] = useState(null);
+  const [busyOptim, setBusyOptim] = useState(false);
   const [name, setName] = useState("");
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -84,6 +87,7 @@ export default function Estimator() {
         lots: form.lots.length ? form.lots : null,
       });
       setEst(data);
+      setOptim(null);
       setName(`${catalog.project_types.find((p) => p.key === form.project_type)?.name} ${form.city || ""}`.trim());
       setStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -151,6 +155,21 @@ export default function Estimator() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const findSupplierPrices = async () => {
+    const lots = (est?.lots || []).filter((l) => (l.material_cost || 0) > 0 && (l.quantity || 0) > 0);
+    if (!lots.length) { toast.error("Aucun poste matériaux à chiffrer"); return; }
+    setBusyOptim(true);
+    try {
+      const coefficient = Number(localStorage.getItem("construpilot_dept_coef") || 1) || 1;
+      const { data } = await api.post("/prices/optimize", {
+        coefficient,
+        items: lots.map((l) => ({ query: l.name, quantity: Math.ceil(l.quantity), name: l.name })),
+      });
+      setOptim(data);
+    } catch { toast.error("Recherche de prix impossible"); }
+    finally { setBusyOptim(false); }
   };
 
   if (!catalog) return <div className="h-40 grid place-items-center"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -327,6 +346,16 @@ export default function Estimator() {
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           <EstimationView est={est} />
+
+          <div className="grid gap-4">
+            <Button variant="outline" onClick={findSupplierPrices} disabled={busyOptim}
+                    data-testid="est-find-prices-btn" className="rounded-sm gap-2 w-fit">
+              {busyOptim ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Trouver les meilleurs prix fournisseurs
+            </Button>
+            <SupplierOptimization optim={optim} />
+          </div>
+
           <SavingsCard estimation={est} />
           {tier === "free" && <SoftPaywall context="savings" />}
         </>

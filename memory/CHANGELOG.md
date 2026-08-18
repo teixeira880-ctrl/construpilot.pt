@@ -930,3 +930,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Frontend (PlanTakeoff.jsx) : nouveau bouton principal "Estimer le devis (PDF)" (data-testid="structure-estimate-quote") visible dès l'analyse terminée → crée le devis chiffré puis télécharge directement le PDF, sans passer par l'éditeur. Ancien bouton conservé en "Ouvrir dans l'éditeur". Valeurs de prix par défaut réalistes dans l'UI + chargement des réglages ne réinitialise plus à 0.
 - Vérifié e2e backend sur plan_da91364b9bc7 : 9 lignes / 7 chiffrées → 19 516 € TTC + PDF devis valide (%PDF). Frontend compile sans erreur.
 - ⚠️ Correctif appliqué en PRÉVERSION — nécessite un redéploiement pour être actif sur https://construpilot.fr.
+
+## Iteration 127 - 18/06/2026 (Optimisation fournisseurs dans la zone d'estimation)
+- Demande : l'optimisation fournisseurs + prix (présente dans les Calculateurs) n'existait pas dans la zone d'Estimation (/estimation). Les calculateurs fonctionnaient déjà (confirmé par l'utilisateur).
+- Nouveau composant réutilisable components/SupplierOptimization.jsx (cartes best_single / multi-fournisseurs / économie + tableau poste/fournisseur/PU/total).
+- Estimator.jsx : bouton "Trouver les meilleurs prix fournisseurs" (data-testid="est-find-prices-btn") dans les résultats (step 3). Mappe les lots matériaux (material_cost>0) → POST /prices/optimize → affiche SupplierOptimization. Reset de optim à chaque nouveau calcul.
+- Vérifié e2e préversion (screenshot) : bouton visible, optimisation affichée (BigMat 14 646 € / multi 14 325 € / économie 321 € + tableau Placo/Carrelage/Peinture). Prix en mode démo (brancher API fournisseurs pour du réel).
+- ⚠️ Ajouté en PRÉVERSION — nécessite un redéploiement pour apparaître sur https://construpilot.fr.
