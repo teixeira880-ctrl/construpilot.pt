@@ -489,7 +489,7 @@ ACIER_RATIOS = {
 def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
                         wall_height: float = 2.5, dalle_ep: float = 0.20,
                         voile_ep: float = 0.20, poutre_l: float = 0.20,
-                        poutre_h: float = 0.40) -> dict:
+                        poutre_h: float = 0.40, acier_ratios: dict | None = None) -> dict:
     from collections import Counter
     walls = structure.get("walls") or []
     openings = structure.get("openings") or []
@@ -548,12 +548,14 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         beton_poteaux = beton_poutres = beton_dalles = beton_voiles = beton_semelles = 0.0
         semelles = len(footings)
     beton_total = round(beton_poteaux + beton_poutres + beton_dalles + beton_voiles + beton_semelles, 2)
-    # ===== Aciers (ferraillage) — ratios moyens kg/m³ par élément =====
-    acier_semelles = round(beton_semelles * ACIER_RATIOS["semelles"], 1)
-    acier_poteaux = round(beton_poteaux * ACIER_RATIOS["poteaux"], 1)
-    acier_poutres = round(beton_poutres * ACIER_RATIOS["poutres"], 1)
-    acier_dalles = round(beton_dalles * ACIER_RATIOS["dalles"], 1)
-    acier_voiles = round(beton_voiles * ACIER_RATIOS["voiles"], 1)
+    # ===== Aciers (ferraillage) — ratios moyens kg/m³ par élément (ajustables) =====
+    _ar = {**ACIER_RATIOS, **{k: float(v) for k, v in (acier_ratios or {}).items()
+                              if k in ACIER_RATIOS and v is not None}}
+    acier_semelles = round(beton_semelles * _ar["semelles"], 1)
+    acier_poteaux = round(beton_poteaux * _ar["poteaux"], 1)
+    acier_poutres = round(beton_poutres * _ar["poutres"], 1)
+    acier_dalles = round(beton_dalles * _ar["dalles"], 1)
+    acier_voiles = round(beton_voiles * _ar["voiles"], 1)
     acier_total = round(acier_semelles + acier_poteaux + acier_poutres + acier_dalles + acier_voiles, 1)
     ngf_list = sorted({f.get("ngf") for f in floors if f.get("ngf") is not None})
     return {
@@ -581,7 +583,7 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "acier_semelles_kg": acier_semelles, "acier_poteaux_kg": acier_poteaux,
         "acier_poutres_kg": acier_poutres, "acier_dalles_kg": acier_dalles,
         "acier_voiles_kg": acier_voiles, "acier_total_kg": acier_total,
-        "acier_ratios": ACIER_RATIOS,
+        "acier_ratios": _ar,
         "beton_dalle_ep_m": round(dalle_ep, 3), "beton_voile_ep_m": round(voile_ep, 3),
         "beton_poutre_section": f"{poutre_l:.2f}×{poutre_h:.2f} m",
         "plan_kind": structure.get("plan_kind") or "habitation",
@@ -671,6 +673,9 @@ def _descriptif_line_items(d: dict) -> list[dict]:
 async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
                        dalle_ep: float = 0.20, voile_ep: float = 0.20,
                        poutre_l: float = 0.20, poutre_h: float = 0.40,
+                       acier_semelles: float | None = None, acier_poteaux: float | None = None,
+                       acier_poutres: float | None = None, acier_dalles: float | None = None,
+                       acier_voiles: float | None = None,
                        user=Depends(current_user)) -> dict:
     """Renvoie la structure + le descriptif chiffré (nécessite une calibration)."""
     p = await db.plans_takeoff.find_one(
@@ -680,7 +685,10 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
     ppm = _page_ppm(p, page_index)
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
-    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep, poutre_l, poutre_h)
+    ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
+          "dalles": acier_dalles, "voiles": acier_voiles}
+    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
+                                     poutre_l, poutre_h, acier_ratios=ar)
     return {"structure": structure, "descriptif": descriptif,
             "calibrated": bool(ppm), "pixels_per_meter": ppm}
 
@@ -689,6 +697,9 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
 async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 2.5,
                             dalle_ep: float = 0.20, voile_ep: float = 0.20,
                             poutre_l: float = 0.20, poutre_h: float = 0.40,
+                            acier_semelles: float | None = None, acier_poteaux: float | None = None,
+                            acier_poutres: float | None = None, acier_dalles: float | None = None,
+                            acier_voiles: float | None = None,
                             user=Depends(current_user)):
     """Export Excel du métré béton (poteaux, poutres, dalles, voiles, semelles)."""
     from io import BytesIO
@@ -704,7 +715,10 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
     ppm = _page_ppm(p, page_index)
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
-    d = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep, poutre_l, poutre_h)
+    ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
+          "dalles": acier_dalles, "voiles": acier_voiles}
+    d = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
+                            poutre_l, poutre_h, acier_ratios=ar)
 
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor="1F2733")

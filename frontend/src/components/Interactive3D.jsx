@@ -9,7 +9,9 @@ import { RotateCcw, Maximize2, Home, Move3d } from "lucide-react";
  * Contrôles souris : clic-gauche = orbite, molette = zoom.
  * Nécessite : `rooms` (polygones), `walls` (segments), `scale_m_per_px`.
  */
-export function Interactive3D({ rooms = [], walls = [], scaleMperPx = 0.01,
+export function Interactive3D({ rooms = [], walls = [], structure = null,
+                                 dalleEpM = 0.2, voileEpM = 0.2,
+                                 scaleMperPx = 0.01,
                                  wallHeightM = 2.5, imageHeight = 600 }) {
   const mountRef = useRef(null);
   const [wallHeight, setWallHeight] = useState(wallHeightM);
@@ -48,13 +50,20 @@ export function Interactive3D({ rooms = [], walls = [], scaleMperPx = 0.01,
     mount.innerHTML = "";
     mount.appendChild(renderer.domElement);
 
-    // ===== Bounding box computation (rooms polygons, fallback to points) =====
+    // ===== Bounding box computation (rooms + structure, fallback to points) =====
     const getPoly = (r) => r.polygon_px || r.points || [];
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    rooms.forEach((r) => getPoly(r).forEach(([x, y]) => {
+    const acc = (x, y) => {
       if (x < minX) minX = x; if (x > maxX) maxX = x;
       if (y < minY) minY = y; if (y > maxY) maxY = y;
-    }));
+    };
+    rooms.forEach((r) => getPoly(r).forEach(([x, y]) => acc(x, y)));
+    walls.forEach((s) => { acc(s.x1, s.y1); acc(s.x2, s.y2); });
+    if (structure) {
+      ["walls", "beams", "columns", "footings"].forEach((k) =>
+        (structure[k] || []).forEach((e) => { acc(e.x1, e.y1); acc(e.x2, e.y2); }));
+      (structure.floors || []).forEach((f) => (f.points || []).forEach(([x, y]) => acc(x, y)));
+    }
     if (!isFinite(minX)) { minX = 0; maxX = 100; minY = 0; maxY = 100; }
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
     const scale = scaleMperPx;
@@ -167,6 +176,74 @@ export function Interactive3D({ rooms = [], walls = [], scaleMperPx = 0.01,
       });
     });
 
+    // ===== Volumes structurels détectés (métré béton) =====
+    // Voiles/murs (rouge), planchers (vert), poteaux (violet), poutres (gris foncé), semelles (jaune)
+    if (structure) {
+      const seg = (a, b) => {
+        const [x1, z1] = toWorld(a[0], a[1]);
+        const [x2, z2] = toWorld(b[0], b[1]);
+        return { x1, z1, x2, z2, len: Math.hypot(x2 - x1, z2 - z1),
+                 mx: (x1 + x2) / 2, mz: (z1 + z2) / 2,
+                 angle: -Math.atan2(z2 - z1, x2 - x1) };
+      };
+      const box = (w, h, d, color, x, y, z, angle = 0, opacity = 1) => {
+        const g = new THREE.BoxGeometry(Math.max(w, 0.02), Math.max(h, 0.02), Math.max(d, 0.02));
+        const m = new THREE.MeshLambertMaterial({ color, transparent: opacity < 1, opacity });
+        const mesh = new THREE.Mesh(g, m);
+        mesh.castShadow = true; mesh.position.set(x, y, z); mesh.rotation.y = angle;
+        scene.add(mesh);
+      };
+      // Voiles / murs porteurs
+      (structure.walls || []).forEach((w) => {
+        const s = seg([w.x1, w.y1], [w.x2, w.y2]);
+        if (s.len < 0.1) return;
+        const thick = w.type === "cloison" ? Math.max(0.06, voileEpM * 0.5) : voileEpM;
+        const color = w.type === "cloison" ? 0xff9500 : 0xdc2626;
+        box(s.len, wallHeight, thick, color, s.mx, wallHeight / 2, s.mz, s.angle);
+      });
+      // Planchers (dalles) — slab au sol
+      const FLOOR_COL = 0x22c55e;
+      (structure.floors || []).forEach((f) => {
+        const poly = f.points || [];
+        if (poly.length < 3) return;
+        const shape = new THREE.Shape();
+        poly.forEach(([px, py], k) => {
+          const [wx, wz] = toWorld(px, py);
+          if (k === 0) shape.moveTo(wx, wz); else shape.lineTo(wx, wz);
+        });
+        const geom = new THREE.ExtrudeGeometry(shape, { depth: dalleEpM, bevelEnabled: false });
+        const mat = new THREE.MeshLambertMaterial({ color: FLOOR_COL, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.y = 0.02;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+      });
+      // Poteaux (violet) — box du sol au plafond
+      (structure.columns || []).forEach((c) => {
+        const [wx1, wz1] = toWorld(Math.min(c.x1, c.x2), Math.min(c.y1, c.y2));
+        const [wx2, wz2] = toWorld(Math.max(c.x1, c.x2), Math.max(c.y1, c.y2));
+        const w = Math.max(0.15, Math.abs(wx2 - wx1));
+        const d = Math.max(0.15, Math.abs(wz2 - wz1));
+        box(w, wallHeight, d, 0x9333ea, (wx1 + wx2) / 2, wallHeight / 2, (wz1 + wz2) / 2);
+      });
+      // Poutres (gris foncé) — box en tête de mur
+      const poutreH = 0.4;
+      (structure.beams || []).forEach((b) => {
+        const s = seg([b.x1, b.y1], [b.x2, b.y2]);
+        if (s.len < 0.1) return;
+        box(s.len, poutreH, 0.2, 0x475569, s.mx, wallHeight - poutreH / 2, s.mz, s.angle);
+      });
+      // Semelles (jaune) — box au sol
+      (structure.footings || []).forEach((ft) => {
+        const [wx1, wz1] = toWorld(Math.min(ft.x1, ft.x2), Math.min(ft.y1, ft.y2));
+        const [wx2, wz2] = toWorld(Math.max(ft.x1, ft.x2), Math.max(ft.y1, ft.y2));
+        const w = Math.max(0.2, Math.abs(wx2 - wx1));
+        const d = Math.max(0.2, Math.abs(wz2 - wz1));
+        box(w, 0.35, d, 0xeab308, (wx1 + wx2) / 2, -0.15, (wz1 + wz2) / 2, 0, 0.85);
+      });
+    }
+
     // ===== Simple manual orbit controls (drag = orbit, wheel = zoom) =====
     let rotY = Math.PI / 4, rotX = Math.PI / 4, dist = 20;
     let dragging = false, lastX = 0, lastY = 0;
@@ -223,7 +300,7 @@ export function Interactive3D({ rooms = [], walls = [], scaleMperPx = 0.01,
       renderer.dispose();
       mount.innerHTML = "";
     };
-  }, [rooms, walls, scaleMperPx, wallHeight, imageHeight]);
+  }, [rooms, walls, structure, scaleMperPx, wallHeight, imageHeight, dalleEpM, voileEpM]);
 
   return (
     <div className="space-y-3">

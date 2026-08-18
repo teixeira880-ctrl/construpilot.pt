@@ -93,17 +93,19 @@ export default function PlanTakeoff() {
   const [wallHeight, setWallHeight] = useState(2.5);
   const [dalleEp, setDalleEp] = useState(0.20);
   const [voileEp, setVoileEp] = useState(0.20);
+  const [acierRatios, setAcierRatios] = useState({ semelles: 40, poteaux: 130, poutres: 140, dalles: 85, voiles: 60 });
   const [analysisBusy, setAnalysisBusy] = useState(false);
   useEffect(() => {
     if (!plan?.plan_id) { setDescriptif(null); return; }
     const s = plan.structure?.[String(pageIndex)];
     if (!s || !(s.walls?.length || s.openings?.length || s.beams?.length || s.floors?.length || s.columns?.length)) { setDescriptif(null); return; }
     let cancel = false;
-    api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}`)
+    const aq = `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}`;
+    api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${aq}`)
       .then(({ data }) => { if (!cancel) setDescriptif(data.descriptif); }).catch(() => {});
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp]);
+  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp, acierRatios]);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
   const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
@@ -1067,9 +1069,12 @@ export default function PlanTakeoff() {
   };
 
   // ===== STRUCTURE IA (murs rouges + ouvertures jaunes/violettes) =====
+  const acierQuery = () =>
+    `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}`;
+
   const loadDescriptif = async (height = wallHeight) => {
     try {
-      const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${height}&dalle_ep=${dalleEp}&voile_ep=${voileEp}`);
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${height}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`);
       setDescriptif(data.descriptif);
     } catch { /* silencieux */ }
   };
@@ -1154,7 +1159,7 @@ export default function PlanTakeoff() {
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
       const token = localStorage.getItem("construpilot_token");
-      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}`;
+      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`;
       const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/structure/${pageIndex}/beton-xlsx?${q}`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("Export impossible");
@@ -2811,6 +2816,20 @@ export default function PlanTakeoff() {
                              className="w-12 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
                     </label>
                   </div>
+                  {/* Ratios de ferraillage ajustables (kg/m³) */}
+                  <details className="mb-1.5" data-testid="acier-ratios">
+                    <summary className="text-[10px] font-semibold cursor-pointer text-orange-600">Ratios aciers (kg/m³) — ajustables</summary>
+                    <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] text-muted-foreground">
+                      {[["semelles", "Semelles"], ["poteaux", "Poteaux"], ["poutres", "Poutres"], ["dalles", "Dalles"], ["voiles", "Voiles"]].map(([k, lbl]) => (
+                        <label key={k} className="flex flex-col gap-0.5">{lbl}
+                          <input type="number" step="5" min="0" max="400" value={acierRatios[k]}
+                                 onChange={(e) => setAcierRatios((r) => ({ ...r, [k]: parseFloat(e.target.value) || 0 }))}
+                                 data-testid={`acier-ratio-${k}`}
+                                 className="w-full rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />
+                        </label>
+                      ))}
+                    </div>
+                  </details>
                   {descriptif.planchers_ngf?.length > 0 && (
                     <p className="text-[10px] text-emerald-600 mb-1">Cote(s) NGF dalle : {descriptif.planchers_ngf.join(", ")}</p>
                   )}
@@ -3863,6 +3882,7 @@ export default function PlanTakeoff() {
         open={render3dDialog} onOpenChange={setRender3dDialog}
         render3dMode={render3dMode} setRender3dMode={setRender3dMode}
         plan={plan} detectedWalls={detectedWalls} pageIndex={pageIndex}
+        structure={structure} dalleEp={dalleEp} voileEp={voileEp} wallHeight={wallHeight}
         render3dStyle={render3dStyle} setRender3dStyle={setRender3dStyle}
         render3dFurniture={render3dFurniture} setRender3dFurniture={setRender3dFurniture}
         render3dBusy={render3dBusy} render3dImg={render3dImg}

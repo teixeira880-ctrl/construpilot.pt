@@ -1,5 +1,11 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 113 — 18/08/2026 (Ratios aciers ajustables + Relecture vidéo + Maquette 3D béton)
+- **Aciers ajustables** : 5 ratios de ferraillage (kg/m³) éditables dans l'UI (`acier-ratios` / inputs `acier-ratio-{semelles|poteaux|poutres|dalles|voiles}` dans `PlanTakeoff.jsx`). Transmis en query params à `GET .../analysis/{page}` et `GET .../beton-xlsx` (`acier_semelles`, `acier_poteaux`, …). `_compute_descriptif` accepte `acier_ratios` (override de `ACIER_RATIOS`). Vérifié curl : poteaux 130→200 change `acier_total` (21369→23484 kg).
+- **Relecture transcription vidéo** : parcours en 2 temps. `POST /api/documents/video-transcribe` (vidéo → transcript) puis dialog éditable (`video-transcript-dialog`/`video-transcript-text`) et `POST /api/documents/from-text` ({text, client_id}) qui génère le devis. Refactor : helpers `_transcribe_video_bytes` et `_quote_doc_from_text` dans `documents.py` (l'ancien `/from-video` les réutilise). Vérifié e2e curl.
+- **Maquette 3D des volumes détectés** : `Interactive3D.jsx` étendu — nouveau prop `structure` : rend voiles/murs (rouge, ép. `voileEp`), planchers (dalle verte extrudée, ép. `dalleEp`), poteaux (violet, sol→plafond), poutres (gris foncé, en tête de mur), semelles (jaune, au sol). Bounding box calculée depuis rooms + structure. `Render3dDialog.jsx` passe `structure/dalleEp/voileEp/wallHeight` ; `PlanTakeoff.jsx` les fournit. Vérifié capture d'écran (mode « Maquette interactive »).
+
+
 ## Itération 112 — 18/08/2026 (Métré béton avancé + aciers + Assistant IA + Vidéo→devis + i18n)
 - **Tableau Poutres** (B1→Bn : portée + volume béton m³) affiché dans le descriptif `/plan`, calqué sur le Tableau Poteaux (`beams_table` déjà calculé côté backend, exposé/rendu).
 - **Semelles éditables** sur le canvas (`PlanCanvas.jsx`) : sélection + déplacement des coins + ajout (bouton « Semelle ») + suppression, comme poteaux/ouvertures. Handlers dans `PlanTakeoff.jsx` (`addStructFooting`, maps drag/delete).

@@ -204,28 +204,22 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
     return doc
 
 
-@router.post("/from-video")
-async def document_from_video(file: UploadFile = File(...), client_id: str | None = None,
-                              user=Depends(current_user)) -> dict:
-    """Crée un devis à partir d'une vidéo explicative : audio → transcription Whisper → lignes IA chiffrées."""
+async def _transcribe_video_bytes(raw: bytes) -> str:
+    """Extrait l'audio d'une vidéo (ffmpeg) et le transcrit en français (Whisper)."""
     import os
+    import shutil
     import subprocess
     import tempfile
-
-    raw = await file.read()
     if not raw:
         raise HTTPException(400, "Vidéo vide")
     if len(raw) > 80 * 1024 * 1024:
         raise HTTPException(413, "Vidéo trop volumineuse (>80 Mo). Filmez une séquence plus courte.")
-
     tmpdir = tempfile.mkdtemp(prefix="cp_vid_")
     src = os.path.join(tmpdir, "input")
     audio = os.path.join(tmpdir, "audio.mp3")
-    transcript = ""
     try:
         with open(src, "wb") as f:
             f.write(raw)
-        # Extraction audio compressée (mono 16 kHz) pour rester sous la limite Whisper (25 Mo)
         proc = subprocess.run(
             ["ffmpeg", "-i", src, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "64k", "-y", audio],
             capture_output=True, timeout=120)
@@ -246,35 +240,70 @@ async def document_from_video(file: UploadFile = File(...), client_id: str | Non
         logging.getLogger("documents").exception("video transcription failed")
         raise HTTPException(502, f"Transcription indisponible : {type(e).__name__}")
     finally:
-        import shutil
         shutil.rmtree(tmpdir, ignore_errors=True)
-
     if not transcript.strip():
         raise HTTPException(422, "Aucune parole détectée dans la vidéo.")
+    return transcript.strip()
 
+
+async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
+                               source: str = "video") -> dict:
+    """Génère un devis (lignes IA chiffrées via la bibliothèque) à partir d'un texte."""
     from engines.ai import quote_lines_from_text
     from routes.plans_analysis import _apply_library_prices
-    lines, title = await quote_lines_from_text(transcript)
+    if not (text or "").strip():
+        raise HTTPException(400, "Description vide")
+    lines, title = await quote_lines_from_text(text)
     if not lines:
-        raise HTTPException(422, "L'IA n'a pas pu générer de lignes de devis à partir de la vidéo.")
+        raise HTTPException(422, "L'IA n'a pas pu générer de lignes de devis à partir de la description.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
-
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"], "doc_type": "quote", "number": None,
         "title": title or "Devis (vidéo)",
         "client_id": client_id, "client": await _client_snapshot(client_id, user),
         "status": "draft", "lines": lines,
-        "notes": f"Transcription vidéo :\n{transcript.strip()[:1500]}",
+        "notes": f"Description :\n{text.strip()[:1500]}",
         "payment_terms": "", "deposit_pct": 0,
         "totals": _compute_totals(lines, 0),
         "issue_date": None, "due_date": None,
-        "source": "video", "created_at": _now(), "updated_at": _now(),
+        "source": source, "created_at": _now(), "updated_at": _now(),
     }
     await db.pro_documents.insert_one(dict(doc))
     doc.pop("_id", None)
     doc["priced_lines"] = priced
-    doc["transcript"] = transcript.strip()
+    return doc
+
+
+@router.post("/video-transcribe")
+async def video_transcribe(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
+    """Transcrit une vidéo en texte (à relire/corriger avant génération du devis)."""
+    raw = await file.read()
+    transcript = await _transcribe_video_bytes(raw)
+    return {"transcript": transcript}
+
+
+class FromTextIn(BaseModel):
+    text: str
+    client_id: str | None = None
+
+
+@router.post("/from-text")
+async def document_from_text(body: FromTextIn, user=Depends(current_user)) -> dict:
+    """Crée un devis à partir d'une description (texte relu/corrigé)."""
+    doc = await _quote_doc_from_text(user, body.text, body.client_id, source="video")
+    doc["transcript"] = body.text.strip()
+    return doc
+
+
+@router.post("/from-video")
+async def document_from_video(file: UploadFile = File(...), client_id: str | None = None,
+                              user=Depends(current_user)) -> dict:
+    """Crée un devis directement à partir d'une vidéo (transcription + lignes IA chiffrées)."""
+    raw = await file.read()
+    transcript = await _transcribe_video_bytes(raw)
+    doc = await _quote_doc_from_text(user, transcript, client_id, source="video")
+    doc["transcript"] = transcript
     return doc
 
 

@@ -16,6 +16,7 @@ export function Render3dDialog({
   open, onOpenChange,
   render3dMode, setRender3dMode,
   plan, detectedWalls, pageIndex,
+  structure, dalleEp, voileEp, wallHeight,
   render3dStyle, setRender3dStyle,
   render3dFurniture, setRender3dFurniture,
   render3dBusy, render3dImg,
@@ -103,6 +104,10 @@ export function Render3dDialog({
           <Interactive3D
             rooms={plan?.rooms || []}
             walls={detectedWalls?.segments || []}
+            structure={structure || null}
+            dalleEpM={dalleEp ?? 0.2}
+            voileEpM={voileEp ?? 0.2}
+            wallHeightM={wallHeight ?? 2.5}
             scaleMperPx={plan?.calibrations?.[pageIndex]?.scale_m_per_px || 0.01}
             imageHeight={520}
           />

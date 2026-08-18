@@ -52,6 +52,9 @@ export default function QuoteEditor() {
   const [aiLineBusy, setAiLineBusy] = useState(null);
   const [planBusy, setPlanBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
+  const [transcriptDialog, setTranscriptDialog] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [transcriptBusy, setTranscriptBusy] = useState(false);
   const [docType, setDocType] = useState(
     ["invoice", "credit_note"].includes(sp.get("type")) ? sp.get("type") : "quote");
 
@@ -199,21 +202,36 @@ export default function QuoteEditor() {
     if (!file) return;
     if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
     setVideoBusy(true);
-    const tid = toast.loading("Analyse de la vidéo (transcription + devis)…");
+    const tid = toast.loading("Transcription de la vidéo…");
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post("/documents/from-video", fd, {
+      const { data } = await api.post("/documents/video-transcribe", fd, {
         headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
       });
+      toast.success("Transcription prête — relisez et corrigez avant de générer", { id: tid });
+      setTranscript(data.transcript || "");
+      setTranscriptDialog(true);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Transcription impossible", { id: tid });
+    } finally { setVideoBusy(false); }
+  };
+
+  const generateFromTranscript = async () => {
+    if (!transcript.trim()) { toast.error("La transcription est vide"); return; }
+    setTranscriptBusy(true);
+    const tid = toast.loading("Génération du devis…");
+    try {
+      const { data } = await api.post("/documents/from-text", { text: transcript });
       toast.success(
         data.priced_lines > 0
           ? `Devis créé — ${data.priced_lines} ligne(s) chiffrée(s) depuis votre bibliothèque`
-          : "Devis créé à partir de la vidéo", { id: tid });
+          : "Devis créé à partir de la description", { id: tid });
+      setTranscriptDialog(false);
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Génération du devis vidéo impossible", { id: tid });
-    } finally { setVideoBusy(false); }
+      toast.error(e?.response?.data?.detail || "Génération du devis impossible", { id: tid });
+    } finally { setTranscriptBusy(false); }
   };
 
   const downloadPdf = async () => {
@@ -428,6 +446,27 @@ export default function QuoteEditor() {
               </button>
             ))}
             {filteredLib.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">{t("crm.no_result")}</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={transcriptDialog} onOpenChange={setTranscriptDialog}>
+        <DialogContent className="max-w-xl" data-testid="video-transcript-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Video className="h-5 w-5 text-primary" /> Relire la transcription</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Corrigez la transcription si besoin, puis générez le devis (lignes chiffrées depuis votre bibliothèque).
+          </p>
+          <Textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={8}
+                    data-testid="video-transcript-text" className="rounded-sm text-sm" />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setTranscriptDialog(false)}
+                    className="rounded-sm" data-testid="video-transcript-cancel">Annuler</Button>
+            <Button onClick={generateFromTranscript} disabled={transcriptBusy || !transcript.trim()}
+                    className="rounded-sm gap-2" data-testid="video-transcript-generate">
+              {transcriptBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Générer le devis
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
