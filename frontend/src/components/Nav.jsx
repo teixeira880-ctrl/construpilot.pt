@@ -51,6 +51,7 @@ const NAV_DISCOVER = [
 
 const ACCOUNT_LINKS = [
   { to: "/tarifs", label: "Tarifs & abonnement", key: "nav.pricing", icon: Sparkles },
+  { to: "/investisseurs", label: "Investisseurs", key: "nav.investors", icon: Handshake },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
   { to: "/compte", label: "Mon compte", key: "nav.account", icon: KeyRound },
@@ -141,6 +142,10 @@ export const Nav = () => {
 
           <Link to="/tarifs" data-testid="nav-link-tarifs" className={pill(location.pathname === "/tarifs")}>
             <Sparkles className="h-4 w-4" /> {t("nav.pricing", "Tarifs")}
+          </Link>
+
+          <Link to="/investisseurs" data-testid="nav-link-investors" className={pill(location.pathname === "/investisseurs")}>
+            <Handshake className="h-4 w-4" /> {t("nav.investors", "Investisseurs")}
           </Link>
         </nav>
 

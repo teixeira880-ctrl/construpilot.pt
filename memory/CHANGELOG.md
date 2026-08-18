@@ -983,3 +983,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Landing.jsx : HERO_ROOMS/HERO_WALLS remplacés par un vrai plan de maison 5 pièces (Cuisine, Séjour, Entrée, Chambre 1, Chambre 2) avec ouvertures (portes, fenêtres, baie vitrée) + murs porteurs périmètre + refend central + cloisons. imageHeight 600. Libellé "Génération Plan 3D" déplacé en bas à gauche pour ne plus chevaucher le curseur "Hauteur murs".
 - Vérifié : screenshot préversion — rendu 3D multi-pièces réaliste avec portes/fenêtres.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 134 - 18/06/2026 (Lien Investisseurs visible dans le header)
+- Demande : rendre la partie Investisseurs plus visible (choix B = lien direct header à côté de Tarifs).
+- Nav.jsx : lien "Investisseurs" (icône Handshake, data-testid="nav-link-investors") ajouté dans le header desktop à côté de Tarifs + ajouté à ACCOUNT_LINKS → visible aussi dans le menu mobile. Clé i18n nav.investors (fallback "Investisseurs").
+- Vérifié : screenshot préversion, lien visible + navigation vers /investisseurs OK.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
