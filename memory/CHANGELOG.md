@@ -1,5 +1,11 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 116 — 18/06/2026 (PDF béton brandé + Prix acier auto + Presets par chantier)
+- **PDF béton signé** : `beton-pdf` intègre désormais le logo/en-tête entreprise (`_story_header_branding` + `_resolve_branding`) et un pied de page (`pdf_labels().footer`). Vérifié curl (200).
+- **Prix aciers auto** : nouveau champ `acier_price_kg` (dans les défauts + presets + query param de `structure_to_quote`). À la génération du devis, la ligne « Aciers HA » non chiffrée reçoit ce prix au kg → chiffrage instantané. Input « Prix acier €/kg » (`acier-price-kg`) dans l'UI. Vérifié curl (PU=1,8 appliqué).
+- **Réglages par chantier (presets)** : `GET /api/takeoffs/settings/beton-presets` (2 intégrés « Maison » / « Immeuble » + personnalisés), `PUT` (upsert nommé, noms réservés bloqués), `DELETE /{name}`. Frontend : `<select>` `beton-preset-select` (applique tous les réglages) + bouton « Enregistrer sous… » (`beton-preset-save`, prompt nom). Vérifié curl (builtins + save/list/delete) + capture d'écran.
+
+
 ## Itération 115 — 18/06/2026 (PNG 3D dans devis + Réglages béton par défaut + Métré PDF)
 - **Capture 3D jointe au devis** : `Interactive3D` expose `onAttach` + bouton « Joindre au devis » (`cam-attach-btn`) → PlanTakeoff stocke `plan3dSnapshot` → `sendToQuote` l'envoie en body (`snapshot_png`) à `structure_to_quote` (nouveau modèle `QuoteFromStructureIn`) → stocké dans `doc.attachment_image_b64` → `build_document_pdf` (pdf_docs.py) intègre l'image (reportlab `Image`). Vérifié curl (PDF devis 8,6 Ko avec image).
 - **Réglages béton par défaut (entreprise)** : `GET/PUT /api/takeoffs/settings/beton-defaults` (collection `beton_defaults` par user_id) — hauteur murs, ép. dalle/voile, section poutre, ratios aciers. Chemin à 2 segments (`/settings/beton-defaults`) pour éviter le conflit avec `/{plan_id}`. Frontend : chargement au montage + bouton « Enregistrer comme réglages par défaut » (`save-beton-defaults`). Vérifié curl (GET/PUT/persistance).

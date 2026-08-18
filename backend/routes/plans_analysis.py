@@ -31,7 +31,17 @@ logger = logging.getLogger(__name__)
 # ============ RÉGLAGES BÉTON PAR DÉFAUT (entreprise) ============
 
 _BETON_DEFAULTS = {"wall_height": 2.5, "dalle_ep": 0.20, "voile_ep": 0.20,
-                   "poutre_l": 0.20, "poutre_h": 0.40}
+                   "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0}
+
+# Presets intégrés proposés par type de chantier
+_BETON_BUILTIN_PRESETS = [
+    {"name": "Maison", "builtin": True, "wall_height": 2.5, "dalle_ep": 0.16,
+     "voile_ep": 0.20, "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0,
+     "acier_ratios": {"semelles": 40, "poteaux": 110, "poutres": 120, "dalles": 80, "voiles": 55}},
+    {"name": "Immeuble", "builtin": True, "wall_height": 2.7, "dalle_ep": 0.20,
+     "voile_ep": 0.20, "poutre_l": 0.25, "poutre_h": 0.50, "acier_price_kg": 0.0,
+     "acier_ratios": {"semelles": 45, "poteaux": 140, "poutres": 150, "dalles": 90, "voiles": 70}},
+]
 
 
 @router.get("/settings/beton-defaults")
@@ -40,6 +50,7 @@ async def get_beton_defaults(user=Depends(current_user)) -> dict:
     d = await db.beton_defaults.find_one({"user_id": user["user_id"]}, {"_id": 0, "user_id": 0})
     if not d:
         return {**_BETON_DEFAULTS, "acier_ratios": dict(ACIER_RATIOS)}
+    d.setdefault("acier_price_kg", 0.0)
     return d
 
 
@@ -49,6 +60,7 @@ class BetonDefaultsIn(BaseModel):
     voile_ep: float = 0.20
     poutre_l: float = 0.20
     poutre_h: float = 0.40
+    acier_price_kg: float = 0.0
     acier_ratios: dict = Field(default_factory=dict)
 
 
@@ -57,11 +69,54 @@ async def set_beton_defaults(body: BetonDefaultsIn, user=Depends(current_user)) 
     ar = {k: float(body.acier_ratios.get(k, ACIER_RATIOS[k])) for k in ACIER_RATIOS}
     payload = {"wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
                "voile_ep": body.voile_ep, "poutre_l": body.poutre_l,
-               "poutre_h": body.poutre_h, "acier_ratios": ar}
+               "poutre_h": body.poutre_h, "acier_price_kg": max(0.0, body.acier_price_kg),
+               "acier_ratios": ar}
     await db.beton_defaults.update_one(
         {"user_id": user["user_id"]},
         {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)
     return {"ok": True, **payload}
+
+
+@router.get("/settings/beton-presets")
+async def list_beton_presets(user=Depends(current_user)) -> dict:
+    """Jeux de réglages béton nommés (intégrés + personnalisés) à choisir selon le projet."""
+    saved = await db.beton_presets.find(
+        {"user_id": user["user_id"]}, {"_id": 0, "user_id": 0}).to_list(100)
+    return {"presets": [*_BETON_BUILTIN_PRESETS, *saved]}
+
+
+class BetonPresetIn(BaseModel):
+    name: str
+    wall_height: float = 2.5
+    dalle_ep: float = 0.20
+    voile_ep: float = 0.20
+    poutre_l: float = 0.20
+    poutre_h: float = 0.40
+    acier_price_kg: float = 0.0
+    acier_ratios: dict = Field(default_factory=dict)
+
+
+@router.put("/settings/beton-presets")
+async def save_beton_preset(body: BetonPresetIn, user=Depends(current_user)) -> dict:
+    name = (body.name or "").strip()[:40]
+    if not name:
+        raise HTTPException(400, "Nom du réglage requis")
+    if name.lower() in ("maison", "immeuble"):
+        raise HTTPException(400, "Ce nom est réservé — choisissez-en un autre")
+    ar = {k: float(body.acier_ratios.get(k, ACIER_RATIOS[k])) for k in ACIER_RATIOS}
+    payload = {"name": name, "wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
+               "voile_ep": body.voile_ep, "poutre_l": body.poutre_l, "poutre_h": body.poutre_h,
+               "acier_price_kg": max(0.0, body.acier_price_kg), "acier_ratios": ar}
+    await db.beton_presets.update_one(
+        {"user_id": user["user_id"], "name": name},
+        {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)
+    return {"ok": True, **payload}
+
+
+@router.delete("/settings/beton-presets/{name}")
+async def delete_beton_preset(name: str, user=Depends(current_user)) -> dict:
+    await db.beton_presets.delete_one({"user_id": user["user_id"], "name": name})
+    return {"ok": True}
 
 
 # ============ ANALYSE IA ============
@@ -828,13 +883,15 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
     from reportlab.lib.units import mm
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-    from engines.pdf_takeoff import _styles, _table, DARK, LIGHT_GREY, ORANGE
+    from engines.pdf_takeoff import _styles, _table, _story_header_branding, DARK, LIGHT_GREY, ORANGE
+    from engines.pdf_i18n import pdf_labels
 
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "structure": 1, "calibrations": 1, "rooms": 1, "filename": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
+    branding = await _resolve_branding(user["user_id"])
     ppm = _page_ppm(p, page_index)
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
@@ -847,7 +904,9 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
     pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
                             topMargin=18 * mm, bottomMargin=18 * mm)
     S = _styles()
-    story = [
+    story: list = []
+    _story_header_branding(story, branding, S)
+    story += [
         Paragraph("MÉTRÉ BÉTON — SYNTHÈSE", S["kicker"]),
         Paragraph(p.get("filename") or "Plan", S["h1"]),
         Paragraph(f"Hauteur murs {d.get('wall_height_m')} m · ep. dalle {d.get('beton_dalle_ep_m')} m · "
@@ -892,6 +951,7 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
                          style_extras=[("BACKGROUND", (0, 0), (-1, 0), ORANGE),
                                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                                        ("GRID", (0, 0), (-1, -1), 0.4, LIGHT_GREY)])]
+    story += [Spacer(1, 16), Paragraph(pdf_labels(None).get("footer", ""), S["muted"])]
     pdf.build(story)
     return Response(
         content=buf.getvalue(), media_type="application/pdf",
@@ -1007,6 +1067,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              acier_semelles: float | None = None, acier_poteaux: float | None = None,
                              acier_poutres: float | None = None, acier_dalles: float | None = None,
                              acier_voiles: float | None = None,
+                             acier_price_kg: float = 0.0,
                              client_id: str | None = None,
                              body: QuoteFromStructureIn | None = None,
                              user=Depends(current_user)) -> dict:
@@ -1030,6 +1091,12 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
+    # Prix acier au kg (chiffrage instantané de la ligne « Aciers HA » si non chiffrée par la bibliothèque)
+    if acier_price_kg and acier_price_kg > 0:
+        for ln in lines:
+            if "acier" in (ln.get("designation") or "").lower() and not ln.get("unit_price_ht"):
+                ln["unit_price_ht"] = round(float(acier_price_kg), 2)
+                priced += 1
     snap = (body.snapshot_png if body else None) or None
     if snap and snap.startswith("data:"):
         snap = snap.split(",", 1)[-1]

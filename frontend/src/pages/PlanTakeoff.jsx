@@ -96,6 +96,8 @@ export default function PlanTakeoff() {
   const [acierRatios, setAcierRatios] = useState({ semelles: 40, poteaux: 130, poutres: 140, dalles: 85, voiles: 60 });
   const [poutreL, setPoutreL] = useState(0.20);
   const [poutreH, setPoutreH] = useState(0.40);
+  const [acierPriceKg, setAcierPriceKg] = useState(0);
+  const [betonPresets, setBetonPresets] = useState([]);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   useEffect(() => {
     if (!plan?.plan_id) { setDescriptif(null); return; }
@@ -1083,15 +1085,45 @@ export default function PlanTakeoff() {
       if (data.voile_ep) setVoileEp(data.voile_ep);
       if (data.poutre_l) setPoutreL(data.poutre_l);
       if (data.poutre_h) setPoutreH(data.poutre_h);
+      if (data.acier_price_kg != null) setAcierPriceKg(data.acier_price_kg);
       if (data.acier_ratios) setAcierRatios((r) => ({ ...r, ...data.acier_ratios }));
     }).catch(() => {});
+    api.get("/takeoffs/settings/beton-presets")
+      .then(({ data }) => setBetonPresets(data.presets || [])).catch(() => {});
   }, []);
+
+  const applyBetonPreset = (name) => {
+    const pr = betonPresets.find((p) => p.name === name);
+    if (!pr) return;
+    setWallHeight(pr.wall_height ?? 2.5);
+    setDalleEp(pr.dalle_ep ?? 0.20);
+    setVoileEp(pr.voile_ep ?? 0.20);
+    setPoutreL(pr.poutre_l ?? 0.20);
+    setPoutreH(pr.poutre_h ?? 0.40);
+    setAcierPriceKg(pr.acier_price_kg ?? 0);
+    if (pr.acier_ratios) setAcierRatios((r) => ({ ...r, ...pr.acier_ratios }));
+    toast.success(`Réglages « ${name} » appliqués`);
+  };
+
+  const saveBetonPreset = async () => {
+    const name = window.prompt("Nom du jeu de réglages (ex. Maison, Rénovation, Villa) :");
+    if (!name || !name.trim()) return;
+    try {
+      await api.put("/takeoffs/settings/beton-presets", {
+        name: name.trim(), wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
+        poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg, acier_ratios: acierRatios,
+      });
+      const { data } = await api.get("/takeoffs/settings/beton-presets");
+      setBetonPresets(data.presets || []);
+      toast.success(`Réglage « ${name.trim()} » enregistré`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement du réglage impossible"); }
+  };
 
   const saveBetonDefaults = async () => {
     try {
       await api.put("/takeoffs/settings/beton-defaults", {
         wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
-        poutre_l: poutreL, poutre_h: poutreH, acier_ratios: acierRatios,
+        poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg, acier_ratios: acierRatios,
       });
       toast.success("Réglages béton enregistrés comme valeurs par défaut de l'entreprise");
     } catch { toast.error("Enregistrement des réglages impossible"); }
@@ -1145,7 +1177,7 @@ export default function PlanTakeoff() {
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     try {
       const body = plan3dSnapshot ? { snapshot_png: plan3dSnapshot } : {};
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}`, body);
       const n = data.priced_lines || 0;
       toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
@@ -2842,6 +2874,21 @@ export default function PlanTakeoff() {
                              className="w-14 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
                     </label>
                   </div>
+                  {/* Presets de réglages béton par chantier */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <select onChange={(e) => { if (e.target.value) applyBetonPreset(e.target.value); e.target.value = ""; }}
+                            data-testid="beton-preset-select" defaultValue=""
+                            className="flex-1 h-7 text-[11px] rounded-sm border border-input bg-background px-1">
+                      <option value="">Choisir un réglage (chantier)…</option>
+                      {betonPresets.map((p) => (
+                        <option key={p.name} value={p.name}>{p.name}{p.builtin ? " (type)" : ""}</option>
+                      ))}
+                    </select>
+                    <Button size="sm" variant="outline" onClick={saveBetonPreset}
+                            data-testid="beton-preset-save" className="rounded-sm h-7 text-[10px] gap-1">
+                      <Save className="h-3 w-3" /> Enregistrer sous…
+                    </Button>
+                  </div>
                   {!descriptif.calibrated && (
                     <p className="text-[10px] text-destructive mb-1">⚠️ Plan non calibré — quantités indisponibles.</p>
                   )}
@@ -2883,6 +2930,13 @@ export default function PlanTakeoff() {
                         </label>
                       ))}
                     </div>
+                    <label className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">Prix acier
+                      <input type="number" step="0.1" min="0" max="10" value={acierPriceKg}
+                             onChange={(e) => setAcierPriceKg(parseFloat(e.target.value) || 0)}
+                             data-testid="acier-price-kg"
+                             className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> €/kg
+                      <span className="text-[9px] opacity-70">(chiffrage auto de la ligne « Aciers HA »)</span>
+                    </label>
                     <Button size="sm" variant="outline" onClick={saveBetonDefaults}
                             data-testid="save-beton-defaults"
                             className="rounded-sm h-6 text-[10px] gap-1 mt-1.5">
