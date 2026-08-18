@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Shield, Save, Plus, Trash2, RefreshCw, Phone, Mail, CheckCircle2 } from "lucide-react";
+import { Shield, Save, Plus, Trash2, RefreshCw, Phone, Mail, CheckCircle2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -798,6 +798,19 @@ function InboxPanel() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
 
+  const exportDeckCsv = async () => {
+    try {
+      const { data } = await api.get("/investors/deck-requests.csv", { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([data], { type: "text/csv" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "leads-investisseurs.csv"; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Export CSV téléchargé");
+    } catch {
+      toast.error("Export impossible");
+    }
+  };
+
   return (
     <div className="grid gap-6" data-testid="admin-inbox-panel">
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
@@ -872,7 +885,13 @@ function InboxPanel() {
             )}
           </InboxSection>
 
-          <InboxSection title="Téléchargements pitch deck (VC)" items={data.deck_downloads || []} empty="Aucun téléchargement du pitch deck sur la période.">
+          <InboxSection title="Téléchargements pitch deck (VC)" items={data.deck_downloads || []} empty="Aucun téléchargement du pitch deck sur la période."
+            action={
+              <Button size="sm" variant="outline" className="rounded-sm gap-2 h-8"
+                      data-testid="deck-export-csv-btn" onClick={exportDeckCsv}>
+                <Download className="h-3.5 w-3.5" /> Exporter CSV
+              </Button>
+            }>
             {(d) => (
               <div className="flex items-center justify-between text-xs" data-testid="inbox-deck-row">
                 <div className="min-w-0 flex-1">
@@ -909,10 +928,13 @@ function InboxPanel() {
   );
 }
 
-function InboxSection({ title, items, empty, children }) {
+function InboxSection({ title, items, empty, children, action }) {
   return (
     <div className="surface p-5">
-      <p className="overline mb-3">{title} ({items.length})</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="overline">{title} ({items.length})</p>
+        {action}
+      </div>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground py-2">{empty}</p>
       ) : (

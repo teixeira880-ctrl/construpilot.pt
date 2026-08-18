@@ -919,3 +919,7 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Le téléchargement du pitch deck est désormais "gaté" par un mini-formulaire (nom, e-mail*, fonds/société) — composant DeckDownloadDialog dans Investors.jsx. À la soumission : POST /api/investors/deck-request → journalise dans db.deck_downloads (nom, email, fund, note, ip, user_agent, referer, date) puis ouvre le PDF dans un nouvel onglet.
 - Admin : le inbox (/api/admin/inbox) renvoie désormais deck_downloads + compteur ; nouvelle section "Téléchargements pitch deck (VC)" + Stat "Deck investisseurs" dans Admin.jsx (onglet Boîte de réception).
 - Vérifié e2e : POST via curl + via le dialog UI → entrées visibles dans l'inbox admin avec identité + IP + referer. Entrées de test nettoyées.
+
+## Iteration 125 - 18/06/2026 (Sync prix Stripe + export CSV leads VC)
+- **Sync Stripe** : exécuté /api/admin/plans/sync-stripe (ensure_stripe_catalog) — les Prices Stripe réels sont désormais Pro 299 €/mois & 3 150 €/an, Pro Business 350 €/mois & 3 500 €/an (anciens prix désactivés, lookup_key transféré). Vérifié via stripe.Price.list.
+- **Export CSV leads investisseurs** : nouvel endpoint admin GET /api/investors/deck-requests.csv (Depends admin_user, UTF-8 BOM, séparateur ;). Bouton "Exporter CSV" ajouté dans la section "Téléchargements pitch deck (VC)" du inbox admin (Admin.jsx, blob download). Vérifié : 200 admin / 401 sans auth + rendu UI screenshot.
