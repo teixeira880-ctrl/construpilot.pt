@@ -35,6 +35,28 @@ _BETON_DEFAULTS = {"wall_height": 2.5, "dalle_ep": 0.20, "voile_ep": 0.20,
                    "beton_price_m3": 0.0, "labor_price_m3": 0.0, "margin_pct": 0.0,
                    "last_preset": ""}
 
+# Prix indicatifs marché FR — repli quand l'utilisateur n'a rien configuré,
+# afin que le chiffrage se fasse toujours automatiquement après l'analyse.
+_FALLBACK_BETON_PRICE_M3 = 130.0   # BPE livré
+_FALLBACK_ACIER_PRICE_KG = 1.30    # acier HA façonné/posé
+_FALLBACK_LABOR_PRICE_M3 = 400.0   # coffrage + coulage + ferraillage
+_FALLBACK_MARGIN_PCT = 15.0        # marge commerciale
+
+
+def _with_default_prices(beton_price_m3: float, acier_price_kg: float,
+                         labor_price_m3: float, margin_pct: float,
+                         margins_set: bool = False):
+    """Applique des prix indicatifs si aucun n'est renseigné (valeur <= 0)."""
+    if not beton_price_m3 or beton_price_m3 <= 0:
+        beton_price_m3 = _FALLBACK_BETON_PRICE_M3
+    if not acier_price_kg or acier_price_kg <= 0:
+        acier_price_kg = _FALLBACK_ACIER_PRICE_KG
+    if not labor_price_m3 or labor_price_m3 <= 0:
+        labor_price_m3 = _FALLBACK_LABOR_PRICE_M3
+    if (not margin_pct or margin_pct <= 0) and not margins_set:
+        margin_pct = _FALLBACK_MARGIN_PCT
+    return beton_price_m3, acier_price_kg, labor_price_m3, margin_pct
+
 # Presets intégrés proposés par type de chantier
 _BETON_BUILTIN_PRESETS = [
     {"name": "Maison", "builtin": True, "wall_height": 2.5, "dalle_ep": 0.16,
@@ -967,10 +989,12 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
                ])
     story += [t, Spacer(1, 14)]
 
-    # Coûts estimés (matière + main d'œuvre + marge) si des prix sont renseignés
+    # Coûts estimés (matière + main d'œuvre + marge) — prix de repli si non renseignés
     bt = d.get("beton_total_m3", 0) or 0
     at = d.get("acier_total_kg", 0) or 0
-    if beton_price_m3 or acier_price_kg or labor_price_m3:
+    beton_price_m3, acier_price_kg, labor_price_m3, margin_pct = _with_default_prices(
+        beton_price_m3, acier_price_kg, labor_price_m3, margin_pct)
+    if bt or at:
         cost_beton = bt * beton_price_m3
         cost_acier = at * acier_price_kg
         cost_labor = bt * labor_price_m3
@@ -1151,6 +1175,10 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     lines = _descriptif_line_items(descriptif)
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
+    # Prix indicatifs de repli si l'utilisateur n'a rien configuré → chiffrage automatique
+    _margins_set = any(m is not None for m in (margin_beton, margin_acier, margin_labor))
+    beton_price_m3, acier_price_kg, labor_price_m3, margin_pct = _with_default_prices(
+        beton_price_m3, acier_price_kg, labor_price_m3, margin_pct, margins_set=_margins_set)
     lines, priced = await _apply_library_prices(user["user_id"], lines)
     # Prix acier au kg (chiffrage instantané de la ligne « Aciers HA » si non chiffrée par la bibliothèque)
     if acier_price_kg and acier_price_kg > 0:

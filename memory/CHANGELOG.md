@@ -923,3 +923,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 ## Iteration 125 - 18/06/2026 (Sync prix Stripe + export CSV leads VC)
 - **Sync Stripe** : exécuté /api/admin/plans/sync-stripe (ensure_stripe_catalog) — les Prices Stripe réels sont désormais Pro 299 €/mois & 3 150 €/an, Pro Business 350 €/mois & 3 500 €/an (anciens prix désactivés, lookup_key transféré). Vérifié via stripe.Price.list.
 - **Export CSV leads investisseurs** : nouvel endpoint admin GET /api/investors/deck-requests.csv (Depends admin_user, UTF-8 BOM, séparateur ;). Bouton "Exporter CSV" ajouté dans la section "Téléchargements pitch deck (VC)" du inbox admin (Admin.jsx, blob download). Vérifié : 200 admin / 401 sans auth + rendu UI screenshot.
+
+## Iteration 126 - 18/06/2026 (Fix : estimation devis après analyse de plan)
+- Bug (production) : après analyse d'un plan, les quantités s'affichaient mais l'estimation/chiffrage ne se faisait pas. Cause racine : tous les prix par défaut (béton, aciers, main d'œuvre, marge) valaient 0 → devis à 0 €.
+- Backend (plans_analysis.py) : prix indicatifs marché FR en repli quand rien n'est configuré (béton 130 €/m³, aciers 1,30 €/kg, main d'œuvre 400 €/m³, marge 15 %) via _with_default_prices(), appliqués dans structure_to_quote et export_beton_pdf. Le chiffrage se fait désormais toujours automatiquement (murs, planchers, poutres, poteaux, béton + aciers + main d'œuvre + marges).
+- Frontend (PlanTakeoff.jsx) : nouveau bouton principal "Estimer le devis (PDF)" (data-testid="structure-estimate-quote") visible dès l'analyse terminée → crée le devis chiffré puis télécharge directement le PDF, sans passer par l'éditeur. Ancien bouton conservé en "Ouvrir dans l'éditeur". Valeurs de prix par défaut réalistes dans l'UI + chargement des réglages ne réinitialise plus à 0.
+- Vérifié e2e backend sur plan_da91364b9bc7 : 9 lignes / 7 chiffrées → 19 516 € TTC + PDF devis valide (%PDF). Frontend compile sans erreur.
+- ⚠️ Correctif appliqué en PRÉVERSION — nécessite un redéploiement pour être actif sur https://construpilot.fr.

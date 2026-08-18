@@ -96,10 +96,10 @@ export default function PlanTakeoff() {
   const [acierRatios, setAcierRatios] = useState({ semelles: 40, poteaux: 130, poutres: 140, dalles: 85, voiles: 60 });
   const [poutreL, setPoutreL] = useState(0.20);
   const [poutreH, setPoutreH] = useState(0.40);
-  const [acierPriceKg, setAcierPriceKg] = useState(0);
-  const [betonPriceM3, setBetonPriceM3] = useState(0);
-  const [laborPriceM3, setLaborPriceM3] = useState(0);
-  const [marginPct, setMarginPct] = useState(0);
+  const [acierPriceKg, setAcierPriceKg] = useState(1.3);
+  const [betonPriceM3, setBetonPriceM3] = useState(130);
+  const [laborPriceM3, setLaborPriceM3] = useState(400);
+  const [marginPct, setMarginPct] = useState(15);
   const [marginBeton, setMarginBeton] = useState("");
   const [marginAcier, setMarginAcier] = useState("");
   const [marginLabor, setMarginLabor] = useState("");
@@ -1098,10 +1098,10 @@ export default function PlanTakeoff() {
         if (data.voile_ep) setVoileEp(data.voile_ep);
         if (data.poutre_l) setPoutreL(data.poutre_l);
         if (data.poutre_h) setPoutreH(data.poutre_h);
-        if (data.acier_price_kg != null) setAcierPriceKg(data.acier_price_kg);
-        if (data.beton_price_m3 != null) setBetonPriceM3(data.beton_price_m3);
-        if (data.labor_price_m3 != null) setLaborPriceM3(data.labor_price_m3);
-        if (data.margin_pct != null) setMarginPct(data.margin_pct);
+        if (data.acier_price_kg) setAcierPriceKg(data.acier_price_kg);
+        if (data.beton_price_m3) setBetonPriceM3(data.beton_price_m3);
+        if (data.labor_price_m3) setLaborPriceM3(data.labor_price_m3);
+        if (data.margin_pct) setMarginPct(data.margin_pct);
         if (data.acier_ratios) setAcierRatios((r) => ({ ...r, ...data.acier_ratios }));
         lastPreset = data.last_preset || "";
       } catch { /* ignore */ }
@@ -1122,10 +1122,10 @@ export default function PlanTakeoff() {
     setVoileEp(pr.voile_ep ?? 0.20);
     setPoutreL(pr.poutre_l ?? 0.20);
     setPoutreH(pr.poutre_h ?? 0.40);
-    setAcierPriceKg(pr.acier_price_kg ?? 0);
-    setBetonPriceM3(pr.beton_price_m3 ?? 0);
-    setLaborPriceM3(pr.labor_price_m3 ?? 0);
-    setMarginPct(pr.margin_pct ?? 0);
+    setAcierPriceKg(pr.acier_price_kg || 1.3);
+    setBetonPriceM3(pr.beton_price_m3 || 130);
+    setLaborPriceM3(pr.labor_price_m3 || 400);
+    setMarginPct(pr.margin_pct || 15);
     if (pr.acier_ratios) setAcierRatios((r) => ({ ...r, ...pr.acier_ratios }));
     if (notify) toast.success(`Réglages « ${pr.name} » appliqués`);
   };
@@ -1255,6 +1255,29 @@ export default function PlanTakeoff() {
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Génération du devis impossible");
     }
+  };
+
+  const estimateAndDownloadQuote = async () => {
+    if (!currentCalib) { toast.error("Calibrez d'abord le plan"); return; }
+    if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
+    setQuoteBusy(true);
+    try {
+      const body = plan3dSnapshot ? { snapshot_png: plan3dSnapshot } : {};
+      const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
+        + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
+        + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
+      const res = await api.get(`/documents/${data.doc_id}/pdf`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `devis-${plan.plan_id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      const ttc = data.totals?.ttc || 0;
+      toast.success(`Devis estimé téléchargé — ${ttc.toLocaleString("fr-FR")} € TTC · ${data.priced_lines || 0} poste(s) chiffré(s)`, { duration: 6000 });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Estimation impossible");
+    } finally { setQuoteBusy(false); }
   };
 
   const exportAnnotatedPdf = async () => {
@@ -3145,10 +3168,17 @@ export default function PlanTakeoff() {
                       </div>
                     </details>
                   )}
+                  <Button size="sm" onClick={estimateAndDownloadQuote} disabled={quoteBusy} data-testid="structure-estimate-quote"
+                          className="w-full rounded-sm h-9 text-sm font-bold gap-1.5 mt-2 bg-primary hover:bg-primary/90">
+                    <FileDown className="h-4 w-4" /> {quoteBusy ? "Estimation en cours…" : "Estimer le devis (PDF)"}
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Chiffre automatiquement murs, planchers, poutres, poteaux · béton {betonPriceM3} €/m³ · aciers {acierPriceKg} €/kg · main d'œuvre {laborPriceM3} €/m³ · marge {marginPct}%
+                  </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <Button size="sm" onClick={sendToQuote} data-testid="structure-to-quote"
+                    <Button size="sm" variant="outline" onClick={sendToQuote} data-testid="structure-to-quote"
                             className="rounded-sm h-7 text-xs gap-1 flex-1">
-                      <ArrowRight className="h-3 w-3" /> Envoyer vers le devis
+                      <ArrowRight className="h-3 w-3" /> Ouvrir dans l'éditeur
                     </Button>
                     <Button size="sm" variant="outline" onClick={exportAnnotatedPdf} data-testid="structure-export-pdf"
                             className="rounded-sm h-7 text-xs gap-1">
