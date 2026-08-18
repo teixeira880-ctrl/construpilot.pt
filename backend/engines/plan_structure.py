@@ -193,3 +193,93 @@ async def detect_structure(image_b64_png: str, width_px: int, height_px: int) ->
         logger.warning(f"detect_structure AI failed: {e}")
         return {"walls": [], "openings": [], "error": f"AI call failed: {type(e).__name__}"}
     return _to_px(_parse_json(raw), width_px, height_px)
+
+
+def _offset_items(res: dict, ox: int, oy: int) -> dict:
+    """Décale toutes les coordonnées d'une tuile vers le repère de l'image complète."""
+    for key in ("walls", "openings", "beams", "columns"):
+        for it in res.get(key) or []:
+            it["x1"] += ox; it["y1"] += oy; it["x2"] += ox; it["y2"] += oy
+            if it.get("swing"):
+                it["swing"]["x"] += ox; it["swing"]["y"] += oy
+    for f in res.get("floors") or []:
+        f["points"] = [[p[0] + ox, p[1] + oy] for p in f.get("points", [])]
+    return res
+
+
+def _center(it: dict) -> tuple:
+    return ((it["x1"] + it["x2"]) / 2, (it["y1"] + it["y2"]) / 2)
+
+
+def _dedupe(items: list, tol: float, use_center: bool = True) -> list:
+    """Supprime les doublons issus du recouvrement des tuiles (proximité)."""
+    import math
+    out = []
+    for it in items:
+        cx, cy = _center(it)
+        dup = False
+        for kept in out:
+            kx, ky = _center(kept)
+            if math.hypot(cx - kx, cy - ky) < tol:
+                dup = True
+                break
+        if not dup:
+            out.append(it)
+    return out
+
+
+async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: int,
+                                 max_tile: int = 2200) -> dict:
+    """Analyse un GRAND plan (A0/A1) en le découpant en zones, puis fusionne.
+    Capte beaucoup plus de poteaux/poutres qu'un seul passage sur l'image réduite."""
+    import base64 as _b64
+    import io as _io
+    import asyncio
+    from PIL import Image as _Image
+
+    big = max(width_px, height_px)
+    if big <= max_tile * 1.3:
+        return await detect_structure(image_b64_png, width_px, height_px)
+
+    cols = min(3, max(1, -(-width_px // max_tile)))   # ceil
+    rows = min(3, max(1, -(-height_px // max_tile)))
+    img = _Image.open(_io.BytesIO(_b64.b64decode(image_b64_png))).convert("RGB")
+    tw, th = width_px // cols, height_px // rows
+    ov = int(min(tw, th) * 0.08)  # recouvrement
+
+    async def run_tile(cx, cy):
+        x0 = max(0, cx * tw - ov); y0 = max(0, cy * th - ov)
+        x1 = min(width_px, (cx + 1) * tw + ov); y1 = min(height_px, (cy + 1) * th + ov)
+        crop = img.crop((x0, y0, x1, y1))
+        buf = _io.BytesIO(); crop.save(buf, format="PNG")
+        b64 = _b64.b64encode(buf.getvalue()).decode()
+        res = await detect_structure(b64, crop.width, crop.height)
+        return _offset_items(res, x0, y0)
+
+    tiles = await asyncio.gather(*[run_tile(cx, cy) for cy in range(rows) for cx in range(cols)],
+                                 return_exceptions=True)
+    merged = {"walls": [], "openings": [], "beams": [], "columns": [], "floors": [],
+              "plan_kind": "coffrage", "confidence": None}
+    kinds = []
+    for t in tiles:
+        if isinstance(t, Exception) or not isinstance(t, dict):
+            continue
+        for k in ("walls", "openings", "beams", "columns", "floors"):
+            merged[k].extend(t.get(k) or [])
+        if t.get("plan_kind"):
+            kinds.append(t["plan_kind"])
+    diag = (width_px ** 2 + height_px ** 2) ** 0.5
+    merged["columns"] = _dedupe(merged["columns"], diag * 0.010)
+    merged["beams"] = _dedupe(merged["beams"], diag * 0.012)
+    merged["walls"] = _dedupe(merged["walls"], diag * 0.010)
+    merged["openings"] = _dedupe(merged["openings"], diag * 0.012)
+    if kinds:
+        merged["plan_kind"] = max(set(kinds), key=kinds.count)
+    merged.update({
+        "image_width": width_px, "image_height": height_px,
+        "wall_count": len(merged["walls"]), "opening_count": len(merged["openings"]),
+        "beam_count": len(merged["beams"]), "floor_count": len(merged["floors"]),
+        "column_count": len(merged["columns"]),
+        "tiled": f"{cols}x{rows}",
+    })
+    return merged

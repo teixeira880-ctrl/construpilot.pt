@@ -1,0 +1,38 @@
+{
+  "summary": "Iter 92 validation e2e des 3 features Plan 2D (détection par zones + repérage poteaux P1..Pn + métré béton m³). Backend pytest 5/5 PASS sur /app/backend/tests/test_iter92_beton_refs.py. GET /api/takeoffs/plan_c56da42f0331/analysis/0?wall_height=2.7 renvoie descriptif complet avec beton_total_m3>0 et le détail beton_poteaux_m3/beton_poutres_m3/beton_dalles_m3/beton_voiles_m3 (mesure initiale: 151.4 m³ avec 9 poteaux/29.9 ml poutres/327.07 m² planchers; après re-détection tiled: 204.13 m³ / 14 poteaux — variance IA connue). Chaque poteau porte bien un ref unique 'P1'..'Pn' (regex ^P\\d+$) et la PUT /structure/0 avec un poteau ajouté renvoie une renumérotation contiguë 1..N+1 triée haut->bas/gauche->droite. POST /structure/0/quote?wall_height=2.7 contient les DEUX lignes attendues: 'Poteaux béton' (unit=u, qty>0) ET 'Béton coulé (poteaux + poutres + dalles + voiles)' (unit=m³, qty>0). Plan résidentiel plan_da91364b9bc7 non-régression: beton_total_m3 exposé (petites valeurs). UI Playwright (login demo + /plan + [data-testid=recent-plan-plan_c56da42f0331]): [data-testid=structure-card] visible, [structure-column-count]='Poteaux 9', [structure-descriptif] affiche 'Béton total 145.2 m³' (wall_height défaut 2.5), [data-testid=descriptif-beton]='145.2 m³'. Clic [data-testid=structure-add-column] passe le compteur 9→10 (persistance PUT OK) sans erreur JS. Canvas HTML5 sans pageerror.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/takeoffs/{id}/analysis/{page}", "issue": "_compute_descriptif accède directement c['x1']/c['x2']/c['y1']/c['y2'] sur les colonnes → KeyError → HTTP 500 si un client PUT un poteau sans ces clés. Non déclenchable par la UI actuelle (front envoie toujours x1..y2), mais fragile. Reproduit en envoyant {p1:[...],p2:[...]} via PUT /structure/0. Défensif recommandé: c.get('x1',0) etc. et/ou validation Pydantic stricte sur columns."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter92_beton_refs.py",
+    "/app/test_reports/pytest/iter92.xml"
+  ],
+  "action_items": [
+    "(mineur, défensif) Utiliser c.get('x1',0)/c.get('x2',0)/c.get('y1',0)/c.get('y2',0) dans _compute_descriptif (poteaux) — sinon un PUT avec un schéma non-conforme casse tous les GET analysis suivants (500). _assign_column_refs le fait déjà, être cohérent.",
+    "(info) La détection tiled n'est pas déterministe (14 poteaux détectés sur le re-run vs 9 initialement dans le contexte agent). Attendu — l'utilisateur complète manuellement, refs sont recalculés."
+  ],
+  "critical_code_review_comments": [
+    "_assign_column_refs trie bien haut->bas/gauche->droite et renumérote à chaque save_structure — cohérent avec spec.",
+    "_compute_descriptif expose beton_total_m3 + détail beton_poteaux/poutres/dalles/voiles_m3 + épaisseurs (dalle 0.20/voile 0.20) — bonne transparence utilisateur.",
+    "_descriptif_line_items ajoute deux lignes distinctes (Poteaux u + Béton coulé m³) — permet à la fois le comptage unitaire et le métré volumique, cohérent DTU.",
+    "Défaut d'homogénéité de shape sur les entités structure: walls/openings/beams utilisent {*_id, x1..y2}, columns détectés aussi mais l'API PUT accepte un dict sans validation stricte (list[dict]) → risque de corrompre le doc. Ajouter un modèle Pydantic ColumnIn = {column_id?, x1,y1,x2,y2, ref?} avec validation."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter92_beton_refs.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "demo@construpilot.fr / Demo2026! (Pro Business, localStorage key 'construpilot_token')",
+  "seed_data_creation": "Cleanup: le test PUT ajoute puis supprime TEST_col_iter92 (assertions renumérotation OK). Une re-détection tiled a été déclenchée pendant la mise au point (structure plan_c56da42f0331 contient maintenant 14 poteaux P1..P14 au lieu des 9 initiaux, béton_total_m3≈204 avec wh=2.7). Pas de données de test résiduelles.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Les tests iter91 (test_iter91_coffrage_columns.py) supposent plan_kind=='coffrage'; suite à la re-détection tiled déclenchée pour restaurer l'état, plan_c56da42f0331 est actuellement classé 'habitation' par _classify_plan — la nouvelle détection ne produit peut-être plus les seuils pour 'coffrage'. Ce n'est pas dans le scope iter92 mais si l'agent principal veut restaurer plan_kind='coffrage', il peut soit tuner _classify_plan soit forcer plan_kind à la persistance. IMPORTANT: format des colonnes attendu = {column_id, x1, y1, x2, y2, ref?}. Un PUT avec p1/p2 (arrays) fait crasher toutes les GET analysis suivantes (500). Voir action_items.",
+  "rca of the issue": "Reproduction bug défensif: PUT /api/takeoffs/plan_c56da42f0331/structure/0 avec columns=[{id:'X',p1:[50,50],p2:[90,90]}] → 200 OK, mais tout GET /analysis/0 renvoie 500 (KeyError:'x2' dans _compute_descriptif L493). Mitigation: c.get('x1',0)/c.get('x2',0)... OU StructureIn.columns typé (Pydantic ColumnIn) rejetant les schémas non conformes."
+}

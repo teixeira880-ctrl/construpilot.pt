@@ -2731,6 +2731,12 @@ export default function PlanTakeoff() {
                     <span className="text-muted-foreground">Portes / Fenêtres / Baies</span><span className="num text-right">{descriptif.portes} / {descriptif.fenetres} / {descriptif.baies}</span>
                     <span className="text-muted-foreground">Poutres</span><span className="num text-right">{descriptif.poutres_ml} ml</span>
                     <span className="text-muted-foreground">Poteaux</span><span className="num text-right">{descriptif.poteaux || 0} u</span>
+                    {descriptif.beton_total_m3 > 0 && (
+                      <>
+                        <span className="text-muted-foreground font-semibold">Béton total</span>
+                        <span className="num text-right font-semibold" data-testid="descriptif-beton">{descriptif.beton_total_m3} m³</span>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" onClick={sendToQuote} data-testid="structure-to-quote"

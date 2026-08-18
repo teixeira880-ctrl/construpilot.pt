@@ -18,7 +18,7 @@ from engines import geometry as G
 from engines import plan_texts as T
 from engines.plan_ai import analyze_plan_image
 from engines.plan_cv import detect_all_rooms, detect_walls, flood_fill_room
-from engines.plan_structure import detect_structure
+from engines.plan_structure import detect_structure, detect_structure_tiled
 from engines.plan_processor import auto_calibration_from_pdf_scale
 
 from routes.plans_common import (
@@ -386,7 +386,8 @@ async def detect_structure_route(plan_id: str, page_index: int = 0,
     if not img:
         raise HTTPException(500, "Image manquante")
     w, h = _page_dims(page)
-    result = await detect_structure(img, w, h)
+    result = await detect_structure_tiled(img, w, h)
+    _assign_column_refs(result.get("columns") or [])
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {f"structure.{page_index}": {**result, "detected_at": _now()},
@@ -412,6 +413,7 @@ async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
+    _assign_column_refs(body.columns or [])
     payload = {
         "walls": body.walls, "openings": body.openings, "beams": body.beams,
         "floors": body.floors, "columns": body.columns,
@@ -432,6 +434,15 @@ async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
 def _seg_len_px(it: dict) -> float:
     import math
     return math.hypot(it.get("x2", 0) - it.get("x1", 0), it.get("y2", 0) - it.get("y1", 0))
+
+
+def _assign_column_refs(columns: list) -> list:
+    """Numérote les poteaux P1, P2… de haut en bas puis de gauche à droite."""
+    def cy(c):
+        return (c.get("y1", 0) + c.get("y2", 0)) / 2, (c.get("x1", 0) + c.get("x2", 0)) / 2
+    for i, c in enumerate(sorted(columns, key=cy), start=1):
+        c["ref"] = f"P{i}"
+    return columns
 
 
 def _polygon_area_px(points: list) -> float:
@@ -474,6 +485,19 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         planchers_source = "rooms"
     porteur_ml = round(sum(_seg_len_px(w) for w in walls if w.get("type") == "porteur") / ppm, 2) if ppm else 0.0
     cloison_ml = round(murs_ml - porteur_ml, 2)
+    # ===== Métré BÉTON (m³) — sections/épaisseurs par défaut (paramétrables) =====
+    columns = structure.get("columns") or []
+    DALLE_EP, VOILE_EP, POUTRE_L, POUTRE_H = 0.20, 0.20, 0.20, 0.40
+    if ppm:
+        beton_poteaux = round(sum(
+            (abs(c.get("x2", 0) - c.get("x1", 0)) / ppm) * (abs(c.get("y2", 0) - c.get("y1", 0)) / ppm) * wall_height
+            for c in columns if isinstance(c, dict)), 2)
+        beton_poutres = round(poutres_ml * POUTRE_L * POUTRE_H, 2)
+        beton_dalles = round(planchers * DALLE_EP, 2)
+        beton_voiles = round(porteur_ml * wall_height * VOILE_EP, 2)
+    else:
+        beton_poteaux = beton_poutres = beton_dalles = beton_voiles = 0.0
+    beton_total = round(beton_poteaux + beton_poutres + beton_dalles + beton_voiles, 2)
     return {
         "wall_height_m": round(float(wall_height), 2),
         "planchers_m2": planchers,
@@ -487,7 +511,11 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "ouvertures_total": len(openings),
         "ouvertures_largeur_ml": ouv_ml,
         "poutres_ml": poutres_ml,
-        "poteaux": len(structure.get("columns") or []),
+        "poteaux": len(columns),
+        "beton_poteaux_m3": beton_poteaux, "beton_poutres_m3": beton_poutres,
+        "beton_dalles_m3": beton_dalles, "beton_voiles_m3": beton_voiles,
+        "beton_total_m3": beton_total,
+        "beton_dalle_ep_m": DALLE_EP, "beton_voile_ep_m": VOILE_EP,
         "plan_kind": structure.get("plan_kind") or "habitation",
         "calibrated": bool(ppm),
     }
@@ -565,6 +593,7 @@ def _descriptif_line_items(d: dict) -> list[dict]:
     add("Fournitures et pose — Baies vitrées", d.get("baies"), "u")
     add("Poutres / linteaux", d.get("poutres_ml"), "ml")
     add("Poteaux béton", d.get("poteaux"), "u")
+    add("Béton coulé (poteaux + poutres + dalles + voiles)", d.get("beton_total_m3"), "m³")
     return lines
 
 
@@ -599,7 +628,8 @@ async def detect_structure_all(plan_id: str, user=Depends(current_user)) -> dict
             results.append({"page_index": idx, "error": "image manquante"})
             continue
         w, h = _page_dims(page)
-        res = await detect_structure(img, w, h)
+        res = await detect_structure_tiled(img, w, h)
+        _assign_column_refs(res.get("columns") or [])
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id},
             {"$set": {f"structure.{idx}": {**res, "detected_at": _now()}}})

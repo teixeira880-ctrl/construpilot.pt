@@ -2242,3 +2242,11 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **« Envoyer vers le devis »** (déjà présent) confirmé : crée le devis avec toutes les lignes du descriptif (dont poteaux) + prix pré-remplis.
 - **Limite connue** : sur un A0 très dense (4967×7021 px), la vision IA sous-détecte (ex 7 poteaux vs davantage) → l'utilisateur complète manuellement via les boutons d'ajout. Non bloquant.
 - ⚠️ PROD (construpilot.fr) : nécessite un REDÉPLOIEMENT (Deploy Now) pour appliquer ce fix.
+
+## Changelog Iter 92 (18/06/2026) — Détection par zones + Repérage poteaux + Métré béton
+- **Détection par zones** : `detect_structure_tiled` découpe les grands plans (A0/A1) en tuiles 2×2/3×3 (recouvrement 8%), analyse chaque tuile en parallèle (Gemini), décale les coords et fusionne avec déduplication par proximité → capte bien plus de poteaux/poutres. Auto-activé si image > ~2860 px.
+- **Repérage poteaux** : `_assign_column_refs` numérote P1, P2… (tri haut→bas/gauche→droite), recalculé à chaque sauvegarde. Repère dessiné sur le canvas à côté de chaque poteau.
+- **Métré béton (m³)** : `_compute_descriptif` calcule beton_poteaux/poutres/dalles/voiles + beton_total_m3 (épaisseurs par défaut dalle 0,20 / voile 0,20 / poutre 0,20×0,40 / poteaux w×d×h). Affiché « Béton total » dans le descriptif + ligne devis « Béton coulé (…) » en m³ (+ ligne « Poteaux béton » en u).
+- **Vérifié** (testing agent iter92, backend 100% / frontend 100%) : plan A0 tuilé 3×3 → 14-24 poteaux/murs, refs P1..Pn uniques, béton ~151-204 m³ détaillé, devis avec lignes poteaux + béton, non-régression résidentiel OK. Correctif défensif `_compute_descriptif` (c.get) contre poteaux mal formés.
+- Limite : détection A0 non déterministe/non exhaustive (complétion manuelle via boutons +).
+- ⚠️ PROD (construpilot.fr) : REDÉPLOYER (Deploy Now) pour appliquer.

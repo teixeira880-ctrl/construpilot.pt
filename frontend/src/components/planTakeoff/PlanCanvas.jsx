@@ -142,6 +142,11 @@ export default function PlanCanvas({
         ctx.strokeStyle = sel ? "rgba(255,255,255,1)" : "rgba(88,24,145,1)";
         ctx.lineWidth = (sel ? 2 : 1) / zoom;
         ctx.strokeRect(x0, y0, w, h);
+        if (c.ref) {
+          ctx.fillStyle = "rgba(88,24,145,1)";
+          ctx.font = `bold ${Math.max(11, 13 / zoom)}px sans-serif`;
+          ctx.fillText(c.ref, x0 + w + 3 / zoom, y0 + h);
+        }
       });
       // Planchers (surfaces de sol) — remplissage translucide sous les murs
       (structure.floors || []).forEach((f) => {
