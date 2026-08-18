@@ -632,7 +632,8 @@ ACIER_RATIOS = {
 def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
                         wall_height: float = 2.5, dalle_ep: float = 0.20,
                         voile_ep: float = 0.20, poutre_l: float = 0.20,
-                        poutre_h: float = 0.40, acier_ratios: dict | None = None) -> dict:
+                        poutre_h: float = 0.40, acier_ratios: dict | None = None,
+                        floors_only: bool = False) -> dict:
     from collections import Counter
     walls = structure.get("walls") or []
     openings = structure.get("openings") or []
@@ -648,6 +649,10 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
     if floors and ppm:
         planchers = round(sum(_polygon_area_px(f.get("points") or []) for f in floors) / (ppm * ppm), 2)
         planchers_source = "auto"
+    elif floors_only:
+        # Gros œuvre : la surface se réfère UNIQUEMENT aux planchers détectés (pas de repli pièces)
+        planchers = 0.0
+        planchers_source = "floors_only"
     else:
         planchers = round(sum(r.get("surface_m2", 0) or 0 for r in rooms), 2)
         planchers_source = "rooms"
@@ -788,6 +793,27 @@ async def _apply_library_prices(user_id: str, lines: list[dict]) -> tuple[list[d
             ln["price_source"] = "bibliotheque"
             matched += 1
     return lines, matched
+
+
+def _beton_line_items(d: dict) -> list[dict]:
+    """Lignes GROS ŒUVRE / BÉTON uniquement : murs (voiles), poteaux, poutres,
+    planchers (dalles), semelles + aciers. Sans pièces ni second œuvre.
+    La surface se réfère aux planchers détectés uniquement."""
+    lines = []
+
+    def add(desig, qty, unit, cat="Gros œuvre — béton"):
+        if qty and qty > 0:
+            lines.append({"designation": desig, "unit": unit, "qty": round(qty, 2),
+                          "unit_price_ht": 0, "vat_rate": 20, "category": cat})
+    add(f"Béton — semelles / fondations ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³")
+    add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³")
+    add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³")
+    add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³")
+    add(f"Béton — voiles / murs porteurs ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³")
+    _ar = d.get("acier_ratios") or {}
+    _ratio_moy = (round(sum(_ar.values()) / len(_ar)) if _ar else 100)
+    add(f"Aciers HA (ferraillage — env. {_ratio_moy} kg/m³)", d.get("acier_total_kg"), "kg")
+    return lines
 
 
 def _descriptif_line_items(d: dict) -> list[dict]:
@@ -1154,6 +1180,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              margin_beton: float | None = None, margin_acier: float | None = None,
                              margin_labor: float | None = None,
                              client_id: str | None = None,
+                             beton_only: bool = False,
                              body: QuoteFromStructureIn | None = None,
                              user=Depends(current_user)) -> dict:
     """Crée un devis brouillon à partir du descriptif (planchers, murs, ouvertures, poutres, aciers)."""
@@ -1171,8 +1198,8 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
-                                     poutre_l, poutre_h, acier_ratios=ar)
-    lines = _descriptif_line_items(descriptif)
+                                     poutre_l, poutre_h, acier_ratios=ar, floors_only=beton_only)
+    lines = _beton_line_items(descriptif) if beton_only else _descriptif_line_items(descriptif)
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
     # Prix indicatifs de repli si l'utilisateur n'a rien configuré → chiffrage automatique
@@ -1186,10 +1213,12 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
             if "acier" in (ln.get("designation") or "").lower() and not ln.get("unit_price_ht"):
                 ln["unit_price_ht"] = round(float(acier_price_kg), 2)
                 priced += 1
-    # Prix béton au m³ sur la ligne « Béton coulé »
+    # Prix béton au m³ — s'applique à la ligne « Béton coulé » ou à chaque poste béton (mode gros œuvre)
     if beton_price_m3 and beton_price_m3 > 0:
         for ln in lines:
-            if "béton coulé" in (ln.get("designation") or "").lower() and not ln.get("unit_price_ht"):
+            desig = (ln.get("designation") or "").lower()
+            is_beton = ("béton coulé" in desig) or (desig.startswith("béton") and "main d'œuvre" not in desig)
+            if is_beton and not ln.get("unit_price_ht"):
                 ln["unit_price_ht"] = round(float(beton_price_m3), 2)
                 priced += 1
     # Main d'œuvre béton (au m³)

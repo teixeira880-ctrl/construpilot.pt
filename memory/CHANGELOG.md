@@ -937,3 +937,13 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Estimator.jsx : bouton "Trouver les meilleurs prix fournisseurs" (data-testid="est-find-prices-btn") dans les résultats (step 3). Mappe les lots matériaux (material_cost>0) → POST /prices/optimize → affiche SupplierOptimization. Reset de optim à chaque nouveau calcul.
 - Vérifié e2e préversion (screenshot) : bouton visible, optimisation affichée (BigMat 14 646 € / multi 14 325 € / économie 321 € + tableau Placo/Carrelage/Peinture). Prix en mode démo (brancher API fournisseurs pour du réel).
 - ⚠️ Ajouté en PRÉVERSION — nécessite un redéploiement pour apparaître sur https://construpilot.fr.
+
+## Iteration 128 - 18/06/2026 (Devis béton gros œuvre : structurel uniquement, sans pièces)
+- Demande : sur le plan béton/gros œuvre, estimer SANS les pièces (pas de cloisons, portes, fenêtres, enduit/peinture, sol) — uniquement murs (voiles), poteaux, poutres, planchers (dalles), semelles + aciers. Surface = planchers uniquement.
+- Backend plans_analysis.py :
+  - _compute_descriptif() : nouveau param floors_only → planchers calculés uniquement depuis les polygones de planchers détectés (plus de repli sur les pièces).
+  - Nouvelle fonction _beton_line_items() : lignes gros œuvre béton par poste (semelles, poteaux, poutres, dalles/planchers, voiles/murs) + aciers, TVA 20%.
+  - structure_to_quote() : nouveau param beton_only → utilise _beton_line_items + floors_only. Le prix béton/m³ s'applique désormais à chaque poste béton (plus seulement « Béton coulé »).
+- Frontend PlanTakeoff.jsx : les deux boutons du panneau structure ("Estimer le devis (PDF)" et "Ouvrir dans l'éditeur") envoient beton_only=true. Texte d'aide mis à jour (gros œuvre / béton uniquement, surface = planchers).
+- Vérifié e2e backend (plan_da91364b9bc7) : 4 lignes structurelles (dalles, voiles, aciers, main d'œuvre), TTC 10 661 €, AUCUNE ligne pièce. Frontend compile.
+- ⚠️ PRÉVERSION — nécessite un redéploiement pour la production.

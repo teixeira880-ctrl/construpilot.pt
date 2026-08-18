@@ -1248,7 +1248,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
       const n = data.priced_lines || 0;
       toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
@@ -1266,7 +1266,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
       const res = await api.get(`/documents/${data.doc_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
@@ -3173,7 +3173,7 @@ export default function PlanTakeoff() {
                     <FileDown className="h-4 w-4" /> {quoteBusy ? "Estimation en cours…" : "Estimer le devis (PDF)"}
                   </Button>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Chiffre automatiquement murs, planchers, poutres, poteaux · béton {betonPriceM3} €/m³ · aciers {acierPriceKg} €/kg · main d'œuvre {laborPriceM3} €/m³ · marge {marginPct}%
+                    Gros œuvre / béton uniquement — murs, poteaux, poutres, planchers, semelles + aciers (surface = planchers) · béton {betonPriceM3} €/m³ · aciers {acierPriceKg} €/kg · main d'œuvre {laborPriceM3} €/m³ · marge {marginPct}%
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" variant="outline" onClick={sendToQuote} data-testid="structure-to-quote"
