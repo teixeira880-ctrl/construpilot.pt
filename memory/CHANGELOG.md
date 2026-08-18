@@ -1,5 +1,12 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 114 — 18/06/2026 (Aciers dans devis + Export 3D PNG + Poutres b×h + Devis vidéo enrichi)
+- **Aciers HA dans le devis** : `_descriptif_line_items` renomme la ligne acier en « Aciers HA (fer à béton armé — env. N kg/m³) » (N = moyenne des ratios) ; incluse et chiffrée via bibliothèque dans le devis généré depuis le plan (`structure_to_quote` qui accepte désormais dalle_ep/voile_ep/poutre_l/poutre_h + ratios aciers). Vérifié curl (qty = poids total kg).
+- **Export 3D PNG** : `Interactive3D` — `WebGLRenderer({ preserveDrawingBuffer:true })` + bouton « PNG » (`cam-snapshot-btn`) qui télécharge `renderer.domElement.toDataURL()` (maquette-3d-beton.png).
+- **Sections poutres réglables (b×h)** : états `poutreL`/`poutreH` + inputs `structure-poutre-l`/`structure-poutre-h` dans `PlanTakeoff.jsx`, transmis à analysis / beton-xlsx / quote. La 3D utilise `poutreLM`/`poutreHM` pour la section des poutres. Vérifié curl (0,20×0,40→0,30×0,80 : béton poutres 2,14→6,43 m³).
+- **Devis vidéo enrichi (photos)** : `quote_lines_from_text(text, images)` + `_complete(images=…)` (vision OpenAI) ; `from-text` accepte `images` (data URLs, prefix strippé, max 6). Dialog de relecture (`QuoteEditor.jsx`) : upload photos `capture=environment` (`video-transcript-add-photo`), miniatures + suppression, envoyées à l'IA. Vérifié curl (lignes détaillées à partir d'une photo).
+
+
 ## Itération 113 — 18/08/2026 (Ratios aciers ajustables + Relecture vidéo + Maquette 3D béton)
 - **Aciers ajustables** : 5 ratios de ferraillage (kg/m³) éditables dans l'UI (`acier-ratios` / inputs `acier-ratio-{semelles|poteaux|poutres|dalles|voiles}` dans `PlanTakeoff.jsx`). Transmis en query params à `GET .../analysis/{page}` et `GET .../beton-xlsx` (`acier_semelles`, `acier_poteaux`, …). `_compute_descriptif` accepte `acier_ratios` (override de `ACIER_RATIOS`). Vérifié curl : poteaux 130→200 change `acier_total` (21369→23484 kg).
 - **Relecture transcription vidéo** : parcours en 2 temps. `POST /api/documents/video-transcribe` (vidéo → transcript) puis dialog éditable (`video-transcript-dialog`/`video-transcript-text`) et `POST /api/documents/from-text` ({text, client_id}) qui génère le devis. Refactor : helpers `_transcribe_video_bytes` et `_quote_doc_from_text` dans `documents.py` (l'ancien `/from-video` les réutilise). Vérifié e2e curl.

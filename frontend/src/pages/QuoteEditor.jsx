@@ -55,6 +55,7 @@ export default function QuoteEditor() {
   const [transcriptDialog, setTranscriptDialog] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [transcriptBusy, setTranscriptBusy] = useState(false);
+  const [transcriptPhotos, setTranscriptPhotos] = useState([]);
   const [docType, setDocType] = useState(
     ["invoice", "credit_note"].includes(sp.get("type")) ? sp.get("type") : "quote");
 
@@ -211,10 +212,21 @@ export default function QuoteEditor() {
       });
       toast.success("Transcription prête — relisez et corrigez avant de générer", { id: tid });
       setTranscript(data.transcript || "");
+      setTranscriptPhotos([]);
       setTranscriptDialog(true);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Transcription impossible", { id: tid });
     } finally { setVideoBusy(false); }
+  };
+
+  const addTranscriptPhotos = (files) => {
+    const list = Array.from(files || []).slice(0, 6 - transcriptPhotos.length);
+    list.forEach((f) => {
+      if (!f.type.startsWith("image/") || f.size > 8 * 1024 * 1024) return;
+      const reader = new FileReader();
+      reader.onload = () => setTranscriptPhotos((p) => (p.length >= 6 ? p : [...p, reader.result]));
+      reader.readAsDataURL(f);
+    });
   };
 
   const generateFromTranscript = async () => {
@@ -222,7 +234,7 @@ export default function QuoteEditor() {
     setTranscriptBusy(true);
     const tid = toast.loading("Génération du devis…");
     try {
-      const { data } = await api.post("/documents/from-text", { text: transcript });
+      const { data } = await api.post("/documents/from-text", { text: transcript, images: transcriptPhotos });
       toast.success(
         data.priced_lines > 0
           ? `Devis créé — ${data.priced_lines} ligne(s) chiffrée(s) depuis votre bibliothèque`
@@ -458,8 +470,33 @@ export default function QuoteEditor() {
           <p className="text-xs text-muted-foreground -mt-1">
             Corrigez la transcription si besoin, puis générez le devis (lignes chiffrées depuis votre bibliothèque).
           </p>
-          <Textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={8}
+          <Textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={7}
                     data-testid="video-transcript-text" className="rounded-sm text-sm" />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-xs">Photos du chantier (optionnel, max 6)</Label>
+              <input type="file" accept="image/*" capture="environment" multiple className="hidden" id="qe-transcript-photos"
+                     onChange={(e) => { addTranscriptPhotos(e.target.files); e.target.value = ""; }}
+                     data-testid="video-transcript-photo-input" />
+              <Button size="sm" variant="outline" onClick={() => document.getElementById("qe-transcript-photos").click()}
+                      disabled={transcriptPhotos.length >= 6} className="rounded-sm h-7 text-xs gap-1"
+                      data-testid="video-transcript-add-photo">
+                <Plus className="h-3 w-3" /> Ajouter des photos
+              </Button>
+            </div>
+            {transcriptPhotos.length > 0 && (
+              <div className="flex flex-wrap gap-2" data-testid="video-transcript-photos">
+                {transcriptPhotos.map((src, i) => (
+                  <div key={i} className="relative">
+                    <img src={src} alt={`photo-${i}`} className="h-14 w-14 object-cover rounded-sm border border-border" />
+                    <button onClick={() => setTranscriptPhotos((p) => p.filter((_, k) => k !== i))}
+                            className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full h-4 w-4 grid place-items-center text-[10px]"
+                            data-testid={`video-transcript-photo-remove-${i}`}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setTranscriptDialog(false)}
                     className="rounded-sm" data-testid="video-transcript-cancel">Annuler</Button>

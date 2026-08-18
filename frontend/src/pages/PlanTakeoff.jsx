@@ -94,18 +94,20 @@ export default function PlanTakeoff() {
   const [dalleEp, setDalleEp] = useState(0.20);
   const [voileEp, setVoileEp] = useState(0.20);
   const [acierRatios, setAcierRatios] = useState({ semelles: 40, poteaux: 130, poutres: 140, dalles: 85, voiles: 60 });
+  const [poutreL, setPoutreL] = useState(0.20);
+  const [poutreH, setPoutreH] = useState(0.40);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   useEffect(() => {
     if (!plan?.plan_id) { setDescriptif(null); return; }
     const s = plan.structure?.[String(pageIndex)];
     if (!s || !(s.walls?.length || s.openings?.length || s.beams?.length || s.floors?.length || s.columns?.length)) { setDescriptif(null); return; }
     let cancel = false;
-    const aq = `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}`;
+    const aq = `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}`;
     api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${aq}`)
       .then(({ data }) => { if (!cancel) setDescriptif(data.descriptif); }).catch(() => {});
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp, acierRatios]);
+  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp, acierRatios, poutreL, poutreH]);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
   const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
@@ -1070,7 +1072,7 @@ export default function PlanTakeoff() {
 
   // ===== STRUCTURE IA (murs rouges + ouvertures jaunes/violettes) =====
   const acierQuery = () =>
-    `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}`;
+    `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}`;
 
   const loadDescriptif = async (height = wallHeight) => {
     try {
@@ -1119,7 +1121,7 @@ export default function PlanTakeoff() {
     if (!currentCalib) { toast.error("Calibrez d'abord le plan"); return; }
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}`);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`);
       const n = data.priced_lines || 0;
       toast.success(n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif");
       nav(`/devis-editeur/${data.doc_id}`);
@@ -2815,6 +2817,16 @@ export default function PlanTakeoff() {
                              data-testid="structure-voile-ep"
                              className="w-12 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
                     </label>
+                    <label className="flex items-center gap-1">Poutre b×h
+                      <input type="number" step="0.05" min="0.1" max="1" value={poutreL}
+                             onChange={(e) => setPoutreL(parseFloat(e.target.value) || 0.20)}
+                             data-testid="structure-poutre-l"
+                             className="w-11 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />×
+                      <input type="number" step="0.05" min="0.1" max="1.5" value={poutreH}
+                             onChange={(e) => setPoutreH(parseFloat(e.target.value) || 0.40)}
+                             data-testid="structure-poutre-h"
+                             className="w-11 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
+                    </label>
                   </div>
                   {/* Ratios de ferraillage ajustables (kg/m³) */}
                   <details className="mb-1.5" data-testid="acier-ratios">
@@ -3883,6 +3895,7 @@ export default function PlanTakeoff() {
         render3dMode={render3dMode} setRender3dMode={setRender3dMode}
         plan={plan} detectedWalls={detectedWalls} pageIndex={pageIndex}
         structure={structure} dalleEp={dalleEp} voileEp={voileEp} wallHeight={wallHeight}
+        poutreL={poutreL} poutreH={poutreH}
         render3dStyle={render3dStyle} setRender3dStyle={setRender3dStyle}
         render3dFurniture={render3dFurniture} setRender3dFurniture={setRender3dFurniture}
         render3dBusy={render3dBusy} render3dImg={render3dImg}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RotateCcw, Maximize2, Home, Move3d } from "lucide-react";
+import { RotateCcw, Maximize2, Home, Move3d, Download } from "lucide-react";
 
 /**
  * Composant 3D interactif — extrusion des rooms mesurés + segments de murs détectés.
@@ -11,6 +11,7 @@ import { RotateCcw, Maximize2, Home, Move3d } from "lucide-react";
  */
 export function Interactive3D({ rooms = [], walls = [], structure = null,
                                  dalleEpM = 0.2, voileEpM = 0.2,
+                                 poutreLM = 0.2, poutreHM = 0.4,
                                  scaleMperPx = 0.01,
                                  wallHeightM = 2.5, imageHeight = 600 }) {
   const mountRef = useRef(null);
@@ -43,7 +44,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
     camera.lookAt(0, 0, 0);
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
@@ -227,12 +228,11 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
         const d = Math.max(0.15, Math.abs(wz2 - wz1));
         box(w, wallHeight, d, 0x9333ea, (wx1 + wx2) / 2, wallHeight / 2, (wz1 + wz2) / 2);
       });
-      // Poutres (gris foncé) — box en tête de mur
-      const poutreH = 0.4;
+      // Poutres (gris foncé) — box en tête de mur (section b×h réglable)
       (structure.beams || []).forEach((b) => {
         const s = seg([b.x1, b.y1], [b.x2, b.y2]);
         if (s.len < 0.1) return;
-        box(s.len, poutreH, 0.2, 0x475569, s.mx, wallHeight - poutreH / 2, s.mz, s.angle);
+        box(s.len, poutreHM, poutreLM, 0x475569, s.mx, wallHeight - poutreHM / 2, s.mz, s.angle);
       });
       // Semelles (jaune) — box au sol
       (structure.footings || []).forEach((ft) => {
@@ -276,6 +276,12 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
     controlsRef.current = {
       resetCam: () => { rotY = Math.PI / 4; rotX = Math.PI / 4; dist = 20; updateCamera(); },
       topView: () => { rotY = 0; rotX = Math.PI / 2 - 0.15; dist = 25; updateCamera(); },
+      snapshot: () => {
+        renderer.render(scene, camera);
+        const url = renderer.domElement.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = url; a.download = "maquette-3d-beton.png"; a.click();
+      },
     };
 
     // Animation loop
@@ -300,7 +306,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
       renderer.dispose();
       mount.innerHTML = "";
     };
-  }, [rooms, walls, structure, scaleMperPx, wallHeight, imageHeight, dalleEpM, voileEpM]);
+  }, [rooms, walls, structure, scaleMperPx, wallHeight, imageHeight, dalleEpM, voileEpM, poutreLM, poutreHM]);
 
   return (
     <div className="space-y-3">
@@ -322,6 +328,12 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
                 data-testid="cam-top-btn"
                 className="rounded-sm gap-1 h-7 text-xs">
           <Home className="h-3 w-3" /> Vue dessus
+        </Button>
+        <Button size="sm" variant="outline"
+                onClick={() => controlsRef.current?.snapshot()}
+                data-testid="cam-snapshot-btn"
+                className="rounded-sm gap-1 h-7 text-xs">
+          <Download className="h-3 w-3" /> PNG
         </Button>
       </div>
       <div ref={mountRef} data-testid="three-canvas"

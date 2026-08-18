@@ -665,7 +665,9 @@ def _descriptif_line_items(d: dict) -> list[dict]:
     add("Poteaux béton", d.get("poteaux"), "u")
     add("Semelles / fondations", d.get("semelles"), "u")
     add("Béton coulé (poteaux + poutres + dalles + voiles + semelles)", d.get("beton_total_m3"), "m³")
-    add("Aciers (ferraillage béton armé)", d.get("acier_total_kg"), "kg")
+    _ar = d.get("acier_ratios") or {}
+    _ratio_moy = (round(sum(_ar.values()) / len(_ar)) if _ar else 100)
+    add(f"Aciers HA (fer à béton armé — env. {_ratio_moy} kg/m³)", d.get("acier_total_kg"), "kg")
     return lines
 
 
@@ -873,8 +875,13 @@ async def annotated_plan_pdf(plan_id: str, page_index: int, wall_height: float =
 
 @router.post("/{plan_id}/structure/{page_index}/quote")
 async def structure_to_quote(plan_id: str, page_index: int, wall_height: float = 2.5,
+                             dalle_ep: float = 0.20, voile_ep: float = 0.20,
+                             poutre_l: float = 0.20, poutre_h: float = 0.40,
+                             acier_semelles: float | None = None, acier_poteaux: float | None = None,
+                             acier_poutres: float | None = None, acier_dalles: float | None = None,
+                             acier_voiles: float | None = None,
                              client_id: str | None = None, user=Depends(current_user)) -> dict:
-    """Crée un devis brouillon à partir du descriptif (planchers, murs, ouvertures, poutres)."""
+    """Crée un devis brouillon à partir du descriptif (planchers, murs, ouvertures, poutres, aciers)."""
     import secrets
     from routes.documents import _client_snapshot, _compute_totals
     p = await db.plans_takeoff.find_one(
@@ -886,7 +893,10 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
         raise HTTPException(400, "Calibrez d'abord le plan avant de générer le devis.")
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
-    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height)
+    ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
+          "dalles": acier_dalles, "voiles": acier_voiles}
+    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
+                                     poutre_l, poutre_h, acier_ratios=ar)
     lines = _descriptif_line_items(descriptif)
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")

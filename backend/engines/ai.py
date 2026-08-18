@@ -189,18 +189,23 @@ async def suggest_line_description(designation: str, context: str = "") -> str:
     return await _complete(system, prompt, feature="quote_describe")
 
 
-async def quote_lines_from_text(transcript: str) -> tuple[list[dict], str]:
-    """Transforme une description orale (transcription) en lignes de devis BTP structurées.
+async def quote_lines_from_text(transcript: str, images: list[str] | None = None) -> tuple[list[dict], str]:
+    """Transforme une description orale (transcription) + photos optionnelles en lignes de devis BTP.
 
     Retourne (lines, title). Les prix restent à 0 (chiffrés ensuite via la bibliothèque).
     """
     system = (BRAND + " Tu transformes la description orale d'un artisan en lignes de devis BTP "
               "structurées et réalistes (désignations normalisées, unités et quantités estimées).")
+    photo_hint = ("\n\nDes PHOTOS du chantier sont jointes : sers-t'en pour préciser les prestations "
+                  "(état existant, matériaux, surfaces visibles, contraintes) et affiner les quantités."
+                  if images else "")
     prompt = (
-        "À partir de cette description de chantier (transcription vocale d'un artisan), "
-        "génère les lignes de devis.\n"
-        f"Description : « {(transcript or '').strip()[:4000]} »\n\n"
-        "Retourne UNIQUEMENT ce JSON :\n"
+        "À partir de cette description de chantier (transcription vocale d'un artisan)"
+        + (" et des photos jointes" if images else "")
+        + ", génère les lignes de devis.\n"
+        f"Description : « {(transcript or '').strip()[:4000]} »"
+        + photo_hint
+        + "\n\nRetourne UNIQUEMENT ce JSON :\n"
         '{ "title": "titre court du devis", '
         '"lines": [ { "designation": "libellé court de la prestation", '
         '"description": "détail des prestations incluses (2 à 4 lignes séparées par des retours à la ligne)", '
@@ -208,7 +213,7 @@ async def quote_lines_from_text(transcript: str) -> tuple[list[dict], str]:
         "Estime des quantités plausibles si elles ne sont pas données. N'invente pas de prix. "
         "3 à 12 lignes maximum, en français."
     )
-    data = _json(await _complete(system, prompt, feature="quote_from_text"), {"lines": []})
+    data = _json(await _complete(system, prompt, images=images, feature="quote_from_text"), {"lines": []})
     units = ("u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L")
     lines: list[dict] = []
     for l in (data.get("lines") or [])[:12]:

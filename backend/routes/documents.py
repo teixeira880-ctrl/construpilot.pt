@@ -247,13 +247,13 @@ async def _transcribe_video_bytes(raw: bytes) -> str:
 
 
 async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
-                               source: str = "video") -> dict:
-    """Génère un devis (lignes IA chiffrées via la bibliothèque) à partir d'un texte."""
+                               source: str = "video", images: list[str] | None = None) -> dict:
+    """Génère un devis (lignes IA chiffrées via la bibliothèque) à partir d'un texte + photos."""
     from engines.ai import quote_lines_from_text
     from routes.plans_analysis import _apply_library_prices
     if not (text or "").strip():
         raise HTTPException(400, "Description vide")
-    lines, title = await quote_lines_from_text(text)
+    lines, title = await quote_lines_from_text(text, images=images or None)
     if not lines:
         raise HTTPException(422, "L'IA n'a pas pu générer de lignes de devis à partir de la description.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
@@ -286,12 +286,15 @@ async def video_transcribe(file: UploadFile = File(...), user=Depends(current_us
 class FromTextIn(BaseModel):
     text: str
     client_id: str | None = None
+    images: list[str] = Field(default_factory=list)
 
 
 @router.post("/from-text")
 async def document_from_text(body: FromTextIn, user=Depends(current_user)) -> dict:
-    """Crée un devis à partir d'une description (texte relu/corrigé)."""
-    doc = await _quote_doc_from_text(user, body.text, body.client_id, source="video")
+    """Crée un devis à partir d'une description (texte relu/corrigé) + photos optionnelles."""
+    imgs = [(i.split(",", 1)[-1] if i.startswith("data:") else i)
+            for i in (body.images or []) if i][:6]
+    doc = await _quote_doc_from_text(user, body.text, body.client_id, source="video", images=imgs)
     doc["transcript"] = body.text.strip()
     return doc
 
