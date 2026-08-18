@@ -98,6 +98,8 @@ export default function PlanTakeoff() {
   const [poutreH, setPoutreH] = useState(0.40);
   const [acierPriceKg, setAcierPriceKg] = useState(0);
   const [betonPriceM3, setBetonPriceM3] = useState(0);
+  const [laborPriceM3, setLaborPriceM3] = useState(0);
+  const [marginPct, setMarginPct] = useState(0);
   const [betonPresets, setBetonPresets] = useState([]);
   const [selectedPreset, setSelectedPreset] = useState("");
   const [compareOpen, setCompareOpen] = useState(false);
@@ -1095,6 +1097,8 @@ export default function PlanTakeoff() {
         if (data.poutre_h) setPoutreH(data.poutre_h);
         if (data.acier_price_kg != null) setAcierPriceKg(data.acier_price_kg);
         if (data.beton_price_m3 != null) setBetonPriceM3(data.beton_price_m3);
+        if (data.labor_price_m3 != null) setLaborPriceM3(data.labor_price_m3);
+        if (data.margin_pct != null) setMarginPct(data.margin_pct);
         if (data.acier_ratios) setAcierRatios((r) => ({ ...r, ...data.acier_ratios }));
         lastPreset = data.last_preset || "";
       } catch { /* ignore */ }
@@ -1117,6 +1121,8 @@ export default function PlanTakeoff() {
     setPoutreH(pr.poutre_h ?? 0.40);
     setAcierPriceKg(pr.acier_price_kg ?? 0);
     setBetonPriceM3(pr.beton_price_m3 ?? 0);
+    setLaborPriceM3(pr.labor_price_m3 ?? 0);
+    setMarginPct(pr.margin_pct ?? 0);
     if (pr.acier_ratios) setAcierRatios((r) => ({ ...r, ...pr.acier_ratios }));
     if (notify) toast.success(`Réglages « ${pr.name} » appliqués`);
   };
@@ -1146,11 +1152,13 @@ export default function PlanTakeoff() {
     setCompareBusy(true);
     setCompareOpen(true);
     try {
-      const targets = betonPresets.filter((p) => p.name === "Maison" || p.name === "Immeuble");
+      const targets = betonPresets.length ? betonPresets : [];
       const results = await Promise.all(targets.map(async (pr) => {
         const aq = `&acier_semelles=${pr.acier_ratios.semelles}&acier_poteaux=${pr.acier_ratios.poteaux}&acier_poutres=${pr.acier_ratios.poutres}&acier_dalles=${pr.acier_ratios.dalles}&acier_voiles=${pr.acier_ratios.voiles}&poutre_l=${pr.poutre_l}&poutre_h=${pr.poutre_h}`;
         const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${pr.wall_height}&dalle_ep=${pr.dalle_ep}&voile_ep=${pr.voile_ep}${aq}`);
-        return { name: pr.name, d: data.descriptif };
+        return { name: pr.name, d: data.descriptif,
+                 beton_price_m3: pr.beton_price_m3 || 0, acier_price_kg: pr.acier_price_kg || 0,
+                 labor_price_m3: pr.labor_price_m3 || 0, margin_pct: pr.margin_pct || 0 };
       }));
       setCompareData(results);
     } catch { toast.error("Comparaison impossible"); setCompareOpen(false); }
@@ -1164,7 +1172,8 @@ export default function PlanTakeoff() {
       await api.put("/takeoffs/settings/beton-presets", {
         name: name.trim(), wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
         poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg,
-        beton_price_m3: betonPriceM3, acier_ratios: acierRatios,
+        beton_price_m3: betonPriceM3, labor_price_m3: laborPriceM3, margin_pct: marginPct,
+        acier_ratios: acierRatios,
       });
       const { data } = await api.get("/takeoffs/settings/beton-presets");
       setBetonPresets(data.presets || []);
@@ -1178,7 +1187,8 @@ export default function PlanTakeoff() {
       await api.put("/takeoffs/settings/beton-defaults", {
         wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
         poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg,
-        beton_price_m3: betonPriceM3, acier_ratios: acierRatios,
+        beton_price_m3: betonPriceM3, labor_price_m3: laborPriceM3, margin_pct: marginPct,
+        acier_ratios: acierRatios,
       });
       toast.success("Réglages béton enregistrés comme valeurs par défaut de l'entreprise");
     } catch { toast.error("Enregistrement des réglages impossible"); }
@@ -1290,7 +1300,7 @@ export default function PlanTakeoff() {
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
       const token = localStorage.getItem("construpilot_token");
-      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`;
+      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&beton_price_m3=${betonPriceM3}&acier_price_kg=${acierPriceKg}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}`;
       const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/structure/${pageIndex}/beton-pdf?${q}`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("Export impossible");
@@ -3007,6 +3017,17 @@ export default function PlanTakeoff() {
                              data-testid="beton-price-m3"
                              className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> €/m³
                     </label>
+                    <label className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">Main d'œuvre
+                      <input type="number" step="10" min="0" max="2000" value={laborPriceM3}
+                             onChange={(e) => setLaborPriceM3(parseFloat(e.target.value) || 0)}
+                             data-testid="labor-price-m3"
+                             className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> €/m³
+                      <span className="ml-2">Marge</span>
+                      <input type="number" step="1" min="0" max="100" value={marginPct}
+                             onChange={(e) => setMarginPct(parseFloat(e.target.value) || 0)}
+                             data-testid="margin-pct"
+                             className="w-14 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> %
+                    </label>
                     <Button size="sm" variant="outline" onClick={saveBetonDefaults}
                             data-testid="save-beton-defaults"
                             className="rounded-sm h-6 text-[10px] gap-1 mt-1.5">
@@ -3046,6 +3067,14 @@ export default function PlanTakeoff() {
                         <span className="text-muted-foreground font-semibold">Coût matière (béton + aciers)</span>
                         <span className="num text-right font-semibold text-emerald-700" data-testid="descriptif-cout-matiere">
                           {Math.round((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg).toLocaleString("fr-FR")} €
+                        </span>
+                      </>
+                    )}
+                    {(betonPriceM3 > 0 || acierPriceKg > 0 || laborPriceM3 > 0) && descriptif.beton_total_m3 > 0 && (
+                      <>
+                        <span className="text-muted-foreground font-semibold">Prix de vente estimé{marginPct > 0 ? ` (marge ${marginPct}%)` : ""}</span>
+                        <span className="num text-right font-bold text-primary" data-testid="descriptif-prix-vente">
+                          {Math.round((((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg) + (descriptif.beton_total_m3 || 0) * laborPriceM3) * (1 + marginPct / 100)).toLocaleString("fr-FR")} €
                         </span>
                       </>
                     )}
@@ -4044,9 +4073,20 @@ export default function PlanTakeoff() {
                     <td className="px-2 py-1">Coût matière</td>
                     {compareData.map((c) => (
                       <td key={c.name} className="px-2 py-1 num text-right text-emerald-700">
-                        {Math.round((c.d?.beton_total_m3 || 0) * betonPriceM3 + (c.d?.acier_total_kg || 0) * acierPriceKg).toLocaleString("fr-FR")} €
+                        {Math.round((c.d?.beton_total_m3 || 0) * (c.beton_price_m3 || betonPriceM3) + (c.d?.acier_total_kg || 0) * (c.acier_price_kg || acierPriceKg)).toLocaleString("fr-FR")} €
                       </td>
                     ))}
+                  </tr>
+                )}
+                {(betonPriceM3 > 0 || acierPriceKg > 0 || laborPriceM3 > 0) && (
+                  <tr className="border-t border-border font-bold">
+                    <td className="px-2 py-1">Prix de vente estimé</td>
+                    {compareData.map((c) => {
+                      const bp = c.beton_price_m3 || betonPriceM3, ap = c.acier_price_kg || acierPriceKg;
+                      const lp = c.labor_price_m3 || laborPriceM3, mg = c.margin_pct || marginPct;
+                      const pv = (((c.d?.beton_total_m3 || 0) * bp + (c.d?.acier_total_kg || 0) * ap) + (c.d?.beton_total_m3 || 0) * lp) * (1 + mg / 100);
+                      return <td key={c.name} className="px-2 py-1 num text-right text-primary">{Math.round(pv).toLocaleString("fr-FR")} €</td>;
+                    })}
                   </tr>
                 )}
               </tbody>

@@ -1,5 +1,11 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 118 — 18/06/2026 (Marge & main d'œuvre + Comparaison tous presets + Coûts dans PDF)
+- **Marge & coût main d'œuvre** : champs « Main d'œuvre €/m³ » (`labor-price-m3`) et « Marge % » (`margin-pct`), stockés dans défauts/presets (`labor_price_m3`, `margin_pct`). Affichage `descriptif-prix-vente` = (coût matière + béton_total×MO) × (1 + marge/100). Vérifié (63 531 €).
+- **Comparer tous les presets** : `runCompare` compare désormais TOUS les presets (intégrés + perso), avec lignes « Coût matière » et « Prix de vente estimé » par colonne. Vérifié (Maison 63 531 € vs Immeuble 65 770 €).
+- **Coûts dans le PDF béton** : `beton-pdf` accepte `beton_price_m3`, `acier_price_kg`, `labor_price_m3`, `margin_pct` → ajoute un tableau « Chiffrage estimé » (béton, aciers, coût matière, main d'œuvre, prix de vente). Vérifié curl (PDF plus volumineux avec coûts).
+
+
 ## Itération 117 — 18/06/2026 (Coût matière + Comparaison presets + Suppression preset + Dernier preset auto)
 - **Coût matière (béton + aciers)** : champ « Prix béton €/m³ » (`beton-price-m3`, stocké dans défauts/presets). Affichage `descriptif-cout-matiere` = béton_total×prix_m³ + acier_total×prix_kg, directement dans le descriptif.
 - **Comparer 2 presets** : bouton « Comparer » (`beton-preset-compare`) → dialog `beton-compare-dialog` qui appelle l'analyse du plan courant avec les réglages « Maison » et « Immeuble » et affiche un tableau côte à côte (béton total, aciers, poteaux/poutres/dalles/voiles, coût matière). Vérifié (31 568 € vs 32 681 €).

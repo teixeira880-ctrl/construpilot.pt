@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 
 _BETON_DEFAULTS = {"wall_height": 2.5, "dalle_ep": 0.20, "voile_ep": 0.20,
                    "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0,
-                   "beton_price_m3": 0.0, "last_preset": ""}
+                   "beton_price_m3": 0.0, "labor_price_m3": 0.0, "margin_pct": 0.0,
+                   "last_preset": ""}
 
 # Presets intégrés proposés par type de chantier
 _BETON_BUILTIN_PRESETS = [
@@ -53,6 +54,8 @@ async def get_beton_defaults(user=Depends(current_user)) -> dict:
         return {**_BETON_DEFAULTS, "acier_ratios": dict(ACIER_RATIOS)}
     d.setdefault("acier_price_kg", 0.0)
     d.setdefault("beton_price_m3", 0.0)
+    d.setdefault("labor_price_m3", 0.0)
+    d.setdefault("margin_pct", 0.0)
     d.setdefault("last_preset", "")
     return d
 
@@ -65,6 +68,8 @@ class BetonDefaultsIn(BaseModel):
     poutre_h: float = 0.40
     acier_price_kg: float = 0.0
     beton_price_m3: float = 0.0
+    labor_price_m3: float = 0.0
+    margin_pct: float = 0.0
     acier_ratios: dict = Field(default_factory=dict)
 
 
@@ -74,7 +79,9 @@ async def set_beton_defaults(body: BetonDefaultsIn, user=Depends(current_user)) 
     payload = {"wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
                "voile_ep": body.voile_ep, "poutre_l": body.poutre_l,
                "poutre_h": body.poutre_h, "acier_price_kg": max(0.0, body.acier_price_kg),
-               "beton_price_m3": max(0.0, body.beton_price_m3), "acier_ratios": ar}
+               "beton_price_m3": max(0.0, body.beton_price_m3),
+               "labor_price_m3": max(0.0, body.labor_price_m3),
+               "margin_pct": max(0.0, body.margin_pct), "acier_ratios": ar}
     await db.beton_defaults.update_one(
         {"user_id": user["user_id"]},
         {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)
@@ -111,6 +118,8 @@ class BetonPresetIn(BaseModel):
     poutre_h: float = 0.40
     acier_price_kg: float = 0.0
     beton_price_m3: float = 0.0
+    labor_price_m3: float = 0.0
+    margin_pct: float = 0.0
     acier_ratios: dict = Field(default_factory=dict)
 
 
@@ -125,7 +134,9 @@ async def save_beton_preset(body: BetonPresetIn, user=Depends(current_user)) -> 
     payload = {"name": name, "wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
                "voile_ep": body.voile_ep, "poutre_l": body.poutre_l, "poutre_h": body.poutre_h,
                "acier_price_kg": max(0.0, body.acier_price_kg),
-               "beton_price_m3": max(0.0, body.beton_price_m3), "acier_ratios": ar}
+               "beton_price_m3": max(0.0, body.beton_price_m3),
+               "labor_price_m3": max(0.0, body.labor_price_m3),
+               "margin_pct": max(0.0, body.margin_pct), "acier_ratios": ar}
     await db.beton_presets.update_one(
         {"user_id": user["user_id"], "name": name},
         {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)
@@ -894,6 +905,8 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
                            acier_semelles: float | None = None, acier_poteaux: float | None = None,
                            acier_poutres: float | None = None, acier_dalles: float | None = None,
                            acier_voiles: float | None = None,
+                           beton_price_m3: float = 0.0, acier_price_kg: float = 0.0,
+                           labor_price_m3: float = 0.0, margin_pct: float = 0.0,
                            user=Depends(current_user)):
     """PDF de synthèse du métré béton (volumes + aciers + poteaux + poutres)."""
     from io import BytesIO
@@ -953,6 +966,31 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
                    ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
                ])
     story += [t, Spacer(1, 14)]
+
+    # Coûts estimés (matière + main d'œuvre + marge) si des prix sont renseignés
+    bt = d.get("beton_total_m3", 0) or 0
+    at = d.get("acier_total_kg", 0) or 0
+    if beton_price_m3 or acier_price_kg or labor_price_m3:
+        cost_beton = bt * beton_price_m3
+        cost_acier = at * acier_price_kg
+        cost_labor = bt * labor_price_m3
+        matiere = cost_beton + cost_acier
+        sous_total = matiere + cost_labor
+        pv = sous_total * (1 + (margin_pct or 0) / 100)
+        crows = [["Chiffrage estime", "Montant"],
+                 [f"Beton ({bt} m3 x {beton_price_m3:.0f} EUR/m3)", f"{cost_beton:,.0f} EUR".replace(",", " ")],
+                 [f"Aciers ({at} kg x {acier_price_kg:.2f} EUR/kg)", f"{cost_acier:,.0f} EUR".replace(",", " ")],
+                 ["Cout matiere", f"{matiere:,.0f} EUR".replace(",", " ")],
+                 [f"Main d'oeuvre ({bt} m3 x {labor_price_m3:.0f} EUR/m3)", f"{cost_labor:,.0f} EUR".replace(",", " ")],
+                 [f"Prix de vente estime (marge {margin_pct:.0f}%)", f"{pv:,.0f} EUR".replace(",", " ")]]
+        story += [_table([[str(c) for c in row] for row in crows], [110 * mm, 44 * mm],
+                         style_extras=[("BACKGROUND", (0, 0), (-1, 0), DARK),
+                                       ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                                       ("FONTNAME", (0, 3), (-1, 3), "Helvetica-Bold"),
+                                       ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                                       ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#E8F3EC")),
+                                       ("GRID", (0, 0), (-1, -1), 0.4, LIGHT_GREY),
+                                       ("ALIGN", (1, 0), (1, -1), "RIGHT")]), Spacer(1, 14)]
 
     if d.get("poteaux_table"):
         story.append(Paragraph("Tableau des poteaux", S["h2"]))
