@@ -947,3 +947,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Frontend PlanTakeoff.jsx : les deux boutons du panneau structure ("Estimer le devis (PDF)" et "Ouvrir dans l'éditeur") envoient beton_only=true. Texte d'aide mis à jour (gros œuvre / béton uniquement, surface = planchers).
 - Vérifié e2e backend (plan_da91364b9bc7) : 4 lignes structurelles (dalles, voiles, aciers, main d'œuvre), TTC 10 661 €, AUCUNE ligne pièce. Frontend compile.
 - ⚠️ PRÉVERSION — nécessite un redéploiement pour la production.
+
+## Iteration 129 - 18/06/2026 (Détail par poste + béton de propreté)
+- Détail par poste (frontend PlanTakeoff.jsx) : nouveau tableau "Détail par poste (béton + aciers)" (data-testid="detail-par-poste") affiché à l'écran après l'analyse, avant le PDF — volume béton + aciers (kg) pour chaque élément : semelles, béton de propreté, poteaux, poutres, dalles/planchers, voiles/murs + ligne Total. Utilise les champs beton_*_m3 / acier_*_kg déjà calculés.
+- Ratios aciers réglables : DÉJÀ existant (details data-testid="acier-ratios", inputs kg/m³ par type semelles/poteaux/poutres/dalles/voiles + enregistrement par défaut). Confirmé fonctionnel.
+- Béton de propreté (backend plans_analysis.py) : _compute_descriptif calcule beton_proprete_m3 = emprise des semelles × 0,05 m (ép. 5 cm, non armé). _beton_line_items ajoute la ligne "Béton de propreté (sous semelles, ép. 5 cm)" juste sous les semelles dans le devis gros œuvre.
+- Vérifié e2e backend (plan_c56da42f0331, 5 semelles/15 poteaux/8 poutres) : détail par poste complet + propreté 1,72 m³ dans le devis, 8 lignes chiffrées, TTC 218 825 €. Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

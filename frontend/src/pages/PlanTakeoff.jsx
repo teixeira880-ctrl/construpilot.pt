@@ -3126,7 +3126,41 @@ export default function PlanTakeoff() {
                       </>
                     )}
                   </div>
-                  {descriptif.poteaux_table?.length > 0 && (
+                  {descriptif.beton_total_m3 > 0 && (
+                    <details className="mt-2" open data-testid="detail-par-poste">
+                      <summary className="text-[11px] font-semibold cursor-pointer text-primary">Détail par poste (béton + aciers)</summary>
+                      <div className="mt-1 border border-border rounded-sm overflow-hidden">
+                        <table className="w-full text-[10px]">
+                          <thead className="bg-muted/60"><tr>
+                            <th className="text-left px-1.5 py-1">Poste</th>
+                            <th className="text-right px-1.5 py-1">Béton</th>
+                            <th className="text-right px-1.5 py-1">Aciers</th>
+                          </tr></thead>
+                          <tbody>
+                            {[
+                              { k: "semelles", label: `Semelles (${descriptif.semelles || 0} u)`, b: descriptif.beton_semelles_m3, a: descriptif.acier_semelles_kg },
+                              { k: "proprete", label: "Béton de propreté (ép. 5 cm)", b: descriptif.beton_proprete_m3, a: 0 },
+                              { k: "poteaux", label: `Poteaux (${descriptif.poteaux || 0} u)`, b: descriptif.beton_poteaux_m3, a: descriptif.acier_poteaux_kg },
+                              { k: "poutres", label: `Poutres (${descriptif.poutres_ml || 0} ml)`, b: descriptif.beton_poutres_m3, a: descriptif.acier_poutres_kg },
+                              { k: "dalles", label: `Dalles / planchers (${descriptif.planchers_m2 || 0} m²)`, b: descriptif.beton_dalles_m3, a: descriptif.acier_dalles_kg },
+                              { k: "voiles", label: `Voiles / murs porteurs (${descriptif.murs_porteurs_ml || 0} ml)`, b: descriptif.beton_voiles_m3, a: descriptif.acier_voiles_kg },
+                            ].filter((r) => (r.b || 0) > 0).map((r) => (
+                              <tr key={r.k} className="border-t border-border" data-testid={`poste-row-${r.k}`}>
+                                <td className="px-1.5 py-0.5">{r.label}</td>
+                                <td className="px-1.5 py-0.5 num text-right">{r.b} m³</td>
+                                <td className="px-1.5 py-0.5 num text-right text-orange-600">{r.a ? `${r.a} kg` : "—"}</td>
+                              </tr>
+                            ))}
+                            <tr className="border-t-2 border-border bg-muted/40 font-bold">
+                              <td className="px-1.5 py-1">Total</td>
+                              <td className="px-1.5 py-1 num text-right">{descriptif.beton_total_m3} m³</td>
+                              <td className="px-1.5 py-1 num text-right text-orange-600">{descriptif.acier_total_kg} kg</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  )}
                     <details className="mt-2" data-testid="poteaux-table">
                       <summary className="text-[11px] font-semibold cursor-pointer text-purple-600">Tableau des poteaux ({descriptif.poteaux_table.length})</summary>
                       <div className="mt-1 max-h-40 overflow-auto border border-border rounded-sm">

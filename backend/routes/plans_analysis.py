@@ -692,8 +692,13 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         beton_semelles = round(sum(
             (abs(ft.get("x2", 0) - ft.get("x1", 0)) / ppm) * (abs(ft.get("y2", 0) - ft.get("y1", 0)) / ppm) * 0.40
             for ft in footings if isinstance(ft, dict)), 2)
+        # Béton de propreté sous semelles (ép. 5 cm, non armé)
+        beton_proprete = round(sum(
+            (abs(ft.get("x2", 0) - ft.get("x1", 0)) / ppm) * (abs(ft.get("y2", 0) - ft.get("y1", 0)) / ppm) * 0.05
+            for ft in footings if isinstance(ft, dict)), 2)
     else:
         beton_poteaux = beton_poutres = beton_dalles = beton_voiles = beton_semelles = 0.0
+        beton_proprete = 0.0
         semelles = len(footings)
     beton_total = round(beton_poteaux + beton_poutres + beton_dalles + beton_voiles + beton_semelles, 2)
     # ===== Aciers (ferraillage) — ratios moyens kg/m³ par élément (ajustables) =====
@@ -727,6 +732,7 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "beton_poteaux_m3": beton_poteaux, "beton_poutres_m3": beton_poutres,
         "beton_dalles_m3": beton_dalles, "beton_voiles_m3": beton_voiles,
         "beton_semelles_m3": beton_semelles,
+        "beton_proprete_m3": beton_proprete,
         "beton_total_m3": beton_total,
         "acier_semelles_kg": acier_semelles, "acier_poteaux_kg": acier_poteaux,
         "acier_poutres_kg": acier_poutres, "acier_dalles_kg": acier_dalles,
@@ -806,6 +812,7 @@ def _beton_line_items(d: dict) -> list[dict]:
             lines.append({"designation": desig, "unit": unit, "qty": round(qty, 2),
                           "unit_price_ht": 0, "vat_rate": 20, "category": cat})
     add(f"Béton — semelles / fondations ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³")
+    add("Béton de propreté (sous semelles, ép. 5 cm)", d.get("beton_proprete_m3"), "m³")
     add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³")
     add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³")
     add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³")
