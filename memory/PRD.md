@@ -2250,3 +2250,13 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Vérifié** (testing agent iter92, backend 100% / frontend 100%) : plan A0 tuilé 3×3 → 14-24 poteaux/murs, refs P1..Pn uniques, béton ~151-204 m³ détaillé, devis avec lignes poteaux + béton, non-régression résidentiel OK. Correctif défensif `_compute_descriptif` (c.get) contre poteaux mal formés.
 - Limite : détection A0 non déterministe/non exhaustive (complétion manuelle via boutons +).
 - ⚠️ PROD (construpilot.fr) : REDÉPLOYER (Deploy Now) pour appliquer.
+
+## Changelog Iter 93 (18/06/2026) — Code couleur + semelles + épaisseurs réglables + repérage poutres + tableau poteaux
+- **Lecture par code couleur** : prompt IA mis à jour — ORANGE=murs/voiles, ROUGE=poutres, JAUNE=semelles, VERT=planchers (relève cote NGF + épaisseur cm). Vérifié: 7 semelles, NGF 53.76/53.0, ép. 25/20 cm lues.
+- **Semelles (footings)** : nouveau type détecté/fusionné (tuilage)/persisté/rendu (jaune canvas + PDF) + compté au descriptif et au devis.
+- **Épaisseurs réglables** : champs Ép. dalle / Ép. voile (front) → params get_analysis (dalle_ep, voile_ep, poutre_l, poutre_h). Dalle utilise l'épaisseur annotée par dalle (thickness_cm) sinon la valeur saisie.
+- **Repérage poutres** : `_assign_beam_refs` (B1, B2… tri position) rendu sur le canvas; portée (m) dans beams_table.
+- **Tableau poteaux** : poteaux_table (repère, section w×d, volume m³) affiché dans le descriptif (accordéon).
+- Métré béton étendu: poteaux/poutres/dalles/voiles/**semelles** + total.
+- Vérifié backend (curl) : re-détection tuilée → 16 poteaux, 10 poutres (B1-B8), 7 semelles, 2 dalles NGF; analysis params OK (dalle_ep 0.25 → dalles 114 m³), poteaux_table 14. Frontend compile OK. ⚠️ Smoke visuel front non fait ce tour (redirection auth du tool).
+- ⚠️ PROD : REDÉPLOYER (Deploy Now).

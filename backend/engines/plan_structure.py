@@ -47,23 +47,33 @@ Rends STRICTEMENT du JSON (aucun markdown, aucun texte hors JSON) :
      "x1": 0.30, "y1": 0.12, "x2": 0.40, "y2": 0.12,
      "swing": {"x": 0.40, "y": 0.20} | null}
   ],
+  "footings": [
+    // SEMELLES / fondations (souvent surlignées en JAUNE) : rectangle d'emprise.
+    // Donne les DEUX coins opposés. Coordonnées normalisées 0-1.
+    {"x1": 0.18, "y1": 0.28, "x2": 0.26, "y2": 0.36}
+  ],
   "floors": [
-    // SURFACES DE SOL / DALLES (planchers) : un polygone fermé par pièce/panneau de dalle,
-    // suivant l'intérieur des murs. 3 à 8 points (sens horaire). Coordonnées normalisées 0-1.
-    {"name": "Séjour" | "Dalle" | ...,
-     "points": [[0.12, 0.14], [0.48, 0.14], [0.48, 0.50], [0.12, 0.50]]}
+    // SURFACES DE SOL / DALLES / PLANCHERS (souvent surlignés en VERT) : un polygone fermé.
+    // Reprends la cote NGF (ex "NGF 53.69") et l'épaisseur (ex "ep 20 cm" -> 20) si annotées.
+    {"name": "Dalle" | "Séjour" | ...,
+     "points": [[0.12, 0.14], [0.48, 0.14], [0.48, 0.50], [0.12, 0.50]],
+     "ngf": 53.69, "thickness_cm": 20}
   ],
   "plan_kind": "habitation" | "coffrage",
   "confidence": 0.0-1.0
 }
 
+CODE COULEUR (si le plan est colorisé, respecte-le STRICTEMENT) :
+- ORANGE = murs / voiles porteurs (walls, type "porteur")
+- ROUGE = poutres (beams)
+- JAUNE = semelles / fondations (footings)
+- VERT = planchers / dalles (floors) — relève la cote NGF et l'épaisseur en cm si présentes
+
 RÈGLES :
-- Murs extérieurs / refends épais / VOILES = "porteur". Cloisons fines = "cloison".
-- Poteaux = petits éléments pleins isolés, souvent alignés en trame — liste-les TOUS même s'il y en a 20+.
-- Poutres/linteaux : souvent pointillés ou repérés par un code. N'invente pas sans indice.
-- Planchers/dalles : couvre TOUTE la surface bâtie (un ou plusieurs panneaux).
-- Sur un plan de coffrage, il n'y a généralement PAS de portes/fenêtres → openings peut être vide.
-- Sois précis sur les positions. Réponds UNIQUEMENT le JSON.
+- Respecte le code couleur ci-dessus en priorité. Sinon : murs = traits épais, poutres = pointillés.
+- Poteaux = petits éléments pleins isolés, souvent en trame — liste-les TOUS (même 20+).
+- Sur un plan de coffrage, openings est généralement vide.
+- Sois EXHAUSTIF et précis. Réponds UNIQUEMENT le JSON.
 """
 
 
@@ -153,6 +163,8 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
                 "floor_id": "sf_" + uuid.uuid4().hex[:6],
                 "name": (f.get("name") or "Pièce")[:60],
                 "points": clean,
+                "ngf": f.get("ngf"),
+                "thickness_cm": f.get("thickness_cm"),
             })
     columns = []
     for c in structure.get("columns") or []:
@@ -165,12 +177,24 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
             "x1": round(x1 * w), "y1": round(y1 * h),
             "x2": round(x2 * w), "y2": round(y2 * h),
         })
+    footings = []
+    for ft in structure.get("footings") or []:
+        seg = _norm_seg(ft) if isinstance(ft, dict) else None
+        if not seg:
+            continue
+        x1, y1, x2, y2 = seg
+        footings.append({
+            "footing_id": "sft_" + uuid.uuid4().hex[:6],
+            "x1": round(x1 * w), "y1": round(y1 * h),
+            "x2": round(x2 * w), "y2": round(y2 * h),
+        })
     return {
         "image_width": int(w), "image_height": int(h),
         "walls": walls, "openings": openings, "beams": beams, "floors": floors,
-        "columns": columns,
+        "columns": columns, "footings": footings,
         "wall_count": len(walls), "opening_count": len(openings),
         "beam_count": len(beams), "floor_count": len(floors), "column_count": len(columns),
+        "footing_count": len(footings),
         "plan_kind": structure.get("plan_kind") or "habitation",
         "confidence": structure.get("confidence"),
     }
@@ -197,7 +221,7 @@ async def detect_structure(image_b64_png: str, width_px: int, height_px: int) ->
 
 def _offset_items(res: dict, ox: int, oy: int) -> dict:
     """Décale toutes les coordonnées d'une tuile vers le repère de l'image complète."""
-    for key in ("walls", "openings", "beams", "columns"):
+    for key in ("walls", "openings", "beams", "columns", "footings"):
         for it in res.get(key) or []:
             it["x1"] += ox; it["y1"] += oy; it["x2"] += ox; it["y2"] += oy
             if it.get("swing"):
@@ -259,12 +283,12 @@ async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: i
     tiles = await asyncio.gather(*[run_tile(cx, cy) for cy in range(rows) for cx in range(cols)],
                                  return_exceptions=True)
     merged = {"walls": [], "openings": [], "beams": [], "columns": [], "floors": [],
-              "plan_kind": "coffrage", "confidence": None}
+              "footings": [], "plan_kind": "coffrage", "confidence": None}
     kinds = []
     for t in tiles:
         if isinstance(t, Exception) or not isinstance(t, dict):
             continue
-        for k in ("walls", "openings", "beams", "columns", "floors"):
+        for k in ("walls", "openings", "beams", "columns", "floors", "footings"):
             merged[k].extend(t.get(k) or [])
         if t.get("plan_kind"):
             kinds.append(t["plan_kind"])
@@ -273,13 +297,14 @@ async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: i
     merged["beams"] = _dedupe(merged["beams"], diag * 0.012)
     merged["walls"] = _dedupe(merged["walls"], diag * 0.010)
     merged["openings"] = _dedupe(merged["openings"], diag * 0.012)
+    merged["footings"] = _dedupe(merged["footings"], diag * 0.010)
     if kinds:
         merged["plan_kind"] = max(set(kinds), key=kinds.count)
     merged.update({
         "image_width": width_px, "image_height": height_px,
         "wall_count": len(merged["walls"]), "opening_count": len(merged["openings"]),
         "beam_count": len(merged["beams"]), "floor_count": len(merged["floors"]),
-        "column_count": len(merged["columns"]),
+        "column_count": len(merged["columns"]), "footing_count": len(merged["footings"]),
         "tiled": f"{cols}x{rows}",
     })
     return merged

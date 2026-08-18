@@ -388,6 +388,7 @@ async def detect_structure_route(plan_id: str, page_index: int = 0,
     w, h = _page_dims(page)
     result = await detect_structure_tiled(img, w, h)
     _assign_column_refs(result.get("columns") or [])
+    _assign_beam_refs(result.get("beams") or [])
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {f"structure.{page_index}": {**result, "detected_at": _now()},
@@ -401,6 +402,7 @@ class StructureIn(BaseModel):
     beams: list[dict] = Field(default_factory=list)
     floors: list[dict] = Field(default_factory=list)
     columns: list[dict] = Field(default_factory=list)
+    footings: list[dict] = Field(default_factory=list)
     image_width: int | None = None
     image_height: int | None = None
 
@@ -414,12 +416,13 @@ async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
     if not p:
         raise HTTPException(404, "Plan introuvable")
     _assign_column_refs(body.columns or [])
+    _assign_beam_refs(body.beams or [])
     payload = {
         "walls": body.walls, "openings": body.openings, "beams": body.beams,
-        "floors": body.floors, "columns": body.columns,
+        "floors": body.floors, "columns": body.columns, "footings": body.footings,
         "wall_count": len(body.walls), "opening_count": len(body.openings),
         "beam_count": len(body.beams), "floor_count": len(body.floors),
-        "column_count": len(body.columns),
+        "column_count": len(body.columns), "footing_count": len(body.footings),
         "image_width": body.image_width, "image_height": body.image_height,
         "edited_at": _now(),
     }
@@ -445,6 +448,15 @@ def _assign_column_refs(columns: list) -> list:
     return columns
 
 
+def _assign_beam_refs(beams: list) -> list:
+    """Numérote les poutres B1, B2… de haut en bas puis de gauche à droite."""
+    def cy(b):
+        return (b.get("y1", 0) + b.get("y2", 0)) / 2, (b.get("x1", 0) + b.get("x2", 0)) / 2
+    for i, b in enumerate(sorted(beams, key=cy), start=1):
+        b["ref"] = f"B{i}"
+    return beams
+
+
 def _polygon_area_px(points: list) -> float:
     """Aire d'un polygone (formule du lacet / shoelace), en pixels²."""
     n = len(points)
@@ -465,11 +477,14 @@ def _page_ppm(p: dict, page_index: int) -> float | None:
 
 
 def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
-                        wall_height: float = 2.5) -> dict:
+                        wall_height: float = 2.5, dalle_ep: float = 0.20,
+                        voile_ep: float = 0.20, poutre_l: float = 0.20,
+                        poutre_h: float = 0.40) -> dict:
     from collections import Counter
     walls = structure.get("walls") or []
     openings = structure.get("openings") or []
     beams = structure.get("beams") or []
+    footings = structure.get("footings") or []
     murs_ml = round(sum(_seg_len_px(w) for w in walls) / ppm, 2) if ppm else 0.0
     poutres_ml = round(sum(_seg_len_px(b) for b in beams) / ppm, 2) if ppm else 0.0
     ouv_ml = round(sum(_seg_len_px(o) for o in openings) / ppm, 2) if ppm else 0.0
@@ -485,24 +500,51 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         planchers_source = "rooms"
     porteur_ml = round(sum(_seg_len_px(w) for w in walls if w.get("type") == "porteur") / ppm, 2) if ppm else 0.0
     cloison_ml = round(murs_ml - porteur_ml, 2)
-    # ===== Métré BÉTON (m³) — sections/épaisseurs par défaut (paramétrables) =====
+    # ===== Métré BÉTON (m³) — épaisseurs/sections paramétrables =====
     columns = structure.get("columns") or []
-    DALLE_EP, VOILE_EP, POUTRE_L, POUTRE_H = 0.20, 0.20, 0.20, 0.40
+    poteaux_table, beams_table = [], []
     if ppm:
-        beton_poteaux = round(sum(
-            (abs(c.get("x2", 0) - c.get("x1", 0)) / ppm) * (abs(c.get("y2", 0) - c.get("y1", 0)) / ppm) * wall_height
-            for c in columns if isinstance(c, dict)), 2)
-        beton_poutres = round(poutres_ml * POUTRE_L * POUTRE_H, 2)
-        beton_dalles = round(planchers * DALLE_EP, 2)
-        beton_voiles = round(porteur_ml * wall_height * VOILE_EP, 2)
+        beton_poteaux = 0.0
+        for c in columns:
+            if not isinstance(c, dict):
+                continue
+            wm = abs(c.get("x2", 0) - c.get("x1", 0)) / ppm
+            dm = abs(c.get("y2", 0) - c.get("y1", 0)) / ppm
+            vol = round(wm * dm * wall_height, 3)
+            beton_poteaux += vol
+            poteaux_table.append({"ref": c.get("ref", ""), "section": f"{wm:.2f}×{dm:.2f} m",
+                                  "hauteur_m": round(wall_height, 2), "volume_m3": vol})
+        beton_poteaux = round(beton_poteaux, 2)
+        beton_poutres = 0.0
+        for b in beams:
+            spanm = round(_seg_len_px(b) / ppm, 2)
+            vol = round(spanm * poutre_l * poutre_h, 3)
+            beton_poutres += vol
+            beams_table.append({"ref": b.get("ref", ""), "portee_m": spanm, "volume_m3": vol})
+        beton_poutres = round(beton_poutres, 2)
+        # Dalles : épaisseur par dalle si annotée (thickness_cm), sinon dalle_ep global
+        beton_dalles = 0.0
+        for f in floors:
+            area = _polygon_area_px(f.get("points") or []) / (ppm * ppm)
+            ep = (f.get("thickness_cm") / 100.0) if f.get("thickness_cm") else dalle_ep
+            beton_dalles += area * ep
+        beton_dalles = round(beton_dalles if floors else planchers * dalle_ep, 2)
+        beton_voiles = round(porteur_ml * wall_height * voile_ep, 2)
+        semelles = len(footings)
+        beton_semelles = round(sum(
+            (abs(ft.get("x2", 0) - ft.get("x1", 0)) / ppm) * (abs(ft.get("y2", 0) - ft.get("y1", 0)) / ppm) * 0.40
+            for ft in footings if isinstance(ft, dict)), 2)
     else:
-        beton_poteaux = beton_poutres = beton_dalles = beton_voiles = 0.0
-    beton_total = round(beton_poteaux + beton_poutres + beton_dalles + beton_voiles, 2)
+        beton_poteaux = beton_poutres = beton_dalles = beton_voiles = beton_semelles = 0.0
+        semelles = len(footings)
+    beton_total = round(beton_poteaux + beton_poutres + beton_dalles + beton_voiles + beton_semelles, 2)
+    ngf_list = sorted({f.get("ngf") for f in floors if f.get("ngf") is not None})
     return {
         "wall_height_m": round(float(wall_height), 2),
         "planchers_m2": planchers,
         "planchers_source": planchers_source,
         "planchers_count": len(floors),
+        "planchers_ngf": ngf_list,
         "murs_ml": murs_ml, "murs_porteurs_ml": porteur_ml, "cloisons_ml": max(cloison_ml, 0.0),
         "murs_surface_m2": round(murs_ml * wall_height, 2),
         "portes": int(kinds.get("porte", 0)),
@@ -512,10 +554,15 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "ouvertures_largeur_ml": ouv_ml,
         "poutres_ml": poutres_ml,
         "poteaux": len(columns),
+        "semelles": semelles,
+        "poteaux_table": poteaux_table,
+        "beams_table": beams_table,
         "beton_poteaux_m3": beton_poteaux, "beton_poutres_m3": beton_poutres,
         "beton_dalles_m3": beton_dalles, "beton_voiles_m3": beton_voiles,
+        "beton_semelles_m3": beton_semelles,
         "beton_total_m3": beton_total,
-        "beton_dalle_ep_m": DALLE_EP, "beton_voile_ep_m": VOILE_EP,
+        "beton_dalle_ep_m": round(dalle_ep, 3), "beton_voile_ep_m": round(voile_ep, 3),
+        "beton_poutre_section": f"{poutre_l:.2f}×{poutre_h:.2f} m",
         "plan_kind": structure.get("plan_kind") or "habitation",
         "calibrated": bool(ppm),
     }
@@ -593,12 +640,15 @@ def _descriptif_line_items(d: dict) -> list[dict]:
     add("Fournitures et pose — Baies vitrées", d.get("baies"), "u")
     add("Poutres / linteaux", d.get("poutres_ml"), "ml")
     add("Poteaux béton", d.get("poteaux"), "u")
-    add("Béton coulé (poteaux + poutres + dalles + voiles)", d.get("beton_total_m3"), "m³")
+    add("Semelles / fondations", d.get("semelles"), "u")
+    add("Béton coulé (poteaux + poutres + dalles + voiles + semelles)", d.get("beton_total_m3"), "m³")
     return lines
 
 
 @router.get("/{plan_id}/analysis/{page_index}")
 async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
+                       dalle_ep: float = 0.20, voile_ep: float = 0.20,
+                       poutre_l: float = 0.20, poutre_h: float = 0.40,
                        user=Depends(current_user)) -> dict:
     """Renvoie la structure + le descriptif chiffré (nécessite une calibration)."""
     p = await db.plans_takeoff.find_one(
@@ -608,7 +658,7 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
     ppm = _page_ppm(p, page_index)
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
-    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height)
+    descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep, poutre_l, poutre_h)
     return {"structure": structure, "descriptif": descriptif,
             "calibrated": bool(ppm), "pixels_per_meter": ppm}
 
@@ -630,6 +680,7 @@ async def detect_structure_all(plan_id: str, user=Depends(current_user)) -> dict
         w, h = _page_dims(page)
         res = await detect_structure_tiled(img, w, h)
         _assign_column_refs(res.get("columns") or [])
+        _assign_beam_refs(res.get("beams") or [])
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id},
             {"$set": {f"structure.{idx}": {**res, "detected_at": _now()}}})

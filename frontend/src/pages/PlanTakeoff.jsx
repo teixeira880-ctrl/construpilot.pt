@@ -90,17 +90,19 @@ export default function PlanTakeoff() {
   const [selectedStruct, setSelectedStruct] = useState(null);
   const [descriptif, setDescriptif] = useState(null);
   const [wallHeight, setWallHeight] = useState(2.5);
+  const [dalleEp, setDalleEp] = useState(0.20);
+  const [voileEp, setVoileEp] = useState(0.20);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   useEffect(() => {
     if (!plan?.plan_id) { setDescriptif(null); return; }
     const s = plan.structure?.[String(pageIndex)];
     if (!s || !(s.walls?.length || s.openings?.length || s.beams?.length || s.floors?.length || s.columns?.length)) { setDescriptif(null); return; }
     let cancel = false;
-    api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}`)
+    api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}`)
       .then(({ data }) => { if (!cancel) setDescriptif(data.descriptif); }).catch(() => {});
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan?.plan_id, pageIndex, wallHeight]);
+  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp]);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
   const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
@@ -1064,7 +1066,7 @@ export default function PlanTakeoff() {
   // ===== STRUCTURE IA (murs rouges + ouvertures jaunes/violettes) =====
   const loadDescriptif = async (height = wallHeight) => {
     try {
-      const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${height}`);
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${height}&dalle_ep=${dalleEp}&voile_ep=${voileEp}`);
       setDescriptif(data.descriptif);
     } catch { /* silencieux */ }
   };
@@ -1140,7 +1142,7 @@ export default function PlanTakeoff() {
     try {
       await api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
         walls: next.walls || [], openings: next.openings || [], beams: next.beams || [],
-        floors: next.floors || [], columns: next.columns || [],
+        floors: next.floors || [], columns: next.columns || [], footings: next.footings || [],
         image_width: next.image_width, image_height: next.image_height,
       });
     } catch { toast.error("Sauvegarde de la structure impossible"); }
@@ -1150,7 +1152,7 @@ export default function PlanTakeoff() {
     if (prev && plan?.plan_id) {
       api.put(`/takeoffs/${plan.plan_id}/structure/${pageIndex}`, {
         walls: prev.walls || [], openings: prev.openings || [], beams: prev.beams || [],
-        floors: prev.floors || [], columns: prev.columns || [],
+        floors: prev.floors || [], columns: prev.columns || [], footings: prev.footings || [],
         image_width: prev.image_width, image_height: prev.image_height,
       }).catch(() => {});
     }
@@ -2719,6 +2721,24 @@ export default function PlanTakeoff() {
                   {!descriptif.calibrated && (
                     <p className="text-[10px] text-destructive mb-1">⚠️ Plan non calibré — quantités indisponibles.</p>
                   )}
+                  {/* Épaisseurs réglables pour le métré béton */}
+                  <div className="flex items-center gap-3 mb-1.5 text-[10px] text-muted-foreground">
+                    <label className="flex items-center gap-1">Ép. dalle
+                      <input type="number" step="0.05" min="0.05" max="1" value={dalleEp}
+                             onChange={(e) => setDalleEp(parseFloat(e.target.value) || 0.20)}
+                             data-testid="structure-dalle-ep"
+                             className="w-12 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
+                    </label>
+                    <label className="flex items-center gap-1">Ép. voile
+                      <input type="number" step="0.05" min="0.05" max="1" value={voileEp}
+                             onChange={(e) => setVoileEp(parseFloat(e.target.value) || 0.20)}
+                             data-testid="structure-voile-ep"
+                             className="w-12 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
+                    </label>
+                  </div>
+                  {descriptif.planchers_ngf?.length > 0 && (
+                    <p className="text-[10px] text-emerald-600 mb-1">Cote(s) NGF dalle : {descriptif.planchers_ngf.join(", ")}</p>
+                  )}
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
                     <span className="text-muted-foreground flex items-center gap-1">Planchers (sol)
                       {descriptif.planchers_source === "auto" && (
@@ -2731,6 +2751,7 @@ export default function PlanTakeoff() {
                     <span className="text-muted-foreground">Portes / Fenêtres / Baies</span><span className="num text-right">{descriptif.portes} / {descriptif.fenetres} / {descriptif.baies}</span>
                     <span className="text-muted-foreground">Poutres</span><span className="num text-right">{descriptif.poutres_ml} ml</span>
                     <span className="text-muted-foreground">Poteaux</span><span className="num text-right">{descriptif.poteaux || 0} u</span>
+                    <span className="text-muted-foreground">Semelles</span><span className="num text-right">{descriptif.semelles || 0} u</span>
                     {descriptif.beton_total_m3 > 0 && (
                       <>
                         <span className="text-muted-foreground font-semibold">Béton total</span>
@@ -2738,6 +2759,27 @@ export default function PlanTakeoff() {
                       </>
                     )}
                   </div>
+                  {descriptif.poteaux_table?.length > 0 && (
+                    <details className="mt-2" data-testid="poteaux-table">
+                      <summary className="text-[11px] font-semibold cursor-pointer text-purple-600">Tableau des poteaux ({descriptif.poteaux_table.length})</summary>
+                      <div className="mt-1 max-h-40 overflow-auto border border-border rounded-sm">
+                        <table className="w-full text-[10px]">
+                          <thead className="bg-muted/60 sticky top-0"><tr>
+                            <th className="text-left px-1.5 py-1">Repère</th><th className="text-left px-1.5 py-1">Section</th><th className="text-right px-1.5 py-1">Béton</th>
+                          </tr></thead>
+                          <tbody>
+                            {descriptif.poteaux_table.map((p) => (
+                              <tr key={p.ref} className="border-t border-border">
+                                <td className="px-1.5 py-0.5 font-bold text-purple-600">{p.ref}</td>
+                                <td className="px-1.5 py-0.5 num">{p.section}</td>
+                                <td className="px-1.5 py-0.5 num text-right">{p.volume_m3} m³</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  )}
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" onClick={sendToQuote} data-testid="structure-to-quote"
                             className="rounded-sm h-7 text-xs gap-1 flex-1">

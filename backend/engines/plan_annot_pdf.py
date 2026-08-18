@@ -35,6 +35,10 @@ def _render_overlay(image_b64: str, structure: dict) -> bytes:
         x0, y0 = min(c["x1"], c["x2"]), min(c["y1"], c["y2"])
         x1, y1 = max(c["x1"], c["x2"]), max(c["y1"], c["y2"])
         d.rectangle([x0, y0, x1, y1], fill=(126, 34, 206, 235), outline=(88, 24, 145, 255))
+    for ft in structure.get("footings") or []:
+        x0, y0 = min(ft["x1"], ft["x2"]), min(ft["y1"], ft["y2"])
+        x1, y1 = max(ft["x1"], ft["x2"]), max(ft["y1"], ft["y2"])
+        d.rectangle([x0, y0, x1, y1], fill=(250, 204, 21, 90), outline=(202, 138, 4, 255))
     for o in structure.get("openings") or []:
         col = PURPLE if o.get("kind") == "porte" else YELLOW
         d.line([(o["x1"], o["y1"]), (o["x2"], o["y2"])], fill=col + (255,), width=lw + 3)
@@ -99,6 +103,8 @@ def build_annotated_plan_pdf(image_b64: str, structure: dict, descriptif: dict,
     r("Baies vitrées", d.get("baies"), "u")
     r("Poutres / linteaux", d.get("poutres_ml"), "ml")
     r("Poteaux béton", d.get("poteaux"), "u")
+    r("Semelles / fondations", d.get("semelles"), "u")
+    r("Béton total", d.get("beton_total_m3"), "m³")
     t = Table(rows, colWidths=[110 * mm, 35 * mm, 25 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),

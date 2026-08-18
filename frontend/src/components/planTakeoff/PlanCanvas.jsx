@@ -130,6 +130,16 @@ export default function PlanCanvas({
     // STRUCTURE overlay (IA) — murs rouges + fenêtres jaunes + portes violettes
     if (showStructure && structure && (structure.walls?.length || structure.openings?.length || structure.floors?.length || structure.columns?.length)) {
       ctx.lineCap = "round";
+      // Semelles / fondations (jaune)
+      (structure.footings || []).forEach((f) => {
+        const x0 = Math.min(f.x1, f.x2), y0 = Math.min(f.y1, f.y2);
+        const w = Math.max(Math.abs(f.x2 - f.x1), 8 / zoom), h = Math.max(Math.abs(f.y2 - f.y1), 8 / zoom);
+        ctx.fillStyle = "rgba(250,204,21,0.35)";
+        ctx.fillRect(x0, y0, w, h);
+        ctx.strokeStyle = "rgba(202,138,4,0.9)";
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.strokeRect(x0, y0, w, h);
+      });
       // Poteaux (plan de coffrage) — carrés pleins violets
       (structure.columns || []).forEach((c) => {
         const sel = selectedStruct?.type === "column" && selectedStruct?.id === c.column_id;
@@ -209,6 +219,11 @@ export default function PlanCanvas({
         if (sel) { ctx.shadowColor = "rgba(99,40,150,0.9)"; ctx.shadowBlur = 14 / zoom; }
         ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
         ctx.setLineDash([]); ctx.shadowBlur = 0;
+        if (b.ref) {
+          ctx.fillStyle = "rgba(99,40,150,1)";
+          ctx.font = `bold ${Math.max(10, 12 / zoom)}px sans-serif`;
+          ctx.fillText(b.ref, (b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2 - 4 / zoom);
+        }
         if (sel) {
           ctx.fillStyle = "rgba(255,255,255,1)";
           [[b.x1, b.y1], [b.x2, b.y2]].forEach(([hx, hy]) => {
