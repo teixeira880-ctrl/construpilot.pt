@@ -977,3 +977,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Frontend PlanTakeoff.jsx : bloc "Plancher (chiffré au m²)" avec sélecteur Type (auto/dalle pleine/poutrelles-hourdis) + input Prix €/m² (0=barème auto). Retrait de "Dalles" de la grille prix/m³. Persistance dans les réglages par défaut.
 - Vérifié e2e backend (plan_c56da42f0331) : plancher m² à 140 (ép 20), 160 (ép 25), 175 (override), unit m², aciers/main d'œuvre hors dalle. Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 133 - 18/06/2026 (Hero 3D plus réaliste sur la page principale)
+- Demande : soit retirer la maquette 3D du hero, soit la rendre plus réaliste → choix "plus réaliste".
+- Landing.jsx : HERO_ROOMS/HERO_WALLS remplacés par un vrai plan de maison 5 pièces (Cuisine, Séjour, Entrée, Chambre 1, Chambre 2) avec ouvertures (portes, fenêtres, baie vitrée) + murs porteurs périmètre + refend central + cloisons. imageHeight 600. Libellé "Génération Plan 3D" déplacé en bas à gauche pour ne plus chevaucher le curseur "Hauteur murs".
+- Vérifié : screenshot préversion — rendu 3D multi-pièces réaliste avec portes/fenêtres.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

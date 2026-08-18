@@ -23,20 +23,30 @@ import { useI18n } from "@/context/I18nContext";
 const EXAMPLE =
   "Je veux rénover une maison de 150 m², refaire les murs, plafonds, électricité, plomberie, deux salles de bain et remplacer les fenêtres.";
 
-// Data for Interactive3D hero demo
+// Data for Interactive3D hero demo — plan de maison réaliste (5 pièces + ouvertures)
 const HERO_ROOMS = [
-  { name: "Séjour", polygon_px: [[0,0], [400,0], [400,300], [0,300]], centroid_px: [200, 150] },
-  { name: "Chambre", polygon_px: [[400,0], [700,0], [700,200], [400,200]], centroid_px: [550, 100] },
-  { name: "SDB", polygon_px: [[400,200], [700,200], [700,300], [400,300]], centroid_px: [550, 250] }
+  { name: "Cuisine", polygon_px: [[0,0],[320,0],[320,260],[0,260]], centroid_px: [160,130],
+    openings: [{ kind: "fenetre", width_m: 1.2 }, { kind: "porte", width_m: 0.8 }] },
+  { name: "Séjour", polygon_px: [[0,260],[480,260],[480,600],[0,600]], centroid_px: [240,430],
+    openings: [{ kind: "baie", width_m: 2.4 }, { kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.9 }] },
+  { name: "Entrée", polygon_px: [[320,0],[480,0],[480,260],[320,260]], centroid_px: [400,130],
+    openings: [{ kind: "porte", width_m: 1.0 }, { kind: "porte", width_m: 0.8 }] },
+  { name: "Chambre 1", polygon_px: [[480,0],[800,0],[800,300],[480,300]], centroid_px: [640,150],
+    openings: [{ kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.8 }] },
+  { name: "Chambre 2", polygon_px: [[480,300],[800,300],[800,600],[480,600]], centroid_px: [640,450],
+    openings: [{ kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.8 }] },
 ];
 const HERO_WALLS = [
-  { x1: 0, y1: 0, x2: 400, y2: 0, wall_type: "porteur", thickness_px: 15 },
-  { x1: 400, y1: 0, x2: 700, y2: 0, wall_type: "porteur", thickness_px: 15 },
-  { x1: 700, y1: 0, x2: 700, y2: 300, wall_type: "porteur", thickness_px: 15 },
-  { x1: 700, y1: 300, x2: 0, y2: 300, wall_type: "porteur", thickness_px: 15 },
-  { x1: 0, y1: 300, x2: 0, y2: 0, wall_type: "porteur", thickness_px: 15 },
-  { x1: 400, y1: 0, x2: 400, y2: 300, wall_type: "cloison", thickness_px: 10 },
-  { x1: 400, y1: 200, x2: 700, y2: 200, wall_type: "cloison", thickness_px: 10 }
+  // Murs porteurs (périmètre + refend central)
+  { x1: 0, y1: 0, x2: 800, y2: 0, wall_type: "porteur", thickness_px: 18 },
+  { x1: 800, y1: 0, x2: 800, y2: 600, wall_type: "porteur", thickness_px: 18 },
+  { x1: 800, y1: 600, x2: 0, y2: 600, wall_type: "porteur", thickness_px: 18 },
+  { x1: 0, y1: 600, x2: 0, y2: 0, wall_type: "porteur", thickness_px: 18 },
+  { x1: 480, y1: 0, x2: 480, y2: 600, wall_type: "porteur", thickness_px: 18 },
+  // Cloisons intérieures
+  { x1: 0, y1: 260, x2: 480, y2: 260, wall_type: "cloison", thickness_px: 10 },
+  { x1: 320, y1: 0, x2: 320, y2: 260, wall_type: "cloison", thickness_px: 10 },
+  { x1: 480, y1: 300, x2: 800, y2: 300, wall_type: "cloison", thickness_px: 10 },
 ];
 
 const STEPS = [
@@ -305,7 +315,7 @@ export default function Landing() {
             >
                <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent rounded-2xl pointer-events-none" />
                <div className="relative h-full w-full rounded-2xl border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden bg-card/50 backdrop-blur-sm p-4">
-                  <div className="absolute top-6 left-6 z-20 flex flex-col gap-1 pointer-events-none">
+                  <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-1 pointer-events-none">
                      <span className="text-[10px] uppercase font-bold tracking-widest text-primary">{t("landing.hero.live_view", "Vue en direct")}</span>
                      <span className="text-sm font-semibold">{t("landing.hero.plan3d", "Génération Plan 3D")}</span>
                   </div>
@@ -315,7 +325,7 @@ export default function Landing() {
                         rooms={HERO_ROOMS} 
                         walls={HERO_WALLS} 
                         scaleMperPx={0.012} 
-                        imageHeight={550} 
+                        imageHeight={600} 
                      />
                   </div>
                </div>
