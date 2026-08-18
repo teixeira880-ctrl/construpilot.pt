@@ -48,6 +48,11 @@ async def admin_inbox(hours: int = 168) -> dict:
                                        {"_id": 0}).sort("created_at", -1).limit(30)
     errs = await errs_cur.to_list(30)
 
+    # Téléchargements du pitch deck investisseurs (leads VC)
+    deck_cur = db.deck_downloads.find({"created_at": {"$gte": since_iso}},
+                                       {"_id": 0}).sort("created_at", -1).limit(50)
+    deck_downloads = await deck_cur.to_list(50)
+
     # Devis signés dans la fenêtre (à célébrer)
     signed_count = sum(1 for s in sends if s.get("signed"))
     open_count = sum(1 for s in sends if s.get("opened_at") and not s.get("signed"))
@@ -61,10 +66,12 @@ async def admin_inbox(hours: int = 168) -> dict:
             "quotes_signed": signed_count,
             "quotes_opened": open_count,
             "client_errors": len(errs),
+            "deck_downloads": len(deck_downloads),
         },
         "leads": leads,
         "new_users": new_users,
         "recent_sends": sends,
+        "deck_downloads": deck_downloads,
         "recent_errors": [
             {"created_at": (e.get("created_at").isoformat()
                              if hasattr(e.get("created_at"), "isoformat")

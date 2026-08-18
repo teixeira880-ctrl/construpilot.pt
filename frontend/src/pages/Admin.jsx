@@ -807,6 +807,7 @@ function InboxPanel() {
         <Stat label={t("admin.k_quotes_signed")} value={num(data?.counts?.quotes_signed || 0)} accent />
         <Stat label={t("admin.k_quotes_opened")} value={num(data?.counts?.quotes_opened || 0)} />
         <Stat label={t("admin.k_client_errors")} value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} />
+        <Stat label="Deck investisseurs" value={num(data?.counts?.deck_downloads || 0)} accent={data?.counts?.deck_downloads > 0} />
       </div>
 
       <div className="surface p-4 flex gap-2 items-center flex-wrap">
@@ -866,6 +867,25 @@ function InboxPanel() {
                              : s.opened_at ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
                                             : "bg-secondary text-muted-foreground border-border"}`}>
                   {s.signed ? "signé" : s.opened_at ? "ouvert" : "envoyé"}
+                </span>
+              </div>
+            )}
+          </InboxSection>
+
+          <InboxSection title="Téléchargements pitch deck (VC)" items={data.deck_downloads || []} empty="Aucun téléchargement du pitch deck sur la période.">
+            {(d) => (
+              <div className="flex items-center justify-between text-xs" data-testid="inbox-deck-row">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold truncate">
+                    {d.name || "—"}{d.fund ? ` · ${d.fund}` : ""}
+                  </p>
+                  <p className="text-muted-foreground truncate">
+                    <a href={`mailto:${d.email}`} className="hover:underline">{d.email}</a>
+                    {d.note ? ` · ${d.note}` : ""}
+                  </p>
+                </div>
+                <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">
+                  {d.created_at?.slice(0, 16).replace("T", " ")}
                 </span>
               </div>
             )}

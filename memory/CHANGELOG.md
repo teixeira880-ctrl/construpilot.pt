@@ -914,3 +914,8 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - **Pitch deck PDF de marque** : nouveau `engines/pdf_pitch.py` (8 pages A4 : couverture + 7 slides reprenant /investisseurs, branding vert ConstruPilot, header/footer confidentiel). Route publique `GET /api/investors/pitch-deck.pdf` (`routes/investors.py`, enregistrée dans server.py). Boutons "Pitch deck PDF" (header) et "Télécharger le pitch deck (PDF)" (hero) sur Investors.jsx. Vérifié : HTTP 200, application/pdf, 12.3 KB, 8 pages.
 - **Lien footer "Investisseurs"** discret ajouté (Nav.jsx, data-testid="footer-investors-link" → /investisseurs). Vérifié par navigation.
 - **Test flux relance J+3** (`run_signup_followups`) : PASS — inscrit éligible (≈3j, password, sans devis) reçoit l'email + flag welcome_followup ; inscrit ayant déjà un devis ignoré mais flaggé ; inscrit trop ancien exclu. RESEND_API_KEY présent, scheduler quotidien 09:00 UTC actif.
+
+## Iteration 124 - 18/06/2026 (Suivi des téléchargements du pitch deck / leads VC)
+- Le téléchargement du pitch deck est désormais "gaté" par un mini-formulaire (nom, e-mail*, fonds/société) — composant DeckDownloadDialog dans Investors.jsx. À la soumission : POST /api/investors/deck-request → journalise dans db.deck_downloads (nom, email, fund, note, ip, user_agent, referer, date) puis ouvre le PDF dans un nouvel onglet.
+- Admin : le inbox (/api/admin/inbox) renvoie désormais deck_downloads + compteur ; nouvelle section "Téléchargements pitch deck (VC)" + Stat "Deck investisseurs" dans Admin.jsx (onglet Boîte de réception).
+- Vérifié e2e : POST via curl + via le dialog UI → entrées visibles dans l'inbox admin avec identité + IP + referer. Entrées de test nettoyées.
