@@ -232,9 +232,18 @@ export const Footer = () => (
         >
           info@construpilot.fr
         </a>
-        <p className="text-xs text-muted-foreground">
-          Estimations indicatives — ne constituent pas un devis contractuel.
-        </p>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/investisseurs"
+            className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
+            data-testid="footer-investors-link"
+          >
+            Investisseurs
+          </Link>
+          <span className="text-[11px] text-muted-foreground">
+            Estimations indicatives — ne constituent pas un devis contractuel.
+          </span>
+        </div>
       </div>
     </div>
     <div className="border-t border-border">

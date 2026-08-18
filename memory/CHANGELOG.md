@@ -909,3 +909,8 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Correctif : la hausse Pro mensuel 199€→299€ n'avait jamais pris effet (bloc PRICE_MIGRATION dans server.py forçait 19900 au démarrage). Corrigé : pro_monthly=29900, pro_yearly=315000 (3150€, ~12%). Pro Business 350€/3500€ déjà cohérents (~17%). Catalogue monetization_catalog.py aligné.
 - Email de contact **info@construpilot.fr** ajouté : footer global (Nav.jsx, lien mailto, data-testid="footer-contact-email") + page Investisseurs (remplace ancienne adresse Gmail dans tous les CTA).
 - Vérifié : DB, API /api/plans, page /tarifs (onglet pro) et footer via screenshot. ✅
+
+## Iteration 123 - 18/06/2026 (Pitch deck PDF + lien footer + test J+3)
+- **Pitch deck PDF de marque** : nouveau `engines/pdf_pitch.py` (8 pages A4 : couverture + 7 slides reprenant /investisseurs, branding vert ConstruPilot, header/footer confidentiel). Route publique `GET /api/investors/pitch-deck.pdf` (`routes/investors.py`, enregistrée dans server.py). Boutons "Pitch deck PDF" (header) et "Télécharger le pitch deck (PDF)" (hero) sur Investors.jsx. Vérifié : HTTP 200, application/pdf, 12.3 KB, 8 pages.
+- **Lien footer "Investisseurs"** discret ajouté (Nav.jsx, data-testid="footer-investors-link" → /investisseurs). Vérifié par navigation.
+- **Test flux relance J+3** (`run_signup_followups`) : PASS — inscrit éligible (≈3j, password, sans devis) reçoit l'email + flag welcome_followup ; inscrit ayant déjà un devis ignoré mais flaggé ; inscrit trop ancien exclu. RESEND_API_KEY présent, scheduler quotidien 09:00 UTC actif.

@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight, ScanLine, Cuboid, FileText, Bot, Globe2, ShieldCheck,
-  TrendingUp, Target, Rocket, PieChart, Mail, CheckCircle2, Building2,
+  TrendingUp, Target, Rocket, PieChart, Mail, CheckCircle2, Building2, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const CONTACT = "info@construpilot.fr";
+const DECK_PDF = `${process.env.REACT_APP_BACKEND_URL}/api/investors/pitch-deck.pdf`;
 
 const Slide = ({ n, kicker, title, children, dark }) => (
   <section data-testid={`deck-slide-${n}`}
@@ -45,9 +46,14 @@ export default function Investors() {
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto max-w-[1200px] px-6 lg:px-10 h-16 flex items-center justify-between">
           <Link to="/" className="font-display font-bold text-lg">Constru<span className="text-primary">Pilot</span></Link>
-          <Button asChild size="sm" className="rounded-full gap-2" data-testid="deck-contact-top">
-            <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-4 w-4" /> Contacter</a>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm" variant="outline" className="rounded-full gap-2" data-testid="deck-download-top">
+              <a href={DECK_PDF} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /> Pitch deck PDF</a>
+            </Button>
+            <Button asChild size="sm" className="rounded-full gap-2" data-testid="deck-contact-top">
+              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-4 w-4" /> Contacter</a>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -69,6 +75,9 @@ export default function Investors() {
             </Button>
             <Button asChild size="lg" variant="outline" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-demo">
               <Link to="/">Voir la démo <ArrowRight className="h-5 w-5" /></Link>
+            </Button>
+            <Button asChild size="lg" variant="ghost" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-download">
+              <a href={DECK_PDF} target="_blank" rel="noopener noreferrer"><Download className="h-5 w-5" /> Télécharger le pitch deck (PDF)</a>
             </Button>
           </div>
         </div>
