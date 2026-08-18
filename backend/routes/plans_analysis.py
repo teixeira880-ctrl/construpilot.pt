@@ -31,15 +31,16 @@ logger = logging.getLogger(__name__)
 # ============ RÉGLAGES BÉTON PAR DÉFAUT (entreprise) ============
 
 _BETON_DEFAULTS = {"wall_height": 2.5, "dalle_ep": 0.20, "voile_ep": 0.20,
-                   "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0}
+                   "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0,
+                   "beton_price_m3": 0.0, "last_preset": ""}
 
 # Presets intégrés proposés par type de chantier
 _BETON_BUILTIN_PRESETS = [
     {"name": "Maison", "builtin": True, "wall_height": 2.5, "dalle_ep": 0.16,
-     "voile_ep": 0.20, "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0,
+     "voile_ep": 0.20, "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0, "beton_price_m3": 0.0,
      "acier_ratios": {"semelles": 40, "poteaux": 110, "poutres": 120, "dalles": 80, "voiles": 55}},
     {"name": "Immeuble", "builtin": True, "wall_height": 2.7, "dalle_ep": 0.20,
-     "voile_ep": 0.20, "poutre_l": 0.25, "poutre_h": 0.50, "acier_price_kg": 0.0,
+     "voile_ep": 0.20, "poutre_l": 0.25, "poutre_h": 0.50, "acier_price_kg": 0.0, "beton_price_m3": 0.0,
      "acier_ratios": {"semelles": 45, "poteaux": 140, "poutres": 150, "dalles": 90, "voiles": 70}},
 ]
 
@@ -51,6 +52,8 @@ async def get_beton_defaults(user=Depends(current_user)) -> dict:
     if not d:
         return {**_BETON_DEFAULTS, "acier_ratios": dict(ACIER_RATIOS)}
     d.setdefault("acier_price_kg", 0.0)
+    d.setdefault("beton_price_m3", 0.0)
+    d.setdefault("last_preset", "")
     return d
 
 
@@ -61,6 +64,7 @@ class BetonDefaultsIn(BaseModel):
     poutre_l: float = 0.20
     poutre_h: float = 0.40
     acier_price_kg: float = 0.0
+    beton_price_m3: float = 0.0
     acier_ratios: dict = Field(default_factory=dict)
 
 
@@ -70,11 +74,24 @@ async def set_beton_defaults(body: BetonDefaultsIn, user=Depends(current_user)) 
     payload = {"wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
                "voile_ep": body.voile_ep, "poutre_l": body.poutre_l,
                "poutre_h": body.poutre_h, "acier_price_kg": max(0.0, body.acier_price_kg),
-               "acier_ratios": ar}
+               "beton_price_m3": max(0.0, body.beton_price_m3), "acier_ratios": ar}
     await db.beton_defaults.update_one(
         {"user_id": user["user_id"]},
         {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)
     return {"ok": True, **payload}
+
+
+class LastPresetIn(BaseModel):
+    name: str = ""
+
+
+@router.put("/settings/beton-last-preset")
+async def set_beton_last_preset(body: LastPresetIn, user=Depends(current_user)) -> dict:
+    await db.beton_defaults.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"user_id": user["user_id"], "last_preset": (body.name or "").strip()[:40]}},
+        upsert=True)
+    return {"ok": True}
 
 
 @router.get("/settings/beton-presets")
@@ -93,6 +110,7 @@ class BetonPresetIn(BaseModel):
     poutre_l: float = 0.20
     poutre_h: float = 0.40
     acier_price_kg: float = 0.0
+    beton_price_m3: float = 0.0
     acier_ratios: dict = Field(default_factory=dict)
 
 
@@ -106,7 +124,8 @@ async def save_beton_preset(body: BetonPresetIn, user=Depends(current_user)) -> 
     ar = {k: float(body.acier_ratios.get(k, ACIER_RATIOS[k])) for k in ACIER_RATIOS}
     payload = {"name": name, "wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
                "voile_ep": body.voile_ep, "poutre_l": body.poutre_l, "poutre_h": body.poutre_h,
-               "acier_price_kg": max(0.0, body.acier_price_kg), "acier_ratios": ar}
+               "acier_price_kg": max(0.0, body.acier_price_kg),
+               "beton_price_m3": max(0.0, body.beton_price_m3), "acier_ratios": ar}
     await db.beton_presets.update_one(
         {"user_id": user["user_id"], "name": name},
         {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)

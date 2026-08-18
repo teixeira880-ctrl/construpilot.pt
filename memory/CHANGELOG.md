@@ -1,5 +1,12 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 117 — 18/06/2026 (Coût matière + Comparaison presets + Suppression preset + Dernier preset auto)
+- **Coût matière (béton + aciers)** : champ « Prix béton €/m³ » (`beton-price-m3`, stocké dans défauts/presets). Affichage `descriptif-cout-matiere` = béton_total×prix_m³ + acier_total×prix_kg, directement dans le descriptif.
+- **Comparer 2 presets** : bouton « Comparer » (`beton-preset-compare`) → dialog `beton-compare-dialog` qui appelle l'analyse du plan courant avec les réglages « Maison » et « Immeuble » et affiche un tableau côte à côte (béton total, aciers, poteaux/poutres/dalles/voiles, coût matière). Vérifié (31 568 € vs 32 681 €).
+- **Suppression preset** : bouton corbeille (`beton-preset-delete`) visible quand un preset personnalisé est sélectionné → `DELETE /api/takeoffs/settings/beton-presets/{name}`.
+- **Dernier preset auto** : `PUT /api/takeoffs/settings/beton-last-preset` mémorise le preset choisi ; au chargement d'un plan, défauts+presets chargés puis dernier preset ré-appliqué automatiquement. `beton_price_m3` + `last_preset` ajoutés aux modèles/défauts. Vérifié curl + capture d'écran.
+
+
 ## Itération 116 — 18/06/2026 (PDF béton brandé + Prix acier auto + Presets par chantier)
 - **PDF béton signé** : `beton-pdf` intègre désormais le logo/en-tête entreprise (`_story_header_branding` + `_resolve_branding`) et un pied de page (`pdf_labels().footer`). Vérifié curl (200).
 - **Prix aciers auto** : nouveau champ `acier_price_kg` (dans les défauts + presets + query param de `structure_to_quote`). À la génération du devis, la ligne « Aciers HA » non chiffrée reçoit ce prix au kg → chiffrage instantané. Input « Prix acier €/kg » (`acier-price-kg`) dans l'UI. Vérifié curl (PU=1,8 appliqué).

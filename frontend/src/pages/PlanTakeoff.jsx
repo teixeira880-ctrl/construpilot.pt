@@ -97,7 +97,12 @@ export default function PlanTakeoff() {
   const [poutreL, setPoutreL] = useState(0.20);
   const [poutreH, setPoutreH] = useState(0.40);
   const [acierPriceKg, setAcierPriceKg] = useState(0);
+  const [betonPriceM3, setBetonPriceM3] = useState(0);
   const [betonPresets, setBetonPresets] = useState([]);
+  const [selectedPreset, setSelectedPreset] = useState("");
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareBusy, setCompareBusy] = useState(false);
+  const [compareData, setCompareData] = useState(null);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   useEffect(() => {
     if (!plan?.plan_id) { setDescriptif(null); return; }
@@ -1077,44 +1082,93 @@ export default function PlanTakeoff() {
   const acierQuery = () =>
     `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}`;
 
-  // Charge les réglages béton par défaut de l'entreprise (une fois)
+  // Charge les réglages béton par défaut + presets, puis applique le dernier preset choisi
   useEffect(() => {
-    api.get("/takeoffs/settings/beton-defaults").then(({ data }) => {
-      if (data.wall_height) setWallHeight(data.wall_height);
-      if (data.dalle_ep) setDalleEp(data.dalle_ep);
-      if (data.voile_ep) setVoileEp(data.voile_ep);
-      if (data.poutre_l) setPoutreL(data.poutre_l);
-      if (data.poutre_h) setPoutreH(data.poutre_h);
-      if (data.acier_price_kg != null) setAcierPriceKg(data.acier_price_kg);
-      if (data.acier_ratios) setAcierRatios((r) => ({ ...r, ...data.acier_ratios }));
-    }).catch(() => {});
-    api.get("/takeoffs/settings/beton-presets")
-      .then(({ data }) => setBetonPresets(data.presets || [])).catch(() => {});
+    (async () => {
+      let lastPreset = "";
+      try {
+        const { data } = await api.get("/takeoffs/settings/beton-defaults");
+        if (data.wall_height) setWallHeight(data.wall_height);
+        if (data.dalle_ep) setDalleEp(data.dalle_ep);
+        if (data.voile_ep) setVoileEp(data.voile_ep);
+        if (data.poutre_l) setPoutreL(data.poutre_l);
+        if (data.poutre_h) setPoutreH(data.poutre_h);
+        if (data.acier_price_kg != null) setAcierPriceKg(data.acier_price_kg);
+        if (data.beton_price_m3 != null) setBetonPriceM3(data.beton_price_m3);
+        if (data.acier_ratios) setAcierRatios((r) => ({ ...r, ...data.acier_ratios }));
+        lastPreset = data.last_preset || "";
+      } catch { /* ignore */ }
+      try {
+        const { data } = await api.get("/takeoffs/settings/beton-presets");
+        const presets = data.presets || [];
+        setBetonPresets(presets);
+        const pr = presets.find((p) => p.name === lastPreset);
+        if (pr) { applyPresetObj(pr, false); setSelectedPreset(lastPreset); }
+      } catch { /* ignore */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const applyBetonPreset = (name) => {
-    const pr = betonPresets.find((p) => p.name === name);
-    if (!pr) return;
+  const applyPresetObj = (pr, notify = true) => {
     setWallHeight(pr.wall_height ?? 2.5);
     setDalleEp(pr.dalle_ep ?? 0.20);
     setVoileEp(pr.voile_ep ?? 0.20);
     setPoutreL(pr.poutre_l ?? 0.20);
     setPoutreH(pr.poutre_h ?? 0.40);
     setAcierPriceKg(pr.acier_price_kg ?? 0);
+    setBetonPriceM3(pr.beton_price_m3 ?? 0);
     if (pr.acier_ratios) setAcierRatios((r) => ({ ...r, ...pr.acier_ratios }));
-    toast.success(`Réglages « ${name} » appliqués`);
+    if (notify) toast.success(`Réglages « ${pr.name} » appliqués`);
+  };
+
+  const applyBetonPreset = (name) => {
+    const pr = betonPresets.find((p) => p.name === name);
+    if (!pr) return;
+    setSelectedPreset(name);
+    applyPresetObj(pr);
+    api.put("/takeoffs/settings/beton-last-preset", { name }).catch(() => {});
+  };
+
+  const deleteBetonPreset = async () => {
+    const pr = betonPresets.find((p) => p.name === selectedPreset);
+    if (!pr || pr.builtin) return;
+    if (!window.confirm(`Supprimer le réglage « ${selectedPreset} » ?`)) return;
+    try {
+      await api.delete(`/takeoffs/settings/beton-presets/${encodeURIComponent(selectedPreset)}`);
+      setBetonPresets((list) => list.filter((p) => p.name !== selectedPreset));
+      setSelectedPreset("");
+      toast.success("Réglage supprimé");
+    } catch { toast.error("Suppression impossible"); }
+  };
+
+  const runCompare = async () => {
+    if (!plan?.plan_id) return;
+    setCompareBusy(true);
+    setCompareOpen(true);
+    try {
+      const targets = betonPresets.filter((p) => p.name === "Maison" || p.name === "Immeuble");
+      const results = await Promise.all(targets.map(async (pr) => {
+        const aq = `&acier_semelles=${pr.acier_ratios.semelles}&acier_poteaux=${pr.acier_ratios.poteaux}&acier_poutres=${pr.acier_ratios.poutres}&acier_dalles=${pr.acier_ratios.dalles}&acier_voiles=${pr.acier_ratios.voiles}&poutre_l=${pr.poutre_l}&poutre_h=${pr.poutre_h}`;
+        const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${pr.wall_height}&dalle_ep=${pr.dalle_ep}&voile_ep=${pr.voile_ep}${aq}`);
+        return { name: pr.name, d: data.descriptif };
+      }));
+      setCompareData(results);
+    } catch { toast.error("Comparaison impossible"); setCompareOpen(false); }
+    finally { setCompareBusy(false); }
   };
 
   const saveBetonPreset = async () => {
-    const name = window.prompt("Nom du jeu de réglages (ex. Maison, Rénovation, Villa) :");
+    const name = window.prompt("Nom du jeu de réglages (ex. Rénovation, Villa) :");
     if (!name || !name.trim()) return;
     try {
       await api.put("/takeoffs/settings/beton-presets", {
         name: name.trim(), wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
-        poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg, acier_ratios: acierRatios,
+        poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg,
+        beton_price_m3: betonPriceM3, acier_ratios: acierRatios,
       });
       const { data } = await api.get("/takeoffs/settings/beton-presets");
       setBetonPresets(data.presets || []);
+      setSelectedPreset(name.trim());
       toast.success(`Réglage « ${name.trim()} » enregistré`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement du réglage impossible"); }
   };
@@ -1123,7 +1177,8 @@ export default function PlanTakeoff() {
     try {
       await api.put("/takeoffs/settings/beton-defaults", {
         wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
-        poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg, acier_ratios: acierRatios,
+        poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg,
+        beton_price_m3: betonPriceM3, acier_ratios: acierRatios,
       });
       toast.success("Réglages béton enregistrés comme valeurs par défaut de l'entreprise");
     } catch { toast.error("Enregistrement des réglages impossible"); }
@@ -2876,17 +2931,28 @@ export default function PlanTakeoff() {
                   </div>
                   {/* Presets de réglages béton par chantier */}
                   <div className="flex items-center gap-2 mb-1.5">
-                    <select onChange={(e) => { if (e.target.value) applyBetonPreset(e.target.value); e.target.value = ""; }}
-                            data-testid="beton-preset-select" defaultValue=""
+                    <select value={selectedPreset}
+                            onChange={(e) => { if (e.target.value) applyBetonPreset(e.target.value); else setSelectedPreset(""); }}
+                            data-testid="beton-preset-select"
                             className="flex-1 h-7 text-[11px] rounded-sm border border-input bg-background px-1">
                       <option value="">Choisir un réglage (chantier)…</option>
                       {betonPresets.map((p) => (
                         <option key={p.name} value={p.name}>{p.name}{p.builtin ? " (type)" : ""}</option>
                       ))}
                     </select>
+                    {selectedPreset && !betonPresets.find((p) => p.name === selectedPreset)?.builtin && (
+                      <Button size="sm" variant="outline" onClick={deleteBetonPreset}
+                              data-testid="beton-preset-delete" className="rounded-sm h-7 w-7 p-0 text-destructive">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={saveBetonPreset}
                             data-testid="beton-preset-save" className="rounded-sm h-7 text-[10px] gap-1">
-                      <Save className="h-3 w-3" /> Enregistrer sous…
+                      <Save className="h-3 w-3" /> Sous…
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={runCompare}
+                            data-testid="beton-preset-compare" className="rounded-sm h-7 text-[10px] gap-1">
+                      Comparer
                     </Button>
                   </div>
                   {!descriptif.calibrated && (
@@ -2935,7 +3001,11 @@ export default function PlanTakeoff() {
                              onChange={(e) => setAcierPriceKg(parseFloat(e.target.value) || 0)}
                              data-testid="acier-price-kg"
                              className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> €/kg
-                      <span className="text-[9px] opacity-70">(chiffrage auto de la ligne « Aciers HA »)</span>
+                      <span className="ml-2">Prix béton</span>
+                      <input type="number" step="5" min="0" max="500" value={betonPriceM3}
+                             onChange={(e) => setBetonPriceM3(parseFloat(e.target.value) || 0)}
+                             data-testid="beton-price-m3"
+                             className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> €/m³
                     </label>
                     <Button size="sm" variant="outline" onClick={saveBetonDefaults}
                             data-testid="save-beton-defaults"
@@ -2969,6 +3039,14 @@ export default function PlanTakeoff() {
                       <>
                         <span className="text-muted-foreground font-semibold">Aciers (ferraillage)</span>
                         <span className="num text-right font-semibold text-orange-600" data-testid="descriptif-acier">{descriptif.acier_total_kg} kg</span>
+                      </>
+                    )}
+                    {(betonPriceM3 > 0 || acierPriceKg > 0) && descriptif.beton_total_m3 > 0 && (
+                      <>
+                        <span className="text-muted-foreground font-semibold">Coût matière (béton + aciers)</span>
+                        <span className="num text-right font-semibold text-emerald-700" data-testid="descriptif-cout-matiere">
+                          {Math.round((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg).toLocaleString("fr-FR")} €
+                        </span>
                       </>
                     )}
                   </div>
@@ -3935,6 +4013,45 @@ export default function PlanTakeoff() {
               Enregistrer
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* COMPARAISON DE RÉGLAGES (Maison vs Immeuble) */}
+      <Dialog open={compareOpen} onOpenChange={setCompareOpen}>
+        <DialogContent className="sm:max-w-lg" data-testid="beton-compare-dialog">
+          <DialogHeader>
+            <DialogTitle>Comparer les réglages béton</DialogTitle>
+            <DialogDescription>Métré du plan courant selon chaque type de chantier — pour aider au choix.</DialogDescription>
+          </DialogHeader>
+          {compareBusy && <p className="text-sm text-primary animate-pulse">Calcul en cours…</p>}
+          {!compareBusy && compareData && (
+            <table className="w-full text-xs" data-testid="beton-compare-table">
+              <thead className="bg-muted/60"><tr>
+                <th className="text-left px-2 py-1">Poste</th>
+                {compareData.map((c) => <th key={c.name} className="text-right px-2 py-1">{c.name}</th>)}
+              </tr></thead>
+              <tbody>
+                {[["Béton total", "beton_total_m3", "m³"], ["Aciers", "acier_total_kg", "kg"],
+                  ["Poteaux (béton)", "beton_poteaux_m3", "m³"], ["Poutres (béton)", "beton_poutres_m3", "m³"],
+                  ["Dalles (béton)", "beton_dalles_m3", "m³"], ["Voiles (béton)", "beton_voiles_m3", "m³"]].map(([lbl, k, u]) => (
+                  <tr key={k} className="border-t border-border">
+                    <td className="px-2 py-1 text-muted-foreground">{lbl}</td>
+                    {compareData.map((c) => <td key={c.name} className="px-2 py-1 num text-right">{c.d?.[k] ?? 0} {u}</td>)}
+                  </tr>
+                ))}
+                {(betonPriceM3 > 0 || acierPriceKg > 0) && (
+                  <tr className="border-t border-border font-semibold">
+                    <td className="px-2 py-1">Coût matière</td>
+                    {compareData.map((c) => (
+                      <td key={c.name} className="px-2 py-1 num text-right text-emerald-700">
+                        {Math.round((c.d?.beton_total_m3 || 0) * betonPriceM3 + (c.d?.acier_total_kg || 0) * acierPriceKg).toLocaleString("fr-FR")} €
+                      </td>
+                    ))}
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </DialogContent>
       </Dialog>
 
