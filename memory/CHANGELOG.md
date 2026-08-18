@@ -960,3 +960,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Export Excel métré enrichi : feuille "Métré béton" avec ligne Béton de propreté + colonnes Prix béton (€/m³), Coût béton (€), Coût aciers (€), Coût total (€) par poste + ligne TOTAL (béton propreté incluse).
 - Vérifié e2e backend (plan_c56da42f0331) : prix par poste appliqués (dalles 160, voiles 140, propreté 90, semelles au global), Excel avec propreté + colonnes coûts, total béton 264,79 m³ / 67 243 € matière. Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 131 - 18/06/2026 (Mémorisation prix par poste + épaisseur propreté réglable)
+- Mémorisation : beton-defaults (BetonDefaultsIn) persiste désormais beton_prices (prix par poste) + proprete_ep. get/set_beton_defaults gèrent ces champs. Frontend : saveBetonDefaults + chargement au montage incluent betonPrices et propreteEp → le bouton "Enregistrer comme réglages par défaut" mémorise tout (entreprise).
+- Épaisseur béton de propreté réglable : _compute_descriptif prend proprete_ep (défaut 0,05 m) ; propagé à get_analysis, structure_to_quote, export_beton_xlsx, export_beton_pdf (param proprete_ep) + descriptif expose beton_proprete_ep_m. Libellés (devis + Excel) affichent l'épaisseur en cm. Frontend : input "Épaisseur béton de propreté (cm)" dans le bloc prix par poste, câblé via acierQuery() ; dépendance ajoutée pour recalcul auto de l'analyse.
+- Vérifié e2e backend (plan_c56da42f0331) : réglages sauvegardés/relus (proprete_ep 0,08, prix dalles 160…), propreté 5cm→1,72 vs 8cm→2,75 m³, libellé "ép. 8 cm". Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

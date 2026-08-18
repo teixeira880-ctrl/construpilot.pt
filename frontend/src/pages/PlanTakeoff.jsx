@@ -99,6 +99,7 @@ export default function PlanTakeoff() {
   const [acierPriceKg, setAcierPriceKg] = useState(1.3);
   const [betonPriceM3, setBetonPriceM3] = useState(130);
   const [betonPrices, setBetonPrices] = useState({ semelles: 130, proprete: 90, poteaux: 130, poutres: 130, dalles: 130, voiles: 130 });
+  const [propreteEp, setPropreteEp] = useState(0.05);
   const [laborPriceM3, setLaborPriceM3] = useState(400);
   const [marginPct, setMarginPct] = useState(15);
   const [marginBeton, setMarginBeton] = useState("");
@@ -120,7 +121,7 @@ export default function PlanTakeoff() {
       .then(({ data }) => { if (!cancel) setDescriptif(data.descriptif); }).catch(() => {});
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp, acierRatios, poutreL, poutreH]);
+  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp, acierRatios, poutreL, poutreH, propreteEp]);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
   const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
@@ -1086,7 +1087,7 @@ export default function PlanTakeoff() {
 
   // ===== STRUCTURE IA (murs rouges + ouvertures jaunes/violettes) =====
   const acierQuery = () =>
-    `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}`;
+    `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}&proprete_ep=${propreteEp}`;
 
   const betonPriceQuery = () =>
     `&beton_price_semelles=${betonPrices.semelles}&beton_price_proprete=${betonPrices.proprete}&beton_price_poteaux=${betonPrices.poteaux}&beton_price_poutres=${betonPrices.poutres}&beton_price_dalles=${betonPrices.dalles}&beton_price_voiles=${betonPrices.voiles}`;
@@ -1106,6 +1107,8 @@ export default function PlanTakeoff() {
         if (data.beton_price_m3) setBetonPriceM3(data.beton_price_m3);
         if (data.labor_price_m3) setLaborPriceM3(data.labor_price_m3);
         if (data.margin_pct) setMarginPct(data.margin_pct);
+        if (data.proprete_ep) setPropreteEp(data.proprete_ep);
+        if (data.beton_prices && Object.keys(data.beton_prices).length) setBetonPrices((r) => ({ ...r, ...data.beton_prices }));
         if (data.acier_ratios) setAcierRatios((r) => ({ ...r, ...data.acier_ratios }));
         lastPreset = data.last_preset || "";
       } catch { /* ignore */ }
@@ -1195,6 +1198,7 @@ export default function PlanTakeoff() {
         wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
         poutre_l: poutreL, poutre_h: poutreH, acier_price_kg: acierPriceKg,
         beton_price_m3: betonPriceM3, labor_price_m3: laborPriceM3, margin_pct: marginPct,
+        proprete_ep: propreteEp, beton_prices: betonPrices,
         acier_ratios: acierRatios,
       });
       toast.success("Réglages béton enregistrés comme valeurs par défaut de l'entreprise");
@@ -3099,6 +3103,13 @@ export default function PlanTakeoff() {
                       ))}
                     </div>
                     <p className="text-[9px] text-muted-foreground mt-1">Laisser à 0 pour utiliser le prix béton global ({betonPriceM3} €/m³).</p>
+                    <label className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">Épaisseur béton de propreté
+                      <input type="number" step="1" min="0" max="30"
+                             value={Math.round(propreteEp * 100)}
+                             onChange={(e) => setPropreteEp((parseFloat(e.target.value) || 0) / 100)}
+                             data-testid="proprete-ep-cm"
+                             className="w-14 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> cm
+                    </label>
                   </details>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
                     <span className="text-muted-foreground flex items-center gap-1">Planchers (sol)

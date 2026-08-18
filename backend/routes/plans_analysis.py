@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 _BETON_DEFAULTS = {"wall_height": 2.5, "dalle_ep": 0.20, "voile_ep": 0.20,
                    "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0,
                    "beton_price_m3": 0.0, "labor_price_m3": 0.0, "margin_pct": 0.0,
+                   "proprete_ep": 0.05, "beton_prices": {},
                    "last_preset": ""}
 
 # Prix indicatifs marché FR — repli quand l'utilisateur n'a rien configuré,
@@ -78,6 +79,8 @@ async def get_beton_defaults(user=Depends(current_user)) -> dict:
     d.setdefault("beton_price_m3", 0.0)
     d.setdefault("labor_price_m3", 0.0)
     d.setdefault("margin_pct", 0.0)
+    d.setdefault("proprete_ep", 0.05)
+    d.setdefault("beton_prices", {})
     d.setdefault("last_preset", "")
     return d
 
@@ -92,18 +95,24 @@ class BetonDefaultsIn(BaseModel):
     beton_price_m3: float = 0.0
     labor_price_m3: float = 0.0
     margin_pct: float = 0.0
+    proprete_ep: float = 0.05
+    beton_prices: dict = Field(default_factory=dict)
     acier_ratios: dict = Field(default_factory=dict)
 
 
 @router.put("/settings/beton-defaults")
 async def set_beton_defaults(body: BetonDefaultsIn, user=Depends(current_user)) -> dict:
     ar = {k: float(body.acier_ratios.get(k, ACIER_RATIOS[k])) for k in ACIER_RATIOS}
+    _elems = ("semelles", "proprete", "poteaux", "poutres", "dalles", "voiles")
+    bp = {k: max(0.0, float(body.beton_prices.get(k) or 0)) for k in _elems if body.beton_prices.get(k) is not None}
     payload = {"wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
                "voile_ep": body.voile_ep, "poutre_l": body.poutre_l,
                "poutre_h": body.poutre_h, "acier_price_kg": max(0.0, body.acier_price_kg),
                "beton_price_m3": max(0.0, body.beton_price_m3),
                "labor_price_m3": max(0.0, body.labor_price_m3),
-               "margin_pct": max(0.0, body.margin_pct), "acier_ratios": ar}
+               "margin_pct": max(0.0, body.margin_pct),
+               "proprete_ep": max(0.0, body.proprete_ep), "beton_prices": bp,
+               "acier_ratios": ar}
     await db.beton_defaults.update_one(
         {"user_id": user["user_id"]},
         {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)
@@ -633,7 +642,7 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
                         wall_height: float = 2.5, dalle_ep: float = 0.20,
                         voile_ep: float = 0.20, poutre_l: float = 0.20,
                         poutre_h: float = 0.40, acier_ratios: dict | None = None,
-                        floors_only: bool = False) -> dict:
+                        floors_only: bool = False, proprete_ep: float = 0.05) -> dict:
     from collections import Counter
     walls = structure.get("walls") or []
     openings = structure.get("openings") or []
@@ -692,9 +701,9 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         beton_semelles = round(sum(
             (abs(ft.get("x2", 0) - ft.get("x1", 0)) / ppm) * (abs(ft.get("y2", 0) - ft.get("y1", 0)) / ppm) * 0.40
             for ft in footings if isinstance(ft, dict)), 2)
-        # Béton de propreté sous semelles (ép. 5 cm, non armé)
+        # Béton de propreté sous semelles (épaisseur réglable, non armé)
         beton_proprete = round(sum(
-            (abs(ft.get("x2", 0) - ft.get("x1", 0)) / ppm) * (abs(ft.get("y2", 0) - ft.get("y1", 0)) / ppm) * 0.05
+            (abs(ft.get("x2", 0) - ft.get("x1", 0)) / ppm) * (abs(ft.get("y2", 0) - ft.get("y1", 0)) / ppm) * proprete_ep
             for ft in footings if isinstance(ft, dict)), 2)
     else:
         beton_poteaux = beton_poutres = beton_dalles = beton_voiles = beton_semelles = 0.0
@@ -733,6 +742,7 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "beton_dalles_m3": beton_dalles, "beton_voiles_m3": beton_voiles,
         "beton_semelles_m3": beton_semelles,
         "beton_proprete_m3": beton_proprete,
+        "beton_proprete_ep_m": round(proprete_ep, 3),
         "beton_total_m3": beton_total,
         "acier_semelles_kg": acier_semelles, "acier_poteaux_kg": acier_poteaux,
         "acier_poutres_kg": acier_poutres, "acier_dalles_kg": acier_dalles,
@@ -815,7 +825,7 @@ def _beton_line_items(d: dict) -> list[dict]:
                 ln["elem"] = elem
             lines.append(ln)
     add(f"Béton — semelles / fondations ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³", elem="semelles")
-    add("Béton de propreté (sous semelles, ép. 5 cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
+    add(f"Béton de propreté (sous semelles, ép. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
     add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³", elem="poteaux")
     add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³", elem="poutres")
     add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
@@ -857,6 +867,7 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
                        acier_semelles: float | None = None, acier_poteaux: float | None = None,
                        acier_poutres: float | None = None, acier_dalles: float | None = None,
                        acier_voiles: float | None = None,
+                       proprete_ep: float = 0.05,
                        user=Depends(current_user)) -> dict:
     """Renvoie la structure + le descriptif chiffré (nécessite une calibration)."""
     p = await db.plans_takeoff.find_one(
@@ -869,7 +880,7 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
-                                     poutre_l, poutre_h, acier_ratios=ar)
+                                     poutre_l, poutre_h, acier_ratios=ar, proprete_ep=proprete_ep)
     return {"structure": structure, "descriptif": descriptif,
             "calibrated": bool(ppm), "pixels_per_meter": ppm}
 
@@ -888,6 +899,7 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
                             beton_price_poutres: float | None = None,
                             beton_price_dalles: float | None = None,
                             beton_price_voiles: float | None = None,
+                            proprete_ep: float = 0.05,
                             user=Depends(current_user)):
     """Export Excel du métré béton (poteaux, poutres, dalles, voiles, semelles + coûts)."""
     from io import BytesIO
@@ -906,7 +918,7 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
     d = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
-                            poutre_l, poutre_h, acier_ratios=ar)
+                            poutre_l, poutre_h, acier_ratios=ar, proprete_ep=proprete_ep)
 
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor="1F2733")
@@ -953,7 +965,7 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
                    acier_kg, prix, cb, ca, round(cb + ca, 2)])
     poste_row("Semelles / fondations", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3"),
               "semelles", d.get("acier_semelles_kg"))
-    poste_row("Béton de propreté", "sous semelles · ép. 5 cm", d.get("beton_proprete_m3"),
+    poste_row("Béton de propreté", f"sous semelles · ép. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm", d.get("beton_proprete_m3"),
               "proprete", 0)
     poste_row("Poteaux", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3"),
               "poteaux", d.get("acier_poteaux_kg"))
@@ -999,6 +1011,7 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
                            acier_voiles: float | None = None,
                            beton_price_m3: float = 0.0, acier_price_kg: float = 0.0,
                            labor_price_m3: float = 0.0, margin_pct: float = 0.0,
+                           proprete_ep: float = 0.05,
                            user=Depends(current_user)):
     """PDF de synthèse du métré béton (volumes + aciers + poteaux + poutres)."""
     from io import BytesIO
@@ -1022,7 +1035,7 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
     d = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
-                            poutre_l, poutre_h, acier_ratios=ar)
+                            poutre_l, poutre_h, acier_ratios=ar, proprete_ep=proprete_ep)
 
     buf = BytesIO()
     pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
@@ -1226,6 +1239,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              beton_price_poutres: float | None = None,
                              beton_price_dalles: float | None = None,
                              beton_price_voiles: float | None = None,
+                             proprete_ep: float = 0.05,
                              margin_pct: float = 0.0,
                              margin_beton: float | None = None, margin_acier: float | None = None,
                              margin_labor: float | None = None,
@@ -1248,7 +1262,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
-                                     poutre_l, poutre_h, acier_ratios=ar, floors_only=beton_only)
+                                     poutre_l, poutre_h, acier_ratios=ar, floors_only=beton_only, proprete_ep=proprete_ep)
     lines = _beton_line_items(descriptif) if beton_only else _descriptif_line_items(descriptif)
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
