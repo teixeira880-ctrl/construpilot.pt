@@ -13,7 +13,7 @@ import logging
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from pymongo import ReturnDocument
@@ -204,6 +204,80 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
     return doc
 
 
+@router.post("/from-video")
+async def document_from_video(file: UploadFile = File(...), client_id: str | None = None,
+                              user=Depends(current_user)) -> dict:
+    """Crée un devis à partir d'une vidéo explicative : audio → transcription Whisper → lignes IA chiffrées."""
+    import os
+    import subprocess
+    import tempfile
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Vidéo vide")
+    if len(raw) > 80 * 1024 * 1024:
+        raise HTTPException(413, "Vidéo trop volumineuse (>80 Mo). Filmez une séquence plus courte.")
+
+    tmpdir = tempfile.mkdtemp(prefix="cp_vid_")
+    src = os.path.join(tmpdir, "input")
+    audio = os.path.join(tmpdir, "audio.mp3")
+    transcript = ""
+    try:
+        with open(src, "wb") as f:
+            f.write(raw)
+        # Extraction audio compressée (mono 16 kHz) pour rester sous la limite Whisper (25 Mo)
+        proc = subprocess.run(
+            ["ffmpeg", "-i", src, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "64k", "-y", audio],
+            capture_output=True, timeout=120)
+        if proc.returncode != 0 or not os.path.exists(audio):
+            logging.getLogger("documents").warning("ffmpeg failed: %s", proc.stderr[-500:])
+            raise HTTPException(422, "Impossible d'extraire l'audio de la vidéo.")
+        if os.path.getsize(audio) > 25 * 1024 * 1024:
+            raise HTTPException(413, "Audio trop long (>25 Mo). Filmez une séquence plus courte.")
+        from emergentintegrations.llm.openai import OpenAISpeechToText
+        stt = OpenAISpeechToText(api_key=os.environ["EMERGENT_LLM_KEY"])
+        with open(audio, "rb") as af:
+            resp = await stt.transcribe(file=af, model="whisper-1",
+                                        response_format="text", language="fr")
+        transcript = resp if isinstance(resp, str) else (getattr(resp, "text", "") or "")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.getLogger("documents").exception("video transcription failed")
+        raise HTTPException(502, f"Transcription indisponible : {type(e).__name__}")
+    finally:
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    if not transcript.strip():
+        raise HTTPException(422, "Aucune parole détectée dans la vidéo.")
+
+    from engines.ai import quote_lines_from_text
+    from routes.plans_analysis import _apply_library_prices
+    lines, title = await quote_lines_from_text(transcript)
+    if not lines:
+        raise HTTPException(422, "L'IA n'a pas pu générer de lignes de devis à partir de la vidéo.")
+    lines, priced = await _apply_library_prices(user["user_id"], lines)
+
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": user["user_id"], "doc_type": "quote", "number": None,
+        "title": title or "Devis (vidéo)",
+        "client_id": client_id, "client": await _client_snapshot(client_id, user),
+        "status": "draft", "lines": lines,
+        "notes": f"Transcription vidéo :\n{transcript.strip()[:1500]}",
+        "payment_terms": "", "deposit_pct": 0,
+        "totals": _compute_totals(lines, 0),
+        "issue_date": None, "due_date": None,
+        "source": "video", "created_at": _now(), "updated_at": _now(),
+    }
+    await db.pro_documents.insert_one(dict(doc))
+    doc.pop("_id", None)
+    doc["priced_lines"] = priced
+    doc["transcript"] = transcript.strip()
+    return doc
+
+
 @router.get("")
 async def list_documents(doc_type: str = "", client_id: str = "", status: str = "",
                          user=Depends(current_user)) -> dict:
@@ -333,7 +407,7 @@ async def issue_document(doc_id: str, user=Depends(current_user)) -> dict:
 
 
 @router.get("/{doc_id}/pdf")
-async def document_pdf(doc_id: str, user=Depends(current_user)):
+async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(current_user)):
     from engines.pdf_docs import build_document_pdf
     from routes.plans_common import _resolve_branding
     from routes.reviews import get_reviews_for_user
@@ -347,7 +421,8 @@ async def document_pdf(doc_id: str, user=Depends(current_user)):
         doc["issue_date"] = doc.get("issue_date") or _now()
     branding = await _resolve_branding(user["user_id"])
     reviews = await get_reviews_for_user(user["user_id"]) if doc["doc_type"] == "quote" else None
-    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews, lang=user.get("lang"))
+    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
+                                   lang=(lang or doc.get("lang") or user.get("lang")))
     fname = f"{doc.get('number') or doc['doc_id']}.pdf"
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})

@@ -19,7 +19,7 @@ import {
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, Droplet, FileDown, History, Film, DoorOpen, Copy,
   Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon, Sheet, FileSearch,
-  ArrowLeft, Eraser, Plus, ArrowRight,
+  ArrowLeft, Eraser, Plus, ArrowRight, Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +72,7 @@ export default function PlanTakeoff() {
   const [roomDialog, setRoomDialog] = useState(false);
   const [ceilingH, setCeilingH] = useState("2.5");
   const [aiBusy, setAiBusy] = useState(false);
+  const [pendingAuto, setPendingAuto] = useState(false);
   const [cvBusy, setCvBusy] = useState(false);
   const [aiActionBusy, setAiActionBusy] = useState(false);
   const [reconcile, setReconcile] = useState(null);
@@ -242,14 +243,16 @@ export default function PlanTakeoff() {
     }
   }, [plan?.plan_id]);
 
-  // Deep-link ?open=<plan_id> (depuis le Tableau de bord PC)
+  // Deep-link ?open=<plan_id> (depuis le Tableau de bord PC / création de devis)
   useEffect(() => {
-    const pid = new URLSearchParams(window.location.search).get("open");
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("open");
     if (!pid) return;
     api.get(`/takeoffs/${pid}`).then(({ data }) => {
       setPlan(data);
       setPageIndex(0);
       if (data.pc_study) setPcDialog(true);
+      if (params.get("auto") === "1") setPendingAuto(true);
     }).catch(() => toast.error("Impossible d'ouvrir ce plan"));
   }, []);
 
@@ -1137,6 +1140,65 @@ export default function PlanTakeoff() {
 
   const detectStructure = analyzePlanFull;
 
+  // Analyse automatique à l'ouverture depuis "Ajouter un plan" (?auto=1)
+  useEffect(() => {
+    if (!pendingAuto || !plan?.plan_id) return;
+    setPendingAuto(false);
+    toast.info("Analyse automatique du plan en cours…");
+    analyzePlanFull();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAuto, plan?.plan_id]);
+
+  const exportBetonXlsx = async () => {
+    if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("construpilot_token");
+      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}`;
+      const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/structure/${pageIndex}/beton-xlsx?${q}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error("Export impossible");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `metre-beton-${plan.plan_id}.xlsx`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Métré béton (Excel) téléchargé");
+    } catch (e) { toast.error(e.message || "Export Excel béton impossible"); }
+  };
+
+  // Assistant IA — corriger / guider la détection en langage naturel
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiChatBusy, setAiChatBusy] = useState(false);
+
+  const sendAiInstruction = async () => {
+    const msg = aiInput.trim();
+    if (!msg) return;
+    if (!plan?.plan_id) return;
+    const history = aiMessages.filter((m) => m.role === "user").map((m) => m.text);
+    setAiMessages((prev) => [...prev, { role: "user", text: msg }]);
+    setAiInput("");
+    setAiChatBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/ai-refine`,
+        { message: msg, history });
+      if (data.structure) {
+        setStructure(data.structure);
+        setShowStructure(true);
+        setSelectedStruct(null);
+        await loadDescriptif();
+      }
+      setAiMessages((prev) => [...prev, { role: "assistant", text: data.reply || "Analyse mise à jour.", ok: data.ok }]);
+      if (data.ok) toast.success("Plan mis à jour par l'IA");
+    } catch (e) {
+      const err = e?.response?.data?.detail || "L'IA n'a pas pu répondre";
+      setAiMessages((prev) => [...prev, { role: "assistant", text: err, ok: false }]);
+      toast.error(err);
+    } finally { setAiChatBusy(false); }
+  };
+
   const persistStructure = async (next) => {
     setStructure(next);
     try {
@@ -1162,8 +1224,8 @@ export default function PlanTakeoff() {
   const dragStructPoint = (type, id, ep, [ix, iy]) => {
     setStructure((prev) => {
       if (!prev) return prev;
-      const key = { wall: "walls", beam: "beams", column: "columns", opening: "openings" }[type];
-      const idKey = { wall: "wall_id", beam: "beam_id", column: "column_id", opening: "opening_id" }[type];
+      const key = { wall: "walls", beam: "beams", column: "columns", opening: "openings", footing: "footings" }[type];
+      const idKey = { wall: "wall_id", beam: "beam_id", column: "column_id", opening: "opening_id", footing: "footing_id" }[type];
       const arr = (prev[key] || []).map((it) => {
         if (it[idKey] !== id) return it;
         return ep === 0 ? { ...it, x1: ix, y1: iy } : { ...it, x2: ix, y2: iy };
@@ -1174,8 +1236,8 @@ export default function PlanTakeoff() {
 
   const deleteStructItem = () => {
     if (!selectedStruct || !structure) return;
-    const key = { wall: "walls", beam: "beams", column: "columns", opening: "openings" }[selectedStruct.type];
-    const idKey = { wall: "wall_id", beam: "beam_id", column: "column_id", opening: "opening_id" }[selectedStruct.type];
+    const key = { wall: "walls", beam: "beams", column: "columns", opening: "openings", footing: "footings" }[selectedStruct.type];
+    const idKey = { wall: "wall_id", beam: "beam_id", column: "column_id", opening: "opening_id", footing: "footing_id" }[selectedStruct.type];
     const next = { ...structure, [key]: (structure[key] || []).filter((it) => it[idKey] !== selectedStruct.id) };
     setSelectedStruct(null);
     persistStructure(next).then(() => loadDescriptif());
@@ -1242,6 +1304,19 @@ export default function PlanTakeoff() {
     setSelectedStruct({ type: "opening", id: item.opening_id });
     persistStructure(next).then(() => loadDescriptif());
     toast.info(`${kind === "porte" ? "Porte" : "Fenêtre"} ajoutée — glissez ses extrémités pour la placer`);
+  };
+
+  const addStructFooting = () => {
+    const w = structure?.image_width || 1000, h = structure?.image_height || 1000;
+    const cx = Math.round(w / 2), cy = Math.round(h / 2);
+    const s = Math.round(Math.max(w, h) * 0.03);
+    const item = { footing_id: "sft_" + Math.random().toString(16).slice(2, 8),
+                   x1: cx - s, y1: cy - s, x2: cx + s, y2: cy + s };
+    const next = { ...(structure || { walls: [], openings: [], beams: [], columns: [], floors: [], footings: [], image_width: w, image_height: h }) };
+    next.footings = [...(next.footings || []), item];
+    setSelectedStruct({ type: "footing", id: item.footing_id });
+    persistStructure(next).then(() => loadDescriptif());
+    toast.info("Semelle ajoutée — glissez ses coins pour l'ajuster");
   };
 
   const autoFillRoom = async (pt) => {
@@ -2758,6 +2833,12 @@ export default function PlanTakeoff() {
                         <span className="num text-right font-semibold" data-testid="descriptif-beton">{descriptif.beton_total_m3} m³</span>
                       </>
                     )}
+                    {descriptif.acier_total_kg > 0 && (
+                      <>
+                        <span className="text-muted-foreground font-semibold">Aciers (ferraillage)</span>
+                        <span className="num text-right font-semibold text-orange-600" data-testid="descriptif-acier">{descriptif.acier_total_kg} kg</span>
+                      </>
+                    )}
                   </div>
                   {descriptif.poteaux_table?.length > 0 && (
                     <details className="mt-2" data-testid="poteaux-table">
@@ -2780,6 +2861,27 @@ export default function PlanTakeoff() {
                       </div>
                     </details>
                   )}
+                  {descriptif.beams_table?.length > 0 && (
+                    <details className="mt-2" data-testid="poutres-table">
+                      <summary className="text-[11px] font-semibold cursor-pointer text-purple-800">Tableau des poutres ({descriptif.beams_table.length})</summary>
+                      <div className="mt-1 max-h-40 overflow-auto border border-border rounded-sm">
+                        <table className="w-full text-[10px]">
+                          <thead className="bg-muted/60 sticky top-0"><tr>
+                            <th className="text-left px-1.5 py-1">Repère</th><th className="text-right px-1.5 py-1">Portée</th><th className="text-right px-1.5 py-1">Béton</th>
+                          </tr></thead>
+                          <tbody>
+                            {descriptif.beams_table.map((b) => (
+                              <tr key={b.ref} className="border-t border-border">
+                                <td className="px-1.5 py-0.5 font-bold text-purple-800">{b.ref}</td>
+                                <td className="px-1.5 py-0.5 num text-right">{b.portee_m} m</td>
+                                <td className="px-1.5 py-0.5 num text-right">{b.volume_m3} m³</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  )}
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" onClick={sendToQuote} data-testid="structure-to-quote"
                             className="rounded-sm h-7 text-xs gap-1 flex-1">
@@ -2788,6 +2890,16 @@ export default function PlanTakeoff() {
                     <Button size="sm" variant="outline" onClick={exportAnnotatedPdf} data-testid="structure-export-pdf"
                             className="rounded-sm h-7 text-xs gap-1">
                       <FileDown className="h-3 w-3" /> PDF annoté
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Button size="sm" variant="outline" onClick={exportBetonXlsx} data-testid="structure-export-beton-xlsx"
+                            className="rounded-sm h-7 text-xs gap-1 flex-1 text-emerald-700 border-emerald-600/40">
+                      <Sheet className="h-3 w-3" /> Métré béton (Excel)
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setAiChatOpen(true)} data-testid="structure-ai-assistant"
+                            className="rounded-sm h-7 text-xs gap-1 flex-1 text-primary border-primary/40">
+                      <Bot className="h-3 w-3" /> Assistant IA
                     </Button>
                   </div>
                 </div>
@@ -2800,7 +2912,8 @@ export default function PlanTakeoff() {
                   <Badge variant="outline" className="rounded-sm text-[10px]">
                     {selectedStruct.type === "wall" ? "Mur sélectionné"
                       : selectedStruct.type === "beam" ? "Poutre sélectionnée"
-                      : selectedStruct.type === "column" ? "Poteau sélectionné" : "Ouverture sélectionnée"}
+                      : selectedStruct.type === "column" ? "Poteau sélectionné"
+                      : selectedStruct.type === "footing" ? "Semelle sélectionnée" : "Ouverture sélectionnée"}
                   </Badge>
                   {(selectedStruct.type === "wall" || selectedStruct.type === "opening") && (
                     <Button size="sm" variant="outline" onClick={toggleStructType}
@@ -2834,6 +2947,10 @@ export default function PlanTakeoff() {
                 <Button size="sm" variant="outline" onClick={addStructColumn}
                         data-testid="structure-add-column" className="rounded-sm h-7 text-xs gap-1 text-purple-600 border-purple-600/40">
                   <Plus className="h-3 w-3" /> Poteau
+                </Button>
+                <Button size="sm" variant="outline" onClick={addStructFooting}
+                        data-testid="structure-add-footing" className="rounded-sm h-7 text-xs gap-1 text-yellow-700 border-yellow-600/40">
+                  <Plus className="h-3 w-3" /> Semelle
                 </Button>
               </div>
             </div>
@@ -3682,6 +3799,40 @@ export default function PlanTakeoff() {
               Enregistrer
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ASSISTANT IA — guider / corriger la détection en langage naturel */}
+      <Dialog open={aiChatOpen} onOpenChange={setAiChatOpen}>
+        <DialogContent className="sm:max-w-lg" data-testid="ai-assistant-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Bot className="h-5 w-5 text-primary" /> Assistant IA — corriger le plan</DialogTitle>
+            <DialogDescription>
+              Décrivez ce que l'IA doit corriger ou ajouter. Ex : « il manque 2 poteaux en bas à droite »,
+              « les semelles font 1,2×1,2 m », « ignore les traits de cote », « ajoute une poutre entre P3 et P4 ».
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-72 overflow-auto space-y-2 rounded-sm border border-border p-2 bg-muted/30" data-testid="ai-assistant-messages">
+            {aiMessages.length === 0 && (
+              <p className="text-xs text-muted-foreground">Aucun échange pour l'instant. Donnez votre première consigne ci-dessous.</p>
+            )}
+            {aiMessages.map((m, i) => (
+              <div key={i} className={`text-xs rounded-sm px-2 py-1.5 ${m.role === "user" ? "bg-primary/10 ml-6" : m.ok === false ? "bg-destructive/10 mr-6" : "bg-background border border-border mr-6"}`}>
+                <span className="font-semibold">{m.role === "user" ? "Vous" : "IA"} : </span>{m.text}
+              </div>
+            ))}
+            {aiChatBusy && <p className="text-xs text-primary animate-pulse">L'IA analyse le plan…</p>}
+          </div>
+          <div className="flex items-end gap-2">
+            <Textarea value={aiInput} onChange={(e) => setAiInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAiInstruction(); } }}
+                      placeholder="Votre consigne pour l'IA…" rows={2}
+                      data-testid="ai-assistant-input" className="rounded-sm text-sm resize-none" />
+            <Button onClick={sendAiInstruction} disabled={aiChatBusy || !aiInput.trim()}
+                    data-testid="ai-assistant-send" className="rounded-sm gap-1 shrink-0">
+              <ArrowRight className="h-4 w-4" /> Envoyer
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

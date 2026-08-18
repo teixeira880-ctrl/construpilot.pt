@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles,
+  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ export default function QuoteEditor() {
   const [sp] = useSearchParams();
   const nav = useNavigate();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const [docId, setDocId] = useState(paramDocId || null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +50,8 @@ export default function QuoteEditor() {
   const [number, setNumber] = useState(null);
   const [lines, setLines] = useState([blankLine()]);
   const [aiLineBusy, setAiLineBusy] = useState(null);
+  const [planBusy, setPlanBusy] = useState(false);
+  const [videoBusy, setVideoBusy] = useState(false);
   const [docType, setDocType] = useState(
     ["invoice", "credit_note"].includes(sp.get("type")) ? sp.get("type") : "quote");
 
@@ -178,11 +180,47 @@ export default function QuoteEditor() {
     finally { setSaving(false); }
   };
 
+  const addPlanFromFile = async (file) => {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { toast.error("Fichier trop volumineux (>20 Mo)"); return; }
+    setPlanBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/takeoffs/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success("Plan importé — ouverture de l'outil Mesurer");
+      nav(`/plan?open=${data.plan_id}&auto=1`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Import du plan impossible");
+    } finally { setPlanBusy(false); }
+  };
+
+  const createFromVideo = async (file) => {
+    if (!file) return;
+    if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
+    setVideoBusy(true);
+    const tid = toast.loading("Analyse de la vidéo (transcription + devis)…");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/documents/from-video", fd, {
+        headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
+      });
+      toast.success(
+        data.priced_lines > 0
+          ? `Devis créé — ${data.priced_lines} ligne(s) chiffrée(s) depuis votre bibliothèque`
+          : "Devis créé à partir de la vidéo", { id: tid });
+      nav(`/devis-editeur/${data.doc_id}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Génération du devis vidéo impossible", { id: tid });
+    } finally { setVideoBusy(false); }
+  };
+
   const downloadPdf = async () => {
     const d = docId ? { doc_id: docId } : await save();
     if (!d) return;
     try {
-      const res = await api.get(`/documents/${d.doc_id}/pdf`, { responseType: "blob" });
+      const res = await api.get(`/documents/${d.doc_id}/pdf?lang=${lang}`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url; a.download = `devis.pdf`; a.click();
@@ -213,6 +251,20 @@ export default function QuoteEditor() {
           </SectionTitle>
         </div>
         <div className="flex gap-2">
+          <input type="file" accept="image/*,application/pdf,.dxf" className="hidden" id="qe-plan-input"
+                 onChange={(e) => { addPlanFromFile(e.target.files?.[0]); e.target.value = ""; }}
+                 data-testid="editor-add-plan-input" />
+          <Button variant="outline" onClick={() => document.getElementById("qe-plan-input").click()}
+                  disabled={planBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-add-plan-btn">
+            {planBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ruler className="h-4 w-4" />} Ajouter un plan
+          </Button>
+          <input type="file" accept="video/*" capture="environment" className="hidden" id="qe-video-input"
+                 onChange={(e) => { createFromVideo(e.target.files?.[0]); e.target.value = ""; }}
+                 data-testid="editor-video-input" />
+          <Button variant="outline" onClick={() => document.getElementById("qe-video-input").click()}
+                  disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-btn">
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} Vidéo → devis
+          </Button>
           <Button variant="outline" onClick={downloadPdf} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
             <Download className="h-4 w-4" /> {t("crm.pdf")}
           </Button>

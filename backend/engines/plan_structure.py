@@ -219,6 +219,83 @@ async def detect_structure(image_b64_png: str, width_px: int, height_px: int) ->
     return _to_px(_parse_json(raw), width_px, height_px)
 
 
+def _px_to_norm(structure: dict, w: int, h: int) -> dict:
+    """Convertit une structure en pixels vers des coordonnées normalisées 0-1 (pour l'IA)."""
+    if not w or not h:
+        return {}
+
+    def seg(it):
+        return {"x1": round(it.get("x1", 0) / w, 3), "y1": round(it.get("y1", 0) / h, 3),
+                "x2": round(it.get("x2", 0) / w, 3), "y2": round(it.get("y2", 0) / h, 3)}
+
+    out = {"walls": [], "columns": [], "beams": [], "openings": [], "footings": [], "floors": []}
+    for wseg in structure.get("walls") or []:
+        out["walls"].append({**seg(wseg), "type": wseg.get("type", "cloison")})
+    for c in structure.get("columns") or []:
+        out["columns"].append(seg(c))
+    for b in structure.get("beams") or []:
+        out["beams"].append(seg(b))
+    for o in structure.get("openings") or []:
+        d = seg(o)
+        d["kind"] = o.get("kind", "fenetre")
+        out["openings"].append(d)
+    for ft in structure.get("footings") or []:
+        out["footings"].append(seg(ft))
+    for f in structure.get("floors") or []:
+        pts = [[round(p[0] / w, 3), round(p[1] / h, 3)] for p in (f.get("points") or [])]
+        out["floors"].append({"name": f.get("name"), "points": pts,
+                              "ngf": f.get("ngf"), "thickness_cm": f.get("thickness_cm")})
+    return out
+
+
+async def refine_structure(image_b64_png: str, width_px: int, height_px: int,
+                           instruction: str, current: dict | None = None,
+                           history: list | None = None) -> dict:
+    """Relance l'analyse du plan en appliquant les consignes en langage naturel de l'utilisateur.
+
+    L'IA reçoit l'image + la structure actuelle + la consigne, et renvoie la structure
+    COMPLÈTE mise à jour + un champ "reply" (phrase FR expliquant ce qui a changé).
+    """
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        return {"error": "EMERGENT_LLM_KEY absent", "reply": "Clé IA absente."}
+    cur_norm = _px_to_norm(current or {}, width_px, height_px)
+    hist_txt = ""
+    if history:
+        recent = [h for h in history[-8:] if h]
+        if recent:
+            hist_txt = "\n\nCONSIGNES PRÉCÉDENTES (déjà appliquées) :\n" + "\n".join(f"- {h}" for h in recent)
+    user_text = (
+        PROMPT
+        + "\n\n===== STRUCTURE ACTUELLE (à corriger — coordonnées normalisées 0-1) =====\n"
+        + json.dumps(cur_norm, ensure_ascii=False)
+        + hist_txt
+        + "\n\n===== CONSIGNE DE L'UTILISATEUR (applique-la PRÉCISÉMENT) =====\n"
+        + instruction.strip()
+        + "\n\nRenvoie le JSON COMPLET mis à jour (même schéma qu'au-dessus) en appliquant la consigne. "
+          "Conserve les éléments corrects existants. Ajoute EN PLUS un champ "
+          "\"reply\": \"...\" contenant UNE phrase en français expliquant ce que tu as modifié."
+    )
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        chat = LlmChat(
+            api_key=api_key, session_id="plan-structure-refine",
+            system_message="Tu réponds toujours en JSON strict, sans markdown.",
+        ).with_model("gemini", "gemini-3-flash-preview")
+        raw = await chat.send_message(UserMessage(
+            text=user_text, file_contents=[ImageContent(image_base64=image_b64_png)]))
+    except Exception as e:
+        logger.warning(f"refine_structure AI failed: {e}")
+        return {"error": f"AI call failed: {type(e).__name__}", "reply": "L'IA n'a pas pu traiter la consigne."}
+    parsed = _parse_json(raw)
+    reply = parsed.pop("reply", None) if isinstance(parsed, dict) else None
+    result = _to_px(parsed, width_px, height_px)
+    result["reply"] = reply or "Analyse mise à jour selon votre consigne."
+    if parsed.get("error"):
+        result["error"] = parsed["error"]
+    return result
+
+
 def _offset_items(res: dict, ox: int, oy: int) -> dict:
     """Décale toutes les coordonnées d'une tuile vers le repère de l'image complète."""
     for key in ("walls", "openings", "beams", "columns", "footings"):

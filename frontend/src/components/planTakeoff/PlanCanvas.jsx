@@ -128,17 +128,27 @@ export default function PlanCanvas({
     }
 
     // STRUCTURE overlay (IA) — murs rouges + fenêtres jaunes + portes violettes
-    if (showStructure && structure && (structure.walls?.length || structure.openings?.length || structure.floors?.length || structure.columns?.length)) {
+    if (showStructure && structure && (structure.walls?.length || structure.openings?.length || structure.floors?.length || structure.columns?.length || structure.footings?.length)) {
       ctx.lineCap = "round";
-      // Semelles / fondations (jaune)
+      // Semelles / fondations (jaune) — sélectionnables / éditables
       (structure.footings || []).forEach((f) => {
+        const sel = selectedStruct?.type === "footing" && selectedStruct?.id === f.footing_id;
         const x0 = Math.min(f.x1, f.x2), y0 = Math.min(f.y1, f.y2);
         const w = Math.max(Math.abs(f.x2 - f.x1), 8 / zoom), h = Math.max(Math.abs(f.y2 - f.y1), 8 / zoom);
         ctx.fillStyle = "rgba(250,204,21,0.35)";
+        if (sel) { ctx.shadowColor = "rgba(202,138,4,0.9)"; ctx.shadowBlur = 14 / zoom; }
         ctx.fillRect(x0, y0, w, h);
-        ctx.strokeStyle = "rgba(202,138,4,0.9)";
-        ctx.lineWidth = 1.5 / zoom;
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = sel ? "rgba(255,255,255,1)" : "rgba(202,138,4,0.9)";
+        ctx.lineWidth = (sel ? 2 : 1.5) / zoom;
         ctx.strokeRect(x0, y0, w, h);
+        if (sel) {
+          ctx.fillStyle = "rgba(255,255,255,1)";
+          [[f.x1, f.y1], [f.x2, f.y2]].forEach(([hx, hy]) => {
+            ctx.beginPath(); ctx.arc(hx, hy, 6 / zoom, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "rgba(202,138,4,1)"; ctx.lineWidth = 2 / zoom; ctx.stroke();
+          });
+        }
       });
       // Poteaux (plan de coffrage) — carrés pleins violets
       (structure.columns || []).forEach((c) => {
@@ -740,6 +750,7 @@ export default function PlanCanvas({
     ...((structure?.openings || []).map((o) => ({ type: "opening", id: o.opening_id, x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2 }))),
     ...((structure?.beams || []).map((b) => ({ type: "beam", id: b.beam_id, x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 }))),
     ...((structure?.columns || []).map((c) => ({ type: "column", id: c.column_id, x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2 }))),
+    ...((structure?.footings || []).map((f) => ({ type: "footing", id: f.footing_id, x1: f.x1, y1: f.y1, x2: f.x2, y2: f.y2 }))),
   ]);
   const hitStructEndpoint = (rx, ry) => {
     const tol = 12 / zoom;

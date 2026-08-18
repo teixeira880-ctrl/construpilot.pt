@@ -1,5 +1,18 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 112 — 18/08/2026 (Métré béton avancé + aciers + Assistant IA + Vidéo→devis + i18n)
+- **Tableau Poutres** (B1→Bn : portée + volume béton m³) affiché dans le descriptif `/plan`, calqué sur le Tableau Poteaux (`beams_table` déjà calculé côté backend, exposé/rendu).
+- **Semelles éditables** sur le canvas (`PlanCanvas.jsx`) : sélection + déplacement des coins + ajout (bouton « Semelle ») + suppression, comme poteaux/ouvertures. Handlers dans `PlanTakeoff.jsx` (`addStructFooting`, maps drag/delete).
+- **Export Métré béton (Excel)** : nouvel endpoint `GET /api/takeoffs/{plan_id}/structure/{page_index}/beton-xlsx` (openpyxl, 3 feuilles : Métré béton / Poteaux / Poutres). Bouton « Métré béton (Excel) » séparé.
+- **Aciers (ferraillage)** : ratios moyens kg/m³ par élément (semelles 40, poteaux 130, poutres 140, dalles 85, voiles 60) via `ACIER_RATIOS` dans `_compute_descriptif`. Total aciers affiché dans le descriptif + colonnes dédiées dans l'Excel.
+- **Assistant IA** (dialog sur `/plan`) : l'utilisateur guide/corrige la détection en langage naturel → `POST /api/takeoffs/{plan_id}/structure/{page_index}/ai-refine` (Gemini, `refine_structure` dans `plan_structure.py`) renvoie la structure mise à jour + une phrase de réponse ; ne écrase pas en cas d'échec IA.
+- **Fonction A — « Ajouter un plan »** depuis l'éditeur de devis (`QuoteEditor.jsx`) : upload → `/takeoffs/upload` → navigation `/plan?open=<id>&auto=1` → analyse Gemini automatique (effet `pendingAuto` dans `PlanTakeoff.jsx`).
+- **Fonction B — « Vidéo → devis »** : `POST /api/documents/from-video` (upload vidéo → ffmpeg extrait l'audio mp3 mono 16k → **OpenAI Whisper** transcrit en FR → `quote_lines_from_text` génère les lignes → `_apply_library_prices` chiffre depuis la bibliothèque → crée un devis). Capture mobile via `<input capture="environment">`. Validé e2e (transcription exacte, lignes chiffrées).
+- **Bug traduction (devis PDF en portugais)** : `GET /api/documents/{doc_id}/pdf?lang=<fr|..>` — le PDF suit désormais la **langue active de l'interface** (param `lang`) au lieu de `user.lang` figé en base. `QuoteEditor.downloadPdf` passe `lang`.
+- **Bug traduction sous-menus** : ajout des clés manquantes (`nav.pro_space`, `nav.discover`, `nav.company`, `nav.invoices`, `nav.situations`, `nav.site`, `nav.catalog`, `nav.compare`) dans `NAV_TRANSLATIONS` (7 langues) — les items des menus « Espace Pro » / « Découvrir » se traduisent correctement.
+- Tests : iteration_93 (batch béton/aciers/IA/PDF lang) 100% ; iteration_94 (Fonctions A & D) 100% ; Fonction B validée e2e via curl.
+
+
 ## Itération 111 — 17/08/2026 (Module Suivi de chantier — pack Business)
 - Nouveau module **Suivi de chantier** (`/suivi-chantier`, `SiteTracking.jsx`, lien menu « Suivi de chantier ») réservé au **pack Business** (feature `site_tracking` = `PRO_BUSINESS_ONLY` ; free/premium/pro voient un écran « Passer au pack Business » ; admin bypass).
 - 3 onglets par chantier (sélecteur nom de chantier) :

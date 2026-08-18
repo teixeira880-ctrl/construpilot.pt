@@ -189,6 +189,44 @@ async def suggest_line_description(designation: str, context: str = "") -> str:
     return await _complete(system, prompt, feature="quote_describe")
 
 
+async def quote_lines_from_text(transcript: str) -> tuple[list[dict], str]:
+    """Transforme une description orale (transcription) en lignes de devis BTP structurées.
+
+    Retourne (lines, title). Les prix restent à 0 (chiffrés ensuite via la bibliothèque).
+    """
+    system = (BRAND + " Tu transformes la description orale d'un artisan en lignes de devis BTP "
+              "structurées et réalistes (désignations normalisées, unités et quantités estimées).")
+    prompt = (
+        "À partir de cette description de chantier (transcription vocale d'un artisan), "
+        "génère les lignes de devis.\n"
+        f"Description : « {(transcript or '').strip()[:4000]} »\n\n"
+        "Retourne UNIQUEMENT ce JSON :\n"
+        '{ "title": "titre court du devis", '
+        '"lines": [ { "designation": "libellé court de la prestation", '
+        '"description": "détail des prestations incluses (2 à 4 lignes séparées par des retours à la ligne)", '
+        '"unit": "u|m²|ml|m³|forfait|ens|h|j", "qty": nombre, "vat_rate": 10 } ] }\n'
+        "Estime des quantités plausibles si elles ne sont pas données. N'invente pas de prix. "
+        "3 à 12 lignes maximum, en français."
+    )
+    data = _json(await _complete(system, prompt, feature="quote_from_text"), {"lines": []})
+    units = ("u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L")
+    lines: list[dict] = []
+    for l in (data.get("lines") or [])[:12]:
+        try:
+            lines.append({
+                "designation": str(l.get("designation") or "").strip()[:160],
+                "description": str(l.get("description") or "").strip()[:1000],
+                "unit": l.get("unit") if l.get("unit") in units else "u",
+                "qty": max(0.0, float(l.get("qty") or 1)),
+                "unit_price_ht": 0.0,
+                "vat_rate": float(l.get("vat_rate") or 10),
+                "category": "",
+            })
+        except Exception:
+            continue
+    return lines, (data.get("title") or "").strip()[:160]
+
+
 def _analysis_prompt(description: str) -> str:
     """Construit le prompt JSON d'analyse (séparé pour lisibilité/testabilité)."""
     types = ", ".join(f"{p['key']}" for p in PROJECT_TYPES)

@@ -18,7 +18,7 @@ from engines import geometry as G
 from engines import plan_texts as T
 from engines.plan_ai import analyze_plan_image
 from engines.plan_cv import detect_all_rooms, detect_walls, flood_fill_room
-from engines.plan_structure import detect_structure, detect_structure_tiled
+from engines.plan_structure import detect_structure, detect_structure_tiled, refine_structure
 from engines.plan_processor import auto_calibration_from_pdf_scale
 
 from routes.plans_common import (
@@ -476,6 +476,16 @@ def _page_ppm(p: dict, page_index: int) -> float | None:
     return float(ppm) if ppm else None
 
 
+# Ratios moyens de ferraillage (kg d'acier par m³ de béton) par type d'élément.
+ACIER_RATIOS = {
+    "semelles": 40.0,
+    "poteaux": 130.0,
+    "poutres": 140.0,
+    "dalles": 85.0,
+    "voiles": 60.0,
+}
+
+
 def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
                         wall_height: float = 2.5, dalle_ep: float = 0.20,
                         voile_ep: float = 0.20, poutre_l: float = 0.20,
@@ -538,6 +548,13 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         beton_poteaux = beton_poutres = beton_dalles = beton_voiles = beton_semelles = 0.0
         semelles = len(footings)
     beton_total = round(beton_poteaux + beton_poutres + beton_dalles + beton_voiles + beton_semelles, 2)
+    # ===== Aciers (ferraillage) — ratios moyens kg/m³ par élément =====
+    acier_semelles = round(beton_semelles * ACIER_RATIOS["semelles"], 1)
+    acier_poteaux = round(beton_poteaux * ACIER_RATIOS["poteaux"], 1)
+    acier_poutres = round(beton_poutres * ACIER_RATIOS["poutres"], 1)
+    acier_dalles = round(beton_dalles * ACIER_RATIOS["dalles"], 1)
+    acier_voiles = round(beton_voiles * ACIER_RATIOS["voiles"], 1)
+    acier_total = round(acier_semelles + acier_poteaux + acier_poutres + acier_dalles + acier_voiles, 1)
     ngf_list = sorted({f.get("ngf") for f in floors if f.get("ngf") is not None})
     return {
         "wall_height_m": round(float(wall_height), 2),
@@ -561,6 +578,10 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "beton_dalles_m3": beton_dalles, "beton_voiles_m3": beton_voiles,
         "beton_semelles_m3": beton_semelles,
         "beton_total_m3": beton_total,
+        "acier_semelles_kg": acier_semelles, "acier_poteaux_kg": acier_poteaux,
+        "acier_poutres_kg": acier_poutres, "acier_dalles_kg": acier_dalles,
+        "acier_voiles_kg": acier_voiles, "acier_total_kg": acier_total,
+        "acier_ratios": ACIER_RATIOS,
         "beton_dalle_ep_m": round(dalle_ep, 3), "beton_voile_ep_m": round(voile_ep, 3),
         "beton_poutre_section": f"{poutre_l:.2f}×{poutre_h:.2f} m",
         "plan_kind": structure.get("plan_kind") or "habitation",
@@ -642,6 +663,7 @@ def _descriptif_line_items(d: dict) -> list[dict]:
     add("Poteaux béton", d.get("poteaux"), "u")
     add("Semelles / fondations", d.get("semelles"), "u")
     add("Béton coulé (poteaux + poutres + dalles + voiles + semelles)", d.get("beton_total_m3"), "m³")
+    add("Aciers (ferraillage béton armé)", d.get("acier_total_kg"), "kg")
     return lines
 
 
@@ -661,6 +683,123 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep, poutre_l, poutre_h)
     return {"structure": structure, "descriptif": descriptif,
             "calibrated": bool(ppm), "pixels_per_meter": ppm}
+
+
+@router.get("/{plan_id}/structure/{page_index}/beton-xlsx")
+async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 2.5,
+                            dalle_ep: float = 0.20, voile_ep: float = 0.20,
+                            poutre_l: float = 0.20, poutre_h: float = 0.40,
+                            user=Depends(current_user)):
+    """Export Excel du métré béton (poteaux, poutres, dalles, voiles, semelles)."""
+    from io import BytesIO
+    from fastapi.responses import Response
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "structure": 1, "calibrations": 1, "rooms": 1, "filename": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    ppm = _page_ppm(p, page_index)
+    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+    d = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep, poutre_l, poutre_h)
+
+    header_font = Font(bold=True, color="FFFFFF", size=10)
+    header_fill = PatternFill("solid", fgColor="1F2733")
+    bold = Font(bold=True)
+
+    def sheet_header(ws, headers: list, widths: list) -> None:
+        ws.append(headers)
+        for col, w in enumerate(widths, start=1):
+            cell = ws.cell(row=1, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center")
+            ws.column_dimensions[cell.column_letter].width = w
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Métré béton"
+    sheet_header(ws, ["Poste", "Détail", "Volume (m³)", "Ratio acier (kg/m³)", "Aciers (kg)"],
+                 [30, 40, 14, 18, 14])
+    r = d.get("acier_ratios") or {}
+    ws.append(["Poteaux", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3", 0),
+               r.get("poteaux"), d.get("acier_poteaux_kg", 0)])
+    ws.append(["Poutres / linteaux",
+               f"{d.get('poutres_ml', 0)} ml · section {d.get('beton_poutre_section', '')}",
+               d.get("beton_poutres_m3", 0), r.get("poutres"), d.get("acier_poutres_kg", 0)])
+    ws.append(["Dalles / planchers",
+               f"{d.get('planchers_m2', 0)} m² · ép. {d.get('beton_dalle_ep_m', 0)} m",
+               d.get("beton_dalles_m3", 0), r.get("dalles"), d.get("acier_dalles_kg", 0)])
+    ws.append(["Voiles (murs porteurs)",
+               f"{d.get('murs_porteurs_ml', 0)} ml · ép. {d.get('beton_voile_ep_m', 0)} m · h {d.get('wall_height_m', 0)} m",
+               d.get("beton_voiles_m3", 0), r.get("voiles"), d.get("acier_voiles_kg", 0)])
+    ws.append(["Semelles / fondations", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3", 0),
+               r.get("semelles"), d.get("acier_semelles_kg", 0)])
+    ws.append([])
+    ws.append(["TOTAL BÉTON", "", d.get("beton_total_m3", 0), "", d.get("acier_total_kg", 0)])
+    for cell in ws[ws.max_row]:
+        cell.font = bold
+
+    ws2 = wb.create_sheet("Poteaux")
+    sheet_header(ws2, ["Repère", "Section", "Hauteur (m)", "Volume (m³)"], [12, 18, 13, 14])
+    for c in d.get("poteaux_table") or []:
+        ws2.append([c.get("ref"), c.get("section"), c.get("hauteur_m"), c.get("volume_m3")])
+
+    ws3 = wb.create_sheet("Poutres")
+    sheet_header(ws3, ["Repère", "Portée (m)", "Volume (m³)"], [12, 14, 14])
+    for b in d.get("beams_table") or []:
+        ws3.append([b.get("ref"), b.get("portee_m"), b.get("volume_m3")])
+
+    buf = BytesIO()
+    wb.save(buf)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="metre-beton-{plan_id}.xlsx"'})
+
+
+class AiRefineIn(BaseModel):
+    message: str
+    history: list[str] = Field(default_factory=list)
+
+
+@router.post("/{plan_id}/structure/{page_index}/ai-refine")
+async def ai_refine_structure(plan_id: str, page_index: int, body: AiRefineIn,
+                              user=Depends(current_user)) -> dict:
+    """Assistant IA : applique une consigne en langage naturel pour corriger la détection."""
+    if not (body.message or "").strip():
+        raise HTTPException(400, "Consigne vide")
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "pages": 1, "structure": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    pages = p.get("pages") or []
+    if page_index < 0 or page_index >= len(pages):
+        raise HTTPException(404, "Page inconnue")
+    page = pages[page_index]
+    img = page.get("image_png_b64")
+    if not img:
+        raise HTTPException(500, "Image manquante")
+    w, h = _page_dims(page)
+    current = (p.get("structure") or {}).get(str(page_index)) or {}
+    result = await refine_structure(img, w, h, body.message, current, body.history)
+    reply = result.pop("reply", None)
+    has_content = bool(result.get("walls") or result.get("columns") or result.get("beams")
+                       or result.get("openings") or result.get("footings") or result.get("floors"))
+    if result.get("error") and not has_content:
+        return {"ok": False, "reply": reply or "L'IA n'a pas pu appliquer la consigne.",
+                "error": result.get("error"), "structure": current}
+    _assign_column_refs(result.get("columns") or [])
+    _assign_beam_refs(result.get("beams") or [])
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {f"structure.{page_index}": {**result, "refined_at": _now()},
+                  "updated_at": _now()}})
+    return {"ok": True, "reply": reply, "structure": result}
 
 
 @router.post("/{plan_id}/detect-structure-all")
