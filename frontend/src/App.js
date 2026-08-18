@@ -10,6 +10,7 @@ import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
+import Investors from "@/pages/Investors";
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
@@ -93,6 +94,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
+      <Route path="/investisseurs" element={<Investors />} />
       <Route path="/login" element={<Login />} />
       <Route path="/inscription" element={<Login />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />

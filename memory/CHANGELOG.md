@@ -901,3 +901,6 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Pack de 5 visuels Instagram générés (avant/après, témoignage, prix, 3D, 100% gratuit).
 - Relance J+3 : leads.run_signup_followups() + job scheduler quotidien 09:00 UTC (inscrits ~3j sans devis → e-mail, flag welcome_followup). ✅ backend sain.
 - NON FAITS (budget) : Suggestions IA d'ouvrages (nécessite intégration LLM), Landing dédiée particuliers (nouvelle page).
+
+## Iteration 121 - 18/06/2026 (Page investisseurs / pitch deck)
+- Nouvelle page publique **/investisseurs** (`Investors.jsx`) structuree comme un pitch deck : hero + 6 slides (Probleme, Solution, Marche, Avantage, Modele economique, Pourquoi maintenant) + section Ask (usage des fonds) + CTA mailto vers teixeira8880@gmail.com. Route ajoutee dans App.js. Verifie capture.
