@@ -904,3 +904,8 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 
 ## Iteration 121 - 18/06/2026 (Page investisseurs / pitch deck)
 - Nouvelle page publique **/investisseurs** (`Investors.jsx`) structuree comme un pitch deck : hero + 6 slides (Probleme, Solution, Marche, Avantage, Modele economique, Pourquoi maintenant) + section Ask (usage des fonds) + CTA mailto vers teixeira8880@gmail.com. Route ajoutee dans App.js. Verifie capture.
+
+## Iteration 122 - 18/06/2026 (Hausse tarifs annuels + email contact)
+- Correctif : la hausse Pro mensuel 199€→299€ n'avait jamais pris effet (bloc PRICE_MIGRATION dans server.py forçait 19900 au démarrage). Corrigé : pro_monthly=29900, pro_yearly=315000 (3150€, ~12%). Pro Business 350€/3500€ déjà cohérents (~17%). Catalogue monetization_catalog.py aligné.
+- Email de contact **info@construpilot.fr** ajouté : footer global (Nav.jsx, lien mailto, data-testid="footer-contact-email") + page Investisseurs (remplace ancienne adresse Gmail dans tous les CTA).
+- Vérifié : DB, API /api/plans, page /tarifs (onglet pro) et footer via screenshot. ✅

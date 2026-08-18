@@ -135,7 +135,7 @@ DEFAULT_PLANS = [
         "description": "Facturation annuelle (~12 % d'économies).",
         "audience": "pro",
         "kind": "subscription",
-        "amount_cents": 210000, "currency": "eur", "interval": "year",
+        "amount_cents": 315000, "currency": "eur", "interval": "year",
         "lookup_key": "construpilot_pro_yearly",
         "trial_days": 7,
         "features": ["Toutes les fonctionnalités Pro", "Économies annuelles"],
