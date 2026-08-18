@@ -224,9 +224,18 @@ export const Footer = () => (
           Estimez. Comparez. Construisez.
         </span>
       </p>
-      <p className="text-xs text-muted-foreground">
-        Estimations indicatives — ne constituent pas un devis contractuel.
-      </p>
+      <div className="flex flex-col md:items-end gap-1">
+        <a
+          href="mailto:info@construpilot.fr"
+          className="text-xs text-primary hover:underline"
+          data-testid="footer-contact-email"
+        >
+          info@construpilot.fr
+        </a>
+        <p className="text-xs text-muted-foreground">
+          Estimations indicatives — ne constituent pas un devis contractuel.
+        </p>
+      </div>
     </div>
     <div className="border-t border-border">
       <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-4 text-center" data-testid="footer-legal">

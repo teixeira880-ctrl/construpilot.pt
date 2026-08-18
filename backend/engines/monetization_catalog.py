@@ -110,7 +110,7 @@ DEFAULT_PLANS = [
         "description": "Estimation pro, devis, marges, clients.",
         "audience": "pro",
         "kind": "subscription",
-        "amount_cents": 19900, "currency": "eur", "interval": "month",
+        "amount_cents": 29900, "currency": "eur", "interval": "month",
         "lookup_key": "construpilot_pro_monthly",
         "trial_days": 7,
         "features": [

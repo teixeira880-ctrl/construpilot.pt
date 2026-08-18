@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const CONTACT = "teixeira8880@gmail.com";
+const CONTACT = "info@construpilot.fr";
 
 const Slide = ({ n, kicker, title, children, dark }) => (
   <section data-testid={`deck-slide-${n}`}
