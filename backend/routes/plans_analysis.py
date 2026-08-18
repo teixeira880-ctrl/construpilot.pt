@@ -28,6 +28,42 @@ from routes.plans_common import (
 logger = logging.getLogger(__name__)
 
 
+# ============ RÉGLAGES BÉTON PAR DÉFAUT (entreprise) ============
+
+_BETON_DEFAULTS = {"wall_height": 2.5, "dalle_ep": 0.20, "voile_ep": 0.20,
+                   "poutre_l": 0.20, "poutre_h": 0.40}
+
+
+@router.get("/settings/beton-defaults")
+async def get_beton_defaults(user=Depends(current_user)) -> dict:
+    """Réglages béton préférés de l'entreprise (ratios aciers + sections poutres + épaisseurs)."""
+    d = await db.beton_defaults.find_one({"user_id": user["user_id"]}, {"_id": 0, "user_id": 0})
+    if not d:
+        return {**_BETON_DEFAULTS, "acier_ratios": dict(ACIER_RATIOS)}
+    return d
+
+
+class BetonDefaultsIn(BaseModel):
+    wall_height: float = 2.5
+    dalle_ep: float = 0.20
+    voile_ep: float = 0.20
+    poutre_l: float = 0.20
+    poutre_h: float = 0.40
+    acier_ratios: dict = Field(default_factory=dict)
+
+
+@router.put("/settings/beton-defaults")
+async def set_beton_defaults(body: BetonDefaultsIn, user=Depends(current_user)) -> dict:
+    ar = {k: float(body.acier_ratios.get(k, ACIER_RATIOS[k])) for k in ACIER_RATIOS}
+    payload = {"wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
+               "voile_ep": body.voile_ep, "poutre_l": body.poutre_l,
+               "poutre_h": body.poutre_h, "acier_ratios": ar}
+    await db.beton_defaults.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {**payload, "user_id": user["user_id"]}}, upsert=True)
+    return {"ok": True, **payload}
+
+
 # ============ ANALYSE IA ============
 
 @router.post("/{plan_id}/analyze")
@@ -777,6 +813,93 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
         headers={"Content-Disposition": f'attachment; filename="metre-beton-{plan_id}.xlsx"'})
 
 
+@router.get("/{plan_id}/structure/{page_index}/beton-pdf")
+async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2.5,
+                           dalle_ep: float = 0.20, voile_ep: float = 0.20,
+                           poutre_l: float = 0.20, poutre_h: float = 0.40,
+                           acier_semelles: float | None = None, acier_poteaux: float | None = None,
+                           acier_poutres: float | None = None, acier_dalles: float | None = None,
+                           acier_voiles: float | None = None,
+                           user=Depends(current_user)):
+    """PDF de synthèse du métré béton (volumes + aciers + poteaux + poutres)."""
+    from io import BytesIO
+    from fastapi.responses import Response
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from engines.pdf_takeoff import _styles, _table, DARK, LIGHT_GREY, ORANGE
+
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "structure": 1, "calibrations": 1, "rooms": 1, "filename": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    ppm = _page_ppm(p, page_index)
+    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+    ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
+          "dalles": acier_dalles, "voiles": acier_voiles}
+    d = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
+                            poutre_l, poutre_h, acier_ratios=ar)
+
+    buf = BytesIO()
+    pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=18 * mm, bottomMargin=18 * mm)
+    S = _styles()
+    story = [
+        Paragraph("MÉTRÉ BÉTON — SYNTHÈSE", S["kicker"]),
+        Paragraph(p.get("filename") or "Plan", S["h1"]),
+        Paragraph(f"Hauteur murs {d.get('wall_height_m')} m · ep. dalle {d.get('beton_dalle_ep_m')} m · "
+                  f"ep. voile {d.get('beton_voile_ep_m')} m · poutre {d.get('beton_poutre_section')}", S["muted"]),
+        Spacer(1, 10),
+    ]
+    if not d.get("beton_total_m3"):
+        story.append(Paragraph("Plan non calibre ou sans structure detectee - quantites indisponibles.", S["body"]))
+    r = d.get("acier_ratios") or {}
+    rows = [["Poste", "Detail", "Volume (m3)", "Ratio (kg/m3)", "Aciers (kg)"],
+            ["Poteaux", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3", 0), r.get("poteaux", ""), d.get("acier_poteaux_kg", 0)],
+            ["Poutres / linteaux", f"{d.get('poutres_ml', 0)} ml", d.get("beton_poutres_m3", 0), r.get("poutres", ""), d.get("acier_poutres_kg", 0)],
+            ["Dalles / planchers", f"{d.get('planchers_m2', 0)} m2", d.get("beton_dalles_m3", 0), r.get("dalles", ""), d.get("acier_dalles_kg", 0)],
+            ["Voiles (murs porteurs)", f"{d.get('murs_porteurs_ml', 0)} ml", d.get("beton_voiles_m3", 0), r.get("voiles", ""), d.get("acier_voiles_kg", 0)],
+            ["Semelles / fondations", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3", 0), r.get("semelles", ""), d.get("acier_semelles_kg", 0)],
+            ["TOTAL", "", d.get("beton_total_m3", 0), "", d.get("acier_total_kg", 0)]]
+    t = _table([[str(c) for c in row] for row in rows],
+               [46 * mm, 30 * mm, 26 * mm, 26 * mm, 26 * mm],
+               style_extras=[
+                   ("BACKGROUND", (0, 0), (-1, 0), DARK),
+                   ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                   ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                   ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F0E9DF")),
+                   ("GRID", (0, 0), (-1, -1), 0.4, LIGHT_GREY),
+                   ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
+               ])
+    story += [t, Spacer(1, 14)]
+
+    if d.get("poteaux_table"):
+        story.append(Paragraph("Tableau des poteaux", S["h2"]))
+        prows = [["Repere", "Section", "Hauteur (m)", "Volume (m3)"]]
+        prows += [[c.get("ref"), c.get("section"), c.get("hauteur_m"), c.get("volume_m3")] for c in d["poteaux_table"]]
+        story += [_table([[str(c) for c in row] for row in prows], [30 * mm, 40 * mm, 34 * mm, 34 * mm],
+                         style_extras=[("BACKGROUND", (0, 0), (-1, 0), ORANGE),
+                                       ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                                       ("GRID", (0, 0), (-1, -1), 0.4, LIGHT_GREY)]), Spacer(1, 12)]
+    if d.get("beams_table"):
+        story.append(Paragraph("Tableau des poutres", S["h2"]))
+        brows = [["Repere", "Portee (m)", "Volume (m3)"]]
+        brows += [[b.get("ref"), b.get("portee_m"), b.get("volume_m3")] for b in d["beams_table"]]
+        story += [_table([[str(c) for c in row] for row in brows], [40 * mm, 48 * mm, 48 * mm],
+                         style_extras=[("BACKGROUND", (0, 0), (-1, 0), ORANGE),
+                                       ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                                       ("GRID", (0, 0), (-1, -1), 0.4, LIGHT_GREY)])]
+    pdf.build(story)
+    return Response(
+        content=buf.getvalue(), media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="metre-beton-{plan_id}.pdf"'})
+
+
+
+
 class AiRefineIn(BaseModel):
     message: str
     history: list[str] = Field(default_factory=list)
@@ -873,6 +996,10 @@ async def annotated_plan_pdf(plan_id: str, page_index: int, wall_height: float =
         "Content-Disposition": f'attachment; filename="plan-annote-{plan_id}.pdf"'})
 
 
+class QuoteFromStructureIn(BaseModel):
+    snapshot_png: str | None = None
+
+
 @router.post("/{plan_id}/structure/{page_index}/quote")
 async def structure_to_quote(plan_id: str, page_index: int, wall_height: float = 2.5,
                              dalle_ep: float = 0.20, voile_ep: float = 0.20,
@@ -880,7 +1007,9 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              acier_semelles: float | None = None, acier_poteaux: float | None = None,
                              acier_poutres: float | None = None, acier_dalles: float | None = None,
                              acier_voiles: float | None = None,
-                             client_id: str | None = None, user=Depends(current_user)) -> dict:
+                             client_id: str | None = None,
+                             body: QuoteFromStructureIn | None = None,
+                             user=Depends(current_user)) -> dict:
     """Crée un devis brouillon à partir du descriptif (planchers, murs, ouvertures, poutres, aciers)."""
     import secrets
     from routes.documents import _client_snapshot, _compute_totals
@@ -901,6 +1030,9 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
+    snap = (body.snapshot_png if body else None) or None
+    if snap and snap.startswith("data:"):
+        snap = snap.split(",", 1)[-1]
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"], "doc_type": "quote", "number": None,
@@ -908,6 +1040,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
         "client_id": client_id, "client": await _client_snapshot(client_id, user),
         "status": "draft", "lines": lines, "notes": "",
         "payment_terms": "", "deposit_pct": 0,
+        "attachment_image_b64": snap,
         "totals": _compute_totals(lines, 0),
         "issue_date": None, "due_date": None,
         "source": "plan_structure", "plan_id": plan_id,

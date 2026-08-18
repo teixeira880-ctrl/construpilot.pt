@@ -148,6 +148,7 @@ export default function PlanTakeoff() {
   const [render3dFurniture, setRender3dFurniture] = useState(true);
   const [render3dBusy, setRender3dBusy] = useState(false);
   const [render3dImg, setRender3dImg] = useState(null);
+  const [plan3dSnapshot, setPlan3dSnapshot] = useState(null);
   const [render3dHistory, setRender3dHistory] = useState([]);
   const [render3dMode, setRender3dMode] = useState("ai"); // ai | interactive | video
   const [credits3d, setCredits3d] = useState(null);
@@ -1074,6 +1075,28 @@ export default function PlanTakeoff() {
   const acierQuery = () =>
     `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}`;
 
+  // Charge les réglages béton par défaut de l'entreprise (une fois)
+  useEffect(() => {
+    api.get("/takeoffs/settings/beton-defaults").then(({ data }) => {
+      if (data.wall_height) setWallHeight(data.wall_height);
+      if (data.dalle_ep) setDalleEp(data.dalle_ep);
+      if (data.voile_ep) setVoileEp(data.voile_ep);
+      if (data.poutre_l) setPoutreL(data.poutre_l);
+      if (data.poutre_h) setPoutreH(data.poutre_h);
+      if (data.acier_ratios) setAcierRatios((r) => ({ ...r, ...data.acier_ratios }));
+    }).catch(() => {});
+  }, []);
+
+  const saveBetonDefaults = async () => {
+    try {
+      await api.put("/takeoffs/settings/beton-defaults", {
+        wall_height: wallHeight, dalle_ep: dalleEp, voile_ep: voileEp,
+        poutre_l: poutreL, poutre_h: poutreH, acier_ratios: acierRatios,
+      });
+      toast.success("Réglages béton enregistrés comme valeurs par défaut de l'entreprise");
+    } catch { toast.error("Enregistrement des réglages impossible"); }
+  };
+
   const loadDescriptif = async (height = wallHeight) => {
     try {
       const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${height}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`);
@@ -1121,9 +1144,10 @@ export default function PlanTakeoff() {
     if (!currentCalib) { toast.error("Calibrez d'abord le plan"); return; }
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`);
+      const body = plan3dSnapshot ? { snapshot_png: plan3dSnapshot } : {};
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`, body);
       const n = data.priced_lines || 0;
-      toast.success(n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif");
+      toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Génération du devis impossible");
@@ -1172,6 +1196,24 @@ export default function PlanTakeoff() {
       URL.revokeObjectURL(url);
       toast.success("Métré béton (Excel) téléchargé");
     } catch (e) { toast.error(e.message || "Export Excel béton impossible"); }
+  };
+
+  const exportBetonPdf = async () => {
+    if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL;
+      const token = localStorage.getItem("construpilot_token");
+      const q = `wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`;
+      const res = await fetch(`${base}/api/takeoffs/${plan.plan_id}/structure/${pageIndex}/beton-pdf?${q}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error("Export impossible");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `metre-beton-${plan.plan_id}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Métré béton (PDF) téléchargé");
+    } catch (e) { toast.error(e.message || "Export PDF béton impossible"); }
   };
 
   // Assistant IA — corriger / guider la détection en langage naturel
@@ -2841,6 +2883,11 @@ export default function PlanTakeoff() {
                         </label>
                       ))}
                     </div>
+                    <Button size="sm" variant="outline" onClick={saveBetonDefaults}
+                            data-testid="save-beton-defaults"
+                            className="rounded-sm h-6 text-[10px] gap-1 mt-1.5">
+                      <Save className="h-3 w-3" /> Enregistrer comme réglages par défaut
+                    </Button>
                   </details>
                   {descriptif.planchers_ngf?.length > 0 && (
                     <p className="text-[10px] text-emerald-600 mb-1">Cote(s) NGF dalle : {descriptif.planchers_ngf.join(", ")}</p>
@@ -2926,7 +2973,11 @@ export default function PlanTakeoff() {
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" variant="outline" onClick={exportBetonXlsx} data-testid="structure-export-beton-xlsx"
                             className="rounded-sm h-7 text-xs gap-1 flex-1 text-emerald-700 border-emerald-600/40">
-                      <Sheet className="h-3 w-3" /> Métré béton (Excel)
+                      <Sheet className="h-3 w-3" /> Métré Excel
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={exportBetonPdf} data-testid="structure-export-beton-pdf"
+                            className="rounded-sm h-7 text-xs gap-1 flex-1 text-red-700 border-red-600/40">
+                      <FileDown className="h-3 w-3" /> Métré PDF
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setAiChatOpen(true)} data-testid="structure-ai-assistant"
                             className="rounded-sm h-7 text-xs gap-1 flex-1 text-primary border-primary/40">
@@ -3896,6 +3947,7 @@ export default function PlanTakeoff() {
         plan={plan} detectedWalls={detectedWalls} pageIndex={pageIndex}
         structure={structure} dalleEp={dalleEp} voileEp={voileEp} wallHeight={wallHeight}
         poutreL={poutreL} poutreH={poutreH}
+        onAttach3d={(png) => { setPlan3dSnapshot(png); toast.success("Vue 3D jointe — elle sera ajoutée au prochain devis généré depuis ce plan"); }}
         render3dStyle={render3dStyle} setRender3dStyle={setRender3dStyle}
         render3dFurniture={render3dFurniture} setRender3dFurniture={setRender3dFurniture}
         render3dBusy={render3dBusy} render3dImg={render3dImg}

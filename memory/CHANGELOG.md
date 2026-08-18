@@ -1,5 +1,11 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 115 — 18/06/2026 (PNG 3D dans devis + Réglages béton par défaut + Métré PDF)
+- **Capture 3D jointe au devis** : `Interactive3D` expose `onAttach` + bouton « Joindre au devis » (`cam-attach-btn`) → PlanTakeoff stocke `plan3dSnapshot` → `sendToQuote` l'envoie en body (`snapshot_png`) à `structure_to_quote` (nouveau modèle `QuoteFromStructureIn`) → stocké dans `doc.attachment_image_b64` → `build_document_pdf` (pdf_docs.py) intègre l'image (reportlab `Image`). Vérifié curl (PDF devis 8,6 Ko avec image).
+- **Réglages béton par défaut (entreprise)** : `GET/PUT /api/takeoffs/settings/beton-defaults` (collection `beton_defaults` par user_id) — hauteur murs, ép. dalle/voile, section poutre, ratios aciers. Chemin à 2 segments (`/settings/beton-defaults`) pour éviter le conflit avec `/{plan_id}`. Frontend : chargement au montage + bouton « Enregistrer comme réglages par défaut » (`save-beton-defaults`). Vérifié curl (GET/PUT/persistance).
+- **Métré béton PDF** : `GET /api/takeoffs/{plan_id}/structure/{page}/beton-pdf` (reportlab) — synthèse volumes + aciers + tableaux poteaux/poutres, mêmes query params que l'Excel. Bouton « Métré PDF » (`structure-export-beton-pdf`) à côté de « Métré Excel ». Vérifié curl (200, application/pdf).
+
+
 ## Itération 114 — 18/06/2026 (Aciers dans devis + Export 3D PNG + Poutres b×h + Devis vidéo enrichi)
 - **Aciers HA dans le devis** : `_descriptif_line_items` renomme la ligne acier en « Aciers HA (fer à béton armé — env. N kg/m³) » (N = moyenne des ratios) ; incluse et chiffrée via bibliothèque dans le devis généré depuis le plan (`structure_to_quote` qui accepte désormais dalle_ep/voile_ep/poutre_l/poutre_h + ratios aciers). Vérifié curl (qty = poids total kg).
 - **Export 3D PNG** : `Interactive3D` — `WebGLRenderer({ preserveDrawingBuffer:true })` + bouton « PNG » (`cam-snapshot-btn`) qui télécharge `renderer.domElement.toDataURL()` (maquette-3d-beton.png).

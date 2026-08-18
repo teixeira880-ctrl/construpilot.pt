@@ -16,7 +16,7 @@ export function Render3dDialog({
   open, onOpenChange,
   render3dMode, setRender3dMode,
   plan, detectedWalls, pageIndex,
-  structure, dalleEp, voileEp, wallHeight, poutreL, poutreH,
+  structure, dalleEp, voileEp, wallHeight, poutreL, poutreH, onAttach3d,
   render3dStyle, setRender3dStyle,
   render3dFurniture, setRender3dFurniture,
   render3dBusy, render3dImg,
@@ -112,6 +112,7 @@ export function Render3dDialog({
             wallHeightM={wallHeight ?? 2.5}
             scaleMperPx={plan?.calibrations?.[pageIndex]?.scale_m_per_px || 0.01}
             imageHeight={520}
+            onAttach={onAttach3d}
           />
         )}
 

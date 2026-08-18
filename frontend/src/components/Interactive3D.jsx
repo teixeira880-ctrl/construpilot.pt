@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RotateCcw, Maximize2, Home, Move3d, Download } from "lucide-react";
+import { RotateCcw, Maximize2, Home, Move3d, Download, Paperclip } from "lucide-react";
 
 /**
  * Composant 3D interactif — extrusion des rooms mesurés + segments de murs détectés.
@@ -13,7 +13,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
                                  dalleEpM = 0.2, voileEpM = 0.2,
                                  poutreLM = 0.2, poutreHM = 0.4,
                                  scaleMperPx = 0.01,
-                                 wallHeightM = 2.5, imageHeight = 600 }) {
+                                 wallHeightM = 2.5, imageHeight = 600, onAttach = null }) {
   const mountRef = useRef(null);
   const [wallHeight, setWallHeight] = useState(wallHeightM);
   const controlsRef = useRef(null);
@@ -282,6 +282,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
         const a = document.createElement("a");
         a.href = url; a.download = "maquette-3d-beton.png"; a.click();
       },
+      dataUrl: () => { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
     };
 
     // Animation loop
@@ -335,6 +336,14 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
                 className="rounded-sm gap-1 h-7 text-xs">
           <Download className="h-3 w-3" /> PNG
         </Button>
+        {onAttach && (
+          <Button size="sm"
+                  onClick={() => { const u = controlsRef.current?.dataUrl(); if (u) onAttach(u); }}
+                  data-testid="cam-attach-btn"
+                  className="rounded-sm gap-1 h-7 text-xs">
+            <Paperclip className="h-3 w-3" /> Joindre au devis
+          </Button>
+        )}
       </div>
       <div ref={mountRef} data-testid="three-canvas"
            className="w-full border border-border rounded-sm overflow-hidden bg-secondary/30"

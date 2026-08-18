@@ -10,7 +10,7 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 
 from engines.pdf_takeoff import (
     _styles, _table, _fmt, _story_header_branding, _story_quote_reviews,
@@ -139,6 +139,22 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
     _client_block(story, doc.get("client"), S, L)
     _lines_table(story, doc.get("lines", []), S, L)
     _recap(story, doc, S, L)
+
+    _attach = doc.get("attachment_image_b64")
+    if _attach:
+        try:
+            import base64
+            raw = base64.b64decode(_attach.split(",", 1)[-1])
+            img = Image(BytesIO(raw))
+            max_w = 170 * mm
+            ratio = (img.imageHeight or 1) / (img.imageWidth or 1)
+            img.drawWidth = max_w
+            img.drawHeight = max_w * ratio
+            story.append(Spacer(1, 14))
+            story.append(Paragraph(L.get("attachment_3d", "Vue 3D du projet"), S["h2"]))
+            story.append(img)
+        except Exception:
+            pass
 
     if doc.get("notes"):
         story.append(Spacer(1, 12))
