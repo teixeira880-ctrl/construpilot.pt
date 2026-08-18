@@ -81,6 +81,8 @@ async def get_beton_defaults(user=Depends(current_user)) -> dict:
     d.setdefault("margin_pct", 0.0)
     d.setdefault("proprete_ep", 0.05)
     d.setdefault("beton_prices", {})
+    d.setdefault("plancher_type", "auto")
+    d.setdefault("plancher_price_m2", 0.0)
     d.setdefault("last_preset", "")
     return d
 
@@ -96,6 +98,8 @@ class BetonDefaultsIn(BaseModel):
     labor_price_m3: float = 0.0
     margin_pct: float = 0.0
     proprete_ep: float = 0.05
+    plancher_type: str = "auto"
+    plancher_price_m2: float = 0.0
     beton_prices: dict = Field(default_factory=dict)
     acier_ratios: dict = Field(default_factory=dict)
 
@@ -112,6 +116,8 @@ async def set_beton_defaults(body: BetonDefaultsIn, user=Depends(current_user)) 
                "labor_price_m3": max(0.0, body.labor_price_m3),
                "margin_pct": max(0.0, body.margin_pct),
                "proprete_ep": max(0.0, body.proprete_ep), "beton_prices": bp,
+               "plancher_type": (body.plancher_type if body.plancher_type in ("auto", "dalle_pleine", "poutrelles_hourdis") else "auto"),
+               "plancher_price_m2": max(0.0, body.plancher_price_m2),
                "acier_ratios": ar}
     await db.beton_defaults.update_one(
         {"user_id": user["user_id"]},
@@ -811,7 +817,17 @@ async def _apply_library_prices(user_id: str, lines: list[dict]) -> tuple[list[d
     return lines, matched
 
 
-def _beton_line_items(d: dict) -> list[dict]:
+def _plancher_price_m2_bareme(ep_m: float | None) -> float:
+    """Prix plancher au m² selon l'épaisseur de dalle (barème indicatif 120–160 €/m²)."""
+    cm = (ep_m or 0.20) * 100
+    if cm <= 16:
+        return 120.0
+    if cm <= 20:
+        return 140.0
+    return 160.0
+
+
+def _beton_line_items(d: dict, plancher: dict | None = None) -> list[dict]:
     """Lignes GROS ŒUVRE / BÉTON uniquement : murs (voiles), poteaux, poutres,
     planchers (dalles), semelles + aciers. Sans pièces ni second œuvre.
     La surface se réfère aux planchers détectés uniquement."""
@@ -828,11 +844,21 @@ def _beton_line_items(d: dict) -> list[dict]:
     add(f"Béton de propreté (sous semelles, ép. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
     add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³", elem="poteaux")
     add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³", elem="poutres")
-    add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
+    if plancher:
+        # Plancher chiffré au m² (prix all-in : béton + aciers + main d'œuvre du plancher)
+        cm = round((d.get("beton_dalle_ep_m") or 0.20) * 100)
+        add(f"Plancher béton — {plancher.get('label', 'dalle pleine BA')} ({d.get('planchers_m2', 0)} m² · ép. {cm} cm)",
+            d.get("planchers_m2"), "m²", elem="dalles")
+    else:
+        add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
     add(f"Béton — voiles / murs porteurs ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³", elem="voiles")
     _ar = d.get("acier_ratios") or {}
     _ratio_moy = (round(sum(_ar.values()) / len(_ar)) if _ar else 100)
-    add(f"Aciers HA (ferraillage — env. {_ratio_moy} kg/m³)", d.get("acier_total_kg"), "kg")
+    _acier_kg = d.get("acier_total_kg")
+    if plancher:
+        # Les aciers du plancher sont inclus dans le prix au m² → on les retire de la ligne aciers
+        _acier_kg = round((_acier_kg or 0) - (d.get("acier_dalles_kg") or 0), 2)
+    add(f"Aciers HA (ferraillage — env. {_ratio_moy} kg/m³)", _acier_kg, "kg")
     return lines
 
 
@@ -1240,6 +1266,8 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              beton_price_dalles: float | None = None,
                              beton_price_voiles: float | None = None,
                              proprete_ep: float = 0.05,
+                             plancher_type: str = "auto",
+                             plancher_price_m2: float | None = None,
                              margin_pct: float = 0.0,
                              margin_beton: float | None = None, margin_acier: float | None = None,
                              margin_labor: float | None = None,
@@ -1263,7 +1291,16 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
           "dalles": acier_dalles, "voiles": acier_voiles}
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
                                      poutre_l, poutre_h, acier_ratios=ar, floors_only=beton_only, proprete_ep=proprete_ep)
-    lines = _beton_line_items(descriptif) if beton_only else _descriptif_line_items(descriptif)
+    plancher_opt = None
+    if beton_only:
+        _pt = plancher_type
+        if _pt == "auto":
+            _pt = "dalle_pleine" if (structure.get("plan_kind") == "immeuble") else "poutrelles_hourdis"
+        _label = "dalle pleine BA" if _pt == "dalle_pleine" else "poutrelles-hourdis"
+        plancher_opt = {"label": _label,
+                        "price_m2": (float(plancher_price_m2) if (plancher_price_m2 and plancher_price_m2 > 0)
+                                     else _plancher_price_m2_bareme(dalle_ep))}
+    lines = _beton_line_items(descriptif, plancher=plancher_opt) if beton_only else _descriptif_line_items(descriptif)
     if not lines:
         raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
     # Prix indicatifs de repli si l'utilisateur n'a rien configuré → chiffrage automatique
@@ -1271,6 +1308,15 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     beton_price_m3, acier_price_kg, labor_price_m3, margin_pct = _with_default_prices(
         beton_price_m3, acier_price_kg, labor_price_m3, margin_pct, margins_set=_margins_set)
     lines, priced = await _apply_library_prices(user["user_id"], lines)
+    # Plancher au m² (prix all-in selon épaisseur) — PRIORITAIRE sur la bibliothèque
+    if plancher_opt:
+        for ln in lines:
+            if ln.get("elem") == "dalles" and ln.get("unit") == "m²":
+                ln["unit_price_ht"] = round(float(plancher_opt["price_m2"]), 2)
+                ln["price_source"] = "bareme_plancher"
+                if ln.get("vat_rate") is None:
+                    ln["vat_rate"] = 20
+                priced += 1
     # Prix acier au kg (chiffrage instantané de la ligne « Aciers HA » si non chiffrée par la bibliothèque)
     if acier_price_kg and acier_price_kg > 0:
         for ln in lines:
@@ -1291,8 +1337,10 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                 pe = beton_price_by_elem.get(ln.get("elem"))
                 ln["unit_price_ht"] = round(float(pe if (pe and pe > 0) else beton_price_m3), 2)
                 priced += 1
-    # Main d'œuvre béton (au m³)
+    # Main d'œuvre béton (au m³) — hors dalles si plancher chiffré au m² (main d'œuvre incluse dans le prix/m²)
     beton_total = descriptif.get("beton_total_m3") or 0
+    if plancher_opt:
+        beton_total = round(beton_total - (descriptif.get("beton_dalles_m3") or 0), 2)
     if labor_price_m3 and labor_price_m3 > 0 and beton_total > 0:
         lines.append({"designation": "Main d'œuvre béton (coffrage, coulage, ferraillage)",
                       "unit": "m³", "qty": round(beton_total, 2),
@@ -1307,6 +1355,8 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
         desig = (ln.get("designation") or "").lower()
         if not ln.get("unit_price_ht"):
             continue
+        if ln.get("price_source") == "bareme_plancher":
+            continue  # prix plancher/m² déjà all-in (pas de marge additionnelle)
         if "main d'œuvre" in desig and m_labor:
             ln["unit_price_ht"] = round(ln["unit_price_ht"] * (1 + m_labor / 100), 2)
         elif "acier" in desig and m_acier:

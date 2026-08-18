@@ -966,3 +966,14 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Épaisseur béton de propreté réglable : _compute_descriptif prend proprete_ep (défaut 0,05 m) ; propagé à get_analysis, structure_to_quote, export_beton_xlsx, export_beton_pdf (param proprete_ep) + descriptif expose beton_proprete_ep_m. Libellés (devis + Excel) affichent l'épaisseur en cm. Frontend : input "Épaisseur béton de propreté (cm)" dans le bloc prix par poste, câblé via acierQuery() ; dépendance ajoutée pour recalcul auto de l'analyse.
 - Vérifié e2e backend (plan_c56da42f0331) : réglages sauvegardés/relus (proprete_ep 0,08, prix dalles 160…), propreté 5cm→1,72 vs 8cm→2,75 m³, libellé "ép. 8 cm". Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 132 - 18/06/2026 (Plancher chiffré au m² selon épaisseur)
+- Demande : dans le devis béton gros œuvre, le plancher doit être chiffré au m² (pas au m³), 120–160 €/m² selon l'épaisseur. Immeuble = dalle pleine BA, maison = poutrelles-hourdis.
+- Backend plans_analysis.py :
+  - _plancher_price_m2_bareme(ep) : ≤16 cm→120, 17–20→140, >20→160 €/m².
+  - _beton_line_items(d, plancher) : ligne "Plancher béton — {dalle pleine BA|poutrelles-hourdis} (X m² · ép. Y cm)" en m² (all-in) ; retire les aciers de la dalle de la ligne Aciers HA (inclus dans le prix/m²).
+  - structure_to_quote : params plancher_type (auto|dalle_pleine|poutrelles_hourdis) + plancher_price_m2 (0=barème). Type auto selon structure.plan_kind (immeuble→dalle pleine, sinon poutrelles-hourdis). Prix plancher PRIORITAIRE sur la bibliothèque et SANS marge additionnelle (déjà all-in). Main d'œuvre calculée hors béton de dalle (pas de double comptage).
+  - Persistance : BetonDefaultsIn + get/set ajoutent plancher_type + plancher_price_m2.
+- Frontend PlanTakeoff.jsx : bloc "Plancher (chiffré au m²)" avec sélecteur Type (auto/dalle pleine/poutrelles-hourdis) + input Prix €/m² (0=barème auto). Retrait de "Dalles" de la grille prix/m³. Persistance dans les réglages par défaut.
+- Vérifié e2e backend (plan_c56da42f0331) : plancher m² à 140 (ép 20), 160 (ép 25), 175 (override), unit m², aciers/main d'œuvre hors dalle. Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
