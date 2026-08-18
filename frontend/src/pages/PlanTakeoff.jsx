@@ -1242,7 +1242,7 @@ export default function PlanTakeoff() {
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     try {
       const body = plan3dSnapshot ? { snapshot_png: plan3dSnapshot } : {};
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}`, body);
       const n = data.priced_lines || 0;
       toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);

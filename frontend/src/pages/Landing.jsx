@@ -15,6 +15,7 @@ import { Nav, Footer } from "@/components/Nav";
 import { SEO } from "@/components/SEO";
 import { TrustSection } from "@/components/TrustSection";
 import { MarketingTeaser } from "@/components/MarketingTeaser";
+import { FeatureShowcase } from "@/components/FeatureShowcase";
 import { Interactive3D } from "@/components/Interactive3D";
 import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
@@ -369,6 +370,9 @@ export default function Landing() {
           ))}
         </motion.div>
       </section>
+
+      {/* ── FEATURE SHOWCASE (interactif / publicité) ────────── */}
+      <FeatureShowcase />
 
       {/* ── CATALOGUE / PROJECT TYPES ─────────────────────── */}
       <section className="border-y border-border bg-secondary/30 relative">

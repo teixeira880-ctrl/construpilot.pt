@@ -1,5 +1,10 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 119 — 18/06/2026 (Détail chiffrage devis + Vitrine page d'accueil)
+- **Détail chiffrage devis (depuis plan)** : `structure_to_quote` accepte `beton_price_m3`, `labor_price_m3`, `margin_pct`. La ligne « Béton coulé » reçoit le prix €/m³, « Aciers HA » le prix €/kg, une ligne « Main d'œuvre béton » (m³) est ajoutée, puis la **marge** est appliquée à ces lignes → prix de vente reporté dans le devis. Frontend `sendToQuote` transmet ces params. Vérifié curl (Béton 138 €, Aciers 2,07 €, MO 103,5 € avec marge 15 %).
+- **Vitrine page d'accueil (publicité, option animée)** : nouveau composant `FeatureShowcase.jsx` inséré dans `Landing.jsx` après le bento — 4 blocs alternés animés au scroll (framer-motion `useInView`) : Analyse IA plans/métré béton, Devis express (plan/vidéo), Maquette 3D, Assistant IA & Entreprise. Images réelles, badges statistiques flottants, badge vidéo, puces, CTA. Respecte la charte existante (orange/sombre, police display). Page unique Pro+Particuliers conservée. Vérifié capture d'écran (4 rows, 4 CTA).
+
+
 ## Itération 118 — 18/06/2026 (Marge & main d'œuvre + Comparaison tous presets + Coûts dans PDF)
 - **Marge & coût main d'œuvre** : champs « Main d'œuvre €/m³ » (`labor-price-m3`) et « Marge % » (`margin-pct`), stockés dans défauts/presets (`labor_price_m3`, `margin_pct`). Affichage `descriptif-prix-vente` = (coût matière + béton_total×MO) × (1 + marge/100). Vérifié (63 531 €).
 - **Comparer tous les presets** : `runCompare` compare désormais TOUS les presets (intégrés + perso), avec lignes « Coût matière » et « Prix de vente estimé » par colonne. Vérifié (Maison 63 531 € vs Immeuble 65 770 €).

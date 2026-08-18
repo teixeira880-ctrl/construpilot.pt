@@ -1125,6 +1125,8 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              acier_poutres: float | None = None, acier_dalles: float | None = None,
                              acier_voiles: float | None = None,
                              acier_price_kg: float = 0.0,
+                             beton_price_m3: float = 0.0, labor_price_m3: float = 0.0,
+                             margin_pct: float = 0.0,
                              client_id: str | None = None,
                              body: QuoteFromStructureIn | None = None,
                              user=Depends(current_user)) -> dict:
@@ -1154,6 +1156,27 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
             if "acier" in (ln.get("designation") or "").lower() and not ln.get("unit_price_ht"):
                 ln["unit_price_ht"] = round(float(acier_price_kg), 2)
                 priced += 1
+    # Prix béton au m³ sur la ligne « Béton coulé »
+    if beton_price_m3 and beton_price_m3 > 0:
+        for ln in lines:
+            if "béton coulé" in (ln.get("designation") or "").lower() and not ln.get("unit_price_ht"):
+                ln["unit_price_ht"] = round(float(beton_price_m3), 2)
+                priced += 1
+    # Main d'œuvre béton (au m³)
+    beton_total = descriptif.get("beton_total_m3") or 0
+    if labor_price_m3 and labor_price_m3 > 0 and beton_total > 0:
+        lines.append({"designation": "Main d'œuvre béton (coffrage, coulage, ferraillage)",
+                      "unit": "m³", "qty": round(beton_total, 2),
+                      "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 10,
+                      "category": "Depuis analyse plan"})
+        priced += 1
+    # Marge commerciale appliquée aux prix de vente (béton + aciers + main d'œuvre)
+    if margin_pct and margin_pct > 0:
+        coef = 1 + float(margin_pct) / 100
+        for ln in lines:
+            desig = (ln.get("designation") or "").lower()
+            if ln.get("unit_price_ht") and ("béton" in desig or "acier" in desig or "main d'œuvre" in desig):
+                ln["unit_price_ht"] = round(ln["unit_price_ht"] * coef, 2)
     snap = (body.snapshot_png if body else None) or None
     if snap and snap.startswith("data:"):
         snap = snap.split(",", 1)[-1]
