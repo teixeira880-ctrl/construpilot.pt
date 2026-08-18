@@ -1,5 +1,11 @@
 # ConstruPilot — CHANGELOG
 
+## Itération 120 — 18/06/2026 (Vitrine i18n + CTA essai gratuit + Marge par poste)
+- **Traductions vitrine (7 langues)** : `FeatureShowcase.jsx` consomme désormais `src/lib/showcaseI18n.js` (SHOWCASE_I18N fr/en/es/pt/it/de/ar) via `lang` du contexte i18n. Tous les textes (over/title/sub, 4 items overline/title/text/bullets/statLabel, CTA) traduits. Vérifié EN.
+- **CTA « Essai gratuit »** : bloc final `showcase-try-cta` (dégradé, halo, `showcase-try-btn` → /inscription) avec titre/sous-titre/note traduits. Vérifié (« Ready to quote faster? » / « Free trial »).
+- **Marge par poste** : `structure_to_quote` accepte `margin_beton`, `margin_acier`, `margin_labor` (repli sur `margin_pct`) appliqués séparément aux lignes béton / aciers / main d'œuvre. Frontend : inputs `margin-beton`/`margin-acier`/`margin-labor` + transmission dans `sendToQuote`. Vérifié curl (Béton +10%→110, Aciers +50%→1,5, MO +20%→120).
+
+
 ## Itération 119 — 18/06/2026 (Détail chiffrage devis + Vitrine page d'accueil)
 - **Détail chiffrage devis (depuis plan)** : `structure_to_quote` accepte `beton_price_m3`, `labor_price_m3`, `margin_pct`. La ligne « Béton coulé » reçoit le prix €/m³, « Aciers HA » le prix €/kg, une ligne « Main d'œuvre béton » (m³) est ajoutée, puis la **marge** est appliquée à ces lignes → prix de vente reporté dans le devis. Frontend `sendToQuote` transmet ces params. Vérifié curl (Béton 138 €, Aciers 2,07 €, MO 103,5 € avec marge 15 %).
 - **Vitrine page d'accueil (publicité, option animée)** : nouveau composant `FeatureShowcase.jsx` inséré dans `Landing.jsx` après le bento — 4 blocs alternés animés au scroll (framer-motion `useInView`) : Analyse IA plans/métré béton, Devis express (plan/vidéo), Maquette 3D, Assistant IA & Entreprise. Images réelles, badges statistiques flottants, badge vidéo, puces, CTA. Respecte la charte existante (orange/sombre, police display). Page unique Pro+Particuliers conservée. Vérifié capture d'écran (4 rows, 4 CTA).

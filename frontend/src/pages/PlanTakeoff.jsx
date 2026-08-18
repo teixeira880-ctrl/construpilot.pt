@@ -100,6 +100,9 @@ export default function PlanTakeoff() {
   const [betonPriceM3, setBetonPriceM3] = useState(0);
   const [laborPriceM3, setLaborPriceM3] = useState(0);
   const [marginPct, setMarginPct] = useState(0);
+  const [marginBeton, setMarginBeton] = useState("");
+  const [marginAcier, setMarginAcier] = useState("");
+  const [marginLabor, setMarginLabor] = useState("");
   const [betonPresets, setBetonPresets] = useState([]);
   const [selectedPreset, setSelectedPreset] = useState("");
   const [compareOpen, setCompareOpen] = useState(false);
@@ -1242,7 +1245,10 @@ export default function PlanTakeoff() {
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     try {
       const body = plan3dSnapshot ? { snapshot_png: plan3dSnapshot } : {};
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}`, body);
+      const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
+        + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
+        + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
       const n = data.priced_lines || 0;
       toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
@@ -3028,6 +3034,24 @@ export default function PlanTakeoff() {
                              data-testid="margin-pct"
                              className="w-14 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> %
                     </label>
+                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
+                      <span>Marge/poste :</span>
+                      <label className="flex items-center gap-0.5">Béton
+                        <input type="number" step="1" min="0" max="100" placeholder="—" value={marginBeton}
+                               onChange={(e) => setMarginBeton(e.target.value)} data-testid="margin-beton"
+                               className="w-11 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />%
+                      </label>
+                      <label className="flex items-center gap-0.5">Aciers
+                        <input type="number" step="1" min="0" max="100" placeholder="—" value={marginAcier}
+                               onChange={(e) => setMarginAcier(e.target.value)} data-testid="margin-acier"
+                               className="w-11 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />%
+                      </label>
+                      <label className="flex items-center gap-0.5">MO
+                        <input type="number" step="1" min="0" max="100" placeholder="—" value={marginLabor}
+                               onChange={(e) => setMarginLabor(e.target.value)} data-testid="margin-labor"
+                               className="w-11 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />%
+                      </label>
+                    </div>
                     <Button size="sm" variant="outline" onClick={saveBetonDefaults}
                             data-testid="save-beton-defaults"
                             className="rounded-sm h-6 text-[10px] gap-1 mt-1.5">

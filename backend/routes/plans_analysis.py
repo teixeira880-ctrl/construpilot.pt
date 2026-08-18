@@ -1127,6 +1127,8 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              acier_price_kg: float = 0.0,
                              beton_price_m3: float = 0.0, labor_price_m3: float = 0.0,
                              margin_pct: float = 0.0,
+                             margin_beton: float | None = None, margin_acier: float | None = None,
+                             margin_labor: float | None = None,
                              client_id: str | None = None,
                              body: QuoteFromStructureIn | None = None,
                              user=Depends(current_user)) -> dict:
@@ -1170,13 +1172,20 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                       "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 10,
                       "category": "Depuis analyse plan"})
         priced += 1
-    # Marge commerciale appliquée aux prix de vente (béton + aciers + main d'œuvre)
-    if margin_pct and margin_pct > 0:
-        coef = 1 + float(margin_pct) / 100
-        for ln in lines:
-            desig = (ln.get("designation") or "").lower()
-            if ln.get("unit_price_ht") and ("béton" in desig or "acier" in desig or "main d'œuvre" in desig):
-                ln["unit_price_ht"] = round(ln["unit_price_ht"] * coef, 2)
+    # Marge commerciale par poste (béton / aciers / main d'œuvre) — repli sur la marge globale
+    m_beton = margin_beton if margin_beton is not None else margin_pct
+    m_acier = margin_acier if margin_acier is not None else margin_pct
+    m_labor = margin_labor if margin_labor is not None else margin_pct
+    for ln in lines:
+        desig = (ln.get("designation") or "").lower()
+        if not ln.get("unit_price_ht"):
+            continue
+        if "main d'œuvre" in desig and m_labor:
+            ln["unit_price_ht"] = round(ln["unit_price_ht"] * (1 + m_labor / 100), 2)
+        elif "acier" in desig and m_acier:
+            ln["unit_price_ht"] = round(ln["unit_price_ht"] * (1 + m_acier / 100), 2)
+        elif "béton" in desig and m_beton:
+            ln["unit_price_ht"] = round(ln["unit_price_ht"] * (1 + m_beton / 100), 2)
     snap = (body.snapshot_png if body else None) or None
     if snap and snap.startswith("data:"):
         snap = snap.split(",", 1)[-1]
