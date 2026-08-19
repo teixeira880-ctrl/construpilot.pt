@@ -109,6 +109,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
     u = await db.users.find_one({"user_id": user_id},
                                  {"_id": 0, "organization_id": 1, "picture": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
+                                  "brand_company_email": 1,
                                   "brand_siret": 1, "brand_vat": 1,
                                   "brand_address": 1, "brand_city": 1,
                                   "brand_postal": 1, "brand_country": 1,
@@ -120,6 +121,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
         org = await db.organizations.find_one({"org_id": u["organization_id"]},
                                                 {"_id": 0, "brand_company_name": 1,
                                                  "brand_contact_line": 1, "brand_logo_b64": 1,
+                                                 "brand_company_email": 1,
                                                  "brand_siret": 1, "brand_vat": 1,
                                                  "brand_address": 1, "brand_city": 1,
                                                  "brand_postal": 1, "brand_country": 1,
@@ -128,6 +130,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                                               "brand_logo_b64", "brand_certifications")):
             return {"company_name": org.get("brand_company_name"),
                     "contact_line": org.get("brand_contact_line"),
+                    "company_email": org.get("brand_company_email"),
                     "logo_b64": org.get("brand_logo_b64"),
                     "siret": org.get("brand_siret"),
                     "vat": org.get("brand_vat"),
@@ -141,6 +144,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                               "brand_certifications")):
         return {"company_name": u.get("brand_company_name"),
                 "contact_line": u.get("brand_contact_line"),
+                "company_email": u.get("brand_company_email"),
                 "logo_b64": u.get("brand_logo_b64"),
                 "siret": u.get("brand_siret"),
                 "vat": u.get("brand_vat"),
@@ -154,6 +158,86 @@ async def _resolve_branding(user_id: str) -> dict | None:
         return {"company_name": None, "contact_line": None, "logo_b64": None,
                 "certifications": [], "profile_photo_b64": photo}
     return None
+
+
+# ---- Boîte e-mail entreprise (SMTP) ------------------------------------
+
+async def get_mailbox_config(user_id: str) -> dict | None:
+    """Config SMTP de l'entreprise (mot de passe déchiffré) si connectée + vérifiée.
+
+    Résolution : config perso de l'utilisateur d'abord, sinon config de son org.
+    """
+    from engines.mailbox_smtp import decrypt_secret
+
+    def _extract(doc: dict) -> dict | None:
+        if not doc or not doc.get("smtp_verified"):
+            return None
+        enc = doc.get("smtp_password_enc")
+        if not (doc.get("smtp_host") and doc.get("smtp_email") and enc):
+            return None
+        try:
+            pwd = decrypt_secret(enc)
+        except Exception:  # noqa: BLE001
+            return None
+        return {"host": doc["smtp_host"], "port": doc.get("smtp_port"),
+                "security": doc.get("smtp_security", "ssl"),
+                "email": doc["smtp_email"], "password": pwd,
+                "from_name": doc.get("smtp_from_name")}
+
+    u = await db.users.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "organization_id": 1, "smtp_host": 1, "smtp_port": 1,
+         "smtp_security": 1, "smtp_email": 1, "smtp_password_enc": 1,
+         "smtp_from_name": 1, "smtp_verified": 1}) or {}
+    cfg = _extract(u)
+    if cfg:
+        return cfg
+    if u.get("organization_id"):
+        org = await db.organizations.find_one(
+            {"org_id": u["organization_id"]},
+            {"_id": 0, "smtp_host": 1, "smtp_port": 1, "smtp_security": 1,
+             "smtp_email": 1, "smtp_password_enc": 1, "smtp_from_name": 1,
+             "smtp_verified": 1}) or {}
+        return _extract(org)
+    return None
+
+
+async def deliver_email(user_id: str, to: str, subject: str, html: str,
+                        pdf_bytes: bytes | None = None, filename: str = "document.pdf",
+                        extra_attachments: list[dict] | None = None,
+                        reply_to: str | None = None, from_name: str | None = None,
+                        cc: str | None = None) -> dict:
+    """Envoie via le SMTP entreprise si connecté (copie auto dans « Envoyés »),
+    sinon via Resend. Retourne {ok, id, via, error?}."""
+    attachments: list[dict] = []
+    if pdf_bytes is not None:
+        attachments.append({"filename": filename, "content": pdf_bytes,
+                            "content_type": "application/pdf"})
+    for att in extra_attachments or []:
+        attachments.append(att)
+
+    cfg = await get_mailbox_config(user_id)
+    if cfg:
+        from engines.mailbox_smtp import smtp_send
+        try:
+            res = await smtp_send(cfg, to, subject, html, cc=cc, reply_to=reply_to,
+                                  from_name=from_name, attachments=attachments)
+            return {"ok": True, "id": res.get("id"), "via": "smtp"}
+        except Exception as e:  # noqa: BLE001
+            logger.warning("SMTP entreprise échoué (%s) — fallback Resend : %s", user_id, e)
+
+    from engines.emailer import send_email, send_email_with_pdf
+    if attachments:
+        first = attachments[0]
+        res = await send_email_with_pdf(
+            to, subject, html, first["content"], filename=first["filename"],
+            cc=cc, extra_attachments=attachments[1:] or None,
+            reply_to=reply_to, from_name=from_name)
+    else:
+        res = await send_email(to, subject, html, reply_to=reply_to, from_name=from_name)
+    return {"ok": True, "id": res.get("id"), "via": "resend"}
+
+
 
 
 # ---- Quote build (used by export routes) -------------------------------

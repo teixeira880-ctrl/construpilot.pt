@@ -115,6 +115,7 @@ async def update_prefs(body: PrefsIn, user=Depends(current_user)):
 
 class BrandingIn(BaseModel):
     company_name: str | None = None
+    company_email: str | None = None
     contact_line: str | None = None
     logo_b64: str | None = None
     siret: str | None = None
@@ -144,6 +145,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
+                                  "brand_company_email": 1,
                                   "brand_siret": 1, "brand_vat": 1,
                                   "brand_address": 1, "brand_city": 1,
                                   "brand_postal": 1, "brand_country": 1,
@@ -153,6 +155,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
         org = await db.organizations.find_one({"org_id": org_id},
                                                 {"_id": 0, "brand_company_name": 1,
                                                  "brand_contact_line": 1,
+                                                 "brand_company_email": 1,
                                                  "brand_logo_b64": 1, "org_code": 1,
                                                  "brand_certifications": 1,
                                                  "org_id": 1, "name": 1})
@@ -162,12 +165,14 @@ async def get_branding(user=Depends(current_user)) -> dict:
                     "org_code": org.get("org_code"), "org_name": org.get("name"),
                     "org_role": role, "can_edit": role in ("owner", "admin"),
                     "company_name": org.get("brand_company_name"),
+                    "company_email": org.get("brand_company_email"),
                     "contact_line": org.get("brand_contact_line"),
                     "has_logo": bool(org.get("brand_logo_b64")),
                     "logo_b64": org.get("brand_logo_b64"),
                     "certifications": org.get("brand_certifications") or []}
     return {"source": "user", "can_edit": True,
             "company_name": u.get("brand_company_name"),
+            "company_email": u.get("brand_company_email"),
             "contact_line": u.get("brand_contact_line"),
             "siret": u.get("brand_siret"),
             "vat": u.get("brand_vat"),
@@ -190,6 +195,10 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
     upd = {}
     if body.company_name is not None:
         upd["brand_company_name"] = body.company_name.strip()[:120] or None
+    if body.company_email is not None:
+        import re as _re
+        ce = body.company_email.strip().lower()[:120]
+        upd["brand_company_email"] = ce if _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", ce) else None
     if body.contact_line is not None:
         upd["brand_contact_line"] = body.contact_line.strip()[:200] or None
     if body.siret is not None:
@@ -472,3 +481,131 @@ async def org_invite(body: OrgInviteIn, user=Depends(current_user)) -> dict:
 
     return {"ok": True, "invite_id": invite_id, "email_status": email_status,
             "org_code": org["org_code"]}
+
+
+
+# =============== BOÎTE E-MAIL ENTREPRISE (SMTP, comme Obat) ===============
+
+class MailboxIn(BaseModel):
+    host: str
+    port: int | None = None
+    security: str = "ssl"  # "ssl" | "starttls"
+    email: EmailStr
+    password: str | None = None  # None => conserve le mot de passe existant
+    from_name: str | None = None
+
+
+async def _mailbox_target(user) -> tuple[str, dict]:
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "organization_id": 1, "org_role": 1}) or {}
+    org_id = u.get("organization_id")
+    if org_id:
+        if u.get("org_role") not in ("owner", "admin"):
+            raise HTTPException(403,
+                "Seul un admin/propriétaire peut configurer la boîte e-mail de l'équipe.")
+        return "organizations", {"org_id": org_id}
+    return "users", {"user_id": user["user_id"]}
+
+
+async def _mailbox_doc(user) -> tuple[dict, str]:
+    """Retourne (doc effectif contenant les champs smtp_*, source)."""
+    proj = {"_id": 0, "smtp_host": 1, "smtp_port": 1, "smtp_security": 1,
+            "smtp_email": 1, "smtp_password_enc": 1, "smtp_from_name": 1,
+            "smtp_verified": 1}
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {**proj, "organization_id": 1}) or {}
+    if u.get("smtp_host"):
+        return u, "user"
+    if u.get("organization_id"):
+        org = await db.organizations.find_one({"org_id": u["organization_id"]}, proj) or {}
+        if org.get("smtp_host"):
+            return org, "organization"
+    return u, "user"
+
+
+@router.get("/users/me/mailbox")
+async def get_mailbox(user=Depends(current_user)) -> dict:
+    doc, source = await _mailbox_doc(user)
+    return {
+        "configured": bool(doc.get("smtp_host") and doc.get("smtp_email")),
+        "verified": bool(doc.get("smtp_verified")),
+        "host": doc.get("smtp_host"),
+        "port": doc.get("smtp_port"),
+        "security": doc.get("smtp_security") or "ssl",
+        "email": doc.get("smtp_email"),
+        "from_name": doc.get("smtp_from_name"),
+        "source": source,
+    }
+
+
+@router.put("/users/me/mailbox")
+async def update_mailbox(body: MailboxIn, user=Depends(current_user)) -> dict:
+    from engines.mailbox_smtp import encrypt_secret, decrypt_secret, smtp_verify
+    coll, key = await _mailbox_target(user)
+    existing = await db[coll].find_one(key, {"_id": 0, "smtp_password_enc": 1}) or {}
+
+    if body.password:
+        pwd = body.password
+        enc = encrypt_secret(pwd)
+    elif existing.get("smtp_password_enc"):
+        enc = existing["smtp_password_enc"]
+        try:
+            pwd = decrypt_secret(enc)
+        except Exception:  # noqa: BLE001
+            raise HTTPException(400, "Mot de passe illisible — ressaisissez-le.")
+    else:
+        raise HTTPException(400, "Mot de passe d'application requis.")
+
+    if body.security not in ("ssl", "starttls"):
+        raise HTTPException(400, "Sécurité invalide (ssl ou starttls).")
+
+    cfg = {"host": body.host.strip(), "port": body.port,
+           "security": body.security, "email": str(body.email).strip().lower(),
+           "password": pwd, "from_name": (body.from_name or "").strip() or None}
+
+    # Vérifie la connexion + l'authentification avant d'enregistrer.
+    try:
+        await smtp_verify(cfg)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("SMTP verify failed for %s: %s", cfg["email"], e)
+        raise HTTPException(400,
+            f"Connexion SMTP impossible : {str(e)[:180]}. Vérifiez l'hôte, le port, "
+            "l'e-mail et le mot de passe d'application.")
+
+    await db[coll].update_one(key, {"$set": {
+        "smtp_host": cfg["host"], "smtp_port": cfg["port"],
+        "smtp_security": cfg["security"], "smtp_email": cfg["email"],
+        "smtp_password_enc": enc, "smtp_from_name": cfg["from_name"],
+        "smtp_verified": True, "smtp_updated_at": _now(),
+    }})
+    return await get_mailbox(user)
+
+
+@router.post("/users/me/mailbox/test")
+async def test_mailbox(user=Depends(current_user)) -> dict:
+    """Envoie un e-mail de test vers sa propre boîte (doit apparaître dans « Envoyés »)."""
+    from routes.plans_common import get_mailbox_config
+    from engines.mailbox_smtp import smtp_send
+    cfg = await get_mailbox_config(user["user_id"])
+    if not cfg:
+        raise HTTPException(400, "Aucune boîte e-mail connectée/vérifiée.")
+    html = ("<p>Ceci est un e-mail de test envoyé depuis ConstruPilot via votre boîte.</p>"
+            "<p>Une copie doit apparaître dans votre dossier <b>Envoyés</b>. "
+            "Si c'est le cas, la configuration est parfaite ✅</p>")
+    try:
+        await smtp_send(cfg, cfg["email"], "Test ConstruPilot — envoi via votre boîte",
+                        html, from_name=cfg.get("from_name"))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"Envoi de test échoué : {str(e)[:180]}")
+    return {"ok": True, "sent_to": cfg["email"]}
+
+
+@router.delete("/users/me/mailbox")
+async def delete_mailbox(user=Depends(current_user)) -> dict:
+    coll, key = await _mailbox_target(user)
+    await db[coll].update_one(key, {"$unset": {
+        "smtp_host": "", "smtp_port": "", "smtp_security": "",
+        "smtp_email": "", "smtp_password_enc": "", "smtp_from_name": "",
+        "smtp_verified": "", "smtp_updated_at": "",
+    }})
+    return {"ok": True}

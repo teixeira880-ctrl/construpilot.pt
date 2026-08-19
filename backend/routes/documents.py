@@ -476,9 +476,9 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     """Génère le PDF puis envoie l'email au client EN TÂCHE DE FOND (réponse immédiate)."""
     import re as _re
     import secrets as _secrets
-    from engines.emailer import send_email_with_pdf, wrap_html
+    from engines.emailer import wrap_html
     from engines.pdf_docs import build_document_pdf
-    from routes.plans_common import _resolve_branding
+    from routes.plans_common import _resolve_branding, deliver_email
     from routes.reviews import get_reviews_for_user
     if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.client_email or ""):
         raise HTTPException(400, "Email client invalide.")
@@ -494,6 +494,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
                                    lang=(doc.get("lang") or user.get("lang")))
     company = (branding or {}).get("company_name") or user.get("name") or "ConstruPilot"
+    company_email = (branding or {}).get("company_email")
     ttc = (doc.get("totals") or {}).get("ttc") or doc.get("total_ttc") or 0
     hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
     inner = f"<p>{hello}</p><p>Veuillez trouver ci-joint votre devis de <b>{company}</b>.</p>"
@@ -545,13 +546,16 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     async def _deliver():
         try:
             res = await asyncio.wait_for(
-                send_email_with_pdf(body.client_email, subject, html, pdf_bytes,
-                                    filename=filename, cc=cc,
-                                    extra_attachments=extra_attachments),
+                deliver_email(user["user_id"], body.client_email, subject, html,
+                              pdf_bytes=pdf_bytes, filename=filename, cc=cc,
+                              extra_attachments=extra_attachments,
+                              reply_to=(company_email or cc),
+                              from_name=company),
                 timeout=45)
             await db.quote_sends.update_one(
                 {"log_id": log_id},
-                {"$set": {"email_status": "sent", "email_id": res.get("id")}})
+                {"$set": {"email_status": "sent", "email_id": res.get("id"),
+                          "email_via": res.get("via")}})
         except Exception as e:  # noqa: BLE001
             logger.warning(f"send_document email failed ({log_id}): {e}")
             await db.quote_sends.update_one(
@@ -838,8 +842,8 @@ async def run_invoice_reminders() -> int:
     """Relance quotidienne des factures impayées à J+7 puis J+15, PDF en pièce jointe."""
     from datetime import timedelta  # noqa: F401
     from engines.pdf_docs import build_document_pdf
-    from engines.emailer import send_email_with_pdf, wrap_html
-    from routes.plans_common import _resolve_branding
+    from engines.emailer import wrap_html
+    from routes.plans_common import _resolve_branding, deliver_email
     log = logging.getLogger(__name__)
     now = datetime.now(timezone.utc)
     sent = 0
@@ -871,6 +875,8 @@ async def run_invoice_reminders() -> int:
             pdf = build_document_pdf(inv, branding=branding, lang=lang)
             remaining = inv.get("remaining_due", inv.get("totals", {}).get("ttc", 0)) or 0
             name = client.get("first_name") or client.get("company") or ""
+            company_name = (branding or {}).get("company_name")
+            company_email = (branding or {}).get("company_email")
             from engines.email_i18n import T
             number = inv.get("number")
             inner = (
@@ -878,9 +884,10 @@ async def run_invoice_reminders() -> int:
                 f"<p>{T(lang, 'invrem.body1', number=number, amount=f'{remaining:.2f} €')}</p>"
                 f"<p>{T(lang, 'invrem.body2')}</p>")
             html = wrap_html(T(lang, "invrem.title", number=number), inner)
-            await send_email_with_pdf(
-                email, T(lang, "invrem.subject", number=number),
-                html, pdf, filename=f"{number}.pdf")
+            await deliver_email(
+                inv["user_id"], email, T(lang, "invrem.subject", number=number),
+                html, pdf_bytes=pdf, filename=f"{number}.pdf",
+                reply_to=company_email, from_name=company_name)
             await db.pro_documents.update_one(
                 {"doc_id": inv["doc_id"]},
                 {"$set": {f"reminders.{stage}": now.isoformat()}})

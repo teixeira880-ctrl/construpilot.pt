@@ -21,14 +21,22 @@ def _configure():
     return bool(key)
 
 
-def _from():
-    return os.environ.get("SENDER_EMAIL") or "onboarding@resend.dev"
+def _from(from_name: str | None = None):
+    addr = os.environ.get("SENDER_EMAIL") or "onboarding@resend.dev"
+    if from_name:
+        clean = from_name.replace('"', "").replace("<", "").replace(">", "").strip()[:80]
+        if clean:
+            return f"{clean} <{addr}>"
+    return addr
 
 
-async def send_email(to: str, subject: str, html: str) -> dict:
+async def send_email(to: str, subject: str, html: str,
+                     reply_to: str | None = None, from_name: str | None = None) -> dict:
     if not _configure():
         raise RuntimeError("RESEND_API_KEY manquant")
-    params = {"from": _from(), "to": [to], "subject": subject, "html": html}
+    params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html}
+    if reply_to:
+        params["reply_to"] = reply_to
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
         return {"ok": True, "id": resp.get("id")}
@@ -40,7 +48,9 @@ async def send_email(to: str, subject: str, html: str) -> dict:
 async def send_email_with_pdf(to: str, subject: str, html: str,
                               pdf_bytes: bytes, filename: str = "devis.pdf",
                               cc: str | None = None,
-                              extra_attachments: list[dict] | None = None) -> dict:
+                              extra_attachments: list[dict] | None = None,
+                              reply_to: str | None = None,
+                              from_name: str | None = None) -> dict:
     """Envoie un email avec un PDF principal + éventuellement d'autres pièces jointes.
 
     extra_attachments : liste de dicts {filename, content (bytes)}.
@@ -58,10 +68,12 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
             "content": base64.b64encode(att["content"]).decode("utf-8"),
             "content_type": att.get("content_type", "application/pdf"),
         })
-    params = {"from": _from(), "to": [to], "subject": subject, "html": html,
+    params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html,
               "attachments": attachments}
     if cc:
         params["cc"] = [cc]
+    if reply_to:
+        params["reply_to"] = reply_to
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
         return {"ok": True, "id": resp.get("id")}

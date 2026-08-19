@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BrandingDialog } from "@/components/BrandingDialog";
+import { MailboxDialog } from "@/components/MailboxDialog";
 import { useBilling } from "@/context/BillingContext";
 import { Lock, Unlock } from "lucide-react";
 import { QuoteDialog } from "@/components/planTakeoff/QuoteDialog";
@@ -2365,6 +2366,7 @@ export default function PlanTakeoff() {
             <FileDown className="h-4 w-4" /> Multi-plans
           </Button>
           <BrandingDialog />
+          <MailboxDialog />
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
                   title="Lecture du plan par l'IA : pièces, cotes, surfaces, ouvertures et types de murs">
             <Sparkles className={`h-4 w-4 ${aiBusy ? "animate-pulse" : ""}`} />

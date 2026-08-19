@@ -1053,3 +1053,17 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Boutons : "Transcrire maintenant" (video-review-transcribe → transcribeVideo, ex-createFromVideo, flux Whisper inchangé) et "Changer de vidéo" (video-review-restart → ferme, l'utilisateur re-choisit une source). Object URL révoqué à la fermeture.
 - Vérifié : screenshot préversion (galerie, mp4 test 320x240) — dialog affiche 0.1 Mo, estimation ~12 s, aperçu + 2 boutons. Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 144 - 19/06/2026 (Boîte e-mail entreprise SMTP — copie auto dans « Envoyés », comme Obat)
+- DIAGNOSTIC : les clients ne recevaient rien car le compte Resend est en mode test (aucun domaine vérifié) → Resend n'autorise que l'envoi vers contact@cmrenov.com. cmrenov.com est sur Google Workspace.
+- emailer.py : send_email / send_email_with_pdf acceptent désormais from_name (affiche "Entreprise <expéditeur>") et reply_to. _from(from_name) sanitize le nom.
+- Branding : nouveau champ company_email (E-mail officiel entreprise) — BrandingIn, get/update_branding (user+org), _resolve_branding. Utilisé comme reply-to par défaut. UI: BrandingDialog input branding-company-email-input.
+- NOUVEAU engines/mailbox_smtp.py : envoi via SMTP entreprise (aiosmtplib), mot de passe chiffré Fernet (clé dérivée de JWT_SECRET). smtp_send + smtp_verify.
+- plans_common.py : get_mailbox_config(user_id) (résout user puis org) + deliver_email(...) dispatcher SMTP-first (copie auto dans « Envoyés ») avec fallback Resend. email_via enregistré.
+- Endpoints (phase7.py) : GET/PUT/DELETE /users/me/mailbox + POST /users/me/mailbox/test. PUT vérifie la connexion/auth SMTP avant d'enregistrer (smtp_verified). Stockage org si owner/admin, sinon user.
+- Câblage devis/factures/rappels sur deliver_email : documents.py send_document + rappels factures ; plans_export.py send_quote + _send_single_reminder.
+- Frontend : NOUVEAU MailboxDialog.jsx (presets Gmail/Outlook/IONOS/OVH/Autre, aide mot de passe d'application Gmail, test, déconnexion) ajouté dans Entreprise.jsx et PlanTakeoff.jsx à côté d'« Identité pro ».
+- aiosmtplib==5.1.2 ajouté (requirements.txt via pip freeze).
+- VÉRIFIÉ : branding company_email round-trip ; _from('Nom')='Nom <devis@construpilot.fr>' + sanitize ; PUT mailbox avec identifiants invalides → 400 avec vraie erreur SMTP Gmail (535) ⇒ pipeline SMTP OK ; envoi devis 200 queued → deliver via resend (email_via=resend, status sent, pas de régression) ; UI MailboxDialog rendue.
+- NON TESTABLE ICI : envoi SMTP réel (nécessite le vrai mot de passe d'application de contact@cmrenov.com). Le chemin connexion+auth+erreur est vérifié.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

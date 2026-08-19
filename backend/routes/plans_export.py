@@ -469,13 +469,15 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     sender_u = await db.users.find_one({"user_id": user["user_id"]},
                                          {"_id": 0, "name": 1, "email": 1})
     company = branding.get("company_name") or (sender_u or {}).get("name") or "ConstruPilot"
+    company_email = branding.get("company_email")
     contact = branding.get("contact_line") or ""
 
     ttc = quote.get("total_ttc", 0)
     finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
         body.finish, "Standard")
 
-    from engines.emailer import send_email_with_pdf, wrap_html
+    from engines.emailer import wrap_html
+    from routes.plans_common import deliver_email
     hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
     intro_html = (f"<p>{body.intro}</p>" if body.intro
                    else "<p>Veuillez trouver ci-joint votre <b>devis estimatif</b>"
@@ -531,10 +533,12 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     error = None
     try:
         cc = (sender_u or {}).get("email") if body.cc_self else None
-        res = await send_email_with_pdf(body.client_email, subject,
-                                          html, pdf_bytes,
-                                          filename=f"devis-{plan_id}.pdf", cc=cc,
-                                          extra_attachments=extra_attachments)
+        res = await deliver_email(user["user_id"], body.client_email, subject,
+                                  html, pdf_bytes=pdf_bytes,
+                                  filename=f"devis-{plan_id}.pdf", cc=cc,
+                                  extra_attachments=extra_attachments,
+                                  reply_to=(company_email or cc),
+                                  from_name=company)
         email_id = res.get("id")
     except Exception as e:
         logger.warning(f"Send quote email failed: {e}")
@@ -666,9 +670,11 @@ async def _ensure_signature_token(log: dict) -> str:
 
 
 async def _send_single_reminder(c: dict) -> None:
-    from engines.emailer import send_email, wrap_html
+    from engines.emailer import wrap_html
+    from routes.plans_common import deliver_email
     branding = await _resolve_branding(c["user_id"]) or {}
     company = branding.get("company_name") or "ConstruPilot"
+    company_email = branding.get("company_email")
     hello = f"Bonjour {c['client_name']}," if c.get("client_name") else "Bonjour,"
     token = await _ensure_signature_token(c)
     sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{token}"
@@ -678,8 +684,9 @@ async def _send_single_reminder(c: dict) -> None:
     inner = _build_reminder_html(hello=hello, ttc=c.get("total_ttc", 0),
                                   sign_url=sign_url, portal_url=portal_url,
                                   company=company)
-    await send_email(c["client_email"], f"Rappel : votre devis · {company}",
-                      wrap_html(f"Rappel devis · {company}", inner))
+    await deliver_email(c["user_id"], c["client_email"], f"Rappel : votre devis · {company}",
+                        wrap_html(f"Rappel devis · {company}", inner),
+                        reply_to=company_email, from_name=company)
     await db.quote_sends.update_one({"log_id": c["log_id"]},
         {"$set": {"reminder_sent": True, "reminder_sent_at": _now()}})
     await db.notifications.insert_one({

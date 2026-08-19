@@ -21,6 +21,7 @@ const CERTS = [
 export function BrandingDialog({ trigger }) {
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
   const [contactLine, setContactLine] = useState("");
   const [siret, setSiret] = useState("");
   const [vat, setVat] = useState("");
@@ -39,6 +40,7 @@ export function BrandingDialog({ trigger }) {
     if (!open) return;
     api.get("/users/me/branding").then(({ data }) => {
       setCompanyName(data.company_name || "");
+      setCompanyEmail(data.company_email || "");
       setContactLine(data.contact_line || "");
       setSiret(data.siret || "");
       setVat(data.vat || "");
@@ -75,7 +77,7 @@ export function BrandingDialog({ trigger }) {
     setBusy(true);
     try {
       await api.put("/users/me/branding", {
-        company_name: companyName, contact_line: contactLine, logo_b64: logoB64 || null,
+        company_name: companyName, company_email: companyEmail, contact_line: contactLine, logo_b64: logoB64 || null,
         siret: siret, vat: vat,
         address: address, city: city, postal_code: postalCode, country: country,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
@@ -117,6 +119,16 @@ export function BrandingDialog({ trigger }) {
                    placeholder="Ex : BTP Construction SAS" disabled={!canEdit}
                    data-testid="branding-company-input"
                    className="rounded-sm h-11" maxLength={120} />
+          </div>
+          <div className="grid gap-2">
+            <Label>E-mail officiel de l'entreprise</Label>
+            <Input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)}
+                   placeholder="Ex : contact@votre-entreprise.fr" disabled={!canEdit}
+                   data-testid="branding-company-email-input"
+                   className="rounded-sm h-11" maxLength={120} />
+            <p className="text-xs text-muted-foreground">
+              Utilisé comme adresse de réponse (reply-to) : quand un client répond à un devis/facture, sa réponse arrive dans cette boîte.
+            </p>
           </div>
           <div className="grid gap-2">
             <Label>Ligne contact</Label>
