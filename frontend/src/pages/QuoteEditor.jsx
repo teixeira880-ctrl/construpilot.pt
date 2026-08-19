@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send,
+  Images, Camera, Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,6 +200,79 @@ export default function QuoteEditor() {
     } finally { setPlanBusy(false); }
   };
 
+  // --- Enregistreur vidéo intégré basse résolution (480p) ---
+  const [recOpen, setRecOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recSecs, setRecSecs] = useState(0);
+  const streamRef = useRef(null);
+  const recorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const videoElRef = useRef(null);
+
+  const closeRecorder = () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (recorderRef.current && recorderRef.current.state !== "inactive") { try { recorderRef.current.stop(); } catch {} }
+    recorderRef.current = null;
+    if (streamRef.current) { streamRef.current.getTracks().forEach((tr) => tr.stop()); streamRef.current = null; }
+    if (videoElRef.current) videoElRef.current.srcObject = null;
+    setRecording(false);
+    setRecSecs(0);
+    setRecOpen(false);
+  };
+
+  const openRecorder = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) { toast.error("Caméra non supportée — utilisez la galerie"); return; }
+    setRecOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 640 }, height: { ideal: 480 },
+          frameRate: { ideal: 24, max: 30 },
+        },
+      });
+      streamRef.current = stream;
+      if (videoElRef.current) { videoElRef.current.srcObject = stream; videoElRef.current.play().catch(() => {}); }
+    } catch {
+      toast.error("Accès caméra refusé — utilisez la galerie");
+      closeRecorder();
+    }
+  };
+
+  const startRec = () => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    chunksRef.current = [];
+    const cand = ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+    const mime = cand.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 600000 } : {});
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunksRef.current.push(e.data); };
+    rec.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType || "video/webm" });
+      const ext = (rec.mimeType || "").includes("mp4") ? "mp4" : "webm";
+      const file = new File([blob], `chantier-${Date.now()}.${ext}`, { type: blob.type });
+      closeRecorder();
+      if (blob.size > 0) createFromVideo(file);
+    };
+    rec.start();
+    recorderRef.current = rec;
+    setRecording(true);
+    setRecSecs(0);
+    timerRef.current = setInterval(() => setRecSecs((s) => s + 1), 1000);
+  };
+
+  const stopRec = () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
+    setRecording(false);
+  };
+
+  const fmtSecs = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+  useEffect(() => () => { closeRecorder(); }, []);
+
   const createFromVideo = async (file) => {
     if (!file) return;
     if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
@@ -342,12 +416,16 @@ export default function QuoteEditor() {
                   disabled={planBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-add-plan-btn">
             {planBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ruler className="h-4 w-4" />} Ajouter un plan
           </Button>
-          <input type="file" accept="video/*" capture="environment" className="hidden" id="qe-video-input"
+          <input type="file" accept="video/*" className="hidden" id="qe-video-input"
                  onChange={(e) => { createFromVideo(e.target.files?.[0]); e.target.value = ""; }}
                  data-testid="editor-video-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-video-input").click()}
-                  disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-btn">
-            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} Vidéo → devis
+                  disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-gallery-btn">
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} Vidéo galerie
+          </Button>
+          <Button variant="outline" onClick={openRecorder}
+                  disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-record-btn">
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} Filmer → devis
           </Button>
           <Button variant="outline" onClick={downloadPdf} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
             <Download className="h-4 w-4" /> {t("crm.pdf")}
@@ -570,6 +648,37 @@ export default function QuoteEditor() {
               </button>
             ))}
             {filteredLib.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">{t("crm.no_result")}</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={recOpen} onOpenChange={(v) => { if (!v) closeRecorder(); }}>
+        <DialogContent className="max-w-lg" data-testid="video-recorder-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Camera className="h-5 w-5 text-primary" /> Filmer le chantier</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Enregistrement en basse résolution (480p) pour un envoi rapide. Décrivez les travaux à voix haute.
+          </p>
+          <div className="relative bg-black rounded-sm overflow-hidden aspect-video">
+            <video ref={videoElRef} muted playsInline autoPlay className="w-full h-full object-contain" data-testid="video-recorder-preview" />
+            {recording && (
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 text-white text-xs px-2 py-1 rounded-full" data-testid="video-recorder-timer">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> {fmtSecs(recSecs)}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={closeRecorder} className="rounded-sm" data-testid="video-recorder-cancel">Annuler</Button>
+            {!recording ? (
+              <Button onClick={startRec} disabled={!streamRef.current} className="rounded-sm gap-2 bg-red-600 hover:bg-red-700" data-testid="video-recorder-start">
+                <Video className="h-4 w-4" /> Démarrer
+              </Button>
+            ) : (
+              <Button onClick={stopRec} className="rounded-sm gap-2 bg-primary" data-testid="video-recorder-stop">
+                <Square className="h-4 w-4" /> Arrêter & générer
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -1038,3 +1038,11 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - plans_export.py : get_signature_page_data → log.get('plan_id') (évite KeyError pour envois par document). get_signed_quote_pdf → fallback build_document_pdf quand pas de plan_id (doc_id), avec signature si signée.
 - Vérifié e2e (compte pro) : envoi doc → GET page signature 200 → POST signature 200 → PDF signé 200 → page publique /sign/{token} affiche récap + "devis signé" + téléchargement. 
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 142 - 19/06/2026 (Vidéo → devis : galerie + enregistreur 480p)
+- QuoteEditor.jsx : remplacé le bouton unique "Vidéo → devis" (input capture=environment) par DEUX boutons :
+  - "Vidéo galerie" (editor-video-gallery-btn) : input file accept="video/* SANS capture → laisse choisir une vidéo existante de la galerie/fichiers.
+  - "Filmer → devis" (editor-video-record-btn) : ouvre un enregistreur intégré (Dialog video-recorder-dialog) via getUserMedia { video: {width:640,height:480, facingMode environment}, audio } + MediaRecorder (webm/mp4, 600 kbps) → basse résolution pour envoi rapide. Timer live, boutons Démarrer/Arrêter&générer, nettoyage stream à la fermeture.
+  - onstop → File webm/mp4 passé à createFromVideo (flux transcription Whisper existant).
+- Vérifié : screenshot préversion (compte demo) — les 2 boutons s'affichent, le dialog "Filmer le chantier" ouvre un flux caméra live (contraintes 480p appliquées, bouton Démarrer actif). Frontend compile (warnings exhaustive-deps préexistants uniquement).
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
