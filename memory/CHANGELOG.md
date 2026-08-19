@@ -1026,3 +1026,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - QuoteEditor.jsx : case à cocher "Joindre le rendu 3D du projet (si disponible)" (send-quote-attach3d, cochée par défaut) dans le dialog d'envoi ; toast adapté ("Devis envoyé (rendu 3D joint)").
 - Vérifié e2e (curl, compte pro, doc de test avec PNG) : attached_3d=true, réponse 0.36s, livraison background OK (email_id Resend réel). Test nettoyé.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 140 - 19/06/2026 (Aperçu envoi PDF+3D + badge échec/réessayer)
+- QuoteEditor.jsx : le dialog d'envoi affiche un "Aperçu avant envoi" (data-testid=send-preview) — iframe PDF (GET /documents/{id}/pdf blob, send-preview-pdf) + image du rendu 3D (GET /documents/{id} attachment_image_b64, send-preview-3d) ou placeholder "Aucun rendu 3D". Object URL PDF révoqué à la fermeture (closeSend).
+- QuoteTracking.jsx : badge "Échec d'envoi" (rouge) + bouton "Réessayer" (retry-send-{log_id}) sur les envois email_status="failed" → POST /documents/{doc_id}/send avec client_email/name mémorisés. Badge "Envoi en cours…" pour status="queued".
+- Vérifié : screenshot préversion (dialog avec aperçu PDF + zone 3D + checkbox). Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

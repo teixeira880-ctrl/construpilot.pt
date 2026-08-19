@@ -265,6 +265,8 @@ export default function QuoteEditor() {
   const [sendName, setSendName] = useState("");
   const [sendMsg, setSendMsg] = useState("");
   const [attach3d, setAttach3d] = useState(true);
+  const [preview3d, setPreview3d] = useState(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
 
   const openSend = async () => {
     const c = clients.find((x) => x.client_id === clientId);
@@ -272,7 +274,24 @@ export default function QuoteEditor() {
     setSendEmail(c?.email || "");
     setSendName(nm);
     setSendMsg("");
+    setPreview3d(null);
+    setPdfPreviewUrl(null);
     setSendOpen(true);
+    let id = docId;
+    if (!id) { const d = await save(); if (!d) return; id = d.doc_id; }
+    // Aperçu rendu 3D
+    api.get(`/documents/${id}`).then(({ data }) => {
+      if (data?.attachment_image_b64) setPreview3d(data.attachment_image_b64);
+    }).catch(() => {});
+    // Aperçu PDF
+    api.get(`/documents/${id}/pdf?lang=${lang}`, { responseType: "blob" })
+      .then((res) => setPdfPreviewUrl(URL.createObjectURL(res.data)))
+      .catch(() => {});
+  };
+
+  const closeSend = (v) => {
+    setSendOpen(v);
+    if (!v && pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); }
   };
 
   const sendNow = async () => {
@@ -287,7 +306,7 @@ export default function QuoteEditor() {
         .then(({ data }) => {
           toast.success(data?.attached_3d ? "Devis envoyé (rendu 3D joint) ✅" : "Devis envoyé au client ✅");
         });
-      setSendOpen(false);
+      closeSend(false);
       setStatus("sent");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Envoi impossible");
@@ -342,12 +361,31 @@ export default function QuoteEditor() {
         </div>
       </div>
 
-      <Dialog open={sendOpen} onOpenChange={setSendOpen}>
+      <Dialog open={sendOpen} onOpenChange={closeSend}>
         <DialogContent data-testid="send-quote-dialog">
           <DialogHeader>
             <DialogTitle>Envoyer le devis au client</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4">
+          <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-1">
+            {(pdfPreviewUrl || preview3d) && (
+              <div className="grid gap-2" data-testid="send-preview">
+                <p className="text-xs font-semibold text-muted-foreground">Aperçu avant envoi</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {pdfPreviewUrl ? (
+                    <iframe title="Aperçu PDF" src={pdfPreviewUrl} data-testid="send-preview-pdf"
+                            className="w-full h-40 rounded-sm border border-border bg-white" />
+                  ) : (
+                    <div className="w-full h-40 rounded-sm border border-border grid place-items-center text-[10px] text-muted-foreground">PDF…</div>
+                  )}
+                  {preview3d ? (
+                    <img src={preview3d} alt="Rendu 3D" data-testid="send-preview-3d"
+                         className="w-full h-40 object-contain rounded-sm border border-border bg-secondary/30" />
+                  ) : (
+                    <div className="w-full h-40 rounded-sm border border-dashed border-border grid place-items-center text-[10px] text-muted-foreground text-center px-2">Aucun rendu 3D pour ce devis</div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="grid gap-1.5">
               <Label htmlFor="send-name">Nom du client</Label>
               <Input id="send-name" value={sendName} onChange={(e) => setSendName(e.target.value)}
@@ -369,7 +407,7 @@ export default function QuoteEditor() {
               Joindre le rendu 3D du projet (si disponible)
             </label>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSendOpen(false)} className="rounded-sm" data-testid="send-quote-cancel">Annuler</Button>
+              <Button variant="outline" onClick={() => closeSend(false)} className="rounded-sm" data-testid="send-quote-cancel">Annuler</Button>
               <Button onClick={sendNow} disabled={sending} className="rounded-sm gap-2" data-testid="send-quote-confirm">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Envoyer
               </Button>

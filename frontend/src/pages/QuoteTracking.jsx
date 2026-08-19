@@ -24,6 +24,21 @@ export default function QuoteTracking() {
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(new Set());
   const [drafts, setDrafts] = useState([]);
+  const [retrying, setRetrying] = useState(null);
+
+  const retrySend = async (send) => {
+    if (!send.doc_id) { toast.error("Devis introuvable pour la relance"); return; }
+    setRetrying(send.log_id);
+    try {
+      await api.post(`/documents/${send.doc_id}/send`, {
+        client_email: send.client_email, client_name: send.client_name || "",
+      });
+      toast.success("Nouvel envoi lancé ✅");
+      await load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Envoi impossible");
+    } finally { setRetrying(null); }
+  };
   const now = new Date();
   const [recapY, setRecapY] = useState(now.getFullYear());
   const [recapM, setRecapM] = useState(now.getMonth() + 1);
@@ -152,6 +167,19 @@ export default function QuoteTracking() {
           {send.plan_filename || send.plan_id}
         </p>
         <p className="num font-extrabold text-primary text-lg">{fmtEur(send.total_ttc)}</p>
+        {send.email_status === "failed" && (
+          <div className="flex items-center gap-2 pt-1" data-testid={`send-failed-${send.log_id}`}>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-red-500/15 text-red-600">Échec d'envoi</span>
+            <button onClick={() => retrySend(send)} disabled={retrying === send.log_id}
+                    data-testid={`retry-send-${send.log_id}`}
+                    className="text-[10px] px-2 py-0.5 rounded-sm border border-red-500/40 text-red-600 font-semibold">
+              {retrying === send.log_id ? "Envoi…" : "Réessayer"}
+            </button>
+          </div>
+        )}
+        {send.email_status === "queued" && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-amber-500/15 text-amber-600" data-testid={`send-queued-${send.log_id}`}>Envoi en cours…</span>
+        )}
         <p className="text-[10px] num text-muted-foreground">
           Envoyé {daysSince(send.created_at)}
           {send.opened && send.opened_at && ` · ouvert ${daysSince(send.opened_at)}`}
