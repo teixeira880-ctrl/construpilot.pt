@@ -998,3 +998,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - LandingParticuliers.jsx : témoignages vidés → même placeholder, espace conservé.
 - Vérifié : screenshot préversion (bannière + logos absents, placeholder avis visible). Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 136 - 19/06/2026 (Vrais avis site + badges neutres + retrait compteur devis)
+- Vrais avis (produit ConstruPilot) : collection dédiée db.site_reviews (distincte des avis par pro). routes/reviews.py : POST /reviews/site (public, approved=false), GET /reviews/site (approuvés), GET /reviews/site/pending + POST /reviews/site/{id}/approve + DELETE /reviews/site/{id} (admin). Vérifié e2e (submit→pending→approve→liste publique→delete).
+- Frontend TrustSection.jsx réécrit : badges de confiance neutres (Factur-X, Stripe, RGPD/Europe, IA), bouton "Laisser un avis" + dialog (note étoiles, nom, métier, commentaire) → POST /reviews/site (toast "publié après validation"). Affiche les avis approuvés, sinon placeholder. Compteur "142 devis générés cette semaine" SUPPRIMÉ.
+- Admin (Admin.jsx inbox) : section "Avis clients en attente" avec boutons Publier / Supprimer (loadPendingReviews + approveReview/deleteReview).
+- Vérifié : screenshots préversion (badges + dialog + envoi OK). Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

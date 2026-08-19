@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import current_user
+from core.security import current_user, admin_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["reviews"], prefix="/reviews")
@@ -185,6 +185,60 @@ async def my_reviews(user=Depends(current_user)) -> dict:
 
 class PublishIn(BaseModel):
     published: bool
+
+
+# ---- TÉMOIGNAGES DU SITE (produit ConstruPilot) — collecte publique + modération ----
+
+class SiteReviewIn(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    role: str = Field(default="", max_length=80)
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(min_length=5, max_length=600)
+
+
+def _clean_site(d: dict) -> dict:
+    return {"review_id": d.get("review_id"), "name": d.get("name", ""),
+            "role": d.get("role", ""), "rating": d.get("rating", 5),
+            "comment": d.get("comment", ""), "created_at": d.get("created_at"),
+            "approved": d.get("approved", False)}
+
+
+@router.post("/site")
+async def submit_site_review(body: SiteReviewIn) -> dict:
+    """Avis public sur ConstruPilot (publié après validation admin)."""
+    await db.site_reviews.insert_one({
+        "review_id": "srev_" + secrets.token_hex(6),
+        "name": body.name.strip(), "role": body.role.strip(),
+        "rating": int(body.rating), "comment": body.comment.strip(),
+        "approved": False, "created_at": _now(),
+    })
+    return {"ok": True}
+
+
+@router.get("/site")
+async def list_site_reviews(limit: int = 12) -> dict:
+    cur = db.site_reviews.find({"approved": True}, {"_id": 0}).sort("created_at", -1).limit(min(limit, 30))
+    return {"reviews": [_clean_site(d) for d in await cur.to_list(30)]}
+
+
+@router.get("/site/pending", dependencies=[Depends(admin_user)])
+async def pending_site_reviews() -> dict:
+    cur = db.site_reviews.find({"approved": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).limit(100)
+    return {"reviews": [_clean_site(d) for d in await cur.to_list(100)]}
+
+
+@router.post("/site/{review_id}/approve", dependencies=[Depends(admin_user)])
+async def approve_site_review(review_id: str) -> dict:
+    r = await db.site_reviews.update_one({"review_id": review_id}, {"$set": {"approved": True}})
+    if not r.matched_count:
+        raise HTTPException(404, "Avis introuvable")
+    return {"ok": True}
+
+
+@router.delete("/site/{review_id}", dependencies=[Depends(admin_user)])
+async def delete_site_review(review_id: str) -> dict:
+    await db.site_reviews.delete_one({"review_id": review_id})
+    return {"ok": True}
 
 
 @router.patch("/{review_id}/publish")

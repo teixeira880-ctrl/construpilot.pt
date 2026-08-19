@@ -798,6 +798,20 @@ function InboxPanel() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
 
+  const [pendingReviews, setPendingReviews] = useState([]);
+  const loadPendingReviews = () => api.get("/reviews/site/pending")
+    .then(({ data }) => setPendingReviews(data.reviews || [])).catch(() => {});
+  useEffect(() => { loadPendingReviews(); }, []);
+
+  const approveReview = async (id) => {
+    try { await api.post(`/reviews/site/${id}/approve`); toast.success("Avis publié"); loadPendingReviews(); }
+    catch { toast.error("Action impossible"); }
+  };
+  const deleteReview = async (id) => {
+    try { await api.delete(`/reviews/site/${id}`); toast.success("Avis supprimé"); loadPendingReviews(); }
+    catch { toast.error("Action impossible"); }
+  };
+
   const exportDeckCsv = async () => {
     try {
       const { data } = await api.get("/investors/deck-requests.csv", { responseType: "blob" });
@@ -884,6 +898,30 @@ function InboxPanel() {
               </div>
             )}
           </InboxSection>
+
+          <div className="surface p-5" data-testid="pending-reviews-section">
+            <p className="overline mb-3">Avis clients en attente ({pendingReviews.length})</p>
+            {pendingReviews.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Aucun avis à modérer.</p>
+            ) : (
+              <div className="grid gap-2">
+                {pendingReviews.map((r) => (
+                  <div key={r.review_id} className="flex items-start justify-between gap-3 border-b border-border pb-2" data-testid={`pending-review-${r.review_id}`}>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold">{r.name}{r.role ? ` · ${r.role}` : ""} <span className="text-primary">{"★".repeat(r.rating)}</span></p>
+                      <p className="text-xs text-muted-foreground">« {r.comment} »</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => approveReview(r.review_id)} data-testid={`approve-review-${r.review_id}`}
+                              className="text-[10px] px-2 py-1 rounded-sm bg-primary text-primary-foreground font-semibold">Publier</button>
+                      <button onClick={() => deleteReview(r.review_id)} data-testid={`delete-review-${r.review_id}`}
+                              className="text-[10px] px-2 py-1 rounded-sm border border-border text-muted-foreground">Suppr.</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <InboxSection title="Téléchargements pitch deck (VC)" items={data.deck_downloads || []} empty="Aucun téléchargement du pitch deck sur la période."
             action={
