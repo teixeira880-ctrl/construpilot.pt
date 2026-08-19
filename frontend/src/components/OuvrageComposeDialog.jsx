@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 const LEVELS = ["bas", "moyen", "haut"];
 
 /** Insère un ouvrage composé (bibliothèque paramétrique) chiffré dans le devis. */
-export function OuvrageComposeDialog({ onAdd }) {
+export function OuvrageComposeDialog({ onAdd, planVariables }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [ouvrages, setOuvrages] = useState([]);
@@ -42,9 +42,10 @@ export function OuvrageComposeDialog({ onAdd }) {
     setAdding(base_code);
     try {
       const { data } = await api.post("/param-library/quote-line",
-        { base_code, level, region, margin_pct: margin, quantity: 1 });
+        { base_code, level, region, margin_pct: margin, quantity: 1,
+          variables: planVariables || undefined });
       onAdd(data.line);
-      toast.success(`Ajouté : ${data.line.designation} (${data.line.unit_price_ht} €/${data.line.unit})`);
+      toast.success(`Ajouté : ${data.line.designation} (${data.line.qty} ${data.line.unit} × ${data.line.unit_price_ht} €)`);
     } catch { toast.error("Impossible d'ajouter l'ouvrage"); }
     finally { setAdding(""); }
   };
@@ -68,6 +69,11 @@ export function OuvrageComposeDialog({ onAdd }) {
         ) : (
           <>
             <div className="flex flex-wrap gap-3 items-center text-xs">
+              {planVariables && (
+                <span className="rounded-sm bg-primary/10 text-primary px-2 py-1 font-medium" data-testid="ouvrage-plan-metrics">
+                  Quantités reprises du plan : {planVariables.surface_m2 ? `${planVariables.surface_m2} m²` : ""}{planVariables.perimetre_ml ? ` · ${planVariables.perimetre_ml} ml` : ""}
+                </span>
+              )}
               <div className="flex gap-1">Gamme :{LEVELS.map((l) => (
                 <button key={l} onClick={() => setLevel(l)} className={`rounded-sm px-2 py-1 border capitalize ${level === l ? "border-primary bg-primary text-white" : "border-input"}`}>{l}</button>))}</div>
               <div className="flex gap-1 items-center">Région :

@@ -103,6 +103,14 @@ export default function AdminParamLibraryTab() {
       await loadTables();
     } finally { setGenBusy(false); }
   };
+  const prefillMats = async () => {
+    setGenBusy(true);
+    try {
+      const { data } = await api.post("/admin/param-library/materials/prefill");
+      toast.success(`${data.updated} prix pré-remplis (estimation) — à ajuster`);
+      await loadTables();
+    } finally { setGenBusy(false); }
+  };
   const importMats = async (e) => {
     const file = e.target.files?.[0]; e.target.value = "";
     if (!file) return;
@@ -231,6 +239,9 @@ export default function AdminParamLibraryTab() {
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={genMissing} disabled={genBusy} className="rounded-sm gap-1 h-8" data-testid="param-mat-generate">
               {genBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Générer les manquants
+            </Button>
+            <Button size="sm" variant="outline" onClick={prefillMats} disabled={genBusy} className="rounded-sm gap-1 h-8" data-testid="param-mat-prefill">
+              <Calculator className="h-3.5 w-3.5" /> Pré-remplir les prix (estimation)
             </Button>
             <input ref={matFileRef} type="file" accept=".csv" className="hidden" onChange={importMats} data-testid="param-mat-import-input" />
             <Button size="sm" variant="outline" onClick={() => matFileRef.current?.click()} className="rounded-sm gap-1 h-8" data-testid="param-mat-import">

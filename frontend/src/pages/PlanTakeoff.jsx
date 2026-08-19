@@ -224,6 +224,17 @@ export default function PlanTakeoff() {
   const rooms = useMemo(() => (plan?.rooms || []).filter((r) => r.page_index === pageIndex),
                         [plan, pageIndex]);
 
+  const planVariables = useMemo(() => {
+    const surf = rooms.reduce((s, r) => s + (Number(r.surface_m2) || 0), 0);
+    const peri = rooms.reduce((s, r) => s + (Number(r.perimeter_m) || 0), 0);
+    if (!surf && !peri) return null;
+    const rnd = (x) => Math.round(x * 100) / 100;
+    return {
+      surface_m2: rnd(surf), surface_nette_m2: rnd(surf), surface_toiture_m2: rnd(surf),
+      perimetre_ml: rnd(peri), longueur_ml: rnd(peri), hauteur_m: wallHeight,
+    };
+  }, [rooms, wallHeight]);
+
   // Load page image on demand
   useEffect(() => {
     if (!plan?.plan_id) {
@@ -2384,7 +2395,7 @@ export default function PlanTakeoff() {
           </Button>
           <BrandingDialog />
           <MailboxDialog />
-          <OuvrageComposeDialog onAdd={addOuvrageFromPlan} />
+          <OuvrageComposeDialog onAdd={addOuvrageFromPlan} planVariables={planVariables} />
           {pendingOuvrages > 0 && (
             <Button variant="outline" onClick={() => nav("/devis-editeur")}
                     className="rounded-sm gap-2 border-primary text-primary" data-testid="plan-create-quote-ouvrages">

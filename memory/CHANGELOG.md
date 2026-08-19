@@ -1129,3 +1129,14 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - QuoteEditor.jsx : au chargement, reprend les ouvrages en attente depuis sessionStorage, les ajoute comme lignes (en retirant la ligne vide par défaut), toast, puis vide la clé. Fonctionne pour un nouvel éditeur comme pour un devis existant.
 - VÉRIFIÉ (captures) : bouton présent sur un plan ouvert ; reprise éditeur OK (Semelle filante BA 50x25 ×12 = 9157,44 € HT, TTC 10073,18 €), sessionStorage vidé après reprise.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 151 - 19/06/2026 (Pré-remplissage prix matériaux + quantités du plan pour ouvrages composés)
+- routes/param_library.py :
+  - POST /admin/param-library/materials/prefill : affecte une estimation de prix (mots-clés béton/acier/placo… + fallback par unité m³150/m²30/ml8/kg2/u15/forfait200) à tous les matériaux à 0 → plus de "prix à définir" vides (51 pré-remplis).
+  - /param-library/quote-line accepte désormais `variables` (mesures du plan) : si fourni, qty = variable directrice mesurée et prix unitaire = prix_vente / qté (testé CP-0207 : longueur 40 → 40 ml × 76,32 €). Sans variables : comportement éditeur inchangé (qty 1).
+- Frontend :
+  - AdminParamLibraryTab : bouton "Pré-remplir les prix (estimation)".
+  - OuvrageComposeDialog : prop planVariables → envoyée à quote-line, + badge "Quantités reprises du plan".
+  - PlanTakeoff : planVariables (useMemo) calculé depuis les pièces (surface_m2, perimetre_ml, longueur_ml, hauteur_m=wallHeight) et passé au dialog.
+- VÉRIFIÉ (curl+capture) : prefill 51 ; quote-line avec/sans variables ; panneau admin matériaux tarifé (Accessoires 15/200€, Béton 145€…).
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

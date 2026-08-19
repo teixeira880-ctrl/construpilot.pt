@@ -260,6 +260,29 @@ async def delete_material(mat_id: str) -> dict:
     return {"ok": True}
 
 
+@admin_router.post("/materials/prefill")
+async def prefill_material_prices() -> dict:
+    """Pré-remplit une estimation de prix (marché 2026) pour les matériaux à 0,
+    selon l'unité et des mots-clés. Valeurs à ajuster ensuite."""
+    by_unit = {"m3": 150, "m³": 150, "m2": 30, "m²": 30, "ml": 8, "kg": 2,
+               "l": 7, "u": 15, "ens": 200, "forfait": 200}
+    kw = [("beton", 150), ("acier", 1.6), ("armature", 9), ("isol", 12), ("placo", 6.5),
+          ("plaque", 6.5), ("tuile", 1.1), ("membrane", 18), ("etanch", 20),
+          ("fenetre", 320), ("porte", 280), ("carrelage", 32), ("parquet", 25),
+          ("peinture", 6.5), ("cable", 1.2), ("tube", 4.5), ("vmc", 22),
+          ("chauffe", 120), ("pac", 3500), ("enduit", 12), ("bois", 8), ("charpente", 45)]
+    mats = await db.material_prices.find({"price": {"$lte": 0}}, {"_id": 0}).to_list(20000)
+    updated = 0
+    for m in mats:
+        n = _norm(m.get("name", ""))
+        price = next((v for k, v in kw if k in n), None)
+        if price is None:
+            price = by_unit.get((m.get("unit") or "u").lower().strip(), 15)
+        await db.material_prices.update_one({"mat_id": m["mat_id"]}, {"$set": {"price": float(price)}})
+        updated += 1
+    return {"ok": True, "updated": updated}
+
+
 @admin_router.post("/materials/generate-missing")
 async def generate_missing_materials() -> dict:
     """Crée une entrée (prix 0, à compléter) pour chaque composant de recette
@@ -341,20 +364,30 @@ class QuoteLineIn(BaseModel):
     region: str = "standard"
     margin_pct: float = 25.0
     quantity: float = 1.0
+    variables: dict | None = None
 
 
 @router.post("/quote-line")
 async def ouvrage_to_quote_line(body: QuoteLineIn, user=Depends(current_user)) -> dict:
-    """Calcule un ouvrage composé et renvoie une ligne de devis prête à insérer."""
+    """Calcule un ouvrage composé et renvoie une ligne de devis prête à insérer.
+    Si `variables` est fourni (mesures du plan), la quantité = variable directrice
+    mesurée et le prix unitaire = prix de vente / quantité."""
     from engines.monetization import user_tier
     if user.get("role") != "admin" and (await user_tier(user["user_id"])) != "pro_business":
         raise HTTPException(402, "Réservé au plan Pro Business.")
-    r = await compute_ouvrage(body.base_code, body.level, body.region, body.margin_pct)
-    qty = max(body.quantity or 1, 0.01)
+    r = await compute_ouvrage(body.base_code, body.level, body.region, body.margin_pct,
+                              variables=body.variables)
+    dv = r.get("driving_var")
+    unit = "m²" if dv in ("surface_m2", "surface_nette_m2", "surface_toiture_m2") \
+        else "ml" if dv in ("longueur_ml", "perimetre_ml", "longueur_reseau_ml") else "u"
+    if body.variables and (r.get("driving_val") or 0) > 0:
+        qty = round(float(r["driving_val"]), 2)
+        unit_price = round(r["prix_vente"] / qty, 2)
+    else:
+        qty = max(body.quantity or 1, 0.01)
+        unit_price = r["prix_vente"]
     return {"line": {
         "designation": r["famille"], "description": f"Ouvrage composé {r['base_code']} · {r['metier']}",
-        "unit": r.get("driving_var") in ("surface_m2", "surface_nette_m2", "surface_toiture_m2") and "m²"
-                or r.get("driving_var") in ("longueur_ml", "perimetre_ml") and "ml" or "u",
-        "qty": qty, "unit_price_ht": r["prix_vente"], "vat_rate": 10,
+        "unit": unit, "qty": qty, "unit_price_ht": unit_price, "vat_rate": 10,
         "category": r.get("famille", "Ouvrage composé")},
         "detail": r}
