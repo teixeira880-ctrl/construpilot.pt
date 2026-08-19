@@ -1079,3 +1079,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Frontend QuoteEditor.jsx : openSend récupère /email-template et pré-remplit le champ Message (modifiable).
 - VÉRIFIÉ : les 3 modèles renvoyés corrects (attestation=true à 10% seulement) ; n° réservé (DEV-2026-0007) ; envoi 200 + attestation générée sans erreur ; wrap_company_html rend nom/coords/SIRET/e-mail ; UI pré-remplit bien le message avec le n°.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 146 - 19/06/2026 (Guide intégré "du plan au devis" — tutoriel pas-à-pas)
+- NOUVEAU composant components/planTakeoff/MeasureHelpDialog.jsx : modale d'aide complète (data-testid measure-help-btn / measure-help-dialog) avec 6 étapes numérotées : (1) Importer plan OU Permis de Construire (PC) — PDF/DXF/JPG/PNG/WEBP jusqu'à 20 Mo, (2) Calibrer l'échelle (obligatoire, débloque les outils), (3) Mesurer manuel (Distance/Surface/Pièce/Auto-pièce, double-clic = terminer), (4) Analyse IA "Analyser le plan", (5) Générer le devis (Estimer PDF / Ouvrir dans l'éditeur), (6) Finaliser & envoyer (message + n° auto, attestation TVA auto pour 5,5/10%, logo + coordonnées). + encadrés Gestes essentiels (double-clic, Échap, zoom) et Conseils de précision.
+- PlanTakeoff.jsx : bouton du guide ajouté (a) dans la barre d'outils de mesure, (b) sur l'écran d'import (héro) pour qu'il soit visible dès le départ.
+- IMPORTANT : "PC" dans ce contexte = Permis de Construire (pas ordinateur) — libellés corrigés.
+- Vérifié : screenshot préversion — bouton visible, modale rendue avec les 6 étapes, step 1 = "Importer votre plan ou votre Permis de Construire (PC)". Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

@@ -13,6 +13,7 @@ import PcStudyDialog from "@/components/planTakeoff/PcStudyDialog";
 import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
+import { MeasureHelpDialog } from "@/components/planTakeoff/MeasureHelpDialog";
 import { LiveTotalBar } from "@/components/planTakeoff/LiveTotalBar";
 import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
@@ -2143,6 +2144,9 @@ export default function PlanTakeoff() {
             PDF architecte, plan scanné, photo smartphone : ConstruPilot calibre l'échelle,
             extrait les mesures et bascule le tout dans l'estimation ou la recherche de prix.
           </p>
+          <div className="mt-4">
+            <MeasureHelpDialog />
+          </div>
         </div>
 
         <label
@@ -2493,6 +2497,7 @@ export default function PlanTakeoff() {
         <div className="surface p-3">
           {/* TOOLBAR */}
           <div className="flex flex-wrap gap-2 mb-3 pb-3 border-b border-border">
+            <MeasureHelpDialog />
             <ToolButton icon={MousePointer2} label="Sélection" testId="tool-select" active={tool === TOOLS.SELECT} onClick={() => { setTool(TOOLS.SELECT); setPoints([]); }} />
             <ToolButton icon={Ruler} label="Calibrer" testId="tool-calibrate" active={tool === TOOLS.CALIB} onClick={() => { setTool(TOOLS.CALIB); setPoints([]); }} />
             <ToolButton icon={Move} label="Distance" testId="tool-distance" active={tool === TOOLS.DIST} onClick={() => { setTool(TOOLS.DIST); setPoints([]); }} disabled={!currentCalib} />
