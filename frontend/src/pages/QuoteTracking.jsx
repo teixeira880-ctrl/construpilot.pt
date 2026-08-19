@@ -23,6 +23,7 @@ export default function QuoteTracking() {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(new Set());
+  const [drafts, setDrafts] = useState([]);
   const now = new Date();
   const [recapY, setRecapY] = useState(now.getFullYear());
   const [recapM, setRecapM] = useState(now.getMonth() + 1);
@@ -39,6 +40,10 @@ export default function QuoteTracking() {
       setCompleted(done);
     } catch { toast.error("Impossible de charger les devis"); }
     finally { setLoading(false); }
+    try {
+      const { data } = await api.get("/documents?doc_type=quote");
+      setDrafts((data.documents || []).filter((d) => d.status !== "sent"));
+    } catch { /* noop */ }
   };
   useEffect(() => { if (user) load(); }, [user]);
 
@@ -221,6 +226,39 @@ export default function QuoteTracking() {
 
       {/* Chiffre d'affaires mensuel */}
       <RevenueChart />
+
+      {/* Devis enregistrés (brouillons, non encore envoyés) */}
+      <div className="surface p-5" data-testid="saved-drafts-section">
+        <div className="flex items-center justify-between mb-3">
+          <p className="overline">Devis enregistrés (brouillons)</p>
+          <span className="text-xs text-muted-foreground num">{drafts.length}</span>
+        </div>
+        {drafts.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Aucun devis enregistré non envoyé. Vos brouillons apparaîtront ici après « Enregistrer ».
+          </p>
+        ) : (
+          <div className="grid gap-2">
+            {drafts.map((d) => (
+              <button key={d.doc_id} onClick={() => navigate(`/devis-editeur/${d.doc_id}`)}
+                      data-testid={`draft-${d.doc_id}`}
+                      className="w-full text-left flex items-center justify-between gap-3 border border-border rounded-sm px-3 py-2 hover:border-primary transition-colors">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">
+                    {d.number || "Brouillon"}{d.client_name ? ` · ${d.client_name}` : ""}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {(d.created_at || "").slice(0, 10)} · {d.status || "draft"}
+                  </p>
+                </div>
+                <span className="num text-sm font-bold text-primary shrink-0">
+                  {Math.round(d.total_ttc || (d.totals && d.totals.ttc) || 0).toLocaleString("fr-FR")} €
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

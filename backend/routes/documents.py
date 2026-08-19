@@ -460,6 +460,69 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
+class DocSendIn(BaseModel):
+    client_email: str
+    client_name: str = ""
+    message: str = ""
+
+
+@router.post("/{doc_id}/send")
+async def send_document(doc_id: str, body: DocSendIn, user=Depends(current_user)):
+    """Envoie le PDF du devis/document au client par email + log dans le suivi."""
+    import re as _re
+    import secrets as _secrets
+    from engines.emailer import send_email_with_pdf, wrap_html
+    from engines.pdf_docs import build_document_pdf
+    from routes.plans_common import _resolve_branding
+    from routes.reviews import get_reviews_for_user
+    if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.client_email or ""):
+        raise HTTPException(400, "Email client invalide.")
+    doc = await _get_owned(doc_id, user)
+    if not doc.get("number"):
+        doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
+        doc["issue_date"] = doc.get("issue_date") or _now()
+        await db.pro_documents.update_one(
+            {"doc_id": doc_id, "user_id": user["user_id"]},
+            {"$set": {"number": doc["number"], "issue_date": doc["issue_date"]}})
+    branding = await _resolve_branding(user["user_id"])
+    reviews = await get_reviews_for_user(user["user_id"]) if doc["doc_type"] == "quote" else None
+    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
+                                   lang=(doc.get("lang") or user.get("lang")))
+    company = (branding or {}).get("company_name") or user.get("name") or "ConstruPilot"
+    ttc = (doc.get("totals") or {}).get("ttc") or doc.get("total_ttc") or 0
+    hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
+    inner = f"<p>{hello}</p><p>Veuillez trouver ci-joint votre devis de <b>{company}</b>.</p>"
+    if body.message:
+        inner += f"<p>{body.message}</p>"
+    subject = f"Devis · {company}"
+    html = wrap_html(subject, inner)
+    sender_u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "email": 1})
+    log_id = "qs_" + _secrets.token_hex(6)
+    email_status, email_id, error = "sent", None, None
+    try:
+        res = await send_email_with_pdf(
+            body.client_email, subject, html, pdf_bytes,
+            filename=f"{doc.get('number') or doc_id}.pdf",
+            cc=(sender_u or {}).get("email"))
+        email_id = res.get("id")
+    except Exception as e:  # noqa: BLE001
+        email_status, error = "failed", str(e)
+    await db.quote_sends.insert_one({
+        "log_id": log_id, "doc_id": doc_id, "user_id": user["user_id"],
+        "client_email": body.client_email, "client_name": body.client_name,
+        "total_ttc": ttc, "subject": subject,
+        "email_status": email_status, "email_id": email_id, "error": error,
+        "created_at": _now(), "opened": False, "open_count": 0,
+        "signed": False, "reminder_sent": False,
+    })
+    if email_status != "sent":
+        raise HTTPException(502, "L'envoi de l'email a échoué. Vérifiez l'adresse et réessayez.")
+    await db.pro_documents.update_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]}, {"$set": {"status": "sent"}})
+    return {"ok": True, "log_id": log_id, "total_ttc": ttc}
+
+
+
 @router.get("/{doc_id}/factur-x")
 async def document_facturx(doc_id: str, user=Depends(current_user)):
     """Facture électronique Factur-X PDF/A-3 conforme (via facturxapi, repli local)."""

@@ -1005,3 +1005,11 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Admin (Admin.jsx inbox) : section "Avis clients en attente" avec boutons Publier / Supprimer (loadPendingReviews + approveReview/deleteReview).
 - Vérifié : screenshots préversion (badges + dialog + envoi OK). Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 137 - 19/06/2026 (Bug: envoyer devis + devis enregistrés introuvables)
+- Bug (production) : pas de bouton d'envoi dans l'éditeur + devis enregistrés introuvables (Suivi devis ne listait que les envoyés).
+- Backend documents.py : nouvel endpoint POST /api/documents/{doc_id}/send (email PDF au client via Resend + log quote_sends + status='sent' UNIQUEMENT si email envoyé). Validation email (400 si invalide, 502 si échec provider).
+- Frontend QuoteEditor.jsx : bouton "Envoyer le devis" (editor-send-btn) + dialog (send-quote-dialog: nom/email/message). Pré-remplissage nom depuis first_name/last_name/company du client.
+- Frontend QuoteTracking.jsx : section "Devis enregistrés (brouillons)" (saved-drafts-section) listant GET /documents?doc_type=quote (status!==sent), clic → rouvre dans l'éditeur.
+- Testé par testing_agent (iteration_95.json) : backend 3/3, frontend E2E complet 100%. 2 remarques revue de code corrigées (status='sent' seulement si envoi OK ; pré-remplissage nom).
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

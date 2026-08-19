@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video,
+  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -259,6 +259,38 @@ export default function QuoteEditor() {
     } catch { toast.error(t("crm.pdf_fail")); }
   };
 
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendEmail, setSendEmail] = useState("");
+  const [sendName, setSendName] = useState("");
+  const [sendMsg, setSendMsg] = useState("");
+
+  const openSend = async () => {
+    const c = clients.find((x) => x.client_id === clientId);
+    const nm = [c?.first_name, c?.last_name].filter(Boolean).join(" ") || c?.company || c?.name || "";
+    setSendEmail(c?.email || "");
+    setSendName(nm);
+    setSendMsg("");
+    setSendOpen(true);
+  };
+
+  const sendNow = async () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(sendEmail)) {
+      toast.error("Email client invalide"); return;
+    }
+    setSending(true);
+    try {
+      let id = docId;
+      if (!id) { const d = await save(); if (!d) { setSending(false); return; } id = d.doc_id; }
+      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg });
+      toast.success("Devis envoyé au client ✅");
+      setSendOpen(false);
+      setStatus("sent");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Envoi impossible");
+    } finally { setSending(false); }
+  };
+
   if (!user) return <div className="surface p-10 text-center">{t("crm.login")}</div>;
   if (loading) return <div className="surface p-10 text-center animate-pulse">{t("crm.loading")}</div>;
 
@@ -298,11 +330,45 @@ export default function QuoteEditor() {
           <Button variant="outline" onClick={downloadPdf} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
             <Download className="h-4 w-4" /> {t("crm.pdf")}
           </Button>
-          <Button onClick={save} disabled={saving} className="rounded-sm gap-2" data-testid="editor-save-btn">
+          <Button onClick={save} disabled={saving} variant="outline" className="rounded-sm gap-2" data-testid="editor-save-btn">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("crm.save")}
+          </Button>
+          <Button onClick={openSend} disabled={saving || docType !== "quote"} className="rounded-sm gap-2 bg-primary" data-testid="editor-send-btn">
+            <Send className="h-4 w-4" /> Envoyer le devis
           </Button>
         </div>
       </div>
+
+      <Dialog open={sendOpen} onOpenChange={setSendOpen}>
+        <DialogContent data-testid="send-quote-dialog">
+          <DialogHeader>
+            <DialogTitle>Envoyer le devis au client</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="send-name">Nom du client</Label>
+              <Input id="send-name" value={sendName} onChange={(e) => setSendName(e.target.value)}
+                     placeholder="Nom du client" data-testid="send-quote-name" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="send-email">Email du client *</Label>
+              <Input id="send-email" type="email" value={sendEmail} onChange={(e) => setSendEmail(e.target.value)}
+                     placeholder="client@email.com" data-testid="send-quote-email" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="send-msg">Message (optionnel)</Label>
+              <Textarea id="send-msg" rows={3} value={sendMsg} onChange={(e) => setSendMsg(e.target.value)}
+                        placeholder="Un mot pour votre client…" data-testid="send-quote-msg" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSendOpen(false)} className="rounded-sm" data-testid="send-quote-cancel">Annuler</Button>
+              <Button onClick={sendNow} disabled={sending} className="rounded-sm gap-2" data-testid="send-quote-confirm">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Envoyer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Meta : client, titre, statut */}
       <div className="surface p-4 grid md:grid-cols-3 gap-3">

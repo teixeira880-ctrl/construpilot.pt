@@ -1,0 +1,30 @@
+{
+  "summary": "Testé le correctif iter95 : bouton 'Envoyer le devis' dans /devis-editeur + section 'Devis enregistrés (brouillons)' sur /devis. Backend (3/3) et frontend (E2E complet: login pro → save draft → drafts section → reopen → dialog envoi → envoi réussi) OK.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "QuoteEditor + others", "issues": ["Console warning React hydration: <span> as child of <option> (SectionTitle rendu à l'intérieur d'une option ?) — non bloquant, à inspecter", "DialogContent: Missing Description or aria-describedby (send-quote-dialog + video-transcript-dialog) — accessibilité mineure"]},
+    {"screen": "/devis", "issues": ["Quelques requêtes 500 dans la console lors du chargement (non identifiées, non liées au correctif iter95 — probablement endpoints tiers). À investiguer si récurrent."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter95_quote_send.py", "/app/test_reports/pytest/iter95.xml"],
+  "action_items": [
+    "OPTIONNEL: Ajouter DialogDescription (ou aria-describedby) au send-quote-dialog et video-transcript-dialog pour a11y.",
+    "OPTIONNEL: Corriger le warning React 'span cannot be a child of option' (probablement traduction/i18n rendue dans un <option>).",
+    "OPTIONNEL: Vérifier les 500 observés sur /devis (hors scope iter95)."
+  ],
+  "critical_code_review_comments": [
+    "documents.py send_document: le status du document est passé à 'sent' AVANT le raise HTTPException(502) en cas d'échec provider. Sémantiquement discutable : si l'email échoue, le devis apparaît quand même comme 'envoyé' (disparaît des brouillons). Suggestion: n'appliquer $set status:'sent' que si email_status=='sent'.",
+    "QuoteEditor.jsx: openSend() pré-remplit sendName avec c?.name mais l'objet client renvoyé par /clients expose first_name/last_name/company (pas 'name'). Le champ nom est donc quasi toujours vide au premier ouverture."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter95_quote_send.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!",
+  "seed_data_creation": "1 devis TEST_iter95 créé puis supprimé (backend + UI). Un doc UI créé et supprimé après test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Correctif iter95 validé end-to-end. Endpoint POST /documents/{id}/send fonctionne (email valide → 200 ok:true log qs_*, email invalide → 400). Section brouillons OK via GET /documents?doc_type=quote filtré status!=='sent'. Bouton editor-send-btn désactivé quand docType !== 'quote' (comme prévu).",
+  "rca of the issue": "N/A — nouveau feature/fix, pas de bug bloquant."
+}
