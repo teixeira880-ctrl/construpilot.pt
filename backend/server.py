@@ -144,8 +144,6 @@ async def seed():
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
     if os.environ.get("SEED_DEMO_DATA") == "true":
-        await db.users.delete_many({"email": {"$in": ["admin@cmrenov.fr", "demo@cmrenov.fr"]}})
-
         accounts = (
             (ADMIN_EMAIL,     "Admin ConstruPilot", "admin", "premium", "Construpilot2026!"),
             (DEMO_EMAIL,      "Client Démo",        "user",  "premium", "Demo2026!"),
