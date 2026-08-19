@@ -466,6 +466,7 @@ class DocSendIn(BaseModel):
     client_email: str
     client_name: str = ""
     message: str = ""
+    attach_3d: bool = True
 
 
 @router.post("/{doc_id}/send")
@@ -503,6 +504,21 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     cc = (sender_u or {}).get("email")
     log_id = "qs_" + _secrets.token_hex(6)
     filename = f"{doc.get('number') or doc_id}.pdf"
+    # Rendu 3D du projet en pièce jointe (si disponible et demandé)
+    extra_attachments = None
+    has_3d = False
+    if body.attach_3d and doc.get("attachment_image_b64"):
+        import base64 as _b64
+        raw = doc["attachment_image_b64"]
+        if "," in raw and raw.strip().startswith("data:"):
+            raw = raw.split(",", 1)[1]
+        try:
+            extra_attachments = [{"filename": "rendu-3d.png",
+                                  "content": _b64.b64decode(raw),
+                                  "content_type": "image/png"}]
+            has_3d = True
+        except Exception:  # noqa: BLE001
+            extra_attachments = None
     await db.quote_sends.insert_one({
         "log_id": log_id, "doc_id": doc_id, "user_id": user["user_id"],
         "client_email": body.client_email, "client_name": body.client_name,
@@ -518,7 +534,8 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
         try:
             res = await asyncio.wait_for(
                 send_email_with_pdf(body.client_email, subject, html, pdf_bytes,
-                                    filename=filename, cc=cc),
+                                    filename=filename, cc=cc,
+                                    extra_attachments=extra_attachments),
                 timeout=45)
             await db.quote_sends.update_one(
                 {"log_id": log_id},
@@ -529,7 +546,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                 {"log_id": log_id}, {"$set": {"email_status": "failed", "error": str(e)[:300]}})
 
     background_tasks.add_task(_deliver)
-    return {"ok": True, "queued": True, "log_id": log_id, "total_ttc": ttc}
+    return {"ok": True, "queued": True, "log_id": log_id, "total_ttc": ttc, "attached_3d": has_3d}
 
 
 

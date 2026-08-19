@@ -1020,3 +1020,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Vérifié préversion (curl, compte pro) : email invalide → 400 (0.23s) ; envoi valide → 200 queued (0.25s, plus de blocage) ; livraison background confirmée (email_status=sent, email_id Resend réel).
 - NB : suggestions hors-sujet du deployment_agent (delete_many seed, CORS *, gitignore) NON appliquées volontairement (sans rapport avec ce bug, risquées).
 - ⚠️ Corrigé en PRÉVERSION — l'utilisateur doit REDÉPLOYER pour corriger la production.
+
+## Iteration 139 - 19/06/2026 (Joindre le rendu 3D à l'e-mail de devis)
+- documents.py send_document : DocSendIn.attach_3d (défaut true). Si le document a un attachment_image_b64 (rendu 3D du plan), il est décodé (gère le préfixe data:) et joint en PNG (rendu-3d.png) à l'e-mail via extra_attachments de send_email_with_pdf. Réponse renvoie attached_3d.
+- QuoteEditor.jsx : case à cocher "Joindre le rendu 3D du projet (si disponible)" (send-quote-attach3d, cochée par défaut) dans le dialog d'envoi ; toast adapté ("Devis envoyé (rendu 3D joint)").
+- Vérifié e2e (curl, compte pro, doc de test avec PNG) : attached_3d=true, réponse 0.36s, livraison background OK (email_id Resend réel). Test nettoyé.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

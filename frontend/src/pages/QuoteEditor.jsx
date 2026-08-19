@@ -264,6 +264,7 @@ export default function QuoteEditor() {
   const [sendEmail, setSendEmail] = useState("");
   const [sendName, setSendName] = useState("");
   const [sendMsg, setSendMsg] = useState("");
+  const [attach3d, setAttach3d] = useState(true);
 
   const openSend = async () => {
     const c = clients.find((x) => x.client_id === clientId);
@@ -282,8 +283,10 @@ export default function QuoteEditor() {
     try {
       let id = docId;
       if (!id) { const d = await save(); if (!d) { setSending(false); return; } id = d.doc_id; }
-      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg });
-      toast.success("Devis envoyé au client ✅");
+      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d })
+        .then(({ data }) => {
+          toast.success(data?.attached_3d ? "Devis envoyé (rendu 3D joint) ✅" : "Devis envoyé au client ✅");
+        });
       setSendOpen(false);
       setStatus("sent");
     } catch (e) {
@@ -360,6 +363,11 @@ export default function QuoteEditor() {
               <Textarea id="send-msg" rows={3} value={sendMsg} onChange={(e) => setSendMsg(e.target.value)}
                         placeholder="Un mot pour votre client…" data-testid="send-quote-msg" />
             </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer" data-testid="send-quote-attach3d">
+              <input type="checkbox" checked={attach3d} onChange={(e) => setAttach3d(e.target.checked)}
+                     className="h-4 w-4 rounded border-input accent-primary" />
+              Joindre le rendu 3D du projet (si disponible)
+            </label>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setSendOpen(false)} className="rounded-sm" data-testid="send-quote-cancel">Annuler</Button>
               <Button onClick={sendNow} disabled={sending} className="rounded-sm gap-2" data-testid="send-quote-confirm">
