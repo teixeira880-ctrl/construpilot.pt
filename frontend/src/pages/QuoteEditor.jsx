@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send,
-  Images, Camera, Square, Clock, FileVideo, AlertTriangle,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,6 +219,7 @@ export default function QuoteEditor() {
   const [recOpen, setRecOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recSecs, setRecSecs] = useState(0);
+  const [recMode, setRecMode] = useState("video");
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -236,22 +237,19 @@ export default function QuoteEditor() {
     setRecOpen(false);
   };
 
-  const openRecorder = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) { toast.error("Caméra non supportée — utilisez la galerie"); return; }
+  const openRecorder = async (mode = "video") => {
+    if (!navigator.mediaDevices?.getUserMedia) { toast.error("Micro/caméra non supporté — utilisez la galerie"); return; }
+    setRecMode(mode);
     setRecOpen(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 640 }, height: { ideal: 480 },
-          frameRate: { ideal: 24, max: 30 },
-        },
-      });
+      const constraints = mode === "audio"
+        ? { audio: true }
+        : { audio: true, video: { facingMode: { ideal: "environment" }, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } } };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      if (videoElRef.current) { videoElRef.current.srcObject = stream; videoElRef.current.play().catch(() => {}); }
+      if (mode !== "audio" && videoElRef.current) { videoElRef.current.srcObject = stream; videoElRef.current.play().catch(() => {}); }
     } catch {
-      toast.error("Accès caméra refusé — utilisez la galerie");
+      toast.error(mode === "audio" ? "Accès micro refusé — utilisez la galerie" : "Accès caméra refusé — utilisez la galerie");
       closeRecorder();
     }
   };
@@ -260,13 +258,17 @@ export default function QuoteEditor() {
     const stream = streamRef.current;
     if (!stream) return;
     chunksRef.current = [];
-    const cand = ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+    const cand = recMode === "audio"
+      ? ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+      : ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
     const mime = cand.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
-    const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 600000 } : {});
+    const opts = mime ? { mimeType: mime, ...(recMode === "audio" ? { audioBitsPerSecond: 96000 } : { videoBitsPerSecond: 600000 }) } : {};
+    const rec = new MediaRecorder(stream, opts);
     rec.ondataavailable = (e) => { if (e.data && e.data.size) chunksRef.current.push(e.data); };
     rec.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: rec.mimeType || "video/webm" });
-      const ext = (rec.mimeType || "").includes("mp4") ? "mp4" : "webm";
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType || (recMode === "audio" ? "audio/webm" : "video/webm") });
+      const isMp4 = (rec.mimeType || "").includes("mp4");
+      const ext = recMode === "audio" ? (isMp4 ? "m4a" : "webm") : (isMp4 ? "mp4" : "webm");
       const file = new File([blob], `chantier-${Date.now()}.${ext}`, { type: blob.type });
       closeRecorder();
       if (blob.size > 0) reviewVideo(file);
@@ -486,9 +488,20 @@ export default function QuoteEditor() {
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-gallery-btn">
             {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} Vidéo galerie
           </Button>
-          <Button variant="outline" onClick={openRecorder}
+          <Button variant="outline" onClick={() => openRecorder("video")}
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-record-btn">
             {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} Filmer → devis
+          </Button>
+          <input type="file" accept="audio/*" className="hidden" id="qe-audio-input"
+                 onChange={(e) => { reviewVideo(e.target.files?.[0]); e.target.value = ""; }}
+                 data-testid="editor-audio-input" />
+          <Button variant="outline" onClick={() => document.getElementById("qe-audio-input").click()}
+                  disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-audio-gallery-btn">
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music className="h-4 w-4" />} Audio galerie
+          </Button>
+          <Button variant="outline" onClick={() => openRecorder("audio")}
+                  disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-audio-record-btn">
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />} Dicter → devis
           </Button>
           <Button variant="outline" onClick={downloadPdf} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
             <Download className="h-4 w-4" /> {t("crm.pdf")}
@@ -758,24 +771,37 @@ export default function QuoteEditor() {
       <Dialog open={recOpen} onOpenChange={(v) => { if (!v) closeRecorder(); }}>
         <DialogContent className="max-w-lg" data-testid="video-recorder-dialog">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Camera className="h-5 w-5 text-primary" /> Filmer le chantier</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {recMode === "audio" ? <Mic className="h-5 w-5 text-primary" /> : <Camera className="h-5 w-5 text-primary" />}
+              {recMode === "audio" ? "Dicter le devis" : "Filmer le chantier"}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-1">
-            Enregistrement en basse résolution (480p) pour un envoi rapide. Décrivez les travaux à voix haute.
+            {recMode === "audio"
+              ? "Décrivez les travaux à voix haute : l'IA transcrit puis génère le devis."
+              : "Enregistrement en basse résolution (480p) pour un envoi rapide. Décrivez les travaux à voix haute."}
           </p>
-          <div className="relative bg-black rounded-sm overflow-hidden aspect-video">
-            <video ref={videoElRef} muted playsInline autoPlay className="w-full h-full object-contain" data-testid="video-recorder-preview" />
-            {recording && (
-              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 text-white text-xs px-2 py-1 rounded-full" data-testid="video-recorder-timer">
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> {fmtSecs(recSecs)}
-              </div>
-            )}
-          </div>
+          {recMode === "audio" ? (
+            <div className="relative bg-secondary/40 rounded-sm overflow-hidden h-40 flex flex-col items-center justify-center gap-3" data-testid="audio-recorder-visual">
+              <Mic className={`h-12 w-12 ${recording ? "text-red-500 animate-pulse" : "text-muted-foreground"}`} />
+              <div className="text-sm font-mono" data-testid="audio-recorder-timer">{fmtSecs(recSecs)}</div>
+              {recording && <div className="text-xs text-muted-foreground">Enregistrement en cours…</div>}
+            </div>
+          ) : (
+            <div className="relative bg-black rounded-sm overflow-hidden aspect-video">
+              <video ref={videoElRef} muted playsInline autoPlay className="w-full h-full object-contain" data-testid="video-recorder-preview" />
+              {recording && (
+                <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 text-white text-xs px-2 py-1 rounded-full" data-testid="video-recorder-timer">
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> {fmtSecs(recSecs)}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={closeRecorder} className="rounded-sm" data-testid="video-recorder-cancel">Annuler</Button>
             {!recording ? (
               <Button onClick={startRec} disabled={!streamRef.current} className="rounded-sm gap-2 bg-red-600 hover:bg-red-700" data-testid="video-recorder-start">
-                <Video className="h-4 w-4" /> Démarrer
+                {recMode === "audio" ? <Mic className="h-4 w-4" /> : <Video className="h-4 w-4" />} Démarrer
               </Button>
             ) : (
               <Button onClick={stopRec} className="rounded-sm gap-2 bg-primary" data-testid="video-recorder-stop">

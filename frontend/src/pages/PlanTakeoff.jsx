@@ -328,7 +328,11 @@ export default function PlanTakeoff() {
       const kind = data.kind === "dxf" ? "DXF" : data.kind === "pdf" ? "PDF" : "image";
       toast.success(`${kind} chargé (${data.page_count} page${data.page_count > 1 ? "s" : ""})`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import impossible");
+      const detail = e?.response?.data?.detail;
+      const msg = detail
+        || (!e?.response ? "Réseau indisponible ou fichier trop lourd — vérifiez votre connexion et réessayez"
+                         : "Import impossible");
+      toast.error(msg);
     } finally { setUploading(false); }
   };
 
@@ -2208,7 +2212,6 @@ export default function PlanTakeoff() {
             id="plan-upload-input"
             type="file"
             accept="application/pdf,image/png,image/jpeg,image/webp,.dxf,.dwg"
-            capture="environment"
             className="sr-only"
             onChange={(e) => uploadFile(e.target.files?.[0])}
             data-testid="plan-upload-input"

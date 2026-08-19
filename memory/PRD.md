@@ -10,6 +10,12 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 19/08/2026** :
+> - ✅ **Option Audio (Vidéo-vers-Devis)** finalisée & testée e2e — enregistrement micro + import fichier audio + transcription Whisper FR → devis chiffré. UI dans `QuoteEditor.jsx` (boutons « Audio galerie » + « Dicter → devis »). Backend `/api/documents/video-transcribe` + `/from-text` (ffmpeg `-vn` gère nativement l'audio). Testé : MP3 → transcript FR correct → devis 11 lignes / 7 chiffrées.
+> - ✅ **Bug import plan mobile (PROD)** : sur mobile (Samsung/Chrome), l'input d'import de `PlanTakeoff.jsx` avait `capture="environment"` → forçait l'ouverture de la **caméra** au lieu du sélecteur de fichiers → impossible de choisir un PDF/plan existant → toast « Import impossible ». Fix = retrait de `capture="environment"` (ligne ~2211) + message d'erreur réseau plus explicite. ⚠️ Fix en PREVIEW — **redéploiement requis** pour propager en prod. La caméra reste dispo via le choix natif du sélecteur mobile.
+> - ⏸️ **Prix Fournisseurs (Point.P/Chausson/Leroy Merlin)** : en attente du choix utilisateur (options A=import CSV/Excel recommandé, B=saisie manuelle, C=scraping Leroy public, D=hybride).
+
+
 
 ## 1. Problème & vision
 Application web (et mobile-ready) qui aide particuliers et pros du bâtiment à :
