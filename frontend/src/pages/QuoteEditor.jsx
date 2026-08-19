@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send,
-  Images, Camera, Square,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -254,7 +254,7 @@ export default function QuoteEditor() {
       const ext = (rec.mimeType || "").includes("mp4") ? "mp4" : "webm";
       const file = new File([blob], `chantier-${Date.now()}.${ext}`, { type: blob.type });
       closeRecorder();
-      if (blob.size > 0) createFromVideo(file);
+      if (blob.size > 0) reviewVideo(file);
     };
     rec.start();
     recorderRef.current = rec;
@@ -273,7 +273,51 @@ export default function QuoteEditor() {
 
   useEffect(() => () => { closeRecorder(); }, []);
 
-  const createFromVideo = async (file) => {
+  // --- Revue de la vidéo (taille / durée) avant transcription ---
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewFile, setReviewFile] = useState(null);
+  const [reviewInfo, setReviewInfo] = useState({ sizeMB: 0, duration: 0, url: null });
+
+  const reviewVideo = (file) => {
+    if (!file) return;
+    if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
+    const url = URL.createObjectURL(file);
+    const sizeMB = file.size / (1024 * 1024);
+    const finalize = (duration) => {
+      setReviewFile(file);
+      setReviewInfo({ sizeMB, duration: isFinite(duration) && duration > 0 ? duration : 0, url });
+      setReviewOpen(true);
+    };
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.muted = true;
+    v.onloadedmetadata = () => {
+      if (v.duration === Infinity || isNaN(v.duration)) {
+        v.currentTime = 1e101;
+        v.ontimeupdate = () => { v.ontimeupdate = null; finalize(v.duration); };
+      } else finalize(v.duration);
+    };
+    v.onerror = () => finalize(0);
+    v.src = url;
+  };
+
+  const closeReview = () => {
+    if (reviewInfo.url) URL.revokeObjectURL(reviewInfo.url);
+    setReviewOpen(false);
+    setReviewFile(null);
+    setReviewInfo({ sizeMB: 0, duration: 0, url: null });
+  };
+
+  const confirmTranscribe = () => {
+    const f = reviewFile;
+    if (reviewInfo.url) URL.revokeObjectURL(reviewInfo.url);
+    setReviewOpen(false);
+    setReviewFile(null);
+    setReviewInfo({ sizeMB: 0, duration: 0, url: null });
+    if (f) transcribeVideo(f);
+  };
+
+  const transcribeVideo = async (file) => {
     if (!file) return;
     if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
     setVideoBusy(true);
@@ -417,7 +461,7 @@ export default function QuoteEditor() {
             {planBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ruler className="h-4 w-4" />} Ajouter un plan
           </Button>
           <input type="file" accept="video/*" className="hidden" id="qe-video-input"
-                 onChange={(e) => { createFromVideo(e.target.files?.[0]); e.target.value = ""; }}
+                 onChange={(e) => { reviewVideo(e.target.files?.[0]); e.target.value = ""; }}
                  data-testid="editor-video-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-video-input").click()}
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-gallery-btn">
@@ -648,6 +692,45 @@ export default function QuoteEditor() {
               </button>
             ))}
             {filteredLib.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">{t("crm.no_result")}</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reviewOpen} onOpenChange={(v) => { if (!v) closeReview(); }}>
+        <DialogContent className="max-w-md" data-testid="video-review-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><FileVideo className="h-5 w-5 text-primary" /> Vérifier la vidéo</DialogTitle>
+          </DialogHeader>
+          {reviewInfo.url && (
+            <video src={reviewInfo.url} controls playsInline className="w-full rounded-sm bg-black aspect-video object-contain" data-testid="video-review-preview" />
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-sm border border-border p-3">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><FileVideo className="h-3 w-3" /> Taille</p>
+              <p className="text-lg font-semibold" data-testid="video-review-size">{reviewInfo.sizeMB.toFixed(1)} Mo</p>
+            </div>
+            <div className="rounded-sm border border-border p-3">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Durée</p>
+              <p className="text-lg font-semibold" data-testid="video-review-duration">
+                {reviewInfo.duration > 0 ? fmtSecs(Math.round(reviewInfo.duration)) : "—"}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1" data-testid="video-review-esttime">
+            <Clock className="h-3 w-3 inline mr-1" />
+            Temps de traitement estimé : ~{Math.max(12, Math.round((reviewInfo.duration || reviewInfo.sizeMB * 5) * 0.8) + 8)} s
+          </p>
+          {(reviewInfo.duration > 90 || reviewInfo.sizeMB > 30) && (
+            <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-600 flex gap-2" data-testid="video-review-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>Cette vidéo est longue/lourde et la transcription sera plus lente. Pour aller plus vite, refilmez une séquence plus courte (30-60 s suffisent) en décrivant l'essentiel.</span>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={closeReview} className="rounded-sm" data-testid="video-review-restart">Changer de vidéo</Button>
+            <Button onClick={confirmTranscribe} disabled={videoBusy} className="rounded-sm gap-2 bg-primary" data-testid="video-review-transcribe">
+              {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Transcrire maintenant
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

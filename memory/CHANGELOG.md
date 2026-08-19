@@ -1046,3 +1046,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
   - onstop → File webm/mp4 passé à createFromVideo (flux transcription Whisper existant).
 - Vérifié : screenshot préversion (compte demo) — les 2 boutons s'affichent, le dialog "Filmer le chantier" ouvre un flux caméra live (contraintes 480p appliquées, bouton Démarrer actif). Frontend compile (warnings exhaustive-deps préexistants uniquement).
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 143 - 19/06/2026 (Vidéo → devis : revue taille/durée avant transcription)
+- QuoteEditor.jsx : les deux sources (galerie + enregistreur) passent désormais par reviewVideo(file) → Dialog "Vérifier la vidéo" (video-review-dialog) AVANT l'upload/transcription. Affiche : aperçu lecteur, taille en Mo (video-review-size), durée mm:ss (video-review-duration, fallback "—" si métadonnées indisponibles), temps de traitement estimé (video-review-esttime ~ durée×0.8+8, min 12 s).
+- Alerte ambrée (video-review-warning) si durée > 90 s ou taille > 30 Mo : conseille de refilmer plus court (30-60 s).
+- Boutons : "Transcrire maintenant" (video-review-transcribe → transcribeVideo, ex-createFromVideo, flux Whisper inchangé) et "Changer de vidéo" (video-review-restart → ferme, l'utilisateur re-choisit une source). Object URL révoqué à la fermeture.
+- Vérifié : screenshot préversion (galerie, mp4 test 320x240) — dialog affiche 0.1 Mo, estimation ~12 s, aperçu + 2 boutons. Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
