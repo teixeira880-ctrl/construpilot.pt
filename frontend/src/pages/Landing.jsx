@@ -17,6 +17,7 @@ import { TrustSection } from "@/components/TrustSection";
 import { MarketingTeaser } from "@/components/MarketingTeaser";
 import { FeatureShowcase } from "@/components/FeatureShowcase";
 import { Interactive3D } from "@/components/Interactive3D";
+import { ParamLibraryPromo } from "@/components/ParamLibraryPromo";
 import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 
@@ -340,6 +341,9 @@ export default function Landing() {
 
       {/* ── TRUST & LOGOS ───────────────────────────────── */}
       <TrustSection />
+
+      {/* ── PUB : Bibliothèque paramétrique ────────────────── */}
+      <ParamLibraryPromo />
 
       {/* ── BENTO FEATURES GRID ────────────────────────────── */}
       <section className="mx-auto max-w-[1500px] px-6 lg:px-10 py-24 lg:py-32">

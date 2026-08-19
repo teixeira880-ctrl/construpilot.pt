@@ -1099,3 +1099,15 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - VÉRIFIÉ (curl+python+screenshots) : import xlsx multi-feuilles format riche (mat+MO/niveau) → prix corrects (parpaing 60/75/95…) ; onglet admin badge+table ; get/set level ; catalogue Pro Business ; IA perso-prioritaire + repli partagé au niveau (haut→90, override bas→40) ; panneau Bibliothèque affiche prix du niveau choisi.
 - NOTE : le vrai fichier de 191 ouvrages du user n'était pas joignable ici — parseur conçu tolérant ; à importer via Admin→Bibliothèque et vérifier les colonnes détectées.
 - Données de test nettoyées (bibliothèque partagée vidée). ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 148 - 19/06/2026 (Bibliothèque paramétrique v3 : ouvrages composés + déboursé sec + pub accueil)
+- Fichiers user importés DIRECTEMENT (191 ouvrages / 1127 lignes de recettes). Format : composant + formule_quantite + métier + heures MO + % pertes.
+- NOUVEAU engines/param_import.py : parseur xlsx/csv (feuilles Recettes/Variables/API/Contraintes), évaluateur de formules sécurisé (eval_formula, arithmétique + variables), + valeurs par défaut : taux horaires 2026 par métier, coefficients régionaux (IDF 1.15 / grandes villes 1.08 / standard 1.0 / rural 0.95), variables moteur, ~26 prix matériaux de départ.
+- NOUVEAU routes/param_library.py :
+  - Admin (/admin/param-library) : POST /import (remplace), GET /ouvrages (agrégat 191), GET /ouvrages/{code} (CALCUL déboursé sec), DELETE ; tables éditables GET/PUT /labor-rates, /regional-coefs, GET/POST/PUT/DELETE /materials (auto-seed défauts).
+  - Pro Business (/param-library/ouvrages) : consultation (402 sinon).
+  - compute_ouvrage() : qty=formule(variables)×(1+pertes), prix matériaux par correspondance de nom (table matériaux, fallback "prix à définir"), MO=heures×variable_directrice×taux(métier,niveau), déboursé sec + coût revient (×coef région) + prix vente (×marge). Vérifié CP-0207 semelle : béton/armature matchés, MO 4.5h×52€, déboursé 530.87, IDF→revient 610.50, ×25%→vente 763.12.
+- Frontend : AdminParamLibraryTab.jsx (onglet admin "Ouvrages composés" : import/vider, liste 191, dialog calcul avec sélecteurs gamme/région/marge + détail lignes + totaux ; éditeurs taux horaires, coefficients régionaux, prix matériaux). ParamLibraryPromo.jsx : section PUB en page d'accueil (bandeau sombre "Moteur de chiffrage", 191 ouvrages composés, déboursé sec / coefficients régionaux / connexion fournisseurs).
+- VÉRIFIÉ (curl + captures) : import 191/1127, liste, calcul, pub accueil, onglet admin + dialog. Collections : param_recipe_lines, labor_rates, regional_coefs, material_prices, app_settings(param_library_meta).
+- NOTE : beaucoup de composants ont des libellés génériques (Produit principal, Accessoires…) → non appariés = "prix à définir" (à compléter dans la table Prix matériaux admin). Prix fournisseurs (Point.P…) = étape suivante.
+- ⚠️ PRÉVERSION : données importées en préversion. En PRODUCTION, réimporter via Admin→Ouvrages composés après redéploiement.
