@@ -1140,3 +1140,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
   - PlanTakeoff : planVariables (useMemo) calculé depuis les pièces (surface_m2, perimetre_ml, longueur_ml, hauteur_m=wallHeight) et passé au dialog.
 - VÉRIFIÉ (curl+capture) : prefill 51 ; quote-line avec/sans variables ; panneau admin matériaux tarifé (Accessoires 15/200€, Béton 145€…).
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 152 - 19/06/2026 (FIX suivi de devis : "Envoyés" toujours vide)
+- BUG : GET /quotes/sends/all plantait (KeyError 'plan_id', plans_export.py:932) dès qu'un enregistrement quote_sends n'avait pas de champ plan_id (devis envoyés depuis l'ÉDITEUR/documents, ou anciens enregistrements). Résultat : 500 → toute la section "Devis envoyés" + stats (CA signé) apparaissaient vides, d'où "les devis ne sont pas enregistrés dans le suivi".
+- FIX : accès sûrs d.get("plan_id") (ligne 932 + 939), plan_ids filtre les None.
+- VÉRIFIÉ : /quotes/sends/all renvoie 200 avec 81 devis (avant : 500) ; page Suivi charge CA signé 109 309 € + brouillons + envoyés. Devis éditeur (plan_id None) ET devis plan visibles.
+- ⚠️ Fix backend en PRÉVERSION → l'utilisateur doit Deploy Now pour l'appliquer sur construpilot.fr.

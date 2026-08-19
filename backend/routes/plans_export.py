@@ -929,14 +929,14 @@ async def list_all_quote_sends(user=Depends(current_user)) -> dict:
         {"_id": 0, "signature_b64": 0}
     ).sort("created_at", -1).limit(200).to_list(200)
 
-    plan_ids = list({d["plan_id"] for d in docs})
+    plan_ids = list({d.get("plan_id") for d in docs if d.get("plan_id")})
     plans = await db.plans_takeoff.find(
         {"plan_id": {"$in": plan_ids}, "user_id": user["user_id"]},
         {"_id": 0, "plan_id": 1, "filename": 1}
     ).to_list(500) if plan_ids else []
     filenames = {p["plan_id"]: p.get("filename") for p in plans}
     for d in docs:
-        d["plan_filename"] = filenames.get(d["plan_id"])
+        d["plan_filename"] = filenames.get(d.get("plan_id"))
 
     stats = {"sent": len(docs),
              "opened": sum(1 for d in docs if d.get("opened")),
