@@ -2205,7 +2205,7 @@ export default function PlanTakeoff() {
               {uploading ? "Import en cours…" : dragActive ? "Relâchez pour importer" : "Importer mon plan"}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              PDF · DXF · JPG · PNG · WEBP — jusqu'à 20 Mo — drag & drop ou clic
+              PDF · DXF · DWG · JPG · PNG · WEBP — jusqu'à 20 Mo — drag & drop ou clic
             </p>
           </div>
           <Input
@@ -2240,7 +2240,7 @@ export default function PlanTakeoff() {
 
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: Ruler, title: "Formats variés", desc: "PDF · DXF · JPG · PNG · WEBP — DWG à convertir en DXF" },
+            { icon: Ruler, title: "Formats variés", desc: "PDF · DXF · DWG · JPG · PNG · WEBP — DWG converti automatiquement" },
             { icon: Wand2, title: "Détection auto", desc: "Murs (OpenCV) · pièces flood-fill · deskew photo inclinée" },
             { icon: Calculator, title: "Multi-étages", desc: "RDC · R+1 · R+2 · combles — métré par niveau + total" },
           ].map(({ icon: Icon, title, desc }) => (

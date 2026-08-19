@@ -45,8 +45,23 @@ async def upload_plan(
         if mime != "application/octet-stream":
             raise HTTPException(415, f"Format non supporté : {mime}")
 
+    # DWG (format AutoCAD propriétaire) → conversion en DXF via CloudConvert
+    if lower_name.endswith(".dwg"):
+        from engines.dwg_convert import dwg_to_dxf
+        try:
+            data = await dwg_to_dxf(data, file.filename or "plan.dwg")
+        except RuntimeError as e:
+            raise HTTPException(422, str(e))
+        except Exception:
+            logger.exception("DWG conversion failed")
+            raise HTTPException(502, "Conversion DWG impossible — réessayez plus tard.")
+        parse_name = (file.filename or "plan")[:-4] + ".dxf"
+        mime = "image/vnd.dxf"
+    else:
+        parse_name = file.filename or "plan"
+
     try:
-        parsed = process_upload(data, file.filename or "plan", mime, deskew=deskew)
+        parsed = process_upload(data, parse_name, mime, deskew=deskew)
     except Exception as e:
         logger.exception("plan process failed")
         raise HTTPException(422, f"Impossible de lire le fichier : {e}")
