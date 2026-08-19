@@ -11,6 +11,7 @@ import hashlib
 import json
 import asyncio
 import logging
+import os
 import secrets
 from datetime import datetime, timezone
 
@@ -503,6 +504,15 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     sender_u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "email": 1})
     cc = (sender_u or {}).get("email")
     log_id = "qs_" + _secrets.token_hex(6)
+    sign_token = _secrets.token_urlsafe(24)
+    sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{sign_token}"
+    if doc["doc_type"] == "quote":
+        inner += (f'<p style="margin:22px 0"><a href="{sign_url}" '
+                  f'style="background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;'
+                  f'text-decoration:none;font-weight:bold;display:inline-block">'
+                  f'✍️ Consulter et signer le devis en ligne</a></p>'
+                  f'<p style="font-size:12px;color:#666">Ou copiez ce lien : {sign_url}</p>')
+    html = wrap_html(subject, inner)
     filename = f"{doc.get('number') or doc_id}.pdf"
     # Rendu 3D du projet en pièce jointe (si disponible et demandé)
     extra_attachments = None
@@ -521,6 +531,8 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
             extra_attachments = None
     await db.quote_sends.insert_one({
         "log_id": log_id, "doc_id": doc_id, "user_id": user["user_id"],
+        "plan_id": None, "signature_token": sign_token,
+        "signature_token_created_at": _now(),
         "client_email": body.client_email, "client_name": body.client_name,
         "total_ttc": ttc, "subject": subject,
         "email_status": "queued", "email_id": None, "error": None,

@@ -1178,7 +1178,7 @@ async def get_signature_page_data(token: str) -> dict:
         raise HTTPException(404, "Lien invalide ou expiré")
     branding = await _resolve_branding(log["user_id"]) or {}
     return {
-        "log_id": log["log_id"], "plan_id": log["plan_id"],
+        "log_id": log["log_id"], "plan_id": log.get("plan_id"),
         "client_email": log.get("client_email"), "client_name": log.get("client_name"),
         "total_ttc": log.get("total_ttc"),
         "finish": log.get("finish"), "floor_material": log.get("floor_material"),
@@ -1280,14 +1280,8 @@ async def get_signed_quote_pdf(token: str):
     log = await db.quote_sends.find_one({"signature_token": token}, {"_id": 0})
     if not log:
         raise HTTPException(404, "Lien invalide")
-    plan_id = log["plan_id"]
+    plan_id = log.get("plan_id")
     user_id = log["user_id"]
-
-    quote, _pdf = await _build_quote_and_pdf(
-        plan_id, user_id, log.get("finish", "std"),
-        log.get("floor_material", "carrelage"),
-        True, True, True, True,
-    )
     branding = await _resolve_branding(user_id)
     signature = None
     if log.get("signed"):
@@ -1295,6 +1289,26 @@ async def get_signed_quote_pdf(token: str):
                      "name": log.get("signer_name"),
                      "at": log.get("signed_at"),
                      "client_email": log.get("client_email")}
+
+    if not plan_id and log.get("doc_id"):
+        # Envoi par document (éditeur de devis) — PDF basé sur le document
+        from engines.pdf_docs import build_document_pdf
+        doc = await db.pro_documents.find_one({"doc_id": log["doc_id"], "user_id": user_id}, {"_id": 0})
+        if not doc:
+            raise HTTPException(404, "Devis introuvable")
+        try:
+            pdf_bytes = build_document_pdf(doc, branding=branding, signature=signature,
+                                           lang=(doc.get("lang")))
+        except TypeError:
+            pdf_bytes = build_document_pdf(doc, branding=branding, lang=(doc.get("lang")))
+        return Response(content=pdf_bytes, media_type="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="devis-signe-{log["doc_id"]}.pdf"'})
+
+    quote, _pdf = await _build_quote_and_pdf(
+        plan_id, user_id, log.get("finish", "std"),
+        log.get("floor_material", "carrelage"),
+        True, True, True, True,
+    )
     pdf_bytes = build_quote_pdf(quote, branding=branding, signature=signature)
     return Response(
         content=pdf_bytes, media_type="application/pdf",

@@ -1032,3 +1032,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - QuoteTracking.jsx : badge "Échec d'envoi" (rouge) + bouton "Réessayer" (retry-send-{log_id}) sur les envois email_status="failed" → POST /documents/{doc_id}/send avec client_email/name mémorisés. Badge "Envoi en cours…" pour status="queued".
 - Vérifié : screenshot préversion (dialog avec aperçu PDF + zone 3D + checkbox). Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 141 - 19/06/2026 (Signature en ligne du devis depuis l'e-mail)
+- documents.py send_document : génère un signature_token (+ plan_id:None sur le log quote_sends) et ajoute un bouton "Consulter et signer le devis en ligne" (lien FRONTEND_URL/sign/{token}) dans l'e-mail (uniquement pour doc_type=quote). Réutilise le flux de signature existant (SignQuote.jsx, /api/quotes/public/sign/{token}).
+- plans_export.py : get_signature_page_data → log.get('plan_id') (évite KeyError pour envois par document). get_signed_quote_pdf → fallback build_document_pdf quand pas de plan_id (doc_id), avec signature si signée.
+- Vérifié e2e (compte pro) : envoi doc → GET page signature 200 → POST signature 200 → PDF signé 200 → page publique /sign/{token} affiche récap + "devis signé" + téléchargement. 
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
