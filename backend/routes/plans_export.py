@@ -476,7 +476,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
         body.finish, "Standard")
 
-    from engines.emailer import wrap_html
+    from engines.emailer import wrap_company_html
     from routes.plans_common import deliver_email
     hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
     intro_html = (f"<p>{body.intro}</p>" if body.intro
@@ -499,7 +499,10 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         pixel_tag=pixel_tag,
     )
     subject = (body.subject or "").strip()[:180] or f"Devis · {company}"
-    html = wrap_html(subject, inner)
+    html = wrap_company_html(subject, inner, company_name=company,
+                             logo_b64=branding.get("logo_b64"), contact_line=contact,
+                             siret=branding.get("siret"), vat=branding.get("vat"),
+                             company_email=company_email)
 
     extra_attachments: list[dict] = []
     if body.include_tva_attestation:
@@ -511,7 +514,10 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
             "à nous retourner signée avant la facturation. Ce document est un "
             "devis estimatif indicatif"
         )
-        html = wrap_html(subject, inner_with_att)
+        html = wrap_company_html(subject, inner_with_att, company_name=company,
+                                 logo_b64=branding.get("logo_b64"), contact_line=contact,
+                                 siret=branding.get("siret"), vat=branding.get("vat"),
+                                 company_email=company_email)
 
     attached_video_id: str | None = None
     if body.attach_latest_video:
@@ -670,7 +676,7 @@ async def _ensure_signature_token(log: dict) -> str:
 
 
 async def _send_single_reminder(c: dict) -> None:
-    from engines.emailer import wrap_html
+    from engines.emailer import wrap_company_html
     from routes.plans_common import deliver_email
     branding = await _resolve_branding(c["user_id"]) or {}
     company = branding.get("company_name") or "ConstruPilot"
@@ -685,7 +691,11 @@ async def _send_single_reminder(c: dict) -> None:
                                   sign_url=sign_url, portal_url=portal_url,
                                   company=company)
     await deliver_email(c["user_id"], c["client_email"], f"Rappel : votre devis · {company}",
-                        wrap_html(f"Rappel devis · {company}", inner),
+                        wrap_company_html(f"Rappel devis · {company}", inner,
+                                          company_name=company, logo_b64=branding.get("logo_b64"),
+                                          contact_line=branding.get("contact_line"),
+                                          siret=branding.get("siret"), vat=branding.get("vat"),
+                                          company_email=company_email),
                         reply_to=company_email, from_name=company)
     await db.quote_sends.update_one({"log_id": c["log_id"]},
         {"$set": {"reminder_sent": True, "reminder_sent_at": _now()}})

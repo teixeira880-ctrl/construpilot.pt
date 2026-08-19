@@ -397,6 +397,10 @@ export default function QuoteEditor() {
     setSendOpen(true);
     let id = docId;
     if (!id) { const d = await save(); if (!d) return; id = d.doc_id; }
+    // Message type pré-rempli (selon type de document + taux de TVA)
+    api.get(`/documents/${id}/email-template`, { params: { client_name: nm } })
+      .then(({ data }) => { if (data?.message) setSendMsg(data.message); })
+      .catch(() => {});
     // Aperçu rendu 3D
     api.get(`/documents/${id}`).then(({ data }) => {
       if (data?.attachment_image_b64) setPreview3d(data.attachment_image_b64);

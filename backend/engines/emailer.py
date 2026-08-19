@@ -157,3 +157,57 @@ def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str 
 </td></tr>
 {_footer(unsubscribe_url)}
 </table></td></tr></table></body></html>"""
+
+
+
+def wrap_company_html(title: str, body: str, *, company_name: str = "",
+                      logo_b64: str | None = None, contact_line: str | None = None,
+                      siret: str | None = None, vat: str | None = None,
+                      company_email: str | None = None) -> str:
+    """Habillage e-mail aux coordonnées de l'entreprise (logo + nom + contact).
+
+    Utilisé pour les e-mails clients (devis/factures) afin d'afficher l'identité
+    de l'entreprise émettrice et non celle de ConstruPilot.
+    """
+    if logo_b64:
+        src = logo_b64 if logo_b64.startswith("data:") else f"data:image/png;base64,{logo_b64}"
+        header = (f'<img src="{src}" alt="{company_name}" '
+                  f'style="max-height:76px;max-width:260px;display:block;margin:0 auto"/>')
+    else:
+        header = (f'<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;'
+                  f'text-align:center;color:#0A0D14">{company_name or "Devis"}</div>')
+
+    coords = []
+    if contact_line:
+        coords.append(contact_line)
+    ids = " · ".join([x for x in [f"SIRET {siret}" if siret else "",
+                                   f"TVA {vat}" if vat else ""] if x])
+    if ids:
+        coords.append(ids)
+    if company_email:
+        coords.append(f'<a href="mailto:{company_email}" '
+                      f'style="color:#64748B;text-decoration:none">{company_email}</a>')
+    footer_inner = "<br/>".join(coords) if coords else ""
+    footer = ""
+    if footer_inner or company_name:
+        footer = (
+            '<tr><td style="padding:18px 24px 22px;background:#f8fafc;'
+            'border-top:1px solid #e2e8f0;text-align:center">'
+            f'<div style="font-size:13px;font-weight:700;color:#334155">{company_name}</div>'
+            f'<div style="font-size:11px;color:#64748B;margin-top:6px;line-height:1.6">'
+            f'{footer_inner}</div></td></tr>')
+
+    return f"""<!doctype html>
+<html><body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">
+<tr><td align="center">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0"
+       style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+<tr><td style="padding:24px;background:#f8fafc;border-bottom:2px solid {BRAND}">
+  {header}
+</td></tr>
+<tr><td style="padding:28px">
+  <div style="font-size:15px;line-height:1.7;color:#1e293b">{body}</div>
+</td></tr>
+{footer}
+</table></td></tr></table></body></html>"""

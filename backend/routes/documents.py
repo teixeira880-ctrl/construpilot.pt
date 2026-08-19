@@ -88,6 +88,49 @@ async def _client_snapshot(client_id: str | None, user: dict) -> dict | None:
     return {k: c.get(k, "") for k in keys}
 
 
+def _reduced_vat_rate(doc: dict) -> float | None:
+    """Retourne le taux réduit (10 ou 5.5) présent dans le devis, sinon None."""
+    rates = [float(ln.get("vat_rate") or 0) for ln in doc.get("lines", [])]
+    reduced = sorted({r for r in rates if 0 < r < 20}, reverse=True)
+    return reduced[0] if reduced else None
+
+
+def _email_template(doc: dict, company: str, client_name: str | None) -> str:
+    """Modèle d'e-mail type selon type de document + taux de TVA."""
+    number = doc.get("number") or ""
+    name = (client_name or "").strip() or "Madame, Monsieur"
+    if doc.get("doc_type") == "invoice":
+        return (f"Bonjour {name},\n\n"
+                f"Vous trouverez ci-joint votre facture n° {number}.\n\n"
+                f"Dans l'attente de votre aimable règlement.\n\n"
+                f"Cordialement,\n{company}")
+    if _reduced_vat_rate(doc) is not None:
+        return (f"Bonjour {name},\n\n"
+                f"Vous trouverez ci-joint votre devis n° {number} ainsi que l'attestation de TVA "
+                f"correspondante, pré-remplie et vous permettant de bénéficier de la TVA à taux "
+                f"réduit sur vos travaux.\n\n"
+                f"Nous vous remercions pour votre confiance.\n\n"
+                f"Cordialement,\n{company}")
+    return (f"Bonjour {name},\n\n"
+            f"Veuillez trouver ci-joint le devis correspondant à votre demande devis n° {number}.\n\n"
+            f"Nous restons à votre entière disposition pour toute information complémentaire ou pour "
+            f"échanger sur certains points si nécessaire.\n\n"
+            f"Dans l'attente de votre retour, nous vous remercions pour votre confiance.\n\n"
+            f"Cordialement,\n{company}")
+
+
+def _text_to_html(text: str) -> str:
+    import html as _html
+    out = []
+    for para in text.split("\n\n"):
+        if not para.strip():
+            continue
+        out.append(f'<p style="margin:0 0 14px 0">'
+                   f'{_html.escape(para).strip().replace(chr(10), "<br/>")}</p>')
+    return "".join(out)
+
+
+
 async def _next_number(user_id: str, doc_type: str) -> str:
     year = datetime.now(timezone.utc).year
     res = await db.doc_counters.find_one_and_update(
@@ -470,13 +513,37 @@ class DocSendIn(BaseModel):
     attach_3d: bool = True
 
 
+@router.get("/{doc_id}/email-template")
+async def get_email_template(doc_id: str, client_name: str | None = None,
+                             user=Depends(current_user)) -> dict:
+    """Message type pré-rempli pour l'envoi (selon type de document + TVA)."""
+    from routes.plans_common import _resolve_branding
+    doc = await _get_owned(doc_id, user)
+    if not doc.get("number"):
+        doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
+        doc["issue_date"] = doc.get("issue_date") or _now()
+        await db.pro_documents.update_one(
+            {"doc_id": doc_id, "user_id": user["user_id"]},
+            {"$set": {"number": doc["number"], "issue_date": doc["issue_date"]}})
+    branding = await _resolve_branding(user["user_id"]) or {}
+    company = branding.get("company_name") or user.get("name") or "ConstruPilot"
+    name = client_name or ((doc.get("client") or {}).get("first_name") or "")
+    number = doc.get("number") or ""
+    is_quote = doc["doc_type"] == "quote"
+    subject = (f"Devis n° {number} · {company}" if is_quote
+               else f"Facture n° {number} · {company}")
+    return {"subject": subject,
+            "message": _email_template(doc, company, name),
+            "attach_tva_attestation": is_quote and _reduced_vat_rate(doc) is not None}
+
+
 @router.post("/{doc_id}/send")
 async def send_document(doc_id: str, body: DocSendIn, background_tasks: BackgroundTasks,
                         user=Depends(current_user)):
     """Génère le PDF puis envoie l'email au client EN TÂCHE DE FOND (réponse immédiate)."""
     import re as _re
     import secrets as _secrets
-    from engines.emailer import wrap_html
+    from engines.emailer import wrap_company_html
     from engines.pdf_docs import build_document_pdf
     from routes.plans_common import _resolve_branding, deliver_email
     from routes.reviews import get_reviews_for_user
@@ -489,47 +556,75 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
         await db.pro_documents.update_one(
             {"doc_id": doc_id, "user_id": user["user_id"]},
             {"$set": {"number": doc["number"], "issue_date": doc["issue_date"]}})
-    branding = await _resolve_branding(user["user_id"])
+    branding = await _resolve_branding(user["user_id"]) or {}
     reviews = await get_reviews_for_user(user["user_id"]) if doc["doc_type"] == "quote" else None
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
                                    lang=(doc.get("lang") or user.get("lang")))
-    company = (branding or {}).get("company_name") or user.get("name") or "ConstruPilot"
-    company_email = (branding or {}).get("company_email")
+    company = branding.get("company_name") or user.get("name") or "ConstruPilot"
+    company_email = branding.get("company_email")
     ttc = (doc.get("totals") or {}).get("ttc") or doc.get("total_ttc") or 0
-    hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
-    inner = f"<p>{hello}</p><p>Veuillez trouver ci-joint votre devis de <b>{company}</b>.</p>"
-    if body.message:
-        inner += f"<p>{body.message}</p>"
-    subject = f"Devis · {company}"
-    html = wrap_html(subject, inner)
+    is_quote = doc["doc_type"] == "quote"
+    number = doc.get("number") or ""
+    body_text = (body.message or "").strip() or _email_template(doc, company, body.client_name)
+    inner = _text_to_html(body_text)
+    subject = (f"Devis n° {number} · {company}" if is_quote
+               else f"Facture n° {number} · {company}")
     sender_u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "email": 1})
     cc = (sender_u or {}).get("email")
     log_id = "qs_" + _secrets.token_hex(6)
     sign_token = _secrets.token_urlsafe(24)
     sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{sign_token}"
-    if doc["doc_type"] == "quote":
+    if is_quote:
         inner += (f'<p style="margin:22px 0"><a href="{sign_url}" '
                   f'style="background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;'
                   f'text-decoration:none;font-weight:bold;display:inline-block">'
                   f'✍️ Consulter et signer le devis en ligne</a></p>'
                   f'<p style="font-size:12px;color:#666">Ou copiez ce lien : {sign_url}</p>')
-    html = wrap_html(subject, inner)
+    html = wrap_company_html(subject, inner, company_name=company,
+                             logo_b64=branding.get("logo_b64"),
+                             contact_line=branding.get("contact_line"),
+                             siret=branding.get("siret"), vat=branding.get("vat"),
+                             company_email=company_email)
     filename = f"{doc.get('number') or doc_id}.pdf"
-    # Rendu 3D du projet en pièce jointe (si disponible et demandé)
-    extra_attachments = None
+    # Pièces jointes : attestation TVA (taux réduit) + rendu 3D éventuel
+    extra_attachments: list[dict] = []
     has_3d = False
+    reduced_rate = _reduced_vat_rate(doc) if is_quote else None
+    if reduced_rate is not None:
+        try:
+            from engines.pdf_takeoff import build_tva_attestation_pdf
+            cl = doc.get("client") or {}
+            addr = ", ".join([p for p in [
+                (cl.get("address") or "").strip(),
+                " ".join([cl.get("postal_code", ""), cl.get("city", "")]).strip()]
+                if p]) or ""
+            work_desc = " ; ".join([ln.get("designation") or ln.get("description") or ""
+                                    for ln in doc.get("lines", []) if
+                                    (ln.get("designation") or ln.get("description"))]) \
+                or "Travaux de rénovation"
+            att_pdf = build_tva_attestation_pdf(
+                client_name=body.client_name or "",
+                client_address=addr, work_address=addr,
+                work_description=work_desc, company_name=company,
+                company_address=branding.get("contact_line") or "",
+                branding=branding, tva_rate=reduced_rate / 100.0)
+            extra_attachments.append({"filename": f"attestation-tva-{number or doc_id}.pdf",
+                                      "content": att_pdf, "content_type": "application/pdf"})
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Attestation TVA non générée pour %s: %s", doc_id, e)
     if body.attach_3d and doc.get("attachment_image_b64"):
         import base64 as _b64
         raw = doc["attachment_image_b64"]
         if "," in raw and raw.strip().startswith("data:"):
             raw = raw.split(",", 1)[1]
         try:
-            extra_attachments = [{"filename": "rendu-3d.png",
-                                  "content": _b64.b64decode(raw),
-                                  "content_type": "image/png"}]
+            extra_attachments.append({"filename": "rendu-3d.png",
+                                      "content": _b64.b64decode(raw),
+                                      "content_type": "image/png"})
             has_3d = True
         except Exception:  # noqa: BLE001
-            extra_attachments = None
+            pass
+    extra_attachments = extra_attachments or None
     await db.quote_sends.insert_one({
         "log_id": log_id, "doc_id": doc_id, "user_id": user["user_id"],
         "plan_id": None, "signature_token": sign_token,
@@ -842,7 +937,7 @@ async def run_invoice_reminders() -> int:
     """Relance quotidienne des factures impayées à J+7 puis J+15, PDF en pièce jointe."""
     from datetime import timedelta  # noqa: F401
     from engines.pdf_docs import build_document_pdf
-    from engines.emailer import wrap_html
+    from engines.emailer import wrap_company_html
     from routes.plans_common import _resolve_branding, deliver_email
     log = logging.getLogger(__name__)
     now = datetime.now(timezone.utc)
@@ -869,21 +964,25 @@ async def run_invoice_reminders() -> int:
         else:
             continue
         try:
-            branding = await _resolve_branding(inv["user_id"])
+            branding = await _resolve_branding(inv["user_id"]) or {}
             pro = await db.users.find_one({"user_id": inv["user_id"]}, {"_id": 0, "lang": 1})
             lang = (pro or {}).get("lang")
             pdf = build_document_pdf(inv, branding=branding, lang=lang)
             remaining = inv.get("remaining_due", inv.get("totals", {}).get("ttc", 0)) or 0
             name = client.get("first_name") or client.get("company") or ""
-            company_name = (branding or {}).get("company_name")
-            company_email = (branding or {}).get("company_email")
+            company_name = branding.get("company_name")
+            company_email = branding.get("company_email")
             from engines.email_i18n import T
             number = inv.get("number")
             inner = (
                 f"<p>{T(lang, 'invrem.greeting', name=name)}</p>"
                 f"<p>{T(lang, 'invrem.body1', number=number, amount=f'{remaining:.2f} €')}</p>"
                 f"<p>{T(lang, 'invrem.body2')}</p>")
-            html = wrap_html(T(lang, "invrem.title", number=number), inner)
+            html = wrap_company_html(
+                T(lang, "invrem.title", number=number), inner,
+                company_name=company_name or "", logo_b64=branding.get("logo_b64"),
+                contact_line=branding.get("contact_line"), siret=branding.get("siret"),
+                vat=branding.get("vat"), company_email=company_email)
             await deliver_email(
                 inv["user_id"], email, T(lang, "invrem.subject", number=number),
                 html, pdf_bytes=pdf, filename=f"{number}.pdf",

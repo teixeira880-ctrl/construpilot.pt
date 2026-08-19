@@ -1067,3 +1067,15 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - VÉRIFIÉ : branding company_email round-trip ; _from('Nom')='Nom <devis@construpilot.fr>' + sanitize ; PUT mailbox avec identifiants invalides → 400 avec vraie erreur SMTP Gmail (535) ⇒ pipeline SMTP OK ; envoi devis 200 queued → deliver via resend (email_via=resend, status sent, pas de régression) ; UI MailboxDialog rendue.
 - NON TESTABLE ICI : envoi SMTP réel (nécessite le vrai mot de passe d'application de contact@cmrenov.com). Le chemin connexion+auth+erreur est vérifié.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 145 - 19/06/2026 (Modèles d'e-mail automatiques + habillage aux coordonnées de l'entreprise)
+- emailer.py : NOUVEAU wrap_company_html(...) — habillage e-mail aux couleurs de l'ENTREPRISE (logo brand_logo_b64 en en-tête, nom, contact_line, SIRET/TVA, e-mail en pied) au lieu de la marque ConstruPilot. Utilisé pour tous les e-mails clients (devis/factures/rappels).
+- documents.py : helpers _reduced_vat_rate(doc) (détecte 10% ou 5,5%), _email_template(doc, company, client_name) (3 modèles), _text_to_html().
+  - 3 modèles auto selon type + TVA : (1) devis TAUX RÉDUIT → mentionne l'attestation de TVA ; (2) devis 20% → texte standard ; (3) facture → "dans l'attente de votre règlement". Nom client + n° document + nom entreprise auto-remplis.
+  - NOUVEAU GET /documents/{doc_id}/email-template → {subject, message, attach_tva_attestation} ; réserve le n° du document (assigné dès l'ouverture du modèle).
+  - send_document réécrit : corps = message éditable OU modèle auto ; sujet "Devis/Facture n° X · Entreprise" ; habillage wrap_company_html ; ATTESTATION TVA jointe automatiquement UNIQUEMENT pour devis à taux réduit (10%/5,5%), jamais à 20% (build_tva_attestation_pdf, adresse depuis le snapshot client).
+  - Rappels factures : même habillage entreprise.
+- plans_export.py : send_quote + rappels passent aussi par wrap_company_html (coordonnées entreprise).
+- Frontend QuoteEditor.jsx : openSend récupère /email-template et pré-remplit le champ Message (modifiable).
+- VÉRIFIÉ : les 3 modèles renvoyés corrects (attestation=true à 10% seulement) ; n° réservé (DEV-2026-0007) ; envoi 200 + attestation générée sans erreur ; wrap_company_html rend nom/coords/SIRET/e-mail ; UI pré-remplit bien le message avec le n°.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
