@@ -989,3 +989,12 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Nav.jsx : lien "Investisseurs" (icône Handshake, data-testid="nav-link-investors") ajouté dans le header desktop à côté de Tarifs + ajouté à ACCOUNT_LINKS → visible aussi dans le menu mobile. Clé i18n nav.investors (fallback "Investisseurs").
 - Vérifié : screenshot préversion, lien visible + navigation vers /investisseurs OK.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 135 - 19/06/2026 (Retrait avis clients + mentions de nombre)
+- Demande : enlever les avis clients (garder l'espace) + retirer la mention "plus de 1000 clients et entreprises".
+- TrustSection.jsx : TESTIMONIALS vidé → placeholder "Les avis de nos utilisateurs apparaîtront ici prochainement" (espace conservé). Bandeau de logos d'entreprises (fictifs) retiré. Compteur "142 devis générés cette semaine" conservé.
+- SignupCounter.jsx : bannière "X professionnels du BTP ont déjà rejoint" masquée (return null) → disparaît de Landing + LandingParticuliers.
+- Landing.jsx : "Rejoignez 10 000+ pros / Artisans & Architectes équipés" → "Conçu pour les pros du BTP / Artisans, PME & architectes" (sans nombre).
+- LandingParticuliers.jsx : témoignages vidés → même placeholder, espace conservé.
+- Vérifié : screenshot préversion (bannière + logos absents, placeholder avis visible). Frontend compile.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

@@ -34,11 +34,7 @@ const PERKS = [
   { icon: HomeIcon, title: "Pensé pour vous", text: "Pas de jargon : des chiffres clairs pour votre projet." },
 ];
 
-const TESTIS = [
-  { name: "Camille · Lyon", text: "J'ai eu mon budget rénovation en 2 minutes, avant même de contacter un artisan. Bluffant." },
-  { name: "Karim · Nantes", text: "Super pratique pour savoir si mon projet de cuisine tenait dans mon budget." },
-  { name: "Sophie · Bordeaux", text: "Enfin des chiffres clairs sans avoir à faire venir 3 entreprises." },
-];
+const TESTIS = [];
 
 export default function LandingParticuliers() {
   const navigate = useNavigate();
@@ -201,7 +197,14 @@ export default function LandingParticuliers() {
       <section className="bg-muted/40 border-y border-border py-16">
         <div className="mx-auto max-w-6xl px-5">
           <div className="grid md:grid-cols-3 gap-6">
-            {TESTIS.map((t) => (
+            {TESTIS.length === 0 ? (
+              <div className="md:col-span-3 surface p-8 rounded-xl grid place-items-center text-center gap-2" data-testid="particuliers-testis-empty">
+                <div className="flex gap-0.5 text-primary/40">
+                  {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
+                </div>
+                <p className="text-sm text-muted-foreground">Les avis de nos utilisateurs apparaîtront ici prochainement.</p>
+              </div>
+            ) : TESTIS.map((t) => (
               <div key={t.name} className="surface p-6 rounded-xl">
                 <div className="flex gap-0.5 mb-3">
                   {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-primary text-primary" />)}

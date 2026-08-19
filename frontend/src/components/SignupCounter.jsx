@@ -11,6 +11,8 @@ export const SignupCounter = () => {
     const id = setInterval(fetchCount, 15000);
     return () => { alive = false; clearInterval(id); };
   }, []);
+  return null; // Compteur masqué (pas de mention du nombre d'inscrits)
+  // eslint-disable-next-line no-unreachable
   if (count === null) return null;
   return (
     <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2 bg-secondary/40" data-testid="signup-counter">

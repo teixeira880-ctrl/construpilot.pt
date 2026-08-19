@@ -300,8 +300,8 @@ export default function Landing() {
                   ))}
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-foreground num">{t("landing.hero.trust_title", "Rejoignez 10 000+ pros")}</span>
-                  <span className="text-xs">{t("landing.hero.trust_subtitle", "Artisans & Architectes équipés")}</span>
+                  <span className="font-bold text-foreground">{t("landing.hero.trust_title", "Conçu pour les pros du BTP")}</span>
+                  <span className="text-xs">{t("landing.hero.trust_subtitle", "Artisans, PME & architectes")}</span>
                 </div>
               </div>
             </motion.div>
