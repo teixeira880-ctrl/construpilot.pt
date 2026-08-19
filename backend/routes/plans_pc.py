@@ -390,7 +390,8 @@ class PcOrderSendIn(BaseModel):
 async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
                               user=Depends(current_user)) -> dict:
     import html as _html
-    from engines.emailer import send_email_with_pdf, wrap_html
+    from engines.emailer import wrap_html
+    from routes.plans_common import deliver_email
 
     p = await _plan_and_study(plan_id, user, write=True)
     p["plan_id"] = plan_id
@@ -418,10 +419,12 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
         f"en répondant à cet email ({_html.escape(user.get('email') or '')}).<br/>"
         f"{_html.escape(company)}</p>")
     try:
-        await send_email_with_pdf(
-            body.supplier_email, f"Bon de commande {ref} · {company}",
+        await deliver_email(
+            p["user_id"], body.supplier_email, f"Bon de commande {ref} · {company}",
             wrap_html(f"Bon de commande {ref}", html_body),
-            pdf, filename=f"{ref}.pdf")
+            pdf_bytes=pdf, filename=f"{ref}.pdf",
+            reply_to=(user.get("email") or (branding or {}).get("company_email")),
+            from_name=company)
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
@@ -495,7 +498,8 @@ class PcSendIn(BaseModel):
 async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)) -> dict:
     """Envoie l'étude PC (PDF joint) au client, avec un mot personnalisé."""
     import html as _html
-    from engines.emailer import send_email_with_pdf, wrap_html
+    from engines.emailer import wrap_company_html
+    from routes.plans_common import deliver_email
 
     p = await _plan_and_study(plan_id, user, write=True)
     study = p["pc_study"]
@@ -538,11 +542,19 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
     if backend_public:
         html_body += (f'<img src="{backend_public}/api/pc/track/{track_id}" '
                       'width="1" height="1" alt="" style="display:block" />')
-    html = wrap_html("Étude gros œuvre — Permis de construire", html_body)
+    b = branding or {}
+    company = b.get("company_name") or user.get("name") or "ConstruPilot"
+    company_email = b.get("company_email")
+    html = wrap_company_html(
+        "Étude gros œuvre — Permis de construire", html_body,
+        company_name=company, logo_b64=b.get("logo_b64"),
+        contact_line=b.get("contact_line"), siret=b.get("siret"),
+        vat=b.get("vat"), company_email=company_email)
     try:
-        await send_email_with_pdf(
-            body.to_email, f"Étude gros œuvre — {filename}",
-            html, pdf, filename=f"etude-pc-{plan_id}.pdf")
+        await deliver_email(
+            p["user_id"], body.to_email, f"Étude gros œuvre — {filename}",
+            html, pdf_bytes=pdf, filename=f"etude-pc-{plan_id}.pdf",
+            reply_to=company_email, from_name=company)
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
