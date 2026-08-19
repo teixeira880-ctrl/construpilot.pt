@@ -9,11 +9,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import asyncio
 import logging
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from pymongo import ReturnDocument
@@ -21,6 +22,7 @@ from pymongo import ReturnDocument
 from core.db import db
 from core.security import current_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["documents"], prefix="/documents")
 
 DOC_TYPES = ("quote", "invoice", "credit_note")
@@ -467,8 +469,9 @@ class DocSendIn(BaseModel):
 
 
 @router.post("/{doc_id}/send")
-async def send_document(doc_id: str, body: DocSendIn, user=Depends(current_user)):
-    """Envoie le PDF du devis/document au client par email + log dans le suivi."""
+async def send_document(doc_id: str, body: DocSendIn, background_tasks: BackgroundTasks,
+                        user=Depends(current_user)):
+    """Génère le PDF puis envoie l'email au client EN TÂCHE DE FOND (réponse immédiate)."""
     import re as _re
     import secrets as _secrets
     from engines.emailer import send_email_with_pdf, wrap_html
@@ -497,29 +500,36 @@ async def send_document(doc_id: str, body: DocSendIn, user=Depends(current_user)
     subject = f"Devis · {company}"
     html = wrap_html(subject, inner)
     sender_u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "email": 1})
+    cc = (sender_u or {}).get("email")
     log_id = "qs_" + _secrets.token_hex(6)
-    email_status, email_id, error = "sent", None, None
-    try:
-        res = await send_email_with_pdf(
-            body.client_email, subject, html, pdf_bytes,
-            filename=f"{doc.get('number') or doc_id}.pdf",
-            cc=(sender_u or {}).get("email"))
-        email_id = res.get("id")
-    except Exception as e:  # noqa: BLE001
-        email_status, error = "failed", str(e)
+    filename = f"{doc.get('number') or doc_id}.pdf"
     await db.quote_sends.insert_one({
         "log_id": log_id, "doc_id": doc_id, "user_id": user["user_id"],
         "client_email": body.client_email, "client_name": body.client_name,
         "total_ttc": ttc, "subject": subject,
-        "email_status": email_status, "email_id": email_id, "error": error,
+        "email_status": "queued", "email_id": None, "error": None,
         "created_at": _now(), "opened": False, "open_count": 0,
         "signed": False, "reminder_sent": False,
     })
-    if email_status != "sent":
-        raise HTTPException(502, "L'envoi de l'email a échoué. Vérifiez l'adresse et réessayez.")
     await db.pro_documents.update_one(
         {"doc_id": doc_id, "user_id": user["user_id"]}, {"$set": {"status": "sent"}})
-    return {"ok": True, "log_id": log_id, "total_ttc": ttc}
+
+    async def _deliver():
+        try:
+            res = await asyncio.wait_for(
+                send_email_with_pdf(body.client_email, subject, html, pdf_bytes,
+                                    filename=filename, cc=cc),
+                timeout=45)
+            await db.quote_sends.update_one(
+                {"log_id": log_id},
+                {"$set": {"email_status": "sent", "email_id": res.get("id")}})
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"send_document email failed ({log_id}): {e}")
+            await db.quote_sends.update_one(
+                {"log_id": log_id}, {"$set": {"email_status": "failed", "error": str(e)[:300]}})
+
+    background_tasks.add_task(_deliver)
+    return {"ok": True, "queued": True, "log_id": log_id, "total_ttc": ttc}
 
 
 

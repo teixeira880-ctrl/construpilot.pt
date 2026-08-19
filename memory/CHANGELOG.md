@@ -1013,3 +1013,10 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - Frontend QuoteTracking.jsx : section "Devis enregistrés (brouillons)" (saved-drafts-section) listant GET /documents?doc_type=quote (status!==sent), clic → rouvre dans l'éditeur.
 - Testé par testing_agent (iteration_95.json) : backend 3/3, frontend E2E complet 100%. 2 remarques revue de code corrigées (status='sent' seulement si envoi OK ; pré-remplissage nom).
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 138 - 19/06/2026 (Fix production: envoi devis échoue / erreur Cloudflare)
+- Bug (production https://construpilot.fr) : clic "Envoyer le devis" → erreur Cloudflare "origin returned invalid or incomplete response". Cause racine : l'envoi email Resend (resend.Emails.send) est BLOQUANT et sans timeout → si Resend est lent, la requête HTTP ne répond jamais → dépassement de délai origin/ingress → erreur Cloudflare. (PDF gen = 0,02s, donc pas en cause.)
+- Fix (documents.py send_document) : PDF généré en synchrone (rapide), puis email envoyé EN TÂCHE DE FOND via BackgroundTasks (asyncio.wait_for timeout 45s). Log quote_sends créé avec email_status="queued" + status doc="sent" immédiatement ; le background met le log à "sent"/"failed" (+email_id). Réponse HTTP immédiate {ok, queued}.
+- Vérifié préversion (curl, compte pro) : email invalide → 400 (0.23s) ; envoi valide → 200 queued (0.25s, plus de blocage) ; livraison background confirmée (email_status=sent, email_id Resend réel).
+- NB : suggestions hors-sujet du deployment_agent (delete_many seed, CORS *, gitignore) NON appliquées volontairement (sans rapport avec ce bug, risquées).
+- ⚠️ Corrigé en PRÉVERSION — l'utilisateur doit REDÉPLOYER pour corriger la production.
