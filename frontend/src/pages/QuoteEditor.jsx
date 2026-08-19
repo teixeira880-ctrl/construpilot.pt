@@ -93,6 +93,20 @@ export default function QuoteEditor() {
           applyDoc(data);
           nav(`/devis-editeur/${data.doc_id}`, { replace: true });
         }
+        const pend = sessionStorage.getItem("construpilot_pending_ouvrages");
+        if (pend) {
+          try {
+            const arr = JSON.parse(pend);
+            if (Array.isArray(arr) && arr.length) {
+              setLines((ls) => {
+                const base = ls.filter((l) => (l.designation || "").trim() || (Number(l.unit_price_ht) || 0));
+                return [...base, ...arr.map((l) => ({ ...blankLine(), ...l, _saveToLib: false }))];
+              });
+              toast.success(`${arr.length} ouvrage(s) composé(s) ajouté(s) depuis le plan`);
+            }
+          } catch { /* ignore */ }
+          sessionStorage.removeItem("construpilot_pending_ouvrages");
+        }
       } catch (e) {
         toast.error(e?.response?.data?.detail || t("crm.load_fail"));
       } finally { setLoading(false); }

@@ -14,6 +14,7 @@ import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
 import { MeasureHelpDialog } from "@/components/planTakeoff/MeasureHelpDialog";
+import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
 import { LiveTotalBar } from "@/components/planTakeoff/LiveTotalBar";
 import {
   Upload, Ruler, Square, Move, Trash2, RotateCw,
@@ -107,6 +108,17 @@ export default function PlanTakeoff() {
   const [laborPriceM3, setLaborPriceM3] = useState(400);
   const [marginPct, setMarginPct] = useState(15);
   const [priceLevel, setPriceLevel] = useState("moyen");
+  const [pendingOuvrages, setPendingOuvrages] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("construpilot_pending_ouvrages") || "[]").length; }
+    catch { return 0; }
+  });
+  const addOuvrageFromPlan = (line) => {
+    let arr = [];
+    try { arr = JSON.parse(sessionStorage.getItem("construpilot_pending_ouvrages") || "[]"); } catch { arr = []; }
+    arr.push(line);
+    sessionStorage.setItem("construpilot_pending_ouvrages", JSON.stringify(arr));
+    setPendingOuvrages(arr.length);
+  };
   const [marginBeton, setMarginBeton] = useState("");
   const [marginAcier, setMarginAcier] = useState("");
   const [marginLabor, setMarginLabor] = useState("");
@@ -2372,6 +2384,13 @@ export default function PlanTakeoff() {
           </Button>
           <BrandingDialog />
           <MailboxDialog />
+          <OuvrageComposeDialog onAdd={addOuvrageFromPlan} />
+          {pendingOuvrages > 0 && (
+            <Button variant="outline" onClick={() => nav("/devis-editeur")}
+                    className="rounded-sm gap-2 border-primary text-primary" data-testid="plan-create-quote-ouvrages">
+              <ArrowRight className="h-4 w-4" /> Créer un devis ({pendingOuvrages})
+            </Button>
+          )}
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
                   title="Lecture du plan par l'IA : pièces, cotes, surfaces, ouvertures et types de murs">
             <Sparkles className={`h-4 w-4 ${aiBusy ? "animate-pulse" : ""}`} />

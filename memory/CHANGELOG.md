@@ -1123,3 +1123,9 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - VÉRIFIÉ (curl + capture) : generate-missing 51 ajouts ; quote-line CP-0207 → 763.12€ (IDF) / 663.59€ (standard) ; insertion e2e dans l'éditeur avec totaux recalculés.
 - Prix fournisseurs (Point.P/Chausson/Leroy Merlin) : PAS d'API publique de prix → livré l'import/export CSV comme mécanisme fiable. Options réelles à discuter : API partenaire B2B (identifiants requis) ou scraping (fragile). NON implémenté.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 150 - 19/06/2026 (Insertion d'ouvrages composés depuis l'analyse de plan)
+- PlanTakeoff.jsx : bouton "Ouvrage composé" (OuvrageComposeDialog) ajouté dans la barre d'outils du plan (à côté d'Identité pro / Lire le plan IA). addOuvrageFromPlan empile la ligne chiffrée dans sessionStorage 'construpilot_pending_ouvrages' + compteur ; bouton "Créer un devis (N)" → nav('/devis-editeur').
+- QuoteEditor.jsx : au chargement, reprend les ouvrages en attente depuis sessionStorage, les ajoute comme lignes (en retirant la ligne vide par défaut), toast, puis vide la clé. Fonctionne pour un nouvel éditeur comme pour un devis existant.
+- VÉRIFIÉ (captures) : bouton présent sur un plan ouvert ; reprise éditeur OK (Semelle filante BA 50x25 ×12 = 9157,44 € HT, TTC 10073,18 €), sessionStorage vidé après reprise.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.
