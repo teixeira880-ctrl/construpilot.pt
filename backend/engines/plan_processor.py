@@ -77,6 +77,31 @@ def _pil_to_png_bytes(img: Image.Image, max_side: int = 2400) -> bytes:
     return buf.getvalue()
 
 
+def _encode_preview(img: Image.Image, max_side: int = 1800):
+    """Encode l'aperçu d'une page en gardant le plus léger entre PNG (trait) et
+    JPEG (photo). Retourne (b64, mime, final_w, final_h, ratio).
+
+    Un plan multi-pages en PNG pleine résolution dépassait la limite BSON de
+    16 Mo par document MongoDB → import KO. On redimensionne et on choisit le
+    format le plus compact par page.
+    """
+    w, h = img.size
+    ratio = 1.0
+    if max(w, h) > max_side:
+        ratio = max_side / max(w, h)
+        img = img.resize((max(1, int(w * ratio)), max(1, int(h * ratio))), Image.LANCZOS)
+    fw, fh = img.size
+    pbuf = io.BytesIO()
+    img.save(pbuf, format="PNG")
+    png = pbuf.getvalue()
+    jbuf = io.BytesIO()
+    img.convert("RGB").save(jbuf, format="JPEG", quality=85, optimize=True)
+    jpg = jbuf.getvalue()
+    if len(jpg) < len(png):
+        return _b64(jpg), "image/jpeg", fw, fh, ratio
+    return _b64(png), "image/png", fw, fh, ratio
+
+
 def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
@@ -87,10 +112,10 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 150) -> dict:
     pages_out = []
     detected_scale = None
     for i, page in enumerate(doc):
-        # --- Rendu PNG pour le viewer ---
+        # --- Rendu image pour le viewer (JPEG/PNG adaptatif, redimensionné) ---
         pix = page.get_pixmap(dpi=render_dpi, alpha=False)
         img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-        png = _pil_to_png_bytes(img)
+        img_b64, img_mime, fw, fh, ratio = _encode_preview(img)
 
         # --- Extraction texte ---
         text = page.get_text("text") or ""
@@ -138,11 +163,12 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 150) -> dict:
 
         pages_out.append({
             "index": i,
-            "width_px": pix.width,
-            "height_px": pix.height,
-            "dpi": render_dpi,
-            "image_png_b64": _b64(png),
-            "vectors": vectors[:5000],   # cap pour éviter payloads énormes
+            "width_px": fw,
+            "height_px": fh,
+            "dpi": round(render_dpi * ratio, 2),
+            "image_png_b64": img_b64,
+            "img_mime": img_mime,
+            "vectors": vectors[:2500],   # cap pour éviter payloads énormes (limite BSON 16 Mo)
             "text_blocks": text_blocks[:2000],
             "dimensions_count": len(DIM_PATTERN.findall(text)),
             "raw_text_length": len(text),
@@ -164,18 +190,17 @@ def process_image(image_bytes: bytes, mime: str) -> dict:
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGB")
     original_size = img.size
-    png = _pil_to_png_bytes(img)
-    # Charge la taille finale (après resize éventuel)
-    final = Image.open(io.BytesIO(png))
+    img_b64, img_mime, fw, fh, _ratio = _encode_preview(img, max_side=2400)
     return {
         "kind": "image",
         "page_count": 1,
         "pages": [{
             "index": 0,
-            "width_px": final.width,
-            "height_px": final.height,
+            "width_px": fw,
+            "height_px": fh,
             "dpi": 96,
-            "image_png_b64": _b64(png),
+            "image_png_b64": img_b64,
+            "img_mime": img_mime,
             "vectors": [],
             "text_blocks": [],
             "dimensions_count": 0,

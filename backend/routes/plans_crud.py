@@ -71,8 +71,34 @@ async def upload_plan(
         "created_at": _now(),
         "updated_at": _now(),
     }
-    await db.plans_takeoff.insert_one(doc)
+    await _insert_plan_safe(doc)
     return _plan_summary(doc)
+
+
+def _bson_size_mb(doc: dict) -> float:
+    import bson
+    return len(bson.BSON.encode(doc)) / 1024 / 1024
+
+
+async def _insert_plan_safe(doc: dict) -> None:
+    """Insère le plan en garantissant de rester sous la limite BSON de 16 Mo.
+    Si le document est trop lourd (PDF multi-pages avec beaucoup d'images), on
+    dégrade progressivement : d'abord les vecteurs, puis les textes.
+    """
+    if _bson_size_mb(doc) > 15:
+        for pg in doc.get("pages", []):
+            pg["vectors"] = []
+        logger.warning("plan %s: vecteurs supprimés pour tenir sous 16 Mo", doc.get("plan_id"))
+    if _bson_size_mb(doc) > 15:
+        for pg in doc.get("pages", []):
+            pg["text_blocks"] = []
+    if _bson_size_mb(doc) > 15:
+        raise HTTPException(
+            413,
+            "Plan trop volumineux à stocker (trop de pages ou images très lourdes). "
+            "Essayez de n'importer que les pages utiles ou un plan en résolution moindre.",
+        )
+    await db.plans_takeoff.insert_one(doc)
 
 
 def _auto_calibrate_pages(parsed: dict) -> dict:

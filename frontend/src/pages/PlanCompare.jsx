@@ -23,6 +23,7 @@ export default function PlanCompare() {
   const [beforeRooms, setBeforeRooms] = useState([]);
   const [afterRooms, setAfterRooms] = useState([]);
   const [afterImage, setAfterImage] = useState(null);
+  const [afterMime, setAfterMime] = useState("image/png");
   const [showAdded, setShowAdded] = useState(true);
   const [showRemoved, setShowRemoved] = useState(true);
   const [showModified, setShowModified] = useState(true);
@@ -53,6 +54,7 @@ export default function PlanCompare() {
       setBeforeRooms((beforePlan.rooms || []).filter(r => r.page_index === 0));
       setAfterRooms((afterPlan.rooms || []).filter(r => r.page_index === 0));
       setAfterImage(afterPage.image_png_b64);
+      setAfterMime(afterPage.img_mime || "image/png");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Comparaison impossible");
     } finally { setBusy(false); }
@@ -154,7 +156,7 @@ export default function PlanCompare() {
 
       ctx.restore();
     };
-    img.src = `data:image/png;base64,${afterImage}`;
+    img.src = `data:${afterMime};base64,${afterImage}`;
   }, [afterImage, beforeRooms, afterRooms, result, showAdded, showRemoved, showModified,
       showAddedWalls, showRemovedWalls]);
 

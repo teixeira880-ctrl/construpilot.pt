@@ -72,7 +72,7 @@ export default function PlanCanvas({
       }
       redraw();
     };
-    img.src = `data:image/png;base64,${pageData.image_png_b64}`;
+    img.src = `data:${pageData.img_mime || "image/png"};base64,${pageData.image_png_b64}`;
     // eslint-disable-next-line
   }, [pageData?.image_png_b64]);
 
