@@ -1086,3 +1086,16 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - IMPORTANT : "PC" dans ce contexte = Permis de Construire (pas ordinateur) — libellés corrigés.
 - Vérifié : screenshot préversion — bouton visible, modale rendue avec les 6 étapes, step 1 = "Importer votre plan ou votre Permis de Construire (PC)". Frontend compile.
 - ⚠️ PRÉVERSION — redéploiement requis pour la production.
+
+## Iteration 147 - 19/06/2026 (Bibliothèque partagée admin → Pro Business, prix bas/médian/haut, usage IA)
+- NOUVEAU engines/library_import.py : parseur CSV/Excel tolérant (classifieur d'en-têtes par mots-clés, sans accents). Reconnaît Catégorie/Désignation/Unité/TVA/Source/Date + prix par niveau soit direct (Prix_bas/moyen/haut) soit via Matériaux_* + MainOeuvre_* (prix niveau = mat+MO). Sélection auto de la feuille "ouvrages" dans un classeur multi-feuilles (ignore Paramètres/TVA/Taux/Sources). Modèle CSV fourni.
+- NOUVEAU routes/shared_library.py :
+  - Admin (/admin/shared-library, guard admin_user) : POST /import (remplace tout), GET (liste+meta+catégories), DELETE (vide), GET /template.
+  - Entreprise (/shared-library) : GET/PUT /level (gamme bas/moyen/haut, défaut moyen), GET (catalogue lecture seule, réservé Pro Business → 402 sinon).
+  - Helpers get_shared_items_for_level(level) + resolve_price_level(user, override).
+  - Collection shared_library_items {category,designation,unit,vat_rate,price_low/mid/high,mat_*,labor_*,coef_*,source,ref_date}. Meta dans app_settings.
+- plans_analysis._apply_library_prices : perso PRIORITAIRE, puis repli bibliothèque PARTAGÉE au niveau choisi (Pro Business/admin). Nouveau param level_override. Endpoint structure/quote accepte ?price_level=. price_source = bibliotheque | bibliotheque_partagee_{niveau}.
+- Frontend : AdminSharedLibraryTab.jsx (onglet admin "Bibliothèque" : import/remplacer, modèle CSV, vider, table Bas/Médian/Haut, recherche) ; SharedLibraryPanel.jsx dans page Bibliothèque (sélecteur gamme + catalogue consultable, 402→verrou) ; PlanTakeoff : sélecteur "Gamme (biblio. partagée)" par devis (envoie price_level).
+- VÉRIFIÉ (curl+python+screenshots) : import xlsx multi-feuilles format riche (mat+MO/niveau) → prix corrects (parpaing 60/75/95…) ; onglet admin badge+table ; get/set level ; catalogue Pro Business ; IA perso-prioritaire + repli partagé au niveau (haut→90, override bas→40) ; panneau Bibliothèque affiche prix du niveau choisi.
+- NOTE : le vrai fichier de 191 ouvrages du user n'était pas joignable ici — parseur conçu tolérant ; à importer via Admin→Bibliothèque et vérifier les colonnes détectées.
+- Données de test nettoyées (bibliothèque partagée vidée). ⚠️ PRÉVERSION — redéploiement requis pour la production.

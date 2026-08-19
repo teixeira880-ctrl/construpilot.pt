@@ -15,6 +15,7 @@ import { useI18n } from "@/context/I18nContext";
 import { Stat, SectionTitle } from "@/components/Bits";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
+import AdminSharedLibraryTab from "@/components/AdminSharedLibraryTab";
 import AdsPanel from "@/components/AdsPanel";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
@@ -120,6 +121,7 @@ export default function Admin() {
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
+          <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Bibliothèque</TabsTrigger>
           <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicité</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
@@ -128,6 +130,10 @@ export default function Admin() {
 
         <TabsContent value="ai" className="mt-6">
           <AiModelTab />
+        </TabsContent>
+
+        <TabsContent value="sharedlib" className="mt-6">
+          <AdminSharedLibraryTab />
         </TabsContent>
 
         <TabsContent value="ads" className="mt-6">

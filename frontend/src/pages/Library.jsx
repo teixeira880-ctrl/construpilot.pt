@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { SectionTitle } from "@/components/Bits";
+import SharedLibraryPanel from "@/components/SharedLibraryPanel";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -109,6 +110,8 @@ export default function Library() {
           </Button>
         </div>
       </div>
+
+      <SharedLibraryPanel />
 
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[240px] max-w-md">

@@ -106,6 +106,7 @@ export default function PlanTakeoff() {
   const [plancherPriceM2, setPlancherPriceM2] = useState(0);
   const [laborPriceM3, setLaborPriceM3] = useState(400);
   const [marginPct, setMarginPct] = useState(15);
+  const [priceLevel, setPriceLevel] = useState("moyen");
   const [marginBeton, setMarginBeton] = useState("");
   const [marginAcier, setMarginAcier] = useState("");
   const [marginLabor, setMarginLabor] = useState("");
@@ -1263,7 +1264,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${mq}`, body);
       const n = data.priced_lines || 0;
       toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
@@ -1281,7 +1282,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${mq}`, body);
       const res = await api.get(`/documents/${data.doc_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
@@ -3077,6 +3078,18 @@ export default function PlanTakeoff() {
                              data-testid="margin-pct"
                              className="w-14 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> %
                     </label>
+                    <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground" data-testid="plan-price-level">
+                      <span>Gamme (biblio. partagée) :</span>
+                      {["bas", "moyen", "haut"].map((lvl) => (
+                        <button key={lvl} type="button" onClick={() => setPriceLevel(lvl)}
+                                data-testid={`plan-price-level-${lvl}`}
+                                className={`rounded-sm px-2 py-0.5 border transition-colors capitalize ${
+                                  priceLevel === lvl ? "border-primary bg-primary text-white"
+                                                     : "border-input hover:border-primary/40"}`}>
+                          {lvl}
+                        </button>
+                      ))}
+                    </div>
                     <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
                       <span>Marge/poste :</span>
                       <label className="flex items-center gap-0.5">Béton

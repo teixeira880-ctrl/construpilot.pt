@@ -789,31 +789,61 @@ def _unit_family(unit: str) -> str:
     return u or "?"
 
 
-async def _apply_library_prices(user_id: str, lines: list[dict]) -> tuple[list[dict], int]:
-    """Pré-remplit unit_price_ht/vat depuis la bibliothèque (match mots-clés + MÊME
-    famille d'unité pour éviter les prix aberrants). Retourne (lignes, nb_chiffrées)."""
+async def _apply_library_prices(user_id: str, lines: list[dict],
+                                level_override: str | None = None) -> tuple[list[dict], int]:
+    """Pré-remplit unit_price_ht/vat depuis la bibliothèque PERSO (prioritaire),
+    puis, pour les entreprises Pro Business, complète depuis la bibliothèque
+    PARTAGÉE au niveau de prix choisi (bas/moyen/haut).
+    Match par mots-clés + MÊME famille d'unité pour éviter les prix aberrants."""
     items = await db.library_items.find(
         {"user_id": user_id}, {"_id": 0, "designation": 1, "unit": 1,
                                "unit_price_ht": 1, "vat_rate": 1}).to_list(5000)
-    if not items:
-        return lines, 0
     idx = [(_norm_tokens(it.get("designation", "")), it) for it in items]
-    matched = 0
-    for ln in lines:
-        toks = _norm_tokens(ln.get("designation", ""))
-        fam = _unit_family(ln.get("unit"))
+
+    def _match(line, index):
+        toks = _norm_tokens(line.get("designation", ""))
+        fam = _unit_family(line.get("unit"))
         best, best_overlap = None, 0
-        for it_toks, it in idx:
+        for it_toks, it in index:
             if _unit_family(it.get("unit")) != fam:
-                continue  # ne pas mélanger m²/ml/u/forfait
+                continue
             overlap = len(toks & it_toks)
             if overlap > best_overlap:
                 best, best_overlap = it, overlap
-        if best and best_overlap >= 1 and best.get("unit_price_ht"):
+        return best if (best and best_overlap >= 1 and best.get("unit_price_ht")) else None
+
+    matched = 0
+    for ln in lines:
+        best = _match(ln, idx) if idx else None
+        if best:
             ln["unit_price_ht"] = best["unit_price_ht"]
             ln["vat_rate"] = best.get("vat_rate", ln.get("vat_rate", 10))
             ln["price_source"] = "bibliotheque"
             matched += 1
+
+    # Fallback bibliothèque partagée (Pro Business uniquement)
+    unpriced = [ln for ln in lines if not ln.get("price_source")]
+    if unpriced:
+        try:
+            from engines.monetization import user_tier
+            from routes.shared_library import get_shared_items_for_level, resolve_price_level
+            u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "role": 1})
+            is_pb = (u or {}).get("role") == "admin" or (await user_tier(user_id)) == "pro_business"
+            if is_pb:
+                level = await resolve_price_level(user_id, level_override)
+                shared = await get_shared_items_for_level(level)
+                sidx = [(_norm_tokens(it.get("designation", "")), it) for it in shared]
+                for ln in unpriced:
+                    best = _match(ln, sidx)
+                    if best:
+                        ln["unit_price_ht"] = best["unit_price_ht"]
+                        if best.get("vat_rate") is not None:
+                            ln["vat_rate"] = best["vat_rate"]
+                        ln["price_source"] = f"bibliotheque_partagee_{level}"
+                        matched += 1
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Bibliothèque partagée non appliquée (%s): %s", user_id, e)
+
     return lines, matched
 
 
@@ -1273,6 +1303,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              margin_labor: float | None = None,
                              client_id: str | None = None,
                              beton_only: bool = False,
+                             price_level: str | None = None,
                              body: QuoteFromStructureIn | None = None,
                              user=Depends(current_user)) -> dict:
     """Crée un devis brouillon à partir du descriptif (planchers, murs, ouvertures, poutres, aciers)."""
@@ -1307,7 +1338,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     _margins_set = any(m is not None for m in (margin_beton, margin_acier, margin_labor))
     beton_price_m3, acier_price_kg, labor_price_m3, margin_pct = _with_default_prices(
         beton_price_m3, acier_price_kg, labor_price_m3, margin_pct, margins_set=_margins_set)
-    lines, priced = await _apply_library_prices(user["user_id"], lines)
+    lines, priced = await _apply_library_prices(user["user_id"], lines, level_override=price_level)
     # Plancher au m² (prix all-in selon épaisseur) — PRIORITAIRE sur la bibliothèque
     if plancher_opt:
         for ln in lines:
