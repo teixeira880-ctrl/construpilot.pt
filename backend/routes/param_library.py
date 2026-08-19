@@ -260,6 +260,70 @@ async def delete_material(mat_id: str) -> dict:
     return {"ok": True}
 
 
+@admin_router.post("/materials/generate-missing")
+async def generate_missing_materials() -> dict:
+    """Crée une entrée (prix 0, à compléter) pour chaque composant de recette
+    non encore présent/apparié dans la table matériaux."""
+    await _ensure_defaults()
+    index = await _material_index()
+    existing_norm = {frozenset(t) for t, _ in index}
+    lines = await db.param_recipe_lines.find(
+        {}, {"_id": 0, "composant": 1, "unite_composant": 1}).to_list(20000)
+    seen = set()
+    to_add = []
+    for ln in lines:
+        name = (ln.get("composant") or "").strip()
+        if not name:
+            continue
+        key = _norm(name)
+        if key in seen:
+            continue
+        seen.add(key)
+        if _match_material(name, index):
+            continue  # déjà apparié à un matériau existant
+        to_add.append({"mat_id": "mat_" + secrets.token_hex(5), "name": name[:200],
+                       "unit": (ln.get("unite_composant") or "u")[:16], "price": 0.0})
+    if to_add:
+        await db.material_prices.insert_many(to_add)
+    return {"ok": True, "added": len(to_add),
+            "total": await db.material_prices.count_documents({})}
+
+
+@admin_router.post("/materials/import")
+async def import_materials(file: UploadFile = File(...)) -> dict:
+    """Import CSV de prix matériaux (Nom;Unite;Prix) — upsert par nom."""
+    import csv as _csv
+    import io as _io
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+    delim = ";" if text[:2000].count(";") >= text[:2000].count(",") else ","
+    rows = list(_csv.reader(_io.StringIO(text), delimiter=delim))
+    updated = 0
+    for r in rows[1:] if rows else []:
+        if len(r) < 2 or not (r[0] or "").strip():
+            continue
+        name = r[0].strip()
+        unit = (r[1].strip() if len(r) > 1 else "u") or "u"
+        price_raw = (r[2] if len(r) > 2 else r[1]) or "0"
+        try:
+            price = float(str(price_raw).replace(",", ".").replace("€", "").strip() or 0)
+        except ValueError:
+            price = 0.0
+        res = await db.material_prices.update_one(
+            {"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}},
+            {"$set": {"unit": unit, "price": round(price, 2)}})
+        if not res.matched_count:
+            await db.material_prices.insert_one(
+                {"mat_id": "mat_" + secrets.token_hex(5), "name": name[:200],
+                 "unit": unit[:16], "price": round(price, 2)})
+        updated += 1
+    return {"ok": True, "processed": updated,
+            "total": await db.material_prices.count_documents({})}
+
+
 # ---------------- Consultation Pro Business ----------------
 
 @router.get("/ouvrages")
@@ -269,3 +333,28 @@ async def list_ouvrages(q: str = "", user=Depends(current_user)) -> dict:
         raise HTTPException(402, "Bibliothèque paramétrique réservée au plan Pro Business.")
     return {"ouvrages": await _ouvrage_list(q),
             "total_lines": await db.param_recipe_lines.count_documents({})}
+
+
+class QuoteLineIn(BaseModel):
+    base_code: str
+    level: str = "moyen"
+    region: str = "standard"
+    margin_pct: float = 25.0
+    quantity: float = 1.0
+
+
+@router.post("/quote-line")
+async def ouvrage_to_quote_line(body: QuoteLineIn, user=Depends(current_user)) -> dict:
+    """Calcule un ouvrage composé et renvoie une ligne de devis prête à insérer."""
+    from engines.monetization import user_tier
+    if user.get("role") != "admin" and (await user_tier(user["user_id"])) != "pro_business":
+        raise HTTPException(402, "Réservé au plan Pro Business.")
+    r = await compute_ouvrage(body.base_code, body.level, body.region, body.margin_pct)
+    qty = max(body.quantity or 1, 0.01)
+    return {"line": {
+        "designation": r["famille"], "description": f"Ouvrage composé {r['base_code']} · {r['metier']}",
+        "unit": r.get("driving_var") in ("surface_m2", "surface_nette_m2", "surface_toiture_m2") and "m²"
+                or r.get("driving_var") in ("longueur_ml", "perimetre_ml") and "ml" or "u",
+        "qty": qty, "unit_price_ht": r["prix_vente"], "vat_rate": 10,
+        "category": r.get("famille", "Ouvrage composé")},
+        "detail": r}

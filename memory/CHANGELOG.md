@@ -1111,3 +1111,15 @@ RESTE À FAIRE (demandé par l'utilisateur, non fait ce tour) : Retenue libéré
 - VÉRIFIÉ (curl + captures) : import 191/1127, liste, calcul, pub accueil, onglet admin + dialog. Collections : param_recipe_lines, labor_rates, regional_coefs, material_prices, app_settings(param_library_meta).
 - NOTE : beaucoup de composants ont des libellés génériques (Produit principal, Accessoires…) → non appariés = "prix à définir" (à compléter dans la table Prix matériaux admin). Prix fournisseurs (Point.P…) = étape suivante.
 - ⚠️ PRÉVERSION : données importées en préversion. En PRODUCTION, réimporter via Admin→Ouvrages composés après redéploiement.
+
+## Iteration 149 - 19/06/2026 (Compléter matériaux + Ouvrages composés dans devis + point fournisseurs)
+- routes/param_library.py :
+  - POST /admin/param-library/materials/generate-missing : scanne tous les composants des recettes et crée une entrée éditable (prix 0) pour chaque composant non apparié → plus de "prix à définir" oubliés (51 ajoutés → 77 total en préversion).
+  - POST /materials/import (CSV Nom;Unite;Prix, upsert par nom) + export CSV côté front → mise à jour de prix en masse (pont vers les tarifs fournisseurs).
+  - POST /param-library/quote-line (Pro Business) : calcule un ouvrage composé (gamme/région/marge) et renvoie une ligne de devis prête (designation, unit auto m²/ml/u, unit_price_ht=prix_vente, vat 10).
+- Frontend :
+  - AdminParamLibraryTab : boutons "Générer les manquants", "Importer CSV", "Exporter CSV" dans la table matériaux.
+  - NOUVEAU OuvrageComposeDialog.jsx + bouton "Ouvrage composé" dans QuoteEditor : recherche d'ouvrage, sélecteurs gamme/région/marge, "Ajouter" → insère la ligne chiffrée dans le devis (mise à jour des totaux). Verrou 402 hors Pro Business.
+- VÉRIFIÉ (curl + capture) : generate-missing 51 ajouts ; quote-line CP-0207 → 763.12€ (IDF) / 663.59€ (standard) ; insertion e2e dans l'éditeur avec totaux recalculés.
+- Prix fournisseurs (Point.P/Chausson/Leroy Merlin) : PAS d'API publique de prix → livré l'import/export CSV comme mécanisme fiable. Options réelles à discuter : API partenaire B2B (identifiants requis) ou scraping (fragile). NON implémenté.
+- ⚠️ PRÉVERSION — redéploiement requis pour la production.

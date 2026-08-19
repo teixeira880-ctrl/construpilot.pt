@@ -17,6 +17,7 @@ import { SectionTitle } from "@/components/Bits";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
+import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
 const VAT_RATES = [10, 20, 5.5];
@@ -575,6 +576,7 @@ export default function QuoteEditor() {
         <div className="flex items-center justify-between">
           <p className="font-display font-bold text-sm">{t("crm.lines_title")}</p>
           <div className="flex gap-2">
+            <OuvrageComposeDialog onAdd={(line) => setLines((ls) => [...ls, { ...blankLine(), ...line, _saveToLib: false }])} />
             <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={() => setPickerOpen(true)} data-testid="editor-add-from-lib">
               <BookOpen className="h-3.5 w-3.5" /> {t("crm.from_lib")}
             </Button>

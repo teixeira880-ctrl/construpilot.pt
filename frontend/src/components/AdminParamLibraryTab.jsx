@@ -33,6 +33,8 @@ export default function AdminParamLibraryTab() {
   const [coefs, setCoefs] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [matQ, setMatQ] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
+  const matFileRef = useRef(null);
 
   const load = async (query = "") => {
     setBusy(true);
@@ -92,6 +94,31 @@ export default function AdminParamLibraryTab() {
   const saveMaterial = async (m) => {
     await api.put(`/admin/param-library/materials/${m.mat_id}`, { name: m.name, unit: m.unit, price: Number(m.price) });
     toast.success("Matériau mis à jour");
+  };
+  const genMissing = async () => {
+    setGenBusy(true);
+    try {
+      const { data } = await api.post("/admin/param-library/materials/generate-missing");
+      toast.success(`${data.added} matériau(x) manquant(s) ajouté(s) — à compléter`);
+      await loadTables();
+    } finally { setGenBusy(false); }
+  };
+  const importMats = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    const fd = new FormData(); fd.append("file", file);
+    const { data } = await api.post("/admin/param-library/materials/import", fd,
+      { headers: { "Content-Type": "multipart/form-data" } });
+    toast.success(`${data.processed} prix importés`);
+    await loadTables();
+  };
+  const exportMats = async () => {
+    const { data } = await api.get("/admin/param-library/materials");
+    const rows = [["Nom", "Unite", "Prix"], ...(data.materials || []).map((m) => [m.name, m.unit, m.price])];
+    const csv = rows.map((r) => r.join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a"); a.href = url; a.download = "prix-materiaux-construpilot.csv"; a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -199,7 +226,21 @@ export default function AdminParamLibraryTab() {
 
       {/* Prix matériaux */}
       <div className="border border-border rounded-sm p-4 space-y-3" data-testid="param-materials">
-        <h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" /> Prix matériaux (éditables)</h4>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" /> Prix matériaux (éditables)</h4>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={genMissing} disabled={genBusy} className="rounded-sm gap-1 h-8" data-testid="param-mat-generate">
+              {genBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Générer les manquants
+            </Button>
+            <input ref={matFileRef} type="file" accept=".csv" className="hidden" onChange={importMats} data-testid="param-mat-import-input" />
+            <Button size="sm" variant="outline" onClick={() => matFileRef.current?.click()} className="rounded-sm gap-1 h-8" data-testid="param-mat-import">
+              <Upload className="h-3.5 w-3.5" /> Importer CSV
+            </Button>
+            <Button size="sm" variant="ghost" onClick={exportMats} className="rounded-sm gap-1 h-8" data-testid="param-mat-export">
+              <Save className="h-3.5 w-3.5" /> Exporter CSV
+            </Button>
+          </div>
+        </div>
         <div className="relative max-w-xs">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={matQ} onChange={async (e) => { setMatQ(e.target.value); const { data } = await api.get("/admin/param-library/materials", { params: { q: e.target.value } }); setMaterials(data.materials || []); }}
