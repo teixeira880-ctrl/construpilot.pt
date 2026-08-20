@@ -1,14 +1,15 @@
-import { Link, useParams, Navigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Clock, Calendar, ArrowLeft, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { BLOG_ARTICLES, getArticle } from "@/lib/blogArticles";
 import { ARTICLE_BODIES } from "@/lib/blogBodies";
+import AutoSeoBlogPost from "@/components/AutoSeoBlogPost";
 
 export default function BlogPost() {
   const { slug } = useParams();
   const article = getArticle(slug);
-  if (!article) return <Navigate to="/blog" replace />;
+  if (!article) return <AutoSeoBlogPost slug={slug} />;
 
   const body = ARTICLE_BODIES[slug];
   const idx = BLOG_ARTICLES.findIndex((a) => a.slug === slug);
