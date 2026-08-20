@@ -1,62 +1,15 @@
-import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Download, X, Share, PlusSquare } from "lucide-react";
+import { usePwaInstall } from "@/hooks/usePwaInstall";
 
-const DISMISS_KEY = "cp_pwa_dismissed_at";
-const DISMISS_DAYS = 7;
-
-const isStandalone = () =>
-  window.matchMedia("(display-mode: standalone)").matches ||
-  window.navigator.standalone === true;
-
-const isIOS = () =>
-  /iphone|ipad|ipod/i.test(window.navigator.userAgent) &&
-  !window.MSStream;
-
-const recentlyDismissed = () => {
-  const at = Number(localStorage.getItem(DISMISS_KEY) || 0);
-  return at && Date.now() - at < DISMISS_DAYS * 864e5;
-};
-
+// Carte flottante d'installation — affichée sur les pages applicatives.
+// Sur la page d'accueil ("/"), c'est LandingInstallBanner qui prend le relais.
 export const InstallPrompt = () => {
-  const [deferred, setDeferred] = useState(null);
-  const [visible, setVisible] = useState(false);
-  const [iosGuide, setIosGuide] = useState(false);
+  const location = useLocation();
+  const { available, ios, install, dismiss } = usePwaInstall();
 
-  useEffect(() => {
-    if (isStandalone() || recentlyDismissed()) return;
-
-    const onBeforeInstall = (e) => {
-      e.preventDefault();
-      setDeferred(e);
-      setVisible(true);
-    };
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    window.addEventListener("appinstalled", () => setVisible(false));
-
-    let t;
-    if (isIOS()) {
-      t = setTimeout(() => { setIosGuide(true); setVisible(true); }, 2500);
-    }
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-      clearTimeout(t);
-    };
-  }, []);
-
-  const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    setVisible(false);
-  };
-
-  const install = async () => {
-    if (!deferred) return;
-    deferred.prompt();
-    try { await deferred.userChoice; } catch { /* noop */ }
-    setDeferred(null);
-    setVisible(false);
-  };
-
-  if (!visible) return null;
+  if (location.pathname === "/") return null;
+  if (!available) return null;
 
   return (
     <div
@@ -84,7 +37,7 @@ export const InstallPrompt = () => {
         </div>
       </div>
 
-      {iosGuide ? (
+      {ios ? (
         <div className="mt-3 text-xs text-white/70 space-y-1.5" data-testid="pwa-ios-guide">
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-white/10 shrink-0">1</span>

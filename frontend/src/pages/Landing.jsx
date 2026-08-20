@@ -18,6 +18,7 @@ import { MarketingTeaser } from "@/components/MarketingTeaser";
 import { FeatureShowcase } from "@/components/FeatureShowcase";
 import { Interactive3D } from "@/components/Interactive3D";
 import { ParamLibraryPromo } from "@/components/ParamLibraryPromo";
+import { LandingInstallBanner } from "@/components/pwa/LandingInstallBanner";
 import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 
@@ -190,7 +191,7 @@ export default function Landing() {
         <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">J'en profite →</Link>
       </div>
       <SignupCounter />
-
+      <LandingInstallBanner />
 
       {/* ── HERO SECTION (SPLIT 3D) ───────────────────────── */}
       <section className="relative overflow-hidden pt-24 pb-32 lg:pt-32 lg:pb-40 border-b border-border bg-gradient-to-b from-background to-secondary/30">
