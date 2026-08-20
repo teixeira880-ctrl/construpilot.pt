@@ -62,6 +62,7 @@ PC_UNIT_PRICES = {
     "installation_chantier": {"mat": 1200.0, "mo": 800.0},  # forfait — base vie, clôture, benne
     "engins_levage":  {"mat": 5500.0, "mo": 500.0},  # forfait — grue/manuscopique, bétonnière, outillage
     "echafaudage":    {"mat": 2200.0, "mo": 300.0},  # forfait — location + montage/démontage
+    "protection_securite": {"mat": 1500.0, "mo": 900.0},  # forfait — garde-corps, filets, signalisation, PPSPS
 }
 
 TVA_RATE = 0.20  # construction neuve
@@ -72,7 +73,7 @@ HOURLY_RATE_EUR = 35.0  # coût horaire MO — convertit les PU MO en heures
 
 PLANNING_PHASES = [
     ("Installation de chantier — base vie, clôture, engins, échafaudage",
-     ["Installation de chantier", "Engins", "Échafaudage"], 0),
+     ["Installation de chantier", "Engins", "Échafaudage", "Protection collective"], 0),
     ("Terrassement — décapage, fouilles en rigole, remblais", ["Terrassement complet"], 0),
     ("Fondations — béton de propreté + semelles filantes 60×30 + aciers",
      ["propreté", "Semelles filantes", "Aciers semelles", "Mise en œuvre fondations"], 7),
@@ -413,6 +414,9 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
               "location durée du gros œuvre (forfait)", "forfait", 1, "engins_levage", P),
         _line("Échafaudage périphérique — location, montage & démontage",
               f"périmètre {per} m (forfait)", "forfait", 1, "echafaudage", P),
+        _line("Protection collective & sécurité — garde-corps périphériques, filets, "
+              "signalisation & PPSPS", "forfait durée du chantier", "forfait", 1,
+              "protection_securite", P),
     ]
 
     lots = [l for l in [
@@ -465,6 +469,8 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
               "forfait", "forfait", 1, "engins_levage", P),
         _line("Échafaudage périphérique — location & montage",
               "forfait", "forfait", 1, "echafaudage", P),
+        _line("Protection collective & sécurité — garde-corps, filets, signalisation & PPSPS",
+              "forfait", "forfait", 1, "protection_securite", P),
         _line("Terrassement complet — décapage, fouilles, évacuation & remblais",
               f"{L_sem} ml de fouilles 60 × 60", "forfait", 1, "terrassement_complet", P),
         _line("Béton de propreté ép. 5 cm", "C16/20", "m³",

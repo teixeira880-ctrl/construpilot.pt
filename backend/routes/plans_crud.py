@@ -116,8 +116,63 @@ async def _insert_plan_safe(doc: dict) -> None:
     await db.plans_takeoff.insert_one(doc)
 
 
+_UNITS_PER_METER = {
+    "mm": 1000.0, "cm": 100.0, "m": 1.0, "decimeters": 10.0,
+    "dekameters": 0.1, "inches": 39.3701, "feet": 3.28084, "microns": 1_000_000.0,
+}
+
+
+def _dxf_span_units(pg: dict) -> float:
+    b = pg.get("dxf_bounds") or {}
+    return max(float(b.get("max_x", 0)) - float(b.get("min_x", 0)),
+               float(b.get("max_y", 0)) - float(b.get("min_y", 0)))
+
+
+def _guess_units_per_meter(pg: dict) -> tuple[float, str]:
+    """Devine l'unité DXF depuis l'étendue réelle du dessin quand $INSUNITS est absent
+    ou incohérent. Un bâtiment fait typiquement 3–60 m dans sa plus grande dimension."""
+    span = _dxf_span_units(pg)
+    if span > 3000:      # 3000–60000 → millimètres (3–60 m)
+        return 1000.0, "mm"
+    if span > 300:       # 300–6000 → centimètres (3–60 m)
+        return 100.0, "cm"
+    return 1.0, "m"      # 3–60 → mètres
+
+
+def _auto_calibrate_dxf(parsed: dict) -> dict:
+    """Calibration automatique d'un DXF/DWG : pixels_per_meter = dxf_ratio × unités/m.
+    Le DXF porte des coordonnées réelles → l'échelle est déduite exactement (pas besoin
+    d'une mention « 1:100 »). $INSUNITS étant souvent faux/absent, on valide toujours
+    la cohérence via l'étendue géométrique (un plan mesure 0,5–1000 m)."""
+    units = (parsed.get("dxf_units") or "").lower()
+    calibs: dict = {}
+    for pg in parsed["pages"]:
+        ratio = pg.get("dxf_ratio")  # pixels par unité DXF
+        if not ratio:
+            continue
+        span = _dxf_span_units(pg)
+        upm = _UNITS_PER_METER.get(units)
+        # Contrôle de plausibilité : la plus grande dimension réelle doit être crédible
+        real_span_m = (span / upm) if upm else 0
+        if upm and 0.5 <= real_span_m <= 1000:
+            method, conf, unit_label = "auto_dxf_units", 0.92, units
+        else:
+            upm, unit_label = _guess_units_per_meter(pg)
+            method, conf = "auto_dxf_guess", 0.6
+        calibs[str(pg["index"])] = {
+            "pixels_per_meter": round(ratio * upm, 4),
+            "method": method,
+            "dxf_units": unit_label,
+            "confidence": conf,
+            "created_at": _now(),
+        }
+    return calibs
+
+
 def _auto_calibrate_pages(parsed: dict) -> dict:
     """Try to derive an initial pixels_per_meter per page from the detected scale."""
+    if parsed.get("kind") == "dxf":
+        return _auto_calibrate_dxf(parsed)
     scale = parsed.get("detected_scale_denominator")
     if not scale:
         return {}

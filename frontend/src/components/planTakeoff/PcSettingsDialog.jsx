@@ -13,6 +13,7 @@ const PRICE_LABELS = {
   installation_chantier: ["Installation chantier (base vie, clôture, benne)", "forfait"],
   engins_levage: ["Engins & machines (grue, bétonnière)", "forfait"],
   echafaudage: ["Échafaudage (location + montage)", "forfait"],
+  protection_securite: ["Protection collective & sécurité (garde-corps, filets, PPSPS)", "forfait"],
   terrassement_complet: ["Terrassement complet (fouilles, remblais)", "forfait"],
   beton_proprete: ["Béton de propreté", "m³"],
   beton_semelle: ["Béton semelles C25/30", "m³"],

@@ -15,22 +15,56 @@ import base64
 import io
 import logging
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 import ezdxf
 from ezdxf.recover import readfile as recover_readfile
 
 logger = logging.getLogger(__name__)
 
+_FONT_CACHE: dict[int, "ImageFont.FreeTypeFont"] = {}
+
+
+def _font(size: int):
+    """Police TrueType (DejaVuSans, fournie avec Pillow) mise en cache par taille."""
+    size = int(max(8, min(200, size)))
+    f = _FONT_CACHE.get(size)
+    if f is None:
+        try:
+            f = ImageFont.truetype("DejaVuSans.ttf", size)
+        except Exception:
+            f = ImageFont.load_default()
+        _FONT_CACHE[size] = f
+    return f
+
 # Taille max de la preview raster (côté le plus grand)
 PREVIEW_MAX_SIDE = 2000
 PREVIEW_MARGIN = 40
 
 
-def _iter_dxf_entities(msp) -> None:
-    """Génère les entités graphiques utiles depuis un modelspace ezdxf."""
+_EXPLODE_TYPES = {"INSERT", "DIMENSION"}
+_GRAPHIC_TYPES = {"LINE", "LWPOLYLINE", "POLYLINE", "CIRCLE", "ARC", "TEXT", "MTEXT"}
+
+
+def _iter_dxf_entities(msp, _depth: int = 0):
+    """Génère les entités graphiques utiles depuis un modelspace ezdxf.
+
+    Les INSERT (blocs) et DIMENSION (cotes) sont explosés en primitives via
+    `virtual_entities()` afin de préserver la géométrie des blocs, les lignes de
+    cote et le texte des cotes/descriptions. Récursion bornée pour les blocs
+    imbriqués.
+    """
     for e in msp:
-        yield e
+        t = e.dxftype()
+        if t in _EXPLODE_TYPES and _depth < 4:
+            try:
+                for sub in e.virtual_entities():
+                    yield from _iter_dxf_entities([sub], _depth + 1)
+                continue
+            except Exception:
+                pass
+        if t in _GRAPHIC_TYPES:
+            yield e
 
 
 def _points_from_polyline(entity) -> list[tuple[float, float]]:
@@ -58,6 +92,10 @@ def _bounds_from_entity(e, upd) -> None:
         for p in _points_from_polyline(e):
             upd(p[0], p[1])
     elif t == "CIRCLE":
+        c, r = e.dxf.center, e.dxf.radius
+        upd(c.x - r, c.y - r)
+        upd(c.x + r, c.y + r)
+    elif t == "ARC":
         c, r = e.dxf.center, e.dxf.radius
         upd(c.x - r, c.y - r)
         upd(c.x + r, c.y + r)
@@ -136,12 +174,24 @@ def _render_preview(entities, bounds: tuple[float, float, float, float]) -> tupl
                 # bounding box PIL veut coords ordonnées
                 draw.ellipse([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)],
                              outline="black", width=2)
-            elif t == "TEXT":
+            elif t == "ARC":
+                c = e.dxf.center; r = e.dxf.radius
+                x1, y1 = to_px(c.x - r, c.y + r)
+                x2, y2 = to_px(c.x + r, c.y - r)
+                # DXF: angles CCW, Y haut. Image: Y bas → négation + inversion start/end.
+                start = -float(e.dxf.end_angle)
+                end = -float(e.dxf.start_angle)
+                draw.arc([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)],
+                         start, end, fill="black", width=2)
+            elif t in ("TEXT", "MTEXT"):
+                txt = str(e.dxf.text if t == "TEXT" else (e.text or "")).replace("\n", " ")
+                if not txt.strip():
+                    continue
                 pos = to_px(e.dxf.insert.x, e.dxf.insert.y)
-                draw.text(pos, str(e.dxf.text or ""), fill="black")
-            elif t == "MTEXT":
-                pos = to_px(e.dxf.insert.x, e.dxf.insert.y)
-                draw.text(pos, str(e.text or ""), fill="black")
+                th = float(getattr(e.dxf, "height", 0) or getattr(e.dxf, "char_height", 0) or 0)
+                fsize = int(max(9, min(160, th * ratio))) if th else 12
+                # PIL place le texte par son coin haut-gauche → remonte d'une hauteur de police
+                draw.text((pos[0], pos[1] - fsize), txt, fill="black", font=_font(fsize))
         except Exception:
             continue
 
@@ -178,6 +228,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
             pass
 
     msp = doc.modelspace()
+    dim_count = sum(1 for e in msp if e.dxftype() == "DIMENSION")
     entities = list(_iter_dxf_entities(msp))
     bounds = _compute_bounds(entities)
     png, mapping = _render_preview(entities, bounds)
@@ -239,7 +290,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
             "image_png_b64": base64.b64encode(png).decode("ascii"),
             "vectors": vectors[:8000],
             "text_blocks": text_blocks[:3000],
-            "dimensions_count": sum(1 for e in entities if e.dxftype() == "DIMENSION"),
+            "dimensions_count": dim_count,
             "raw_text_length": sum(len(t.get("text", "")) for t in text_blocks),
             "dxf_bounds": {"min_x": bounds[0], "min_y": bounds[1],
                            "max_x": bounds[2], "max_y": bounds[3]},
