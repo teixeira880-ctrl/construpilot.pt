@@ -78,6 +78,7 @@ async def upload_plan(
         "kind": parsed["kind"],
         "page_count": parsed["page_count"],
         "detected_scale_denominator": parsed.get("detected_scale_denominator"),
+        "structural_metre": parsed.get("structural_metre"),
         "pages": parsed["pages"],
         "calibrations": calibrations,
         "rooms": [],
@@ -88,6 +89,53 @@ async def upload_plan(
     }
     await _insert_plan_safe(doc)
     return _plan_summary(doc)
+
+
+# ============ MÉTRÉ STRUCTURE (DWG/DXF) ============
+
+@router.get("/{plan_id}/structural-metre")
+async def get_structural_metre(plan_id: str, user=Depends(current_user)) -> dict:
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "structural_metre": 1, "structural_estimate": 1, "kind": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    return {"metre": p.get("structural_metre"),
+            "estimate": p.get("structural_estimate"),
+            "kind": p.get("kind")}
+
+
+class StructuralEstimateIn(BaseModel):
+    storey_height_m: float = 2.70
+    n_levels: int = 1
+    wall_thickness_m: float = 0.20
+    beam_w_m: float = 0.20
+    beam_h_m: float = 0.50
+    col_w_m: float = 0.20
+    col_h_m: float = 0.20
+    slab_thickness_m: float = 0.20
+    slab_area_m2: float | None = None
+    margin_pct: float = 12.0
+
+
+@router.post("/{plan_id}/structural-estimate")
+async def compute_structural_estimate(plan_id: str, body: StructuralEstimateIn,
+                                       user=Depends(current_user)) -> dict:
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "structural_metre": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    metre = p.get("structural_metre")
+    if not metre:
+        raise HTTPException(400, "Aucun métré structure disponible (plan non DWG/DXF ou sans calques exploitables)")
+    from engines.dxf_takeoff import cost_structural
+    estimate = cost_structural(metre, body.dict())
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id},
+        {"$set": {"structural_estimate": estimate, "updated_at": _now()}})
+    return estimate
+
 
 
 def _bson_size_mb(doc: dict) -> float:

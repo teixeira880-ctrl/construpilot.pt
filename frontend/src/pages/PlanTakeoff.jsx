@@ -10,6 +10,7 @@ import { Render3dDialog } from "@/components/planTakeoff/Render3dDialog";
 import { EstimateDialog } from "@/components/planTakeoff/EstimateDialog";
 import { MultiPlanDialog } from "@/components/planTakeoff/MultiPlanDialog";
 import PcStudyDialog from "@/components/planTakeoff/PcStudyDialog";
+import StructuralTakeoffDialog from "@/components/planTakeoff/StructuralTakeoffDialog";
 import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
@@ -667,6 +668,7 @@ export default function PlanTakeoff() {
 
   // Iter69 — Étude Permis de Construire (gros œuvre : béton, aciers, isobrique)
   const [pcDialog, setPcDialog] = useState(false);
+  const [structDialog, setStructDialog] = useState(false);
   const [pcBusy, setPcBusy] = useState(false);
   const runPcStudy = async () => {
     setPcBusy(true);
@@ -2374,6 +2376,15 @@ export default function PlanTakeoff() {
                          sentReports={(plan?.sent_reports || []).filter((s) => s.kind === "pc_study")}
                          ordersReports={(plan?.sent_reports || []).filter((s) => s.kind === "purchase_order")}
                          onRecompute={recomputePcStudy} />
+          {(plan?.structural_metre || plan?.kind === "dxf") && (
+            <Button variant="outline" onClick={() => setStructDialog(true)} data-testid="plan-structural-btn"
+                    title="Métré structure béton depuis les calques du DWG/DXF"
+                    className="rounded-sm gap-2 border-amber-500/60 text-amber-600 hover:bg-amber-500 hover:text-white">
+              <Ruler className="h-4 w-4" /> Métré structure
+            </Button>
+          )}
+          <StructuralTakeoffDialog open={structDialog} onClose={() => setStructDialog(false)}
+                                   planId={plan?.plan_id} />
           <Button variant="outline"
                   onClick={() => { setEstimateDialog(true); setEstimateResult(null); }}
                   data-testid="plan-estimate-btn"

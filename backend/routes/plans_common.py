@@ -96,6 +96,8 @@ def _plan_summary(p: dict) -> dict:
         "structure": p.get("structure", {}),
         "sent_reports": p.get("sent_reports", []),
         "pc_study": p.get("pc_study"),
+        "structural_metre": p.get("structural_metre"),
+        "structural_estimate": p.get("structural_estimate"),
         "created_at": p.get("created_at"),
         "updated_at": p.get("updated_at"),
     }

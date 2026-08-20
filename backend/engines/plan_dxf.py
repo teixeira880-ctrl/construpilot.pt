@@ -233,6 +233,15 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
     bounds = _compute_bounds(entities)
     png, mapping = _render_preview(entities, bounds)
 
+    # Métré structure par calques (quantités réelles depuis la géométrie)
+    structural_metre = None
+    try:
+        from engines.dxf_takeoff import extract_structural_metre
+        unit_to_m = _unit_to_m(doc, bounds)
+        structural_metre = extract_structural_metre(doc, unit_to_m)
+    except Exception:
+        logger.exception("structural metre extraction failed")
+
     # Extract vectors en coord IMAGE PX (pour le canvas) — LINE + LWPOLYLINE seulement
     vectors = []
     ratio = mapping["scale_px_per_dxf_unit"]
@@ -299,8 +308,26 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
         # DXF ratio = pixels/unit_dxf. Si le DXF est en mètres, ratio = pixels/m
         # (calibration auto ! très pratique)
         "dxf_units": _guess_units(doc),
+        "structural_metre": structural_metre,
         "detected_scale_denominator": None,
     }
+
+
+_UNIT_TO_M = {"mm": 0.001, "cm": 0.01, "m": 1.0, "decimeters": 0.1,
+              "dekameters": 10.0, "inches": 0.0254, "feet": 0.3048}
+
+
+def _unit_to_m(doc, bounds) -> float:
+    """Facteur unité DXF → mètres, avec contrôle de plausibilité (plan 0,5–1000 m)."""
+    u = _UNIT_TO_M.get(_guess_units(doc))
+    span = max(bounds[2] - bounds[0], bounds[3] - bounds[1])
+    if u and 0.5 <= span * u <= 1000:
+        return u
+    if span > 3000:
+        return 0.001   # mm
+    if span > 300:
+        return 0.01    # cm
+    return 1.0         # m
 
 
 def _guess_units(doc) -> str:
