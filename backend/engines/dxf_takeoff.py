@@ -18,6 +18,10 @@ from collections import Counter
 
 # Mots-clés de calques → catégories (FR + norme US/NCS AIA). Recherche sous-chaîne.
 _WALL = ("mur", "wall", "voile")
+# Distinction porteur béton vs cloison/architecture (pour ne chiffrer que le béton)
+_WALL_ARCH = ("a-wall", "i-wall", "cloison", "partition", "doublage", "-part")
+_WALL_STRUCT = ("voile", "s-wall", "s-cwal", "s-conc", "porteur", "beton", "béton",
+                "coffrage", "mur ba", "mur-ba", "s-wal")
 _BEAM = ("poutre", "beam")
 _COL = ("poteau", "cols", "colon", "column")
 _LINTEL = ("linteau", "lintel")
@@ -114,6 +118,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     U = unit_to_m
 
     wall_len = beam_len = col_len = lintel_len = 0.0
+    partition_len = 0.0
     slab_area_units = 0.0
     col_inserts = 0
     openings = Counter()
@@ -131,7 +136,11 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         L = _layer(e)
         if t == "LINE":
             ln = _line_len(e)
-            if _match(L, _WALL): wall_len += ln; wall_segs.append(_seg(e))
+            if _match(L, _WALL):
+                if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
+                    partition_len += ln          # cloison / architecture → non béton
+                else:
+                    wall_len += ln; wall_segs.append(_seg(e))  # voile porteur béton
             elif _match(L, _BEAM): beam_len += ln; beam_segs.append(_seg(e))
             elif _match(L, _COL): col_len += ln; col_segs.append(_seg(e))
             elif _match(L, _LINTEL): lintel_len += ln
@@ -141,7 +150,11 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             ln, ar = _lwpoly_len_area(e)
             if _match(L, _SLAB):
                 slab_area_units += ar
-            if _match(L, _WALL): wall_len += ln
+            if _match(L, _WALL):
+                if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
+                    partition_len += ln
+                else:
+                    wall_len += ln
             elif _match(L, _BEAM): beam_len += ln
         elif t == "INSERT":
             nm = (e.dxf.name or "")
@@ -174,6 +187,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
 
     # Trait double → longueur d'axe ≈ longueur totale / 2
     walls_ml = round(m(wall_len) / 2, 1)
+    partitions_ml = round(m(partition_len) / 2, 1)
     beams_ml = round(m(beam_len) / 2, 1)
     columns_count = col_inserts
     linteaux_ml = round(m(lintel_len) / 2, 1)
@@ -202,6 +216,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "source": "dxf_layers",
         "unit_to_m": U,
         "walls_ml": walls_ml,
+        "partitions_ml": partitions_ml,
         "beams_ml": beams_ml,
         "columns_count": columns_count,
         "linteaux_ml": linteaux_ml,

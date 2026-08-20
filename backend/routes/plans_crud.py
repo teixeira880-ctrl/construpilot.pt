@@ -157,7 +157,7 @@ def _rescale_metre_to_calibration(metre: dict, p: dict):
     if abs(f - 1.0) < 0.02:
         return metre, "calibration(=auto)"
     m = dict(metre)
-    for k in ("walls_ml", "beams_ml", "linteaux_ml"):
+    for k in ("walls_ml", "partitions_ml", "beams_ml", "linteaux_ml"):
         if m.get(k):
             m[k] = round(m[k] * f, 1)
     if m.get("slab_area_m2"):

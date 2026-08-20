@@ -561,6 +561,7 @@ class StructureIn(BaseModel):
     floors: list[dict] = Field(default_factory=list)
     columns: list[dict] = Field(default_factory=list)
     footings: list[dict] = Field(default_factory=list)
+    reservations: list[dict] = Field(default_factory=list)
     image_width: int | None = None
     image_height: int | None = None
 
@@ -739,6 +740,9 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
         "baies": int(kinds.get("baie", 0)),
         "ouvertures_total": len(openings),
         "ouvertures_largeur_ml": ouv_ml,
+        "huisseries": len(openings),
+        "reservations": len(structure.get("reservations") or []),
+        "bandes_noyees_ml": poutres_ml if floors else 0.0,
         "poutres_ml": poutres_ml,
         "poteaux": len(columns),
         "semelles": semelles,
@@ -882,6 +886,9 @@ def _beton_line_items(d: dict, plancher: dict | None = None) -> list[dict]:
     else:
         add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
     add(f"Béton — voiles / murs porteurs ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³", elem="voiles")
+    add(f"Bandes noyées / poutres noyées ({d.get('bandes_noyees_ml', 0)} ml)", d.get("bandes_noyees_ml"), "ml", elem="bn")
+    add(f"Réservations (traçage + coffrage) — {d.get('reservations', 0)} u", d.get("reservations"), "u", elem="reservations")
+    add(f"Huisseries — pré-cadres / réservations de baies ({d.get('huisseries', 0)} u)", d.get("huisseries"), "u", elem="huisseries")
     _ar = d.get("acier_ratios") or {}
     _ratio_moy = (round(sum(_ar.values()) / len(_ar)) if _ar else 100)
     _acier_kg = d.get("acier_total_kg")
@@ -908,6 +915,8 @@ def _descriptif_line_items(d: dict) -> list[dict]:
     add("Fournitures et pose — Baies vitrées", d.get("baies"), "u")
     add("Poutres / linteaux", d.get("poutres_ml"), "ml")
     add("Poteaux béton", d.get("poteaux"), "u")
+    add("Bandes noyées / poutres noyées", d.get("bandes_noyees_ml"), "ml")
+    add("Réservations (traçage + coffrage)", d.get("reservations"), "u")
     add("Semelles / fondations", d.get("semelles"), "u")
     add("Béton coulé (poteaux + poutres + dalles + voiles + semelles)", d.get("beton_total_m3"), "m³")
     _ar = d.get("acier_ratios") or {}

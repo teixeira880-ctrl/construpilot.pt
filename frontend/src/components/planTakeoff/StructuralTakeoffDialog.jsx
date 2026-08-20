@@ -81,10 +81,11 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-              {[["Murs (axe)", `${M.walls_ml} ml`], ["Poutres", `${M.beams_ml} ml`],
+              {[["Murs béton", `${M.walls_ml} ml`], ["Cloisons (hors béton)", `${M.partitions_ml ?? 0} ml`],
+                ["Poutres", `${M.beams_ml} ml`],
                 ["Poteaux", M.columns_count], ["Linteaux", `${M.linteaux_ml} ml`],
                 ["Portes", op.portes], ["Fenêtres", op.fenetres],
-                ["Réservations", res.count], ["Niveaux NGF", (M.ngf_levels || []).length]].map(([k, v]) => (
+                ["Réservations", res.count]].map(([k, v]) => (
                 <div key={k} className="rounded-sm border p-2" data-testid={`metre-${k}`}>
                   <div className="text-xs text-muted-foreground">{k}</div>
                   <div className="font-semibold">{v}</div>

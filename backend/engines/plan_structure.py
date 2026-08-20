@@ -54,10 +54,18 @@ Rends STRICTEMENT du JSON (aucun markdown, aucun texte hors JSON) :
   ],
   "floors": [
     // SURFACES DE SOL / DALLES / PLANCHERS (souvent surlignés en VERT) : un polygone fermé.
+    // IMPORTANT : relève le CONTOUR COMPLET de la dalle/plancher (toute l'emprise du niveau,
+    // pas seulement une pièce). S'il y a une seule grande dalle, renvoie UN grand polygone.
     // Reprends la cote NGF (ex "NGF 53.69") et l'épaisseur (ex "ep 20 cm" -> 20) si annotées.
     {"name": "Dalle" | "Séjour" | ...,
      "points": [[0.12, 0.14], [0.48, 0.14], [0.48, 0.50], [0.12, 0.50]],
      "ngf": 53.69, "thickness_cm": 20}
+  ],
+  "reservations": [
+    // RÉSERVATIONS / TRÉMIES dans le plancher (petits rectangles/cercles annotés Ø, dims
+    // type "40x20", repères Elec/VB/PLB/EU/EP, cote "Ai:"). Un point central suffit.
+    {"x": 0.55, "y": 0.42, "kind": "elec" | "plomberie" | "ventilation" | "trémie" | null,
+     "size": "40x20" | "Ø200" | null}
   ],
   "plan_kind": "habitation" | "coffrage",
   "confidence": 0.0-1.0
@@ -72,6 +80,9 @@ CODE COULEUR (si le plan est colorisé, respecte-le STRICTEMENT) :
 RÈGLES :
 - Respecte le code couleur ci-dessus en priorité. Sinon : murs = traits épais, poutres = pointillés.
 - Poteaux = petits éléments pleins isolés, souvent en trame — liste-les TOUS (même 20+).
+- PLANCHER : relève le contour COMPLET de la dalle (toute l'emprise du niveau), pas une seule pièce.
+- BANDES NOYÉES (BN) / poutres noyées : traite-les comme des "beams" (repère "BN", trait renforcé dans la dalle).
+- RÉSERVATIONS / trémies : liste-les TOUTES dans "reservations".
 - Sur un plan de coffrage, openings est généralement vide.
 - Sois EXHAUSTIF et précis. Réponds UNIQUEMENT le JSON.
 """
@@ -188,13 +199,26 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
             "x1": round(x1 * w), "y1": round(y1 * h),
             "x2": round(x2 * w), "y2": round(y2 * h),
         })
+    reservations = []
+    for r in structure.get("reservations") or []:
+        if not isinstance(r, dict):
+            continue
+        try:
+            rx, ry = float(r.get("x")), float(r.get("y"))
+        except (TypeError, ValueError):
+            continue
+        reservations.append({
+            "reservation_id": "res_" + uuid.uuid4().hex[:6],
+            "x": round(rx * w), "y": round(ry * h),
+            "kind": r.get("kind"), "size": r.get("size"),
+        })
     return {
         "image_width": int(w), "image_height": int(h),
         "walls": walls, "openings": openings, "beams": beams, "floors": floors,
-        "columns": columns, "footings": footings,
+        "columns": columns, "footings": footings, "reservations": reservations,
         "wall_count": len(walls), "opening_count": len(openings),
         "beam_count": len(beams), "floor_count": len(floors), "column_count": len(columns),
-        "footing_count": len(footings),
+        "footing_count": len(footings), "reservation_count": len(reservations),
         "plan_kind": structure.get("plan_kind") or "habitation",
         "confidence": structure.get("confidence"),
     }
