@@ -51,7 +51,10 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
       Object.keys(body).forEach((k) => { body[k] = body[k] === "" ? null : Number(body[k]); });
       const { data } = await api.post(`/takeoffs/${planId}/structural-estimate`, body);
       setEstimate(data);
-      toast.success(`Estimation : ${eur(data.totals?.ttc)} TTC`);
+      if (data.metre) setMetre(data.metre);
+      const src = data.scale_source === "calibration"
+        ? " (échelle recalée sur votre calibration)" : "";
+      toast.success(`Estimation : ${eur(data.totals?.ttc)} TTC${src}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Estimation impossible"); }
     finally { setBusy(false); }
   };

@@ -124,18 +124,51 @@ async def compute_structural_estimate(plan_id: str, body: StructuralEstimateIn,
                                        user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"_id": 0, "structural_metre": 1})
+        {"_id": 0, "structural_metre": 1, "calibrations": 1,
+         "pages.dxf_ratio": 1, "pages.index": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
     metre = p.get("structural_metre")
     if not metre:
         raise HTTPException(400, "Aucun métré structure disponible (plan non DWG/DXF ou sans calques exploitables)")
+    # Recale le métré sur la calibration du plan (corrige toute échelle DWG erronée).
+    metre, scale_src = _rescale_metre_to_calibration(metre, p)
     from engines.dxf_takeoff import cost_structural
     estimate = cost_structural(metre, body.dict())
+    estimate["scale_source"] = scale_src
+    estimate["metre"] = metre
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {"structural_estimate": estimate, "updated_at": _now()}})
     return estimate
+
+
+def _rescale_metre_to_calibration(metre: dict, p: dict):
+    """Aligne le métré sur l'échelle réelle du plan : unit_to_m = dxf_ratio / pixels_per_meter.
+    Corrige les métadonnées d'unité DWG erronées dès que l'utilisateur (re)calibre le plan."""
+    pages = p.get("pages") or []
+    ratio = pages[0].get("dxf_ratio") if pages else None
+    ppm = ((p.get("calibrations") or {}).get("0") or {}).get("pixels_per_meter")
+    old_u = metre.get("unit_to_m") or 0
+    if not (ratio and ppm and old_u):
+        return metre, "metre_units"
+    new_u = ratio / ppm
+    f = new_u / old_u
+    if abs(f - 1.0) < 0.02:
+        return metre, "calibration(=auto)"
+    m = dict(metre)
+    for k in ("walls_ml", "beams_ml", "linteaux_ml"):
+        if m.get(k):
+            m[k] = round(m[k] * f, 1)
+    if m.get("slab_area_m2"):
+        m["slab_area_m2"] = round(m["slab_area_m2"] * f * f, 1)
+    det = dict(m.get("detected") or {})
+    for k in ("wall_thickness_m", "beam_w_m", "col_size_m"):
+        if det.get(k):
+            det[k] = round(det[k] * f, 3)
+    m["detected"] = det
+    m["unit_to_m"] = new_u
+    return m, "calibration"
 
 
 

@@ -16,13 +16,15 @@ import math
 import re
 from collections import Counter
 
-# Mots-clés de calques → catégories (recherche insensible à la casse, sous-chaîne)
-_WALL = ("mur",)
-_BEAM = ("poutre",)
-_COL = ("poteau",)
-_LINTEL = ("linteau",)
-_SLAB = ("dalle",)
-_RESA = ("servation",)  # réservation / reservation
+# Mots-clés de calques → catégories (FR + norme US/NCS AIA). Recherche sous-chaîne.
+_WALL = ("mur", "wall", "voile")
+_BEAM = ("poutre", "beam")
+_COL = ("poteau", "cols", "colon", "column")
+_LINTEL = ("linteau", "lintel")
+_SLAB = ("dalle", "flor", "floor", "slab", "plancher")
+_RESA = ("servation", "resa", "opening", "penetr", "trémie", "tremie")
+_DOOR = ("porte", "door", "-dr-", "a-door")
+_WIN = ("fenetre", "fenêtre", "window", "glaz", "baie")
 
 
 def _layer(e) -> str:
@@ -146,15 +148,15 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             low = nm.lower()
             if _match(L, _COL) or "poteau" in low:
                 col_inserts += 1
-            is_door = "porte" in low
-            is_win = "fenêtre" in low or "fenetre" in low
+            is_door = _match(low, _DOOR) or _match(L, _DOOR)
+            is_win = _match(low, _WIN) or _match(L, _WIN)
             if is_door or is_win:
                 openings["portes" if is_door else "fenetres"] += 1
                 m = re.search(r"(\d{2,3})[xX](\d{2,3})", nm)
-                label = nm.split("-")[0].strip()
+                label = (nm.split("-")[0].strip() or nm)[:60]
                 opening_details.append({
                     "kind": "porte" if is_door else "fenetre",
-                    "label": label[:60],
+                    "label": label,
                     "w_cm": int(m.group(1)) if m else None,
                     "h_cm": int(m.group(2)) if m else None,
                 })
