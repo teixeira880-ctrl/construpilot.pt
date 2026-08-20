@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Ruler, Calculator, Loader2 } from "lucide-react";
+import { Ruler, Calculator, Loader2, FileText } from "lucide-react";
 
 const FIELDS = [
   ["storey_height_m", "Hauteur d'étage (m)", 2.7, 0.05],
@@ -23,11 +24,13 @@ const FIELDS = [
 const eur = (n) => (n ?? 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " €";
 
 export default function StructuralTakeoffDialog({ open, onClose, planId }) {
+  const navigate = useNavigate();
   const [metre, setMetre] = useState(null);
   const [estimate, setEstimate] = useState(null);
   const [params, setParams] = useState({ storey_height_m: 2.7, n_levels: 1, wall_thickness_m: 0.2,
     slab_area_m2: "", slab_thickness_m: 0.2, beam_w_m: 0.2, beam_h_m: 0.5, col_w_m: 0.2, col_h_m: 0.2, margin_pct: 12 });
   const [busy, setBusy] = useState(false);
+  const [injecting, setInjecting] = useState(false);
 
   useEffect(() => {
     if (!open || !planId) return;
@@ -57,6 +60,19 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
       toast.success(`Estimation : ${eur(data.totals?.ttc)} TTC${src}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Estimation impossible"); }
     finally { setBusy(false); }
+  };
+
+  const inject = async () => {
+    setInjecting(true);
+    try {
+      const body = { ...params };
+      Object.keys(body).forEach((k) => { body[k] = body[k] === "" ? null : Number(body[k]); });
+      const { data } = await api.post(`/takeoffs/${planId}/metre-to-quote`, body);
+      toast.success(`Devis créé (${data.line_count} lignes) — ouverture de l'éditeur…`);
+      onClose();
+      navigate(`/devis-editeur/${data.doc_id}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Injection en devis impossible"); }
+    finally { setInjecting(false); }
   };
 
   const M = metre || {};
@@ -150,6 +166,13 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                   <span>HT : <b>{eur(t.ht)}</b></span>
                   <span>TVA {Math.round(t.tva_rate * 100)}% : {eur(t.tva)}</span>
                   <span className="text-primary">TTC : <b>{eur(t.ttc)}</b></span>
+                </div>
+                <div className="flex justify-end pt-1">
+                  <Button onClick={inject} disabled={injecting} className="gap-2"
+                          data-testid="inject-to-quote-btn">
+                    {injecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                    Injecter en devis
+                  </Button>
                 </div>
               </div>
             )}

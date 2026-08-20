@@ -143,6 +143,73 @@ async def compute_structural_estimate(plan_id: str, body: StructuralEstimateIn,
     return estimate
 
 
+@router.post("/{plan_id}/metre-to-quote")
+async def structural_metre_to_quote(plan_id: str, body: StructuralEstimateIn,
+                                    user=Depends(current_user)) -> dict:
+    """Transforme le métré structure (DWG/DXF) en devis client éditable.
+
+    Recalcule l'estimation avec les hypothèses fournies, intègre la marge dans les
+    prix unitaires (invisible pour le client), applique la TVA, puis crée un
+    document `quote` en base et renvoie son doc_id (édition via /devis-editeur/{id})."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "structural_metre": 1, "calibrations": 1, "filename": 1,
+         "pages.dxf_ratio": 1, "pages.index": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    metre = p.get("structural_metre")
+    if not metre:
+        raise HTTPException(400, "Aucun métré structure disponible (plan non DWG/DXF ou sans calques exploitables)")
+    metre, _scale_src = _rescale_metre_to_calibration(metre, p)
+    from engines.dxf_takeoff import cost_structural
+    estimate = cost_structural(metre, body.dict())
+    margin = float(estimate["params"].get("margin_pct", 0)) / 100.0
+    vat_rate = round(float(estimate["totals"].get("tva_rate", 0.20)) * 100.0, 2)
+
+    lines: list[dict] = []
+    for lot in estimate.get("lots", []):
+        for ln in lot.get("lines", []):
+            pu = round(float(ln.get("pu", 0)) * (1 + margin), 2)
+            lines.append({
+                "designation": ln.get("designation", ""),
+                "description": ln.get("detail", ""),
+                "unit": ln.get("unit", "u"),
+                "qty": round(float(ln.get("qty", 0)), 2),
+                "unit_price_ht": pu,
+                "vat_rate": vat_rate,
+                "category": lot.get("lot", ""),
+            })
+    if not lines:
+        raise HTTPException(422, "Le métré ne contient aucune ligne à chiffrer.")
+
+    from routes.documents import _compute_totals
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": user["user_id"],
+        "doc_type": "quote",
+        "number": None,
+        "title": f"Devis structure — {p.get('filename') or 'plan'}",
+        "client_id": None,
+        "client": None,
+        "status": "draft",
+        "lines": lines,
+        "notes": "Devis généré à partir du métré structure (DWG/DXF).",
+        "payment_terms": "",
+        "deposit_pct": 0,
+        "totals": _compute_totals(lines, 0),
+        "issue_date": None,
+        "due_date": None,
+        "source": "structural_metre",
+        "plan_id": plan_id,
+        "created_at": _now(),
+        "updated_at": _now(),
+    }
+    await db.pro_documents.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return {"ok": True, "doc_id": doc["doc_id"], "totals": doc["totals"],
+            "line_count": len(lines)}
+
+
 def _rescale_metre_to_calibration(metre: dict, p: dict):
     """Aligne le métré sur l'échelle réelle du plan : unit_to_m = dxf_ratio / pixels_per_meter.
     Corrige les métadonnées d'unité DWG erronées dès que l'utilisateur (re)calibre le plan."""
