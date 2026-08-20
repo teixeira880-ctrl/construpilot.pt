@@ -58,6 +58,54 @@ def _match(layer: str, keys) -> bool:
     return any(k in layer for k in keys)
 
 
+def _seg(e):
+    """(a, b, angle_deg[0..180), length, ux, uy) pour une LINE, sinon None."""
+    a = (e.dxf.start.x, e.dxf.start.y)
+    b = (e.dxf.end.x, e.dxf.end.y)
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    ln = math.hypot(dx, dy)
+    if ln < 1e-6:
+        return None
+    ang = math.degrees(math.atan2(dy, dx)) % 180
+    return (a, b, ang, ln, dx / ln, dy / ln)
+
+
+def _detect_thickness(segs, unit_to_m, gmin_m=0.08, gmax_m=0.70, tol_ang=3.0):
+    """Mesure l'épaisseur dominante entre traits parallèles proches (trait double).
+    Retourne (mode_m, distribution{cm:count}) ou (None, {})."""
+    import collections as _c
+    gmin, gmax = gmin_m / unit_to_m, gmax_m / unit_to_m
+    buckets = _c.defaultdict(list)
+    for s in segs:
+        if s and s[3] * unit_to_m > 0.2:  # ignore < 20 cm
+            buckets[round(s[2] / tol_ang)].append(s)
+    gaps = _c.Counter()
+    for arr in buckets.values():
+        n = len(arr)
+        if n > 600:  # borne perf
+            arr = arr[:600]; n = 600
+        for i in range(n):
+            a1, _b1, ang1, l1, ux, uy = arr[i]
+            nx, ny = -uy, ux
+            for j in range(i + 1, n):
+                a2, _b2, ang2, l2, _, _ = arr[j]
+                if abs(((ang1 - ang2 + 90) % 180) - 90) > tol_ang:
+                    continue
+                d = abs((a2[0] - a1[0]) * nx + (a2[1] - a1[1]) * ny)
+                if not (gmin <= d <= gmax):
+                    continue
+                t1a, t1b = a1[0] * ux + a1[1] * uy, _b1[0] * ux + _b1[1] * uy
+                t2a, t2b = a2[0] * ux + a2[1] * uy, _b2[0] * ux + _b2[1] * uy
+                lo1, hi1 = sorted((t1a, t1b)); lo2, hi2 = sorted((t2a, t2b))
+                if min(hi1, hi2) - max(lo1, lo2) < min(l1, l2) * 0.3:
+                    continue
+                gaps[round(d * unit_to_m * 100)] += 1  # en cm
+    if not gaps:
+        return None, {}
+    mode_cm = gaps.most_common(1)[0][0]
+    return round(mode_cm / 100.0, 3), {str(k): v for k, v in gaps.most_common(10)}
+
+
 def extract_structural_metre(doc, unit_to_m: float) -> dict:
     """Parcourt le modelspace et agrège les quantités par catégorie de calque."""
     msp = doc.modelspace()
@@ -72,15 +120,18 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     resa_dims: list[str] = []
     resa_types: Counter = Counter()
     layer_line_len: Counter = Counter()
+    wall_segs: list = []
+    beam_segs: list = []
+    col_segs: list = []
 
     for e in msp:
         t = e.dxftype()
         L = _layer(e)
         if t == "LINE":
             ln = _line_len(e)
-            if _match(L, _WALL): wall_len += ln
-            elif _match(L, _BEAM): beam_len += ln
-            elif _match(L, _COL): col_len += ln
+            if _match(L, _WALL): wall_len += ln; wall_segs.append(_seg(e))
+            elif _match(L, _BEAM): beam_len += ln; beam_segs.append(_seg(e))
+            elif _match(L, _COL): col_len += ln; col_segs.append(_seg(e))
             elif _match(L, _LINTEL): lintel_len += ln
             if ln:
                 layer_line_len[getattr(e.dxf, "layer", "?")] += ln
@@ -133,6 +184,18 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             ngf_vals.append(float(mm.group(1).replace(",", ".")))
     resa_count = max(len(resa_ngf), len(resa_dims))
 
+    # Détection automatique des sections depuis la géométrie (trait double)
+    wall_th, wall_dist = _detect_thickness(wall_segs, U)
+    beam_w, beam_dist = _detect_thickness(beam_segs, U)
+    col_sz, _cd = _detect_thickness(col_segs, U, gmin_m=0.12, gmax_m=0.90)
+    detected = {
+        "wall_thickness_m": wall_th,
+        "wall_thickness_dist_cm": wall_dist,
+        "beam_w_m": beam_w,
+        "beam_w_dist_cm": beam_dist,
+        "col_size_m": col_sz,
+    }
+
     return {
         "source": "dxf_layers",
         "unit_to_m": U,
@@ -141,6 +204,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "columns_count": columns_count,
         "linteaux_ml": linteaux_ml,
         "slab_area_m2": slab_area_m2,
+        "detected": detected,
         "openings": {
             "portes": openings.get("portes", 0),
             "fenetres": openings.get("fenetres", 0),
@@ -200,7 +264,13 @@ def _line(desig, detail, unit, qty, pu):
 
 
 def cost_structural(metre: dict, params: dict | None = None) -> dict:
-    p = {**DEFAULTS, **(params or {})}
+    det = metre.get("detected") or {}
+    # Valeurs détectées sur le plan → défauts (surchargées par l'utilisateur si fournies)
+    auto = {k: det[k] for k in ("wall_thickness_m", "beam_w_m") if det.get(k)}
+    if det.get("col_size_m"):
+        auto["col_w_m"] = det["col_size_m"]
+        auto["col_h_m"] = det["col_size_m"]
+    p = {**DEFAULTS, **auto, **{k: v for k, v in (params or {}).items() if v is not None}}
     P = {**PRICES, **((params or {}).get("prices") or {})}
     h = float(p["storey_height_m"])
     nlv = max(1, int(p["n_levels"]))

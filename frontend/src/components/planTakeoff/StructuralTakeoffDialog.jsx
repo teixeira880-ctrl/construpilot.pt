@@ -33,6 +33,14 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
     if (!open || !planId) return;
     api.get(`/takeoffs/${planId}/structural-metre`).then(({ data }) => {
       setMetre(data.metre); setEstimate(data.estimate || null);
+      const d = (data.metre && data.metre.detected) || {};
+      setParams((p) => ({
+        ...p,
+        wall_thickness_m: d.wall_thickness_m ?? p.wall_thickness_m,
+        beam_w_m: d.beam_w_m ?? p.beam_w_m,
+        col_w_m: d.col_size_m ?? p.col_w_m,
+        col_h_m: d.col_size_m ?? p.col_h_m,
+      }));
     }).catch(() => toast.error("Métré indisponible"));
   }, [open, planId]);
 
@@ -90,14 +98,20 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
             <div className="border-t pt-4">
               <div className="text-sm font-semibold mb-2">Hypothèses de calcul</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {FIELDS.map(([key, label, , step]) => (
-                  <div key={key}>
-                    <Label className="text-xs">{label}</Label>
-                    <Input type="number" step={step} value={params[key]}
-                           data-testid={`param-${key}`}
-                           onChange={(e) => setParams((p) => ({ ...p, [key]: e.target.value }))} />
-                  </div>
-                ))}
+                {FIELDS.map(([key, label, , step]) => {
+                  const d = M.detected || {};
+                  const isAuto = (key === "wall_thickness_m" && d.wall_thickness_m)
+                    || (key === "beam_w_m" && d.beam_w_m)
+                    || ((key === "col_w_m" || key === "col_h_m") && d.col_size_m);
+                  return (
+                    <div key={key}>
+                      <Label className="text-xs">{label}{isAuto && <span className="text-emerald-600"> (auto)</span>}</Label>
+                      <Input type="number" step={step} value={params[key]}
+                             data-testid={`param-${key}`}
+                             onChange={(e) => setParams((p) => ({ ...p, [key]: e.target.value }))} />
+                    </div>
+                  );
+                })}
               </div>
               <Button onClick={run} disabled={busy} className="mt-3 gap-2" data-testid="structural-compute-btn">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
