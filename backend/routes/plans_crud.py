@@ -108,12 +108,13 @@ async def get_structural_metre(plan_id: str, user=Depends(current_user)) -> dict
 class StructuralEstimateIn(BaseModel):
     storey_height_m: float = 2.70
     n_levels: int = 1
-    wall_thickness_m: float = 0.20
-    beam_w_m: float = 0.20
-    beam_h_m: float = 0.50
-    col_w_m: float = 0.20
-    col_h_m: float = 0.20
-    slab_thickness_m: float = 0.20
+    # None → utilise la valeur auto-détectée sur le plan, sinon le défaut moteur
+    wall_thickness_m: float | None = None
+    beam_w_m: float | None = None
+    beam_h_m: float | None = None
+    col_w_m: float | None = None
+    col_h_m: float | None = None
+    slab_thickness_m: float | None = None
     slab_area_m2: float | None = None
     margin_pct: float = 12.0
 
