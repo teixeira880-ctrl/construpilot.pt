@@ -65,6 +65,8 @@ import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 
 const Protected = ({ children, admin }) => {
   const { user, loading } = useAuth();
@@ -82,7 +84,7 @@ const Protected = ({ children, admin }) => {
 const Shell = ({ children }) => (
   <>
     <Nav />
-    <main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10">{children}</main>
+    <main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main>
     <Footer />
   </>
 );
@@ -176,6 +178,8 @@ function App() {
                 <PermissionProvider>
                   <WhiteLabelProvider>
                     <AppRouter />
+                    <MobileTabBar />
+                    <InstallPrompt />
                     <Toaster position="top-right" richColors />
                   </WhiteLabelProvider>
                 </PermissionProvider>

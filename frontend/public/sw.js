@@ -3,7 +3,7 @@
    - Assets statiques (JS/CSS/img) : cache-first (les bundles sont hashés par le build)
    - API : network-first, fallback cache
    IMPORTANT : bumper CACHE à chaque déploiement pour purger l'ancien cache. */
-const CACHE = "construpilot-v3";
+const CACHE = "construpilot-v4";
 const APP_SHELL = ["/manifest.json", "/logo192.png", "/logo512.png"];
 
 self.addEventListener("install", (e) => {
