@@ -866,11 +866,12 @@ def _beton_line_items(d: dict, plancher: dict | None = None) -> list[dict]:
     planchers (dalles), semelles + aciers. Sans pièces ni second œuvre.
     La surface se réfère aux planchers détectés uniquement."""
     lines = []
+    _default_pu = {"bn": 38.0, "reservations": 45.0, "huisseries": 90.0}
 
     def add(desig, qty, unit, elem=None, cat="Gros œuvre — béton"):
         if qty and qty > 0:
             ln = {"designation": desig, "unit": unit, "qty": round(qty, 2),
-                  "unit_price_ht": 0, "vat_rate": 20, "category": cat}
+                  "unit_price_ht": _default_pu.get(elem, 0), "vat_rate": 20, "category": cat}
             if elem:
                 ln["elem"] = elem
             lines.append(ln)

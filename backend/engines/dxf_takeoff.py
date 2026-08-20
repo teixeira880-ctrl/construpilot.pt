@@ -188,6 +188,10 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     # Trait double → longueur d'axe ≈ longueur totale / 2
     walls_ml = round(m(wall_len) / 2, 1)
     partitions_ml = round(m(partition_len) / 2, 1)
+    # Repli : plan de coffrage sans calque « voile » dédié → les murs (A-WALL) SONT le béton
+    wall_source = "structure"
+    if walls_ml == 0 and partitions_ml > 0:
+        walls_ml, partitions_ml, wall_source = partitions_ml, 0.0, "archi_fallback"
     beams_ml = round(m(beam_len) / 2, 1)
     columns_count = col_inserts
     linteaux_ml = round(m(lintel_len) / 2, 1)
@@ -217,6 +221,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "unit_to_m": U,
         "walls_ml": walls_ml,
         "partitions_ml": partitions_ml,
+        "wall_source": wall_source,
         "beams_ml": beams_ml,
         "columns_count": columns_count,
         "linteaux_ml": linteaux_ml,
