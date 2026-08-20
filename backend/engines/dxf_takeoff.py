@@ -254,6 +254,8 @@ DEFAULTS = {
     "margin_pct": 12.0,
     "tva_rate": 0.20,
     "include_second_oeuvre": True,
+    # Gros œuvre immeuble : aucune cloison, tous les murs sont des voiles béton
+    "partitions_as_concrete": True,
 }
 # Prix unitaires structure (€ HT) — fourniture + pose
 PRICES = {
@@ -302,6 +304,11 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     ts = float(p["slab_thickness_m"])
 
     walls_ml = float(metre.get("walls_ml", 0)) * nlv
+    # Gros œuvre : sur les plans coffrage immeuble il n'existe pas de cloison,
+    # tous les murs relevés sont des voiles béton → on additionne les cloisons.
+    partitions_ml = float(metre.get("partitions_ml", 0))
+    if p.get("partitions_as_concrete", True) and partitions_ml:
+        walls_ml += partitions_ml * nlv
     beams_ml = float(metre.get("beams_ml", 0)) * nlv
     cols = int(metre.get("columns_count", 0)) * nlv
     lint_ml = float(metre.get("linteaux_ml", 0)) * nlv

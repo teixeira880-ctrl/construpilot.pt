@@ -28,7 +28,8 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
   const [metre, setMetre] = useState(null);
   const [estimate, setEstimate] = useState(null);
   const [params, setParams] = useState({ storey_height_m: 2.7, n_levels: 1, wall_thickness_m: 0.2,
-    slab_area_m2: "", slab_thickness_m: 0.2, beam_w_m: 0.2, beam_h_m: 0.5, col_w_m: 0.2, col_h_m: 0.2, margin_pct: 12 });
+    slab_area_m2: "", slab_thickness_m: 0.2, beam_w_m: 0.2, beam_h_m: 0.5, col_w_m: 0.2, col_h_m: 0.2,
+    margin_pct: 12, partitions_as_concrete: true });
   const [busy, setBusy] = useState(false);
   const [injecting, setInjecting] = useState(false);
 
@@ -47,11 +48,16 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
     }).catch(() => toast.error("Métré indisponible"));
   }, [open, planId]);
 
+  const buildBody = () => {
+    const { partitions_as_concrete, ...nums } = params;
+    Object.keys(nums).forEach((k) => { nums[k] = nums[k] === "" ? null : Number(nums[k]); });
+    return { ...nums, partitions_as_concrete };
+  };
+
   const run = async () => {
     setBusy(true);
     try {
-      const body = { ...params };
-      Object.keys(body).forEach((k) => { body[k] = body[k] === "" ? null : Number(body[k]); });
+      const body = buildBody();
       const { data } = await api.post(`/takeoffs/${planId}/structural-estimate`, body);
       setEstimate(data);
       if (data.metre) setMetre(data.metre);
@@ -65,8 +71,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
   const inject = async () => {
     setInjecting(true);
     try {
-      const body = { ...params };
-      Object.keys(body).forEach((k) => { body[k] = body[k] === "" ? null : Number(body[k]); });
+      const body = buildBody();
       const { data } = await api.post(`/takeoffs/${planId}/metre-to-quote`, body);
       toast.success(`Devis créé (${data.line_count} lignes) — ouverture de l'éditeur…`);
       onClose();
@@ -114,6 +119,19 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                 {(M.ngf_levels || []).length > 0 && <> — NGF : {(M.ngf_levels || []).join(" / ")}</>}
               </div>
             )}
+
+            <label className="flex items-center gap-2 text-sm cursor-pointer rounded-sm border p-2 bg-muted/40"
+                   data-testid="partitions-as-concrete-toggle">
+              <input type="checkbox" className="h-4 w-4 accent-primary"
+                     checked={params.partitions_as_concrete}
+                     onChange={(e) => setParams((p) => ({ ...p, partitions_as_concrete: e.target.checked }))} />
+              <span>
+                Gros œuvre immeuble — tous les murs sont en béton (compter les cloisons comme voiles)
+                {(M.partitions_ml ?? 0) > 0 && (
+                  <span className="text-muted-foreground"> · {M.partitions_ml} ml de murs concernés</span>
+                )}
+              </span>
+            </label>
 
             <div className="border-t pt-4">
               <div className="text-sm font-semibold mb-2">Hypothèses de calcul</div>
