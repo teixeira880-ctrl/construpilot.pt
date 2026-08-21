@@ -1,0 +1,22 @@
+{
+  "beton_total_m3": null,
+  "acier_total_kg": null,
+  "wall_count": null,
+  "column_count": null,
+  "beam_count": null,
+  "floor_count": null,
+  "totals": {
+    "unit_to_m": 1.0,
+    "walls_ml": 2960.8,
+    "partitions_ml": 0.0,
+    "beams_ml": 694.2,
+    "columns_count": 26,
+    "col_area_m2": 0.751,
+    "wall_area_m2": 106.2,
+    "partition_area_m2": 0.34,
+    "beam_area_m2": 85.34,
+    "linteaux_ml": 0.0,
+    "slab_area_m2": 0.0
+  },
+  "lines": []
+}

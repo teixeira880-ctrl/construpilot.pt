@@ -317,6 +317,11 @@ async def _mark_paid(session_id: str, s) -> None:
         await _apply_pc_situation(rec)
         return
 
+    if rec.get("type") == "quote_deposit":
+        from routes.plans_export import _apply_quote_deposit
+        await _apply_quote_deposit(rec)
+        return
+
     if rec.get("type") == "pro_credit_topup":
         await _apply_pro_credit_topup(rec)
         return

@@ -94,14 +94,22 @@ export default function QuoteTracking() {
   };
 
   const copySignLink = async (send) => {
+    const raw = window.prompt(
+      "Acompte demandé à la signature (% du TTC) — laissez 30 par défaut, ou 0 pour désactiver :",
+      "30");
+    if (raw === null) return; // annulé
+    const pct = Math.max(0, Math.min(100, parseFloat(raw) || 0));
     try {
       const { data } = await api.post(
-        `/takeoffs/${send.plan_id}/quote-sends/${send.log_id}/signature-link`
+        `/takeoffs/${send.plan_id}/quote-sends/${send.log_id}/signature-link`,
+        { deposit_pct: pct }
       );
       const fullUrl = data.url.startsWith("http") ? data.url
         : `${window.location.origin}${data.url}`;
       await navigator.clipboard.writeText(fullUrl);
-      toast.success("Lien de signature copié");
+      toast.success(pct > 0
+        ? `Lien copié — acompte ${pct}% à la signature`
+        : "Lien de signature copié (sans acompte)");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Génération impossible");
     }

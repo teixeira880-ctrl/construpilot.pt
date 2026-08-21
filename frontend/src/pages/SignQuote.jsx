@@ -1,20 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { CheckCircle2, PenLine, RotateCcw, Download } from "lucide-react";
+import { CheckCircle2, PenLine, RotateCcw, Download, CreditCard, Loader2 } from "lucide-react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 
 export default function SignQuote() {
   const { token } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
+  const [payBusy, setPayBusy] = useState(false);
   const [signerName, setSignerName] = useState("");
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [hasStroke, setHasStroke] = useState(false);
+
+  const reload = async () => {
+    const { data: fresh } = await axios.get(`${API}/quotes/public/sign/${token}`);
+    setData(fresh);
+    return fresh;
+  };
 
   useEffect(() => {
     let alive = true;
@@ -30,6 +39,43 @@ export default function SignQuote() {
     })();
     return () => { alive = false; };
   }, [token]);
+
+  // Retour de Stripe : confirme le paiement d'acompte par polling
+  useEffect(() => {
+    const sid = searchParams.get("session_id");
+    if (!sid) return;
+    let tries = 0;
+    const poll = async () => {
+      try {
+        const { data: st } = await axios.get(`${API}/quotes/deposit/status/${sid}`);
+        if (st.payment_status === "paid") {
+          toast.success(`Acompte de ${eur(st.amount)} réglé — merci !`);
+          await reload();
+          searchParams.delete("session_id"); setSearchParams(searchParams, { replace: true });
+          return;
+        }
+        if (st.payment_status === "expired") {
+          toast.error("Session de paiement expirée"); return;
+        }
+      } catch { /* ignore */ }
+      if (++tries < 8) setTimeout(poll, 2000);
+    };
+    poll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get("session_id")]);
+
+  const payDeposit = async () => {
+    setPayBusy(true);
+    try {
+      const { data: r } = await axios.post(`${API}/quotes/public/sign/${token}/deposit/checkout`,
+        { origin_url: window.location.origin });
+      window.location.href = r.url;
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Paiement indisponible");
+      setPayBusy(false);
+    }
+  };
+
 
   const initCanvas = () => {
     const c = canvasRef.current;
@@ -66,8 +112,7 @@ export default function SignQuote() {
         signature_b64: b64, signer_name: signerName.trim(),
       });
       toast.success("Devis signé avec succès !");
-      const { data: fresh } = await axios.get(`${API}/quotes/public/sign/${token}`);
-      setData(fresh);
+      await reload();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Signature impossible");
     } finally { setSigning(false); }
@@ -113,19 +158,48 @@ export default function SignQuote() {
         </div>
 
         {data.signed ? (
-          <div className="surface p-8 text-center space-y-4" data-testid="sign-done">
-            <CheckCircle2 className="h-14 w-14 mx-auto text-primary" />
-            <p className="font-display text-xl font-bold">Merci — votre devis est signé.</p>
-            <p className="text-xs text-muted-foreground">
-              Signé le {new Date(data.signed_at).toLocaleString("fr-FR")}
-            </p>
-            <a href={`${API}/quotes/public/sign/${token}/pdf`} target="_blank" rel="noopener noreferrer">
-              <button className="rounded-sm bg-primary text-primary-foreground px-6 py-3
-                                 font-bold hover:bg-orange-600 transition inline-flex items-center gap-2"
-                      data-testid="sign-download-pdf">
-                <Download className="h-4 w-4" /> Télécharger le devis signé
-              </button>
-            </a>
+          <div className="space-y-6">
+            <div className="surface p-8 text-center space-y-4" data-testid="sign-done">
+              <CheckCircle2 className="h-14 w-14 mx-auto text-primary" />
+              <p className="font-display text-xl font-bold">Merci — votre devis est signé.</p>
+              <p className="text-xs text-muted-foreground">
+                Signé le {new Date(data.signed_at).toLocaleString("fr-FR")}
+              </p>
+              <a href={`${API}/quotes/public/sign/${token}/pdf`} target="_blank" rel="noopener noreferrer">
+                <button className="rounded-sm bg-primary text-primary-foreground px-6 py-3
+                                   font-bold hover:bg-orange-600 transition inline-flex items-center gap-2"
+                        data-testid="sign-download-pdf">
+                  <Download className="h-4 w-4" /> Télécharger le devis signé
+                </button>
+              </a>
+            </div>
+
+            {data.deposit?.paid ? (
+              <div className="surface p-6 text-center space-y-2 border-2 border-emerald-500/40 bg-emerald-500/5" data-testid="deposit-paid">
+                <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-600" />
+                <p className="font-display text-lg font-bold">Acompte réglé — merci !</p>
+                <p className="text-sm text-muted-foreground">
+                  {eur(data.deposit.paid_amount)} reçu{data.deposit.paid_at ? ` le ${new Date(data.deposit.paid_at).toLocaleDateString("fr-FR")}` : ""}. Votre chantier peut démarrer.
+                </p>
+              </div>
+            ) : data.deposit?.enabled ? (
+              <div className="surface p-6 space-y-3 border-2 border-primary/30" data-testid="deposit-block">
+                <p className="font-display font-bold inline-flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" /> Verser l'acompte pour lancer le chantier
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Acompte de <b>{data.deposit.pct}%</b> soit <b className="text-primary">{eur(data.deposit.amount)}</b> —
+                  paiement 100% sécurisé par Stripe.
+                </p>
+                <button onClick={payDeposit} disabled={payBusy} data-testid="deposit-pay-btn"
+                        className="w-full rounded-sm bg-primary text-primary-foreground px-6 py-3 font-bold
+                                   hover:bg-orange-600 transition disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                  {payBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                  {payBusy ? "Redirection vers le paiement…" : `Payer l'acompte de ${eur(data.deposit.amount)}`}
+                </button>
+                <p className="text-[10px] text-muted-foreground text-center">Carte de test : 4242 4242 4242 4242 · date future · CVC quelconque</p>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="surface p-8 space-y-4">

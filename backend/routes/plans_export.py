@@ -28,6 +28,7 @@ from routes.plans_common import (
 logger = logging.getLogger(__name__)
 
 REMINDER_DELAY_DAYS = 5
+QUOTE_DEPOSIT_DEFAULT_PCT = 30.0
 
 
 # ============ PDF EXPORT MÉTRÉ ============
@@ -1126,8 +1127,14 @@ async def export_clients_csv(user=Depends(current_user)):
 
 # ============ SIGNATURE CLIENT ============
 
+class SignatureLinkIn(BaseModel):
+    deposit_pct: float | None = Field(default=None, ge=0, le=100)
+
+
 @router.post("/{plan_id}/quote-sends/{log_id}/signature-link")
-async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_user)) -> dict:
+async def create_signature_link(plan_id: str, log_id: str,
+                                body: SignatureLinkIn | None = None,
+                                user=Depends(current_user)) -> dict:
     """Génère un lien public unique pour que le client signe le devis."""
     log = await db.quote_sends.find_one(
         {"log_id": log_id, "plan_id": plan_id, "user_id": user["user_id"]},
@@ -1136,10 +1143,10 @@ async def create_signature_link(plan_id: str, log_id: str, user=Depends(current_
     if not log:
         raise HTTPException(404, "Envoi de devis introuvable")
     token = SIG_TOKEN_PREFIX + secrets.token_urlsafe(18)
-    await db.quote_sends.update_one(
-        {"log_id": log_id},
-        {"$set": {"signature_token": token, "signature_token_created_at": _now()}}
-    )
+    set_fields = {"signature_token": token, "signature_token_created_at": _now()}
+    if body and body.deposit_pct is not None:
+        set_fields["deposit_pct"] = float(body.deposit_pct)
+    await db.quote_sends.update_one({"log_id": log_id}, {"$set": set_fields})
     frontend_url = os.getenv("FRONTEND_URL") or ""
     return {"ok": True, "token": token,
             "url": f"{frontend_url}/sign/{token}" if frontend_url else f"/sign/{token}"}
@@ -1189,11 +1196,16 @@ async def get_signature_page_data(token: str) -> dict:
         {"signature_token": token},
         {"_id": 0, "plan_id": 1, "user_id": 1, "client_email": 1, "client_name": 1,
          "total_ttc": 1, "finish": 1, "floor_material": 1, "log_id": 1,
-         "signed": 1, "signed_at": 1}
+         "signed": 1, "signed_at": 1, "deposit_pct": 1, "deposit_paid": 1,
+         "deposit_amount": 1, "deposit_at": 1}
     )
     if not log:
         raise HTTPException(404, "Lien invalide ou expiré")
     branding = await _resolve_branding(log["user_id"]) or {}
+    ttc = float(log.get("total_ttc") or 0)
+    pct = log.get("deposit_pct")
+    pct = QUOTE_DEPOSIT_DEFAULT_PCT if pct is None else float(pct)
+    deposit_amount = round(ttc * pct / 100.0, 2) if (ttc > 0 and pct > 0) else 0
     return {
         "log_id": log["log_id"], "plan_id": log.get("plan_id"),
         "client_email": log.get("client_email"), "client_name": log.get("client_name"),
@@ -1203,6 +1215,14 @@ async def get_signature_page_data(token: str) -> dict:
         "signed_at": log.get("signed_at"),
         "company_name": branding.get("company_name"),
         "contact_line": branding.get("contact_line"),
+        "deposit": {
+            "pct": pct,
+            "amount": deposit_amount,
+            "paid": bool(log.get("deposit_paid")),
+            "paid_amount": log.get("deposit_amount"),
+            "paid_at": log.get("deposit_at"),
+            "enabled": deposit_amount >= 1,
+        },
     }
 
 
@@ -1287,6 +1307,144 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
     })
     await _notify_pro_on_signature(log, signer, client_email)
     return {"ok": True, "signed_at": _now()}
+
+
+# ---- Acompte en ligne (Stripe Checkout, page publique de signature) --------
+
+class QuoteDepositCheckoutIn(BaseModel):
+    origin_url: str = Field(max_length=200)
+
+
+async def _quote_deposit_flood_guard(token: str) -> None:
+    since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    n = await db.payment_transactions.count_documents(
+        {"sign_token": token, "type": "quote_deposit",
+         "payment_status": "pending", "created_at": {"$gte": since}})
+    if n >= 10:
+        raise HTTPException(429, "Trop de tentatives de paiement — réessayez plus tard")
+
+
+@quote_router.post("/public/sign/{token}/deposit/checkout")
+async def quote_deposit_checkout(token: str, body: QuoteDepositCheckoutIn) -> dict:
+    """Crée la session Stripe d'acompte pour un devis signé (public)."""
+    import stripe
+    log = await db.quote_sends.find_one(
+        {"signature_token": token},
+        {"_id": 0, "log_id": 1, "user_id": 1, "plan_id": 1, "total_ttc": 1,
+         "signed": 1, "deposit_pct": 1, "deposit_paid": 1, "client_name": 1})
+    if not log:
+        raise HTTPException(404, "Lien invalide ou expiré")
+    if not log.get("signed"):
+        raise HTTPException(400, "Signez d'abord le devis avant de verser l'acompte")
+    if log.get("deposit_paid"):
+        raise HTTPException(400, "L'acompte a déjà été réglé — merci !")
+    await _quote_deposit_flood_guard(token)
+    pct = log.get("deposit_pct")
+    pct = QUOTE_DEPOSIT_DEFAULT_PCT if pct is None else float(pct)
+    if pct <= 0:
+        raise HTTPException(400, "Le paiement d'acompte en ligne est désactivé")
+    ttc = float(log.get("total_ttc") or 0)
+    amount_cents = int(round(ttc * pct))  # € TTC × pct % → centimes
+    if amount_cents < 100:
+        raise HTTPException(400, "Montant d'acompte invalide")
+    origin = body.origin_url.rstrip("/")
+    branding = await _resolve_branding(log["user_id"]) or {}
+    company = (branding.get("company_name") or "ConstruPilot")[:60]
+    try:
+        session = stripe.checkout.Session.create(
+            line_items=[{"price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"Acompte {pct:g} % — Devis {company}"},
+                "unit_amount": amount_cents}, "quantity": 1}],
+            mode="payment",
+            success_url=f"{origin}/sign/{token}?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{origin}/sign/{token}",
+            metadata={"type": "quote_deposit", "sign_token": token,
+                      "log_id": log["log_id"], "plan_id": log.get("plan_id") or ""})
+    except Exception:
+        logger.exception("stripe quote deposit checkout")
+        raise HTTPException(502, "Paiement indisponible — réessayez plus tard")
+    await db.payment_transactions.insert_one({
+        "session_id": session.id, "user_id": log["user_id"],
+        "plan_id": log.get("plan_id"), "log_id": log["log_id"],
+        "sign_token": token, "type": "quote_deposit", "amount_cents": amount_cents,
+        "currency": "eur", "mode": "payment", "status": "initiated",
+        "payment_status": "pending", "created_at": _now(), "updated_at": _now()})
+    return {"url": session.url, "session_id": session.id,
+            "amount": round(amount_cents / 100.0, 2), "pct": pct}
+
+
+async def _apply_quote_deposit(rec: dict) -> None:
+    """Marque l'acompte du devis payé (idempotent) + notifie le pro."""
+    amount = round((rec.get("amount_cents") or 0) / 100.0, 2)
+    paid_at = _now()
+    r = await db.quote_sends.update_one(
+        {"log_id": rec.get("log_id"), "deposit_paid": {"$ne": True}},
+        {"$set": {"deposit_paid": True, "deposit_amount": amount,
+                  "deposit_at": paid_at,
+                  "deposit_session_id": rec.get("session_id")}})
+    if not r.modified_count:
+        return
+    try:
+        from routes.phase7 import notify_user
+        await notify_user(rec["user_id"], "💶 Acompte reçu !",
+                          f"Un acompte de {int(amount):,} € a été réglé sur un devis signé.".replace(",", " "),
+                          "/devis")
+    except Exception as e:
+        logger.warning(f"notify quote deposit failed: {e}")
+    try:
+        from engines import emailer
+        pro = await db.users.find_one({"user_id": rec["user_id"]},
+                                       {"_id": 0, "email": 1, "name": 1})
+        if pro and pro.get("email"):
+            html = (f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'>"
+                    f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
+                    f"<h1 style='margin:0;font-size:22px'>💶 Acompte reçu</h1></div>"
+                    f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
+                    f"<p>Bonjour {pro.get('name') or ''},</p>"
+                    f"<p>Un acompte de <strong>{amount} €</strong> vient d'être réglé en ligne "
+                    f"sur un devis signé.</p>"
+                    f"<p style='margin-top:24px'><a href='https://construpilot.fr/devis' "
+                    f"style='background:hsl(24,96%,55%);color:white;padding:12px 24px;"
+                    f"text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>"
+                    f"Voir le suivi des devis</a></p></div></div>")
+            await emailer.send_email(pro["email"], "💶 Acompte réglé sur un devis signé", html)
+    except Exception as e:
+        logger.warning(f"email quote deposit failed: {e}")
+
+
+@quote_router.get("/deposit/status/{session_id}")
+async def quote_deposit_status(session_id: str) -> dict:
+    """Statut public d'un paiement d'acompte devis — polling au retour Stripe."""
+    q = {"session_id": session_id, "type": "quote_deposit"}
+    rec = await db.payment_transactions.find_one(q, {"_id": 0})
+    if not rec:
+        raise HTTPException(404, "Session inconnue")
+    if rec.get("payment_status") != "paid":
+        import stripe
+        try:
+            s = stripe.checkout.Session.retrieve(session_id)
+            if s.payment_status == "paid" or s.status == "complete":
+                upd = await db.payment_transactions.update_one(
+                    {"session_id": session_id, "payment_status": {"$ne": "paid"}},
+                    {"$set": {"status": "completed", "payment_status": "paid",
+                              "stripe_payment_intent_id": s.payment_intent,
+                              "updated_at": _now()}})
+                rec = await db.payment_transactions.find_one(q, {"_id": 0})
+                if upd.modified_count:
+                    await _apply_quote_deposit(rec)
+            elif s.status == "expired":
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"status": "expired", "payment_status": "expired",
+                              "updated_at": _now()}})
+                rec["payment_status"] = "expired"
+        except Exception as e:
+            logger.warning(f"quote deposit status poll {session_id}: {e}")
+    return {"session_id": session_id, "status": rec.get("status"),
+            "payment_status": rec.get("payment_status"),
+            "amount": round((rec.get("amount_cents") or 0) / 100.0, 2)}
+
 
 
 @quote_router.get("/public/sign/{token}/pdf")

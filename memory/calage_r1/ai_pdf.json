@@ -1,0 +1,11 @@
+{
+  "walls": 110,
+  "columns": 37,
+  "beams": 18,
+  "floors": 12,
+  "footings": 0,
+  "openings": 0,
+  "reservations": 64,
+  "plan_kind": "coffrage",
+  "confidence": null
+}

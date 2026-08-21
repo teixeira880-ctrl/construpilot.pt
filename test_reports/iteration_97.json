@@ -1,0 +1,48 @@
+{
+  "summary": "Frontend-only verification of two new ConstruPilot features. FEATURE A (Aperçu métré instantané / inline recap card on /plan) and FEATURE B (Stripe deposit block on public /sign/{token}) both PASS end-to-end via the public preview URL.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_verified": {
+    "feature_A_recap_card": {
+      "status": "PASS",
+      "steps": [
+        "Logged in as pro@construpilot.fr / Pro2026!",
+        "Navigated to /plan and uploaded /app/test_metre.pdf",
+        "Selected calibrate tool (data-testid='tool-calibrate'), clicked 2 canvas points, filled 5 in data-testid='calib-distance-input', confirmed via data-testid='calib-confirm-btn' -> calibration 120 px/m applied, page shows 'Calibrée' badge",
+        "Clicked data-testid='plan-analyze-btn' — analyze chain ran ~15s, success toast displayed",
+        "data-testid='analysis-recap' rendered with all sub-tiles: recap-rooms (Pieces 0), recap-surface (0 m2), recap-structure (0 murs / 0 pot / 0 pou), recap-beton (0 m3), recap-acier (0 kg), recap-estimation (0 EUR)",
+        "Buttons recap-to-quote and recap-see-rooms present",
+        "Clicking data-testid='recap-close' (Masquer) hides the card as expected"
+      ],
+      "note": "0 rooms/walls values are expected on this minimal test PDF and confirmed acceptable by the request."
+    },
+    "feature_B_stripe_deposit": {
+      "status": "PASS",
+      "steps": [
+        "Opened public /sign/sig_testdeposit123 (no auth)",
+        "data-testid='sign-done' present (Devis signé confirmation)",
+        "data-testid='deposit-block' present, shows 'Acompte de 30% soit 3 000,00 EUR — paiement 100% securise par Stripe'",
+        "data-testid='deposit-pay-btn' label = \"Payer l'acompte de 3 000,00 EUR\" (contains 'Payer l\\'acompte' AND '3 000')",
+        "Click on pay button triggered full-page redirect to https://checkout.stripe.com/c/pay/cs_test_a1XfHwOptOn5mGErEBO5AMBoD0LPhCLT7qSBJCLflsmdaICJTVMCWItJJE (host contains checkout.stripe.com — verified)"
+      ]
+    }
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx line 1270 references TOOLS.CALIBRATE while the toolbar and click handler use TOOLS.CALIB. In practice this only affects the setTool(...) fallback when analyze is invoked without calibration; low priority but should be aligned to TOOLS.CALIB.",
+    "PlanTakeoff.jsx is 4629 lines — file exceeds the 700-line guideline and should be split into smaller focused modules (canvas tools, calibration, analyze/estimation pipeline, dialogs, side panels)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (skipped per request)", "frontend": "100%" },
+  "test_credentials": "pro@construpilot.fr / Pro2026! (confirmed working). Public deposit token: sig_testdeposit123 (pre-seeded, working).",
+  "seed_data_creation": "None — used the existing sig_testdeposit123 seeded quote and /app/test_metre.pdf sample.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Both features are functionally verified on preview URL. Sign page redirect goes to a real cs_test_... Stripe checkout URL. Calibration is required before analyze; use tool-calibrate + 2 canvas mouse clicks + calib-distance-input + calib-confirm-btn to satisfy the prerequisite.",
+  "rca of the issue": "N/A — no issues found."
+}

@@ -32,8 +32,14 @@ Rends STRICTEMENT du JSON (aucun markdown, aucun texte hors JSON) :
     {"x1": 0.10, "y1": 0.12, "x2": 0.90, "y2": 0.12, "type": "porteur" | "cloison"}
   ],
   "columns": [
-    // POTEAUX (plan de coffrage) : petits carrés/rectangles/cercles pleins, souvent répétés
-    // sur une trame. Donne les DEUX coins opposés de l'emprise du poteau. Liste-les TOUS.
+    // POTEAUX (plan de coffrage) : petits carrés/rectangles/cercles PLEINS (souvent hachurés
+    // en croix / trame serrée), disposés sur une TRAME structurelle régulière, souvent
+    // repérés "P1", "P2"… ou cotés (ex "20x20", "Ø30"). Donne les DEUX coins opposés.
+    // NE COMPTE PAS comme poteau : les réservations/trémies (Ø de gaines, EU/EP/VB/élec),
+    // les intersections de poutres, les symboles de descente de charge, les cercles de
+    // canalisation. En cas de doute (petit cercle annoté Ø ou d'un repère fluide) → c'est une
+    // RÉSERVATION, pas un poteau. Reste réaliste : un niveau courant a typiquement 15 à 35
+    // poteaux, rarement plus — ne gonfle pas le compte avec des trémies.
     {"x1": 0.20, "y1": 0.30, "x2": 0.23, "y2": 0.33}
   ],
   "beams": [
@@ -79,12 +85,17 @@ CODE COULEUR (si le plan est colorisé, respecte-le STRICTEMENT) :
 
 RÈGLES :
 - Respecte le code couleur ci-dessus en priorité. Sinon : murs = traits épais, poutres = pointillés.
-- Poteaux = petits éléments pleins isolés, souvent en trame — liste-les TOUS (même 20+).
+- Poteaux = petits éléments PLEINS isolés sur une trame, cotés/repérés "Px" — voir la définition
+  détaillée dans "columns". Distingue-les STRICTEMENT des réservations/trémies.
 - PLANCHER : relève le contour COMPLET de la dalle (toute l'emprise du niveau), pas une seule pièce.
 - BANDES NOYÉES (BN) / poutres noyées : traite-les comme des "beams" (repère "BN", trait renforcé dans la dalle).
-- RÉSERVATIONS / trémies : liste-les TOUTES dans "reservations".
-- Sur un plan de coffrage, openings est généralement vide.
-- Sois EXHAUSTIF et précis. Réponds UNIQUEMENT le JSON.
+- RÉSERVATIONS / trémies : liste-les TOUTES dans "reservations" (jamais dans "openings" ni "columns").
+  Tout petit rectangle/cercle DANS la dalle annoté d'un Ø, d'une dimension (ex "40x20") ou d'un
+  repère fluide (EU, EP, VB, Élec, PLB, gaine) = RÉSERVATION.
+- COFFRAGE : sur un plan de coffrage/structure, "openings" DOIT rester VIDE ([]). Les trous dans la
+  dalle sont des réservations, pas des ouvertures de mur. Ne mets JAMAIS de trémie dans "openings".
+- Sois EXHAUSTIF sur murs/poutres/réservations, mais PRÉCIS sur les poteaux (pas de sur-comptage).
+- Réponds UNIQUEMENT le JSON.
 """
 
 
@@ -353,6 +364,23 @@ def _dedupe(items: list, tol: float, use_center: bool = True) -> list:
     return out
 
 
+def _reclassify_coffrage(res: dict) -> None:
+    """Calage vérité DWG : sur un plan de COFFRAGE, les 'openings' détectées sont en réalité
+    des trémies/réservations (une dalle n'a pas d'ouverture de mur). On les reverse dans
+    'reservations' et on vide 'openings' pour éviter de fausser le métré (linteaux fantômes)."""
+    if res.get("plan_kind") != "coffrage":
+        return
+    ops = res.get("openings") or []
+    if ops:
+        res.setdefault("reservations", [])
+        for o in ops:
+            cx = (o.get("x1", 0) + o.get("x2", 0)) / 2.0
+            cy = (o.get("y1", 0) + o.get("y2", 0)) / 2.0
+            res["reservations"].append({"x": cx, "y": cy,
+                                        "kind": None, "size": o.get("size")})
+        res["openings"] = []
+
+
 async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: int,
                                  max_tile: int = 2200) -> dict:
     """Analyse un GRAND plan (A0/A1) en le découpant en zones, puis fusionne.
@@ -364,7 +392,11 @@ async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: i
 
     big = max(width_px, height_px)
     if big <= max_tile * 1.3:
-        return await detect_structure(image_b64_png, width_px, height_px)
+        single = await detect_structure(image_b64_png, width_px, height_px)
+        _reclassify_coffrage(single)
+        single["reservation_count"] = len(single.get("reservations") or [])
+        single["opening_count"] = len(single.get("openings") or [])
+        return single
 
     cols = min(3, max(1, -(-width_px // max_tile)))   # ceil
     rows = min(3, max(1, -(-height_px // max_tile)))
@@ -384,12 +416,12 @@ async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: i
     tiles = await asyncio.gather(*[run_tile(cx, cy) for cy in range(rows) for cx in range(cols)],
                                  return_exceptions=True)
     merged = {"walls": [], "openings": [], "beams": [], "columns": [], "floors": [],
-              "footings": [], "plan_kind": "coffrage", "confidence": None}
+              "footings": [], "reservations": [], "plan_kind": "coffrage", "confidence": None}
     kinds = []
     for t in tiles:
         if isinstance(t, Exception) or not isinstance(t, dict):
             continue
-        for k in ("walls", "openings", "beams", "columns", "floors", "footings"):
+        for k in ("walls", "openings", "beams", "columns", "floors", "footings", "reservations"):
             merged[k].extend(t.get(k) or [])
         if t.get("plan_kind"):
             kinds.append(t["plan_kind"])
@@ -401,11 +433,17 @@ async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: i
     merged["footings"] = _dedupe(merged["footings"], diag * 0.010)
     if kinds:
         merged["plan_kind"] = max(set(kinds), key=kinds.count)
+    # Calage : un plan avec de nombreux poteaux détectés EST un plan de coffrage,
+    # même si le vote par tuile hésite (des tuiles sans poteau votent "habitation").
+    if len(merged["columns"]) >= 10 or (kinds.count("coffrage") >= max(2, len(kinds) // 3)):
+        merged["plan_kind"] = "coffrage"
+    _reclassify_coffrage(merged)
     merged.update({
         "image_width": width_px, "image_height": height_px,
         "wall_count": len(merged["walls"]), "opening_count": len(merged["openings"]),
         "beam_count": len(merged["beams"]), "floor_count": len(merged["floors"]),
         "column_count": len(merged["columns"]), "footing_count": len(merged["footings"]),
+        "reservation_count": len(merged.get("reservations") or []),
         "tiled": f"{cols}x{rows}",
     })
     return merged

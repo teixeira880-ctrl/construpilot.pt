@@ -94,6 +94,7 @@ export default function PlanTakeoff() {
   const [structBusy, setStructBusy] = useState(false);
   const [selectedStruct, setSelectedStruct] = useState(null);
   const [descriptif, setDescriptif] = useState(null);
+  const [analysisRecap, setAnalysisRecap] = useState(null);
   const [wallHeight, setWallHeight] = useState(2.5);
   const [araseInf, setAraseInf] = useState("");
   const [araseSup, setAraseSup] = useState("");
@@ -1255,7 +1256,8 @@ export default function PlanTakeoff() {
     try {
       const { data } = await api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${height}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}`);
       setDescriptif(data.descriptif);
-    } catch { /* silencieux */ }
+      return data.descriptif;
+    } catch { return null; }
   };
 
   // Bouton principal : « Analyser le plan » — enchaîne TOUT automatiquement :
@@ -1265,7 +1267,7 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     if (!currentCalib) {
       toast.error("Calibrez d'abord le plan : l'échelle est indispensable pour calculer les quantités.");
-      setTool(TOOLS.CALIBRATE);
+      setTool(TOOLS.CALIB);
       return;
     }
     setAnalysisBusy(true);
@@ -1299,12 +1301,35 @@ export default function PlanTakeoff() {
       }
 
       // 4) Chiffrage / descriptif béton (métré chiffré)
-      await loadDescriptif();
+      const descData = await loadDescriptif();
 
       // 5) Estimation globale depuis le métré (uniquement si des pièces existent)
+      let estData = null;
       if (importedRooms > 0) {
-        try { await runEstimation(); } catch (e) { /* estimation optionnelle */ }
+        try { estData = await runEstimation(); } catch (e) { /* estimation optionnelle */ }
       }
+
+      // Récapitulatif instantané (sans dialogue)
+      const surfacePieces = aiRooms.reduce((s, r) => s + (Number(r.surface_written_m2) || Number(r.estimated_surface_m2) || 0), 0);
+      const beton = descData?.beton_total_m3 || 0;
+      const acier = descData?.acier_total_kg || 0;
+      const venteBeton = beton > 0
+        ? Math.round(((beton * betonPriceM3 + acier * acierPriceKg) + beton * laborPriceM3) * (1 + marginPct / 100))
+        : 0;
+      setAnalysisRecap({
+        rooms: aiRooms.length,
+        imported_rooms: importedRooms,
+        surface_pieces_m2: Math.round(surfacePieces * 10) / 10,
+        walls: struct?.wall_count || 0,
+        columns: struct?.column_count || 0,
+        beams: struct?.beam_count || 0,
+        floors: struct?.floor_count || 0,
+        beton_m3: beton,
+        acier_kg: acier,
+        estimation_beton_eur: venteBeton,
+        estimation_globale_eur: estData?.estimation?.total_avg || 0,
+        estimation_surface_m2: estData?.surface_m2 || 0,
+      });
 
       toast.dismiss(tid);
       const parts = [];
@@ -1849,8 +1874,10 @@ export default function PlanTakeoff() {
       // Si rénovation → coche automatiquement TVA
       if (data.is_renovation) setQuoteIncludeTva(true);
       toast.success(`Estimation générée : ${data.surface_m2} m² · ${data.estimation.total_avg?.toLocaleString("fr-FR")} €`);
+      return data;
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Estimation impossible");
+      return null;
     } finally { setEstimateBusy(false); }
   };
 
@@ -2108,12 +2135,20 @@ export default function PlanTakeoff() {
   };
 
   const createSignatureLink = async (logId) => {
+    const raw = window.prompt(
+      "Acompte demandé à la signature (% du TTC) — 30 par défaut, ou 0 pour désactiver :",
+      "30");
+    if (raw === null) return;
+    const pct = Math.max(0, Math.min(100, parseFloat(raw) || 0));
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/quote-sends/${logId}/signature-link`);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/quote-sends/${logId}/signature-link`,
+        { deposit_pct: pct });
       const fullUrl = data.url.startsWith("http") ? data.url
         : `${window.location.origin}${data.url}`;
       await navigator.clipboard.writeText(fullUrl);
-      toast.success("Lien de signature copié dans le presse-papier");
+      toast.success(pct > 0
+        ? `Lien copié — acompte ${pct}% à la signature`
+        : "Lien de signature copié (sans acompte)");
       await loadQuoteSends();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Génération du lien impossible");
@@ -2470,7 +2505,61 @@ export default function PlanTakeoff() {
         </div>
       </div>
 
-      {/* Réglages du plan — hauteur murs + épaisseur plancher */}
+      {/* Aperçu métré instantané — récap après « Analyser le plan (tout) » */}
+      {analysisRecap && (
+        <div className="surface p-4 border-2 border-primary/40 bg-primary/5" data-testid="analysis-recap">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="font-display font-bold text-base">Aperçu du métré</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Analyse terminée</span>
+            </div>
+            <button onClick={() => setAnalysisRecap(null)} className="text-muted-foreground hover:text-foreground text-xs" data-testid="recap-close">Masquer</button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="rounded-sm bg-background border border-border p-3" data-testid="recap-rooms">
+              <p className="text-[11px] text-muted-foreground">Pièces</p>
+              <p className="num text-xl font-extrabold">{analysisRecap.rooms}</p>
+            </div>
+            <div className="rounded-sm bg-background border border-border p-3" data-testid="recap-surface">
+              <p className="text-[11px] text-muted-foreground">Surface pièces</p>
+              <p className="num text-xl font-extrabold">{analysisRecap.surface_pieces_m2 || 0} m²</p>
+            </div>
+            <div className="rounded-sm bg-background border border-border p-3" data-testid="recap-structure">
+              <p className="text-[11px] text-muted-foreground">Structure</p>
+              <p className="num text-sm font-bold">{analysisRecap.walls} murs · {analysisRecap.columns} pot. · {analysisRecap.beams} pou.</p>
+            </div>
+            <div className="rounded-sm bg-background border border-border p-3" data-testid="recap-beton">
+              <p className="text-[11px] text-muted-foreground">Béton total</p>
+              <p className="num text-xl font-extrabold">{analysisRecap.beton_m3 || 0} m³</p>
+            </div>
+            <div className="rounded-sm bg-background border border-border p-3" data-testid="recap-acier">
+              <p className="text-[11px] text-muted-foreground">Aciers</p>
+              <p className="num text-xl font-extrabold text-orange-600">{analysisRecap.acier_kg || 0} kg</p>
+            </div>
+            <div className="rounded-sm bg-primary/10 border border-primary/30 p-3" data-testid="recap-estimation">
+              <p className="text-[11px] text-muted-foreground">Estimation</p>
+              <p className="num text-xl font-extrabold text-primary">
+                {(analysisRecap.estimation_globale_eur || analysisRecap.estimation_beton_eur || 0).toLocaleString("fr-FR")} €
+              </p>
+              <p className="text-[10px] text-muted-foreground">{analysisRecap.estimation_globale_eur ? "rénovation (moy.)" : "gros œuvre béton"}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Button size="sm" onClick={sendToQuote} className="rounded-sm gap-2" data-testid="recap-to-quote">
+              <ArrowRight className="h-3.5 w-3.5" /> Générer le devis
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setRightTab("rooms"); }} className="rounded-sm gap-2" data-testid="recap-see-rooms">
+              Voir les pièces
+            </Button>
+          </div>
+          {(analysisRecap.rooms === 0 && analysisRecap.walls === 0) && (
+            <p className="mt-2 text-[11px] text-muted-foreground">Aucun élément détecté automatiquement — vérifiez la calibration ou tracez les pièces manuellement.</p>
+          )}
+        </div>
+      )}
+
+
       <div className="surface p-3 flex items-center gap-4 flex-wrap" data-testid="plan-settings-bar">
         <div className="flex items-center gap-2">
           <span className="text-xs overline">Réglages du plan</span>
