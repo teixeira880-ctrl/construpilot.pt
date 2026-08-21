@@ -29,7 +29,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
   const [estimate, setEstimate] = useState(null);
   const [params, setParams] = useState({ storey_height_m: 2.7, n_levels: 1, wall_thickness_m: 0.2,
     slab_area_m2: "", slab_thickness_m: 0.2, beam_w_m: 0.2, beam_h_m: 0.5, col_w_m: 0.2, col_h_m: 0.2,
-    margin_pct: 12, partitions_as_concrete: true });
+    margin_pct: 12, partitions_as_concrete: true, arase_inf_m: "", arase_sup_m: "" });
   const [busy, setBusy] = useState(false);
   const [injecting, setInjecting] = useState(false);
 
@@ -155,6 +155,36 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
                 Calculer l'estimation
               </Button>
+            </div>
+
+            <div className="border-t pt-4">
+              <div className="text-sm font-semibold mb-1">Hauteur par arases (NGF)</div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Renseignez l'arase inférieure (AI) et supérieure (AS) : la hauteur des voiles et poteaux =
+                AS − AI. Laissez vide pour utiliser la hauteur d'étage ci-dessus.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Arase inférieure AI (m)</Label>
+                  <Input type="number" step="0.01" value={params.arase_inf_m} data-testid="param-arase_inf_m"
+                         onChange={(e) => setParams((p) => ({ ...p, arase_inf_m: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Arase supérieure AS (m)</Label>
+                  <Input type="number" step="0.01" value={params.arase_sup_m} data-testid="param-arase_sup_m"
+                         onChange={(e) => setParams((p) => ({ ...p, arase_sup_m: e.target.value }))} />
+                </div>
+                <div className="flex items-end">
+                  {params.arase_inf_m !== "" && params.arase_sup_m !== ""
+                    && Number(params.arase_sup_m) > Number(params.arase_inf_m) ? (
+                    <span className="text-xs text-emerald-600 pb-2" data-testid="arase-height">
+                      Hauteur = {(Number(params.arase_sup_m) - Number(params.arase_inf_m)).toFixed(2)} m
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground pb-2">Hauteur = étage ({params.storey_height_m} m)</span>
+                  )}
+                </div>
+              </div>
             </div>
 
             {t && (

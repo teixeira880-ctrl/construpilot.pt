@@ -118,6 +118,8 @@ class StructuralEstimateIn(BaseModel):
     slab_area_m2: float | None = None
     margin_pct: float = 12.0
     partitions_as_concrete: bool = True
+    arase_inf_m: float | None = None
+    arase_sup_m: float | None = None
 
 
 @router.post("/{plan_id}/structural-estimate")

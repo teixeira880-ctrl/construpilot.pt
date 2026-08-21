@@ -256,6 +256,9 @@ DEFAULTS = {
     "include_second_oeuvre": True,
     # Gros œuvre immeuble : aucune cloison, tous les murs sont des voiles béton
     "partitions_as_concrete": True,
+    # Arases NGF (m) : si fournies, hauteur des voiles/poteaux = AS - AI
+    "arase_inf_m": None,
+    "arase_sup_m": None,
 }
 # Prix unitaires structure (€ HT) — fourniture + pose
 PRICES = {
@@ -303,6 +306,18 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     cw, ch = float(p["col_w_m"]), float(p["col_h_m"])
     ts = float(p["slab_thickness_m"])
 
+    # Hauteur des éléments verticaux (voiles/poteaux) : si les arases NGF sont
+    # fournies, hauteur = arase supérieure (AS) - arase inférieure (AI), sinon
+    # la hauteur d'étage. C'est la méthode métreur pour un plan de coffrage.
+    ai_v, as_v = p.get("arase_inf_m"), p.get("arase_sup_m")
+    h_vert = h
+    h_label = f"H {h} m"
+    if ai_v not in (None, "", 0, "0") and as_v not in (None, "", 0, "0"):
+        ai_v, as_v = float(ai_v), float(as_v)
+        if as_v > ai_v:
+            h_vert = round(as_v - ai_v, 3)
+            h_label = f"H {h_vert} m (AS {as_v} − AI {ai_v})"
+
     walls_ml = float(metre.get("walls_ml", 0)) * nlv
     # Gros œuvre : sur les plans coffrage immeuble il n'existe pas de cloison,
     # tous les murs relevés sont des voiles béton → on additionne les cloisons.
@@ -321,8 +336,8 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     huiss = int(op.get("portes", 0)) + int(op.get("fenetres", 0))
 
     # Volumes / surfaces
-    wall_face = round(walls_ml * h, 1)              # m² de paroi (une face)
-    wall_m3 = round(walls_ml * h * tw, 2)
+    wall_face = round(walls_ml * h_vert, 1)         # m² de paroi (une face)
+    wall_m3 = round(walls_ml * h_vert * tw, 2)
     wall_cof = round(wall_face * 2, 1)              # 2 faces
     wall_ac = round(wall_m3 * REBAR["voile"], 0)
 
@@ -330,7 +345,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     beam_cof = round(beams_ml * (bw + 2 * bh), 1)
     beam_ac = round(beam_m3 * REBAR["poutre"], 0)
 
-    col_m3 = round(cols * cw * ch * h, 2)
+    col_m3 = round(cols * cw * ch * h_vert, 2)
     col_ac = round(col_m3 * REBAR["poteau"], 0)
 
     slab_m3 = round(slab_m2 * ts, 2)
@@ -342,7 +357,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     if walls_ml:
         struct_lines += [
             _line("Voiles / murs béton — béton C25/30",
-                  f"{walls_ml} ml × H {h} m × ép. {tw} m", "m³", wall_m3, P["beton_voile"]),
+                  f"{walls_ml} ml × {h_label} × ép. {tw} m", "m³", wall_m3, P["beton_voile"]),
             _line("Coffrage voiles (2 faces)", f"{wall_face} m² × 2 faces", "m²", wall_cof, P["coffrage_voile"]),
             _line("Aciers voiles", f"{REBAR['voile']} kg/m³", "kg", wall_ac, P["acier_voile"]),
         ]
@@ -354,7 +369,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         ]
     if cols:
         struct_lines += [
-            _line("Poteaux béton — béton C25/30", f"{cols} × {cw}×{ch} m × H {h} m", "m³", col_m3, P["beton_poteau"]),
+            _line("Poteaux béton — béton C25/30", f"{cols} × {cw}×{ch} m × {h_label}", "m³", col_m3, P["beton_poteau"]),
             _line("Aciers poteaux", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
         ]
     if slab_m2:
@@ -396,6 +411,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         "coffrage_m2": round(wall_cof + beam_cof + slab_m2, 1),
         "walls_ml": round(walls_ml, 1), "beams_ml": round(beams_ml, 1),
         "columns": cols, "slab_m2": round(slab_m2, 1),
+        "height_m": h_vert, "height_source": "arases" if h_label != f"H {h} m" else "etage",
         "reservations": resa, "huisseries": huiss,
         "ht_brut": ht_brut, "margin_pct": p["margin_pct"], "ht": ht,
         "tva_rate": p["tva_rate"], "tva": tva, "ttc": round(ht + tva, 2),
