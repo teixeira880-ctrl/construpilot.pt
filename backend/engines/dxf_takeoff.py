@@ -21,6 +21,9 @@ try:
 except Exception:  # pragma: no cover
     _ezbbox = None
 
+# Seuil épaisseur voile béton vs cloison archi (m) — sépare A-WALL épais/fin
+VOILE_MIN_THK_M = 0.15
+
 # Mots-clés de calques → catégories (FR + norme US/NCS AIA). Recherche sous-chaîne.
 _WALL = ("mur", "wall", "voile")
 # Distinction porteur béton vs cloison/architecture (pour ne chiffrer que le béton)
@@ -185,6 +188,16 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         h = float(bb.size.y)
         return (w, h) if (w > 0 and h > 0) else None
 
+    def _wall_fill_is_voile(ent, layer: str) -> bool:
+        """Classe un remplissage mur : voile béton (épais) vs cloison archi (fin),
+        d'après le côté court de l'emprise. Sépare proprement le calque A-WALL."""
+        wh = _entity_wh(ent)
+        if wh:
+            thk = min(wh) * U
+            return thk >= VOILE_MIN_THK_M
+        # Repli : calque structure → voile ; calque archi seul → cloison
+        return not (_match(layer, _WALL_ARCH) and not _match(layer, _WALL_STRUCT))
+
     for e in msp:
         t = e.dxftype()
         L = _layer(e)
@@ -210,12 +223,12 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
                 if wh:
                     col_sections_units.append(wh)
             elif _match(L, _WALL):
-                if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
-                    partition_len += ln
-                    partition_fill_units += ar
-                else:
+                if _wall_fill_is_voile(e, L):
                     wall_len += ln
                     wall_fill_units += ar
+                else:
+                    partition_len += ln
+                    partition_fill_units += ar
             elif _match(L, _BEAM):
                 beam_len += ln
                 beam_fill_units += ar
@@ -224,10 +237,10 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             if _match(L, _BEAM):
                 beam_fill_units += _hatch_area(e)
             elif _match(L, _WALL):
-                if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
-                    partition_fill_units += _hatch_area(e)
-                else:
+                if _wall_fill_is_voile(e, L):
                     wall_fill_units += _hatch_area(e)
+                else:
+                    partition_fill_units += _hatch_area(e)
             elif _match(L, _SLAB):
                 slab_area_units += _hatch_area(e)
         elif t == "INSERT":

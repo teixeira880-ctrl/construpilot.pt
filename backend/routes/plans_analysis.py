@@ -1401,7 +1401,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     if labor_price_m3 and labor_price_m3 > 0 and beton_total > 0:
         lines.append({"designation": "Main d'œuvre béton (coffrage, coulage, ferraillage)",
                       "unit": "m³", "qty": round(beton_total, 2),
-                      "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 10,
+                      "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 20,
                       "category": "Depuis analyse plan"})
         priced += 1
     # Marge commerciale par poste (béton / aciers / main d'œuvre) — repli sur la marge globale
