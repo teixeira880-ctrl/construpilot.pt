@@ -69,6 +69,37 @@ def _match(layer: str, keys) -> bool:
     return any(k in layer for k in keys)
 
 
+def _hatch_area(e) -> float:
+    """Aire (unités²) d'une hachure — somme des contours (EdgePath/PolylinePath)."""
+    tot = 0.0
+    try:
+        paths = e.paths
+    except Exception:
+        return 0.0
+    for p in paths:
+        pts = []
+        if hasattr(p, "vertices"):
+            try:
+                pts = [(v[0], v[1]) for v in p.vertices]
+            except Exception:
+                pts = []
+        if not pts and hasattr(p, "edges"):
+            for ed in p.edges:
+                tn = type(ed).__name__
+                try:
+                    if tn == "LineEdge":
+                        pts.append((ed.start[0], ed.start[1]))
+                    elif tn == "ArcEdge":
+                        pts.append((ed.center[0], ed.center[1]))
+                except Exception:
+                    pass
+        if len(pts) >= 3:
+            s = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1]
+                    for i in range(len(pts)))
+            tot += abs(s) / 2.0
+    return tot
+
+
 def _seg(e):
     """(a, b, angle_deg[0..180), length, ux, uy) pour une LINE, sinon None."""
     a = (e.dxf.start.x, e.dxf.start.y)
@@ -125,6 +156,9 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     wall_len = beam_len = col_len = lintel_len = 0.0
     partition_len = 0.0
     slab_area_units = 0.0
+    wall_fill_units = 0.0      # emprise béton voile (hachures/polygones structure)
+    partition_fill_units = 0.0  # emprise murs archi (A-WALL…)
+    beam_fill_units = 0.0      # emprise poutres
     col_inserts = 0
     openings = Counter()
     opening_details: list[dict] = []
@@ -178,9 +212,24 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             elif _match(L, _WALL):
                 if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
                     partition_len += ln
+                    partition_fill_units += ar
                 else:
                     wall_len += ln
-            elif _match(L, _BEAM): beam_len += ln
+                    wall_fill_units += ar
+            elif _match(L, _BEAM):
+                beam_len += ln
+                beam_fill_units += ar
+        elif t == "HATCH":
+            # Emprise béton lue par élément (voiles/poutres) — remplissage plein
+            if _match(L, _BEAM):
+                beam_fill_units += _hatch_area(e)
+            elif _match(L, _WALL):
+                if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
+                    partition_fill_units += _hatch_area(e)
+                else:
+                    wall_fill_units += _hatch_area(e)
+            elif _match(L, _SLAB):
+                slab_area_units += _hatch_area(e)
         elif t == "INSERT":
             nm = (e.dxf.name or "")
             low = nm.lower()
@@ -246,6 +295,9 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             col_sections.append({"w_cm": round(wm * 100), "h_cm": round(hm * 100)})
             col_area_units += w * h
     col_area_m2 = round(col_area_units * U * U, 3)
+    wall_area_m2 = round(wall_fill_units * U * U, 2)
+    partition_area_m2 = round(partition_fill_units * U * U, 2)
+    beam_area_m2 = round(beam_fill_units * U * U, 2)
 
     detected = {
         "wall_thickness_m": wall_th,
@@ -255,6 +307,9 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "col_size_m": col_sz,
         "col_sections": col_sections[:400],
         "col_area_m2": col_area_m2,
+        "wall_area_m2": wall_area_m2,
+        "partition_area_m2": partition_area_m2,
+        "beam_area_m2": beam_area_m2,
     }
 
     return {
@@ -266,6 +321,9 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "beams_ml": beams_ml,
         "columns_count": columns_count,
         "col_area_m2": col_area_m2,
+        "wall_area_m2": wall_area_m2,
+        "partition_area_m2": partition_area_m2,
+        "beam_area_m2": beam_area_m2,
         "linteaux_ml": linteaux_ml,
         "slab_area_m2": slab_area_m2,
         "detected": detected,
@@ -303,6 +361,8 @@ DEFAULTS = {
     "arase_sup_m": None,
     # Utiliser les sections de poteaux lues sur le plan (bbox) plutôt qu'uniforme
     "use_detected_col_sections": True,
+    # Utiliser les emprises béton lues (voiles/poutres) plutôt que ml × section
+    "use_detected_sections": True,
 }
 # Prix unitaires structure (€ HT) — fourniture + pose
 PRICES = {
@@ -379,14 +439,37 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     op = metre.get("openings") or {}
     huiss = int(op.get("portes", 0)) + int(op.get("fenetres", 0))
 
-    # Volumes / surfaces
-    wall_face = round(walls_ml * h_vert, 1)         # m² de paroi (une face)
-    wall_m3 = round(walls_ml * h_vert * tw, 2)
+    # Emprises béton lues par élément (par plan) — surchargent le calcul ml×section
+    use_areas = p.get("use_detected_sections", True)
+    wall_area = float(metre.get("wall_area_m2", 0) or 0)
+    if p.get("partitions_as_concrete", True):
+        wall_area += float(metre.get("partition_area_m2", 0) or 0)
+    wall_area *= nlv
+    beam_area = float(metre.get("beam_area_m2", 0) or 0) * nlv
+
+    # Volumes / surfaces — voiles
+    if use_areas and wall_area > 0:
+        wall_m3 = round(wall_area * h_vert, 2)
+        wall_ml_eff = (wall_area / tw) if tw > 0 else walls_ml   # linéaire équivalent
+        wall_face = round(wall_ml_eff * h_vert, 1)
+        wall_detail = f"emprise {round(wall_area, 1)} m² (épais. lues) × {h_label}"
+    else:
+        wall_m3 = round(walls_ml * h_vert * tw, 2)
+        wall_face = round(walls_ml * h_vert, 1)
+        wall_detail = f"{walls_ml} ml × {h_label} × ép. {tw} m"
     wall_cof = round(wall_face * 2, 1)              # 2 faces
     wall_ac = round(wall_m3 * REBAR["voile"], 0)
 
-    beam_m3 = round(beams_ml * bw * bh, 2)
-    beam_cof = round(beams_ml * (bw + 2 * bh), 1)
+    # Poutres : section (largeur) lue par plan via l'emprise si disponible.
+    if use_areas and beam_area > 0:
+        beam_m3 = round(beam_area * bh, 2)
+        beam_ml_eff = (beam_area / bw) if bw > 0 else beams_ml
+        beam_cof = round(beam_area + 2 * beam_ml_eff * bh, 1)  # fond (emprise) + 2 joues
+        beam_detail = f"emprise {round(beam_area, 1)} m² (larg. lues) × h {bh} m"
+    else:
+        beam_m3 = round(beams_ml * bw * bh, 2)
+        beam_cof = round(beams_ml * (bw + 2 * bh), 1)
+        beam_detail = f"{beams_ml} ml × {bw}×{bh} m"
     beam_ac = round(beam_m3 * REBAR["poutre"], 0)
 
     # Poteaux : volume à partir des sections lues par plan si disponibles,
@@ -407,16 +490,16 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     lots = []
 
     struct_lines = []
-    if walls_ml:
+    if walls_ml or wall_area:
         struct_lines += [
             _line("Voiles / murs béton — béton C25/30",
-                  f"{walls_ml} ml × {h_label} × ép. {tw} m", "m³", wall_m3, P["beton_voile"]),
+                  wall_detail, "m³", wall_m3, P["beton_voile"]),
             _line("Coffrage voiles (2 faces)", f"{wall_face} m² × 2 faces", "m²", wall_cof, P["coffrage_voile"]),
             _line("Aciers voiles", f"{REBAR['voile']} kg/m³", "kg", wall_ac, P["acier_voile"]),
         ]
-    if beams_ml:
+    if beams_ml or beam_area:
         struct_lines += [
-            _line("Poutres béton — béton C25/30", f"{beams_ml} ml × {bw}×{bh} m", "m³", beam_m3, P["beton_poutre"]),
+            _line("Poutres béton — béton C25/30", beam_detail, "m³", beam_m3, P["beton_poutre"]),
             _line("Coffrage poutres", f"{beams_ml} ml", "m²", beam_cof, P["coffrage_poutre"]),
             _line("Aciers poutres", f"{REBAR['poutre']} kg/m³", "kg", beam_ac, P["acier_poutre"]),
         ]

@@ -234,12 +234,18 @@ def _rescale_metre_to_calibration(metre: dict, p: dict):
         m["slab_area_m2"] = round(m["slab_area_m2"] * f * f, 1)
     if m.get("col_area_m2"):
         m["col_area_m2"] = round(m["col_area_m2"] * f * f, 3)
+    for k in ("wall_area_m2", "partition_area_m2", "beam_area_m2"):
+        if m.get(k):
+            m[k] = round(m[k] * f * f, 2)
     det = dict(m.get("detected") or {})
     for k in ("wall_thickness_m", "beam_w_m", "col_size_m"):
         if det.get(k):
             det[k] = round(det[k] * f, 3)
     if det.get("col_area_m2"):
         det["col_area_m2"] = round(det["col_area_m2"] * f * f, 3)
+    for k in ("wall_area_m2", "partition_area_m2", "beam_area_m2"):
+        if det.get(k):
+            det[k] = round(det[k] * f * f, 2)
     if det.get("col_sections"):
         det["col_sections"] = [{"w_cm": round(s["w_cm"] * f), "h_cm": round(s["h_cm"] * f)}
                                for s in det["col_sections"]]
