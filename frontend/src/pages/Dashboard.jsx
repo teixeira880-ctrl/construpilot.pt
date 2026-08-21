@@ -3,11 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, FolderOpen, Trash2, FileSearch, Bell, HardHat, Sparkles, TrendingUp,
-  FileText, Receipt, ArrowRight,
+  FileText, Receipt, ArrowRight, Phone, Mail, MapPin, CalendarClock, Euro, User as UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, eur, num, IMAGES } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
@@ -28,6 +29,13 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [leads, setLeads] = useState([]);
   const [tab, setTab] = useState("projects");
+  const [seenLeads, setSeenLeads] = useState(() => Number(localStorage.getItem("cp_leads_seen") || 0));
+  const [selectedLead, setSelectedLead] = useState(null);
+  const unreadLeads = Math.max(0, leads.length - seenLeads);
+  const markLeadsSeen = () => {
+    localStorage.setItem("cp_leads_seen", String(leads.length));
+    setSeenLeads(leads.length);
+  };
   const navigate = useNavigate();
 
   const load = () => {
@@ -116,20 +124,27 @@ export default function Dashboard() {
         <Stat label={t("dash.stat_budget")} value={eur(totalBudget)} testId="stat-budget" accent />
         <Stat label={t("dash.stat_surface")} value={`${num(totalSurface, 1)} m²`} testId="stat-surface" />
         <Stat label={t("dash.stat_leads")} value={num(leads.length)} testId="stat-leads"
+              badge={unreadLeads > 0 ? unreadLeads : null}
               onClick={() => {
                 setTab("leads");
+                markLeadsSeen();
                 document.querySelector('[data-testid="dash-tab-leads"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
               }} />
       </div>
 
       <RevenueChart />
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "leads") markLeadsSeen(); }}>
         <TabsList className="rounded-sm flex-wrap h-auto">
           <TabsTrigger value="projects" className="rounded-sm" data-testid="dash-tab-projects">{t("dash.tab_projects")}</TabsTrigger>
           <TabsTrigger value="quotes" className="rounded-sm" data-testid="dash-tab-quotes">{t("dash.tab_quotes")}</TabsTrigger>
           <TabsTrigger value="alerts" className="rounded-sm" data-testid="dash-tab-alerts">{t("dash.tab_alerts")}</TabsTrigger>
-          <TabsTrigger value="leads" className="rounded-sm" data-testid="dash-tab-leads">{t("dash.tab_leads")}</TabsTrigger>
+          <TabsTrigger value="leads" className="rounded-sm relative" data-testid="dash-tab-leads">
+            {t("dash.tab_leads")}
+            {unreadLeads > 0 && (
+              <span className="ml-1.5 min-w-4 h-4 px-1 inline-grid place-items-center rounded-full bg-red-500 text-white text-[10px] font-bold">{unreadLeads}</span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="projects" className="mt-6">
@@ -246,19 +261,77 @@ export default function Dashboard() {
           ) : (
             <div className="grid gap-3" data-testid="leads-list">
               {leads.map((l) => (
-                <div key={l.lead_id} className="surface p-5 flex flex-wrap items-center gap-4">
+                <button key={l.lead_id} onClick={() => setSelectedLead(l)}
+                        data-testid={`lead-item-${l.lead_id}`}
+                        className="surface p-5 flex flex-wrap items-center gap-4 text-left w-full transition-colors hover:border-primary/50">
                   <div className="flex-1 min-w-[200px]">
-                    <p className="font-medium">{l.project_snapshot?.name || l.description?.slice(0, 60) || t("dash.request")}</p>
-                    <p className="text-xs text-muted-foreground">{l.address} · {l.phone}</p>
+                    <p className="font-medium">{l.name || l.project_snapshot?.name || l.description?.slice(0, 60) || t("dash.request")}</p>
+                    <p className="text-xs text-muted-foreground">{[l.address, l.phone].filter(Boolean).join(" · ")}</p>
                   </div>
                   <p className="num font-bold">{eur(l.budget)}</p>
-                  <Badge variant="outline" className="rounded-sm">{l.status}</Badge>
-                </div>
+                  <Badge variant="outline" className="rounded-sm">{l.status || "nouveau"}</Badge>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </button>
               ))}
             </div>
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!selectedLead} onOpenChange={(o) => !o && setSelectedLead(null)}>
+        <DialogContent className="max-w-lg" data-testid="lead-detail-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HardHat className="h-5 w-5 text-primary" /> Demande ConstruPilot
+            </DialogTitle>
+          </DialogHeader>
+          {selectedLead && (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-base">{selectedLead.name || t("dash.request")}</span>
+                <Badge variant="outline" className="rounded-sm">{selectedLead.status || "nouveau"}</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Info icon={Euro} label="Budget" value={selectedLead.budget ? eur(selectedLead.budget) : "—"} />
+                <Info icon={MapPin} label="Adresse" value={selectedLead.address || "—"} />
+                <Info icon={CalendarClock} label="Disponibilité" value={selectedLead.availability || selectedLead.delay_days ? (selectedLead.availability || `${selectedLead.delay_days} j`) : "—"} />
+                <Info icon={UserIcon} label="Métier" value={selectedLead.trade || "—"} />
+              </div>
+              {selectedLead.description && (
+                <div>
+                  <p className="overline text-muted-foreground mb-1">Description</p>
+                  <p className="whitespace-pre-wrap">{selectedLead.description}</p>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                {selectedLead.phone && (
+                  <a href={`tel:${selectedLead.phone}`} data-testid="lead-call-btn">
+                    <Button size="sm" className="gap-2 rounded-sm"><Phone className="h-4 w-4" /> Appeler</Button>
+                  </a>
+                )}
+                {selectedLead.phone && (
+                  <a href={`sms:${selectedLead.phone}`} data-testid="lead-sms-btn">
+                    <Button size="sm" variant="outline" className="gap-2 rounded-sm"><Phone className="h-4 w-4" /> SMS</Button>
+                  </a>
+                )}
+                {selectedLead.email && (
+                  <a href={`mailto:${selectedLead.email}?subject=Votre%20demande%20ConstruPilot`} data-testid="lead-email-btn">
+                    <Button size="sm" variant="outline" className="gap-2 rounded-sm"><Mail className="h-4 w-4" /> E-mail</Button>
+                  </a>
+                )}
+              </div>
+              {selectedLead.email && <p className="text-xs text-muted-foreground">{selectedLead.email}</p>}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+const Info = ({ icon: Icon, label, value }) => (
+  <div className="rounded-sm border border-border p-2.5">
+    <p className="overline text-muted-foreground flex items-center gap-1"><Icon className="h-3 w-3" /> {label}</p>
+    <p className="mt-1 font-medium truncate">{value}</p>
+  </div>
+);

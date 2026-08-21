@@ -11,13 +11,19 @@ export const DifficultyBadge = ({ level, label }) => (
   </Badge>
 );
 
-export const Stat = ({ label, value, sub, testId, accent, onClick }) => (
+export const Stat = ({ label, value, sub, testId, accent, onClick, badge }) => (
   <div
-    className={`surface p-6 ${onClick ? "cursor-pointer transition-colors hover:border-primary/50" : ""}`}
+    className={`surface p-6 relative ${onClick ? "cursor-pointer transition-colors hover:border-primary/50" : ""}`}
     data-testid={testId}
     onClick={onClick}
     role={onClick ? "button" : undefined}
   >
+    {badge != null && (
+      <span data-testid={`${testId}-badge`}
+            className="absolute top-3 right-3 min-w-5 h-5 px-1.5 grid place-items-center rounded-full bg-red-500 text-white text-[11px] font-bold">
+        {badge}
+      </span>
+    )}
     <p className="overline text-muted-foreground">{label}</p>
     <p className={`num mt-3 text-2xl font-bold ${accent ? "text-primary" : ""}`}>{value}</p>
     {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
