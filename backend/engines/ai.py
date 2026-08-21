@@ -402,6 +402,47 @@ async def project_advice(estimation: dict) -> str:
     return await _complete(system, prompt, feature="project_advice")
 
 
+async def extract_price_library(images: list[str]) -> list[dict]:
+    """Extrait les lignes tarifaires d'un bordereau de prix PDF (images base64).
+
+    Retourne [{"designation": str, "unit": str, "unit_price": number, "ref": str}].
+    """
+    if not images:
+        return []
+    system = (BRAND + " Tu es assistant d'extraction de bordereaux de prix BTP. "
+              "Tu lis des tableaux de prix (désignation, unité, prix unitaire HT) "
+              "sur des images de documents et tu retournes UNIQUEMENT du JSON valide.")
+    prompt = (
+        "Extrais TOUTES les lignes tarifaires visibles sur ces pages de bordereau "
+        "de prix (fournitures/prestations avec un prix unitaire).\n"
+        'Retourne UNIQUEMENT ce JSON : { "lines": [ { "designation": str, '
+        '"unit": str, "unit_price": nombre, "ref": str } ] }\n'
+        "- designation = libellé de la prestation/produit.\n"
+        "- unit = unité (m2, ml, u, h, forfait…) ou \"\" si absente.\n"
+        "- unit_price = prix unitaire HT en euros (nombre, sans symbole).\n"
+        "- ref = code/référence article si présent, sinon \"\".\n"
+        "Ignore les titres de section, sous-totaux et lignes sans prix."
+    )
+    data = _json(await _complete(system, prompt, images=images[:12],
+                                 feature="price_library"), {"lines": []})
+    out = []
+    for row in (data.get("lines") or []):
+        try:
+            pu = float(row.get("unit_price") or 0)
+        except Exception:
+            continue
+        des = str(row.get("designation") or "").strip()
+        if not des or pu <= 0:
+            continue
+        out.append({
+            "designation": des[:300],
+            "unit": str(row.get("unit") or "").strip()[:20],
+            "unit_price": round(pu, 2),
+            "ref": str(row.get("ref") or "").strip()[:40],
+        })
+    return out
+
+
 async def price_dpgf_lines(items: list[dict]) -> list[float]:
     """Estime un prix unitaire HT (€, fournitures + pose, France) par ligne de DPGF/BPU.
 

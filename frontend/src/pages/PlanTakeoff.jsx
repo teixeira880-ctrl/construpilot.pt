@@ -954,8 +954,8 @@ export default function PlanTakeoff() {
     }
   };
 
-  const importAiRooms = async () => {
-    const aiRooms = plan?.ai_analysis?.rooms || [];
+  const importAiRooms = async (aiRoomsOverride = null) => {
+    const aiRooms = Array.isArray(aiRoomsOverride) ? aiRoomsOverride : (plan?.ai_analysis?.rooms || []);
     if (!aiRooms.length) return toast.error("Aucune pièce IA à importer");
 
     // Try CV auto-detection first : real contours matched by surface
@@ -1030,6 +1030,7 @@ export default function PlanTakeoff() {
       toast.success(`${imported} pièces IA importées · ${detail}`, { duration: 6000 });
     }
     else toast.error("Aucune pièce importable (surfaces IA manquantes)");
+    return imported;
   };
 
   const runAI = async () => {
@@ -1257,7 +1258,9 @@ export default function PlanTakeoff() {
     } catch { /* silencieux */ }
   };
 
-  // Bouton principal : « Analyser le plan » — calibration obligatoire, puis détection IA complète
+  // Bouton principal : « Analyser le plan » — enchaîne TOUT automatiquement :
+  // 1) structure (murs/poteaux/poutres/dalles) 2) pièces IA + import au métré
+  // 3) chiffrage/descriptif béton 4) estimation globale.
   const analyzePlanFull = async () => {
     if (!plan?.plan_id) return;
     if (!currentCalib) {
@@ -1266,15 +1269,50 @@ export default function PlanTakeoff() {
       return;
     }
     setAnalysisBusy(true);
+    const tid = toast.loading("Analyse complète en cours… structure, pièces, métré et estimation.");
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure?page_index=${pageIndex}`);
-      if (data.error) toast.warning("IA : " + data.error);
-      setStructure(data);
-      setShowStructure(true);
-      setSelectedStruct(null);
+      // 1) Structure béton (murs, poteaux, poutres, dalles)
+      let struct = null;
+      try {
+        const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure?page_index=${pageIndex}`);
+        if (!data.error) {
+          struct = data;
+          setStructure(data);
+          setShowStructure(true);
+          setSelectedStruct(null);
+        }
+      } catch (e) { /* on continue même si la structure échoue */ }
+
+      // 2) Pièces (rooms) par IA vision
+      let aiRooms = [];
+      try {
+        const { data } = await api.post(`/takeoffs/${plan.plan_id}/analyze?page_index=${pageIndex}`);
+        aiRooms = data?.rooms || [];
+      } catch (e) { /* pas de pièces détectées */ }
+
+      // 3) Rafraîchit puis importe les pièces au métré (surfaces + périmètres)
+      await refreshPlan();
+      let importedRooms = 0;
+      if (aiRooms.length) {
+        try { importedRooms = (await importAiRooms(aiRooms)) || aiRooms.length; }
+        catch (e) { /* import best-effort */ }
+      }
+
+      // 4) Chiffrage / descriptif béton (métré chiffré)
       await loadDescriptif();
-      toast.success(`Plan analysé — ${data.wall_count || 0} murs · ${data.column_count || 0} poteaux · ${data.beam_count || 0} poutres · ${data.floor_count || 0} dalles`);
+
+      // 5) Estimation globale depuis le métré (uniquement si des pièces existent)
+      if (importedRooms > 0) {
+        try { await runEstimation(); } catch (e) { /* estimation optionnelle */ }
+      }
+
+      toast.dismiss(tid);
+      const parts = [];
+      if (struct) parts.push(`${struct.wall_count || 0} murs · ${struct.column_count || 0} poteaux · ${struct.beam_count || 0} poutres · ${struct.floor_count || 0} dalles`);
+      if (aiRooms.length) parts.push(`${aiRooms.length} pièce(s)`);
+      toast.success(`Plan analysé automatiquement — ${parts.join(" · ") || "terminé"}. Métré, pièces et estimation prêts.`, { duration: 8000 });
     } catch (e) {
+      toast.dismiss(tid);
       toast.error(e?.response?.data?.detail || "Analyse impossible");
     } finally { setAnalysisBusy(false); }
   };
@@ -2350,10 +2388,10 @@ export default function PlanTakeoff() {
             <Copy className="h-4 w-4" /> Dupliquer
           </Button>
           <Button variant="outline" onClick={analyzePlanFull} disabled={analysisBusy} data-testid="plan-analyze-btn"
-                  title="Analyse IA complète : planchers, murs (ml+m²), ouvertures, poutres + descriptif chiffré. Calibration requise."
+                  title="Analyse TOUT automatiquement : structure (murs/poteaux/poutres/dalles), pièces, métré et estimation chiffrée. Calibration requise."
                   className="rounded-sm gap-2 border-red-500/60 text-red-500 hover:bg-red-500 hover:text-white font-semibold">
             <Sparkles className={`h-4 w-4 ${analysisBusy ? "animate-pulse" : ""}`} />
-            {analysisBusy ? "Analyse en cours…" : "Analyser le plan"}
+            {analysisBusy ? "Analyse complète…" : "Analyser le plan (tout)"}
           </Button>
           {(plan?.page_count || 1) > 1 && (
             <Button variant="outline" onClick={analyzeAllPages} disabled={analysisBusy} data-testid="plan-analyze-all-btn"

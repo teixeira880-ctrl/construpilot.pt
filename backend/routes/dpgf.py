@@ -14,8 +14,9 @@ from fastapi.responses import StreamingResponse
 
 from core.db import db
 from core.security import current_user
-from engines import storage
+from engines import price_library, storage
 from engines.ai import price_dpgf_lines
+from routes.company_library import get_user_library
 
 router = APIRouter(prefix="/pro/dpgf", tags=["dpgf"])
 
@@ -94,7 +95,21 @@ async def import_dpgf(file: UploadFile = File(...), user=Depends(current_user)) 
     if not rows:
         raise HTTPException(422, "Aucune ligne exploitable trouvée sous l'en-tête.")
 
-    # Estime les PU manquants via l'IA (seulement les lignes sans prix)
+    # 1) Cherche d'abord dans la bibliothèque de prix de l'entreprise (prix réels).
+    library = await get_user_library(user["user_id"])
+    from_library = 0
+    if library:
+        for x in rows:
+            if x["pu"]:
+                continue
+            m = price_library.match_price(x["designation"], x.get("unit", ""), library)
+            if m:
+                x["pu"] = round(m[0], 2)
+                x["price_source"] = "bibliotheque"
+                x["matched_designation"] = m[1]
+                from_library += 1
+
+    # 2) Estime les PU restants via l'IA (lignes sans prix ni correspondance).
     to_price = [i for i, x in enumerate(rows) if not x["pu"]]
     if to_price:
         est = await price_dpgf_lines([items[i] for i in to_price])
@@ -134,6 +149,8 @@ async def import_dpgf(file: UploadFile = File(...), user=Depends(current_user)) 
         "columns": cols,
         "line_count": len(rows),
         "filled": filled,
+        "from_library": from_library,
+        "from_ai": sum(1 for x in rows if x.get("price_source") == "ia"),
         "grand_total_ht": round(grand_total, 2),
         "lines": rows[:500],
     }

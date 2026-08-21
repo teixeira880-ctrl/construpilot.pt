@@ -67,12 +67,14 @@ export const DpgfImport = () => {
           <div className="flex flex-wrap gap-4 text-sm mb-2">
             <span>Lignes : <b>{res.line_count}</b></span>
             <span className="text-primary inline-flex items-center gap-1"><Sparkles className="h-3.5 w-3.5" /> Chiffrées : <b>{res.filled}</b></span>
+            {res.from_library > 0 && <span className="text-emerald-600">Vos prix : <b>{res.from_library}</b></span>}
+            {res.from_ai > 0 && <span className="text-amber-600">IA : <b>{res.from_ai}</b></span>}
             <span>Total HT : <b>{eur(res.grand_total_ht)}</b></span>
           </div>
           <div className="max-h-64 overflow-auto rounded-sm border border-border">
             <table className="w-full text-xs">
               <thead className="bg-secondary/40 sticky top-0">
-                <tr><th className="text-left p-2">Désignation</th><th className="p-2">Qté</th><th className="p-2">U.</th><th className="p-2 text-right">PU HT</th><th className="p-2 text-right">Total HT</th></tr>
+                <tr><th className="text-left p-2">Désignation</th><th className="p-2">Qté</th><th className="p-2">U.</th><th className="p-2 text-right">PU HT</th><th className="p-2">Source</th><th className="p-2 text-right">Total HT</th></tr>
               </thead>
               <tbody>
                 {res.lines.map((l, i) => (
@@ -81,13 +83,20 @@ export const DpgfImport = () => {
                     <td className="p-2 text-center num">{l.qty ?? "—"}</td>
                     <td className="p-2 text-center">{l.unit || "—"}</td>
                     <td className="p-2 text-right num">{l.pu ? eur(l.pu) : "—"}</td>
+                    <td className="p-2 text-center">
+                      {l.price_source === "bibliotheque"
+                        ? <span className="text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-600 px-1.5 py-0.5 rounded-full">Votre prix</span>
+                        : l.price_source === "ia"
+                          ? <span className="text-[10px] font-bold uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full">IA</span>
+                          : "—"}
+                    </td>
                     <td className="p-2 text-right num">{l.total ? eur(l.total) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">Prix estimés par IA (fournitures + pose, France) — à valider avant envoi au client.</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">Prix « Votre prix » = issus de votre bibliothèque ; « IA » = estimation à valider avant envoi au client.</p>
         </div>
       )}
     </div>

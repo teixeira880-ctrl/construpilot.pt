@@ -18,6 +18,7 @@ import PushToggle from "@/components/PushToggle";
 import { Stat } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
 import { DpgfImport } from "@/components/DpgfImport";
+import { PriceLibrary } from "@/components/PriceLibrary";
 
 const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
 
@@ -134,6 +135,8 @@ export default function Dashboard() {
       </div>
 
       <RevenueChart />
+
+      <PriceLibrary />
 
       <DpgfImport />
 
