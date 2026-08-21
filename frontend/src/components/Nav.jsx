@@ -94,7 +94,7 @@ export const Nav = () => {
           </span>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0">
+        <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
           {NAV_MAIN.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm))).map((l) => (
             <Link key={l.to} to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className={pill(location.pathname === l.to)}>
               <l.icon className="h-4 w-4" /> {t(l.key, l.label)}
@@ -137,16 +137,17 @@ export const Nav = () => {
                   </Link>
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              {ACCOUNT_LINKS.filter((l) => ["/tarifs", "/investisseurs"].includes(l.to)).map((l) => (
+                <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
+                  <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
+                    <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
+                    {t(l.key, l.label)}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Link to="/tarifs" data-testid="nav-link-tarifs" className={pill(location.pathname === "/tarifs")}>
-            <Sparkles className="h-4 w-4" /> {t("nav.pricing", "Tarifs")}
-          </Link>
-
-          <Link to="/investisseurs" data-testid="nav-link-investors" className={pill(location.pathname === "/investisseurs")}>
-            <Handshake className="h-4 w-4" /> {t("nav.investors", "Investisseurs")}
-          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2 shrink-0">
