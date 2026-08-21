@@ -131,7 +131,64 @@
     </script>
   </head>
   <body>
-    <noscript>Vous devez activer JavaScript pour utiliser ConstruPilot.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Contenu pré-rendu pour les robots / IA / aperçus (remplacé par React au chargement) -->
+      <main style="max-width:960px;margin:0 auto;padding:32px 20px;font-family:'Outfit',system-ui,sans-serif;color:#0A0D14;line-height:1.6">
+        <header style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+          <img src="%PUBLIC_URL%/construpilot-icon.png" alt="Logo ConstruPilot" width="48" height="48" />
+          <strong style="font-size:22px">ConstruPilot</strong>
+        </header>
+
+        <h1 style="font-size:34px;line-height:1.15;margin:0 0 12px">Devis travaux, estimation et métré par IA — pour particuliers et professionnels du BTP</h1>
+        <p style="font-size:18px;color:#3a4256;margin:0 0 20px">
+          ConstruPilot est l'assistant IA du bâtiment : de votre plan (DWG, DXF, PDF) ou d'une simple vidéo,
+          générez un <strong>devis chiffré</strong> en quelques minutes. Estimation, métré exact, comparateur de
+          prix matériaux, planning de chantier et édition de devis clients — le tout au même endroit.
+        </p>
+
+        <p style="margin:0 0 24px">
+          <a href="https://construpilot.fr/" style="background:#FF5A00;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700">Créer un devis gratuit</a>
+        </p>
+
+        <h2 style="font-size:22px;margin:28px 0 10px">Pour les particuliers</h2>
+        <ul>
+          <li>Estimation détaillée et devis clair pour construction ou rénovation, maison ou immeuble.</li>
+          <li>Envoi d'un plan ou d'une vidéo du logement → chiffrage automatique.</li>
+          <li>Calculateurs de matériaux (peinture, carrelage, placo, béton, isolation).</li>
+          <li>Comparateur de prix matériaux multi-fournisseurs.</li>
+          <li>Transparence des coûts, sans engagement.</li>
+        </ul>
+
+        <h2 style="font-size:22px;margin:28px 0 10px">Pour les professionnels (artisans, gros œuvre, métreurs)</h2>
+        <ul>
+          <li>Métré structure exact depuis les plans <strong>DWG / DXF</strong> : voiles, poutres, poteaux, dalles, réservations.</li>
+          <li>Volumes béton par élément : emprises réelles, sections lues sur le plan, hauteur par arases (AI/AS).</li>
+          <li>Analyse IA des plans <strong>PDF</strong> avec distinction immeuble (dalle pleine) / maison (poutrelles-hourdis).</li>
+          <li>Vidéo ou audio → devis chiffré.</li>
+          <li>Édition de devis et factures (PDF/Excel), TVA 20 % neuf / 10 % / 5,5 % rénovation, acompte.</li>
+          <li>Signature de devis en ligne + paiement d'acompte (Stripe).</li>
+          <li>Planning de chantier (Gantt), suivi, e-mails automatiques au nom de votre entreprise (SMTP dédié).</li>
+          <li>Bibliothèques de prix paramétriques, comparateur de plans, rendu 3D, application mobile installable (PWA).</li>
+        </ul>
+
+        <h2 style="font-size:22px;margin:28px 0 10px">En savoir plus</h2>
+        <ul>
+          <li><a href="https://construpilot.fr/tarifs">Tarifs</a></li>
+          <li><a href="https://construpilot.fr/blog">Blog &amp; guides travaux</a></li>
+          <li><a href="https://construpilot.fr/prix">Comparateur de prix matériaux</a></li>
+          <li><a href="https://construpilot.fr/calculateurs">Calculateurs de quantités</a></li>
+        </ul>
+
+        <p style="color:#8b93a7;font-size:13px;margin-top:28px">
+          ConstruPilot — Estimez. Chiffrez. Construisez. · https://construpilot.fr · France
+        </p>
+      </main>
+    </div>
+    <noscript>
+      ConstruPilot — l'assistant IA du BTP : devis travaux, estimation rénovation, métré automatique
+      depuis vos plans DWG/DXF/PDF, comparateur de prix matériaux et édition de devis clients.
+      Rendez-vous sur https://construpilot.fr pour créer un devis gratuit. (Activez JavaScript pour
+      l'expérience interactive complète.)
+    </noscript>
   </body>
 </html>
