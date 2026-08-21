@@ -17,6 +17,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import PushToggle from "@/components/PushToggle";
 import { Stat } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
+import { DpgfImport } from "@/components/DpgfImport";
 
 const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
 
@@ -133,6 +134,8 @@ export default function Dashboard() {
       </div>
 
       <RevenueChart />
+
+      <DpgfImport />
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "leads") markLeadsSeen(); }}>
         <TabsList className="rounded-sm flex-wrap h-auto">

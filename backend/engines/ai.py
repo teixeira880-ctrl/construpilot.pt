@@ -400,3 +400,35 @@ async def project_advice(estimation: dict) -> str:
               "ce qui est faisable soi-même). Pas de markdown de titre, uniquement des puces '- '.\n"
               + json.dumps(slim, ensure_ascii=False))
     return await _complete(system, prompt, feature="project_advice")
+
+
+async def price_dpgf_lines(items: list[dict]) -> list[float]:
+    """Estime un prix unitaire HT (€, fournitures + pose, France) par ligne de DPGF/BPU.
+
+    items: [{"designation": str, "unit": str, "qty": number}]
+    Retourne une liste de prix unitaires alignée sur items (0 si inconnu).
+    """
+    if not items:
+        return []
+    system = (BRAND + " Tu es métreur-économiste de la construction. Tu estimes des prix "
+              "unitaires HT réalistes (fournitures + pose, prix France 2026) pour des lignes "
+              "de bordereau. Tu retournes UNIQUEMENT du JSON valide.")
+    slim = [{"i": n, "designation": (it.get("designation") or "")[:180],
+             "unit": it.get("unit") or "u"} for n, it in enumerate(items[:200])]
+    prompt = (
+        "Estime le prix unitaire HT (€) de chaque ligne de ce bordereau BTP.\n"
+        f"Lignes : {json.dumps(slim, ensure_ascii=False)}\n\n"
+        'Retourne UNIQUEMENT ce JSON : { "prices": [ { "i": index, "pu": nombre } ] }\n'
+        "pu = prix unitaire HT réaliste fournitures+pose pour l\u2019unité donnée. "
+        "Mets 0 si la ligne n\u2019est pas chiffrable (titre, sous-total, texte)."
+    )
+    data = _json(await _complete(system, prompt, feature="dpgf_pricing"), {"prices": []})
+    out = [0.0] * len(items)
+    for row in (data.get("prices") or []):
+        try:
+            i = int(row.get("i"))
+            if 0 <= i < len(out):
+                out[i] = max(0.0, float(row.get("pu") or 0))
+        except Exception:
+            continue
+    return out

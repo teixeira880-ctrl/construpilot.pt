@@ -27,6 +27,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     shared_library as shared_library_routes,
                     param_library as param_library_routes,
                     autoseo as autoseo_routes,
+                    dpgf as dpgf_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -87,6 +88,7 @@ api_router.include_router(company_routes.router)
 from routes import investors as investors_routes
 api_router.include_router(investors_routes.router)
 api_router.include_router(autoseo_routes.router)
+api_router.include_router(dpgf_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(
