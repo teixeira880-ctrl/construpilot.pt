@@ -38,7 +38,7 @@ def _font(size: int):
     return f
 
 # Taille max de la preview raster (côté le plus grand)
-PREVIEW_MAX_SIDE = 2000
+PREVIEW_MAX_SIDE = 3200
 PREVIEW_MARGIN = 40
 
 
@@ -187,11 +187,17 @@ def _render_preview(entities, bounds: tuple[float, float, float, float]) -> tupl
                 txt = str(e.dxf.text if t == "TEXT" else (e.text or "")).replace("\n", " ")
                 if not txt.strip():
                     continue
-                pos = to_px(e.dxf.insert.x, e.dxf.insert.y)
                 th = float(getattr(e.dxf, "height", 0) or getattr(e.dxf, "char_height", 0) or 0)
-                fsize = int(max(9, min(160, th * ratio))) if th else 12
+                # Taille RÉELLE à l'échelle. On n'inflate PLUS le texte minuscule :
+                # forcer une taille mini transformait les milliers de cotes/notes en pâtés
+                # noirs illisibles. Sous ~6 px, le texte est illisible → on ne l'affiche pas.
+                fsize = int(round(th * ratio)) if th else 0
+                if fsize < 6:
+                    continue
+                fsize = min(fsize, 140)
+                pos = to_px(e.dxf.insert.x, e.dxf.insert.y)
                 # PIL place le texte par son coin haut-gauche → remonte d'une hauteur de police
-                draw.text((pos[0], pos[1] - fsize), txt, fill="black", font=_font(fsize))
+                draw.text((pos[0], pos[1] - fsize), txt, fill="#333333", font=_font(fsize))
         except Exception:
             continue
 
