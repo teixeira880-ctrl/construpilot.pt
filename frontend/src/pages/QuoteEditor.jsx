@@ -129,6 +129,10 @@ export default function QuoteEditor() {
   }, [lines, depositPct]);
 
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
+  const setAllVat = (rate) => {
+    setLines((ls) => ls.map((l) => ({ ...l, vat_rate: rate })));
+    toast.success(`TVA ${rate}% appliquée à toutes les lignes`);
+  };
   const addLine = () => setLines((ls) => [...ls, blankLine()]);
   const delLine = (i) => setLines((ls) => ls.filter((_, idx) => idx !== i));
 
@@ -602,7 +606,18 @@ export default function QuoteEditor() {
       <div className="surface p-4 grid gap-3">
         <div className="flex items-center justify-between">
           <p className="font-display font-bold text-sm">{t("crm.lines_title")}</p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-1 mr-1" data-testid="bulk-vat-control">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold whitespace-nowrap">TVA toutes lignes</span>
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value !== "") setAllVat(Number(e.target.value)); }}
+                data-testid="bulk-vat-select"
+                className="rounded-sm border border-border bg-background px-2 h-8 text-sm">
+                <option value="">Appliquer…</option>
+                {VAT_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}
+              </select>
+            </div>
             <OuvrageComposeDialog onAdd={(line) => setLines((ls) => [...ls, { ...blankLine(), ...line, _saveToLib: false }])} />
             <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={() => setPickerOpen(true)} data-testid="editor-add-from-lib">
               <BookOpen className="h-3.5 w-3.5" /> {t("crm.from_lib")}
