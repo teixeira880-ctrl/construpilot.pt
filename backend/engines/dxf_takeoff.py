@@ -16,6 +16,11 @@ import math
 import re
 from collections import Counter
 
+try:
+    from ezdxf import bbox as _ezbbox
+except Exception:  # pragma: no cover
+    _ezbbox = None
+
 # Mots-clés de calques → catégories (FR + norme US/NCS AIA). Recherche sous-chaîne.
 _WALL = ("mur", "wall", "voile")
 # Distinction porteur béton vs cloison/architecture (pour ne chiffrer que le béton)
@@ -130,6 +135,21 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     wall_segs: list = []
     beam_segs: list = []
     col_segs: list = []
+    col_sections_units: list = []  # (w, h) en unités dessin, par poteau
+
+    def _entity_wh(ent):
+        """Largeur/hauteur (unités dessin) de la bbox d'une entité (bloc INSERT inclus)."""
+        if _ezbbox is None:
+            return None
+        try:
+            bb = _ezbbox.extents([ent], fast=True)
+        except Exception:
+            return None
+        if not bb.has_data:
+            return None
+        w = float(bb.size.x)
+        h = float(bb.size.y)
+        return (w, h) if (w > 0 and h > 0) else None
 
     for e in msp:
         t = e.dxftype()
@@ -150,7 +170,12 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             ln, ar = _lwpoly_len_area(e)
             if _match(L, _SLAB):
                 slab_area_units += ar
-            if _match(L, _WALL):
+            if _match(L, _COL):
+                col_inserts += 1
+                wh = _entity_wh(e)
+                if wh:
+                    col_sections_units.append(wh)
+            elif _match(L, _WALL):
                 if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
                     partition_len += ln
                 else:
@@ -161,6 +186,9 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
             low = nm.lower()
             if _match(L, _COL) or "poteau" in low:
                 col_inserts += 1
+                wh = _entity_wh(e)
+                if wh:
+                    col_sections_units.append(wh)
             is_door = _match(low, _DOOR) or _match(L, _DOOR)
             is_win = _match(low, _WIN) or _match(L, _WIN)
             if is_door or is_win:
@@ -208,12 +236,25 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     wall_th, wall_dist = _detect_thickness(wall_segs, U)
     beam_w, beam_dist = _detect_thickness(beam_segs, U)
     col_sz, _cd = _detect_thickness(col_segs, U, gmin_m=0.12, gmax_m=0.90)
+
+    # Sections de poteaux lues par plan (bbox de chaque bloc/rectangle poteau)
+    col_sections = []
+    col_area_units = 0.0
+    for (w, h) in col_sections_units:
+        wm, hm = round(w * U, 3), round(h * U, 3)
+        if 0.10 <= wm <= 2.0 and 0.10 <= hm <= 2.0:   # section béton plausible
+            col_sections.append({"w_cm": round(wm * 100), "h_cm": round(hm * 100)})
+            col_area_units += w * h
+    col_area_m2 = round(col_area_units * U * U, 3)
+
     detected = {
         "wall_thickness_m": wall_th,
         "wall_thickness_dist_cm": wall_dist,
         "beam_w_m": beam_w,
         "beam_w_dist_cm": beam_dist,
         "col_size_m": col_sz,
+        "col_sections": col_sections[:400],
+        "col_area_m2": col_area_m2,
     }
 
     return {
@@ -224,6 +265,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "wall_source": wall_source,
         "beams_ml": beams_ml,
         "columns_count": columns_count,
+        "col_area_m2": col_area_m2,
         "linteaux_ml": linteaux_ml,
         "slab_area_m2": slab_area_m2,
         "detected": detected,
@@ -259,6 +301,8 @@ DEFAULTS = {
     # Arases NGF (m) : si fournies, hauteur des voiles/poteaux = AS - AI
     "arase_inf_m": None,
     "arase_sup_m": None,
+    # Utiliser les sections de poteaux lues sur le plan (bbox) plutôt qu'uniforme
+    "use_detected_col_sections": True,
 }
 # Prix unitaires structure (€ HT) — fourniture + pose
 PRICES = {
@@ -345,7 +389,16 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     beam_cof = round(beams_ml * (bw + 2 * bh), 1)
     beam_ac = round(beam_m3 * REBAR["poutre"], 0)
 
-    col_m3 = round(cols * cw * ch * h_vert, 2)
+    # Poteaux : volume à partir des sections lues par plan si disponibles,
+    # sinon section uniforme (largeur × épaisseur).
+    col_area = float(metre.get("col_area_m2", 0) or 0) * nlv
+    use_plan_cols = p.get("use_detected_col_sections", True) and col_area > 0
+    if use_plan_cols:
+        col_m3 = round(col_area * h_vert, 2)
+        col_detail = f"{cols} poteaux (sections lues sur plan) × {h_label}"
+    else:
+        col_m3 = round(cols * cw * ch * h_vert, 2)
+        col_detail = f"{cols} × {cw}×{ch} m × {h_label}"
     col_ac = round(col_m3 * REBAR["poteau"], 0)
 
     slab_m3 = round(slab_m2 * ts, 2)
@@ -369,7 +422,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         ]
     if cols:
         struct_lines += [
-            _line("Poteaux béton — béton C25/30", f"{cols} × {cw}×{ch} m × {h_label}", "m³", col_m3, P["beton_poteau"]),
+            _line("Poteaux béton — béton C25/30", col_detail, "m³", col_m3, P["beton_poteau"]),
             _line("Aciers poteaux", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
         ]
     if slab_m2:

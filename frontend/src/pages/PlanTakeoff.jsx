@@ -3062,6 +3062,25 @@ export default function PlanTakeoff() {
                       </span>
                     )}
                   </div>
+                  {/* Type de bâtiment — visible : pilote le type de plancher */}
+                  <div className="flex items-center gap-1.5 mb-1.5" data-testid="batiment-type-toggle">
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">Bâtiment :</span>
+                    {[
+                      { v: "dalle_pleine", label: "🏢 Immeuble (dalle pleine)" },
+                      { v: "poutrelles_hourdis", label: "🏠 Maison (hourdis)" },
+                      { v: "auto", label: "Auto" },
+                    ].map((o) => (
+                      <button key={o.v} type="button"
+                              onClick={() => setPlancherType(o.v)}
+                              data-testid={`batiment-${o.v}`}
+                              className={`text-[10px] px-2 py-0.5 rounded-sm border transition-colors ${
+                                plancherType === o.v
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "bg-background border-input text-muted-foreground hover:border-primary/50"}`}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
                   {/* Presets de réglages béton par chantier */}
                   <div className="flex items-center gap-2 mb-1.5">
                     <select value={selectedPreset}
