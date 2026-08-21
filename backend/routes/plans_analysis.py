@@ -649,8 +649,16 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
                         wall_height: float = 2.5, dalle_ep: float = 0.20,
                         voile_ep: float = 0.20, poutre_l: float = 0.20,
                         poutre_h: float = 0.40, acier_ratios: dict | None = None,
-                        floors_only: bool = False, proprete_ep: float = 0.05) -> dict:
+                        floors_only: bool = False, proprete_ep: float = 0.05,
+                        arase_inf: float | None = None, arase_sup: float | None = None) -> dict:
     from collections import Counter
+    # Hauteur des éléments verticaux (voiles/poteaux) : si les arases NGF sont
+    # fournies, hauteur = arase supérieure (AS) - arase inférieure (AI) — méthode métreur.
+    height_source = "etage"
+    if arase_inf not in (None, "") and arase_sup not in (None, "") \
+            and float(arase_sup) > float(arase_inf):
+        wall_height = round(float(arase_sup) - float(arase_inf), 3)
+        height_source = "arases"
     walls = structure.get("walls") or []
     openings = structure.get("openings") or []
     beams = structure.get("beams") or []
@@ -729,6 +737,9 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
     ngf_list = sorted({f.get("ngf") for f in floors if f.get("ngf") is not None})
     return {
         "wall_height_m": round(float(wall_height), 2),
+        "height_source": height_source,
+        "arase_inf_m": float(arase_inf) if height_source == "arases" else None,
+        "arase_sup_m": float(arase_sup) if height_source == "arases" else None,
         "planchers_m2": planchers,
         "planchers_source": planchers_source,
         "planchers_count": len(floors),
@@ -934,6 +945,7 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
                        acier_poutres: float | None = None, acier_dalles: float | None = None,
                        acier_voiles: float | None = None,
                        proprete_ep: float = 0.05,
+                       arase_inf: float | None = None, arase_sup: float | None = None,
                        user=Depends(current_user)) -> dict:
     """Renvoie la structure + le descriptif chiffré (nécessite une calibration)."""
     p = await db.plans_takeoff.find_one(
@@ -946,7 +958,8 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
-                                     poutre_l, poutre_h, acier_ratios=ar, proprete_ep=proprete_ep)
+                                     poutre_l, poutre_h, acier_ratios=ar, proprete_ep=proprete_ep,
+                                     arase_inf=arase_inf, arase_sup=arase_sup)
     return {"structure": structure, "descriptif": descriptif,
             "calibrated": bool(ppm), "pixels_per_meter": ppm}
 
@@ -1314,6 +1327,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
                              client_id: str | None = None,
                              beton_only: bool = False,
                              price_level: str | None = None,
+                             arase_inf: float | None = None, arase_sup: float | None = None,
                              body: QuoteFromStructureIn | None = None,
                              user=Depends(current_user)) -> dict:
     """Crée un devis brouillon à partir du descriptif (planchers, murs, ouvertures, poutres, aciers)."""
@@ -1331,12 +1345,14 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height, dalle_ep, voile_ep,
-                                     poutre_l, poutre_h, acier_ratios=ar, floors_only=beton_only, proprete_ep=proprete_ep)
+                                     poutre_l, poutre_h, acier_ratios=ar, floors_only=beton_only, proprete_ep=proprete_ep,
+                                     arase_inf=arase_inf, arase_sup=arase_sup)
     plancher_opt = None
     if beton_only:
         _pt = plancher_type
         if _pt == "auto":
-            _pt = "dalle_pleine" if (structure.get("plan_kind") == "immeuble") else "poutrelles_hourdis"
+            # Gros œuvre : immeuble = dalle pleine BA (défaut) ; maison = poutrelles-hourdis.
+            _pt = "poutrelles_hourdis" if (structure.get("plan_kind") == "maison") else "dalle_pleine"
         _label = "dalle pleine BA" if _pt == "dalle_pleine" else "poutrelles-hourdis"
         plancher_opt = {"label": _label,
                         "price_m2": (float(plancher_price_m2) if (plancher_price_m2 and plancher_price_m2 > 0)

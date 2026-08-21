@@ -95,6 +95,8 @@ export default function PlanTakeoff() {
   const [selectedStruct, setSelectedStruct] = useState(null);
   const [descriptif, setDescriptif] = useState(null);
   const [wallHeight, setWallHeight] = useState(2.5);
+  const [araseInf, setAraseInf] = useState("");
+  const [araseSup, setAraseSup] = useState("");
   const [dalleEp, setDalleEp] = useState(0.20);
   const [voileEp, setVoileEp] = useState(0.20);
   const [acierRatios, setAcierRatios] = useState({ semelles: 40, poteaux: 130, poutres: 140, dalles: 85, voiles: 60 });
@@ -134,12 +136,14 @@ export default function PlanTakeoff() {
     const s = plan.structure?.[String(pageIndex)];
     if (!s || !(s.walls?.length || s.openings?.length || s.beams?.length || s.floors?.length || s.columns?.length)) { setDescriptif(null); return; }
     let cancel = false;
+    const aqa = (araseInf !== "" && araseSup !== "" && Number(araseSup) > Number(araseInf))
+      ? `&arase_inf=${araseInf}&arase_sup=${araseSup}` : "";
     const aq = `&acier_semelles=${acierRatios.semelles}&acier_poteaux=${acierRatios.poteaux}&acier_poutres=${acierRatios.poutres}&acier_dalles=${acierRatios.dalles}&acier_voiles=${acierRatios.voiles}&poutre_l=${poutreL}&poutre_h=${poutreH}`;
-    api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${aq}`)
+    api.get(`/takeoffs/${plan.plan_id}/analysis/${pageIndex}?wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${aq}${aqa}`)
       .then(({ data }) => { if (!cancel) setDescriptif(data.descriptif); }).catch(() => {});
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp, acierRatios, poutreL, poutreH, propreteEp]);
+  }, [plan?.plan_id, pageIndex, wallHeight, dalleEp, voileEp, acierRatios, poutreL, poutreH, propreteEp, araseInf, araseSup]);
   const [deskewEnabled, setDeskewEnabled] = useState(false);
   const [rightTab, setRightTab] = useState("rooms");
   const [planDefaults, setPlanDefaults] = useState({ ceiling_h_m: 2.5, floor_thickness_m: 0.15 });
@@ -1126,6 +1130,10 @@ export default function PlanTakeoff() {
   const betonPriceQuery = () =>
     `&beton_price_semelles=${betonPrices.semelles}&beton_price_proprete=${betonPrices.proprete}&beton_price_poteaux=${betonPrices.poteaux}&beton_price_poutres=${betonPrices.poutres}&beton_price_dalles=${betonPrices.dalles}&beton_price_voiles=${betonPrices.voiles}&plancher_type=${plancherType}&plancher_price_m2=${plancherPriceM2}`;
 
+  const araseQuery = () =>
+    (araseInf !== "" && araseSup !== "" && Number(araseSup) > Number(araseInf))
+      ? `&arase_inf=${araseInf}&arase_sup=${araseSup}` : "";
+
   // Charge les réglages béton par défaut + presets, puis applique le dernier preset choisi
   useEffect(() => {
     (async () => {
@@ -1293,7 +1301,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${araseQuery()}${mq}`, body);
       const n = data.priced_lines || 0;
       toast.success((n > 0 ? `Devis créé — ${n} ligne(s) chiffrée(s) depuis votre bibliothèque` : "Devis créé depuis le descriptif") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
@@ -1311,7 +1319,7 @@ export default function PlanTakeoff() {
       const mq = (marginBeton !== "" ? `&margin_beton=${marginBeton}` : "")
         + (marginAcier !== "" ? `&margin_acier=${marginAcier}` : "")
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${mq}`, body);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${araseQuery()}${mq}`, body);
       const res = await api.get(`/documents/${data.doc_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
@@ -3032,6 +3040,27 @@ export default function PlanTakeoff() {
                              data-testid="structure-wall-height"
                              className="w-14 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> m
                     </label>
+                  </div>
+                  {/* Hauteur par arases NGF (AS - AI) — prioritaire sur la hauteur murs */}
+                  <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground">
+                    <span className="whitespace-nowrap">Arases NGF :</span>
+                    <label className="flex items-center gap-1">AI
+                      <input type="number" step="0.01" value={araseInf}
+                             onChange={(e) => setAraseInf(e.target.value)}
+                             data-testid="structure-arase-inf" placeholder="inf."
+                             className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />
+                    </label>
+                    <label className="flex items-center gap-1">AS
+                      <input type="number" step="0.01" value={araseSup}
+                             onChange={(e) => setAraseSup(e.target.value)}
+                             data-testid="structure-arase-sup" placeholder="sup."
+                             className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />
+                    </label>
+                    {araseInf !== "" && araseSup !== "" && Number(araseSup) > Number(araseInf) && (
+                      <span className="text-emerald-600" data-testid="structure-arase-height">
+                        H = {(Number(araseSup) - Number(araseInf)).toFixed(2)} m
+                      </span>
+                    )}
                   </div>
                   {/* Presets de réglages béton par chantier */}
                   <div className="flex items-center gap-2 mb-1.5">
