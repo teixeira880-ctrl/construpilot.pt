@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [quotes, setQuotes] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [tab, setTab] = useState("projects");
   const navigate = useNavigate();
 
   const load = () => {
@@ -114,12 +115,16 @@ export default function Dashboard() {
         <Stat label={t("dash.stat_projects")} value={num(projects.length)} testId="stat-projects" />
         <Stat label={t("dash.stat_budget")} value={eur(totalBudget)} testId="stat-budget" accent />
         <Stat label={t("dash.stat_surface")} value={`${num(totalSurface, 1)} m²`} testId="stat-surface" />
-        <Stat label={t("dash.stat_leads")} value={num(leads.length)} testId="stat-leads" />
+        <Stat label={t("dash.stat_leads")} value={num(leads.length)} testId="stat-leads"
+              onClick={() => {
+                setTab("leads");
+                document.querySelector('[data-testid="dash-tab-leads"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }} />
       </div>
 
       <RevenueChart />
 
-      <Tabs defaultValue="projects">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="rounded-sm flex-wrap h-auto">
           <TabsTrigger value="projects" className="rounded-sm" data-testid="dash-tab-projects">{t("dash.tab_projects")}</TabsTrigger>
           <TabsTrigger value="quotes" className="rounded-sm" data-testid="dash-tab-quotes">{t("dash.tab_quotes")}</TabsTrigger>

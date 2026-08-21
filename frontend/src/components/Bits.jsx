@@ -11,8 +11,13 @@ export const DifficultyBadge = ({ level, label }) => (
   </Badge>
 );
 
-export const Stat = ({ label, value, sub, testId, accent }) => (
-  <div className="surface p-6" data-testid={testId}>
+export const Stat = ({ label, value, sub, testId, accent, onClick }) => (
+  <div
+    className={`surface p-6 ${onClick ? "cursor-pointer transition-colors hover:border-primary/50" : ""}`}
+    data-testid={testId}
+    onClick={onClick}
+    role={onClick ? "button" : undefined}
+  >
     <p className="overline text-muted-foreground">{label}</p>
     <p className={`num mt-3 text-2xl font-bold ${accent ? "text-primary" : ""}`}>{value}</p>
     {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
