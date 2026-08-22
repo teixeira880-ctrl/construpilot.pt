@@ -16,6 +16,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
                                  wallHeightM = 2.5, imageHeight = 600, onAttach = null }) {
   const mountRef = useRef(null);
   const [wallHeight, setWallHeight] = useState(wallHeightM);
+  const [glError, setGlError] = useState(false);
   const controlsRef = useRef(null);
 
   useEffect(() => {
@@ -43,10 +44,17 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
     camera.position.set(15, 15, 15);
     camera.lookAt(0, 0, 0);
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    // Renderer (WebGL) — protégé : certains navigateurs/appareils ne peuvent créer de contexte
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true,
+                                           powerPreference: "high-performance", failIfMajorPerformanceCaveat: false });
+    } catch (err) {
+      setGlError(true);
+      return undefined;
+    }
     renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     mount.innerHTML = "";
     mount.appendChild(renderer.domElement);
@@ -304,10 +312,21 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
       window.removeEventListener("resize", onResize);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("mousemove", onMove);
+      try { renderer.forceContextLoss(); } catch { /* noop */ }
       renderer.dispose();
       mount.innerHTML = "";
     };
   }, [rooms, walls, structure, scaleMperPx, wallHeight, imageHeight, dalleEpM, voileEpM, poutreLM, poutreHM]);
+
+  if (glError) {
+    return (
+      <div className="rounded-sm border border-border bg-secondary/30 p-6 text-center text-sm text-muted-foreground" data-testid="interactive3d-fallback">
+        <Move3d className="h-6 w-6 mx-auto mb-2 opacity-60" />
+        La vue 3D n'est pas disponible sur cet appareil ou ce navigateur (WebGL indisponible).
+        <div className="mt-1 text-xs">Le métré et les résultats restent accessibles normalement.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

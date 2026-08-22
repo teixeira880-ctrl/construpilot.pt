@@ -31,7 +31,7 @@ export default function HelpChatbot() {
     try {
       const { data } = await api.post("/help/chat", { message: msg, session_id: sessionId, history, page: window.location.pathname });
       setSessionId(data.session_id);
-      setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
+      setMessages((m) => [...m, { role: "assistant", content: data.reply, actions: data.actions || [] }]);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: "Désolé, une erreur est survenue. Réessayez dans un instant." }]);
     } finally { setBusy(false); }
@@ -57,8 +57,20 @@ export default function HelpChatbot() {
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`} data-testid={`help-msg-${m.role}-${i}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-secondary text-foreground rounded-bl-sm"}`}>
-                  {m.content}
+                <div className="max-w-[85%]">
+                  <div className={`rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-secondary text-foreground rounded-bl-sm"}`}>
+                    {m.content}
+                  </div>
+                  {m.role === "assistant" && (m.actions || []).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {m.actions.map((a, k) => (
+                        <button key={k} onClick={() => { window.location.href = a.to; }} data-testid={`help-action-${i}-${k}`}
+                          className="text-xs font-semibold bg-primary text-primary-foreground rounded-full px-3 py-1.5 hover:scale-105 transition-transform">
+                          {a.label} →
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -75,6 +75,16 @@ export default function EvolutionLab() {
     finally { setBusy(false); }
   };
 
+  const promote = async (model_key) => {
+    setBusy(true);
+    try {
+      const { data } = await api.put("/admin/evolution/config", { active_ai_model: model_key });
+      setCfg(data);
+      toast.success(`Modèle actif : ${model_key} — appliqué au chatbot & tests IA`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossible"); }
+    finally { setBusy(false); }
+  };
+
   if (!cfg || !dash) return <div className="text-sm text-muted-foreground">Chargement du laboratoire…</div>;
 
   const last = dash.last_run;
@@ -166,9 +176,31 @@ export default function EvolutionLab() {
         </div>
       </div>
 
+      {/* Alerte régression */}
+      <div className="surface p-4 space-y-3" data-testid="evo-alert">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-bold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Alerte régression</div>
+            <p className="text-xs text-muted-foreground">Envoi d'un e-mail immédiat si le Fitness Score d'un lot passe sous le seuil.</p>
+          </div>
+          <Switch checked={cfg.alert_enabled} onCheckedChange={(v) => save({ alert_enabled: v })} disabled={busy} data-testid="evo-toggle-alert" />
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div><label className="text-xs text-muted-foreground">Seuil Fitness (/100)</label>
+            <Input type="number" min={0} max={100} value={cfg.alert_threshold} onChange={(e) => setCfg({ ...cfg, alert_threshold: +e.target.value })}
+              onBlur={(e) => save({ alert_threshold: Math.min(100, Math.max(0, +e.target.value || 90)) })} className="h-8 w-28" data-testid="evo-alert-threshold" /></div>
+          <div className="flex-1 min-w-[200px]"><label className="text-xs text-muted-foreground">E-mail d'alerte (sinon celui du rapport)</label>
+            <Input type="email" value={cfg.alert_email || ""} onChange={(e) => setCfg({ ...cfg, alert_email: e.target.value })}
+              onBlur={(e) => e.target.value && save({ alert_email: e.target.value })} placeholder="alerte@exemple.fr" className="h-8" data-testid="evo-alert-email" /></div>
+        </div>
+      </div>
+
       {/* Arène Champion vs Challenger */}
       <div className="surface p-4 space-y-3" data-testid="evo-compare">
-        <div className="font-bold flex items-center gap-2"><Swords className="h-4 w-4 text-primary" />Comparaison Champion vs Challenger</div>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="font-bold flex items-center gap-2"><Swords className="h-4 w-4 text-primary" />Comparaison Champion vs Challenger</div>
+          <span className="text-xs text-muted-foreground">Modèle IA actif : <b className="text-primary" data-testid="evo-active-model">{cfg.active_ai_model}</b></span>
+        </div>
         <p className="text-xs text-muted-foreground">Deux modèles IA affrontent les mêmes scénarios (même seed). Le gagnant : meilleure précision, puis vitesse.</p>
         <div className="flex flex-wrap items-end gap-3">
           <div><label className="text-xs text-muted-foreground">Champion</label>
@@ -202,6 +234,17 @@ export default function EvolutionLab() {
             ))}
           </div>
         )}
+        {cmpRes && (() => {
+          const winnerModel = cmpRes.winner === "champion" ? cmp.champion_model : cmp.challenger_model;
+          return (
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+              <span className="text-xs text-muted-foreground">Gagnant de l'arène : <b>{winnerModel}</b></span>
+              <Button size="sm" onClick={() => promote(winnerModel)} disabled={busy || cfg.active_ai_model === winnerModel} className="gap-2 rounded-sm" data-testid="evo-promote-btn">
+                <Trophy className="h-4 w-4" />{cfg.active_ai_model === winnerModel ? "Déjà actif" : "Promouvoir le gagnant"}
+              </Button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* KPIs */}

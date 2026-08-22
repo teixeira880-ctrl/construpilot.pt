@@ -15,7 +15,9 @@ router = APIRouter(prefix="/admin/evolution", tags=["evolution"],
 DEFAULT_CONFIG = {"enabled": False, "level": 2, "batch_size": 2000,
                   "ai_enabled": False, "ai_budget_calls": 30,
                   "max_evolution_mode": False,
-                  "nightly_enabled": False, "nightly_email": None}
+                  "nightly_enabled": False, "nightly_email": None,
+                  "alert_enabled": False, "alert_threshold": 90, "alert_email": None,
+                  "active_ai_model": "opus"}
 
 
 def _now():
@@ -42,6 +44,10 @@ class ConfigIn(BaseModel):
     max_evolution_mode: bool | None = None
     nightly_enabled: bool | None = None
     nightly_email: str | None = None
+    alert_enabled: bool | None = None
+    alert_threshold: float | None = Field(default=None, ge=0, le=100)
+    alert_email: str | None = None
+    active_ai_model: str | None = None
 
 
 @router.put("/config")
@@ -84,7 +90,48 @@ async def run(body: RunIn) -> dict:
     result["generation"] = gen
     await db.evolution_runs.insert_one({**result})
     result.pop("_id", None)
+    await _maybe_alert(cfg, result)
     return result
+
+
+class PromoteIn(BaseModel):
+    model_key: str
+
+
+@router.post("/promote")
+async def promote(body: PromoteIn) -> dict:
+    if body.model_key not in evolution.EVO_AI_MODELS:
+        raise HTTPException(422, "Modèle inconnu")
+    await db.app_settings.update_one({"_id": "evolution"},
+                                     {"$set": {"active_ai_model": body.model_key}}, upsert=True)
+    return {"ok": True, "active_ai_model": body.model_key,
+            "note": "Le chatbot d'aide et les tests IA utilisent désormais ce modèle."}
+
+
+async def _maybe_alert(cfg: dict, result: dict) -> None:
+    """Alerte e-mail immédiate si le Fitness Score passe sous le seuil."""
+    if not cfg.get("alert_enabled"):
+        return
+    threshold = float(cfg.get("alert_threshold", 90))
+    if result.get("fitness_score", 100) >= threshold:
+        return
+    to = cfg.get("alert_email") or cfg.get("nightly_email")
+    if not to:
+        return
+    from engines.emailer import send_email, wrap_company_html
+    body = (f"<h2 style='color:#dc2626'>⚠️ Alerte régression — AI Evolution Lab</h2>"
+            f"<p>Le Fitness Score est tombé à <b>{result['fitness_score']}</b> / 100 "
+            f"(seuil d'alerte : {threshold}).</p>"
+            f"<p>Génération #{result.get('generation')} · {result['size']} tests · "
+            f"réussite {round(result['pass_rate']*100)}%.</p>"
+            f"<h3>Principaux clusters d'échecs</h3><ul>"
+            + "".join(f"<li>{c['cluster']} — <b>{c['count']}</b></li>"
+                      for c in result.get("failure_clusters", [])[:8]) + "</ul>")
+    html = wrap_company_html("Alerte régression ConstruPilot", body, company_name="ConstruPilot")
+    try:
+        await send_email(to, f"[ConstruPilot] ⚠️ Alerte régression — Fitness {result['fitness_score']}/100", html)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 class CompareIn(BaseModel):
@@ -166,6 +213,7 @@ async def run_nightly() -> dict | None:
     to = cfg.get("nightly_email")
     if to:
         await _send_report_email(to, result, new_clusters)
+    await _maybe_alert(cfg, result)
     result.pop("_id", None)
     return {"sent_to": to, "new_clusters": len(new_clusters), "fitness": result["fitness_score"]}
 

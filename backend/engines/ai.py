@@ -207,7 +207,8 @@ TARIFS / COMPTE : voir la page Tarifs. Essai avec comptes démo disponibles sur 
 
 
 async def help_assistant(history: list[dict], message: str, session_id: str,
-                         page: str | None = None) -> str:
+                         page: str | None = None, provider: str | None = None,
+                         model: str | None = None) -> str:
     """Chatbot d'aide (Claude Opus 4.8) : répond aux questions sur ConstruPilot."""
     system = (BRAND + "\n\nTu es l'assistant d'aide de ConstruPilot. Tu réponds UNIQUEMENT à "
               "propos de ConstruPilot (ses fonctionnalités, comment les utiliser, quelle offre "
@@ -221,8 +222,9 @@ async def help_assistant(history: list[dict], message: str, session_id: str,
     convo = "\n".join(f"{'Utilisateur' if m.get('role') == 'user' else 'Assistant'}: {m.get('content','')}"
                       for m in (history or [])[-8:])
     prompt = (f"Conversation:\n{convo}\n\nNouveau message: {message}" if convo else message)
-    await _log_usage("help_chat", HELP_PROVIDER, HELP_MODEL)
-    chat = _chat(system, session_id, HELP_PROVIDER, HELP_MODEL)
+    prov, mdl = provider or HELP_PROVIDER, model or HELP_MODEL
+    await _log_usage("help_chat", prov, mdl)
+    chat = _chat(system, session_id, prov, mdl)
     out = []
     async for ev in chat.stream_message(UserMessage(text=prompt)):
         if isinstance(ev, TextDelta):
