@@ -224,6 +224,7 @@ async def analyze_waterproofing(images: list[str]) -> dict:
         '  "layers": [ { "name": string, "present": true } ] (couches détectées : forme de pente, '
         'chape, EIF/primaire, pare-vapeur, isolant, membrane 1, membrane 2, protection),\n'
         '  "singular": [ { "name": string, "unit": string, "qty": number } ] (acrotères ml, EP/drains u…),\n'
+        '  "regions": [ { "key": "surface"|"releve", "bbox": [x1,y1,x2,y2] (normalisé 0-1) } ],\n'
         '  "confidence": number(0-1), "notes": string }\n'
         "Estime la surface horizontale et le périmètre au mieux via l'échelle/cotations. "
         "Si incertain, baisse la confiance (<0.6). N'invente pas de couche absente."
@@ -252,6 +253,8 @@ async def analyze_roofing(images: list[str]) -> dict:
         '  "roof_type": string, "surface_projetee_m2": number, "pente_pct": number,\n'
         '  "faitage_ml": number, "aretiers_ml": number, "noues_ml": number,\n'
         '  "rives_ml": number, "egout_ml": number,\n'
+        '  "regions": [ { "key": "couverture"|"faitage"|"aretiers"|"noues"|"rives"|"egout", '
+        '"bbox": [x1,y1,x2,y2] (normalisé 0-1) } ],\n'
         '  "confidence": number(0-1), "notes": string }\n'
         "Estime au mieux via l'échelle/cotations. Le faîtage est l'arête horizontale haute ; "
         "les arêtiers sont les arêtes inclinées sortantes (croupe) ; les noues sont les arêtes "
@@ -263,6 +266,29 @@ async def analyze_roofing(images: list[str]) -> dict:
                  {"surface_projetee_m2": 0, "pente_pct": 35, "roof_type": "4 pans",
                   "faitage_ml": 0, "aretiers_ml": 0, "noues_ml": 0, "rives_ml": 0,
                   "egout_ml": 0, "scale_confidence": 0, "notes": ""})
+
+
+async def analyze_vrd(images: list[str]) -> dict:
+    """Analyse IA d'un plan VRD / plan masse (Gemini 3.1 Pro) → réseaux + tranchées."""
+    if not images:
+        return {"networks": [], "scale_confidence": 0, "notes": "aucune image"}
+    system = (BRAND + " Tu es métreur VRD expert (voirie & réseaux divers) : tu lis les plans "
+              "masse/réseaux et repères les tracés EP (eaux pluviales), EU (eaux usées), "
+              "AEP (eau potable), télécom/électricité et gaz, avec leurs longueurs.")
+    prompt = (
+        "Analyse ce plan VRD / plan de masse. Repère chaque réseau tracé et estime sa "
+        "longueur en mètres, la largeur et la profondeur de tranchée si indiquées.\n"
+        "Retourne UNIQUEMENT ce JSON :\n"
+        '{ "scale_detected": string|null, "scale_confidence": number(0-1),\n'
+        '  "networks": [ { "key": "EP"|"EU"|"AEP"|"telecom"|"gaz", "label": string,\n'
+        '    "length_ml": number, "larg_m": number|null, "prof_m": number|null,\n'
+        '    "confidence": number(0-1), "bbox": [x1,y1,x2,y2] (normalisé 0-1, emprise du tracé) } ],\n'
+        '  "notes": string }\n'
+        "Estime les longueurs au mieux via l'échelle/cotations. Si un réseau est absent, ne "
+        "le liste pas. Si incertain, baisse la confiance (<0.6). N'invente pas de réseau."
+    )
+    return _json(await _complete_vision(system, prompt, images[:4], *GEMINI_PRO, feature="vrd"),
+                 {"networks": [], "scale_confidence": 0, "notes": ""})
 
 
 def _json(raw: str, fallback):

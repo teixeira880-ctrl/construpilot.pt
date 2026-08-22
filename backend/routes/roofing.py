@@ -43,12 +43,13 @@ async def analyze(plan_id: str, material: str = "tuiles_terre_cuite",
                "noues_ml": d.get("noues_ml"), "rives_ml": d.get("rives_ml"),
                "egout_ml": d.get("egout_ml")}
     comp = roofing.compute(d.get("surface_projetee_m2"), d.get("pente_pct"), material,
-                           lengths, d.get("confidence", 0.8))
+                           lengths, d.get("confidence", 0.8), regions=d.get("regions"))
     doc = {"plan_id": plan_id, "user_id": user["user_id"], "filename": p.get("filename"),
            "scale_detected": d.get("scale_detected"), "scale_confidence": d.get("scale_confidence"),
            "roof_type": d.get("roof_type"), "material": material,
            "surface_projetee_m2": d.get("surface_projetee_m2"), "pente_pct": d.get("pente_pct"),
-           "lengths": lengths, "compute": comp, "notes": d.get("notes"), "updated_at": _now()}
+           "lengths": lengths, "regions": d.get("regions") or [], "compute": comp,
+           "notes": d.get("notes"), "updated_at": _now()}
     await db.roofing_analyses.update_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"$set": doc, "$setOnInsert": {"created_at": _now()}},
                                          upsert=True)
@@ -85,7 +86,7 @@ async def recompute(plan_id: str, body: Recompute, user=Depends(current_user)) -
     lengths = {"faitage_ml": body.faitage_ml, "aretiers_ml": body.aretiers_ml,
                "noues_ml": body.noues_ml, "rives_ml": body.rives_ml, "egout_ml": body.egout_ml}
     comp = roofing.compute(body.surface_projetee_m2, body.pente_pct, body.material, lengths,
-                           0.9, {"loss_pct": body.loss_pct})
+                           0.9, {"loss_pct": body.loss_pct}, regions=d.get("regions"))
     await db.roofing_analyses.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"$set": {"compute": comp, "surface_projetee_m2": body.surface_projetee_m2,

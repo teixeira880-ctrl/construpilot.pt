@@ -21,8 +21,10 @@ def _has(layers, *keys):
 
 
 def compute(surface_m2: float, perimeter_m: float, releve_h_m: float,
-            system_type: str, layers: list, conf: dict, params: dict | None = None) -> dict:
+            system_type: str, layers: list, conf: dict, params: dict | None = None,
+            regions: list | None = None) -> dict:
     p = {**DEFAULTS, **(params or {})}
+    reg = {r.get("key"): r.get("bbox") for r in (regions or []) if r.get("bbox")}
     s = max(0.0, float(surface_m2 or 0))
     per = max(0.0, float(perimeter_m or 0))
     rh = max(0.0, float(releve_h_m or 0))
@@ -34,10 +36,10 @@ def compute(surface_m2: float, perimeter_m: float, releve_h_m: float,
     bicouche = (system_type or "bicouche").lower().startswith("bi")
     items = []
 
-    def add(name, unit, qty, commandable_unit=None, commandable_qty=None):
+    def add(name, unit, qty, commandable_unit=None, commandable_qty=None, region="surface"):
         items.append({"designation": name, "unit": unit, "qty": round(qty, 2),
                       "commandable_unit": commandable_unit, "commandable_qty": commandable_qty,
-                      "confidence": c})
+                      "confidence": c, "bbox": reg.get(region) or reg.get("surface")})
 
     if _has(layers, "forme de pente", "pente"):
         add("Forme de pente béton (350 kg/m³)", "m³", s * p["pente_ep_m"])

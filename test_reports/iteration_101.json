@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend E2E testing of /appro Phase 3 (VRD) + 4 fonctionnalités transverses (catalogue prix fournisseur, surlignage sur plan, e-mail bon de commande avec CC, dédoublonnage plans). Login Pro via quick-login OK. Les 5 onglets s'affichent (tab-acier, tab-etancheite, tab-toiture, tab-vrd, tab-fournisseurs).\n\n[FOURNISSEURS] ✅ Éditeur catalogue prix : Point.P Test présent avec 3 prix, cliqué Modifier, ajouté 1 ligne 'TEST tuiles béton / 1.25 €', Enregistrer → toast 'Fournisseur mis à jour'. Créé nouveau fournisseur 'TEST Fournisseur Alpha' avec 2 lignes (ciment 12.5, sable 35), toast succès.\n\n[TOITURE] ✅ Sélection plan_toiture_4pans.jpg (plan_roof_test01) + Tuiles terre cuite + Analyser → toast 'Toiture analysée' (~30s). plan-viewer affiche l'image du plan ✓. Bordereau 7 lignes (tuiles, écran, liteaux, faîtage, closoir, noue, gouttière, peigne). Fournisseur 'Point.P Test' sélectionné dans ApproOrder, Chiffrer → colonnes PU HT + Total HT + total estimé HT = 3 886,40 € (matching catalogue). Édité PU-0 = 9.99 → grand total mis à jour en temps réel = 27 906,32 € ✓. Cliqué appro-locate-0 → cadre orange plan-highlight visible sur le plan ✓. CSV téléchargé (bon_commande_toiture.csv) ✓. Créer le bon → toast 'Bon de commande créé (brouillon)' ✓. E-mail : dialog s'ouvre avec destinataire pré-rempli 'pro@construpilot.fr', case CC cochée ✓, aperçu 7 lignes visible, Envoyer → toast 'Bon de commande envoyé à pro@construpilot.fr' ✓ (visible dans capture).\n\n[VRD] ✅ vrd-plan-select affiche 16 plans. Analyser VRD (plan non-VRD) → toast 'Aucun réseau détecté — ajoutez-les manuellement' ✓. vrd-add-key contient tous les 5 réseaux : EP, EU, AEP, telecom, gaz ✓. Ajouté EP+EU+gaz, saisi longueurs 40/35/20, Recalculer → toast 'Bordereau VRD recalculé' + ligne totaux 'Déblai : 30.4 m³ · sable 11.4 · remblai 19 · réfection 38 m²' ✓. vrd-bordereau contient 12 items (tuyaux + grillage avertisseur + tranchée déblai/sable/remblai/réfection). plan-viewer présent ✓. Création bon de commande OK.\n\n[ACIER régression] ✅ Analyser → toast 'Ferraillage analysé'. plan-viewer affiché ✓. ⚠️ Pas d'icône rebar-locate-0 sur les lignes (pas de bbox retournée sur ce plan — l'IA n'a pas géolocalisé les zones ferraillage). ⚠️ Après clic compute-order-btn, ApproOrder n'apparaît PAS (0 lignes commandables) — voir 'issue'.\n\n[ÉTANCHÉITÉ régression] Non re-testé complet dans cette itération — validé en iteration_100 (bordereau + CSV + bon de commande + plan-viewer OK).\n\n[DÉDOUBLONNAGE] ✅ 16 plans uniques dans le dropdown, 0 doublon (dedupePlans dans TechAnalysis.jsx fonctionne).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "SteelTab / rebar analysis",
+        "issue": "Après 'Analyser le ferraillage' puis clic sur compute-order-btn (Calculer les quantités commandables), aucun ApproOrder n'apparaît (count=0). Non testé : est-ce parce que le plan choisi (plan_roof_test01) ne contient pas de ferraillage détectable, ou est-ce une régression du flux acier ? De plus aucun rebar-locate-N n'est présent (pas de bbox sur les items ferraillage — surlignage impossible pour acier sur ce plan).",
+        "selector": "[data-testid=\"compute-order-btn\"] / [data-testid^=\"rebar-locate-\"]",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Vérifier le flux ACIER : sur un plan sans ferraillage détecté, afficher un message clair 'Aucun ferraillage détecté' plutôt qu'un compute-order-btn qui ne produit rien. Idéalement propager les bbox depuis l'IA vers les lignes du bordereau acier pour supporter rebar-locate-N (surlignage acier)."
+  ],
+  "critical_code_review_comments": [
+    "TechAnalysis.jsx: dedupePlans() bien implémenté (par filename lowercased). Ligne 31 accepte data.plans en fallback (fix précédent conservé).",
+    "ApproOrder.jsx: pricing local recalculé au keydown (setPU) — bon UX ; risque de flottant sur les arrondis (Math.round *100/100) — acceptable pour affichage.",
+    "PlanViewer.jsx: highlight en % relatif au conteneur, transition CSS smooth — propre. Overlay sombre (shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]) bien visible.",
+    "VrdTab.jsx: gestion correcte de l'état nets/catalog. Bien géré le cas 0 réseau détecté avec toast + saisie manuelle.",
+    "SteelTab: manque possiblement de propagation des bbox de l'IA vers les items du bordereau (voir issue MEDIUM ci-dessus)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "95% (VRD 100%, Toiture 100%, Fournisseurs 100%, Dédoublonnage 100%, Acier 70% — surlignage & compute-order-btn à revoir)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! (utilisé le raccourci 'Pro / Owner (BTP Demo)' de la page login; le formulaire email/password direct semble ne pas soumettre — investiguer si nécessaire)",
+  "seed_data_creation": "Créé fournisseur 'TEST Fournisseur Alpha' + ajouté 1 ligne prix à Point.P Test ('TEST tuiles béton'). Créé bons de commande brouillon (toiture, VRD). Envoyé 1 e-mail réel via Resend à pro@construpilot.fr avec CC.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Utiliser la quick-login card 'Pro / Owner (BTP Demo)' sur /login pour se connecter (le formulaire email/password direct ne soumet pas correctement). Après nav vers /appro, laisser 3-4s pour que /takeoffs charge les plans avant de switcher d'onglet. VRD add-key = ['EP','EU','AEP','telecom','gaz']. Le plan de test 'plan_toiture_4pans.jpg' a plan_id='plan_roof_test01'.",
+  "rca of the issue": "ACIER compute-order-btn ne rend pas d'ApproOrder : à vérifier côté SteelTab.jsx si la props items est vide (aucune ligne 'commandable'). Le plan utilisé (plan_roof_test01) est une toiture, pas un plan armaturé, donc l'IA n'a probablement rien détecté — mais l'UX devrait afficher un message vide explicite plutôt que rien du tout."
+}

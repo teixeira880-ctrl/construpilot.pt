@@ -21,6 +21,7 @@ class SupplierIn(BaseModel):
     delivery_address: str | None = Field(default=None, max_length=300)
     api_endpoint: str | None = Field(default=None, max_length=300)
     notes: str | None = Field(default=None, max_length=1000)
+    price_list: list[dict] = Field(default_factory=list)
 
 
 def _now():

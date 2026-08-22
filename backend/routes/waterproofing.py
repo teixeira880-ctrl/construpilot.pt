@@ -30,13 +30,14 @@ async def analyze(plan_id: str, user=Depends(current_user)) -> dict:
         raise HTTPException(422, "Aucune image de plan")
     d = await ai.analyze_waterproofing(images)
     comp = waterproofing.compute(d.get("surface_m2"), d.get("perimeter_m"), d.get("releve_h_m"),
-                                 d.get("system_type"), d.get("layers"), d.get("confidence", 0.8))
+                                 d.get("system_type"), d.get("layers"), d.get("confidence", 0.8),
+                                 regions=d.get("regions"))
     doc = {"plan_id": plan_id, "user_id": user["user_id"], "filename": p.get("filename"),
            "scale_detected": d.get("scale_detected"), "scale_confidence": d.get("scale_confidence"),
            "surface_m2": d.get("surface_m2"), "perimeter_m": d.get("perimeter_m"),
            "releve_h_m": d.get("releve_h_m"), "system_type": comp["system_type"],
-           "singular": d.get("singular") or [], "compute": comp, "notes": d.get("notes"),
-           "updated_at": _now()}
+           "singular": d.get("singular") or [], "regions": d.get("regions") or [],
+           "compute": comp, "notes": d.get("notes"), "updated_at": _now()}
     await db.waterproofing_analyses.update_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                                {"$set": doc, "$setOnInsert": {"created_at": _now()}},
                                                upsert=True)
@@ -71,7 +72,8 @@ async def recompute(plan_id: str, body: Recompute, user=Depends(current_user)) -
     layer_names = [{"name": it["designation"]} for it in layers]
     comp = waterproofing.compute(body.surface_m2, body.perimeter_m, body.releve_h_m,
                                  body.system_type, layer_names, 0.8,
-                                 {"recouvrement_pct": body.recouvrement_pct, "loss_pct": body.loss_pct})
+                                 {"recouvrement_pct": body.recouvrement_pct, "loss_pct": body.loss_pct},
+                                 regions=d.get("regions"))
     await db.waterproofing_analyses.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"$set": {"compute": comp, "surface_m2": body.surface_m2, "perimeter_m": body.perimeter_m,
