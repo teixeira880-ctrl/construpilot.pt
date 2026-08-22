@@ -1,0 +1,42 @@
+{
+  "summary": "Frontend E2E testing for /appro Phase 2 (Toiture + Étanchéité). Login as Pro OK. All 4 tabs (tab-acier, tab-etancheite, tab-toiture, tab-fournisseurs) render. TOITURE: selected plan_toiture_4pans.jpg + Tuiles béton, analyze-roof-btn → Gemini analysis (~30s) returned toast 'Toiture analysée', roof-params visible (surface=250, pente=33, faitage=15, aretiers=43, egout=72...), roof-bordereau rendered 8 lignes (tuiles, écran sous-toiture, liteaux, faîtage, closoir, noue, gouttière, peigne) avec quantités, quantités commandables & badges 🟠. Recalculer → 'Bordereau recalculé'. CSV téléchargé (bon_commande_toiture.csv). Bon de commande → 'Bon de commande créé (brouillon)'. ÉTANCHÉITÉ: analyse OK, wp-params affiché (surface=181, périmètre=70), bordereau bicouche 2 lignes membrane, recompute OK, CSV OK (bon_commande_etancheite.csv), commande OK. Régression Acier: tab s'affiche toujours, navigation entre les 4 onglets sans erreur console.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "TechAnalysis.jsx (parent /appro)",
+        "issue": "BLOCKER (fixed by testing agent): plans dropdown was empty in Toiture & Étanchéité tabs because GET /api/takeoffs returns {plans:[...]} but code only checked data.items / data.takeoffs. Without the fix, l'utilisateur ne pouvait rien sélectionner et le bouton Analyser restait désactivé. Fix appliqué ligne 30: ajouté data.plans en fallback.",
+        "selector": "[data-testid=\"roof-plan-select\"] / [data-testid=\"wp-plan-select\"]",
+        "priority": "HIGH"
+      },
+      {
+        "component": "TechAnalysis.jsx",
+        "issue": "GET /api/takeoffs renvoie beaucoup de doublons (ex: before.png × 50, test_metre.pdf × 7). Non bloquant mais UX très dégradée dans le sélecteur de plan. À dédoublonner côté backend ou filtrer côté front.",
+        "selector": "roof-plan-select / wp-plan-select / plan-select",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/appro — badges de confiance", "issues": ["Toutes les lignes retournées par l'IA affichent 🟠 75–80% — aucune ligne 🟢 dans le test. À vérifier si la logique de confiance est bien calibrée ou si le prompt Gemini doit être ajusté pour retourner des confiances plus élevées quand les données sont fiables."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Confirmer le fix de mon coté sur /app/frontend/src/pages/TechAnalysis.jsx (ligne 30 — ajouté data.plans) ou standardiser la clé de réponse côté backend GET /api/takeoffs.",
+    "Nettoyer les doublons dans /api/takeoffs (nombreux 'before.png' et 'test_metre.pdf' dupliqués).",
+    "Optionnel: envisager de rendre les badges de confiance plus discriminants (actuellement tout est 🟠)."
+  ],
+  "critical_code_review_comments": [
+    "TechAnalysis.jsx: incohérence de contrat backend/frontend sur /takeoffs — bug facilement évitable avec un type/Zod schema partagé.",
+    "RoofingTab.jsx & WaterproofingTab.jsx: bien structurés, data-testid présents partout, gestion des erreurs correcte via toasts."
+  ],
+  "updated_files": ["/app/frontend/src/pages/TechAnalysis.jsx"],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100% (après fix du chargement des plans)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!  (plan_id de test: plan_roof_test01 / plan_toiture_4pans.jpg)",
+  "seed_data_creation": "Aucune — utilisé le plan existant plan_toiture_4pans.jpg. Créé 2 brouillons de bons de commande (toiture + étanchéité).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Le fix de la clé data.plans dans TechAnalysis.jsx (ligne 30) est essentiel — sinon les onglets Toiture/Étanchéité ne peuvent rien sélectionner. L'analyse IA Gemini prend ~25-40s. Les toasts Sonner sont ciblables via [data-sonner-toast].",
+  "rca of the issue": "Bug bloqueur RCA: GET /api/takeoffs retourne {plans:[...]} (voir /app/backend/... — endpoint takeoffs). Le code frontend faisait `data.items || data.takeoffs || []` sans jamais lire `data.plans`, donc plans=[] dans le state du parent, et les enfants RoofingTab/WaterproofingTab recevaient plans=[] → dropdown vide → bouton Analyser désactivé. Fix: ajouter data.plans dans la chaîne de fallback."
+}

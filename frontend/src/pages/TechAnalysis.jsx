@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import WaterproofingTab from "@/components/tech/WaterproofingTab";
+import RoofingTab from "@/components/tech/RoofingTab";
 
 const conf = (c) => (c >= 0.85 ? { cls: "bg-emerald-500/15 text-emerald-600", lbl: "🟢" }
   : c >= 0.6 ? { cls: "bg-amber-500/15 text-amber-600", lbl: "🟠" }
@@ -25,7 +27,7 @@ export default function TechAnalysis() {
 
   useEffect(() => {
     api.get("/takeoffs").then(({ data }) => {
-      const items = Array.isArray(data) ? data : (data.items || data.takeoffs || []);
+      const items = Array.isArray(data) ? data : (data.items || data.takeoffs || data.plans || []);
       setPlans(items);
     }).catch(() => {});
     loadSuppliers();
@@ -88,11 +90,11 @@ export default function TechAnalysis() {
       <div className="flex items-center gap-3">
         <HardHat className="h-6 w-6 text-primary" />
         <h1 className="font-display text-2xl font-bold">Analyse technique &amp; Approvisionnement IA</h1>
-        <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro · Phase 1 · Acier</span>
+        <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro · Acier · Étanchéité · Toiture</span>
       </div>
 
       <div className="flex gap-2 border-b border-border">
-        {[["acier", "Ferraillage / Acier"], ["fournisseurs", "Mes fournisseurs"]].map(([k, l]) => (
+        {[["acier", "Ferraillage / Acier"], ["etancheite", "Étanchéité"], ["toiture", "Toiture"], ["fournisseurs", "Mes fournisseurs"]].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} data-testid={`tab-${k}`}
             className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px ${tab === k ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{l}</button>
         ))}
@@ -199,6 +201,8 @@ export default function TechAnalysis() {
         </div>
       )}
 
+      {tab === "etancheite" && <WaterproofingTab plans={plans} suppliers={suppliers} />}
+      {tab === "toiture" && <RoofingTab plans={plans} suppliers={suppliers} />}
       {tab === "fournisseurs" && <SupplierManager suppliers={suppliers} reload={loadSuppliers} />}
     </div>
   );

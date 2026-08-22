@@ -209,6 +209,62 @@ async def analyze_rebar(images: list[str]) -> dict:
     return data
 
 
+async def analyze_waterproofing(images: list[str]) -> dict:
+    """Analyse IA d'un plan/détail d'étanchéité toiture terrasse (Gemini 3.1 Pro)."""
+    if not images:
+        return {"layers": [], "surface_m2": 0, "perimeter_m": 0, "releve_h_m": 0.5,
+                "system_type": "bicouche", "scale_confidence": 0, "notes": "aucune image"}
+    system = (BRAND + " Tu es métreur étanchéité expert (toiture terrasse, DTU 43.1) : "
+              "complexes bitume SBS/APP, PVC, EPDM, relevés, acrotères, EP.")
+    prompt = (
+        "Analyse ce plan/détail d'étanchéité de toiture terrasse. Retourne UNIQUEMENT ce JSON :\n"
+        '{ "scale_detected": string|null, "scale_confidence": number(0-1),\n'
+        '  "system_type": "monocouche"|"bicouche",\n'
+        '  "surface_m2": number, "perimeter_m": number, "releve_h_m": number,\n'
+        '  "layers": [ { "name": string, "present": true } ] (couches détectées : forme de pente, '
+        'chape, EIF/primaire, pare-vapeur, isolant, membrane 1, membrane 2, protection),\n'
+        '  "singular": [ { "name": string, "unit": string, "qty": number } ] (acrotères ml, EP/drains u…),\n'
+        '  "confidence": number(0-1), "notes": string }\n'
+        "Estime la surface horizontale et le périmètre au mieux via l'échelle/cotations. "
+        "Si incertain, baisse la confiance (<0.6). N'invente pas de couche absente."
+    )
+    return _json(await _complete_vision(system, prompt, images[:4], *GEMINI_PRO,
+                                         feature="waterproofing"),
+                 {"layers": [], "surface_m2": 0, "perimeter_m": 0, "releve_h_m": 0.5,
+                  "system_type": "bicouche", "scale_confidence": 0, "notes": ""})
+
+
+async def analyze_roofing(images: list[str]) -> dict:
+    """Analyse IA d'un plan de toiture en pente (Gemini 3.1 Pro) → surfaces + linéaires."""
+    if not images:
+        return {"surface_projetee_m2": 0, "pente_pct": 35, "roof_type": "4 pans",
+                "faitage_ml": 0, "aretiers_ml": 0, "noues_ml": 0, "rives_ml": 0,
+                "egout_ml": 0, "scale_confidence": 0, "notes": "aucune image"}
+    system = (BRAND + " Tu es métreur couverture/charpente expert (toitures en pente : "
+              "tuiles, ardoises, bac acier). Tu sais lire un plan de toiture (croupes/arêtiers, "
+              "noues, faîtage, rives, égout) et estimer les surfaces rampantes.")
+    prompt = (
+        "Analyse ce plan de toiture en pente. Repère le type (2 pans, 4 pans/croupe, "
+        "monopente…), la surface au sol projetée, la pente, et les linéaires de faîtage, "
+        "arêtiers, noues, rives et égout.\n"
+        "Retourne UNIQUEMENT ce JSON :\n"
+        '{ "scale_detected": string|null, "scale_confidence": number(0-1),\n'
+        '  "roof_type": string, "surface_projetee_m2": number, "pente_pct": number,\n'
+        '  "faitage_ml": number, "aretiers_ml": number, "noues_ml": number,\n'
+        '  "rives_ml": number, "egout_ml": number,\n'
+        '  "confidence": number(0-1), "notes": string }\n'
+        "Estime au mieux via l'échelle/cotations. Le faîtage est l'arête horizontale haute ; "
+        "les arêtiers sont les arêtes inclinées sortantes (croupe) ; les noues sont les arêtes "
+        "rentrantes ; l'égout est le périmètre bas (gouttières). Si incertain, baisse la "
+        "confiance (<0.6). N'invente pas de valeur : mets 0 si l'élément est absent."
+    )
+    return _json(await _complete_vision(system, prompt, images[:4], *GEMINI_PRO,
+                                         feature="roofing"),
+                 {"surface_projetee_m2": 0, "pente_pct": 35, "roof_type": "4 pans",
+                  "faitage_ml": 0, "aretiers_ml": 0, "noues_ml": 0, "rives_ml": 0,
+                  "egout_ml": 0, "scale_confidence": 0, "notes": ""})
+
+
 def _json(raw: str, fallback):
     raw = (raw or "").strip()
     if raw.startswith("```"):

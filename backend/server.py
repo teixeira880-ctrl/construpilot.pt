@@ -31,6 +31,8 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     company_library as company_library_routes,
                     suppliers as suppliers_routes,
                     steel as steel_routes,
+                    waterproofing as waterproofing_routes,
+                    roofing as roofing_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -95,6 +97,8 @@ api_router.include_router(dpgf_routes.router)
 api_router.include_router(company_library_routes.router)
 api_router.include_router(suppliers_routes.router)
 api_router.include_router(steel_routes.router)
+api_router.include_router(waterproofing_routes.router)
+api_router.include_router(roofing_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(

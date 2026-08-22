@@ -2331,3 +2331,13 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - Métré béton étendu: poteaux/poutres/dalles/voiles/**semelles** + total.
 - Vérifié backend (curl) : re-détection tuilée → 16 poteaux, 10 poutres (B1-B8), 7 semelles, 2 dalles NGF; analysis params OK (dalle_ep 0.25 → dalles 114 m³), poteaux_table 14. Frontend compile OK. ⚠️ Smoke visuel front non fait ce tour (redirection auth du tool).
 - ⚠️ PROD : REDÉPLOYER (Deploy Now).
+
+## Changelog Iter 100 (18/06/2026) — Approvisionnement Phase 2 : ÉTANCHÉITÉ + TOITURE
+- **Contexte** : Module « Analyse technique & Approvisionnement IA », suite de la Phase 1 (Acier). Phase 2 = Étanchéité (toiture-terrasse) + Toiture (couverture en pente).
+- **Étanchéité** : route `waterproofing` enregistrée dans server.py (oubli corrigé) + flux complet : analyse IA (Gemini 3.1 Pro) → bordereau par couche (forme de pente, chape, EIF, pare-vapeur, isolant, membrane 1/2, protection) → quantités commandables (rouleaux/bidons/panneaux) → recompute paramétrable → export CSV + bon de commande fournisseur (endpoint `/order`).
+- **Toiture** : nouveau moteur `engines/roofing.py` + routes `routes/roofing.py` + `ai.analyze_roofing`. Extraction IA du type (2 pans/croupe/multipente), surface projetée, pente, faîtage/arêtiers/noues/rives/égout. Calcul surface rampante = projetée/cos(angle). Bordereau : couverture (tuiles terre cuite/béton, ardoises, bac acier — CHOIX utilisateur), écran sous-toiture, liteaux, tuiles faîtières, closoir, noue zinc, rives, gouttières + quantités commandables (pertes/recouvrements).
+- **Frontend** : nouveaux composants `components/tech/RoofingTab.jsx` + `WaterproofingTab.jsx`, intégrés dans `pages/TechAnalysis.jsx` (/appro) avec 4 onglets : Acier, Étanchéité, Toiture, Fournisseurs. Badges confiance 🟢🟠🔴.
+- **Fix bloqueur (testing agent)** : GET /api/takeoffs renvoie `{plans:[...]}` — ajout de `data.plans` dans la chaîne de fallback de TechAnalysis.jsx (sinon sélecteur de plan vide).
+- **Vérifié** : backend via curl (roofing analyze/recompute/order + waterproofing analyze/recompute/order, sur plan réel de toiture 4 pans → 290 m² projetés, pente 33%, 3464 tuiles, 5 rouleaux écran, gouttières 83 ml…, confiance 0.85 🟢). Frontend testing_agent iter100 = 100% (les 4 onglets, analyse IA, recompute, CSV, bon de commande, non-régression Acier).
+- **Backlog** : Phase 3 (VRD : EP/EU/AEP/télécom/tranchées), Phase 4 (Trust engine + surlignage éléments sur le plan au clic d'une quantité), Phase 5 (API fournisseurs Point.P/Chausson). Dédoublonnage de /api/takeoffs (nombreux doublons de plans de test — MEDIUM, non bloquant).
+- ⚠️ PROD (construpilot.fr) : REDÉPLOYER (Deploy Now) pour appliquer la Phase 2.
