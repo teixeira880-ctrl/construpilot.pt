@@ -34,6 +34,7 @@ _BEAM = ("poutre", "beam")
 _COL = ("poteau", "cols", "colon", "column")
 _LINTEL = ("linteau", "lintel")
 _SLAB = ("dalle", "flor", "floor", "slab", "plancher")
+_STAIR = ("escalier", "stair", "s-strs", "strs", "-str")
 _RESA = ("servation", "resa", "opening", "penetr", "trémie", "tremie")
 _DOOR = ("porte", "door", "-dr-", "a-door")
 _WIN = ("fenetre", "fenêtre", "window", "glaz", "baie")
@@ -151,6 +152,78 @@ def _detect_thickness(segs, unit_to_m, gmin_m=0.08, gmax_m=0.70, tol_ang=3.0):
     return round(mode_cm / 100.0, 3), {str(k): v for k, v in gaps.most_common(10)}
 
 
+def _cluster_bboxes(items, gap_m: float, unit_to_m: float):
+    """Regroupe des entités proches (par centre) en clusters ; retourne les bbox de clusters.
+    items = liste de (minx, miny, maxx, maxy) en unités dessin."""
+    gap = gap_m / unit_to_m
+    parent = list(range(len(items)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    cx = [(a[0] + a[2]) / 2 for a in items]
+    cy = [(a[1] + a[3]) / 2 for a in items]
+    n = len(items)
+    for i in range(n):
+        for j in range(i + 1, n):
+            if abs(cx[i] - cx[j]) <= gap and abs(cy[i] - cy[j]) <= gap:
+                parent[find(i)] = find(j)
+    groups: dict = {}
+    for i in range(n):
+        r = find(i)
+        b = groups.get(r)
+        a = items[i]
+        if b is None:
+            groups[r] = [a[0], a[1], a[2], a[3]]
+        else:
+            b[0] = min(b[0], a[0]); b[1] = min(b[1], a[1])
+            b[2] = max(b[2], a[2]); b[3] = max(b[3], a[3])
+    return list(groups.values())
+
+
+def _footprint_area_m2(segments, bounds, unit_to_m: float) -> float:
+    """Surface d'emprise du bâtiment (m²) par remplissage : on trace les murs dans une
+    image binaire, on inonde l'EXTÉRIEUR depuis les bords, ce qui reste = emprise plancher.
+    Exclut l'extérieur et l'entre-bâtiments (bien mieux qu'une bbox brute)."""
+    try:
+        from PIL import Image, ImageDraw, ImageChops
+    except Exception:
+        return 0.0
+    min_x, min_y, max_x, max_y = bounds
+    span_x = max(1e-6, max_x - min_x)
+    span_y = max(1e-6, max_y - min_y)
+    target = 1400  # px sur le plus grand côté
+    scale = target / max(span_x, span_y)
+    w = max(8, int(span_x * scale) + 8)
+    h = max(8, int(span_y * scale) + 8)
+    img = Image.new("L", (w, h), 255)
+    dr = ImageDraw.Draw(img)
+    pen = max(2, int(0.20 * unit_to_m * scale))  # ~ épaisseur mur pour fermer les jonctions
+
+    def px(x, y):
+        return (4 + (x - min_x) * scale, h - 4 - (y - min_y) * scale)
+    drew = False
+    for s in segments:
+        if not s:
+            continue
+        (a, b) = s[0], s[1]
+        dr.line([px(*a), px(*b)], fill=0, width=pen)
+        drew = True
+    if not drew:
+        return 0.0
+    # Inonde l'extérieur depuis (0,0)
+    ImageDraw.floodfill(img, (0, 0), 128, thresh=10)
+    # Pixels encore blancs (255) = intérieur (emprise)
+    inside = img.point(lambda v: 255 if v >= 250 else 0)
+    hist = inside.histogram()
+    inside_px = hist[255]
+    area_units2 = inside_px / (scale * scale)
+    return round(area_units2 * unit_to_m * unit_to_m, 1)
+
+
 def extract_structural_metre(doc, unit_to_m: float) -> dict:
     """Parcourt le modelspace et agrège les quantités par catégorie de calque."""
     msp = doc.modelspace()
@@ -158,6 +231,9 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
 
     wall_len = beam_len = col_len = lintel_len = 0.0
     partition_len = 0.0
+    stair_len = 0.0
+    stair_bboxes: list = []
+    envelope_segs: list = []   # tous les traits de murs (A-WALL) → emprise bâtiment
     slab_area_units = 0.0
     wall_fill_units = 0.0      # emprise béton voile (hachures/polygones structure)
     partition_fill_units = 0.0  # emprise murs archi (A-WALL…)
@@ -204,12 +280,17 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         if t == "LINE":
             ln = _line_len(e)
             if _match(L, _WALL):
+                envelope_segs.append(_seg(e))
                 if _match(L, _WALL_ARCH) and not _match(L, _WALL_STRUCT):
                     partition_len += ln          # cloison / architecture → non béton
                 else:
                     wall_len += ln; wall_segs.append(_seg(e))  # voile porteur béton
             elif _match(L, _BEAM): beam_len += ln; beam_segs.append(_seg(e))
             elif _match(L, _COL): col_len += ln; col_segs.append(_seg(e))
+            elif _match(L, _STAIR):
+                stair_len += ln
+                stair_bboxes.append((min(e.dxf.start.x, e.dxf.end.x), min(e.dxf.start.y, e.dxf.end.y),
+                                     max(e.dxf.start.x, e.dxf.end.x), max(e.dxf.start.y, e.dxf.end.y)))
             elif _match(L, _LINTEL): lintel_len += ln
             if ln:
                 layer_line_len[getattr(e.dxf, "layer", "?")] += ln
@@ -312,6 +393,28 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     partition_area_m2 = round(partition_fill_units * U * U, 2)
     beam_area_m2 = round(beam_fill_units * U * U, 2)
 
+    # Escaliers (calque S-STRS) : regroupe les traits proches en volées, emprise par cluster.
+    stair_clusters = _cluster_bboxes(stair_bboxes, gap_m=2.5, unit_to_m=U) if stair_bboxes else []
+    escaliers = []
+    escaliers_area_m2 = 0.0
+    for (x0, y0, x1, y1) in stair_clusters:
+        aw, ah = (x1 - x0) * U, (y1 - y0) * U
+        a = round(aw * ah, 2)
+        if 1.5 <= a <= 60:  # emprise d'escalier plausible
+            escaliers.append({"w_m": round(aw, 2), "h_m": round(ah, 2), "area_m2": a})
+            escaliers_area_m2 += a
+    escaliers_count = len(escaliers)
+    escaliers_area_m2 = round(escaliers_area_m2, 1)
+
+    # Planchers : emprise réelle du bâtiment par remplissage (si pas de contour fermé).
+    footprint_m2 = 0.0
+    env = [s for s in envelope_segs if s]
+    if slab_area_m2 <= 0 and env:
+        xs = [p for s in env for p in (s[0][0], s[1][0])]
+        ys = [p for s in env for p in (s[0][1], s[1][1])]
+        fbounds = (min(xs), min(ys), max(xs), max(ys))
+        footprint_m2 = _footprint_area_m2(env, fbounds, U)
+
     detected = {
         "wall_thickness_m": wall_th,
         "wall_thickness_dist_cm": wall_dist,
@@ -339,6 +442,10 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "beam_area_m2": beam_area_m2,
         "linteaux_ml": linteaux_ml,
         "slab_area_m2": slab_area_m2,
+        "footprint_m2": footprint_m2,
+        "escaliers_count": escaliers_count,
+        "escaliers_area_m2": escaliers_area_m2,
+        "escaliers": escaliers[:40],
         "detected": detected,
         "openings": {
             "portes": openings.get("portes", 0),
@@ -390,6 +497,9 @@ PRICES = {
     "beton_dalle":   170.0,  # m³
     "coffrage_dalle": 40.0,  # m² (sous-face + étaiement)
     "acier_dalle":     1.45,
+    "beton_escalier": 320.0,  # m³ paillasse + marches
+    "coffrage_escalier": 90.0,  # m² (coffrage complexe escalier)
+    "acier_escalier":  1.7,
     "linteau_ml":     35.0,  # ml linteau BA
     "reservation_u":  45.0,  # u — traçage + coffrage réservation
     "huisserie_u":    90.0,  # u — pré-cadre / réservation baie
@@ -398,7 +508,7 @@ PRICES = {
     "protection_securite":  6000.0,
 }
 # Ratios aciers kg/m³
-REBAR = {"voile": 60.0, "poutre": 120.0, "poteau": 130.0, "dalle": 85.0}
+REBAR = {"voile": 60.0, "poutre": 120.0, "poteau": 130.0, "dalle": 85.0, "escalier": 110.0}
 
 
 def _line(desig, detail, unit, qty, pu):
@@ -444,10 +554,15 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     beams_ml = float(metre.get("beams_ml", 0)) * nlv
     cols = int(metre.get("columns_count", 0)) * nlv
     lint_ml = float(metre.get("linteaux_ml", 0)) * nlv
-    # Aire dalle : override utilisateur prioritaire (souvent non fermée sur le plan)
+    # Aire dalle : override utilisateur prioritaire, sinon contour fermé, sinon emprise auto.
     slab_base = p.get("slab_area_m2")
-    slab_base = float(slab_base) if slab_base not in (None, "", 0, "0") else float(metre.get("slab_area_m2", 0))
+    if slab_base not in (None, "", 0, "0"):
+        slab_base = float(slab_base)
+    else:
+        slab_base = float(metre.get("slab_area_m2", 0)) or float(metre.get("footprint_m2", 0))
     slab_m2 = slab_base * nlv
+    slab_source = ("saisie" if p.get("slab_area_m2") not in (None, "", 0, "0")
+                   else ("contour" if float(metre.get("slab_area_m2", 0)) > 0 else "emprise_auto"))
     resa = int((metre.get("reservations") or {}).get("count", 0))
     op = metre.get("openings") or {}
     huiss = int(op.get("portes", 0)) + int(op.get("fenetres", 0))
@@ -500,6 +615,14 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     slab_m3 = round(slab_m2 * ts, 2)
     slab_ac = round(slab_m3 * REBAR["dalle"], 0)
 
+    # Escaliers : volume ≈ emprise × épaisseur équivalente paillasse+marches (~0.30 m).
+    esc_area = float(metre.get("escaliers_area_m2", 0) or 0) * nlv
+    esc_count = int(metre.get("escaliers_count", 0))
+    esc_eq_thk = 0.30
+    esc_m3 = round(esc_area * esc_eq_thk, 2)
+    esc_cof = round(esc_area * 1.8, 1)  # sous-face + limons + contremarches
+    esc_ac = round(esc_m3 * REBAR["escalier"], 0)
+
     lots = []
 
     struct_lines = []
@@ -523,9 +646,16 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         ]
     if slab_m2:
         struct_lines += [
-            _line("Dalle / plancher béton", f"{slab_m2} m² × ép. {ts} m", "m³", slab_m3, P["beton_dalle"]),
+            _line("Dalle / plancher béton", f"{slab_m2} m² ({slab_source}) × ép. {ts} m", "m³", slab_m3, P["beton_dalle"]),
             _line("Coffrage + étaiement dalle", f"{slab_m2} m²", "m²", slab_m2, P["coffrage_dalle"]),
             _line("Aciers dalle", f"{REBAR['dalle']} kg/m³", "kg", slab_ac, P["acier_dalle"]),
+        ]
+    if esc_area or esc_count:
+        struct_lines += [
+            _line("Escaliers béton — paillasses & marches",
+                  f"{esc_count} escalier(s) · emprise {round(esc_area,1)} m² × ép. éq. {esc_eq_thk} m", "m³", esc_m3, P["beton_escalier"]),
+            _line("Coffrage escaliers", f"{round(esc_area,1)} m² d'emprise", "m²", esc_cof, P["coffrage_escalier"]),
+            _line("Aciers escaliers", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
         ]
     if lint_ml:
         struct_lines.append(_line("Linteaux béton armé", f"{lint_ml} ml", "ml", lint_ml, P["linteau_ml"]))
@@ -555,11 +685,12 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     tva = round(ht * float(p["tva_rate"]), 2)
 
     totals = {
-        "beton_m3": round(wall_m3 + beam_m3 + col_m3 + slab_m3, 2),
-        "acier_kg": round(wall_ac + beam_ac + col_ac + slab_ac, 0),
-        "coffrage_m2": round(wall_cof + beam_cof + slab_m2, 1),
+        "beton_m3": round(wall_m3 + beam_m3 + col_m3 + slab_m3 + esc_m3, 2),
+        "acier_kg": round(wall_ac + beam_ac + col_ac + slab_ac + esc_ac, 0),
+        "coffrage_m2": round(wall_cof + beam_cof + slab_m2 + esc_cof, 1),
         "walls_ml": round(walls_ml, 1), "beams_ml": round(beams_ml, 1),
-        "columns": cols, "slab_m2": round(slab_m2, 1),
+        "columns": cols, "slab_m2": round(slab_m2, 1), "slab_source": slab_source,
+        "escaliers": esc_count, "escaliers_m2": round(esc_area, 1),
         "height_m": h_vert, "height_source": "arases" if h_label != f"H {h} m" else "etage",
         "reservations": resa, "huisseries": huiss,
         "ht_brut": ht_brut, "margin_pct": p["margin_pct"], "ht": ht,
