@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   FlaskConical, Play, Loader2, Users, Boxes, Activity, TrendingUp, AlertTriangle, Zap, Mail,
+  Swords, Trophy, History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,15 +20,30 @@ export default function EvolutionLab() {
   const [dash, setDash] = useState(null);
   const [busy, setBusy] = useState(false);
   const [running, setRunning] = useState(false);
+  const [cmp, setCmp] = useState({ champion_model: "opus", challenger_model: "sonnet", ai_calls: 8 });
+  const [cmpRes, setCmpRes] = useState(null);
+  const [cmpBusy, setCmpBusy] = useState(false);
+  const [reports, setReports] = useState(null);
 
   const load = async () => {
-    const [c, d] = await Promise.all([
+    const [c, d, r] = await Promise.all([
       api.get("/admin/evolution/config"),
       api.get("/admin/evolution/dashboard"),
+      api.get("/admin/evolution/reports").catch(() => ({ data: { items: [], weekly: [] } })),
     ]);
-    setCfg(c.data); setDash(d.data);
+    setCfg(c.data); setDash(d.data); setReports(r.data);
   };
   useEffect(() => { load().catch(() => {}); }, []);
+
+  const runCompare = async () => {
+    setCmpBusy(true);
+    try {
+      const { data } = await api.post("/admin/evolution/compare", cmp);
+      setCmpRes(data);
+      toast.success(`Arène terminée — gagnant : ${data.winner === "champion" ? cmp.champion_model : cmp.challenger_model}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Comparaison impossible"); }
+    finally { setCmpBusy(false); }
+  };
 
   const save = async (patch) => {
     setBusy(true);
@@ -150,6 +166,44 @@ export default function EvolutionLab() {
         </div>
       </div>
 
+      {/* Arène Champion vs Challenger */}
+      <div className="surface p-4 space-y-3" data-testid="evo-compare">
+        <div className="font-bold flex items-center gap-2"><Swords className="h-4 w-4 text-primary" />Comparaison Champion vs Challenger</div>
+        <p className="text-xs text-muted-foreground">Deux modèles IA affrontent les mêmes scénarios (même seed). Le gagnant : meilleure précision, puis vitesse.</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div><label className="text-xs text-muted-foreground">Champion</label>
+            <select value={cmp.champion_model} onChange={(e) => setCmp({ ...cmp, champion_model: e.target.value })} className="mt-1 h-8 rounded-sm border border-border bg-background px-2 text-sm block" data-testid="evo-cmp-champion">
+              {["opus", "sonnet", "haiku", "gemini"].map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div><label className="text-xs text-muted-foreground">Challenger</label>
+            <select value={cmp.challenger_model} onChange={(e) => setCmp({ ...cmp, challenger_model: e.target.value })} className="mt-1 h-8 rounded-sm border border-border bg-background px-2 text-sm block" data-testid="evo-cmp-challenger">
+              {["opus", "sonnet", "haiku", "gemini"].map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div><label className="text-xs text-muted-foreground">Tests IA / modèle</label>
+            <Input type="number" min={1} max={100} value={cmp.ai_calls} onChange={(e) => setCmp({ ...cmp, ai_calls: Math.min(100, Math.max(1, +e.target.value || 8)) })} className="h-8 w-24" data-testid="evo-cmp-calls" /></div>
+          <Button onClick={runCompare} disabled={cmpBusy} className="gap-2 rounded-sm" data-testid="evo-cmp-run">
+            {cmpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}{cmpBusy ? "Arène en cours…" : "Comparer"}
+          </Button>
+        </div>
+        {cmpRes && (
+          <div className="grid sm:grid-cols-2 gap-3" data-testid="evo-cmp-result">
+            {[["champion", cmpRes.champion], ["challenger", cmpRes.challenger]].map(([side, r]) => (
+              <div key={side} className={`rounded-sm border p-3 ${cmpRes.winner === side ? "border-primary bg-primary/5" : "border-border"}`} data-testid={`evo-cmp-${side}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase text-muted-foreground">{side === "champion" ? "Champion" : "Challenger"}</span>
+                  {cmpRes.winner === side && <span className="text-[10px] font-bold text-primary flex items-center gap-1"><Trophy className="h-3.5 w-3.5" />Gagnant</span>}
+                </div>
+                <div className="font-bold text-lg">{r.model}</div>
+                <div className="text-sm">Précision : <b>{pct(r.ai_accuracy)}</b> ({r.ai_passed}/{r.ai_calls})</div>
+                <div className="text-xs text-muted-foreground">Latence moy. : {r.ai_avg_latency_s ?? "—"} s</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="evo-kpis">
         {[
@@ -218,6 +272,40 @@ export default function EvolutionLab() {
           <p className="text-[11px] text-muted-foreground mt-2">{graph.length} génération(s) · dernière : {last?.fitness_score}/100</p>
         </div>
       )}
+
+      {/* Historique des rapports nocturnes */}
+      <div className="surface p-4" data-testid="evo-reports">
+        <h3 className="font-bold mb-3 flex items-center gap-2"><History className="h-4 w-4 text-primary" />Historique des rapports nocturnes</h3>
+        {(reports?.weekly || []).length > 0 && (
+          <div className="mb-4">
+            <div className="text-xs font-semibold mb-1">Évolution semaine par semaine</div>
+            <div className="overflow-auto rounded-sm border border-border">
+              <table className="w-full text-xs">
+                <thead className="bg-secondary/40"><tr><th className="text-left p-2">Semaine</th><th className="p-2 text-right">Lots</th><th className="p-2 text-right">Fitness moyen</th><th className="p-2 text-right">Réussite moy.</th></tr></thead>
+                <tbody>
+                  {reports.weekly.map((w, i) => (
+                    <tr key={i} className="border-t border-border/60" data-testid={`evo-week-${i}`}>
+                      <td className="p-2">{w.week}</td><td className="p-2 text-right num">{w.runs}</td>
+                      <td className="p-2 text-right num font-semibold text-primary">{w.avg_fitness}</td>
+                      <td className="p-2 text-right num">{Math.round(w.avg_pass_rate * 100)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {(reports?.items || []).length > 0 ? (
+          <div className="space-y-1">
+            {reports.items.slice(0, 10).map((r, i) => (
+              <div key={i} className="flex justify-between items-center text-xs border-t border-border/60 py-1.5" data-testid={`evo-report-${i}`}>
+                <span className="text-muted-foreground">Gen #{r.generation} · {new Date(r.created_at).toLocaleDateString("fr-FR")} · {r.size} tests</span>
+                <span>Fitness <b className="text-primary num">{r.fitness_score}</b> · {Math.round((r.pass_rate || 0) * 100)}%{r.ai_calls ? ` · IA ${r.ai_passed}/${r.ai_calls}` : ""}</span>
+              </div>
+            ))}
+          </div>
+        ) : <p className="text-xs text-muted-foreground">Aucun rapport nocturne pour l'instant. Activez le rapport nocturne : un lot s'exécutera chaque nuit (ou utilisez « Envoyer le rapport maintenant » pour tester).</p>}
+      </div>
     </div>
   );
 }

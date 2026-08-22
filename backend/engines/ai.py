@@ -162,6 +162,22 @@ async def stream_chat(history: list[dict], message: str, session_id: str, contex
 # Chatbot d'aide public — meilleur modèle (Claude Opus 4.8) via la clé LLM universelle
 HELP_PROVIDER, HELP_MODEL = "anthropic", "claude-opus-4-8"
 
+# Aide contextuelle : route → libellé/description de page pour un support ciblé
+_PAGE_HELP = {
+    "/dashboard": "Tableau de bord (vue d'ensemble des projets et devis)",
+    "/estimateur": "Estimateur de travaux (chiffrage rapide)",
+    "/appro": "Analyse technique & Approvisionnement (Acier, Étanchéité, Toiture, VRD)",
+    "/plans": "Analyse de plans DWG/DXF/PDF et métré",
+    "/devis": "Gestion des devis",
+    "/calculateurs": "Calculateurs (surfaces, volumes, quantités)",
+    "/prix": "Recherche de prix matériaux",
+    "/coach": "Coach IA travaux",
+    "/fonctionnalites": "Page Fonctionnalités (présentation particulier & pro)",
+    "/tarifs": "Page Tarifs",
+    "/equipe": "Gestion d'équipe (Pro)",
+    "/fournisseurs": "Mes fournisseurs (Pro)",
+}
+
 HELP_KB = """CONSTRUPILOT — base de connaissances produit.
 
 POUR LES PARTICULIERS :
@@ -190,12 +206,18 @@ TARIFS / COMPTE : voir la page Tarifs. Essai avec comptes démo disponibles sur 
 """
 
 
-async def help_assistant(history: list[dict], message: str, session_id: str) -> str:
+async def help_assistant(history: list[dict], message: str, session_id: str,
+                         page: str | None = None) -> str:
     """Chatbot d'aide (Claude Opus 4.8) : répond aux questions sur ConstruPilot."""
     system = (BRAND + "\n\nTu es l'assistant d'aide de ConstruPilot. Tu réponds UNIQUEMENT à "
               "propos de ConstruPilot (ses fonctionnalités, comment les utiliser, quelle offre "
               "choisir). Sois concis, clair et chaleureux. Si on te demande une chose hors sujet, "
               "ramène poliment vers ConstruPilot. Base-toi sur ces informations :\n" + HELP_KB)
+    page_ctx = _PAGE_HELP.get((page or "").rstrip("/"), None)
+    if page_ctx:
+        system += (f"\n\nCONTEXTE : l'utilisateur est actuellement sur la page « {page_ctx} » "
+                   f"(URL {page}). Adapte ton aide à cette page en priorité, propose l'action "
+                   f"la plus utile ici, mais réponds aussi à sa question précise.")
     convo = "\n".join(f"{'Utilisateur' if m.get('role') == 'user' else 'Assistant'}: {m.get('content','')}"
                       for m in (history or [])[-8:])
     prompt = (f"Conversation:\n{convo}\n\nNouveau message: {message}" if convo else message)

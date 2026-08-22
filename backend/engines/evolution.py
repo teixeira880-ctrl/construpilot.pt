@@ -171,6 +171,14 @@ def run_batch(size: int, level: int = 2, seed: int | None = None) -> dict:
 import asyncio  # noqa: E402
 import re as _re  # noqa: E402
 
+# Modèles disponibles pour l'arène Champion vs Challenger
+EVO_AI_MODELS = {
+    "opus": ("anthropic", "claude-opus-4-8"),
+    "sonnet": ("anthropic", "claude-sonnet-4-6"),
+    "haiku": ("anthropic", "claude-haiku-4-5-20251001"),
+    "gemini": ("gemini", "gemini-3.1-pro-preview"),
+}
+
 
 def _ai_scenario(rng: random.Random) -> tuple:
     """Génère un problème de calcul construction + réponse exacte (ground truth)."""
@@ -212,24 +220,42 @@ def _parse_number(text: str):
         return None
 
 
-async def run_ai_batch(n: int, level: int = 2, seed: int | None = None) -> dict:
-    """Exécute jusqu'à n tests IA (Claude texte) en parallèle limité. Coût plafonné par n."""
+async def run_ai_batch(n: int, level: int = 2, seed: int | None = None,
+                       model_key: str = "opus") -> dict:
+    """Exécute jusqu'à n tests IA (LLM texte) en parallèle limité. Coût plafonné par n.
+
+    model_key ∈ EVO_AI_MODELS (opus/sonnet/haiku/gemini) → permet Champion vs Challenger.
+    """
+    import time
     from engines import ai
+    from emergentintegrations.llm.chat import UserMessage as _UM, TextDelta as _TD, StreamDone as _SD
+    prov, mdl = EVO_AI_MODELS.get(model_key, EVO_AI_MODELS["opus"])
     n = max(0, min(n, 100))
     rng = random.Random(seed)
     scenarios = [_ai_scenario(rng) for _ in range(n)]
     sem = asyncio.Semaphore(5)
     per = {"total": 0, "passed": 0}
     failures = {}
+    latencies = []
 
     async def one(q, gt, tol, cat):
         async with sem:
+            t0 = time.time()
             try:
-                out = await ai.help_assistant([], q, "evo_ai_" + uuid.uuid4().hex[:8])
-                val = _parse_number(out)
+                sysmsg = ("Tu es un métreur expert du bâtiment. Réponds de façon concise, "
+                          "en terminant par le résultat numérique demandé.")
+                chat = ai._chat(sysmsg, "evo_ai_" + uuid.uuid4().hex[:8], prov, mdl)
+                out = []
+                async for ev in chat.stream_message(_UM(text=q)):
+                    if isinstance(ev, _TD):
+                        out.append(ev.content)
+                    elif isinstance(ev, _SD):
+                        break
+                val = _parse_number("".join(out))
                 ok = val is not None and abs(val - gt) <= max(abs(gt) * tol, 0.5)
             except Exception:  # noqa: BLE001
                 ok, val = False, None
+            latencies.append(time.time() - t0)
             return ok, cat, gt, val
 
     results = await asyncio.gather(*[one(*s) for s in scenarios]) if scenarios else []
@@ -242,5 +268,7 @@ async def run_ai_batch(n: int, level: int = 2, seed: int | None = None) -> dict:
             failures[key] = failures.get(key, 0) + 1
     acc = round(per["passed"] / per["total"], 4) if per["total"] else None
     clusters = sorted(({"cluster": k, "count": v} for k, v in failures.items()), key=lambda x: -x["count"])
+    avg_lat = round(sum(latencies) / len(latencies), 2) if latencies else None
     return {"ai_calls": per["total"], "ai_passed": per["passed"], "ai_accuracy": acc,
+            "ai_model": model_key, "ai_avg_latency_s": avg_lat,
             "ai_failure_clusters": clusters[:10]}

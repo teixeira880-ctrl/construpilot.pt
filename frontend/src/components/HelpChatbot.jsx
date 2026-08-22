@@ -29,7 +29,7 @@ export default function HelpChatbot() {
     setMessages((m) => [...m, { role: "user", content: msg }]);
     setBusy(true);
     try {
-      const { data } = await api.post("/help/chat", { message: msg, session_id: sessionId, history });
+      const { data } = await api.post("/help/chat", { message: msg, session_id: sessionId, history, page: window.location.pathname });
       setSessionId(data.session_id);
       setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
     } catch {

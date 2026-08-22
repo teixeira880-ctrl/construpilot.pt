@@ -2378,3 +2378,9 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Rapports nocturnes** : job scheduler `evolution_nightly` (03:00 UTC) → `run_nightly()` exécute un lot + calcule les NOUVEAUX clusters (diff vs run précédent) + e-mail Resend (Fitness, précision par catégorie, nouveaux clusters). Endpoint `POST /send-report` pour envoi manuel. Config : nightly_enabled + nightly_email. Vérifié : e-mail envoyé OK.
 - **Chatbot global** : `<HelpChatbot/>` monté dans `Shell` (App.js) → présent sur toutes les pages connectées (en plus de /fonctionnalites public). Vérifié sur /dashboard + /admin.
 - **UI EvolutionLab** : bloc « Rapport nocturne par e-mail » (toggle + email + bouton envoyer), affichage précision tests IA dans le dernier lot.
+
+## Changelog Iter 106 (18/06/2026) — Champion/Challenger + Chatbot contextuel + Historique rapports
+- **Comparaison Champion vs Challenger** : `EVO_AI_MODELS` (opus/sonnet/haiku/gemini). `run_ai_batch(model_key)` mesure précision + latence. Endpoint `POST /admin/evolution/compare` : mêmes scénarios (même seed) sur 2 modèles → gagnant (précision puis vitesse), stocké dans `evolution_compares`. UI : carte arène (2 sélecteurs + nb tests) + résultats côte à côte + badge Gagnant. Vérifié : opus vs haiku 100% chacun, haiku plus rapide.
+- **Chatbot contextuel** : le widget envoie `page: window.location.pathname` ; `help_assistant(page)` + mapping `_PAGE_HELP` (routes→libellés) pour une aide ciblée. Vérifié : sur /appro le chatbot donne l'onboarding du module Approvisionnement.
+- **Historique des rapports** : `GET /admin/evolution/reports` → liste des lots nocturnes + agrégat semaine par semaine (fitness/réussite moyens par semaine ISO). UI : tableau hebdo + liste des derniers rapports dans l'onglet Evolution Lab.
+- Vérifié : import serveur OK, curl (compare/chat contextuel/reports), E2E navigateur (arène lancée + résultat, sections présentes).

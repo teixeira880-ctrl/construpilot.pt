@@ -87,6 +87,61 @@ async def run(body: RunIn) -> dict:
     return result
 
 
+class CompareIn(BaseModel):
+    ai_calls: int = Field(default=10, ge=1, le=100)
+    level: int = Field(default=2, ge=1, le=6)
+    champion_model: str = "opus"
+    challenger_model: str = "sonnet"
+    seed: int | None = 12345
+
+
+@router.post("/compare")
+async def compare(body: CompareIn, user=Depends(admin_user)) -> dict:
+    """Arène Champion vs Challenger : mêmes scénarios IA (même seed), 2 modèles comparés."""
+    seed = body.seed if body.seed is not None else 12345
+    champ = await evolution.run_ai_batch(body.ai_calls, body.level, seed, body.champion_model)
+    chall = await evolution.run_ai_batch(body.ai_calls, body.level, seed, body.challenger_model)
+
+    def score(r):
+        acc = r.get("ai_accuracy") or 0
+        lat = r.get("ai_avg_latency_s") or 99
+        return acc * 100 - lat * 0.5  # précision d'abord, vitesse en second
+
+    winner = "champion" if score(champ) >= score(chall) else "challenger"
+    await db.evolution_compares.insert_one({
+        "created_at": _now(), "seed": seed, "level": body.level, "ai_calls": body.ai_calls,
+        "champion": {"model": body.champion_model, **champ},
+        "challenger": {"model": body.challenger_model, **chall}, "winner": winner})
+    return {"champion": {"model": body.champion_model, **champ},
+            "challenger": {"model": body.challenger_model, **chall},
+            "winner": winner, "models": list(evolution.EVO_AI_MODELS.keys())}
+
+
+@router.get("/reports")
+async def reports(limit: int = 60, user=Depends(admin_user)) -> dict:
+    """Historique des rapports nocturnes + évolution semaine par semaine."""
+    import datetime as _dt
+    cur = db.evolution_runs.find({"nightly": True}, {"_id": 0, "per_category": 0}) \
+        .sort("created_at", -1).limit(min(limit, 200))
+    items = await cur.to_list(200)
+    weeks = {}
+    for r in items:
+        try:
+            d = _dt.datetime.fromisoformat(r["created_at"].replace("Z", "+00:00"))
+            wk = f"{d.isocalendar().year}-S{d.isocalendar().week:02d}"
+        except Exception:  # noqa: BLE001
+            continue
+        w = weeks.setdefault(wk, {"week": wk, "runs": 0, "fit_sum": 0.0, "pass_sum": 0.0})
+        w["runs"] += 1
+        w["fit_sum"] += r.get("fitness_score", 0)
+        w["pass_sum"] += r.get("pass_rate", 0)
+    weekly = [{"week": w["week"], "runs": w["runs"],
+               "avg_fitness": round(w["fit_sum"] / w["runs"], 2),
+               "avg_pass_rate": round(w["pass_sum"] / w["runs"], 4)}
+              for w in sorted(weeks.values(), key=lambda x: x["week"])]
+    return {"items": items, "weekly": weekly}
+
+
 async def run_nightly() -> dict | None:
     """Lot nocturne planifié + e-mail du rapport (Fitness + nouveaux clusters). Job scheduler."""
     cfg = await _config()
