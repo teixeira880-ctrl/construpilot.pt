@@ -40,6 +40,51 @@ def _font(size: int):
 # Taille max de la preview raster (côté le plus grand)
 PREVIEW_MAX_SIDE = 3200
 PREVIEW_MARGIN = 40
+# Rendu CAO fidèle (ezdxf + pymupdf) : taille cible du plus grand côté, en px.
+HQ_TARGET_PX = 4200
+HQ_MIN_DPI = 40
+HQ_MAX_DPI = 300
+
+
+def _render_preview_hq(doc, bounds: tuple[float, float, float, float]) -> tuple[bytes, dict]:
+    """Rendu CAO FIDÈLE du DXF (lignes, textes, cotes, hachures, cartouche) via le moteur
+    de dessin natif ezdxf + backend PyMuPDF. Tout est préservé et lisible au zoom.
+
+    Le mapping (margin=0) est calculé analytiquement : ezdxf mappe la bbox contenu → image
+    sans marge, à l'échelle scale = dpi/25.4 px par unité DXF.
+    """
+    from ezdxf.addons.drawing import RenderContext, Frontend, layout
+    from ezdxf.addons.drawing.pymupdf import PyMuPdfBackend
+    from ezdxf.addons.drawing.config import (Configuration, BackgroundPolicy, ColorPolicy,
+                                             HatchPolicy, LineweightPolicy)
+
+    min_x, min_y, max_x, max_y = bounds
+    span_x = max(1e-6, max_x - min_x)
+    span_y = max(1e-6, max_y - min_y)
+    # dpi pour viser HQ_TARGET_PX sur le plus grand côté (unités traitées comme mm par le layout)
+    dpi = HQ_TARGET_PX * 25.4 / max(span_x, span_y)
+    dpi = int(max(HQ_MIN_DPI, min(HQ_MAX_DPI, dpi)))
+    scale = dpi / 25.4  # px par unité DXF
+
+    msp = doc.modelspace()
+    ctx = RenderContext(doc)
+    cfg = Configuration(
+        background_policy=BackgroundPolicy.WHITE,
+        color_policy=ColorPolicy.BLACK,             # traits noirs lisibles sur fond blanc
+        hatch_policy=HatchPolicy.SHOW_OUTLINE,       # hachures en contour → ne masque pas le plan
+        lineweight_policy=LineweightPolicy.RELATIVE_FIXED,
+        min_lineweight=0.05,
+    )
+    backend = PyMuPdfBackend()
+    Frontend(ctx, backend, config=cfg).draw_layout(msp)
+    page = layout.Page(0, 0, layout.Units.mm, margins=layout.Margins.all(0),
+                       max_width=2000, max_height=2000)
+    png = backend.get_pixmap_bytes(page, fmt="png", dpi=dpi)
+
+    w = max(1, round(span_x * scale))
+    h = max(1, round(span_y * scale))
+    return png, {"scale_px_per_dxf_unit": scale, "offset_x": min_x, "offset_y": min_y,
+                 "width": w, "height": h, "margin": 0}
 
 
 _EXPLODE_TYPES = {"INSERT", "DIMENSION"}
@@ -206,7 +251,7 @@ def _render_preview(entities, bounds: tuple[float, float, float, float]) -> tupl
     return buf.getvalue(), {
         "scale_px_per_dxf_unit": ratio,
         "offset_x": min_x, "offset_y": min_y,
-        "width": w, "height": h,
+        "width": w, "height": h, "margin": PREVIEW_MARGIN,
     }
 
 
@@ -237,7 +282,13 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
     dim_count = sum(1 for e in msp if e.dxftype() == "DIMENSION")
     entities = list(_iter_dxf_entities(msp))
     bounds = _compute_bounds(entities)
-    png, mapping = _render_preview(entities, bounds)
+    # Rendu FIDÈLE (tout préservé : cotes, textes, cartouche, hachures) via ezdxf+pymupdf.
+    # Repli sur le rendu PIL rapide si le moteur CAO échoue.
+    try:
+        png, mapping = _render_preview_hq(doc, bounds)
+    except Exception:
+        logger.exception("HQ DXF render failed, fallback to PIL")
+        png, mapping = _render_preview(entities, bounds)
 
     # Métré structure par calques (quantités réelles depuis la géométrie)
     structural_metre = None
@@ -253,10 +304,11 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
     ratio = mapping["scale_px_per_dxf_unit"]
     min_x = mapping["offset_x"]; min_y = mapping["offset_y"]
     h = mapping["height"]
+    margin = mapping.get("margin", 0)
 
     def to_px(x, y):
-        return (PREVIEW_MARGIN + (x - min_x) * ratio,
-                h - PREVIEW_MARGIN - (y - min_y) * ratio)
+        return (margin + (x - min_x) * ratio,
+                h - margin - (y - min_y) * ratio)
 
     for e in entities:
         t = e.dxftype()

@@ -5,6 +5,7 @@ Refactor iter53 : extrait de `routes/plans.py`.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
 from typing import Literal
@@ -61,7 +62,7 @@ async def upload_plan(
         parse_name = file.filename or "plan"
 
     try:
-        parsed = process_upload(data, parse_name, mime, deskew=deskew)
+        parsed = await asyncio.to_thread(process_upload, data, parse_name, mime, deskew)
     except Exception as e:
         logger.exception("plan process failed")
         raise HTTPException(422, f"Impossible de lire le fichier : {e}")

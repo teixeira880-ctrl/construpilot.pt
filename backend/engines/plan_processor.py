@@ -106,16 +106,20 @@ def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
 
-def process_pdf(pdf_bytes: bytes, render_dpi: int = 150) -> dict:
+def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
     """Extrait pages + vecteurs + textes + rendu PNG d'un PDF."""
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     pages_out = []
     detected_scale = None
+    # Résolution d'aperçu adaptée au nombre de pages (préserver la lisibilité des cotes
+    # sur les plans 1 page, sans dépasser la limite BSON 16 Mo sur les PDF multi-pages).
+    n_pages = doc.page_count
+    max_side = 4200 if n_pages <= 3 else (2800 if n_pages <= 8 else 1800)
     for i, page in enumerate(doc):
         # --- Rendu image pour le viewer (JPEG/PNG adaptatif, redimensionné) ---
         pix = page.get_pixmap(dpi=render_dpi, alpha=False)
         img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-        img_b64, img_mime, fw, fh, ratio = _encode_preview(img)
+        img_b64, img_mime, fw, fh, ratio = _encode_preview(img, max_side=max_side)
 
         # --- Extraction texte ---
         text = page.get_text("text") or ""
