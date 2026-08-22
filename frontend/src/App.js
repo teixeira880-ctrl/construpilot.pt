@@ -11,6 +11,7 @@ import { Nav, Footer } from "@/components/Nav";
 import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
 import Investors from "@/pages/Investors";
+import Features from "@/pages/Features";
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
@@ -98,6 +99,7 @@ function AppRouter() {
       <Route path="/" element={<Landing />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
       <Route path="/investisseurs" element={<Investors />} />
+      <Route path="/fonctionnalites" element={<Features />} />
       <Route path="/login" element={<Login />} />
       <Route path="/inscription" element={<Login />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />

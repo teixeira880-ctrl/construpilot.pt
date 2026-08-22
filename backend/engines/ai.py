@@ -159,6 +159,58 @@ async def stream_chat(history: list[dict], message: str, session_id: str, contex
             break
 
 
+# Chatbot d'aide public — meilleur modèle (Claude Opus 4.8) via la clé LLM universelle
+HELP_PROVIDER, HELP_MODEL = "anthropic", "claude-opus-4-8"
+
+HELP_KB = """CONSTRUPILOT — base de connaissances produit.
+
+POUR LES PARTICULIERS :
+- Estimateur de travaux : chiffrage instantané (matériaux + main d'œuvre) par type de projet.
+- Smart Project : décrivez « rénover salle de bain 8 m² » et l'IA génère lots, matériaux et budget.
+- Analyse de photo : envoyez une photo d'une pièce/défaut, l'IA donne des pistes (sans certitude si données insuffisantes).
+- Scanner de devis : importez un devis PDF, l'IA l'explique et le vérifie.
+- Calculateurs : surfaces, volumes, quantités (peinture, carrelage, béton…).
+- Recherche de prix, coach IA travaux, planning des phases de chantier.
+- Sécurité : pour gaz, électricité, murs porteurs, structure, amiante, toiture, l'app recommande toujours un professionnel.
+
+POUR LES PROS (offre Pro / Owner) :
+- Analyse de plans DWG/DXF/PDF : rendu fidèle (cotes, textes) et métré exact (murs, planchers, escaliers, poutres, poteaux) via extraction des calques et empreinte au sol.
+- Métré béton (structural) et devis détaillé par corps d'état, marges, acompte.
+- Bibliothèque de prix DPGF/BPU personnalisée : importez votre Excel/PDF pour surcharger les prix IA.
+- Module « Analyse technique & Approvisionnement IA » (page /appro), en onglets :
+  • Ferraillage / Acier : extraction des barres HA et treillis, bordereau, quantités commandables.
+  • Étanchéité (toiture-terrasse) : bordereau par couche → rouleaux/bidons/panneaux.
+  • Toiture (couverture en pente) : tuiles/ardoises/bac acier, écran, liteaux, faîtage, noues, gouttières.
+  • VRD / Réseaux : EP, EU, AEP, télécom, gaz + métré des tranchées (déblai, sable, grillage, remblai, réfection).
+  Chaque bordereau : chiffrage via catalogue fournisseur ou bibliothèque DPGF, surlignage de l'élément sur le plan, export CSV et bon de commande envoyé par e-mail au fournisseur.
+- Mes fournisseurs : carnet d'adresses + catalogue de prix par fournisseur.
+- Devis en ligne signables, acompte Stripe (30 %), planning Gantt, portail Pro, gestion d'équipe, API, PWA mobile.
+
+TARIFS / COMPTE : voir la page Tarifs. Essai avec comptes démo disponibles sur la page de connexion.
+"""
+
+
+async def help_assistant(history: list[dict], message: str, session_id: str) -> str:
+    """Chatbot d'aide (Claude Opus 4.8) : répond aux questions sur ConstruPilot."""
+    system = (BRAND + "\n\nTu es l'assistant d'aide de ConstruPilot. Tu réponds UNIQUEMENT à "
+              "propos de ConstruPilot (ses fonctionnalités, comment les utiliser, quelle offre "
+              "choisir). Sois concis, clair et chaleureux. Si on te demande une chose hors sujet, "
+              "ramène poliment vers ConstruPilot. Base-toi sur ces informations :\n" + HELP_KB)
+    convo = "\n".join(f"{'Utilisateur' if m.get('role') == 'user' else 'Assistant'}: {m.get('content','')}"
+                      for m in (history or [])[-8:])
+    prompt = (f"Conversation:\n{convo}\n\nNouveau message: {message}" if convo else message)
+    await _log_usage("help_chat", HELP_PROVIDER, HELP_MODEL)
+    chat = _chat(system, session_id, HELP_PROVIDER, HELP_MODEL)
+    out = []
+    async for ev in chat.stream_message(UserMessage(text=prompt)):
+        if isinstance(ev, TextDelta):
+            out.append(ev.content)
+        elif isinstance(ev, StreamDone):
+            break
+    return "".join(out)
+
+
+
 GEMINI_PRO = ("gemini", "gemini-3.1-pro-preview")
 
 

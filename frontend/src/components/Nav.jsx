@@ -38,6 +38,7 @@ const NAV_PRO = [
 ];
 
 const NAV_DISCOVER = [
+  { to: "/fonctionnalites", label: "Fonctionnalités", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
   { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true },
   { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
