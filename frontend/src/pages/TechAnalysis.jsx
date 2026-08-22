@@ -18,6 +18,7 @@ export default function TechAnalysis() {
   const [ana, setAna] = useState(null);
   const [loss, setLoss] = useState(7);
   const [barLen, setBarLen] = useState(12);
+  const [count, setCount] = useState(1);
   const [cmd, setCmd] = useState(null);
   const [supplierId, setSupplierId] = useState("");
   const [suppliers, setSuppliers] = useState([]);
@@ -38,6 +39,7 @@ export default function TechAnalysis() {
     try {
       const { data } = await api.post(`/pro/steel/${planId}/analyze`);
       setAna(data);
+      setCount(data.element_count || 1);
       toast.success("Ferraillage analysé");
     } catch (e) { toast.error(e?.response?.data?.detail || "Analyse impossible"); }
     finally { setBusy(false); }
@@ -62,7 +64,7 @@ export default function TechAnalysis() {
   const compute = async () => {
     try {
       const { data } = await api.post(`/pro/steel/${planId}/commandable`,
-        { loss_pct: loss, bar_length_m: barLen, supplier_id: supplierId || null });
+        { loss_pct: loss, bar_length_m: barLen, element_count: count, supplier_id: supplierId || null });
       setCmd(data);
     } catch (e) { toast.error(e?.response?.data?.detail || "Calcul impossible"); }
   };
@@ -76,7 +78,7 @@ export default function TechAnalysis() {
 
   const createOrder = async () => {
     try {
-      await api.post(`/pro/steel/${planId}/order`, { loss_pct: loss, bar_length_m: barLen, supplier_id: supplierId || null });
+      await api.post(`/pro/steel/${planId}/order`, { loss_pct: loss, bar_length_m: barLen, element_count: count, supplier_id: supplierId || null });
       toast.success("Bon de commande créé (brouillon) — validez l'envoi au fournisseur");
     } catch (e) { toast.error(e?.response?.data?.detail || "Impossible"); }
   };
@@ -152,6 +154,7 @@ export default function TechAnalysis() {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-4 text-sm">
                   <span>Tonnage : <b>{ana.summary?.tonnage_t ?? 0} t</b></span>
+                  {ana.element_count > 1 && <span className="text-amber-600">Nombre d'éléments identiques détecté : <b>{ana.element_count}</b> (appliqué au calcul commandable)</span>}
                   {(ana.treillis || []).length > 0 && <span>Treillis : <b>{ana.summary?.treillis_panels ?? 0} panneaux</b></span>}
                 </div>
               </div>
@@ -161,6 +164,7 @@ export default function TechAnalysis() {
                 <div className="flex flex-wrap items-end gap-3">
                   <div><label className="text-xs text-muted-foreground">Pertes/chutes %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="loss-input" /></div>
                   <div><label className="text-xs text-muted-foreground">Longueur barre (m)</label><Input type="number" value={barLen} onChange={(e) => setBarLen(parseFloat(e.target.value) || 12)} className="h-8 w-24" data-testid="barlen-input" /></div>
+                  <div><label className="text-xs text-muted-foreground">Nb éléments identiques</label><Input type="number" value={count} onChange={(e) => setCount(parseInt(e.target.value) || 1)} className="h-8 w-24" data-testid="count-input" /></div>
                   <div className="min-w-[200px]"><label className="text-xs text-muted-foreground">Fournisseur</label>
                     <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className="w-full mt-1 rounded-sm border border-border bg-background px-3 py-2 text-sm" data-testid="supplier-select">
                       <option value="">— Aucun —</option>

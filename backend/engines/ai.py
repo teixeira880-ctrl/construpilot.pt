@@ -193,6 +193,7 @@ async def analyze_rebar(images: list[str]) -> dict:
         "soudés (ST25C, ST20, ST15C…), nomenclatures, repères, espacements, cadres/étriers.\n"
         "Retourne UNIQUEMENT ce JSON :\n"
         '{ "scale_detected": string|null, "scale_confidence": number(0-1),\n'
+        '  "element_count": number (nombre d\'éléments identiques indiqué au cartouche, ex "Nombre : 2" → 2 ; sinon 1),\n'
         '  "lines": [ { "diameter": "HA12", "ml": number, "bars": number|null, '
         '"spacing_cm": number|null, "zone": string, "confidence": number(0-1), '
         '"bbox": [x1,y1,x2,y2] (normalisé 0-1, zone principale) } ],\n'

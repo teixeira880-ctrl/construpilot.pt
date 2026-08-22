@@ -38,6 +38,7 @@ async def analyze(plan_id: str, user=Depends(current_user)) -> dict:
         "plan_id": plan_id, "user_id": user["user_id"], "filename": p.get("filename"),
         "scale_detected": data.get("scale_detected"),
         "scale_confidence": data.get("scale_confidence"),
+        "element_count": int(data.get("element_count") or 1),
         "notes": data.get("notes"), "lines": lines, "treillis": treillis,
         "summary": s, "updated_at": _now(),
     }
@@ -74,8 +75,18 @@ async def save_analysis(plan_id: str, body: SaveIn, user=Depends(current_user)) 
 class OrderIn(BaseModel):
     loss_pct: float = Field(default=7.0, ge=0, le=50)
     bar_length_m: float = Field(default=12.0, gt=0, le=18)
+    element_count: int = Field(default=1, ge=1, le=999)
     supplier_id: str | None = None
     project: str | None = None
+
+
+def _scaled(d: dict, count: int):
+    """Multiplie les quantités par le nombre d'éléments identiques (ex. « Nombre : 2 »)."""
+    c = max(1, int(count or 1))
+    lines = [{**ln, "ml": round(float(ln.get("ml") or 0) * c, 1)} for ln in (d.get("lines") or [])]
+    treillis = [{**t, "panels": (int(t.get("panels") or 0) * c) if t.get("panels") else t.get("panels")}
+                for t in (d.get("treillis") or [])]
+    return lines, treillis
 
 
 @router.post("/{plan_id}/commandable")
@@ -84,8 +95,10 @@ async def commandable(plan_id: str, body: OrderIn, user=Depends(current_user)) -
                                          {"_id": 0})
     if not d:
         raise HTTPException(404, "Analyse acier introuvable")
-    conv = rebar.to_commandable(d.get("lines") or [], d.get("treillis") or [],
+    lines, treillis = _scaled(d, body.element_count)
+    conv = rebar.to_commandable(lines, treillis,
                                 {"loss_pct": body.loss_pct, "bar_length_m": body.bar_length_m})
+    conv["element_count"] = max(1, int(body.element_count or 1))
     supplier = None
     if body.supplier_id:
         supplier = await db.suppliers.find_one(
@@ -100,7 +113,8 @@ async def create_order(plan_id: str, body: OrderIn, user=Depends(current_user)) 
                                          {"_id": 0})
     if not d:
         raise HTTPException(404, "Analyse acier introuvable")
-    conv = rebar.to_commandable(d.get("lines") or [], d.get("treillis") or [],
+    lines, treillis = _scaled(d, body.element_count)
+    conv = rebar.to_commandable(lines, treillis,
                                 {"loss_pct": body.loss_pct, "bar_length_m": body.bar_length_m})
     supplier = await db.suppliers.find_one(
         {"supplier_id": body.supplier_id, "user_id": user["user_id"]}, {"_id": 0}) if body.supplier_id else None
