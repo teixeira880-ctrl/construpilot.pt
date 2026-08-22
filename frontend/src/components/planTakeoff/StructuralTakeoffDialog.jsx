@@ -105,6 +105,8 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
               {[["Murs béton", `${M.walls_ml} ml`], ["Cloisons (hors béton)", `${M.partitions_ml ?? 0} ml`],
                 ["Poutres", `${M.beams_ml} ml`],
                 ["Poteaux", M.columns_count], ["Linteaux", `${M.linteaux_ml} ml`],
+                ["Planchers (emprise)", `${M.footprint_m2 ?? M.slab_area_m2 ?? 0} m²`],
+                ["Escaliers", M.escaliers_count ?? 0],
                 ["Portes", op.portes], ["Fenêtres", op.fenetres],
                 ["Réservations", res.count]].map(([k, v]) => (
                 <div key={k} className="rounded-sm border p-2" data-testid={`metre-${k}`}>
@@ -194,6 +196,44 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                   <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Aciers</div><div className="font-semibold">{t.acier_kg} kg</div></div>
                   <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Coffrage</div><div className="font-semibold">{t.coffrage_m2} m²</div></div>
                 </div>
+
+                {estimate.by_category && estimate.by_category.length > 0 && (
+                  <div data-testid="category-recap">
+                    <div className="text-sm font-semibold mb-1">Récapitulatif par catégorie</div>
+                    <div className="rounded-sm border border-border overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead className="bg-secondary/40">
+                          <tr>
+                            <th className="text-left p-2">Catégorie</th>
+                            <th className="p-2 text-right">Béton (m³)</th>
+                            <th className="p-2 text-right">Coffrage (m²)</th>
+                            <th className="p-2 text-right">Aciers (kg)</th>
+                            <th className="p-2 text-right">€ HT</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {estimate.by_category.map((c) => (
+                            <tr key={c.key} className="border-t border-border/60" data-testid={`cat-row-${c.key}`}>
+                              <td className="p-2 font-medium">{c.label}</td>
+                              <td className="p-2 text-right num">{c.beton_m3}</td>
+                              <td className="p-2 text-right num">{c.coffrage_m2 || "—"}</td>
+                              <td className="p-2 text-right num">{c.acier_kg}</td>
+                              <td className="p-2 text-right num font-semibold">{eur(c.total_eur)}</td>
+                            </tr>
+                          ))}
+                          <tr className="border-t-2 border-border bg-secondary/30 font-bold">
+                            <td className="p-2">Total</td>
+                            <td className="p-2 text-right num">{t.beton_m3}</td>
+                            <td className="p-2 text-right num">{t.coffrage_m2}</td>
+                            <td className="p-2 text-right num">{t.acier_kg}</td>
+                            <td className="p-2 text-right num text-primary">{eur(estimate.by_category.reduce((s, c) => s + (c.total_eur || 0), 0))}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">€ HT hors marge & installation/sécurité — voir le détail par lot ci-dessous.</p>
+                  </div>
+                )}
                 {estimate.lots.map((lot) => (
                   <div key={lot.lot}>
                     <div className="text-sm font-semibold mt-2">{lot.lot}</div>

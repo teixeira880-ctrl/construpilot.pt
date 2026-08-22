@@ -684,6 +684,28 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     ht = round(ht_brut * (1 + margin), 2)
     tva = round(ht * float(p["tva_rate"]), 2)
 
+    # Récapitulatif par catégorie (m³ béton, coffrage m², aciers kg, € HT hors marge)
+    def _cat(key, label, m3, cof, ac, eur):
+        return {"key": key, "label": label, "beton_m3": round(m3, 2),
+                "coffrage_m2": round(cof, 1), "acier_kg": round(ac, 0),
+                "total_eur": round(eur, 2)}
+    by_category = []
+    if walls_ml or wall_area:
+        by_category.append(_cat("murs", "Murs / voiles", wall_m3, wall_cof, wall_ac,
+                                 wall_m3 * P["beton_voile"] + wall_cof * P["coffrage_voile"] + wall_ac * P["acier_voile"]))
+    if slab_m2:
+        by_category.append(_cat("planchers", "Planchers / dalles", slab_m3, slab_m2, slab_ac,
+                                 slab_m3 * P["beton_dalle"] + slab_m2 * P["coffrage_dalle"] + slab_ac * P["acier_dalle"]))
+    if esc_area or esc_count:
+        by_category.append(_cat("escaliers", "Escaliers", esc_m3, esc_cof, esc_ac,
+                                 esc_m3 * P["beton_escalier"] + esc_cof * P["coffrage_escalier"] + esc_ac * P["acier_escalier"]))
+    if beams_ml or beam_area:
+        by_category.append(_cat("poutres", "Poutres", beam_m3, beam_cof, beam_ac,
+                                 beam_m3 * P["beton_poutre"] + beam_cof * P["coffrage_poutre"] + beam_ac * P["acier_poutre"]))
+    if cols:
+        by_category.append(_cat("poteaux", "Poteaux", col_m3, 0.0, col_ac,
+                                 col_m3 * P["beton_poteau"] + col_ac * P["acier_poteau"]))
+
     totals = {
         "beton_m3": round(wall_m3 + beam_m3 + col_m3 + slab_m3 + esc_m3, 2),
         "acier_kg": round(wall_ac + beam_ac + col_ac + slab_ac + esc_ac, 0),
@@ -696,4 +718,4 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         "ht_brut": ht_brut, "margin_pct": p["margin_pct"], "ht": ht,
         "tva_rate": p["tva_rate"], "tva": tva, "ttc": round(ht + tva, 2),
     }
-    return {"lots": lots, "totals": totals, "params": p}
+    return {"lots": lots, "totals": totals, "by_category": by_category, "params": p}

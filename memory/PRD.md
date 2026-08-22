@@ -11,6 +11,8 @@
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
 > **Session 19/08/2026** :
+> **Session 22/06/2026 — Récap par catégorie (Métré structure)** [demande : tableau « Murs / Planchers / Escaliers / Poutres / Poteaux » avec m³ et € en un coup d'œil]. Backend `cost_structural` renvoie désormais `by_category` (key, label, beton_m3, coffrage_m2, acier_kg, total_eur HT hors marge). Frontend `StructuralTakeoffDialog.jsx` : tableau récap (data-testid `category-recap`, lignes `cat-row-{key}`) + ligne Total, + tuiles « Planchers (emprise) » et « Escaliers ». **Testé backend e2e** (R+1) : Murs 287 m³/210 k€, Planchers 313 m³/154 k€, Escaliers 36 m³/37 k€, Poutres 43 m³/63 k€, Poteaux 2 m³/1 k€. (UI non screenshotée — WAF preview bloque le navigateur du tool ; données validées API.) Redéploiement requis.
+>
 > **Session 22/06/2026 — Métré DWG par catégories (couleurs utilisateur)** [demande : « je veux que les calculs des plans soient comme ça » avec légende ORANGE=Murs, VERT FONCÉ=Balcons, VIOLET=Longrines, BLEU CLAIR=Planchers, VERT CLAIR=Escaliers ; fournit DWG + PDF original + PDF annoté] :
 > - Mapping calques DWG confirmé : `A-WALL`→Murs, `S-BEAM`→Poutres, `S-COLS`→Poteaux, `A-FLOR`→Planchers, `S-STRS`→Escaliers (pas de calque Balcon/Longrine). Choix utilisateur : tout `S-BEAM`=Poutres (pas de longrines en R+1) ; Balcons → laissés dans planchers pour l'instant + outil de tracé à venir ; Planchers → emprise auto.
 > - ✅ **Escaliers (S-STRS)** désormais extraits (`engines/dxf_takeoff.py`) : clustering des traits en volées (`_cluster_bboxes`), comptage + emprise m² + volume béton (paillasse+marches, ép. éq. 0,30 m) + coffrage + aciers. Nouveau lot chiffré. **Vérifié R+1** : 6 escaliers, 119 m², 36 m³.
