@@ -337,6 +337,74 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── VIDÉO EXPLICATIVE : lecture des plans ─────────────── */}
+      <section className="border-b border-border bg-secondary/20" data-testid="intro-video-section">
+        <div className="mx-auto max-w-[1500px] px-6 lg:px-10 py-20 lg:py-28">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6 }}
+            >
+              <p className="overline">{t("landing.video.overline", "En 1 minute")}</p>
+              <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+                {t("landing.video.title_a", "Voyez comment ConstruPilot")}<br className="hidden md:block" />
+                <span className="text-primary italic">{t("landing.video.title_b", "lit vos plans")}</span>
+              </h2>
+              <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
+                {t("landing.video.subtitle", "Importez un plan (PDF ou DWG), calibrez l'échelle en 2 clics, puis laissez l'IA détecter les pièces, murs, poteaux, poutres et calculer le métré et l'estimation — automatiquement.")}
+              </p>
+              <ul className="mt-8 space-y-3">
+                {[
+                  t("landing.video.step1", "Import du plan PDF / DWG — tout est préservé (cotes, cartouche)"),
+                  t("landing.video.step2", "Calibrage de l'échelle en 2 clics"),
+                  t("landing.video.step3", "Analyse automatique : pièces, murs, poteaux, poutres, escaliers"),
+                  t("landing.video.step4", "Métré chiffré (béton, coffrage, aciers) et devis en 1 clic"),
+                ].map((s, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-foreground" data-testid={`video-step-${i}`}>
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">{i + 1}</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-10">
+                <Link to="/inscription">
+                  <Button size="lg" className="rounded-lg gap-2 shadow-md" data-testid="video-cta-btn">
+                    <Sparkles className="h-4 w-4" /> {t("landing.video.cta", "Essayer gratuitement")}
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="flex justify-center lg:justify-end"
+              initial={{ opacity: 0, scale: 0.96 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.7 }}
+            >
+              <div className="relative w-full max-w-[340px]">
+                <div className="absolute -inset-3 bg-primary/20 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
+                {/* Cadre type téléphone pour la vidéo verticale 9:16 */}
+                <div className="relative rounded-[2rem] border-[6px] border-foreground/85 bg-black shadow-2xl overflow-hidden aspect-[9/16]">
+                  <video
+                    className="h-full w-full object-cover"
+                    src="/demo-plans.mp4"
+                    poster="/demo-plans-poster.jpg"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    data-testid="intro-video-player"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+
       {/* ── MARKETING TEASER (mobile mockup) ─────────────── */}
       <MarketingTeaser />
 
