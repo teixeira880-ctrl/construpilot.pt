@@ -14,6 +14,7 @@ import hmac
 import io
 import json
 import logging
+import os
 from datetime import datetime, timezone
 
 import requests
@@ -27,7 +28,7 @@ from engines import storage
 router = APIRouter(tags=["autoseo"])
 logger = logging.getLogger(__name__)
 
-WEBHOOK_TOKEN = "aseo_wh_1b6001c8a38a6b38692f48a60b34ea8d"
+WEBHOOK_TOKEN = os.environ.get("AUTOSEO_WEBHOOK_TOKEN")
 SITE_URL = "https://construpilot.fr"  # domaine canonical (identique au reste du code)
 
 _EXT_BY_CTYPE = {
@@ -64,6 +65,8 @@ async def autoseo_webhook(
     x_autoseo_signature: str | None = Header(None),
 ):
     # 1) Bearer token — comparaison stricte, à temps constant
+    if not WEBHOOK_TOKEN:
+        raise HTTPException(status_code=503, detail="Webhook non configuré (AUTOSEO_WEBHOOK_TOKEN)")
     expected = f"Bearer {WEBHOOK_TOKEN}"
     if not authorization or not hmac.compare_digest(authorization.strip(), expected):
         raise HTTPException(status_code=401, detail="Invalid or missing authorization token")

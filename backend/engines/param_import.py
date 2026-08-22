@@ -7,8 +7,10 @@ Fournit aussi l'évaluateur de formules et les valeurs par défaut (taux horaire
 """
 from __future__ import annotations
 
+import ast
 import csv
 import io
+import operator as op
 import re
 import unicodedata
 
@@ -43,6 +45,27 @@ def _num(v):
 
 _ALLOWED = re.compile(r"^[0-9a-zA-Z_+\-*/(). ]+$")
 
+_AST_BINOPS = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
+               ast.Div: op.truediv, ast.Pow: op.pow, ast.Mod: op.mod}
+_AST_UNARY = {ast.UAdd: op.pos, ast.USub: op.neg}
+
+
+def _eval_node(node, variables: dict):
+    if isinstance(node, ast.Expression):
+        return _eval_node(node.body, variables)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, (int, float)):
+            return node.value
+        raise ValueError("literal non numérique")
+    if isinstance(node, ast.Name):
+        return float(variables.get(node.id, 0) or 0)
+    if isinstance(node, ast.BinOp) and type(node.op) in _AST_BINOPS:
+        return _AST_BINOPS[type(node.op)](_eval_node(node.left, variables),
+                                          _eval_node(node.right, variables))
+    if isinstance(node, ast.UnaryOp) and type(node.op) in _AST_UNARY:
+        return _AST_UNARY[type(node.op)](_eval_node(node.operand, variables))
+    raise ValueError("expression non autorisée")
+
 
 def eval_formula(expr: str, variables: dict) -> float | None:
     """Évalue une formule de quantité en toute sécurité (arithmétique + variables)."""
@@ -52,7 +75,8 @@ def eval_formula(expr: str, variables: dict) -> float | None:
     if not _ALLOWED.match(expr):
         return None
     try:
-        val = eval(expr, {"__builtins__": {}}, {k: (v or 0) for k, v in variables.items()})  # noqa: S307
+        tree = ast.parse(expr, mode="eval")
+        val = _eval_node(tree, {k: (v or 0) for k, v in variables.items()})
         return round(float(val), 4)
     except Exception:  # noqa: BLE001
         return None

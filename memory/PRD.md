@@ -2353,3 +2353,9 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **À surveiller** : le testeur signale que le formulaire login email/mot-de-passe direct ne soumettrait pas (quick-login OK, curl OK) — à confirmer si l'utilisateur le remonte (hors périmètre).
 - **Backlog** : Phase 4 (Trust engine avancé), Phase 5 (API fournisseurs Point.P/Chausson).
 - ⚠️ PROD (construpilot.fr) : REDÉPLOYER (Deploy Now) pour appliquer Phase 3 + pricing/e-mail/surlignage.
+
+## Changelog Iter 102 (18/06/2026) — Revue de code : correctifs sécurité
+- **Secret webhook AutoSEO** : `WEBHOOK_TOKEN` en dur dans `routes/autoseo.py` déplacé vers la variable d'env `AUTOSEO_WEBHOOK_TOKEN` (ajoutée à backend/.env). Garde 503 si non configuré. Vérifié : 401 sans token, 422 avec token valide.
+- **eval() supprimé** : `engines/param_import.py` — `eval_formula()` réécrit avec un évaluateur arithmétique basé sur `ast` (whitelist BinOp/UnaryOp/Name/Constant). Rejette toute injection (`__import__` → None). Vérifié : arithmétique + variables OK.
+- **Faux positifs confirmés** : `plans_pc.py:533` = `secrets.token_hex()` (génération aléatoire, pas un secret). Les « 49 variables non définies » = 0 réelle (pyflakes clean) — artefact d'un outil de complexité.
+- **Non appliqués (décision d'ingénierie)** : refactors de complexité (`extract_structural_metre`, complexité 70, code DXF métier qui fonctionne) — risque de régression élevé sans harnais de test ; à faire de façon incrémentale avec tests si validé. Secrets dans tests/ = identifiants de démo publics (affichés sur la page login) — non déplacés pour ne pas casser les tests. Couverture type hints 44.6% = cosmétique, non prioritaire.
