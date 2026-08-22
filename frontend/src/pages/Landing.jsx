@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { SignupCounter } from "@/components/SignupCounter";
 import { motion } from "framer-motion";
@@ -6,7 +6,7 @@ import {
   ArrowRight, Sparkles, Calculator, Search, Wrench, ShieldCheck, FileText,
   MessageSquare, Camera, TrendingDown, Hammer, ChevronRight, Building2,
   HardHat, Home as HomeIcon, Store, GraduationCap, Factory, ChevronDown,
-  Globe2, PenTool, CheckCircle2, Cuboid, User, Mail
+  Globe2, PenTool, CheckCircle2, Cuboid, User, Mail, Volume2, VolumeX
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,6 +126,15 @@ export default function Landing() {
   const [showSticky, setShowSticky] = useState(false);
   const [types, setTypes] = useState([]);
   const [openFaq, setOpenFaq] = useState(0);
+  const videoRef = useRef(null);
+  const [videoMuted, setVideoMuted] = useState(true);
+  const toggleVideoSound = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setVideoMuted(v.muted);
+    if (!v.muted) v.play().catch(() => {});
+  };
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -389,14 +398,27 @@ export default function Landing() {
                 {/* Cadre type téléphone pour la vidéo verticale 9:16 */}
                 <div className="relative rounded-[2rem] border-[6px] border-foreground/85 bg-black shadow-2xl overflow-hidden aspect-[9/16]">
                   <video
+                    ref={videoRef}
                     className="h-full w-full object-cover"
                     src="/demo-plans.mp4"
                     poster="/demo-plans-poster.jpg"
+                    autoPlay
+                    muted
+                    loop
                     controls
                     playsInline
-                    preload="metadata"
                     data-testid="intro-video-player"
                   />
+                  {/* Bouton activer/couper le son (la vidéo démarre en muet) */}
+                  <button
+                    onClick={toggleVideoSound}
+                    data-testid="video-sound-toggle"
+                    aria-label={videoMuted ? "Activer le son" : "Couper le son"}
+                    className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
+                  >
+                    {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    {videoMuted ? "Activer le son" : "Son"}
+                  </button>
                 </div>
               </div>
             </motion.div>
