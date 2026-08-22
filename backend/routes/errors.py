@@ -169,3 +169,26 @@ async def list_client_errors(
         "items": [{**i, "created_at": i.get("created_at_iso")} for i in items],
     }
 
+
+
+@router.get("/admin/trend", dependencies=[Depends(admin_user)])
+async def errors_trend(days: int = Query(14, ge=1, le=90)) -> dict:
+    """Admin — tendance quotidienne des erreurs client (pour visualiser la baisse
+    après un correctif, ex. WebGL)."""
+    since_dt = datetime.fromtimestamp(
+        datetime.now(timezone.utc).timestamp() - days * 86400, tz=timezone.utc)
+    pipeline = [
+        {"$match": {"created_at": {"$gte": since_dt}}},
+        {"$group": {"_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}},
+                    "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}},
+    ]
+    rows = await db.client_errors.aggregate(pipeline).to_list(100)
+    by_day = {r["_id"]: r["count"] for r in rows}
+    out = []
+    for i in range(days - 1, -1, -1):
+        d = datetime.fromtimestamp(
+            datetime.now(timezone.utc).timestamp() - i * 86400, tz=timezone.utc).strftime("%Y-%m-%d")
+        out.append({"day": d, "count": by_day.get(d, 0)})
+    total = sum(x["count"] for x in out)
+    return {"days": days, "total": total, "series": out}

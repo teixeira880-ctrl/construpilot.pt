@@ -2029,7 +2029,9 @@ export default function PlanTakeoff() {
   const loadWallsSummary = async () => {
     if (!plan?.plan_id) return;
     try {
-      const { data } = await api.get(`/takeoffs/${plan.plan_id}/walls-summary`);
+      const ppm = currentCalib?.pixels_per_meter;
+      const q = ppm ? `?ppm=${ppm}` : "";
+      const { data } = await api.get(`/takeoffs/${plan.plan_id}/walls-summary${q}`);
       setWallsSummary(data);
     } catch { /* ignore */ }
   };

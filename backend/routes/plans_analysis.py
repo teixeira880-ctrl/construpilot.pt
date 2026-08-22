@@ -9,7 +9,7 @@ import re
 import secrets
 from typing import Literal
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.db import db
@@ -1470,8 +1470,12 @@ async def update_wall_type(plan_id: str, page_index: int, wall_id: str,
 
 
 @router.get("/{plan_id}/walls-summary")
-async def walls_summary(plan_id: str, user=Depends(current_user)) -> dict:
-    """Résumé des murs détectés par type + ML total pour lien avec l'estimation."""
+async def walls_summary(plan_id: str, ppm: float | None = Query(None, gt=0),
+                        user=Depends(current_user)) -> dict:
+    """Résumé des murs détectés par type + ML total pour lien avec l'estimation.
+
+    `ppm` (pixels/mètre) optionnel : échelle affichée côté client, utilisée en repli
+    quand aucune calibration n'est enregistrée (corrige l'affichage « 0 ml »)."""
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "cv_walls": 1, "calibrations": 1}
@@ -1487,6 +1491,8 @@ async def walls_summary(plan_id: str, user=Depends(current_user)) -> dict:
         if mpp:
             scales.append(mpp)
     scale = sum(scales) / len(scales) if scales else None
+    if not scale and ppm:
+        scale = 1.0 / ppm
 
     totals = {"porteur": {"count": 0, "ml": 0.0},
               "cloison": {"count": 0, "ml": 0.0},

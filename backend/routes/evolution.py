@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {"enabled": False, "level": 2, "batch_size": 2000,
                   "max_evolution_mode": False,
                   "nightly_enabled": False, "nightly_email": None,
                   "alert_enabled": False, "alert_threshold": 90, "alert_email": None,
-                  "active_ai_model": "opus"}
+                  "active_ai_model": "opus", "arena_nightly_enabled": False}
 
 
 def _now():
@@ -48,6 +48,7 @@ class ConfigIn(BaseModel):
     alert_threshold: float | None = Field(default=None, ge=0, le=100)
     alert_email: str | None = None
     active_ai_model: str | None = None
+    arena_nightly_enabled: bool | None = None
 
 
 @router.put("/config")
@@ -106,6 +107,42 @@ async def promote(body: PromoteIn) -> dict:
                                      {"$set": {"active_ai_model": body.model_key}}, upsert=True)
     return {"ok": True, "active_ai_model": body.model_key,
             "note": "Le chatbot d'aide et les tests IA utilisent désormais ce modèle."}
+
+
+async def _run_nightly_arena(cfg: dict, level: int, to: str | None) -> None:
+    """Arène nocturne : compare le modèle actif aux autres ; alerte si un modèle
+    plus RAPIDE atteint AU MOINS la même précision que l'actif."""
+    active = cfg.get("active_ai_model", "opus")
+    n = min(int(cfg.get("ai_budget_calls", 30) or 30), 12)
+    base = await evolution.run_ai_batch(n, level, 777, active)
+    base_acc = base.get("ai_accuracy") or 0
+    base_lat = base.get("ai_avg_latency_s") or 99
+    better = []
+    for m in evolution.EVO_AI_MODELS:
+        if m == active:
+            continue
+        r = await evolution.run_ai_batch(n, level, 777, m)
+        if (r.get("ai_accuracy") or 0) >= base_acc and (r.get("ai_avg_latency_s") or 99) < base_lat:
+            better.append({"model": m, "accuracy": r.get("ai_accuracy"),
+                           "latency": r.get("ai_avg_latency_s")})
+    await db.evolution_compares.insert_one({
+        "created_at": _now(), "nightly": True, "active": active,
+        "active_accuracy": base_acc, "active_latency": base_lat, "faster_equal": better})
+    if better and to:
+        from engines.emailer import send_email, wrap_company_html
+        rows = "".join(f"<li><b>{b['model']}</b> — précision {round((b['accuracy'] or 0)*100)}% · "
+                       f"{b['latency']}s (actuel {active} : {round(base_acc*100)}% · {base_lat}s)</li>"
+                       for b in better)
+        body = (f"<h2>🏁 Arène nocturne — modèle plus rapide détecté</h2>"
+                f"<p>Un ou plusieurs modèles égalent la précision de <b>{active}</b> "
+                f"tout en étant plus rapides :</p><ul>{rows}</ul>"
+                f"<p>Promouvez-les depuis l'onglet AI Evolution Lab pour réduire coûts/latence.</p>")
+        html = wrap_company_html("Arène nocturne ConstruPilot", body, company_name="ConstruPilot")
+        try:
+            await send_email(to, "[ConstruPilot] 🏁 Un modèle IA plus rapide égale l'actuel", html)
+        except Exception:  # noqa: BLE001
+            pass
+
 
 
 async def _maybe_alert(cfg: dict, result: dict) -> None:
@@ -214,6 +251,8 @@ async def run_nightly() -> dict | None:
     if to:
         await _send_report_email(to, result, new_clusters)
     await _maybe_alert(cfg, result)
+    if cfg.get("arena_nightly_enabled") and cfg.get("ai_enabled"):
+        await _run_nightly_arena(cfg, level, to or cfg.get("alert_email"))
     result.pop("_id", None)
     return {"sent_to": to, "new_clusters": len(new_clusters), "fitness": result["fitness_score"]}
 
