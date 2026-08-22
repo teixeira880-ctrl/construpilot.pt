@@ -478,6 +478,7 @@ class RoomAutofillIn(BaseModel):
 
 @router.post("/{plan_id}/detect-walls")
 async def detect_walls_route(plan_id: str, page_index: int = 0,
+                              orthogonal_only: bool = False,
                               user=Depends(current_user)):
     """Détecte automatiquement les segments de murs sur une page via OpenCV Hough.
 
@@ -501,7 +502,8 @@ async def detect_walls_route(plan_id: str, page_index: int = 0,
     text_zones = [t for t in (page.get("text_blocks") or [])
                   if all(k in t for k in ("x", "y", "w", "h"))]
     try:
-        result = detect_walls(img, dim_zones=dim_zones, text_zones=text_zones)
+        result = detect_walls(img, dim_zones=dim_zones, text_zones=text_zones,
+                               orthogonal_only=orthogonal_only)
     except Exception as e:
         logger.exception("wall detection failed")
         raise HTTPException(500, f"Détection murs impossible : {e}")

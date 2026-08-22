@@ -1109,17 +1109,25 @@ export default function PlanTakeoff() {
     finally { setAiActionBusy(false); }
   };
 
-  const detectWalls = async () => {
+  const detectWalls = async (ortho = false) => {
     if (!plan?.plan_id) return;
     setCvBusy(true);
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-walls?page_index=${pageIndex}`);
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-walls?page_index=${pageIndex}&orthogonal_only=${ortho}`);
       setDetectedWalls(data);
       setShowWalls(true);
       toast.success(
         `${data.segment_count} segments de murs détectés` +
-        (data.filtered_cotes ? ` · ${data.filtered_cotes} traits de cote/textes ignorés` : "")
+        (data.filtered_cotes ? ` · ${data.filtered_cotes} traits de cote/textes ignorés` : "") +
+        (data.filtered_diagonals ? ` · ${data.filtered_diagonals} diagonales ignorées` : "")
       );
+      if (data.structural_hint && !ortho) {
+        toast.warning(
+          "Ce plan ressemble à un plan de structure/béton (aciers, cotes, hachures). La détection de murs y est peu fiable — utilisez plutôt le Métré béton.",
+          { duration: 14000,
+            action: { label: "Ignorer les diagonales", onClick: () => detectWalls(true) } }
+        );
+      }
       await loadWallsSummary();
     } catch (e) { toast.error("Détection murs impossible"); }
     finally { setCvBusy(false); }

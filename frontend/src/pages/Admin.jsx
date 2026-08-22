@@ -1112,6 +1112,7 @@ function ClientErrorsPanel() {
   const { t } = useI18n();
   const [hours, setHours] = useState(24);
   const [data, setData] = useState(null);
+  const [trend, setTrend] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
 
@@ -1121,6 +1122,7 @@ function ClientErrorsPanel() {
       .then(({ data }) => setData(data))
       .catch(() => toast.error("Chargement impossible"))
       .finally(() => setLoading(false));
+    api.get(`/errors/admin/trend?days=14`).then(({ data }) => setTrend(data)).catch(() => {});
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
 
@@ -1153,6 +1155,28 @@ function ClientErrorsPanel() {
         <Button size="sm" variant="outline" onClick={load} className="rounded-sm"
                 data-testid="errors-refresh-btn">Actualiser</Button>
       </div>
+
+      {trend && trend.series && (
+        <div className="surface p-4" data-testid="errors-trend-graph">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-bold text-sm">Évolution des erreurs client (14 jours)</h4>
+            <span className="text-xs text-muted-foreground">{num(trend.total)} au total</span>
+          </div>
+          <div className="flex items-end gap-1 h-24">
+            {(() => { const mx = Math.max(1, ...trend.series.map((d) => d.count)); return trend.series.map((d, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center justify-end group" data-testid={`errors-bar-${i}`}>
+                <div className={`w-full rounded-t-sm ${d.count > 0 ? "bg-red-500/70 group-hover:bg-red-500" : "bg-secondary"} transition-colors`}
+                  style={{ height: `${Math.max(3, (d.count / mx) * 100)}%` }} title={`${d.day} : ${d.count}`} />
+              </div>
+            )); })()}
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+            <span>{trend.series[0]?.day?.slice(5)}</span>
+            <span>{trend.series[trend.series.length - 1]?.day?.slice(5)}</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">Utile pour vérifier la baisse après un correctif (ex. WebGL).</p>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
 

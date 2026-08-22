@@ -237,7 +237,8 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
                  canny_high: int = 150,
                  dim_zones: list | None = None,
                  text_zones: list | None = None,
-                 filter_cotes: bool = True) -> dict:
+                 filter_cotes: bool = True,
+                 orthogonal_only: bool = False) -> dict:
     """Détecte les segments de murs (lignes droites) via Canny + HoughLinesP.
 
     Retourne une liste de segments {x1, y1, x2, y2, length_px, angle_deg,
@@ -267,6 +268,22 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
         segments, filtered_cotes = filter_cote_segments(segments, dim_zones, text_zones)
 
     segments.sort(key=lambda s: -s["length_px"])
+
+    # Détection « plan structure/béton » : forte proportion de diagonales (aciers, hachures)
+    def _is_diag(s):
+        a = s.get("angle_deg", 0)
+        return not (_angle_close(a, 0, 12) or _angle_close(a, 90, 12) or _angle_close(a, 180, 12))
+    raw_n = len(segments)
+    diag_n = sum(1 for s in segments if _is_diag(s))
+    diag_ratio = round(diag_n / raw_n, 3) if raw_n else 0.0
+    structural_hint = raw_n >= 400 or diag_ratio >= 0.35
+
+    filtered_diagonals = 0
+    if orthogonal_only:
+        ortho = [s for s in segments if not _is_diag(s)]
+        filtered_diagonals = len(segments) - len(ortho)
+        segments = ortho
+
     segments = segments[:500]
 
     return {
@@ -274,10 +291,14 @@ def detect_walls(png_b64: str, min_length_px: int = 60,
         "image_height": int(h),
         "segment_count": len(segments),
         "filtered_cotes": filtered_cotes,
+        "filtered_diagonals": filtered_diagonals,
+        "diagonal_ratio": diag_ratio,
+        "structural_hint": bool(structural_hint),
         "segments": segments,
         "params": {
             "canny_low": canny_low, "canny_high": canny_high,
             "min_length_px": min_length_px, "max_line_gap_px": max_line_gap_px,
+            "orthogonal_only": orthogonal_only,
         },
     }
 
