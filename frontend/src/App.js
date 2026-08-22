@@ -8,6 +8,7 @@ import { PermissionProvider } from "@/context/PermissionContext";
 import { WhiteLabelProvider } from "@/context/WhiteLabelContext";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
+import HelpChatbot from "@/components/HelpChatbot";
 import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
 import Investors from "@/pages/Investors";
@@ -88,6 +89,7 @@ const Shell = ({ children }) => (
     <Nav />
     <main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main>
     <Footer />
+    <HelpChatbot />
   </>
 );
 

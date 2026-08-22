@@ -165,3 +165,82 @@ def run_batch(size: int, level: int = 2, seed: int | None = None) -> dict:
         "failure_clusters": clusters[:20],
         "per_category": per_cat,
     }
+
+
+# --- Tests IA réels (opt-in, plafonnés) : raisonnement construction à vérité-terrain ---
+import asyncio  # noqa: E402
+import re as _re  # noqa: E402
+
+
+def _ai_scenario(rng: random.Random) -> tuple:
+    """Génère un problème de calcul construction + réponse exacte (ground truth)."""
+    kind = rng.choice(["rampant", "tuiles", "tranchee", "membrane"])
+    if kind == "rampant":
+        s = rng.randint(80, 300); p = rng.choice([25, 35, 45])
+        gt = round(s / math.cos(math.atan(p / 100)), 1)
+        q = (f"Une toiture a une surface projetée au sol de {s} m² et une pente de {p} %. "
+             f"Quelle est la surface rampante (développée) en m² ? Réponds par un seul nombre.")
+        return q, gt, 0.03, "rampant"
+    if kind == "tuiles":
+        s = rng.randint(60, 200); dens = 10.5; loss = 8
+        gt = math.ceil(s * dens * (1 + loss / 100))
+        q = (f"Pour {s} m² de couverture en tuiles (densité {dens} tuiles/m², pertes {loss} %), "
+             f"combien de tuiles commander ? Réponds par un seul nombre entier.")
+        return q, gt, 0.05, "tuiles"
+    if kind == "tranchee":
+        L = rng.randint(20, 100); larg = 0.4; prof = 0.8
+        gt = round(L * larg * prof, 1)
+        q = (f"Une tranchée de {L} m de long, {larg} m de large et {prof} m de profondeur. "
+             f"Quel est le volume de déblai en m³ ? Réponds par un seul nombre.")
+        return q, gt, 0.05, "tranchee"
+    s = rng.randint(50, 200); rec = 10
+    gt = round(s * (1 + rec / 100), 1)
+    q = (f"Membrane d'étanchéité sur {s} m² avec {rec} % de recouvrement. "
+         f"Quelle surface de membrane commander en m² ? Réponds par un seul nombre.")
+    return q, gt, 0.05, "membrane"
+
+
+def _parse_number(text: str):
+    m = _re.findall(r"-?\d[\d\s.,]*", text or "")
+    if not m:
+        return None
+    raw = m[-1].replace(" ", "").replace(",", ".")
+    raw = raw.rstrip(".")
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+async def run_ai_batch(n: int, level: int = 2, seed: int | None = None) -> dict:
+    """Exécute jusqu'à n tests IA (Claude texte) en parallèle limité. Coût plafonné par n."""
+    from engines import ai
+    n = max(0, min(n, 100))
+    rng = random.Random(seed)
+    scenarios = [_ai_scenario(rng) for _ in range(n)]
+    sem = asyncio.Semaphore(5)
+    per = {"total": 0, "passed": 0}
+    failures = {}
+
+    async def one(q, gt, tol, cat):
+        async with sem:
+            try:
+                out = await ai.help_assistant([], q, "evo_ai_" + uuid.uuid4().hex[:8])
+                val = _parse_number(out)
+                ok = val is not None and abs(val - gt) <= max(abs(gt) * tol, 0.5)
+            except Exception:  # noqa: BLE001
+                ok, val = False, None
+            return ok, cat, gt, val
+
+    results = await asyncio.gather(*[one(*s) for s in scenarios]) if scenarios else []
+    for ok, cat, gt, val in results:
+        per["total"] += 1
+        if ok:
+            per["passed"] += 1
+        else:
+            key = f"ai_reasoning:{cat} (attendu≈{gt}, obtenu={val})"
+            failures[key] = failures.get(key, 0) + 1
+    acc = round(per["passed"] / per["total"], 4) if per["total"] else None
+    clusters = sorted(({"cluster": k, "count": v} for k, v in failures.items()), key=lambda x: -x["count"])
+    return {"ai_calls": per["total"], "ai_passed": per["passed"], "ai_accuracy": acc,
+            "ai_failure_clusters": clusters[:10]}

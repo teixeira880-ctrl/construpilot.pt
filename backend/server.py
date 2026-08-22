@@ -407,6 +407,11 @@ async def seed():
     scheduler.add_job(leads_routes.run_signup_followups,
                       CronTrigger(hour=9, minute=0), id="signup_followups",
                       max_instances=1, coalesce=True)
+    # Rapport nocturne AI Evolution Lab (si activé par l'admin) — chaque jour à 03:00 UTC
+    from routes import evolution as evolution_routes
+    scheduler.add_job(evolution_routes.run_nightly,
+                      CronTrigger(hour=3, minute=0), id="evolution_nightly",
+                      max_instances=1, coalesce=True)
     # Snapshot quotidien des prix des queries surveillées (à 03:00 UTC)
     async def snapshot_watched():
         from engines import price_search

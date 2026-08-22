@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  FlaskConical, Play, Loader2, Users, Boxes, Activity, TrendingUp, AlertTriangle, Zap,
+  FlaskConical, Play, Loader2, Users, Boxes, Activity, TrendingUp, AlertTriangle, Zap, Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,10 +43,20 @@ export default function EvolutionLab() {
     setRunning(true);
     try {
       const { data } = await api.post("/admin/evolution/run", {});
-      toast.success(`Lot #${data.generation} : ${data.passed}/${data.size} réussis · fitness ${data.fitness_score}`);
+      const aiTxt = data.ai_calls ? ` · IA ${data.ai_passed}/${data.ai_calls}` : "";
+      toast.success(`Lot #${data.generation} : ${data.passed}/${data.size} réussis · fitness ${data.fitness_score}${aiTxt}`);
       await load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Lancement impossible"); }
     finally { setRunning(false); }
+  };
+
+  const sendReport = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post("/admin/evolution/send-report", {});
+      toast.success(`Rapport envoyé à ${data.sent_to}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    finally { setBusy(false); }
   };
 
   if (!cfg || !dash) return <div className="text-sm text-muted-foreground">Chargement du laboratoire…</div>;
@@ -119,6 +129,27 @@ export default function EvolutionLab() {
         {!cfg.enabled && <p className="text-xs text-amber-600">Activez « les tests » ci-dessus pour lancer un lot.</p>}
       </div>
 
+      {/* Rapports planifiés */}
+      <div className="surface p-4 space-y-3" data-testid="evo-nightly">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-bold flex items-center gap-2"><Mail className="h-4 w-4 text-primary" />Rapport nocturne par e-mail</div>
+            <p className="text-xs text-muted-foreground">Un lot est exécuté chaque nuit (03:00 UTC) et le rapport (Fitness + nouveaux clusters) vous est envoyé.</p>
+          </div>
+          <Switch checked={cfg.nightly_enabled} onCheckedChange={(v) => save({ nightly_enabled: v })} disabled={busy} data-testid="evo-toggle-nightly" />
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <label className="text-xs text-muted-foreground">E-mail destinataire du rapport</label>
+            <Input type="email" value={cfg.nightly_email || ""} onChange={(e) => setCfg({ ...cfg, nightly_email: e.target.value })}
+              onBlur={(e) => e.target.value && save({ nightly_email: e.target.value })} placeholder="vous@exemple.fr" className="h-8" data-testid="evo-nightly-email" />
+          </div>
+          <Button variant="outline" onClick={sendReport} disabled={busy} className="gap-2 rounded-sm" data-testid="evo-send-report-btn">
+            <Mail className="h-4 w-4" />Envoyer le rapport maintenant
+          </Button>
+        </div>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="evo-kpis">
         {[
@@ -142,6 +173,11 @@ export default function EvolutionLab() {
             <h3 className="font-bold">Dernier lot · Génération #{last.generation}</h3>
             <span className="text-sm">Fitness Score : <b className="text-primary num">{last.fitness_score}</b> / 100</span>
           </div>
+          {last.ai_calls ? (
+            <p className="text-xs mb-2 flex items-center gap-1 text-primary" data-testid="evo-ai-result">
+              <Activity className="h-3.5 w-3.5" />Tests IA réels : <b>{last.ai_passed}/{last.ai_calls}</b> réussis (précision {pct(last.ai_accuracy)})
+            </p>
+          ) : null}
           <div className="grid sm:grid-cols-5 gap-2">
             {Object.entries(last.accuracy || {}).map(([cat, v]) => (
               <div key={cat} className="rounded-sm border border-border p-2" data-testid={`evo-acc-${cat}`}>
