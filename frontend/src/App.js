@@ -41,6 +41,7 @@ import Account from "@/pages/Account";
 import QuoteTracking from "@/pages/QuoteTracking";
 import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
+import TechAnalysis from "@/pages/TechAnalysis";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
@@ -105,6 +106,7 @@ function AppRouter() {
       <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
       <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
       <Route path="/mon-catalogue" element={<Protected><Shell><PriceCatalog /></Shell></Protected>} />
+      <Route path="/appro" element={<Protected><Shell><TechAnalysis /></Shell></Protected>} />
       <Route path="/suivi-chantier" element={<Protected><Shell><SiteTracking /></Shell></Protected>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />

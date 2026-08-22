@@ -159,6 +159,55 @@ async def stream_chat(history: list[dict], message: str, session_id: str, contex
             break
 
 
+GEMINI_PRO = ("gemini", "gemini-3.1-pro-preview")
+
+
+async def _complete_vision(system: str, text: str, images: list[str],
+                           provider: str, model: str, feature: str = "misc") -> str:
+    """Appel vision avec modèle explicite (ex. Gemini 3.1 Pro pour plans techniques)."""
+    await _log_usage(feature, provider, model)
+    chat = _chat(system, None, provider, model)
+    contents = [ImageContent(image_base64=i) for i in (images or [])]
+    out = []
+    async for ev in chat.stream_message(UserMessage(text=text, file_contents=contents or None)):
+        if isinstance(ev, TextDelta):
+            out.append(ev.content)
+        elif isinstance(ev, StreamDone):
+            break
+    return "".join(out)
+
+
+async def analyze_rebar(images: list[str]) -> dict:
+    """Analyse IA d'un plan de ferraillage (Gemini 3.1 Pro vision) → bordereau acier.
+
+    Retourne {scale_confidence, lines:[{diameter, ml, bars, spacing_cm, zone, confidence, bbox}],
+    treillis:[{ref, panels, area_m2, confidence}], notes}. Chaque quantité porte une confiance 0..1.
+    """
+    if not images:
+        return {"lines": [], "treillis": [], "scale_confidence": 0, "notes": "aucune image"}
+    system = (BRAND + " Tu es ingénieur structure & métreur béton armé, expert en lecture de plans "
+              "de ferraillage (fondations, voiles, poteaux, poutres, dalles, escaliers, chaînages).")
+    prompt = (
+        "Analyse ce plan de ferraillage / béton armé et dresse le bordereau acier.\n"
+        "Repère les aciers HA (HA6, HA8, HA10, HA12, HA14, HA16, HA20, HA25, HA32), les treillis "
+        "soudés (ST25C, ST20, ST15C…), nomenclatures, repères, espacements, cadres/étriers.\n"
+        "Retourne UNIQUEMENT ce JSON :\n"
+        '{ "scale_detected": string|null, "scale_confidence": number(0-1),\n'
+        '  "lines": [ { "diameter": "HA12", "ml": number, "bars": number|null, '
+        '"spacing_cm": number|null, "zone": string, "confidence": number(0-1), '
+        '"bbox": [x1,y1,x2,y2] (normalisé 0-1, zone principale) } ],\n'
+        '  "treillis": [ { "ref": "ST25C", "panels": number|null, "area_m2": number, '
+        '"confidence": number(0-1), "zone": string } ],\n'
+        '  "notes": string }\n'
+        "Règles : ne JAMAIS inventer un diamètre absent. Si une quantité est incertaine, baisse la "
+        "confidence (<0.6). Estime les ml au mieux à partir des longueurs, nombres de barres et "
+        "espacements visibles. N'additionne pas les treillis avec les barres."
+    )
+    data = _json(await _complete_vision(system, prompt, images[:4], *GEMINI_PRO, feature="rebar"),
+                 {"lines": [], "treillis": [], "scale_confidence": 0, "notes": ""})
+    return data
+
+
 def _json(raw: str, fallback):
     raw = (raw or "").strip()
     if raw.startswith("```"):

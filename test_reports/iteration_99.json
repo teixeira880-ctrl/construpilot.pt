@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend-only test of new /appro (Analyse technique & Approvisionnement IA) module for Pro users. Login as pro@construpilot.fr OK. Dashboard exposes data-testid='appro-link' (verified present in DOM). /appro renders data-testid='tech-analysis-page' with both tabs (tab-acier, tab-fournisseurs). Acier tab shows plan-select and analyze-rebar-btn. Fournisseurs CRUD works end-to-end: added 'TEST_Chausson Nantes', success toast 'Fournisseur ajouté' shown, item appeared as data-testid='supplier-item-sup_260388368a23', deletion via del-supplier-* removed the item successfully. No plans available in plan-select dropdown for this pro account (only the empty placeholder option), so the Analyser le ferraillage step was skipped as instructed (acceptable per request). No console/JS errors, layout looks clean.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Dashboard appro-link", "issue": "OnboardingTour overlay (data-testid='onboarding-overlay', z-[100]) intercepts pointer events over the entire dashboard on first login, blocking clicks on appro-link until the tour is completed or dismissed. Direct navigation to /appro works fine. Consider allowing outside-click dismiss or lowering overlay z-index once user interacts.", "selector": "[data-testid=\"onboarding-overlay\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "No plans were available in plan-select for pro@construpilot.fr — analyze-rebar flow could not be UI-tested. Consider seeding a demo plan for the Pro demo account, or verifying that pro user's plans are correctly listed in GET /api/pro/plans.",
+    "(Optional/low) Onboarding tour overlay blocks the freshly-added appro-link card until tour is closed."
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100% for tested scope (navigation, tabs, supplier CRUD, no console errors); analyze step not executed due to absence of plans"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!",
+  "seed_data_creation": "Created and deleted TEST_Chausson Nantes supplier during test — cleaned up.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "New /appro Pro page is functional: tabs, plan-select, analyze-rebar-btn, supplier add/delete all render correctly with proper data-testids. To fully validate the AI analyze flow, the pro demo account needs at least one plan seeded — currently plan-select only contains the empty placeholder option."
+}

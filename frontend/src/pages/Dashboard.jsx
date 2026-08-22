@@ -136,6 +136,20 @@ export default function Dashboard() {
 
       <RevenueChart />
 
+      <a href="/appro" data-testid="appro-link" className="block surface p-6 border-2 border-primary/30 hover:border-primary transition-colors">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <i className="fa-solid fa-helmet-safety text-primary" />
+              <span className="font-display font-bold text-lg">Analyse technique &amp; Approvisionnement IA</span>
+              <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Nouveau</span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">Importez vos plans de ferraillage → bordereau acier IA (ml, kg, tonnage) → quantités commandables → bons de commande fournisseurs.</p>
+          </div>
+          <span className="text-primary font-bold shrink-0">Ouvrir →</span>
+        </div>
+      </a>
+
       <PriceLibrary />
 
       <DpgfImport />
