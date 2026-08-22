@@ -165,9 +165,9 @@ HELP_PROVIDER, HELP_MODEL = "anthropic", "claude-opus-4-8"
 # Aide contextuelle : route → libellé/description de page pour un support ciblé
 _PAGE_HELP = {
     "/dashboard": "Tableau de bord (vue d'ensemble des projets et devis)",
-    "/estimateur": "Estimateur de travaux (chiffrage rapide)",
+    "/estimation": "Estimateur de travaux (chiffrage rapide)",
     "/appro": "Analyse technique & Approvisionnement (Acier, Étanchéité, Toiture, VRD)",
-    "/plans": "Analyse de plans DWG/DXF/PDF et métré",
+    "/plan": "Analyse de plans DWG/DXF/PDF, mesure 2D et métré",
     "/devis": "Gestion des devis",
     "/calculateurs": "Calculateurs (surfaces, volumes, quantités)",
     "/prix": "Recherche de prix matériaux",

@@ -201,6 +201,10 @@ export default function EvolutionLab() {
           <div className="font-bold flex items-center gap-2"><Swords className="h-4 w-4 text-primary" />Comparaison Champion vs Challenger</div>
           <span className="text-xs text-muted-foreground">Modèle IA actif : <b className="text-primary" data-testid="evo-active-model">{cfg.active_ai_model}</b></span>
         </div>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Switch checked={cfg.arena_nightly_enabled} onCheckedChange={(v) => save({ arena_nightly_enabled: v })} disabled={busy} data-testid="evo-toggle-arena-nightly" />
+          Arène nocturne : chaque nuit, m'alerter par e-mail si un modèle plus rapide égale la précision de l'actif.
+        </label>
         <p className="text-xs text-muted-foreground">Deux modèles IA affrontent les mêmes scénarios (même seed). Le gagnant : meilleure précision, puis vitesse.</p>
         <div className="flex flex-wrap items-end gap-3">
           <div><label className="text-xs text-muted-foreground">Champion</label>

@@ -12,16 +12,16 @@ router = APIRouter(prefix="/help", tags=["help"])
 
 # Règles d'actions : mot-clé → bouton pré-rempli (label + route)
 ACTION_RULES = [
-    (("plan", "dwg", "dxf", "métré", "metre"), {"label": "Analyser un plan", "to": "/plans"}),
+    (("plan", "dwg", "dxf", "métré", "metre"), {"label": "Analyser un plan", "to": "/plan"}),
     (("étanch", "etanch", "toiture", "vrd", "réseau", "reseau", "ferraill", "acier", "approvision", "commande", "fournisseur"),
      {"label": "Ouvrir l'Approvisionnement", "to": "/appro"}),
     (("devis", "estim", "chiffr", "budget", "prix", "coût", "cout"),
-     {"label": "Démarrer mon estimation", "to": "/estimateur"}),
+     {"label": "Démarrer mon estimation", "to": "/estimation"}),
     (("calcul", "surface", "volume", "quantit"), {"label": "Ouvrir les calculateurs", "to": "/calculateurs"}),
     (("tarif", "offre", "abonn", "pro"), {"label": "Voir les tarifs", "to": "/tarifs"}),
 ]
-DEFAULT_ACTIONS = [{"label": "Démarrer mon estimation", "to": "/estimateur"},
-                   {"label": "Analyser un plan", "to": "/plans"}]
+DEFAULT_ACTIONS = [{"label": "Démarrer mon estimation", "to": "/estimation"},
+                   {"label": "Analyser un plan", "to": "/plan"}]
 
 
 def _suggest_actions(text: str, page: str | None) -> list:

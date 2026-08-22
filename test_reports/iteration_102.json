@@ -1,0 +1,40 @@
+{
+  "summary": "Non-régression globale frontend avant redéploiement production. Tous les flux critiques demandés fonctionnent : (1) /fonctionnalites charge OK — hero visible, sections 'Pour les particuliers' + 'Pro' présentes, 27 cartes. Chatbot d'aide (help-chatbot-open) s'ouvre, question envoyée, réponse IA reçue en ~15s avec 2 boutons help-action-* (Analyser un plan / Démarrer estimation). (2) Login direct email/mot de passe pro@construpilot.fr fonctionne → redirection /dashboard. Chatbot 'Besoin d'aide ?' visible dans Shell sur toutes les pages connectées. (3) /plan charge sans ErrorBoundary — page 'Importez votre plan. Mesurez automatiquement. Chiffrez.' + upload + Corriger la perspective + Comparer 2 plans. (4) /appro OK — 5 onglets tous cliquables sans erreur : tab-acier, tab-etancheite, tab-toiture, tab-vrd, tab-fournisseurs. (5) Navigation générale OK — /dashboard, /devis, /calculateurs, /tarifs se chargent sans ErrorBoundary. Note : /estimateur redirige vers / (à confirmer si voulu ou route manquante — landing s'affiche donc pas de crash). (6) Admin : login admin@construpilot.fr OK, /admin s'ouvre, admin-tab-evolution s'ouvre, AI Evolution Lab affiche 'Activer les tests' avec toggle, niveau difficulté, taille lot 1000, Rapport nocturne — pas d'erreur.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Nav / Découvrir menu",
+        "issue": "Le review request attendait 'Mesurer 2D' dans le menu Découvrir, mais l'item affiché est simplement 'Mesurer' (il pointe bien vers /plan). Cosmétique — à confirmer si le label doit être renommé en 'Mesurer 2D' pour homogénéité, ou si le libellé actuel est OK.",
+        "selector": "[data-testid=\"nav-more-btn\"] menu item",
+        "priority": "LOW"
+      },
+      {
+        "component": "Route /estimateur",
+        "issue": "L'URL /estimateur redirige vers / (landing) au lieu d'ouvrir une page Estimateur dédiée. Pas de crash, mais l'utilisateur cliquant sur 'Estimateur' arrive sur la home. À vérifier si c'est intentionnel (l'estimateur EST la home pour les non-connectés) ou si une route dédiée doit exister pour les connectés.",
+        "selector": "nav 'Estimateur' link",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optionnel) Renommer l'item du menu Découvrir 'Mesurer' en 'Mesurer 2D' pour matcher le vocabulaire du review request.",
+    "(Optionnel) Clarifier le routage /estimateur : soit créer une page Estimateur dédiée en zone connectée, soit accepter la redirection vers la home."
+  ],
+  "critical_code_review_comments": [
+    "OnboardingTour (data-testid=onboarding-overlay) intercepte les clics dans le nav sur premier login. Le tour peut se fermer via 'Passer le tour' ou clic sur X ; mais les tests automatisés Escape ne le ferment pas — envisager un data-testid onboarding-close explicite ET un support ESC (keyboard listener).",
+    "Chatbot répond bien avec des boutons d'action structurés (help-action-*) — bon design.",
+    "Toutes les pages testées sont stables sans ErrorBoundary."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100% sur les 6 flux critiques demandés"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! (login direct email/password OK, redirect /dashboard) ; admin@construpilot.fr / Construpilot2026! (login OK, /admin OK)",
+  "seed_data_creation": "Aucune (test de non-régression pur, pas de création de données).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Login direct email/password est confirmé fonctionnel pour pro@ et admin@. OnboardingTour peut bloquer les clics de navigation sur premier login — utiliser button:has-text('Passer le tour') ou naviguer via page.goto() plutôt que via le menu. Le menu Découvrir contient : Fonctionnalités, Coach IA, Mesurer, Analyse photo, Scanner de devis, Je le fais moi-même, Comparatif, Trouver un pro, Blog, API & Développeurs, Tarifs, Investisseurs.",
+  "rca of the issue": "Aucun bug bloquant détecté. Les 2 issues LOW sont des divergences cosmétiques/routing mineures. Le fix récent 'mesure 0 ml' semble avoir tenu — /plan se charge sans crash."
+}
