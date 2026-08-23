@@ -10,7 +10,20 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
-> **Session 23/06/2026 — Améliorations page « Mesure » (PlanTakeoff) : P1/P2/P3 livrés & testés** [demande utilisateur en 3 lots priorisés, ordre validé P1→P2→P3] :
+> **Session 23/06/2026 — suite : Multi-plans (Phase A + B) + Blog Soro**
+> - **Phase A — Devis multi-plans consolidé & éditable** (testé iteration_106, 100% frontend ; backend curl OK) :
+>   - `POST /documents/from-plans` {plan_ids, project_name, client_id, subcontract_plan_ids} → UN devis éditable agrégeant les lignes de plusieurs plans (gros œuvre via `cost_structural` 20%, maison via `_build_quote_and_pdf` 10%, ferraillage via `steel_analyses` 20%), catégories préfixées par type/nom du plan. Sous-traitance → TVA 0% par plan. Helpers `_consolidated_lines_for_plan`, `_ferraillage_lines` (constantes ACIER_PRICE_KG=1.85, TREILLIS_PRICE_PANEL=48).
+>   - Lien ferraillage↔coffrage (choix 1B) : `PATCH /takeoffs/{plan_id}/link-ferraillage` {ferraillage_plan_ids} stocke `ferraillage_plan_ids` sur le plan gros œuvre ; ses aciers sont chiffrés conjointement dans le devis.
+>   - Frontend `MultiPlanDialog.jsx` étendu : sous-traitance par plan (`multi-subcontract-<id>`), rattachement ferraillage (`multi-link-ferraillage-<id>`, `ferraillage-picker-<id>`), bouton `multi-consolidated-btn` (Devis consolidé) → nav `/devis-editeur/{doc_id}`, filtre recherche (`multi-plans-search`). `createConsolidatedQuote` + `linkFerraillage` dans PlanTakeoff.jsx.
+>   - `QuoteEditor.jsx` : `VAT_RATES = [0, 5.5, 10, 20]` + option « 0 % (sous-traitance) ».
+> - **Phase B — Commande fournisseur multi-plans** (testé iteration_107, 100% frontend ; backend curl OK : Acier HA12 100+50=150 kg) :
+>   - `POST /pro/appro/orders/merge` {order_ids, project, supplier_id} → fusionne plusieurs `material_orders` en 1, regroupant les lignes par (designation, unit) et sommant qty/commandable_qty. type=commun ou "mixte". Fournisseur = fourni ou commun.
+>   - `PATCH /pro/appro/orders/{id}/status` (brouillon/envoyé/confirmé) + `DELETE /pro/appro/orders/{id}`.
+>   - Nouvel onglet **« Commandes »** (`tab-commandes`) dans TechAnalysis → composant `OrdersTab.jsx` : liste des bons (statut, type, badge « Fusion ×N »), sélection multiple + fusion (`merge-orders-btn`), changement de statut (`order-status-<id>`), suppression avec confirm (`order-delete-<id>`).
+> - **Blog Soro sur la page d'accueil** : composant `components/SoroBlog.jsx` (chargement dynamique du script `app.trysoro.com/api/embed/5160a050-...` compatible SPA, `<div id="soro-blog">`, repli « Nos articles arrivent très bientôt » si vide). Section `#blog` ajoutée dans `Landing.jsx` entre FAQ et footer. ⚠️ L'embed Soro renvoie « // Embed is disabled » → l'utilisateur doit **activer l'embed dans son tableau de bord Soro** pour afficher les articles.
+> - ⚠️ Tout en PREVIEW → redéploiement requis (« Remplacer l'app ») pour la prod.
+>
+ [demande utilisateur en 3 lots priorisés, ordre validé P1→P2→P3] :
 > - **P1 — Confort du plan** (testé iteration_103, 100% frontend) :
 >   - **Mode plein écran** : bouton `tool-fullscreen` (Maximize/Minimize) → conteneur `plan-canvas-surface` passe en `fixed inset-0 z-[60]`, canvas en `h-[calc(100vh-92px)]`, sortie via bouton « Quitter » ou touche **Échap** ; dispatch d'un event resize au toggle pour redimensionner le canvas.
 >   - **Contraste/Luminosité** : bouton `tool-img-adjust` ouvre `img-adjust-panel` avec 2 curseurs (`img-contrast-slider` défaut 1.25, `img-brightness-slider` défaut 1.02) + reset. Appliqués via `ctx.filter` UNIQUEMENT sur le `drawImage` du plan (pas sur les overlays) dans `PlanCanvas.jsx` (nouvelles props `contrast`/`brightness`) + `imageSmoothingQuality="high"` pour des traits/cotes plus nets.

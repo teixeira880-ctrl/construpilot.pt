@@ -1,0 +1,22 @@
+{
+  "summary": "Phase A — Devis multi-plans CONSOLIDÉ éditable — E2E frontend flow fully validated. Login Pro → open plan (?open=plan_e11c525fa9fb) → click plan-multi-quote-btn → multi-quote-dialog opens → checked plan_e11c525fa9fb, plan_60e79f8b1087, plan_3a5b25eb5bcf → checked multi-subcontract-plan_60e79f8b1087 → clicked multi-consolidated-btn (label 'Devis consolidé (3)') → POST /api/documents/from-plans returned 200 → navigated to /devis-editeur/doc_xxx. Verified generated doc has 11 lines with expected VAT distribution: 4 lines @10% (maison plan_e11c525fa9fb), 4 lines @0% (sous-traitance plan_60e79f8b1087, e.g. Plâtrerie/Placo, Peinture, Sol Carrelage, Plinthes), 3 lines @20% (ferraillage: Acier HA12, Acier HA8, Treillis soudé ST25). Categories are prefixed by plan type/name: 'Maison · tp.png · Depuis plan IA' and 'Ferraillage · tp.png · Ferraillage'. In the editor: line-level VAT <select> exposes options ['0 %','5.5%','10%','20%'] and bulk-vat-select exposes ['Appliquer…','0 % (sous-traitance)','5.5%','10%','20%']. Totals rendered: TVA 0% 0,00€ (base sub-traitance 6591€), TVA 10% 699,13€, TVA 20% 117,82€, Total TTC 15 388,67€. No JS console errors, no page errors.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "POST /api/documents/from-plans returns doc envelope with lines=[] initially in HTTP response body, but GET /api/documents/{id} returns full lines list. Frontend nav then re-fetches via GET so it works; however the endpoint's create-response payload is misleading — consider returning the persisted lines directly to save a round-trip.",
+    "Dialog lists ALL plans of the user (100 checkboxes here). For accounts with many plans a search/filter input in multi-quote-dialog would improve UX."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a (skipped)", "frontend": "100%" },
+  "test_credentials": "pro@construpilot.fr / Pro2026! (Pro account) — localStorage key: construpilot_token",
+  "seed_data_creation": "Consolidated docs created for testing: TEST_consolidated / 'Devis projet — 3 plans' (doc_86bae910b2fc, doc_51580714772f, doc_24e4cc5723d0). Can be cleaned up with docs delete API.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase A frontend flow validated end-to-end. Plans page uses deep-link '/plan?open=<plan_id>' (not '?id='). Editor uses native <select> elements (not shadcn) for VAT — accessible via querySelectorAll('table select'). Bulk vat has data-testid='bulk-vat-select'; per-line selects don't have data-testid but are positioned after unit/price inputs. Consider adding data-testid='line-vat-<idx>' for future testing robustness."
+}

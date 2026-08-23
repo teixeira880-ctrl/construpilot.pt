@@ -18,6 +18,7 @@ import { MarketingTeaser } from "@/components/MarketingTeaser";
 import { FeatureShowcase } from "@/components/FeatureShowcase";
 import { Interactive3D } from "@/components/Interactive3D";
 import { ParamLibraryPromo } from "@/components/ParamLibraryPromo";
+import { SoroBlog } from "@/components/SoroBlog";
 import { LandingInstallBanner } from "@/components/pwa/LandingInstallBanner";
 import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
@@ -668,6 +669,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── BLOG (Soro embed) ──────────────────────────────── */}
+      <SoroBlog />
 
       {/* ── CTA COLLANT MOBILE ─────────────────────────────── */}
       <div

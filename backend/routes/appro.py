@@ -50,6 +50,109 @@ async def list_orders(user=Depends(current_user)) -> dict:
     return {"items": await cur.to_list(200)}
 
 
+def _fnum(v):
+    try:
+        return float(str(v).replace(",", ".").split()[0])
+    except (ValueError, TypeError, IndexError):
+        return 0.0
+
+
+class MergeOrdersIn(BaseModel):
+    order_ids: list[str] = Field(min_length=2, max_length=40)
+    project: str = Field(default="", max_length=160)
+    supplier_id: str | None = None
+
+
+@router.post("/orders/merge")
+async def merge_orders(body: MergeOrdersIn, user=Depends(current_user)) -> dict:
+    """Fusionne plusieurs bons de commande (issus de plans différents d'un même projet)
+    en UNE seule commande, en regroupant les quantités des lignes identiques
+    (même désignation + unité)."""
+    import uuid
+    orders = await db.material_orders.find(
+        {"order_id": {"$in": body.order_ids}, "user_id": user["user_id"]}, {"_id": 0}).to_list(40)
+    if len(orders) < 2:
+        raise HTTPException(400, "Sélectionnez au moins 2 bons de commande valides")
+
+    grouped: dict = {}
+    order_seq: list = []
+    plan_ids: list = []
+    types = set()
+    for o in orders:
+        types.add(o.get("type"))
+        if o.get("plan_id"):
+            plan_ids.append(o["plan_id"])
+        for it in (o.get("items") or []):
+            key = (str(it.get("designation", "")).strip().lower(), str(it.get("unit", "")).strip().lower())
+            if key not in grouped:
+                grouped[key] = {
+                    "designation": it.get("designation", ""),
+                    "unit": it.get("unit", ""),
+                    "qty": 0.0,
+                    "commandable_qty": 0.0,
+                    "commandable_unit": it.get("commandable_unit", ""),
+                }
+                order_seq.append(key)
+            g = grouped[key]
+            g["qty"] += _fnum(it.get("qty"))
+            g["commandable_qty"] += _fnum(it.get("commandable_qty"))
+            if not g["commandable_unit"]:
+                g["commandable_unit"] = it.get("commandable_unit", "")
+
+    items = []
+    for key in order_seq:
+        g = grouped[key]
+        g["qty"] = round(g["qty"], 3)
+        g["commandable_qty"] = round(g["commandable_qty"], 3)
+        items.append(g)
+
+    supplier = None
+    if body.supplier_id:
+        supplier = await db.suppliers.find_one(
+            {"supplier_id": body.supplier_id, "user_id": user["user_id"]}, {"_id": 0})
+    elif len({(o.get("supplier") or {}).get("supplier_id") for o in orders if o.get("supplier")}) == 1:
+        supplier = orders[0].get("supplier")
+
+    merged = {
+        "order_id": "cmd_" + uuid.uuid4().hex[:12], "user_id": user["user_id"],
+        "plan_id": plan_ids[0] if plan_ids else None,
+        "plan_ids": plan_ids,
+        "merged_from": body.order_ids,
+        "project": body.project.strip() or "Commande fusionnée",
+        "type": next(iter(types)) if len(types) == 1 else "mixte",
+        "supplier": supplier, "items": items, "status": "brouillon",
+        "created_at": _now(),
+    }
+    await db.material_orders.insert_one(dict(merged))
+    merged.pop("_id", None)
+    return {"ok": True, "order": merged, "item_count": len(items),
+            "merged_count": len(orders)}
+
+
+class OrderStatusIn(BaseModel):
+    status: str
+
+
+@router.patch("/orders/{order_id}/status")
+async def set_order_status(order_id: str, body: OrderStatusIn, user=Depends(current_user)) -> dict:
+    if body.status not in ("brouillon", "envoyé", "confirmé"):
+        raise HTTPException(422, "Statut invalide")
+    r = await db.material_orders.update_one(
+        {"order_id": order_id, "user_id": user["user_id"]},
+        {"$set": {"status": body.status, "updated_at": _now()}})
+    if not r.matched_count:
+        raise HTTPException(404, "Bon de commande introuvable")
+    return {"ok": True, "status": body.status}
+
+
+@router.delete("/orders/{order_id}")
+async def delete_order(order_id: str, user=Depends(current_user)) -> dict:
+    r = await db.material_orders.delete_one({"order_id": order_id, "user_id": user["user_id"]})
+    if not r.deleted_count:
+        raise HTTPException(404, "Bon de commande introuvable")
+    return {"ok": True}
+
+
 @router.post("/orders/{order_id}/email")
 async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) -> dict:
     from routes.plans_common import _resolve_branding

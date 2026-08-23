@@ -234,6 +234,9 @@ export default function PlanTakeoff() {
   const [multiProjectName, setMultiProjectName] = useState("");
   const [multiBusy, setMultiBusy] = useState(false);
   const [allPlans, setAllPlans] = useState([]);
+  // Phase A — devis consolidé : sous-traitance (0% TVA) par plan + lien ferraillage
+  const [subcontractSel, setSubcontractSel] = useState([]);
+  const [consolidatedBusy, setConsolidatedBusy] = useState(false);
   // Quote sends (envois + tracking)
   const [quoteSends, setQuoteSends] = useState([]);
   const fileRef = useRef(null);
@@ -2224,6 +2227,38 @@ export default function PlanTakeoff() {
       setMultiDialog(false);
     } catch (e) { toast.error(e.message || "Export impossible"); }
     finally { setMultiBusy(false); }
+  };
+
+  // Phase A — créer UN devis éditable consolidé (gros œuvre + maison + ferraillage)
+  const createConsolidatedQuote = async () => {
+    if (multiSelected.length === 0) return toast.error("Sélectionnez au moins 1 plan");
+    setConsolidatedBusy(true);
+    try {
+      const { data } = await api.post("/documents/from-plans", {
+        plan_ids: multiSelected,
+        project_name: multiProjectName.trim() || "",
+        subcontract_plan_ids: subcontractSel.filter((id) => multiSelected.includes(id)),
+      });
+      toast.success(`Devis consolidé créé — ${data.line_count} lignes`);
+      setMultiDialog(false);
+      nav(`/devis-editeur/${data.doc_id}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Création du devis consolidé impossible");
+    } finally { setConsolidatedBusy(false); }
+  };
+
+  // Phase A — rattacher des plans de ferraillage à un plan de coffrage (gros œuvre)
+  const linkFerraillage = async (coffragePlanId, ferrIds) => {
+    try {
+      await api.patch(`/takeoffs/${coffragePlanId}/link-ferraillage`, {
+        ferraillage_plan_ids: ferrIds,
+      });
+      setAllPlans((prev) => prev.map((p) =>
+        p.plan_id === coffragePlanId ? { ...p, ferraillage_plan_ids: ferrIds } : p));
+      toast.success(ferrIds.length ? "Ferraillage rattaché" : "Rattachement retiré");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Rattachement impossible");
+    }
   };
 
   const createSignatureLink = async (logId) => {
@@ -4800,6 +4835,9 @@ export default function PlanTakeoff() {
         allPlans={allPlans} plan={plan}
         quoteFinish={quoteFinish} quoteFloor={quoteFloor}
         multiBusy={multiBusy} downloadMultiQuote={downloadMultiQuote}
+        subcontractSel={subcontractSel} setSubcontractSel={setSubcontractSel}
+        consolidatedBusy={consolidatedBusy} createConsolidatedQuote={createConsolidatedQuote}
+        linkFerraillage={linkFerraillage}
       />
 
     </div>

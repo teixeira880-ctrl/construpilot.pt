@@ -214,6 +214,29 @@ async def structural_metre_to_quote(plan_id: str, body: StructuralEstimateIn,
             "line_count": len(lines)}
 
 
+class LinkFerraillageIn(BaseModel):
+    ferraillage_plan_ids: list[str] = Field(default_factory=list, max_length=30)
+
+
+@router.patch("/{plan_id}/link-ferraillage")
+async def link_ferraillage(plan_id: str, body: LinkFerraillageIn,
+                           user=Depends(current_user)) -> dict:
+    """Rattache des plans de ferraillage à un plan de coffrage (gros œuvre).
+    Les aciers de ces plans seront chiffrés conjointement dans le devis consolidé."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    valid = await db.plans_takeoff.find(
+        {"plan_id": {"$in": body.ferraillage_plan_ids}, "user_id": user["user_id"]},
+        {"_id": 0, "plan_id": 1}).to_list(30)
+    valid_ids = [v["plan_id"] for v in valid if v["plan_id"] != plan_id]
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$set": {"ferraillage_plan_ids": valid_ids, "updated_at": _now()}})
+    return {"ok": True, "plan_id": plan_id, "ferraillage_plan_ids": valid_ids}
+
+
 def _rescale_metre_to_calibration(metre: dict, p: dict):
     """Aligne le métré sur l'échelle réelle du plan : unit_to_m = dxf_ratio / pixels_per_meter.
     Corrige les métadonnées d'unité DWG erronées dès que l'utilisateur (re)calibre le plan."""

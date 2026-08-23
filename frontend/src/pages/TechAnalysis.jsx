@@ -8,6 +8,7 @@ import SteelTab from "@/components/tech/SteelTab";
 import WaterproofingTab from "@/components/tech/WaterproofingTab";
 import RoofingTab from "@/components/tech/RoofingTab";
 import VrdTab from "@/components/tech/VrdTab";
+import OrdersTab from "@/components/tech/OrdersTab";
 
 const dedupePlans = (items) => {
   const seen = new Set();
@@ -37,7 +38,7 @@ export default function TechAnalysis() {
   const loadSuppliers = () => api.get("/pro/suppliers").then(({ data }) => setSuppliers(data.items || [])).catch(() => {});
 
   const tabs = [["acier", "Ferraillage / Acier"], ["etancheite", "Étanchéité"],
-  ["toiture", "Toiture"], ["vrd", "VRD / Réseaux"], ["fournisseurs", "Mes fournisseurs"]];
+  ["toiture", "Toiture"], ["vrd", "VRD / Réseaux"], ["commandes", "Commandes"], ["fournisseurs", "Mes fournisseurs"]];
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6" data-testid="tech-analysis-page">
@@ -58,6 +59,7 @@ export default function TechAnalysis() {
       {tab === "etancheite" && <WaterproofingTab plans={plans} suppliers={suppliers} />}
       {tab === "toiture" && <RoofingTab plans={plans} suppliers={suppliers} />}
       {tab === "vrd" && <VrdTab plans={plans} suppliers={suppliers} />}
+      {tab === "commandes" && <OrdersTab suppliers={suppliers} />}
       {tab === "fournisseurs" && <SupplierManager suppliers={suppliers} reload={loadSuppliers} />}
     </div>
   );

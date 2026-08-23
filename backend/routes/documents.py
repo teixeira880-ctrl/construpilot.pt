@@ -250,6 +250,174 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
     return doc
 
 
+# ============ Phase A — Devis multi-plans consolidé ============
+
+ACIER_PRICE_KG = 1.85      # € HT / kg (fourniture + façonnage + pose) — éditable
+TREILLIS_PRICE_PANEL = 48  # € HT / panneau — éditable
+_DEFAULT_STRUCT_PARAMS = {
+    "storey_height_m": 2.70, "n_levels": 1, "wall_thickness_m": None,
+    "beam_w_m": None, "beam_h_m": None, "col_w_m": None, "col_h_m": None,
+    "slab_thickness_m": None, "slab_area_m2": None, "margin_pct": 12.0,
+    "partitions_as_concrete": True, "arase_inf_m": None, "arase_sup_m": None,
+}
+
+
+async def _ferraillage_lines(fid: str, user_id: str, prefix: str, vat: float) -> list[dict]:
+    """Lignes de devis acier (fourniture/façonnage/pose) depuis l'analyse ferraillage d'un plan."""
+    import engines.rebar as rebar
+    d = await db.steel_analyses.find_one(
+        {"plan_id": fid, "user_id": user_id}, {"_id": 0, "lines": 1, "treillis": 1, "filename": 1})
+    if not d:
+        return []
+    rlines = d.get("lines") or []
+    treillis = d.get("treillis") or []
+    if not rlines and not treillis:
+        return []
+    summ = rebar.summary(rlines, treillis)
+    loss = 0.05
+    out = []
+    for dia in summ.get("by_diameter", []):
+        kg = round(float(dia.get("kg", 0)) * (1 + loss), 1)
+        if kg <= 0:
+            continue
+        out.append({
+            "designation": f"Acier {dia.get('diameter', '')} — fourniture, façonnage & pose",
+            "description": f"{dia.get('ml', 0)} ml (pertes {int(loss*100)}%)",
+            "unit": "kg", "qty": kg, "unit_price_ht": ACIER_PRICE_KG,
+            "vat_rate": vat, "category": f"{prefix} · Ferraillage",
+        })
+    for t in treillis:
+        panels = int(t.get("panels") or 0)
+        if panels <= 0:
+            continue
+        out.append({
+            "designation": f"Treillis soudé {t.get('ref', '')}".strip(),
+            "description": f"{t.get('area_m2', '')} m²",
+            "unit": "panneau", "qty": panels, "unit_price_ht": TREILLIS_PRICE_PANEL,
+            "vat_rate": vat, "category": f"{prefix} · Ferraillage",
+        })
+    return out
+
+
+async def _consolidated_lines_for_plan(plan_id: str, user_id: str, subcontract: bool,
+                                       processed_ferr: set) -> tuple[list[dict], str]:
+    """Renvoie (lignes, libellé) pour un plan selon son type : gros œuvre / maison / ferraillage.
+    Inclut les aciers des plans de ferraillage rattachés (ferraillage_plan_ids)."""
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user_id},
+        {"_id": 0, "structural_metre": 1, "rooms": 1, "filename": 1,
+         "calibrations": 1, "pages.dxf_ratio": 1, "ferraillage_plan_ids": 1})
+    if not p:
+        return [], plan_id
+    fname = p.get("filename") or "plan"
+    lines: list[dict] = []
+
+    if p.get("structural_metre"):
+        # GROS ŒUVRE (coffrage/DWG) — TVA 20 % (ou 0 % sous-traitance)
+        vat = 0.0 if subcontract else 20.0
+        prefix = f"Gros œuvre · {fname}"
+        from routes.plans_crud import _rescale_metre_to_calibration
+        from engines.dxf_takeoff import cost_structural
+        metre, _ = _rescale_metre_to_calibration(p["structural_metre"], p)
+        estimate = cost_structural(metre, dict(_DEFAULT_STRUCT_PARAMS))
+        margin = float(estimate["params"].get("margin_pct", 0)) / 100.0
+        for lot in estimate.get("lots", []):
+            for ln in lot.get("lines", []):
+                pu = round(float(ln.get("pu", 0)) * (1 + margin), 2)
+                lines.append({
+                    "designation": ln.get("designation", ""),
+                    "description": ln.get("detail", ""),
+                    "unit": ln.get("unit", "u"),
+                    "qty": round(float(ln.get("qty", 0)), 2),
+                    "unit_price_ht": pu, "vat_rate": vat,
+                    "category": f"{prefix} · {lot.get('lot', '')}",
+                })
+        # Aciers des plans de ferraillage rattachés
+        for fid in (p.get("ferraillage_plan_ids") or []):
+            if fid in processed_ferr:
+                continue
+            processed_ferr.add(fid)
+            lines += await _ferraillage_lines(fid, user_id, f"Gros œuvre · {fname}", vat)
+        return lines, prefix
+
+    if p.get("rooms"):
+        # MAISON / rénovation (finitions depuis les pièces) — TVA 10 % (ou 0 %)
+        vat = 0.0 if subcontract else 10.0
+        prefix = f"Maison · {fname}"
+        try:
+            from routes.plans_common import _build_quote_and_pdf
+            quote, _ = await _build_quote_and_pdf(
+                plan_id, user_id, "std", "carrelage", True, True, True, True)
+            for li in quote.get("line_items", []):
+                qty = li.get("quantity") or 0
+                pu = round((li.get("total") or 0) / qty, 2) if qty else (li.get("total") or 0)
+                lines.append({
+                    "designation": li.get("name") or "",
+                    "unit": li.get("unit") or "u", "qty": round(qty, 2),
+                    "unit_price_ht": pu, "vat_rate": vat,
+                    "category": f"{prefix} · Depuis plan IA",
+                })
+        except HTTPException:
+            pass
+        return lines, prefix
+
+    # FERRAILLAGE seul (sélectionné directement)
+    if plan_id not in processed_ferr:
+        processed_ferr.add(plan_id)
+        vat = 0.0 if subcontract else 20.0
+        ferr = await _ferraillage_lines(plan_id, user_id, f"Ferraillage · {fname}", vat)
+        if ferr:
+            return ferr, f"Ferraillage · {fname}"
+    return [], fname
+
+
+class FromPlansIn(BaseModel):
+    plan_ids: list[str] = Field(min_length=1, max_length=30)
+    project_name: str = Field(default="", max_length=160)
+    client_id: str | None = None
+    subcontract_plan_ids: list[str] = Field(default_factory=list)
+
+
+@router.post("/from-plans")
+async def document_from_plans(body: FromPlansIn, user=Depends(current_user)) -> dict:
+    """Crée UN devis éditable consolidé à partir de plusieurs plans (gros œuvre + maison
+    + ferraillage), chaque bloc préfixé par le nom/type du plan. TVA 20 % gros œuvre /
+    10 % maison / 0 % sous-traitance appliquée par ligne."""
+    uid = user["user_id"]
+    sub = set(body.subcontract_plan_ids or [])
+    processed_ferr: set = set()
+    all_lines: list[dict] = []
+    included: list[str] = []
+    for pid in body.plan_ids:
+        lns, label = await _consolidated_lines_for_plan(pid, uid, pid in sub, processed_ferr)
+        if lns:
+            all_lines.extend(lns)
+            included.append(label)
+    if not all_lines:
+        raise HTTPException(400, "Aucun plan sélectionné ne contient de métré chiffrable "
+                                 "(mesurez/analysez les plans d'abord).")
+    title = (body.project_name.strip()
+             or f"Devis projet — {len(included)} plan{'s' if len(included) > 1 else ''}")
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": uid, "doc_type": "quote", "number": None,
+        "title": title[:160],
+        "client_id": body.client_id,
+        "client": await _client_snapshot(body.client_id, user),
+        "status": "draft", "lines": all_lines, "notes": "",
+        "payment_terms": "", "deposit_pct": 0,
+        "totals": _compute_totals(all_lines, 0),
+        "issue_date": None, "due_date": None,
+        "source": "multi_plan", "plan_id": body.plan_ids[0],
+        "plan_ids": body.plan_ids,
+        "created_at": _now(), "updated_at": _now(),
+    }
+    await db.pro_documents.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return {"ok": True, "doc_id": doc["doc_id"], "totals": doc["totals"],
+            "line_count": len(all_lines), "included": included}
+
+
 async def _transcribe_video_bytes(raw: bytes) -> str:
     """Extrait l'audio d'une vidéo (ffmpeg) et le transcrit en français (Whisper)."""
     import os

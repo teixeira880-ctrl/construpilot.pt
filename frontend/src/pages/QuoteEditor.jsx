@@ -20,7 +20,7 @@ import { useI18n } from "@/context/I18nContext";
 import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
-const VAT_RATES = [10, 20, 5.5];
+const VAT_RATES = [0, 5.5, 10, 20];
 const STATUSES = [
   ["draft", "crm.st_e_draft"], ["sent", "crm.st_e_sent"], ["signed", "crm.st_e_signed"], ["refused", "crm.st_e_refused"],
 ];
@@ -708,7 +708,7 @@ export default function QuoteEditor() {
                 data-testid="bulk-vat-select"
                 className="rounded-sm border border-border bg-background px-2 h-8 text-sm">
                 <option value="">Appliquer…</option>
-                {VAT_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}
+                {VAT_RATES.map((r) => <option key={r} value={r}>{r === 0 ? "0 % (sous-traitance)" : `${r}%`}</option>)}
               </select>
             </div>
             <OuvrageComposeDialog onAdd={(line) => setLines((ls) => [...ls, { ...blankLine(), ...line, _saveToLib: false }])} />
@@ -747,7 +747,7 @@ export default function QuoteEditor() {
                    className="rounded-sm num h-9 md:col-span-2 text-right" data-testid={`editor-line-price-${i}`} />
             <select value={l.vat_rate} onChange={(e) => setLine(i, "vat_rate", e.target.value)}
                     className="rounded-sm border border-border bg-background px-2 h-9 text-sm md:col-span-1">
-              {VAT_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}
+              {VAT_RATES.map((r) => <option key={r} value={r}>{r === 0 ? "0 %" : `${r}%`}</option>)}
             </select>
             <span className="md:col-span-1 text-right num text-sm font-bold">
               {eur((Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0))}
