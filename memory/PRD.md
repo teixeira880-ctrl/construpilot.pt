@@ -10,6 +10,22 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 23/06/2026 — Améliorations page « Mesure » (PlanTakeoff) : P1/P2/P3 livrés & testés** [demande utilisateur en 3 lots priorisés, ordre validé P1→P2→P3] :
+> - **P1 — Confort du plan** (testé iteration_103, 100% frontend) :
+>   - **Mode plein écran** : bouton `tool-fullscreen` (Maximize/Minimize) → conteneur `plan-canvas-surface` passe en `fixed inset-0 z-[60]`, canvas en `h-[calc(100vh-92px)]`, sortie via bouton « Quitter » ou touche **Échap** ; dispatch d'un event resize au toggle pour redimensionner le canvas.
+>   - **Contraste/Luminosité** : bouton `tool-img-adjust` ouvre `img-adjust-panel` avec 2 curseurs (`img-contrast-slider` défaut 1.25, `img-brightness-slider` défaut 1.02) + reset. Appliqués via `ctx.filter` UNIQUEMENT sur le `drawImage` du plan (pas sur les overlays) dans `PlanCanvas.jsx` (nouvelles props `contrast`/`brightness`) + `imageSmoothingQuality="high"` pour des traits/cotes plus nets.
+>   - **Enregistrer + auto-save** : badge `autosave-status` (Enregistrement…/Enregistré ✓) + bouton `plan-save-btn` (PATCH `/takeoffs/{id}/annotations`, toast « Plan enregistré »). L'auto-save annotations debounced existait déjà ; édition de tout (pièces/structure/murs) déjà persistée par action.
+> - **P2 — Workflow devis** (testé iteration_104, 100% frontend) :
+>   - **Retour au plan** : `QuoteEditor.jsx` capture `d.plan_id` (état `srcPlanId`) → bouton `editor-back-to-plan` (visible si le devis vient d'un plan) navigue vers `/plan?open={planId}&auto=1`.
+>   - **Ajout client à la volée** : bouton `editor-new-client-btn` → dialog `new-client-dialog` (prénom/nom/société/email/tél/adresse) → POST `/clients` → client ajouté au CRM ET sélectionné automatiquement.
+>   - **Analyse gros œuvre / maison** : sélecteur `analyze-kind-toggle` (Auto / 🏢 Gros œuvre / 🏠 Maison) dans PlanTakeoff ; `analyzePlanFull` ajoute `&plan_kind=` à `/detect-structure`. Backend : `detect-structure` accepte `plan_kind`, `detect_structure_tiled(..., force_kind)` force `coffrage`/`habitation` (mapping gros_oeuvre/immeuble→coffrage, maison→habitation) et bypass l'auto-heuristique ≥10 poteaux. Vérifié curl : `plan_kind=gros_oeuvre` force bien `coffrage`.
+> - **P3 — Assistant IA d'édition du plan** (testé iteration_105, 100% frontend ; backend validé curl rename/set_surface/delete) :
+>   - Barre de commande langage naturel avec **aperçu puis Appliquer** (choix utilisateur a+b). Bouton `tool-ai-assistant` → panneau `ai-assistant-panel` (`ai-command-input`, `ai-command-propose`, bloc `ai-command-proposal` + `ai-command-apply`/`ai-command-cancel`).
+>   - Backend `POST /takeoffs/{id}/ai-command` (aperçu, ne modifie rien) + `POST /takeoffs/{id}/ai-command/apply` (applique + renvoie état). Moteur `ai.plan_command()` (Claude texte via Emergent LLM Key) → action JSON stricte. Actions : `rename_room`, `delete_room`, `set_room_surface`, `set_room_height`, `reclassify_wall` (cv_walls), `add_note`, `none`. Auto-save après application (refreshPlan + savedAt).
+>   - Import module aliasé `from engines import ai as ai_engine` dans plans_analysis.py (collision avec variable locale `ai`).
+> - ⚠️ Toutes ces nouveautés sont en **PREVIEW** → **redéploiement requis** (« Remplacer l'app », gratuit) pour la prod construpilot.fr.
+>
+
 > **Session 19/08/2026** :
 > **Session 22/06/2026 — Module « Analyse technique & Approvisionnement IA » — PHASE 1 (Acier)** [gros module 22 sections, livré par phases ; IA = Gemini 3.1 Pro validée par l'utilisateur ; commande = PDF/CSV/email en Phase 1, API fournisseurs en Phase 5].
 > - Backend : `engines/ai.py::analyze_rebar` (Gemini `gemini-3.1-pro-preview` vision → bordereau acier JSON avec confiance 0-1 + bbox) ; `engines/rebar.py` (poids HA6→HA32 kg/ml, `enrich_lines`, `summary` tonnage, `to_commandable` pertes+longueur barre→nb barres, `to_csv`) ; `routes/suppliers.py` (CRUD `/api/pro/suppliers` : nom, agence, n° client, email, tél, adresse livraison, catégories, api_endpoint) ; `routes/steel.py` (`POST /api/pro/steel/{plan_id}/analyze`, `GET/PUT`, `POST /commandable`, `POST /order` → collection `material_orders`, statut brouillon, pas d'envoi auto). Collections : `suppliers`, `steel_analyses`, `material_orders`.

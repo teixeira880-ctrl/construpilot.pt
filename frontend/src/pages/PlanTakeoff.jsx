@@ -63,6 +63,11 @@ export default function PlanTakeoff() {
   const [savedAt, setSavedAt] = useState(null);
   // P2 — type de plan pour l'analyse IA : auto / gros œuvre / maison
   const [planKindChoice, setPlanKindChoice] = useState("auto");
+  // P3 — Assistant IA d'édition du plan (barre de commande + aperçu/appliquer)
+  const [aiCmdOpen, setAiCmdOpen] = useState(false);
+  const [aiCmd, setAiCmd] = useState("");
+  const [aiCmdBusy, setAiCmdBusy] = useState(false);
+  const [aiCmdProposal, setAiCmdProposal] = useState(null);
   // Redimensionne le canvas quand on bascule en plein écran + Échap pour sortir
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
@@ -1308,8 +1313,47 @@ export default function PlanTakeoff() {
   // Bouton principal : « Analyser le plan » — enchaîne TOUT automatiquement :
   // 1) structure (murs/poteaux/poutres/dalles) 2) pièces IA + import au métré
   // 3) chiffrage/descriptif béton 4) estimation globale.
-  const analyzePlanFull = async () => {
-    if (!plan?.plan_id) return;
+  // P3 — Assistant IA : proposer une action (aperçu, sans appliquer)
+  const aiProposeCommand = async () => {
+    const cmd = aiCmd.trim();
+    if (!cmd || !plan?.plan_id) return;
+    setAiCmdBusy(true);
+    setAiCmdProposal(null);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/ai-command`, {
+        command: cmd, page_index: pageIndex,
+      });
+      if (!data || data.action === "none") {
+        toast.error(data?.summary || "Je n'ai pas compris cette commande.");
+      } else {
+        setAiCmdProposal(data);
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Assistant indisponible");
+    } finally { setAiCmdBusy(false); }
+  };
+
+  // P3 — Assistant IA : appliquer l'action validée + auto-save
+  const aiApplyCommand = async () => {
+    if (!aiCmdProposal || !plan?.plan_id) return;
+    setAiCmdBusy(true);
+    try {
+      await api.post(`/takeoffs/${plan.plan_id}/ai-command/apply`, {
+        action: aiCmdProposal.action,
+        params: aiCmdProposal.params || {},
+        page_index: pageIndex,
+      });
+      await refreshPlan();
+      setSavedAt(Date.now());
+      toast.success("Action appliquée et enregistrée");
+      setAiCmdProposal(null);
+      setAiCmd("");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Application impossible");
+    } finally { setAiCmdBusy(false); }
+  };
+
+  const analyzePlanFull = async () => {    if (!plan?.plan_id) return;
     if (!currentCalib) {
       toast.error("Calibrez d'abord le plan : l'échelle est indispensable pour calculer les quantités.");
       setTool(TOOLS.CALIB);
@@ -2885,6 +2929,17 @@ export default function PlanTakeoff() {
               {fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
               {fullscreen ? "Quitter" : "Plein écran"}
             </Button>
+            {/* P3 — Assistant IA d'édition du plan */}
+            <Button
+              size="sm"
+              variant={aiCmdOpen ? "default" : "outline"}
+              onClick={() => setAiCmdOpen((v) => !v)}
+              data-testid="tool-ai-assistant"
+              className={`rounded-sm gap-1 h-8 ${aiCmdOpen ? "bg-primary text-white hover:bg-orange-600" : "border-primary/60 text-primary"}`}
+              title="Assistant IA : modifiez le plan en langage naturel"
+            >
+              <Bot className="h-3 w-3" /> Assistant IA
+            </Button>
           </div>
 
           {/* CANVAS */}
@@ -2924,6 +2979,53 @@ export default function PlanTakeoff() {
             onStructDragEnd={commitStructure}
           />
 
+          {/* P3 — Panneau Assistant IA (barre de commande + aperçu/appliquer) */}
+          {aiCmdOpen && (
+            <div className="absolute bottom-3 left-3 z-30 w-[340px] max-w-[calc(100%-24px)] border border-primary/50 bg-background/97 backdrop-blur rounded-md p-3 shadow-xl grid gap-2"
+                 data-testid="ai-assistant-panel">
+              <div className="flex items-center justify-between">
+                <p className="overline text-primary flex items-center gap-1"><Bot className="h-3.5 w-3.5" /> Assistant IA du plan</p>
+                <button onClick={() => { setAiCmdOpen(false); setAiCmdProposal(null); }}
+                        className="text-muted-foreground hover:text-foreground" data-testid="ai-assistant-close">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Ex : « renomme Chambre en Bureau », « corrige la surface de la cuisine à 14 m² »,
+                « supprime la pièce SDB », « reclasse ce mur en cloison ».
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={aiCmd}
+                  onChange={(e) => setAiCmd(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !aiCmdBusy) aiProposeCommand(); }}
+                  placeholder="Votre commande…"
+                  className="rounded-sm h-9 text-sm"
+                  data-testid="ai-command-input"
+                />
+                <Button size="sm" onClick={aiProposeCommand} disabled={aiCmdBusy || !aiCmd.trim()}
+                        className="rounded-sm gap-1 h-9" data-testid="ai-command-propose">
+                  {aiCmdBusy && !aiCmdProposal ? <Sparkles className="h-3.5 w-3.5 animate-pulse" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  Proposer
+                </Button>
+              </div>
+              {aiCmdProposal && (
+                <div className="border border-border rounded-sm p-2.5 grid gap-2 bg-secondary/40" data-testid="ai-command-proposal">
+                  <p className="text-xs"><b className="text-primary">Aperçu : </b>{aiCmdProposal.summary}</p>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setAiCmdProposal(null)}
+                            className="rounded-sm h-7 text-xs" data-testid="ai-command-cancel">
+                      Annuler
+                    </Button>
+                    <Button size="sm" onClick={aiApplyCommand} disabled={aiCmdBusy}
+                            className="rounded-sm h-7 text-xs gap-1" data-testid="ai-command-apply">
+                      <Save className="h-3 w-3" /> Appliquer
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {/* Iter63 — panneau détail de la cote IA sélectionnée */}
           {coteDetail && (
             <div className="absolute top-3 right-3 z-20 w-64 border border-fuchsia-500/50 bg-background/95 backdrop-blur rounded-sm p-3 grid gap-1.5 shadow-lg"

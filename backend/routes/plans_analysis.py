@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
+from engines import ai as ai_engine
 from engines import geometry as G
 from engines import plan_texts as T
 from engines.plan_ai import analyze_plan_image
@@ -1473,6 +1474,135 @@ async def update_wall_type(plan_id: str, page_index: int, wall_id: str,
                    f"cv_walls.{page_index}.segments.{idx}.type_source": "manual"}}
     )
     return {"ok": True, "wall_id": wall_id, "wall_type": body.wall_type}
+
+
+# ============ P3 — Assistant IA d'édition du plan (aperçu + appliquer) ============
+
+class AiCommandIn(BaseModel):
+    command: str = Field(min_length=1, max_length=500)
+    page_index: int = 0
+
+
+class AiApplyIn(BaseModel):
+    action: str
+    params: dict = Field(default_factory=dict)
+    page_index: int = 0
+
+
+async def _load_plan_for_ai(plan_id: str, user_id: str, page_index: int):
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user_id},
+        {"_id": 0, "rooms": 1, "cv_walls": 1, "calibrations": 1})
+    if not p:
+        raise HTTPException(404, "Plan introuvable")
+    rooms = [r for r in (p.get("rooms") or []) if r.get("page_index", 0) == page_index]
+    cv = (p.get("cv_walls") or {}).get(str(page_index)) or (p.get("cv_walls") or {}).get(page_index) or {}
+    walls = cv.get("segments") or []
+    return p, rooms, walls
+
+
+@router.post("/{plan_id}/ai-command")
+async def ai_command_preview(plan_id: str, body: AiCommandIn,
+                             user=Depends(current_user)) -> dict:
+    """Interprète une commande en langage naturel et renvoie l'action proposée (SANS appliquer)."""
+    _, rooms, walls = await _load_plan_for_ai(plan_id, user["user_id"], body.page_index)
+    action = await ai_engine.plan_command(rooms, walls, body.command)
+    action["page_index"] = body.page_index
+    return action
+
+
+@router.post("/{plan_id}/ai-command/apply")
+async def ai_command_apply(plan_id: str, body: AiApplyIn,
+                           user=Depends(current_user)) -> dict:
+    """Applique l'action validée par l'utilisateur puis renvoie l'état à jour."""
+    p, _, _ = await _load_plan_for_ai(plan_id, user["user_id"], body.page_index)
+    action = body.action
+    prm = body.params or {}
+    rooms = p.get("rooms") or []
+    pi = body.page_index
+
+    def _find_room(rid):
+        return next((r for r in rooms if r.get("room_id") == rid and r.get("page_index", 0) == pi), None)
+
+    if action == "rename_room":
+        room = _find_room(prm.get("room_id"))
+        if not room:
+            raise HTTPException(404, "Pièce introuvable")
+        new_name = (prm.get("new_name") or "").strip()[:60]
+        if not new_name:
+            raise HTTPException(422, "Nom invalide")
+        room["name"] = new_name
+        await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}})
+        return {"ok": True, "applied": "rename_room", "room_id": room["room_id"], "name": new_name}
+
+    if action == "delete_room":
+        room = _find_room(prm.get("room_id"))
+        if not room:
+            raise HTTPException(404, "Pièce introuvable")
+        rooms = [r for r in rooms if r.get("room_id") != prm.get("room_id")]
+        await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}})
+        return {"ok": True, "applied": "delete_room", "room_id": prm.get("room_id")}
+
+    if action == "set_room_surface":
+        room = _find_room(prm.get("room_id"))
+        if not room:
+            raise HTTPException(404, "Pièce introuvable")
+        try:
+            surf = round(float(prm.get("surface_m2")), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(422, "Surface invalide")
+        if surf <= 0 or surf > 100000:
+            raise HTTPException(422, "Surface hors bornes")
+        room["surface_m2"] = surf
+        room["surface_written_m2"] = surf
+        room["surface_delta_pct"] = None
+        room["surface_source"] = "manual"
+        await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}})
+        return {"ok": True, "applied": "set_room_surface", "room_id": room["room_id"], "surface_m2": surf}
+
+    if action == "set_room_height":
+        room = _find_room(prm.get("room_id"))
+        if not room:
+            raise HTTPException(404, "Pièce introuvable")
+        try:
+            h = float(prm.get("height_m"))
+        except (TypeError, ValueError):
+            raise HTTPException(422, "Hauteur invalide")
+        if h <= 0 or h > 20:
+            raise HTTPException(422, "Hauteur hors bornes")
+        room["ceiling_height_m"] = h
+        calib = (p.get("calibrations") or {}).get(str(room.get("page_index", 0)))
+        _recompute_room(room, (calib or {}).get("pixels_per_meter") or 0)
+        await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}})
+        return {"ok": True, "applied": "set_room_height", "room_id": room["room_id"], "height_m": h}
+
+    if action == "reclassify_wall":
+        new_type = prm.get("new_type")
+        if new_type not in ("porteur", "cloison", "doublage"):
+            raise HTTPException(422, "Type de mur invalide")
+        wid = prm.get("wall_id")
+        segs = ((p.get("cv_walls") or {}).get(str(pi)) or (p.get("cv_walls") or {}).get(pi) or {}).get("segments") or []
+        idx = next((i for i, s in enumerate(segs) if (s.get("wall_id") or s.get("id")) == wid), -1)
+        if idx < 0:
+            raise HTTPException(404, "Mur introuvable")
+        await db.plans_takeoff.update_one(
+            {"plan_id": plan_id},
+            {"$set": {f"cv_walls.{pi}.segments.{idx}.wall_type": new_type,
+                      f"cv_walls.{pi}.segments.{idx}.type_source": "ai", "updated_at": _now()}})
+        return {"ok": True, "applied": "reclassify_wall", "wall_id": wid, "wall_type": new_type}
+
+    if action == "add_note":
+        text = (prm.get("text") or "").strip()[:200]
+        if not text:
+            raise HTTPException(422, "Texte de note vide")
+        note = {"id": "note_" + secrets.token_hex(4), "text": text,
+                "x": int(prm.get("x") or 60), "y": int(prm.get("y") or 60)}
+        await db.plans_takeoff.update_one(
+            {"plan_id": plan_id},
+            {"$push": {f"annotations.{pi}.notes": note}, "$set": {"updated_at": _now()}})
+        return {"ok": True, "applied": "add_note", "note": note}
+
+    raise HTTPException(400, f"Action non supportée : {action}")
 
 
 @router.get("/{plan_id}/walls-summary")

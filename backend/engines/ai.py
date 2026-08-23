@@ -383,6 +383,60 @@ def _json(raw: str, fallback):
     return fallback
 
 
+async def plan_command(rooms: list[dict], walls: list[dict], command: str) -> dict:
+    """Interprète une commande en langage naturel sur un plan et renvoie UNE action
+    structurée (aperçu, sans appliquer). Utilisé par l'assistant IA du plan (P3).
+
+    Actions possibles :
+      rename_room       {room_id, new_name}
+      delete_room       {room_id}
+      set_room_surface  {room_id, surface_m2}
+      set_room_height   {room_id, height_m}
+      reclassify_wall   {wall_id, new_type}  new_type ∈ porteur|cloison|doublage
+      add_note          {text}
+      none              {}  (commande non comprise / hors périmètre)
+    """
+    rooms_ctx = [{"room_id": r.get("room_id"), "name": r.get("name"),
+                  "surface_m2": r.get("surface_m2"),
+                  "height_m": r.get("ceiling_height_m") or r.get("height_m")}
+                 for r in (rooms or [])]
+    walls_ctx = [{"wall_id": w.get("wall_id") or w.get("id"),
+                  "wall_type": w.get("wall_type")} for w in (walls or [])][:60]
+    system = (BRAND + " Tu es l'assistant d'édition d'un plan de métré BTP. "
+              "Tu convertis une instruction utilisateur en UNE seule action JSON stricte. "
+              "Réponds UNIQUEMENT en JSON, sans markdown.")
+    prompt = (
+        "PIÈCES du plan (room_id → nom, surface m², hauteur m) :\n"
+        f"{json.dumps(rooms_ctx, ensure_ascii=False)}\n\n"
+        "MURS détectés (wall_id → type) :\n"
+        f"{json.dumps(walls_ctx, ensure_ascii=False)}\n\n"
+        f"INSTRUCTION UTILISATEUR : « {command} »\n\n"
+        "Choisis l'action correspondante et renvoie ce schéma EXACT :\n"
+        '{\n'
+        '  "action": "rename_room|delete_room|set_room_surface|set_room_height|reclassify_wall|add_note|none",\n'
+        '  "params": { ... },\n'
+        '  "summary": "phrase courte en français décrivant ce qui va être fait",\n'
+        '  "confidence": 0.0\n'
+        '}\n'
+        "Règles : résous les noms de pièce vers leur room_id EXACT de la liste. "
+        "Pour set_room_surface, params={room_id, surface_m2 (nombre)}. "
+        "Pour set_room_height, params={room_id, height_m (nombre en mètres)}. "
+        "Pour reclassify_wall, params={wall_id, new_type}. "
+        "Pour add_note, params={text}. "
+        "Si l'instruction ne correspond à aucune action, action=none et summary explique pourquoi."
+    )
+    raw = await _complete(system, prompt, feature="plan_command")
+    data = _json(raw, {"action": "none", "params": {},
+                       "summary": "Commande non comprise.", "confidence": 0.0})
+    if not isinstance(data, dict) or "action" not in data:
+        return {"action": "none", "params": {}, "summary": "Commande non comprise.", "confidence": 0.0}
+    data.setdefault("params", {})
+    data.setdefault("summary", "")
+    data.setdefault("confidence", 0.5)
+    return data
+
+
+
 async def suggest_line_description(designation: str, context: str = "") -> str:
     """Génère une description professionnelle multi-lignes pour une ligne de devis BTP."""
     system = (BRAND + " Tu rédiges des descriptions de lignes de devis BTP, concises, "
