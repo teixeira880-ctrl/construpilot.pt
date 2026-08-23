@@ -26,6 +26,7 @@ import Coach from "@/pages/Coach";
 import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
+import NotFound from "@/pages/NotFound";
 import Pricing from "@/pages/Pricing";
 import Referral from "@/pages/Referral";
 import Marketplace from "@/pages/Marketplace";
@@ -163,7 +164,7 @@ function AppRouter() {
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Shell><NotFound /></Shell>} />
     </Routes>
   );
 }

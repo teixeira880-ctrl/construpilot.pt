@@ -21,6 +21,7 @@ const NAV_MAIN = [
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
+  { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
 ];
 
 const NAV_PRO = [
@@ -46,7 +47,6 @@ const NAV_DISCOVER = [
   { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
   { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
   { to: "/marketplace", label: "Trouver un pro", key: "nav.marketplace", icon: Wrench },
-  { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
   { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch },
 ];
 
