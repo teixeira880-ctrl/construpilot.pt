@@ -4,6 +4,77 @@
  */
 
 export const ARTICLE_BODIES = {
+  "cout-extension-maison-2026": (
+    <>
+      <p className="lead">
+        Agrandir sa maison est souvent moins cher et plus simple que déménager. Mais quel budget prévoir ?
+        En 2026, le coût d'une extension varie surtout selon le <strong>type d'extension</strong>, la
+        <strong> surface</strong> et le <strong>niveau de finition</strong>. Voici les fourchettes de prix
+        au m², les postes à anticiper, et comment obtenir une estimation fiable en quelques minutes.
+      </p>
+
+      <h2>Prix moyen d'une extension au m² en 2026</h2>
+      <p>
+        À titre indicatif, comptez les fourchettes suivantes (fourniture + pose, hors TVA) :
+      </p>
+      <ul>
+        <li><strong>Extension de plain-pied (ossature bois)</strong> : 1 500 à 2 500 €/m²</li>
+        <li><strong>Extension de plain-pied (parpaing / brique)</strong> : 1 700 à 2 800 €/m²</li>
+        <li><strong>Extension à étage</strong> : 1 900 à 3 000 €/m²</li>
+        <li><strong>Surélévation</strong> : 2 000 à 3 500 €/m² (structure existante à renforcer)</li>
+        <li><strong>Véranda</strong> : 1 000 à 2 500 €/m² selon le vitrage et l'isolation</li>
+      </ul>
+      <p>
+        Pour une extension de <strong>30 m²</strong>, le budget se situe donc généralement entre
+        <strong> 45 000 € et 90 000 €</strong> selon les choix. Les écarts s'expliquent surtout par les
+        fondations, l'isolation (RE2020) et les finitions.
+      </p>
+
+      <h2>Les postes de dépenses à prévoir</h2>
+      <p>Une extension ne se résume pas au gros œuvre. Pensez à intégrer :</p>
+      <ul>
+        <li><strong>Étude & permis</strong> : architecte obligatoire au-delà de 150 m² de surface totale, taxe d'aménagement.</li>
+        <li><strong>Terrassement & fondations</strong> : très variable selon le terrain.</li>
+        <li><strong>Gros œuvre</strong> : murs, dalle, charpente, couverture, étanchéité.</li>
+        <li><strong>Menuiseries</strong> : fenêtres, baies vitrées, porte.</li>
+        <li><strong>Second œuvre</strong> : isolation, cloisons, électricité, plomberie, chauffage.</li>
+        <li><strong>Finitions</strong> : sols, peinture, raccords avec l'existant.</li>
+      </ul>
+
+      <h2>Extension bois ou maçonnée : que choisir ?</h2>
+      <p>
+        L'<strong>ossature bois</strong> est plus rapide à monter, plus légère (idéale en surélévation) et
+        très performante thermiquement. La <strong>maçonnerie</strong> (parpaing, brique) est plus lourde
+        mais offre une excellente inertie et se raccorde visuellement à une maison traditionnelle. Le prix
+        au m² est souvent comparable ; c'est surtout une question de délai, de terrain et d'esthétique.
+      </p>
+
+      <h2>Faut-il un permis de construire ?</h2>
+      <ul>
+        <li><strong>Jusqu'à 5 m²</strong> : aucune formalité.</li>
+        <li><strong>De 5 à 20 m²</strong> (ou 40 m² en zone urbaine PLU) : déclaration préalable de travaux.</li>
+        <li><strong>Au-delà</strong>, ou si la surface totale dépasse 150 m² : permis de construire + architecte.</li>
+      </ul>
+
+      <h2>Comment estimer précisément votre extension</h2>
+      <p>
+        Les fourchettes ci-dessus donnent un ordre de grandeur, mais chaque projet est unique. Avec
+        <strong> ConstruPilot</strong>, vous obtenez une estimation détaillée <strong>poste par poste</strong>
+        en quelques minutes : décrivez votre projet ou importez un plan, l'outil calcule les surfaces,
+        applique des prix à jour et génère un budget clair — avant même de contacter un artisan.
+      </p>
+      <p>
+        Vous pouvez ensuite comparer les devis reçus à votre estimation pour négocier en confiance et
+        éviter les mauvaises surprises. <strong>Essayez gratuitement</strong> : c'est le meilleur moyen de
+        savoir si votre projet d'extension tient dans votre budget.
+      </p>
+
+      <p className="text-sm text-muted-foreground">
+        Prix indicatifs 2026, hors situation spécifique. Ils ne constituent pas un devis contractuel.
+      </p>
+    </>
+  ),
+
   "estimer-chantier-5-min": (
     <>
       <p className="lead">

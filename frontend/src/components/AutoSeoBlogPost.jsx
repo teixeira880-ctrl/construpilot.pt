@@ -63,6 +63,16 @@ export default function AutoSeoBlogPost({ slug }) {
     });
   }
 
+  jsonLd.push({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://construpilot.fr/" },
+      { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.fr/blog" },
+      { "@type": "ListItem", "position": 3, "name": a.title, "item": `https://construpilot.fr/blog/${a.slug}` },
+    ],
+  });
+
   return (
     <>
       <SEO
@@ -76,10 +86,17 @@ export default function AutoSeoBlogPost({ slug }) {
       />
 
       <article className="mx-auto max-w-3xl px-5 lg:px-8 py-12 lg:py-16">
-        <Link to="/blog" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-6"
-              data-testid="back-to-blog">
-          <ArrowLeft className="h-3 w-3" /> Retour au blog
-        </Link>
+        <nav aria-label="Fil d'Ariane" className="mb-6" data-testid="breadcrumb">
+          <ol className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <li><Link to="/" className="hover:text-primary" data-testid="breadcrumb-home">Accueil</Link></li>
+            <li aria-hidden="true" className="opacity-50">/</li>
+            <li><Link to="/blog" className="hover:text-primary" data-testid="breadcrumb-blog">Blog</Link></li>
+            <li aria-hidden="true" className="opacity-50">/</li>
+            <li className="text-foreground font-medium truncate max-w-[60vw] sm:max-w-md" aria-current="page">
+              {a.title}
+            </li>
+          </ol>
+        </nav>
 
         <h1 className="mt-3 font-display text-3xl lg:text-5xl font-extrabold tracking-tighter" data-testid="autoseo-title">
           {a.title}

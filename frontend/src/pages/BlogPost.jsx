@@ -18,24 +18,36 @@ export default function BlogPost() {
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    "headline": article.title,
-    "description": article.excerpt,
-    "image": article.cover,
-    "datePublished": article.published,
-    "dateModified": article.updated,
-    "author": { "@type": "Organization", "name": "ConstruPilot" },
-    "publisher": {
-      "@type": "Organization",
-      "name": "ConstruPilot",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://construpilot.fr/logo512.png",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "headline": article.title,
+        "description": article.excerpt,
+        "image": article.cover,
+        "datePublished": article.published,
+        "dateModified": article.updated,
+        "author": { "@type": "Organization", "name": "ConstruPilot" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "ConstruPilot",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://construpilot.fr/logo512.png",
+          },
+        },
+        "mainEntityOfPage": `https://construpilot.fr/blog/${slug}`,
+        "articleSection": article.category,
+        "keywords": article.keywords,
       },
-    },
-    "mainEntityOfPage": `https://construpilot.fr/blog/${slug}`,
-    "articleSection": article.category,
-    "keywords": article.keywords,
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://construpilot.fr/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.fr/blog" },
+          { "@type": "ListItem", "position": 3, "name": article.title, "item": `https://construpilot.fr/blog/${slug}` },
+        ],
+      },
+    ],
   };
 
   return (
@@ -51,10 +63,17 @@ export default function BlogPost() {
       />
 
       <article className="mx-auto max-w-3xl px-5 lg:px-8 py-12 lg:py-16">
-        <Link to="/blog" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-6"
-              data-testid="back-to-blog">
-          <ArrowLeft className="h-3 w-3" /> Retour au blog
-        </Link>
+        <nav aria-label="Fil d'Ariane" className="mb-6" data-testid="breadcrumb">
+          <ol className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <li><Link to="/" className="hover:text-primary" data-testid="breadcrumb-home">Accueil</Link></li>
+            <li aria-hidden="true" className="opacity-50">/</li>
+            <li><Link to="/blog" className="hover:text-primary" data-testid="breadcrumb-blog">Blog</Link></li>
+            <li aria-hidden="true" className="opacity-50">/</li>
+            <li className="text-foreground font-medium truncate max-w-[60vw] sm:max-w-md" aria-current="page">
+              {article.title}
+            </li>
+          </ol>
+        </nav>
 
         <p className="overline">{article.category}</p>
         <h1 className="mt-3 font-display text-3xl lg:text-5xl font-extrabold tracking-tighter">

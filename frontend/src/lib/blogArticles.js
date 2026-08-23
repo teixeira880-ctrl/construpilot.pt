@@ -11,6 +11,17 @@
 
 export const BLOG_ARTICLES = [
   {
+    slug: "cout-extension-maison-2026",
+    title: "Coût d'une extension de maison en 2026 : prix au m² et budget complet",
+    excerpt: "Extension de plain-pied, à étage, véranda ou surélévation : découvrez les prix au m² en 2026, les postes de dépenses à prévoir et comment estimer votre budget d'extension en quelques minutes.",
+    published: "2026-06-24",
+    updated: "2026-06-24",
+    cover: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=1200&q=80",
+    category: "Budget",
+    readingMinutes: 6,
+    keywords: "coût extension maison, prix extension maison au m2, budget extension maison 2026, prix agrandissement maison, extension plain-pied prix, surélévation maison coût, véranda prix, estimation extension maison",
+  },
+  {
     slug: "estimer-chantier-5-min",
     title: "Comment estimer un chantier en 5 minutes avec ConstruPilot",
     excerpt: "Fini les heures passées sur Excel. Découvrez la méthode pas-à-pas pour chiffrer un chantier complet en 5 minutes : import du plan, métré automatique, prix matériaux à jour et devis client prêt à envoyer.",
