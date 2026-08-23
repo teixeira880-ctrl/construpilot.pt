@@ -23,7 +23,7 @@ import {
   MousePointer2, Layers, Undo2, Save, Home, Calculator, Search,
   Wand2, Zap, Droplet, FileDown, History, Film, DoorOpen, Copy,
   Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon, Sheet, FileSearch,
-  ArrowLeft, Eraser, Plus, ArrowRight, Bot,
+  ArrowLeft, Eraser, Plus, ArrowRight, Bot, Minimize2, Contrast, SunMedium,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,23 @@ export default function PlanTakeoff() {
   const [rotation, setRotation] = useState(0);
   const [locked, setLocked] = useState(false);
   const [autoRotated, setAutoRotated] = useState(false);
+  // P1 — Plein écran + réglage contraste/luminosité du plan
+  const [fullscreen, setFullscreen] = useState(false);
+  const [planContrast, setPlanContrast] = useState(1.25);
+  const [planBrightness, setPlanBrightness] = useState(1.02);
+  const [showImgAdjust, setShowImgAdjust] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  // P2 — type de plan pour l'analyse IA : auto / gros œuvre / maison
+  const [planKindChoice, setPlanKindChoice] = useState("auto");
+  // Redimensionne le canvas quand on bascule en plein écran + Échap pour sortir
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
+    if (!fullscreen) return () => clearTimeout(t);
+    const onKey = (e) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
+  }, [fullscreen]);
   const [showDimensionLines, setShowDimensionLines] = useState(true);
   // Iter 57 — QuoterPlan-like annotations (par page)
   const [annotations, setAnnotations] = useState({
@@ -276,13 +293,33 @@ export default function PlanTakeoff() {
     const total = annotations.counters.length + annotations.notes.length
                 + annotations.angles.length + annotations.pitched_surfaces.length;
     if (total === 0) return;
+    setSaving(true);
     const t = setTimeout(() => {
       api.patch(`/takeoffs/${plan.plan_id}/annotations`, {
         page_index: pageIndex, ...annotations,
-      }).catch(() => { /* silent */ });
+      }).then(() => setSavedAt(Date.now()))
+        .catch(() => { /* silent */ })
+        .finally(() => setSaving(false));
     }, 600);
     return () => clearTimeout(t);
   }, [annotations, plan?.plan_id, pageIndex, pageData]);
+
+  // Enregistrement manuel — force la persistance immédiate de l'état de la page
+  const manualSave = useCallback(async () => {
+    if (!plan?.plan_id) return;
+    setSaving(true);
+    try {
+      await api.patch(`/takeoffs/${plan.plan_id}/annotations`, {
+        page_index: pageIndex, ...annotations,
+      });
+      setSavedAt(Date.now());
+      toast.success("Plan enregistré");
+    } catch {
+      toast.error("Échec de l'enregistrement");
+    } finally {
+      setSaving(false);
+    }
+  }, [plan?.plan_id, pageIndex, annotations]);
 
   const refreshPlan = useCallback(async () => {
     if (!plan?.plan_id) return;
@@ -1284,7 +1321,8 @@ export default function PlanTakeoff() {
       // 1) Structure béton (murs, poteaux, poutres, dalles)
       let struct = null;
       try {
-        const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure?page_index=${pageIndex}`);
+        const _pk = planKindChoice !== "auto" ? `&plan_kind=${planKindChoice}` : "";
+        const { data } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure?page_index=${pageIndex}${_pk}`);
         if (!data.error) {
           struct = data;
           setStructure(data);
@@ -2432,6 +2470,21 @@ export default function PlanTakeoff() {
                   title="Créer une copie de ce plan (pièces, ouvertures, calibrations)">
             <Copy className="h-4 w-4" /> Dupliquer
           </Button>
+          <div className="flex items-center gap-1 border border-border rounded-sm px-1 h-9" data-testid="analyze-kind-toggle"
+               title="Type de plan pour l'analyse IA">
+            {[
+              { v: "auto", label: "Auto" },
+              { v: "gros_oeuvre", label: "🏢 Gros œuvre" },
+              { v: "maison", label: "🏠 Maison" },
+            ].map((o) => (
+              <button key={o.v} onClick={() => setPlanKindChoice(o.v)}
+                      data-testid={`analyze-kind-${o.v}`}
+                      className={`text-xs px-2 py-1 rounded-sm transition-colors ${
+                        planKindChoice === o.v ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
           <Button variant="outline" onClick={analyzePlanFull} disabled={analysisBusy} data-testid="plan-analyze-btn"
                   title="Analyse TOUT automatiquement : structure (murs/poteaux/poutres/dalles), pièces, métré et estimation chiffrée. Calibration requise."
                   className="rounded-sm gap-2 border-red-500/60 text-red-500 hover:bg-red-500 hover:text-white font-semibold">
@@ -2684,7 +2737,9 @@ export default function PlanTakeoff() {
         </div>
 
         {/* MAIN CANVAS */}
-        <div className="surface p-3">
+        <div className={fullscreen
+          ? "fixed inset-0 z-[60] p-3 bg-background overflow-auto"
+          : "surface p-3"} data-testid="plan-canvas-surface">
           {/* TOOLBAR */}
           <div className="flex flex-wrap gap-2 mb-3 pb-3 border-b border-border">
             <MeasureHelpDialog />
@@ -2765,10 +2820,75 @@ export default function PlanTakeoff() {
               <Layers className="h-3 w-3" />
               Objets
             </Button>
+            {/* P1 — Statut d'enregistrement automatique + enregistrement manuel */}
+            <span data-testid="autosave-status"
+                  className={`inline-flex items-center gap-1 text-xs px-2 h-8 rounded-sm ${saving ? "text-amber-500" : "text-emerald-600"}`}
+                  title="Vos mesures et modifications sont enregistrées automatiquement">
+              <span className={`h-1.5 w-1.5 rounded-full ${saving ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+              {saving ? "Enregistrement…" : savedAt ? "Enregistré ✓" : "Auto-save actif"}
+            </span>
+            <Button size="sm" variant="outline" onClick={manualSave} disabled={saving}
+                    data-testid="plan-save-btn" className="rounded-sm gap-1 h-8"
+                    title="Forcer l'enregistrement maintenant">
+              <Save className="h-3 w-3" /> Enregistrer
+            </Button>
+            {/* P1 — Réglage contraste/luminosité du plan */}
+            <div className="relative">
+              <Button
+                size="sm"
+                variant={showImgAdjust ? "default" : "outline"}
+                onClick={() => setShowImgAdjust((v) => !v)}
+                data-testid="tool-img-adjust"
+                className={`rounded-sm gap-1 h-8 ${showImgAdjust ? "bg-primary text-white hover:bg-orange-600" : ""}`}
+                title="Régler le contraste et la luminosité du plan"
+              >
+                <Contrast className="h-3 w-3" /> Contraste
+              </Button>
+              {showImgAdjust && (
+                <div className="absolute right-0 top-9 z-[70] w-64 border border-border bg-background/98 backdrop-blur rounded-md p-3 shadow-xl grid gap-3"
+                     data-testid="img-adjust-panel">
+                  <div className="grid gap-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground"><Contrast className="h-3 w-3" /> Contraste</span>
+                      <b className="num">{Math.round(planContrast * 100)}%</b>
+                    </div>
+                    <input type="range" min="0.6" max="2.5" step="0.05" value={planContrast}
+                           onChange={(e) => setPlanContrast(parseFloat(e.target.value))}
+                           data-testid="img-contrast-slider" className="w-full accent-primary" />
+                  </div>
+                  <div className="grid gap-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground"><SunMedium className="h-3 w-3" /> Luminosité</span>
+                      <b className="num">{Math.round(planBrightness * 100)}%</b>
+                    </div>
+                    <input type="range" min="0.6" max="1.8" step="0.05" value={planBrightness}
+                           onChange={(e) => setPlanBrightness(parseFloat(e.target.value))}
+                           data-testid="img-brightness-slider" className="w-full accent-primary" />
+                  </div>
+                  <Button size="sm" variant="ghost" className="rounded-sm h-7 text-xs"
+                          onClick={() => { setPlanContrast(1); setPlanBrightness(1); }}
+                          data-testid="img-adjust-reset">
+                    Réinitialiser
+                  </Button>
+                </div>
+              )}
+            </div>
+            {/* P1 — Plein écran */}
+            <Button
+              size="sm"
+              variant={fullscreen ? "default" : "outline"}
+              onClick={() => setFullscreen((v) => !v)}
+              data-testid="tool-fullscreen"
+              className={`rounded-sm gap-1 h-8 ${fullscreen ? "bg-primary text-white hover:bg-orange-600" : ""}`}
+              title={fullscreen ? "Quitter le plein écran (Échap)" : "Afficher le plan en plein écran"}
+            >
+              {fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+              {fullscreen ? "Quitter" : "Plein écran"}
+            </Button>
           </div>
 
           {/* CANVAS */}
-          <div className="relative">
+          <div className={fullscreen ? "relative h-[calc(100vh-92px)]" : "relative"}>
           <PlanCanvas
             pageData={pageData} tool={tool} points={points} rooms={rooms}
             calibration={currentCalib} zoom={zoom} offset={offset} rotation={rotation}
@@ -2793,6 +2913,8 @@ export default function PlanTakeoff() {
             onCoteClick={setSelectedCote}
             onCanvasDoubleClick={onCanvasDoubleClick}
             showDeltas={showDeltas}
+            contrast={planContrast}
+            brightness={planBrightness}
             measurements={pageMeasurements}
             structure={structure}
             showStructure={showStructure}

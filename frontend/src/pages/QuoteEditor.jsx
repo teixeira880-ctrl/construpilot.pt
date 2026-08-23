@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { SectionTitle } from "@/components/Bits";
 import { api } from "@/lib/api";
@@ -45,6 +45,11 @@ export default function QuoteEditor() {
   const [pickerQ, setPickerQ] = useState("");
 
   const [clientId, setClientId] = useState(sp.get("client") || "");
+  const [srcPlanId, setSrcPlanId] = useState(sp.get("plan") || "");
+  // P2 — création d'un client à la volée depuis l'éditeur de devis
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [ncBusy, setNcBusy] = useState(false);
+  const [nc, setNc] = useState({ first_name: "", last_name: "", company: "", email: "", phone: "", address: "" });
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [depositPct, setDepositPct] = useState(0);
@@ -64,6 +69,7 @@ export default function QuoteEditor() {
   const applyDoc = useCallback((d) => {
     setDocId(d.doc_id);
     setClientId(d.client_id || "");
+    if (d.plan_id) setSrcPlanId(d.plan_id);
     setTitle(d.title || "");
     setNotes(d.notes || "");
     setDepositPct(d.deposit_pct || 0);
@@ -202,6 +208,23 @@ export default function QuoteEditor() {
       return d;
     } catch (e) { toast.error(e?.response?.data?.detail || t("crm.save_fail")); }
     finally { setSaving(false); }
+  };
+
+  const createClientInline = async () => {
+    if (!(nc.first_name || nc.last_name || nc.company || nc.email)) {
+      toast.error("Renseignez au moins un nom, une société ou un email"); return;
+    }
+    setNcBusy(true);
+    try {
+      const { data } = await api.post("/clients", nc);
+      setClients((prev) => [data, ...prev]);
+      setClientId(data.client_id);
+      setNewClientOpen(false);
+      setNc({ first_name: "", last_name: "", company: "", email: "", phone: "", address: "" });
+      toast.success("Client ajouté et sélectionné");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Création du client impossible");
+    } finally { setNcBusy(false); }
   };
 
   const addPlanFromFile = async (file) => {
@@ -466,9 +489,18 @@ export default function QuoteEditor() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <button onClick={() => nav("/devis")} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-2" data-testid="editor-back">
-            <ArrowLeft className="h-3 w-3" /> {t("crm.ed_back")}
-          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <button onClick={() => nav("/devis")} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1" data-testid="editor-back">
+              <ArrowLeft className="h-3 w-3" /> {t("crm.ed_back")}
+            </button>
+            {srcPlanId && (
+              <button onClick={() => nav(`/plan?open=${srcPlanId}&auto=1`)}
+                      className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                      data-testid="editor-back-to-plan">
+                <Ruler className="h-3 w-3" /> Retour au plan
+              </button>
+            )}
+          </div>
           <SectionTitle
             over={number
               ? `${{ quote: t("crm.doc_quote"), invoice: t("crm.doc_invoice"), credit_note: t("crm.doc_credit") }[docType]} ${number}`
@@ -578,15 +610,22 @@ export default function QuoteEditor() {
       <div className="surface p-4 grid md:grid-cols-3 gap-3">
         <div>
           <Label className="flex items-center gap-1"><User className="h-3 w-3" /> {t("crm.client_lbl")}</Label>
-          <select value={clientId} onChange={(e) => setClientId(e.target.value)} data-testid="editor-client-select"
-                  className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-            <option value="">{t("crm.no_client")}</option>
-            {clients.map((c) => (
-              <option key={c.client_id} value={c.client_id}>
-                {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.company || c.email}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2 mt-1">
+            <select value={clientId} onChange={(e) => setClientId(e.target.value)} data-testid="editor-client-select"
+                    className="flex-1 rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+              <option value="">{t("crm.no_client")}</option>
+              {clients.map((c) => (
+                <option key={c.client_id} value={c.client_id}>
+                  {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.company || c.email}
+                </option>
+              ))}
+            </select>
+            <Button type="button" variant="outline" size="sm"
+                    onClick={() => setNewClientOpen(true)} data-testid="editor-new-client-btn"
+                    className="rounded-sm gap-1 whitespace-nowrap" title="Ajouter un client non enregistré">
+              <Plus className="h-3.5 w-3.5" /> Nouveau
+            </Button>
+          </div>
         </div>
         <div>
           <Label>{t("crm.title_lbl")}</Label>
@@ -601,6 +640,60 @@ export default function QuoteEditor() {
           </select>
         </div>
       </div>
+
+      {/* P2 — Dialog création client à la volée */}
+      <Dialog open={newClientOpen} onOpenChange={setNewClientOpen}>
+        <DialogContent className="max-w-md" data-testid="new-client-dialog">
+          <DialogHeader>
+            <DialogTitle>Nouveau client</DialogTitle>
+            <DialogDescription>Créez un client non enregistré ; il sera ajouté à votre CRM et sélectionné pour ce devis.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Prénom</Label>
+                <Input value={nc.first_name} onChange={(e) => setNc({ ...nc, first_name: e.target.value })}
+                       className="rounded-sm mt-1" data-testid="nc-first-name" placeholder="Jean" />
+              </div>
+              <div>
+                <Label>Nom</Label>
+                <Input value={nc.last_name} onChange={(e) => setNc({ ...nc, last_name: e.target.value })}
+                       className="rounded-sm mt-1" data-testid="nc-last-name" placeholder="Dupont" />
+              </div>
+            </div>
+            <div>
+              <Label>Société (optionnel)</Label>
+              <Input value={nc.company} onChange={(e) => setNc({ ...nc, company: e.target.value })}
+                     className="rounded-sm mt-1" data-testid="nc-company" placeholder="SCI Dupont" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Email</Label>
+                <Input value={nc.email} onChange={(e) => setNc({ ...nc, email: e.target.value })}
+                       className="rounded-sm mt-1" data-testid="nc-email" placeholder="jean@email.com" />
+              </div>
+              <div>
+                <Label>Téléphone</Label>
+                <Input value={nc.phone} onChange={(e) => setNc({ ...nc, phone: e.target.value })}
+                       className="rounded-sm mt-1" data-testid="nc-phone" placeholder="06 12 34 56 78" />
+              </div>
+            </div>
+            <div>
+              <Label>Adresse</Label>
+              <Input value={nc.address} onChange={(e) => setNc({ ...nc, address: e.target.value })}
+                     className="rounded-sm mt-1" data-testid="nc-address" placeholder="12 rue des Travaux, 75000 Paris" />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setNewClientOpen(false)} className="rounded-sm" data-testid="nc-cancel">
+                Annuler
+              </Button>
+              <Button onClick={createClientInline} disabled={ncBusy} className="rounded-sm gap-1" data-testid="nc-save">
+                {ncBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Ajouter
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Lignes */}
       <div className="surface p-4 grid gap-3">

@@ -382,9 +382,11 @@ def _reclassify_coffrage(res: dict) -> None:
 
 
 async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: int,
-                                 max_tile: int = 2200) -> dict:
+                                 max_tile: int = 2200, force_kind: str | None = None) -> dict:
     """Analyse un GRAND plan (A0/A1) en le découpant en zones, puis fusionne.
-    Capte beaucoup plus de poteaux/poutres qu'un seul passage sur l'image réduite."""
+    Capte beaucoup plus de poteaux/poutres qu'un seul passage sur l'image réduite.
+    force_kind ("coffrage"|"habitation") : force le type de plan choisi par l'utilisateur
+    (gros œuvre vs maison) au lieu de la détection automatique."""
     import base64 as _b64
     import io as _io
     import asyncio
@@ -393,6 +395,8 @@ async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: i
     big = max(width_px, height_px)
     if big <= max_tile * 1.3:
         single = await detect_structure(image_b64_png, width_px, height_px)
+        if force_kind:
+            single["plan_kind"] = force_kind
         _reclassify_coffrage(single)
         single["reservation_count"] = len(single.get("reservations") or [])
         single["opening_count"] = len(single.get("openings") or [])
@@ -435,8 +439,10 @@ async def detect_structure_tiled(image_b64_png: str, width_px: int, height_px: i
         merged["plan_kind"] = max(set(kinds), key=kinds.count)
     # Calage : un plan avec de nombreux poteaux détectés EST un plan de coffrage,
     # même si le vote par tuile hésite (des tuiles sans poteau votent "habitation").
-    if len(merged["columns"]) >= 10 or (kinds.count("coffrage") >= max(2, len(kinds) // 3)):
+    if not force_kind and (len(merged["columns"]) >= 10 or (kinds.count("coffrage") >= max(2, len(kinds) // 3))):
         merged["plan_kind"] = "coffrage"
+    if force_kind:
+        merged["plan_kind"] = force_kind
     _reclassify_coffrage(merged)
     merged.update({
         "image_width": width_px, "image_height": height_px,

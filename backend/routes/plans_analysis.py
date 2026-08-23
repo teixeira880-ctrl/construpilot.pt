@@ -529,10 +529,12 @@ def _page_dims(page: dict) -> tuple[int, int]:
 
 @router.post("/{plan_id}/detect-structure")
 async def detect_structure_route(plan_id: str, page_index: int = 0,
+                                 plan_kind: str | None = None,
                                  user=Depends(current_user)):
     """Détection IA de la structure : murs (rouge) + ouvertures portes/fenêtres.
 
     Produit un rendu sémantique propre, contrairement à /detect-walls (OpenCV brut).
+    plan_kind ("gros_oeuvre"|"maison"|"auto") : force le type d'analyse choisi par l'utilisateur.
     """
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1})
@@ -546,7 +548,9 @@ async def detect_structure_route(plan_id: str, page_index: int = 0,
     if not img:
         raise HTTPException(500, "Image manquante")
     w, h = _page_dims(page)
-    result = await detect_structure_tiled(img, w, h)
+    _force = {"gros_oeuvre": "coffrage", "immeuble": "coffrage", "coffrage": "coffrage",
+              "maison": "habitation", "habitation": "habitation"}.get((plan_kind or "").lower())
+    result = await detect_structure_tiled(img, w, h, force_kind=_force)
     _assign_column_refs(result.get("columns") or [])
     _assign_beam_refs(result.get("beams") or [])
     await db.plans_takeoff.update_one(

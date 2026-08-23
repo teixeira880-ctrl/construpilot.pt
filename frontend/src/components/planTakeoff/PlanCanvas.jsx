@@ -17,6 +17,8 @@ export default function PlanCanvas({
   onCoteClick = null,
   onCanvasDoubleClick = null,
   showDeltas = true,
+  contrast = 1,
+  brightness = 1,
 }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -105,7 +107,14 @@ export default function PlanCanvas({
     ctx.rotate((rotation * Math.PI) / 180);
     ctx.scale(zoom, zoom);
     ctx.translate(-imgRef.current.width / 2, -imgRef.current.height / 2);
+    // Rendu net + contraste/luminosité réglables (appliqués UNIQUEMENT au plan, pas aux overlays)
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    const _c = Math.max(0.5, Math.min(3, contrast || 1));
+    const _b = Math.max(0.5, Math.min(2, brightness || 1));
+    if (_c !== 1 || _b !== 1) ctx.filter = `contrast(${_c}) brightness(${_b})`;
     ctx.drawImage(imgRef.current, 0, 0);
+    ctx.filter = "none";
 
     // DETECTED WALLS overlay (Phase B) — coloration par type de mur
     if (showWalls && detectedWalls?.segments?.length) {
@@ -696,7 +705,7 @@ export default function PlanCanvas({
        calibration, detectedWalls, showWalls, pixelsPerMeter,
        dimensionLines, showDimensionLines, annotations, activeCounterId,
        selectedCoteIndex, showDeltas, measurements,
-       structure, showStructure, selectedStruct]);
+       structure, showStructure, selectedStruct, contrast, brightness]);
 
   useEffect(() => { redraw(); }, [redraw]);
 

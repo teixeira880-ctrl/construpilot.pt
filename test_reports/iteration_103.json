@@ -1,0 +1,29 @@
+{
+  "summary": "Tested new P1 features on /plan (PlanTakeoff) as Pro user with existing testplan.png. All 4 features work: fullscreen toggle, contrast/brightness sliders + reset, manual save with PATCH /api/takeoffs/{id}/annotations returning 200 and toast 'Plan enregistré'. No blocking JS console errors during interactions.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "detailed_verifications": {
+    "login_and_navigation": "Login as pro@construpilot.fr OK, token stored in localStorage('construpilot_token'), navigation to /plan OK, plan card 'testplan.png' visible and clickable.",
+    "toolbar_testids_present": "tool-fullscreen(1), tool-img-adjust(1), plan-save-btn(1), autosave-status(1), plan-canvas-surface(1), plan-canvas(1) — all found.",
+    "fullscreen": "Click tool-fullscreen -> plan-canvas-surface bbox becomes {x:0,y:0,width:1920,height:1080} (fixed full viewport). Button label switches to 'Quitter'. Escape key exits: bbox returns to normal container size, label back to 'Plein écran'. Canvas remains visible in both states.",
+    "contrast_panel": "img-adjust-panel opens on click. Setting contrast slider to 1.8 displays '125%' text update; brightness slider works too. Reset button restores both to 100%. No JS errors from filter application.",
+    "save": "Click plan-save-btn triggers PATCH https://.../api/takeoffs/plan_9324dac7ece6/annotations -> 200. Green toast 'Plan enregistré' shown. autosave-status badge visible."
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx is ~2900+ lines — heavily oversized. Should be split into subcomponents (toolbar, side panel, canvas wrapper, adjust panel) for maintainability. Not blocking for this P1 test but flagged for future refactor."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "Pro: pro@construpilot.fr / Pro2026! (worked)",
+  "seed_data_creation": "None — used existing plan plan_9324dac7ece6 (testplan.png).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "P1 features on /plan verified end-to-end. If retesting, be aware that PATCH /api/takeoffs/{plan_id}/annotations is the manual save endpoint and returns 200. Fullscreen sets plan-canvas-surface to fixed position covering viewport; Escape exits."
+}
