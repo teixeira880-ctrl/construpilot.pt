@@ -4,6 +4,77 @@
  */
 
 export const ARTICLE_BODIES = {
+  "estimer-chantier-5-min": (
+    <>
+      <p className="lead">
+        Chiffrer un chantier prend en moyenne <strong>2 à 4 heures</strong> avec un tableur : ressaisie
+        des cotes, recherche des prix, calcul des surfaces, mise en forme du devis… Avec ConstruPilot,
+        la même estimation se fait en <strong>5 minutes chrono</strong>. Voici la méthode complète,
+        étape par étape.
+      </p>
+
+      <h2>Étape 1 — Importez votre plan (30 secondes)</h2>
+      <p>
+        Depuis la page <strong>Mesure</strong>, glissez-déposez votre plan : PDF, photo, scan ou fichier
+        DWG/DXF. ConstruPilot affiche immédiatement le plan en plein écran, avec des réglages de
+        <strong> contraste et de luminosité</strong> pour bien lire les traits et les cotes, même sur un
+        vieux tirage papier photographié au téléphone.
+      </p>
+
+      <h2>Étape 2 — Calibrez à l'échelle (30 secondes)</h2>
+      <p>
+        Cliquez sur deux points dont vous connaissez la distance réelle (une cote de 5,00 m par exemple)
+        et saisissez la valeur. Le plan est instantanément mis à l'échelle : toutes vos mesures suivantes
+        seront exactes au centimètre près. Pas de cote fiable ? L'outil propose une
+        <strong> mise à l'échelle automatique</strong> à partir des cotes détectées.
+      </p>
+
+      <h2>Étape 3 — Laissez l'IA faire le métré (1 minute)</h2>
+      <p>
+        Un clic sur <strong>« Analyser le plan »</strong> et l'intelligence artificielle détecte
+        automatiquement les murs, les pièces et les surfaces. Vous choisissez le contexte —
+        <strong> maison</strong> ou <strong>gros œuvre</strong> — pour une analyse adaptée à votre chantier.
+        Chaque pièce est mesurée : surface au sol, périmètre, hauteur, surface murale.
+      </p>
+      <ul>
+        <li><strong>Maison / rénovation</strong> : sols, peinture, placo, plinthes par pièce.</li>
+        <li><strong>Gros œuvre</strong> : béton, coffrage, aciers, avec métré structure.</li>
+      </ul>
+
+      <h2>Étape 4 — Corrigez tout en langage naturel</h2>
+      <p>
+        Besoin d'un ajustement ? L'<strong>assistant IA</strong> exécute vos consignes directement sur le
+        plan : « renomme la Chambre en Bureau », « corrige la surface de la cuisine à 14 m² »,
+        « reclasse ce mur en cloison ». Chaque modification est <strong>enregistrée automatiquement</strong> —
+        vous ne perdez jamais votre travail.
+      </p>
+
+      <h2>Étape 5 — Générez le devis chiffré (2 minutes)</h2>
+      <p>
+        En un clic, transformez votre métré en <strong>devis client</strong>. ConstruPilot applique vos
+        prix — catalogue fournisseur, bibliothèque DPGF ou base de prix intégrée — et calcule
+        automatiquement les totaux HT, la TVA (20 %, 10 % ou 0 % sous-traitance) et le TTC. Vous pouvez :
+      </p>
+      <ul>
+        <li>Ajouter un <strong>client à la volée</strong> s'il n'est pas encore enregistré.</li>
+        <li>Combiner <strong>plusieurs plans</strong> (RDC + étages + ferraillage) dans un seul devis consolidé.</li>
+        <li>Exporter en <strong>PDF professionnel</strong> à votre charte, ou envoyer par e-mail.</li>
+      </ul>
+
+      <h2>Le résultat : 5 minutes au lieu d'une demi-journée</h2>
+      <p>
+        Vous passez du plan brut au devis envoyé au client sans ressaisie, sans Excel et sans oubli de
+        quantités. Les artisans qui utilisent ConstruPilot répondent à <strong>2 à 3 fois plus d'appels
+        d'offres</strong> — parce que chiffrer ne leur coûte plus une soirée.
+      </p>
+
+      <p>
+        <strong>Astuce SEO chantier :</strong> gardez vos plans et devis au même endroit. Quand un client
+        demande une variante, vous rouvrez le plan, ajustez une pièce et regénérez le devis en 30 secondes.
+      </p>
+    </>
+  ),
+
   "cout-renovation-2026": (
     <>
       <p className="lead">

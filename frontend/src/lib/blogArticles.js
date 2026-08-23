@@ -11,6 +11,17 @@
 
 export const BLOG_ARTICLES = [
   {
+    slug: "estimer-chantier-5-min",
+    title: "Comment estimer un chantier en 5 minutes avec ConstruPilot",
+    excerpt: "Fini les heures passées sur Excel. Découvrez la méthode pas-à-pas pour chiffrer un chantier complet en 5 minutes : import du plan, métré automatique, prix matériaux à jour et devis client prêt à envoyer.",
+    published: "2026-06-23",
+    updated: "2026-06-23",
+    cover: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&q=80",
+    category: "Méthode",
+    readingMinutes: 5,
+    keywords: "estimer un chantier, chiffrage travaux rapide, logiciel devis BTP, métré plan automatique, devis chantier 5 minutes, estimation coût travaux, ConstruPilot",
+  },
+  {
     slug: "cout-renovation-2026",
     title: "Coût d'une rénovation en 2026 : prix au m² par région et par lot",
     excerpt: "Combien coûte réellement une rénovation en France en 2026 ? Fourchettes actualisées par région, par gamme de finition et par lot (plomberie, électricité, cuisine, salle de bain, isolation).",
