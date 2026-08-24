@@ -104,11 +104,24 @@ async def register(body: RegisterIn, response: Response) -> dict:
     # E-mail de bienvenue (best-effort, ne bloque jamais l'inscription)
     try:
         from engines import emailer
-        html = ("<p>Bienvenue sur <b>ConstruPilot</b> !</p>"
-                "<p>Votre compte est actif et <b>100% gratuit pendant la phase de lancement</b> — "
-                "toutes les fonctionnalités Pro sont débloquées.</p>"
-                "<p>Créez votre premier devis, générez un rendu 3D ou estimez un chantier par photo dès maintenant.</p>"
-                "<p>À très vite,<br/>L'équipe ConstruPilot</p>")
+        body_html = (
+            f"<p>Bonjour {body.name.split(' ')[0] if body.name else ''},</p>"
+            "<p>Bienvenue sur <b>ConstruPilot</b> ! Votre compte est actif et "
+            "<b>100% gratuit pendant la phase de lancement</b> — toutes les fonctionnalités "
+            "Pro sont débloquées.</p>"
+            "<p>Pour bien démarrer :</p>"
+            "<ul style='margin:0 0 8px 18px;padding:0'>"
+            "<li>Estimez un projet en 30 secondes</li>"
+            "<li>Mesurez un plan et chiffrez-le automatiquement</li>"
+            "<li>Créez et envoyez un devis professionnel</li>"
+            "</ul>"
+            "<p>À très vite,<br/>L'équipe ConstruPilot</p>"
+        )
+        html = emailer.wrap_html(
+            "Bienvenue sur ConstruPilot 🎉", body_html,
+            cta_url="https://construpilot.fr/bienvenue",
+            cta_label="Démarrer maintenant",
+        )
         await emailer.send_email(email, "Bienvenue sur ConstruPilot 🎉", html)
     except Exception:
         pass

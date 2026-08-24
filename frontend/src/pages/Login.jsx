@@ -28,9 +28,10 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
+      const newSignup = sessionStorage.getItem("construpilot_new_signup") === "1";
       const dest = user.role === "worker"
         ? "/pointage"
-        : (user.must_change_password ? "/compte" : "/dashboard");
+        : (user.must_change_password ? "/compte" : (newSignup ? "/bienvenue" : "/dashboard"));
       navigate(dest, { replace: true });
     }
   }, [user, navigate]);
@@ -43,6 +44,7 @@ export default function Login() {
       if (mode === "login") logged = await login(form.email, form.password);
       else {
         const ref = (form.ref || sessionStorage.getItem("construpilot_ref") || "").trim();
+        sessionStorage.setItem("construpilot_new_signup", "1");
         await register(form.name, form.email, form.password, ref || null);
         if (ref) {
           toast.success(`Code parrainage ${ref.toUpperCase()} appliqué — bienvenue !`);
@@ -58,6 +60,8 @@ export default function Login() {
       if (logged?.must_change_password) {
         toast.warning(t("login.temp_pw"), { duration: 6000 });
         navigate("/compte");
+      } else if (mode === "register") {
+        navigate("/bienvenue");
       } else {
         navigate("/dashboard");
       }

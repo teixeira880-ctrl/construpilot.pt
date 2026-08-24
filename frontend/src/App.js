@@ -27,6 +27,7 @@ import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
+import Welcome from "@/pages/Welcome";
 import Pricing from "@/pages/Pricing";
 import Referral from "@/pages/Referral";
 import Marketplace from "@/pages/Marketplace";
@@ -162,6 +163,7 @@ function AppRouter() {
       <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
       <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
+      <Route path="/bienvenue" element={<Protected><Shell><Welcome /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
       <Route path="*" element={<Shell><NotFound /></Shell>} />
