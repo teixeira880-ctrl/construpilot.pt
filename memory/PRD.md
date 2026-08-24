@@ -2451,3 +2451,9 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Badge « Pro vérifié » cliquable** : e-mail devis → lien vers page publique de confiance `/pro-verifie/:userId` (`ProVerified.jsx`) alimentée par `GET /reviews/pro-verified/{user_id}` (identité SIRET, certifications, avis).
 - **Admin drill-down (NEW)** : les 9 cartes KPI de `/admin` (overview + revenu) sont cliquables → `AdminDrillDialog` (`GET /admin/drill/{metric}`) listant le détail avec COORDONNÉES (nom/e-mail/téléphone/société/plan) + recherche + **export CSV** (cible publicitaire). Métriques : users, projects, estimated_volume, leads, quote_analyses, total_revenue, transactions, active_subscriptions, active_project_pass. Validé testing_agent iter111 (100%).
 - ⚠️ PROD : tout ceci est en PREVIEW → cliquer « Deploy Now / Remplacer l'app » pour publier sur construpilot.fr.
+
+## Changelog Iter 112 (24/08/2026) — Statut import + Filtres cible pub + E-mail groupé
+- **Statut d'import** : sélecteur (Brouillon/Envoyé/Accepté/Refusé/Payé) dans `ImportDocumentsDialog` → `POST /documents/import-pdf?status=`. Mapping par type (accepted→signed, paid→paid avec paid=ttc & remaining_due=0). Validé (accepted→'signed', paid→'paid').
+- **Filtres cible pub (AdminDrillDialog)** : filtre plan, ville (users+projects), toggle 'Inactifs (+30j)' (via colonne last_seen des users, map known_devices). Export CSV sur lignes filtrées. Colonne Ville ajoutée au drill users.
+- **E-mail groupé** : cases de sélection + 'tout sélectionner' dans le détail admin, composer (objet/message) → `POST /admin/bulk-email` (dédoublonne/valide e-mails, envoie via Resend wrap_html + lien désinscription, max 200, envoi par lots de 10). Validé e2e (1 destinataire test → {sent:1}).
+- Validé testing_agent iter112 = 100% frontend. ⚠️ PREVIEW → « Deploy Now » pour publier.

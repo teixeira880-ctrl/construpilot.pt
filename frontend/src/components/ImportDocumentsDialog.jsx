@@ -3,12 +3,17 @@ import { useNavigate } from "react-router-dom";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Upload, FileUp, Loader2, CheckCircle2, XCircle, FileText } from "lucide-react";
 
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
+const STATUS_LABELS = { draft: "Brouillon", sent: "Envoyé", signed: "Accepté", refused: "Refusé", paid: "Payé" };
 
 /**
  * Import de devis/factures PDF d'autres logiciels.
@@ -22,6 +27,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState(null);
   const [didImport, setDidImport] = useState(false);
+  const [status, setStatus] = useState("sent");
   const inputRef = useRef(null);
   const nav = useNavigate();
 
@@ -34,9 +40,8 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f));
-      const { data } = await api.post("/documents/import-pdf", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      fd.append("status", status);
+      const { data } = await api.post("/documents/import-pdf", fd);
       setResults(data);
       if (data.imported > 0) {
         toast.success(`${data.imported}/${data.total} document(s) importé(s)`, { id: tid });
@@ -76,19 +81,36 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                data-testid="import-docs-input" />
 
         {!results && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => inputRef.current?.click()}
-            className="w-full border-2 border-dashed border-primary/40 rounded-lg py-10 flex flex-col items-center gap-2 text-muted-foreground hover:bg-primary/5 transition-colors disabled:opacity-60"
-            data-testid="import-docs-dropzone"
-          >
-            {busy ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Upload className="h-8 w-8 text-primary" />}
-            <span className="text-sm font-semibold text-foreground">
-              {busy ? "Lecture des PDF en cours…" : "Cliquez pour choisir vos PDF"}
-            </span>
-            <span className="text-xs">Plusieurs fichiers acceptés · devis, factures, avoirs</span>
-          </button>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground whitespace-nowrap">Statut à appliquer</label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="rounded-sm h-9" data-testid="import-docs-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Brouillon</SelectItem>
+                  <SelectItem value="sent">Envoyé</SelectItem>
+                  <SelectItem value="accepted">Accepté / signé</SelectItem>
+                  <SelectItem value="refused">Refusé</SelectItem>
+                  <SelectItem value="paid">Payé (facture)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+              className="w-full border-2 border-dashed border-primary/40 rounded-lg py-10 flex flex-col items-center gap-2 text-muted-foreground hover:bg-primary/5 transition-colors disabled:opacity-60"
+              data-testid="import-docs-dropzone"
+            >
+              {busy ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Upload className="h-8 w-8 text-primary" />}
+              <span className="text-sm font-semibold text-foreground">
+                {busy ? "Lecture des PDF en cours…" : "Cliquez pour choisir vos PDF"}
+              </span>
+              <span className="text-xs">Plusieurs fichiers acceptés · devis, factures, avoirs</span>
+            </button>
+          </div>
         )}
 
         {results && (
@@ -107,6 +129,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                     <p className="text-xs text-muted-foreground">
                       {r.doc_type === "invoice" ? "Facture" : r.doc_type === "credit_note" ? "Avoir" : "Devis"}
                       {r.number ? ` n° ${r.number}` : ""} · {r.lines} ligne(s) · {eur(r.ttc)}
+                      {r.status ? ` · ${STATUS_LABELS[r.status] || r.status}` : ""}
                     </p>
                   ) : (
                     <p className="text-xs text-destructive">{r.error}</p>

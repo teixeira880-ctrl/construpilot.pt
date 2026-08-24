@@ -15,7 +15,7 @@ import os
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from pymongo import ReturnDocument
@@ -294,13 +294,24 @@ async def _bump_counter(user_id: str, doc_type: str, seq: int) -> None:
 
 @router.post("/import-pdf")
 async def import_documents_pdf(files: list[UploadFile] = File(...),
+                               status: str = Form("sent"),
                                user=Depends(current_user)) -> dict:
     """Importe un lot de devis/factures PDF d'autres logiciels.
 
     Extraction IA → crée/associe le client → crée le document au format ConstruPilot
     en conservant le NUMÉRO d'origine, puis fait continuer la numérotation.
+    `status` (draft|sent|accepted|refused|paid) reconstitue l'historique.
     """
     from engines.ai import extract_document_from_pdf
+    # Mapping du statut choisi vers le statut réel selon le type de document
+    STATUS_MAP = {
+        "draft": {"quote": "draft", "invoice": "draft", "credit_note": "draft"},
+        "sent": {"quote": "sent", "invoice": "sent", "credit_note": "sent"},
+        "accepted": {"quote": "signed", "invoice": "sent", "credit_note": "sent"},
+        "refused": {"quote": "refused", "invoice": "refused", "credit_note": "refused"},
+        "paid": {"quote": "signed", "invoice": "paid", "credit_note": "paid"},
+    }
+    chosen = status if status in STATUS_MAP else "sent"
     if not files:
         raise HTTPException(400, "Aucun fichier fourni")
     results: list[dict] = []
@@ -327,6 +338,8 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
             client_id = await _find_or_create_client(user["user_id"], ext.get("client") or {})
             number = (ext.get("number") or "").strip() or None
             label = "Facture" if dtype == "invoice" else ("Avoir" if dtype == "credit_note" else "Devis")
+            totals = _compute_totals(lines, 0)
+            doc_status = STATUS_MAP[chosen][dtype]
             doc = {
                 "doc_id": "doc_" + secrets.token_hex(6),
                 "user_id": user["user_id"],
@@ -335,12 +348,13 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
                 "title": f"{label} importé — {name[:60]}",
                 "client_id": client_id,
                 "client": await _client_snapshot(client_id, user),
-                "status": "sent",
+                "status": doc_status,
+                "signed": doc_status == "signed",
                 "lines": lines,
                 "notes": ext.get("notes") or "",
                 "payment_terms": "",
                 "deposit_pct": 0,
-                "totals": _compute_totals(lines, 0),
+                "totals": totals,
                 "issue_date": ext.get("issue_date") or None,
                 "due_date": None,
                 "source": "import_pdf",
@@ -348,13 +362,17 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
                 "created_at": _now(),
                 "updated_at": _now(),
             }
+            if dtype == "invoice" and doc_status == "paid":
+                doc["paid"] = totals["ttc"]
+                doc["remaining_due"] = 0.0
+                doc["payments"] = [{"amount": totals["ttc"], "date": _now(), "method": "import"}]
             await db.pro_documents.insert_one(dict(doc))
             doc.pop("_id", None)
             if number:
                 max_seq[dtype] = max(max_seq.get(dtype, 0), _seq_from_number(number))
             results.append({"file": name, "ok": True, "doc_id": doc["doc_id"],
                             "doc_type": dtype, "number": number, "client_id": client_id,
-                            "lines": len(lines), "ttc": doc["totals"]["ttc"]})
+                            "status": doc_status, "lines": len(lines), "ttc": totals["ttc"]})
         except Exception as e:  # noqa: BLE001
             logger.warning("import-pdf failed for %s: %s", name, e)
             results.append({"file": name, "ok": False, "error": str(e)[:200]})

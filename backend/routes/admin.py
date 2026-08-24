@@ -110,7 +110,7 @@ async def drill_metric(metric: str) -> dict:
     """
     users = await db.users.find({}, {"_id": 0, "user_id": 1, "name": 1, "email": 1,
                                       "plan": 1, "role": 1, "phone": 1, "city": 1,
-                                      "company": 1, "brand_company_name": 1,
+                                      "brand_city": 1, "company": 1, "brand_company_name": 1,
                                       "brand_phone": 1, "created_at": 1}).to_list(10000)
     umap = {u["user_id"]: u for u in users}
 
@@ -133,11 +133,21 @@ async def drill_metric(metric: str) -> dict:
     ]
 
     if metric == "users":
+        devs = await db.known_devices.find({}, {"_id": 0, "user_id": 1, "last_seen": 1}).to_list(50000)
+        seen: dict[str, str] = {}
+        for d in devs:
+            uid, ls = d.get("user_id"), d.get("last_seen")
+            if uid and ls and ls > seen.get(uid, ""):
+                seen[uid] = ls
         rows = [{**_contact(u["user_id"]), "role": u.get("role") or "user",
+                 "city": u.get("city") or u.get("brand_city") or "—",
+                 "last_seen": seen.get(u["user_id"]) or "",
                  "created_at": u.get("created_at")} for u in users]
         rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
         return {"title": "Utilisateurs", "description": "Tous les comptes inscrits — cible publicitaire directe.",
                 "columns": CONTACT_COLS + [{"key": "role", "label": "Rôle"},
+                                           {"key": "city", "label": "Ville"},
+                                           {"key": "last_seen", "label": "Dernière activité"},
                                            {"key": "created_at", "label": "Inscrit le"}],
                 "rows": rows}
 
@@ -228,6 +238,53 @@ async def drill_metric(metric: str) -> dict:
                 "rows": rows}
 
     raise HTTPException(404, "Indicateur inconnu")
+
+
+
+class BulkEmailBody(BaseModel):
+    recipients: list[str]
+    subject: str
+    message: str
+
+
+@router.post("/bulk-email")
+async def admin_bulk_email(body: BulkEmailBody) -> dict:
+    """Envoie un e-mail promotionnel à une liste de contacts sélectionnés dans le détail admin."""
+    import os
+    import re
+    import asyncio
+    from engines.emailer import send_email, wrap_html
+    seen: set[str] = set()
+    emails: list[str] = []
+    for e in body.recipients or []:
+        e = (e or "").strip().lower()
+        if e and e not in seen and re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
+            seen.add(e)
+            emails.append(e)
+    emails = emails[:200]
+    if not emails:
+        raise HTTPException(400, "Aucun destinataire valide")
+    subject = (body.subject or "").strip()[:200] or "ConstruPilot"
+    msg_html = (body.message or "").strip()
+    if not msg_html:
+        raise HTTPException(400, "Message vide")
+    html = wrap_html(subject, msg_html.replace("\n", "<br>"),
+                     unsubscribe_url=f"{os.getenv('FRONTEND_URL', '')}/desinscription")
+
+    async def _one(addr: str) -> bool:
+        try:
+            await send_email(addr, subject, html)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    sent = 0
+    for i in range(0, len(emails), 10):
+        chunk = emails[i:i + 10]
+        res = await asyncio.gather(*[_one(a) for a in chunk])
+        sent += sum(1 for r in res if r)
+    return {"ok": True, "sent": sent, "failed": len(emails) - sent, "total": len(emails)}
+
 
 
 
