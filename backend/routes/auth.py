@@ -111,9 +111,8 @@ async def register(body: RegisterIn, response: Response) -> dict:
             "Pro sont débloquées.</p>"
             "<p>Pour bien démarrer :</p>"
             "<ul style='margin:0 0 8px 18px;padding:0'>"
-            "<li>Estimez un projet en 30 secondes</li>"
-            "<li>Mesurez un plan et chiffrez-le automatiquement</li>"
-            "<li>Créez et envoyez un devis professionnel</li>"
+            "<li><b>Particulier</b> : estimez le coût de vos travaux et comparez les prix</li>"
+            "<li><b>Professionnel</b> : mesurez un plan et générez un devis client</li>"
             "</ul>"
             "<p>À très vite,<br/>L'équipe ConstruPilot</p>"
         )
@@ -134,6 +133,56 @@ async def register(body: RegisterIn, response: Response) -> dict:
             pass  # never break signup on a bonus-credit error
     token = await _set_session(response, user["user_id"])
     return {"user": _public(user), "token": make_jwt(user["user_id"]), "session_token": token}
+
+
+async def run_signup_followups():
+    """Relance J+3 : email aux inscrits (email/mot de passe) qui n'ont pas encore créé
+    de devis. Envoyé une seule fois par utilisateur (flag jplus3_sent)."""
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    lo = (now - timedelta(days=4)).isoformat()
+    hi = (now - timedelta(days=3)).isoformat()
+    users = await db.users.find({
+        "auth_provider": "password",
+        "created_at": {"$gte": lo, "$lte": hi},
+        "jplus3_sent": {"$ne": True},
+    }, {"_id": 0, "user_id": 1, "email": 1, "name": 1}).to_list(500)
+    if not users:
+        return
+    from engines import emailer
+    for u in users:
+        await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"jplus3_sent": True}})
+        # Actif = a créé un devis, une estimation/projet OU un plan → pas de relance
+        uid = u["user_id"]
+        active = (
+            await db.pro_documents.find_one({"user_id": uid, "doc_type": "quote"}, {"_id": 1})
+            or await db.projects.find_one({"user_id": uid}, {"_id": 1})
+            or await db.plans_takeoff.find_one({"user_id": uid}, {"_id": 1})
+        )
+        if active:
+            continue
+        try:
+            first = (u.get("name") or "").split(" ")[0]
+            body_html = (
+                f"<p>Bonjour {first},</p>"
+                "<p>Vous avez créé votre compte ConstruPilot il y a quelques jours, "
+                "mais vous n'avez pas encore commencé. On est là pour vous aider !</p>"
+                "<p>En quelques minutes, vous pouvez :</p>"
+                "<ul style='margin:0 0 8px 18px;padding:0'>"
+                "<li><b>Particulier</b> : estimez le coût de vos travaux et comparez les prix</li>"
+                "<li><b>Professionnel</b> : mesurez un plan et générez un devis client</li>"
+                "</ul>"
+                "<p>Tout est <b>gratuit pendant la phase de lancement</b>. À vous de jouer !</p>"
+            )
+            html = emailer.wrap_html(
+                "Besoin d'un coup de main pour démarrer ?", body_html,
+                cta_url="https://construpilot.fr/estimation",
+                cta_label="Estimer mes travaux",
+            )
+            await emailer.send_email(
+                u["email"], "Prêt à estimer votre projet ? On vous aide ⚡", html)
+        except Exception:
+            pass
 
 
 @router.post("/login")

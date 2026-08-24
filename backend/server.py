@@ -384,6 +384,10 @@ async def seed():
     scheduler.add_job(documents_routes.run_invoice_reminders,
                       CronTrigger(hour=9, minute=0),
                       id="invoice_reminders", max_instances=1, coalesce=True)
+    # Relance J+3 des nouveaux inscrits sans devis — chaque jour à 10:00 UTC
+    scheduler.add_job(auth_routes.run_signup_followups,
+                      CronTrigger(hour=10, minute=0),
+                      id="signup_j3_followups", max_instances=1, coalesce=True)
     # Relance J+2 des prospects (leads landing) qui n'ont pas terminé leur estimation
     scheduler.add_job(leads.run_prospect_reminders,
                       "interval", hours=6, id="prospect_j2_reminders",

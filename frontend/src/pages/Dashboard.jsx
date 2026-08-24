@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
 import { useI18n } from "@/context/I18nContext";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { StarterChecklist } from "@/components/StarterChecklist";
 import PushToggle from "@/components/PushToggle";
 import { Stat } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
@@ -28,6 +29,7 @@ export default function Dashboard() {
   const { t } = useI18n();
   const [projects, setProjects] = useState([]);
   const [quotes, setQuotes] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [leads, setLeads] = useState([]);
   const [tab, setTab] = useState("projects");
@@ -43,6 +45,7 @@ export default function Dashboard() {
   const load = () => {
     api.get("/projects").then(({ data }) => setProjects(data)).catch(() => {});
     api.get("/quotes").then(({ data }) => setQuotes(data)).catch(() => {});
+    api.get("/takeoffs").then(({ data }) => setPlans(data?.plans || [])).catch(() => {});
     api.get("/prices/alerts").then(({ data }) => setAlerts(data)).catch(() => {});
     api.get("/leads/mine").then(({ data }) => setLeads(data)).catch(() => {});
   };
@@ -60,6 +63,11 @@ export default function Dashboard() {
   return (
     <div className="grid gap-10">
       <OnboardingTour />
+      <StarterChecklist
+        projectDone={projects.length > 0}
+        planDone={plans.length > 0}
+        quoteDone={quotes.length > 0}
+      />
       <div className="relative overflow-hidden rounded-md border border-border grain">
         <img src={IMAGES.dashboard_banner} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />

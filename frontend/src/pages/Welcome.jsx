@@ -8,24 +8,24 @@ const STEPS = [
   {
     icon: Rocket,
     title: "Bienvenue sur ConstruPilot 🎉",
-    text: "Votre compte est actif — et 100% gratuit pendant la phase de lancement, avec toutes les fonctionnalités Pro débloquées. En 3 étapes, voici comment démarrer.",
+    text: "Votre compte est actif — et 100% gratuit pendant la phase de lancement. Que vous soyez particulier ou professionnel, voici comment démarrer en quelques étapes.",
   },
   {
     icon: Hammer,
-    title: "1. Estimez un projet en 30 secondes",
-    text: "Décrivez vos travaux en langage naturel (« rénover une maison de 90 m² ») et obtenez une estimation détaillée, poste par poste, instantanément.",
-    cta: { label: "Ouvrir l'estimateur", to: "/estimation" },
+    title: "1. Estimez le coût de vos travaux",
+    text: "Particulier ou pro : décrivez votre projet en langage naturel (« rénover une maison de 90 m² ») et obtenez une estimation détaillée, poste par poste, instantanément.",
+    cta: { label: "Estimer mes travaux", to: "/estimation" },
   },
   {
     icon: Ruler,
     title: "2. Mesurez un plan et chiffrez",
-    text: "Importez un plan (PDF, photo ou DWG), laissez l'IA détecter les pièces et les surfaces, puis transformez le métré en devis en un clic.",
+    text: "Importez un plan (PDF, photo ou DWG), laissez l'IA détecter les pièces et les surfaces, puis obtenez le métré automatiquement.",
     cta: { label: "Mesurer un plan", to: "/plan" },
   },
   {
     icon: FileText,
     title: "3. Créez et envoyez un devis pro",
-    text: "Générez un devis à votre charte, ajoutez un client, appliquez vos prix et envoyez-le par email — le tout depuis un seul endroit.",
+    text: "Pour les professionnels : générez un devis à votre charte, ajoutez un client, appliquez vos prix et envoyez-le par email — le tout depuis un seul endroit.",
     cta: { label: "Créer un devis", to: "/devis-editeur" },
   },
 ];
