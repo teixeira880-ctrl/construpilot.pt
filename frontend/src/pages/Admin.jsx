@@ -18,6 +18,7 @@ import AiModelTab from "@/components/AiModelTab";
 import AdminSharedLibraryTab from "@/components/AdminSharedLibraryTab";
 import AdminParamLibraryTab from "@/components/AdminParamLibraryTab";
 import AdsPanel from "@/components/AdsPanel";
+import ProKycPanel from "@/components/ProKycPanel";
 import EvolutionLab from "@/components/admin/EvolutionLab";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
@@ -119,6 +120,7 @@ export default function Admin() {
           <TabsTrigger value="searches" className="rounded-sm" data-testid="admin-tab-searches">{t("admin.t_searches")}</TabsTrigger>
           <TabsTrigger value="promos" className="rounded-sm" data-testid="admin-tab-promos">{t("admin.t_promos")}</TabsTrigger>
           <TabsTrigger value="kyc" className="rounded-sm" data-testid="admin-tab-kyc">{t("admin.t_kyc")}</TabsTrigger>
+          <TabsTrigger value="proskyc" className="rounded-sm" data-testid="admin-tab-proskyc">Pros à valider</TabsTrigger>
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">{t("admin.t_affiliate")}</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
@@ -148,8 +150,11 @@ export default function Admin() {
           <AdminParamLibraryTab />
         </TabsContent>
 
-        <TabsContent value="ads" className="mt-6">
-          <AdsPanel />
+        <TabsContent value="ads" className="mt-6">          <AdsPanel />
+        </TabsContent>
+
+        <TabsContent value="proskyc" className="mt-6">
+          <ProKycPanel />
         </TabsContent>
 
         <TabsContent value="account" className="mt-6">

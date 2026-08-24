@@ -10,6 +10,12 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session — Onboarding Pro & validation KYC (K-bis + SIRET + décennale)** :
+> - Inscription (`Login.jsx`) : sélecteur `register-account-type` (Particulier/Pro/Pro Business). Pour Pro/Pro Business : `register-siret-input` (14 chiffres, Luhn) + `register-kbis-input` + `register-decennale-input` obligatoires (bloc `pro-documents-block`), sinon inscription refusée (client + serveur). Après register JSON, upload multipart `POST /auth/kyc/submit`.
+> - Backend `routes/auth.py` : `RegisterIn` + champs `account_type`, `siret` ; validation SIRET (Luhn) ; `kyc_status`= pending (pro) / not_applicable (particulier) ; `POST /auth/kyc/submit` (multipart, magic-bytes, 10 Mo max, **Emergent Object Storage** via `engines/storage.put_object`, chemin privé `private/kyc/{uid}/...`) ; admin : `GET /auth/admin/kyc-pros`, `POST /auth/admin/kyc-pros/review` (approve/reject+motif), `GET /auth/admin/kyc-pros/{id}/doc/{kind}` (sert le doc, admin only). `_public` expose account_type/kyc_status/siret.
+> - Admin (`components/ProKycPanel.jsx`, onglet `admin-tab-proskyc` « Pros à valider ») : liste filtrable (pending/verified/rejected/tous), visualisation K-bis & décennale (blob authentifié → nouvel onglet), Valider/Refuser. Compte actif immédiatement (choix 3A), validé sous 24-48h.
+> - Testé E2E iteration_108 (100% frontend) + curl backend. Playbook intégration consulté (auth). Note : inputs `required` HTML = double protection (feedback natif avant toast JS).
+>
 > **Session 23/06/2026 — suite : Multi-plans (Phase A + B) + Blog Soro**
 > - **Phase A — Devis multi-plans consolidé & éditable** (testé iteration_106, 100% frontend ; backend curl OK) :
 >   - `POST /documents/from-plans` {plan_ids, project_name, client_id, subcontract_plan_ids} → UN devis éditable agrégeant les lignes de plusieurs plans (gros œuvre via `cost_structural` 20%, maison via `_build_quote_and_pdf` 10%, ferraillage via `steel_analyses` 20%), catégories préfixées par type/nom du plan. Sous-traitance → TVA 0% par plan. Helpers `_consolidated_lines_for_plan`, `_ferraillage_lines` (constantes ACIER_PRICE_KG=1.85, TREILLIS_PRICE_PANEL=48).

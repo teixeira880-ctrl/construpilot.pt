@@ -51,8 +51,8 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   };
 
-  const register = async (name, email, password, referredByCode = null) => {
-    const payload = { name, email, password };
+  const register = async (name, email, password, referredByCode = null, extra = {}) => {
+    const payload = { name, email, password, ...extra };
     if (referredByCode) payload.referred_by_code = referredByCode.trim().toUpperCase();
     try { payload.lang = localStorage.getItem("construpilot_lang") || undefined; } catch { /* noop */ }
     const { data } = await api.post("/auth/register", payload);

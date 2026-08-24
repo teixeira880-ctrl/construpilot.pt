@@ -4,13 +4,13 @@ import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, HTTPException, Response, Request, Depends
+from fastapi import APIRouter, HTTPException, Response, Request, Depends, UploadFile, File, Form
 from pydantic import BaseModel, EmailStr
 import httpx
 
 from core.db import db
 from core.security import (hash_password, verify_password, make_jwt, new_user_id,
-                          current_user, optional_user)
+                          current_user, optional_user, admin_user)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -21,6 +21,24 @@ class RegisterIn(BaseModel):
     password: str
     referred_by_code: str | None = None
     lang: str | None = None
+    account_type: str | None = "particulier"
+    siret: str | None = None
+
+
+def _valid_siret(value: str) -> bool:
+    import re
+    s = re.sub(r"[ .\-]", "", value or "")
+    if not re.fullmatch(r"\d{14}", s):
+        return False
+    total = 0
+    for i, ch in enumerate(s):
+        n = int(ch)
+        if i % 2 == 0:
+            n *= 2
+            if n > 9:
+                n -= 9
+        total += n
+    return total % 10 == 0
 
 
 class LoginIn(BaseModel):
@@ -32,7 +50,8 @@ def _public(u: dict) -> dict:
     out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
-                                  "lang", "created_at")}
+                                  "lang", "created_at", "account_type", "kyc_status",
+                                  "siret")}
     out["has_password"] = bool(u.get("password_hash"))
     return out
 
@@ -91,11 +110,23 @@ async def register(body: RegisterIn, response: Response) -> dict:
         raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Mot de passe : 6 caractères minimum")
+    account_type = body.account_type if body.account_type in ("particulier", "pro", "pro_business") else "particulier"
+    is_pro = account_type in ("pro", "pro_business")
+    siret = None
+    if is_pro:
+        import re
+        siret = re.sub(r"[ .\-]", "", body.siret or "")
+        if not _valid_siret(siret):
+            raise HTTPException(status_code=400, detail="SIRET invalide (14 chiffres requis)")
     from engines.email_i18n import norm_lang
     user = {
         "user_id": new_user_id(), "email": email, "name": body.name,
         "password_hash": hash_password(body.password), "picture": None,
         "role": "user", "plan": "free", "auth_provider": "password",
+        "account_type": account_type,
+        "siret": siret,
+        "kyc_status": "pending" if is_pro else "not_applicable",
+        "kyc_documents": {},
         "referred_by": (body.referred_by_code or "").upper().strip() or None,
         "lang": norm_lang(body.lang),
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -340,6 +371,106 @@ async def delete_profile_photo(user=Depends(current_user)) -> dict:
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"picture": None}})
     fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return {"user": _public(fresh)}
+
+
+# ---- KYC PRO : dépôt & validation des documents (K-bis + décennale) ----------
+
+_KYC_MAGIC = {"application/pdf": b"%PDF-", "image/jpeg": b"\xff\xd8\xff",
+              "image/png": b"\x89PNG\r\n\x1a\n"}
+_KYC_EXT = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png"}
+
+
+async def _store_kyc_file(user_id: str, kind: str, up: UploadFile) -> dict:
+    ct = (up.content_type or "").lower()
+    if ct not in _KYC_MAGIC:
+        raise HTTPException(415, "Type de document non supporté (PDF, JPEG ou PNG)")
+    data = await up.read(10 * 1024 * 1024 + 1)
+    if not data or len(data) > 10 * 1024 * 1024:
+        raise HTTPException(413, "Document vide ou trop volumineux (10 Mo max)")
+    if not data.startswith(_KYC_MAGIC[ct]):
+        raise HTTPException(415, "Le contenu ne correspond pas au type de fichier")
+    from engines import storage
+    path = f"private/kyc/{user_id}/{kind}/{uuid.uuid4().hex}.{_KYC_EXT[ct]}"
+    storage.put_object(path, data, ct)
+    return {"path": path, "content_type": ct, "size": len(data),
+            "uploaded_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.post("/kyc/submit")
+async def submit_kyc_documents(
+    kbis: UploadFile = File(...),
+    decennale: UploadFile = File(...),
+    siret: str | None = Form(None),
+    user=Depends(current_user),
+) -> dict:
+    """Dépôt des documents pro (K-bis + attestation décennale). Compte actif,
+    passe en kyc_status=pending pour validation admin."""
+    docs = {
+        "kbis": await _store_kyc_file(user["user_id"], "kbis", kbis),
+        "decennale": await _store_kyc_file(user["user_id"], "decennale", decennale),
+    }
+    upd = {"kyc_documents": docs, "kyc_status": "pending",
+           "updated_at": datetime.now(timezone.utc).isoformat()}
+    if siret:
+        import re
+        s = re.sub(r"[ .\-]", "", siret)
+        if _valid_siret(s):
+            upd["siret"] = s
+    if (await db.users.find_one({"user_id": user["user_id"]}, {"account_type": 1})).get("account_type") not in ("pro", "pro_business"):
+        upd["account_type"] = "pro"
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
+    return {"ok": True, "kyc_status": "pending"}
+
+
+@router.get("/admin/kyc-pros")
+async def list_kyc_pros(status: str | None = None, admin=Depends(admin_user)):
+    """Liste des comptes pro et leur statut de validation KYC."""
+    q = {"account_type": {"$in": ["pro", "pro_business"]}}
+    if status:
+        q["kyc_status"] = status
+    rows = await db.users.find(q, {
+        "_id": 0, "user_id": 1, "name": 1, "email": 1, "account_type": 1,
+        "siret": 1, "kyc_status": 1, "kyc_documents": 1, "created_at": 1,
+        "kyc_rejection_reason": 1,
+    }).sort("created_at", -1).to_list(500)
+    for r in rows:
+        docs = r.get("kyc_documents") or {}
+        r["has_kbis"] = bool(docs.get("kbis"))
+        r["has_decennale"] = bool(docs.get("decennale"))
+        r.pop("kyc_documents", None)
+    return rows
+
+
+class KycProReview(BaseModel):
+    user_id: str
+    approve: bool
+    reason: str | None = None
+
+
+@router.post("/admin/kyc-pros/review")
+async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
+    upd = {"kyc_status": "verified" if body.approve else "rejected",
+           "kyc_reviewed_by": admin["user_id"],
+           "kyc_reviewed_at": datetime.now(timezone.utc).isoformat(),
+           "kyc_rejection_reason": None if body.approve else (body.reason or "Documents non conformes")}
+    r = await db.users.update_one({"user_id": body.user_id}, {"$set": upd})
+    if not r.matched_count:
+        raise HTTPException(404, "Compte introuvable")
+    return {"ok": True, "kyc_status": upd["kyc_status"]}
+
+
+@router.get("/admin/kyc-pros/{user_id}/doc/{kind}")
+async def get_kyc_doc(user_id: str, kind: str, admin=Depends(admin_user)):
+    if kind not in ("kbis", "decennale"):
+        raise HTTPException(404, "Document inconnu")
+    u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "kyc_documents": 1})
+    meta = ((u or {}).get("kyc_documents") or {}).get(kind)
+    if not meta:
+        raise HTTPException(404, "Document introuvable")
+    from engines import storage
+    content, ct = storage.get_object(meta["path"])
+    return Response(content, media_type=meta.get("content_type") or ct,
+                    headers={"Content-Disposition": f'inline; filename="{kind}"'})
 
 
 # ---- Mot de passe oublié -----------------------------------------------------

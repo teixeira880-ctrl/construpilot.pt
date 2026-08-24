@@ -19,7 +19,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [tfa, setTfa] = useState(null);
   const [tfaCode, setTfaCode] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", password: "", ref: refCodeFromUrl });
+  const [form, setForm] = useState({ name: "", email: "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   useEffect(() => {
@@ -44,8 +44,33 @@ export default function Login() {
       if (mode === "login") logged = await login(form.email, form.password);
       else {
         const ref = (form.ref || sessionStorage.getItem("construpilot_ref") || "").trim();
+        const acct = form.account_type || "particulier";
+        const isPro = acct === "pro" || acct === "pro_business";
+        if (isPro) {
+          if (!form.siret || form.siret.replace(/[ .\-]/g, "").length !== 14) {
+            toast.error("SIRET requis (14 chiffres) pour un compte pro");
+            setBusy(false); return;
+          }
+          if (!form.kbis || !form.decennale) {
+            toast.error("K-bis et attestation décennale obligatoires pour un compte pro");
+            setBusy(false); return;
+          }
+        }
         sessionStorage.setItem("construpilot_new_signup", "1");
-        await register(form.name, form.email, form.password, ref || null);
+        await register(form.name, form.email, form.password, ref || null,
+                       { account_type: acct, siret: isPro ? form.siret : null });
+        if (isPro) {
+          const fd = new FormData();
+          fd.append("kbis", form.kbis);
+          fd.append("decennale", form.decennale);
+          fd.append("siret", form.siret);
+          try {
+            await api.post("/auth/kyc/submit", fd, { headers: { "Content-Type": "multipart/form-data" } });
+            toast.success("Documents envoyés — validation sous 24-48h");
+          } catch {
+            toast.warning("Compte créé, mais l'envoi des documents a échoué. Renvoyez-les depuis votre compte.");
+          }
+        }
         if (ref) {
           toast.success(`Code parrainage ${ref.toUpperCase()} appliqué — bienvenue !`);
           sessionStorage.removeItem("construpilot_ref");
@@ -218,6 +243,27 @@ export default function Login() {
 
             <TabsContent value="register">
               <form onSubmit={submit("register")} className="grid gap-4 mt-6">
+                {/* Type de compte */}
+                <div className="grid gap-2">
+                  <Label>Type de compte</Label>
+                  <div className="grid grid-cols-3 gap-2" data-testid="register-account-type">
+                    {[
+                      { v: "particulier", label: "Particulier" },
+                      { v: "pro", label: "Pro" },
+                      { v: "pro_business", label: "Pro Business" },
+                    ].map((o) => (
+                      <button key={o.v} type="button"
+                              onClick={() => setForm({ ...form, account_type: o.v })}
+                              data-testid={`account-type-${o.v}`}
+                              className={`h-11 rounded-sm border text-sm font-semibold transition-colors ${
+                                form.account_type === o.v
+                                  ? "border-primary bg-primary text-white"
+                                  : "border-border hover:border-primary/50"}`}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid gap-2">
                   <Label>{t("login.name")}</Label>
                   <Input required value={form.name} onChange={set("name")} data-testid="register-name-input" className="rounded-sm h-11" />
@@ -230,6 +276,35 @@ export default function Login() {
                   <Label>{t("login.password")}</Label>
                   <Input required type="password" minLength={6} value={form.password} onChange={set("password")} data-testid="register-password-input" className="rounded-sm h-11" />
                 </div>
+
+                {/* Documents pro obligatoires */}
+                {(form.account_type === "pro" || form.account_type === "pro_business") && (
+                  <div className="grid gap-3 rounded-sm border border-primary/30 bg-primary/5 p-3" data-testid="pro-documents-block">
+                    <p className="text-xs font-semibold text-primary">Justificatifs professionnels obligatoires</p>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">N° SIRET (14 chiffres)</Label>
+                      <Input required value={form.siret} onChange={set("siret")} inputMode="numeric"
+                             maxLength={17} placeholder="123 456 789 00012"
+                             data-testid="register-siret-input" className="rounded-sm h-10" />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Extrait K-bis (PDF, JPG ou PNG)</Label>
+                      <input required type="file" accept=".pdf,image/jpeg,image/png"
+                             onChange={(e) => setForm({ ...form, kbis: e.target.files?.[0] || null })}
+                             data-testid="register-kbis-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Attestation d'assurance décennale (PDF, JPG ou PNG)</Label>
+                      <input required type="file" accept=".pdf,image/jpeg,image/png"
+                             onChange={(e) => setForm({ ...form, decennale: e.target.files?.[0] || null })}
+                             data-testid="register-decennale-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Votre compte sera actif immédiatement et validé par notre équipe sous 24-48h.
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid gap-2">
                   <Label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Gift className="h-3 w-3" />
