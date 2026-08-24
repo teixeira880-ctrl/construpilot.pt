@@ -456,6 +456,41 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
     r = await db.users.update_one({"user_id": body.user_id}, {"$set": upd})
     if not r.matched_count:
         raise HTTPException(404, "Compte introuvable")
+    # Email de décision au pro (best-effort)
+    try:
+        u = await db.users.find_one({"user_id": body.user_id}, {"_id": 0, "email": 1, "name": 1})
+        from engines import emailer
+        first = (u.get("name") or "").split(" ")[0]
+        if body.approve:
+            body_html = (
+                f"<p>Bonjour {first},</p>"
+                "<p>Bonne nouvelle : votre compte professionnel ConstruPilot vient d'être "
+                "<b>validé</b> ✅.</p>"
+                "<p>Vos justificatifs (K-bis, assurance décennale) sont conformes. "
+                "Vous bénéficiez désormais du badge <b>« Pro vérifié »</b> sur votre profil et vos devis.</p>"
+                "<p>Bonne continuation avec ConstruPilot !</p>"
+            )
+            html = emailer.wrap_html("Votre compte Pro est validé ✅", body_html,
+                                     cta_url="https://construpilot.fr/dashboard",
+                                     cta_label="Accéder à mon espace")
+            subject = "Votre compte Pro ConstruPilot est validé ✅"
+        else:
+            reason = upd["kyc_rejection_reason"]
+            body_html = (
+                f"<p>Bonjour {first},</p>"
+                "<p>Après vérification, nous ne pouvons pas valider votre compte professionnel "
+                "pour le moment.</p>"
+                f"<p><b>Motif :</b> {reason}</p>"
+                "<p>Vous pouvez renvoyer des documents conformes depuis votre espace. "
+                "Notre équipe reste à votre disposition.</p>"
+            )
+            html = emailer.wrap_html("Validation de votre compte Pro", body_html,
+                                     cta_url="https://construpilot.fr/compte",
+                                     cta_label="Renvoyer mes documents")
+            subject = "Votre compte Pro ConstruPilot — action requise"
+        await emailer.send_email(u["email"], subject, html)
+    except Exception:
+        pass
     return {"ok": True, "kyc_status": upd["kyc_status"]}
 
 

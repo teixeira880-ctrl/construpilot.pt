@@ -1,5 +1,6 @@
 import { AlertTriangle, UserCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { VerifiedProBadge } from "@/components/VerifiedProBadge";
 import { useI18n } from "@/context/I18nContext";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
@@ -18,6 +19,7 @@ export default function Account() {
         </p>
         <h1 className="font-display text-3xl font-extrabold">{user?.name}</h1>
         <p className="text-sm text-muted-foreground">{user?.email}</p>
+        <div className="mt-2"><VerifiedProBadge status={user?.kyc_status} size="lg" /></div>
       </header>
 
       {user?.must_change_password && (

@@ -16,6 +16,7 @@ import {
 import { SectionTitle } from "@/components/Bits";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { VerifiedProBadge } from "@/components/VerifiedProBadge";
 import { useI18n } from "@/context/I18nContext";
 import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
 
@@ -59,6 +60,41 @@ export default function QuoteEditor() {
   const [aiLineBusy, setAiLineBusy] = useState(null);
   const [planBusy, setPlanBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  // Photo → devis : lit une photo (texte + prestations compris) via l'IA et ajoute les lignes
+  const addPhotoFromFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Choisissez une image (photo)"); return; }
+    setPhotoBusy(true);
+    const tid = toast.loading("Lecture de la photo…");
+    try {
+      const b64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const { data } = await api.post("/quotes/analyse", { image_base64: b64 });
+      const found = (data?.analysis?.lines) || [];
+      if (!found.length) { toast.error("Aucune prestation lisible sur la photo", { id: tid }); return; }
+      setLines((ls) => {
+        const cleaned = ls.filter((l) => (l.designation || "").trim() || (l.qty || 0));
+        const mapped = found.map((l) => ({
+          ...blankLine(),
+          designation: l.label || "",
+          unit: l.unit || "u",
+          qty: Number(l.quantity) || 1,
+          unit_price_ht: Number(l.unit_price) || 0,
+          category: "Lu depuis photo",
+        }));
+        return [...cleaned, ...mapped];
+      });
+      toast.success(`${found.length} ligne(s) ajoutée(s) depuis la photo`, { id: tid });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Lecture de la photo impossible", { id: tid });
+    } finally { setPhotoBusy(false); }
+  };
   const [transcriptDialog, setTranscriptDialog] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [transcriptBusy, setTranscriptBusy] = useState(false);
@@ -508,6 +544,7 @@ export default function QuoteEditor() {
             title={`${t("crm.ed_editor")} ${{ quote: t("crm.doc_quote"), invoice: t("crm.doc_invoice"), credit_note: t("crm.doc_credit") }[docType]}`}>
             {t("crm.ed_sub")}
           </SectionTitle>
+          <div className="mt-2"><VerifiedProBadge status={user?.kyc_status} /></div>
         </div>
         <div className="flex gap-2">
           <input type="file" accept="image/*,application/pdf,.dxf" className="hidden" id="qe-plan-input"
@@ -516,6 +553,20 @@ export default function QuoteEditor() {
           <Button variant="outline" onClick={() => document.getElementById("qe-plan-input").click()}
                   disabled={planBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-add-plan-btn">
             {planBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ruler className="h-4 w-4" />} Ajouter un plan
+          </Button>
+          <input type="file" accept="image/*" className="hidden" id="qe-photo-input"
+                 onChange={(e) => { addPhotoFromFile(e.target.files?.[0]); e.target.value = ""; }}
+                 data-testid="editor-photo-input" />
+          <Button variant="outline" onClick={() => document.getElementById("qe-photo-input").click()}
+                  disabled={photoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-photo-gallery-btn">
+            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} Photo galerie
+          </Button>
+          <input type="file" accept="image/*" capture="environment" className="hidden" id="qe-photo-cam-input"
+                 onChange={(e) => { addPhotoFromFile(e.target.files?.[0]); e.target.value = ""; }}
+                 data-testid="editor-photo-cam-input" />
+          <Button variant="outline" onClick={() => document.getElementById("qe-photo-cam-input").click()}
+                  disabled={photoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-photo-cam-btn">
+            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} Photo → devis
           </Button>
           <input type="file" accept="video/*" className="hidden" id="qe-video-input"
                  onChange={(e) => { reviewVideo(e.target.files?.[0]); e.target.value = ""; }}

@@ -18,6 +18,7 @@ import { usePermissions } from "@/context/PermissionContext";
 // Nav v2 — menus groupés + relief (fin du débordement header)
 const NAV_MAIN = [
   { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
+  { to: "/devis-editeur", label: "Nouveau devis", key: "nav.newquote", icon: FileText, auth: true },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
