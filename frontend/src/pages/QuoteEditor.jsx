@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send,
+  Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send, X,
   Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,7 @@ export default function QuoteEditor() {
   const [planBusy, setPlanBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   // Photo → devis : lit une photo (texte + prestations compris) via l'IA et ajoute les lignes
   const addPhotoFromFile = async (file) => {
@@ -78,6 +79,7 @@ export default function QuoteEditor() {
       const { data } = await api.post("/quotes/analyse", { image_base64: b64 });
       const found = (data?.analysis?.lines) || [];
       if (!found.length) { toast.error("Aucune prestation lisible sur la photo", { id: tid }); return; }
+      setPhotoPreview(b64);
       setLines((ls) => {
         const cleaned = ls.filter((l) => (l.designation || "").trim() || (l.qty || 0));
         const mapped = found.map((l) => ({
@@ -745,6 +747,19 @@ export default function QuoteEditor() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {photoPreview && (
+        <div className="surface p-3 flex items-center gap-3" data-testid="photo-preview">
+          <img src={photoPreview} alt="Photo importée" className="h-16 w-16 object-cover rounded-sm border border-border" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold">Photo lue par l'IA</p>
+            <p className="text-[11px] text-muted-foreground">Les lignes ci-dessous en sont issues — vérifiez et ajustez si besoin.</p>
+          </div>
+          <button onClick={() => setPhotoPreview(null)} className="text-muted-foreground hover:text-foreground" data-testid="photo-preview-close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Lignes */}
       <div className="surface p-4 grid gap-3">
