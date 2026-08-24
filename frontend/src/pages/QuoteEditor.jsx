@@ -61,40 +61,53 @@ export default function QuoteEditor() {
   const [planBusy, setPlanBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
 
-  // Photo → devis : lit une photo (texte + prestations compris) via l'IA et ajoute les lignes
-  const addPhotoFromFile = async (file) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Choisissez une image (photo)"); return; }
+  // Photo → devis : lit une ou plusieurs photos (texte + prestations) via l'IA et ajoute les lignes
+  const addPhotosFromFiles = async (fileList) => {
+    const files = Array.from(fileList || []).filter((f) => f && f.type.startsWith("image/"));
+    if (!files.length) { toast.error("Choisissez une ou plusieurs images (photos)"); return; }
     setPhotoBusy(true);
-    const tid = toast.loading("Lecture de la photo…");
+    const tid = toast.loading(files.length > 1 ? `Lecture de ${files.length} photos…` : "Lecture de la photo…");
+    let totalLines = 0;
+    let okCount = 0;
     try {
-      const b64 = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => res(r.result);
-        r.onerror = rej;
-        r.readAsDataURL(file);
-      });
-      const { data } = await api.post("/quotes/analyse", { image_base64: b64 });
-      const found = (data?.analysis?.lines) || [];
-      if (!found.length) { toast.error("Aucune prestation lisible sur la photo", { id: tid }); return; }
-      setPhotoPreview(b64);
-      setLines((ls) => {
-        const cleaned = ls.filter((l) => (l.designation || "").trim() || (l.qty || 0));
-        const mapped = found.map((l) => ({
-          ...blankLine(),
-          designation: l.label || "",
-          unit: l.unit || "u",
-          qty: Number(l.quantity) || 1,
-          unit_price_ht: Number(l.unit_price) || 0,
-          category: "Lu depuis photo",
-        }));
-        return [...cleaned, ...mapped];
-      });
-      toast.success(`${found.length} ligne(s) ajoutée(s) depuis la photo`, { id: tid });
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || "Lecture de la photo impossible", { id: tid });
+      for (const file of files) {
+        try {
+          const b64 = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result);
+            r.onerror = rej;
+            r.readAsDataURL(file);
+          });
+          const { data } = await api.post("/quotes/analyse", { image_base64: b64 });
+          const found = (data?.analysis?.lines) || [];
+          setPhotoPreviews((prev) => [...prev, { src: b64, count: found.length }]);
+          if (found.length) {
+            okCount += 1;
+            totalLines += found.length;
+            setLines((ls) => {
+              const cleaned = ls.filter((l) => (l.designation || "").trim() || (l.qty || 0));
+              const mapped = found.map((l) => ({
+                ...blankLine(),
+                designation: l.label || "",
+                unit: l.unit || "u",
+                qty: Number(l.quantity) || 1,
+                unit_price_ht: Number(l.unit_price) || 0,
+                category: "Lu depuis photo",
+              }));
+              return [...cleaned, ...mapped];
+            });
+          }
+        } catch (e) {
+          // photo individuelle en échec — on continue avec les suivantes
+        }
+      }
+      if (totalLines) {
+        toast.success(`${totalLines} ligne(s) ajoutée(s) depuis ${okCount} photo(s)`, { id: tid });
+      } else {
+        toast.error("Aucune prestation lisible sur les photos", { id: tid });
+      }
     } finally { setPhotoBusy(false); }
   };
   const [transcriptDialog, setTranscriptDialog] = useState(false);
@@ -556,15 +569,15 @@ export default function QuoteEditor() {
                   disabled={planBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-add-plan-btn">
             {planBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ruler className="h-4 w-4" />} Ajouter un plan
           </Button>
-          <input type="file" accept="image/*" className="hidden" id="qe-photo-input"
-                 onChange={(e) => { addPhotoFromFile(e.target.files?.[0]); e.target.value = ""; }}
+          <input type="file" accept="image/*" multiple className="hidden" id="qe-photo-input"
+                 onChange={(e) => { addPhotosFromFiles(e.target.files); e.target.value = ""; }}
                  data-testid="editor-photo-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-photo-input").click()}
                   disabled={photoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-photo-gallery-btn">
-            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} Photo galerie
+            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} Photos galerie
           </Button>
-          <input type="file" accept="image/*" capture="environment" className="hidden" id="qe-photo-cam-input"
-                 onChange={(e) => { addPhotoFromFile(e.target.files?.[0]); e.target.value = ""; }}
+          <input type="file" accept="image/*" capture="environment" multiple className="hidden" id="qe-photo-cam-input"
+                 onChange={(e) => { addPhotosFromFiles(e.target.files); e.target.value = ""; }}
                  data-testid="editor-photo-cam-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-photo-cam-input").click()}
                   disabled={photoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-photo-cam-btn">
@@ -748,16 +761,30 @@ export default function QuoteEditor() {
         </DialogContent>
       </Dialog>
 
-      {photoPreview && (
-        <div className="surface p-3 flex items-center gap-3" data-testid="photo-preview">
-          <img src={photoPreview} alt="Photo importée" className="h-16 w-16 object-cover rounded-sm border border-border" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold">Photo lue par l'IA</p>
-            <p className="text-[11px] text-muted-foreground">Les lignes ci-dessous en sont issues — vérifiez et ajustez si besoin.</p>
+      {photoPreviews.length > 0 && (
+        <div className="surface p-3" data-testid="photo-preview">
+          <div className="flex items-center justify-between mb-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold">{photoPreviews.length} photo(s) lue(s) par l'IA</p>
+              <p className="text-[11px] text-muted-foreground">Les lignes ci-dessous en sont issues — vérifiez et ajustez si besoin.</p>
+            </div>
+            <button onClick={() => setPhotoPreviews([])} className="text-muted-foreground hover:text-foreground" data-testid="photo-preview-close">
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button onClick={() => setPhotoPreview(null)} className="text-muted-foreground hover:text-foreground" data-testid="photo-preview-close">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {photoPreviews.map((p, i) => (
+              <div key={i} className="relative" data-testid={`photo-thumb-${i}`}>
+                <img src={p.src} alt={`Photo ${i + 1}`} className="h-16 w-16 object-cover rounded-sm border border-border" />
+                <span className="absolute bottom-0 right-0 bg-primary text-primary-foreground text-[10px] px-1 rounded-tl-sm">
+                  {p.count}
+                </span>
+                <button onClick={() => setPhotoPreviews((prev) => prev.filter((_, j) => j !== i))}
+                        className="absolute -top-1 -right-1 bg-background border border-border rounded-full h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        data-testid={`photo-thumb-remove-${i}`}>×</button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

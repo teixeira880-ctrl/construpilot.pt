@@ -43,6 +43,7 @@ const NAV_DISCOVER = [
   { to: "/fonctionnalites", label: "Fonctionnalités", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
   { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true },
+  { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true },
   { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
   { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
   { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },

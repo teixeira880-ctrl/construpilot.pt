@@ -163,7 +163,7 @@ def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str 
 def wrap_company_html(title: str, body: str, *, company_name: str = "",
                       logo_b64: str | None = None, contact_line: str | None = None,
                       siret: str | None = None, vat: str | None = None,
-                      company_email: str | None = None) -> str:
+                      company_email: str | None = None, verified: bool = False) -> str:
     """Habillage e-mail aux coordonnées de l'entreprise (logo + nom + contact).
 
     Utilisé pour les e-mails clients (devis/factures) afin d'afficher l'identité
@@ -176,6 +176,15 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
     else:
         header = (f'<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;'
                   f'text-align:center;color:#0A0D14">{company_name or "Devis"}</div>')
+
+    badge = ""
+    if verified:
+        badge = (
+            '<div style="text-align:center;margin-top:12px">'
+            '<span style="display:inline-block;background:#E8F3ED;color:#3F7D54;'
+            'font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;'
+            'border:1px solid #C4E1D0">&#10004; Pro vérifié par ConstruPilot</span>'
+            '</div>')
 
     coords = []
     if contact_line:
@@ -205,6 +214,7 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
        style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
 <tr><td style="padding:24px;background:#f8fafc;border-bottom:2px solid {BRAND}">
   {header}
+  {badge}
 </td></tr>
 <tr><td style="padding:28px">
   <div style="font-size:15px;line-height:1.7;color:#1e293b">{body}</div>

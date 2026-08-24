@@ -752,7 +752,8 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                              logo_b64=branding.get("logo_b64"),
                              contact_line=branding.get("contact_line"),
                              siret=branding.get("siret"), vat=branding.get("vat"),
-                             company_email=company_email)
+                             company_email=company_email,
+                             verified=bool(branding.get("verified")))
     filename = f"{doc.get('number') or doc_id}.pdf"
     # Pièces jointes : attestation TVA (taux réduit) + rendu 3D éventuel
     extra_attachments: list[dict] = []

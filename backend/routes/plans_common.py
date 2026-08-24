@@ -115,9 +115,11 @@ async def _resolve_branding(user_id: str) -> dict | None:
                                   "brand_siret": 1, "brand_vat": 1,
                                   "brand_address": 1, "brand_city": 1,
                                   "brand_postal": 1, "brand_country": 1,
-                                  "brand_logo_b64": 1, "brand_certifications": 1})
+                                  "brand_logo_b64": 1, "brand_certifications": 1,
+                                  "kyc_status": 1})
     if not u:
         return None
+    verified = u.get("kyc_status") == "verified"
     photo = u.get("picture") if (u.get("picture") or "").startswith("data:image") else None
     if u.get("organization_id"):
         org = await db.organizations.find_one({"org_id": u["organization_id"]},
@@ -141,6 +143,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                     "postal_code": org.get("brand_postal"),
                     "country": org.get("brand_country"),
                     "certifications": org.get("brand_certifications") or [],
+                    "verified": verified,
                     "profile_photo_b64": photo}
     if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64",
                               "brand_certifications")):
@@ -155,10 +158,11 @@ async def _resolve_branding(user_id: str) -> dict | None:
                 "postal_code": u.get("brand_postal"),
                 "country": u.get("brand_country"),
                 "certifications": u.get("brand_certifications") or [],
+                "verified": verified,
                 "profile_photo_b64": photo}
-    if photo:
+    if verified or photo:
         return {"company_name": None, "contact_line": None, "logo_b64": None,
-                "certifications": [], "profile_photo_b64": photo}
+                "certifications": [], "verified": verified, "profile_photo_b64": photo}
     return None
 
 

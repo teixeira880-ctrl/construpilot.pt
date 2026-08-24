@@ -108,6 +108,7 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
     """Section 1 — logo + photo de profil + company + contact line + certifications."""
     if not branding or not (branding.get("company_name") or branding.get("logo_b64")
                             or branding.get("profile_photo_b64")
+                            or branding.get("verified")
                             or branding.get("certifications")):
         return
     logo_cell = _decode_brand_logo(branding["logo_b64"]) if branding.get("logo_b64") else None
@@ -116,6 +117,11 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
     info_lines = []
     if branding.get("company_name"):
         info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
+    if branding.get("verified"):
+        info_lines.append(Paragraph(
+            '<font color="#3F7D54"><b>&#10004; Pro vérifié</b></font> '
+            '<font color="#64748B">— identité et assurance décennale contrôlées par ConstruPilot</font>',
+            S["muted"]))
     if branding.get("contact_line"):
         info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
     certs = branding.get("certifications") or []
