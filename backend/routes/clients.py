@@ -90,10 +90,16 @@ async def update_client(client_id: str, body: ClientIn,
 
 @router.delete("/{client_id}")
 async def delete_client(client_id: str, user=Depends(current_user)) -> dict:
-    res = await db.clients.delete_one(
-        {"client_id": client_id, "user_id": user["user_id"]})
-    if not res.deleted_count:
+    exists = await db.clients.find_one(
+        {"client_id": client_id, "user_id": user["user_id"]}, {"_id": 0, "client_id": 1})
+    if not exists:
         raise HTTPException(404, "Client introuvable")
+    n_docs = await db.pro_documents.count_documents(
+        {"client_id": client_id, "user_id": user["user_id"]})
+    if n_docs:
+        raise HTTPException(
+            400, f"Ce client a {n_docs} document(s) lié(s). Supprimez d'abord ses devis/factures.")
+    await db.clients.delete_one({"client_id": client_id, "user_id": user["user_id"]})
     return {"ok": True}
 
 

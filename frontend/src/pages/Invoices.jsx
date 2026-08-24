@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2, ShieldCheck, ShieldAlert, Loader2, TrendingUp } from "lucide-react";
+import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2, ShieldCheck, ShieldAlert, Loader2, TrendingUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -128,8 +128,17 @@ export default function Invoices() {
       toast.success(t("crm.invoice_created").replace("{n}", q.number || ""));
       setConvOpen(false);
       nav(`/devis-editeur/${data.doc_id}`);
-    } catch { toast.error(t("crm.conv_fail")); }
+    } catch (e) { toast.error(e?.response?.data?.detail || t("crm.conv_fail")); }
     finally { setBusyId(""); }
+  };
+
+  const removeInvoice = async (inv) => {
+    if (!window.confirm(`Supprimer définitivement la facture ${inv.number || ""} ?`)) return;
+    try {
+      await api.delete(`/documents/${inv.doc_id}`);
+      toast.success("Facture supprimée");
+      load();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
   };
 
   if (!isProBusiness) {
@@ -271,6 +280,8 @@ export default function Invoices() {
                   )}
                   Valider
                 </Button>
+                <Button size="sm" variant="ghost" className="rounded-sm h-8 w-8 p-0 text-muted-foreground hover:text-red-600" data-testid={`invoice-delete-${inv.doc_id}`}
+                  onClick={() => removeInvoice(inv)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </motion.div>
           ))}

@@ -1284,7 +1284,7 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
     log = await db.quote_sends.find_one({"signature_token": token},
                                           {"_id": 0, "log_id": 1, "user_id": 1,
                                            "signed": 1, "client_email": 1,
-                                           "plan_id": 1, "client_name": 1,
+                                           "plan_id": 1, "doc_id": 1, "client_name": 1,
                                            "total_ttc": 1})
     if not log:
         raise HTTPException(404, "Lien invalide")
@@ -1299,6 +1299,12 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
                    "signer_name": signer,
                    "signature_b64": b64_clean}}
     )
+    # Bascule automatique du statut du devis lié → « Signé »
+    if log.get("doc_id"):
+        await db.pro_documents.update_one(
+            {"doc_id": log["doc_id"], "user_id": log["user_id"]},
+            {"$set": {"status": "signed", "signed": True,
+                      "signed_at": _now(), "updated_at": _now()}})
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(5),
         "user_id": log["user_id"], "type": "quote_signed", "log_id": log["log_id"],

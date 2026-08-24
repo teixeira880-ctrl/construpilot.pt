@@ -14,6 +14,7 @@ import { api, eur, num } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 import { Stat, SectionTitle } from "@/components/Bits";
 import AdminDrillDialog from "@/components/AdminDrillDialog";
+import CampaignsPanel from "@/components/admin/CampaignsPanel";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
 import AdminSharedLibraryTab from "@/components/AdminSharedLibraryTab";
@@ -132,6 +133,7 @@ export default function Admin() {
           <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Bibliothèque</TabsTrigger>
           <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Ouvrages composés</TabsTrigger>
           <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicité</TabsTrigger>
+          <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campagnes e-mail</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
           <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">{t("admin.t_account")}</TabsTrigger>
@@ -154,6 +156,10 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="ads" className="mt-6">          <AdsPanel />
+        </TabsContent>
+
+        <TabsContent value="campaigns" className="mt-6">
+          <CampaignsPanel />
         </TabsContent>
 
         <TabsContent value="proskyc" className="mt-6">

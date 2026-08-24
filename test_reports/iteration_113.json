@@ -1,0 +1,20 @@
+{
+  "summary": "iter113 — full e2e validation of quote lifecycle + deletions + client guard + editable import preview + admin campaigns + auto-signed on public signature. Backend: 10/10 pytest passed (invalid status→400, to-invoice blocked on unsigned→400, full lifecycle sent/refused/signed transitions + to-invoice→200, delete document→200/GET 404, client delete without docs→200, client delete with linked doc→400 'documents lié(s)', import-pdf preview then confirm reflects edits in DB, GET /admin/campaigns→200, POST /admin/bulk-email single recipient records campaign, send + public /api/quotes/public/sign/{token} flips pro_documents.status to 'signed'). Frontend: /devis shows quote-row/quote-status-badge/quote-status-select/quote-invoice/quote-delete testids; Facturer button initially disabled (draft), badge updates to 'Signé' via select, Facturer becomes enabled, click creates invoice and redirects to /facture-editeur/{id}; delete row confirms and removes row. /factures shows invoice-delete-{id}, deletion works. /entreprise DataManagementPanel: delete empty client OK; deleting client with linked doc triggers 400 toast 'Ce client a 1 document(s) lié(s). Supprimez d'abord ses devis/factures.'. Import PDF preview: dialog opens, upload PDF, preview screen has all editable fields (number, company, email, type, line 0-0 with 3 inputs + del), edits (designation MODIF + qty=7) persisted after Valider et créer, results screen shows 1/1 créé + import-docs-open-0. Admin campaigns tab (admin-tab-campaigns → admin-campaigns-panel) lists recent campaigns with subject + count + sent count.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_iter113_quote_lifecycle.py", "/app/test_reports/pytest/iter113.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "documents.py to-invoice returns 400 for unsigned quotes as expected; the QuoteTracking Facturer button uses `disabled={d.status !== 'signed'}` which is coherent. Considérer aussi désactiver le select pendant l'appel patch pour éviter double envoi (mineur).",
+    "DataManagementPanel.jsx: window.confirm() ne peut pas être stylisé; envisager un AlertDialog shadcn pour cohérence UI (non bloquant).",
+    "ImportDocumentsDialog envoie 'Content-Type: multipart/form-data' explicite; laisser axios générer le boundary est plus safe (déjà noté iter112, non-bloquant, ça fonctionne)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter113_quote_lifecycle.py"],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100%"},
+  "test_credentials": "Pro pro@construpilot.fr / Pro2026! ; Admin teixeira8880@gmail.com / CP-D5615C-Prov!",
+  "seed_data_creation": "Tous les artefacts créés pendant les tests (devis TEST-*, factures TEST-*, clients TEST_/Apercu, PREV-42) ont été supprimés via DELETE /api/documents et DELETE /api/clients. Verifié via listing final.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Tous les 6 flux ciblés du lot 'cycle de vie devis + suppression + import éditable + campagnes + bascule auto signé' passent. Route login: /login (pas /connexion). Token stocké dans localStorage 'construpilot_token'. Pour bascule auto-signé côté public: POST /api/quotes/public/sign/{token} avec signature_b64 >= 100 chars. Le VAT dialog (invoice-vat-dialog) n'est pas utilisé pour le Facturer d'une ligne devis (celui-ci appelle directement /to-invoice avec mode=total,pct=100 et redirige).",
+  "rca of the issue": "N/A — no issues found"
+}

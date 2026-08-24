@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Send, Eye, CheckCircle2, FileText, Copy, ExternalLink, RefreshCw, Mail,
-  Download, FileDown, Star, Receipt,
+  Download, FileDown, Star, Receipt, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,38 @@ export default function QuoteTracking() {
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(new Set());
   const [drafts, setDrafts] = useState([]);
+  const [quotes, setQuotes] = useState([]);
   const [retrying, setRetrying] = useState(null);
+
+  const QUOTE_STATUS = {
+    draft: { label: "Brouillon", cls: "border-border text-muted-foreground" },
+    sent: { label: "Envoyé", cls: "border-sky-500/60 text-sky-600" },
+    signed: { label: "Signé", cls: "border-primary/60 text-primary bg-primary/5" },
+    refused: { label: "Refusé", cls: "border-red-500/60 text-red-600" },
+  };
+  const changeStatus = async (doc, status) => {
+    try {
+      await api.patch(`/documents/${doc.doc_id}/status`, { status });
+      setQuotes((qs) => qs.map((x) => x.doc_id === doc.doc_id ? { ...x, status } : x));
+      toast.success(`Statut : ${QUOTE_STATUS[status]?.label || status}`);
+    } catch { toast.error("Changement de statut impossible"); }
+  };
+  const deleteQuote = async (doc) => {
+    if (!window.confirm(`Supprimer définitivement le devis ${doc.number || ""} ?`)) return;
+    try {
+      await api.delete(`/documents/${doc.doc_id}`);
+      setQuotes((qs) => qs.filter((x) => x.doc_id !== doc.doc_id));
+      toast.success("Devis supprimé");
+    } catch { toast.error("Suppression impossible"); }
+  };
+  const facturer = async (doc) => {
+    if (doc.status !== "signed") { toast.error("Le devis doit être signé avant d'être facturé"); return; }
+    try {
+      const { data } = await api.post(`/documents/${doc.doc_id}/to-invoice`, { mode: "total", pct: 100 });
+      toast.success("Facture créée ✅");
+      navigate(`/devis-editeur/${data.doc_id}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Facturation impossible"); }
+  };
 
   const retrySend = async (send) => {
     if (!send.doc_id) { toast.error("Devis introuvable pour la relance"); return; }
@@ -58,6 +89,7 @@ export default function QuoteTracking() {
     finally { setLoading(false); }
     try {
       const { data } = await api.get("/documents?doc_type=quote");
+      setQuotes(data.documents || []);
       setDrafts((data.documents || []).filter((d) => d.status !== "sent"));
     } catch { /* noop */ }
   };
@@ -268,32 +300,53 @@ export default function QuoteTracking() {
       {/* Devis enregistrés (brouillons, non encore envoyés) */}
       <div className="surface p-5" data-testid="saved-drafts-section">
         <div className="flex items-center justify-between mb-3">
-          <p className="overline">Devis enregistrés (brouillons)</p>
-          <span className="text-xs text-muted-foreground num">{drafts.length}</span>
+          <p className="overline">Devis enregistrés</p>
+          <span className="text-xs text-muted-foreground num">{quotes.length}</span>
         </div>
-        {drafts.length === 0 ? (
+        {quotes.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Aucun devis enregistré non envoyé. Vos brouillons apparaîtront ici après « Enregistrer ».
+            Aucun devis enregistré. Vos devis apparaîtront ici après « Enregistrer ».
           </p>
         ) : (
           <div className="grid gap-2">
-            {drafts.map((d) => (
-              <button key={d.doc_id} onClick={() => navigate(`/devis-editeur/${d.doc_id}`)}
-                      data-testid={`draft-${d.doc_id}`}
-                      className="w-full text-left flex items-center justify-between gap-3 border border-border rounded-sm px-3 py-2 hover:border-primary transition-colors">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {d.number || "Brouillon"}{d.client_name ? ` · ${d.client_name}` : ""}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {(d.created_at || "").slice(0, 10)} · {d.status || "draft"}
-                  </p>
+            {quotes.map((d) => {
+              const st = QUOTE_STATUS[d.status] || QUOTE_STATUS.draft;
+              return (
+                <div key={d.doc_id} data-testid={`quote-row-${d.doc_id}`}
+                     className="w-full flex flex-wrap items-center justify-between gap-2 border border-border rounded-sm px-3 py-2 hover:border-primary/60 transition-colors">
+                  <button onClick={() => navigate(`/devis-editeur/${d.doc_id}`)}
+                          className="min-w-0 text-left flex-1" data-testid={`quote-open-${d.doc_id}`}>
+                    <p className="text-sm font-semibold truncate">
+                      {d.number || "Brouillon"}{d.client_name ? ` · ${d.client_name}` : ""}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{(d.created_at || "").slice(0, 10)}</p>
+                  </button>
+                  <span className="num text-sm font-bold text-primary shrink-0">
+                    {Math.round(d.total_ttc || (d.totals && d.totals.ttc) || 0).toLocaleString("fr-FR")} €
+                  </span>
+                  <Badge variant="outline" className={`rounded-sm shrink-0 ${st.cls}`}
+                         data-testid={`quote-status-badge-${d.doc_id}`}>{st.label}</Badge>
+                  <select value={d.status || "draft"} onChange={(e) => changeStatus(d, e.target.value)}
+                          data-testid={`quote-status-select-${d.doc_id}`}
+                          className="rounded-sm border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary shrink-0">
+                    <option value="draft">Brouillon</option>
+                    <option value="sent">Envoyé</option>
+                    <option value="signed">Signé</option>
+                    <option value="refused">Refusé</option>
+                  </select>
+                  <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
+                          disabled={d.status !== "signed"} onClick={() => facturer(d)}
+                          title={d.status !== "signed" ? "Le devis doit être signé" : "Transformer en facture"}
+                          data-testid={`quote-invoice-${d.doc_id}`}>
+                    <Receipt className="h-3.5 w-3.5" /> Facturer
+                  </Button>
+                  <Button size="sm" variant="ghost" className="rounded-sm h-8 w-8 p-0 text-muted-foreground hover:text-red-600 shrink-0"
+                          onClick={() => deleteQuote(d)} data-testid={`quote-delete-${d.doc_id}`}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <span className="num text-sm font-bold text-primary shrink-0">
-                  {Math.round(d.total_ttc || (d.totals && d.totals.ttc) || 0).toLocaleString("fr-FR")} €
-                </span>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

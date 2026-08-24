@@ -19,6 +19,7 @@ import { SectionTitle } from "@/components/Bits";
 import BrandingDialog from "@/components/BrandingDialog";
 import MailboxDialog from "@/components/MailboxDialog";
 import { ImportDocumentsDialog } from "@/components/ImportDocumentsDialog";
+import DataManagementPanel from "@/components/DataManagementPanel";
 import { api, eur } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
@@ -269,6 +270,8 @@ export default function Entreprise() {
           </div>
         </div>
       )}
+
+      <DataManagementPanel />
 
       <div className="surface rounded-md p-5 flex flex-wrap items-center justify-between gap-4" data-testid="entreprise-subscription">
         <div>

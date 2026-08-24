@@ -382,6 +382,133 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
             "total": len(results), "results": results}
 
 
+IMPORT_STATUS_MAP = {
+    "draft": {"quote": "draft", "invoice": "draft", "credit_note": "draft"},
+    "sent": {"quote": "sent", "invoice": "sent", "credit_note": "sent"},
+    "accepted": {"quote": "signed", "invoice": "sent", "credit_note": "sent"},
+    "refused": {"quote": "refused", "invoice": "refused", "credit_note": "refused"},
+    "paid": {"quote": "signed", "invoice": "paid", "credit_note": "paid"},
+}
+
+
+async def _extract_pdf_item(f: UploadFile) -> dict:
+    """Extrait (sans créer) les données d'un PDF pour l'aperçu éditable."""
+    from engines.ai import extract_document_from_pdf
+    name = f.filename or "document.pdf"
+    data = await f.read()
+    if not data or not name.lower().endswith(".pdf"):
+        return {"file": name, "ok": False, "error": "Fichier non PDF"}
+    text = _pdf_extract_text(data)
+    images = [] if len(text) >= 120 else _pdf_render_images(data)
+    if len(text) < 120 and not images:
+        return {"file": name, "ok": False, "error": "PDF illisible"}
+    ext = await extract_document_from_pdf(text=text if len(text) >= 120 else "", images=images or None)
+    if not ext.get("lines"):
+        return {"file": name, "ok": False, "error": "Aucune ligne détectée"}
+    return {"file": name, "ok": True, **ext}
+
+
+async def _persist_imported_doc(user: dict, item: dict, chosen: str) -> tuple[dict, str, int]:
+    """Crée un document ConstruPilot depuis un item d'import (éventuellement édité)."""
+    dtype = item.get("doc_type") if item.get("doc_type") in DOC_TYPES else "quote"
+    lines = []
+    for l in (item.get("lines") or []):
+        lines.append({
+            "designation": str(l.get("designation") or "").strip()[:200],
+            "description": str(l.get("description") or "")[:400],
+            "unit": l.get("unit") or "u",
+            "qty": max(0.0, float(l.get("qty") or 0)),
+            "unit_price_ht": max(0.0, float(l.get("unit_price_ht") or 0)),
+            "vat_rate": float(l.get("vat_rate") if l.get("vat_rate") is not None else 20),
+            "category": l.get("category") or "Importé",
+        })
+    client_id = await _find_or_create_client(user["user_id"], item.get("client") or {})
+    number = (item.get("number") or "").strip() or None
+    label = "Facture" if dtype == "invoice" else ("Avoir" if dtype == "credit_note" else "Devis")
+    src = (item.get("file") or "").strip()
+    totals = _compute_totals(lines, 0)
+    doc_status = IMPORT_STATUS_MAP.get(chosen, IMPORT_STATUS_MAP["sent"])[dtype]
+    doc = {
+        "doc_id": "doc_" + secrets.token_hex(6),
+        "user_id": user["user_id"],
+        "doc_type": dtype,
+        "number": number,
+        "title": item.get("title") or f"{label} importé{(' — ' + src[:60]) if src else ''}",
+        "client_id": client_id,
+        "client": await _client_snapshot(client_id, user),
+        "status": doc_status,
+        "signed": doc_status == "signed",
+        "lines": lines,
+        "notes": item.get("notes") or "",
+        "payment_terms": "",
+        "deposit_pct": 0,
+        "totals": totals,
+        "issue_date": item.get("issue_date") or None,
+        "due_date": None,
+        "source": "import_pdf",
+        "imported_filename": src[:160],
+        "created_at": _now(),
+        "updated_at": _now(),
+    }
+    if dtype == "invoice" and doc_status == "paid":
+        doc["paid"] = totals["ttc"]
+        doc["remaining_due"] = 0.0
+        doc["payments"] = [{"amount": totals["ttc"], "date": _now(), "method": "import"}]
+    await db.pro_documents.insert_one(dict(doc))
+    result = {"ok": True, "file": src, "doc_id": doc["doc_id"], "doc_type": dtype,
+              "number": number, "client_id": client_id, "status": doc_status,
+              "lines": len(lines), "ttc": totals["ttc"]}
+    return result, dtype, (_seq_from_number(number) if number else 0)
+
+
+@router.post("/import-pdf/preview")
+async def import_pdf_preview(files: list[UploadFile] = File(...),
+                             user=Depends(current_user)) -> dict:
+    """Étape 1 : extraction IA sans création — renvoie un aperçu éditable."""
+    if not files:
+        raise HTTPException(400, "Aucun fichier fourni")
+    items: list[dict] = []
+    for f in files[:20]:
+        name = f.filename or "document.pdf"
+        try:
+            items.append(await _extract_pdf_item(f))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("import preview failed for %s: %s", name, e)
+            items.append({"file": name, "ok": False, "error": str(e)[:200]})
+    return {"ok": True, "items": items}
+
+
+class ImportConfirmIn(BaseModel):
+    status: str = "sent"
+    items: list[dict]
+
+
+@router.post("/import-pdf/confirm")
+async def import_pdf_confirm(body: ImportConfirmIn, user=Depends(current_user)) -> dict:
+    """Étape 2 : crée les documents à partir de l'aperçu (éventuellement corrigé)."""
+    chosen = body.status if body.status in IMPORT_STATUS_MAP else "sent"
+    results: list[dict] = []
+    max_seq: dict[str, int] = {}
+    for it in (body.items or [])[:50]:
+        if not (it.get("lines")):
+            results.append({"file": it.get("file", ""), "ok": False, "error": "Aucune ligne"})
+            continue
+        try:
+            res, dtype, seq = await _persist_imported_doc(user, it, chosen)
+            results.append(res)
+            if seq:
+                max_seq[dtype] = max(max_seq.get(dtype, 0), seq)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("import confirm failed: %s", e)
+            results.append({"file": it.get("file", ""), "ok": False, "error": str(e)[:200]})
+    for dtype, seq in max_seq.items():
+        await _bump_counter(user["user_id"], dtype, seq)
+    return {"ok": True, "imported": sum(1 for r in results if r.get("ok")),
+            "total": len(results), "results": results}
+
+
+
+
 
 
 @router.post("/from-plan/{plan_id}")
@@ -759,10 +886,19 @@ class StatusIn(BaseModel):
 
 @router.patch("/{doc_id}/status")
 async def set_status(doc_id: str, body: StatusIn, user=Depends(current_user)) -> dict:
+    allowed = {"draft", "sent", "signed", "refused", "partial", "paid", "issued"}
+    if body.status not in allowed:
+        raise HTTPException(400, "Statut invalide")
     await _get_owned(doc_id, user)
+    upd = {"status": body.status, "updated_at": _now()}
+    if body.status == "signed":
+        upd["signed"] = True
+        upd["signed_at"] = _now()
+    elif body.status in ("draft", "sent", "refused"):
+        upd["signed"] = False
     await db.pro_documents.update_one(
         {"doc_id": doc_id, "user_id": user["user_id"]},
-        {"$set": {"status": body.status, "updated_at": _now()}})
+        {"$set": upd})
     return await _get_owned(doc_id, user)
 
 
@@ -1109,6 +1245,8 @@ async def quote_to_invoice(doc_id: str, body: ToInvoiceIn,
     q = await _get_owned(doc_id, user)
     if q["doc_type"] != "quote":
         raise HTTPException(400, "Seul un devis peut être transformé en facture")
+    if q.get("status") != "signed":
+        raise HTTPException(400, "Le devis doit être signé avant d'être facturé")
     scaled = body.mode in ("prorata", "acompte")
     factor = (max(0.0, min(body.pct, 100)) / 100) if scaled else 1.0
     note = q.get("notes") or ""

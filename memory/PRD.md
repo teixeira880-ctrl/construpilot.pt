@@ -2457,3 +2457,12 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Filtres cible pub (AdminDrillDialog)** : filtre plan, ville (users+projects), toggle 'Inactifs (+30j)' (via colonne last_seen des users, map known_devices). Export CSV sur lignes filtrées. Colonne Ville ajoutée au drill users.
 - **E-mail groupé** : cases de sélection + 'tout sélectionner' dans le détail admin, composer (objet/message) → `POST /admin/bulk-email` (dédoublonne/valide e-mails, envoie via Resend wrap_html + lien désinscription, max 200, envoi par lots de 10). Validé e2e (1 destinataire test → {sent:1}).
 - Validé testing_agent iter112 = 100% frontend. ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 113 (24/08/2026) — Cycle de vie du devis + suppressions + import éditable + campagnes
+- **Statut devis** (Brouillon/Envoyé/Signé/Refusé) : badge + select de changement sur `/devis` (section « Devis enregistrés »). Backend `PATCH /documents/{id}/status` (validation + flag `signed`).
+- **Bascule AUTO en Signé** : `submit_signature` (plans_export.py) met le `pro_document` lié en `status=signed` quand le client signe (`POST /api/quotes/public/sign/{token}`).
+- **Facturation gatée** : `POST /documents/{id}/to-invoice` → 400 si devis non signé. Bouton « Facturer » désactivé tant que non Signé.
+- **Suppressions** : devis sur `/devis` (quote-delete), factures sur `/factures` (invoice-delete), clients sur `/clients` + panneau `DataManagementPanel` sur `/entreprise`. Garde b1 : `DELETE /clients/{id}` → 400 si documents liés.
+- **Import éditable (2 étapes)** : `POST /import-pdf/preview` (extraction sans création) → aperçu éditable (client, n°, type, lignes) → `POST /import-pdf/confirm` (création). Statut appliqué au lot.
+- **Historique campagnes** : `admin_bulk_email` enregistre dans `email_campaigns` ; `GET /admin/campaigns` ; onglet Admin « Campagnes e-mail » (`CampaignsPanel`).
+- Validé testing_agent iter113 = 100% (10/10 backend + frontend). ⚠️ PREVIEW → « Deploy Now » pour publier.

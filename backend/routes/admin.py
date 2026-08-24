@@ -248,7 +248,7 @@ class BulkEmailBody(BaseModel):
 
 
 @router.post("/bulk-email")
-async def admin_bulk_email(body: BulkEmailBody) -> dict:
+async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> dict:
     """Envoie un e-mail promotionnel à une liste de contacts sélectionnés dans le détail admin."""
     import os
     import re
@@ -283,7 +283,26 @@ async def admin_bulk_email(body: BulkEmailBody) -> dict:
         chunk = emails[i:i + 10]
         res = await asyncio.gather(*[_one(a) for a in chunk])
         sent += sum(1 for r in res if r)
+    await db.email_campaigns.insert_one({
+        "campaign_id": "camp_" + os.urandom(5).hex(),
+        "subject": subject,
+        "message": msg_html[:5000],
+        "recipients_count": len(emails),
+        "recipients_sample": emails[:50],
+        "sent": sent,
+        "failed": len(emails) - sent,
+        "sent_by": (admin or {}).get("email") or (admin or {}).get("user_id"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
     return {"ok": True, "sent": sent, "failed": len(emails) - sent, "total": len(emails)}
+
+
+@router.get("/campaigns")
+async def admin_campaigns() -> dict:
+    """Historique des campagnes e-mail groupées."""
+    rows = await db.email_campaigns.find({}, {"_id": 0, "message": 0, "recipients_sample": 0}) \
+        .sort("created_at", -1).to_list(500)
+    return {"campaigns": rows}
 
 
 
