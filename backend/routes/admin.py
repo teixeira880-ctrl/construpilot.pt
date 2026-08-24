@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from core.db import db
@@ -99,6 +99,136 @@ async def stats() -> dict:
     return {"users": users, "projects": projects, "leads": leads, "quote_analyses": quotes,
             "top_searches": top, "plans": [{"plan": p["_id"] or "free", "count": p["count"]} for p in plans],
             "estimated_volume": volume}
+
+
+@router.get("/drill/{metric}")
+async def drill_metric(metric: str) -> dict:
+    """Détail cliquable d'un indicateur du tableau de bord admin.
+
+    Retourne { title, description, columns:[{key,label}], rows:[...] } avec les coordonnées
+    (nom, e-mail, téléphone, société) pour cibler une campagne publicitaire.
+    """
+    users = await db.users.find({}, {"_id": 0, "user_id": 1, "name": 1, "email": 1,
+                                      "plan": 1, "role": 1, "phone": 1, "city": 1,
+                                      "company": 1, "brand_company_name": 1,
+                                      "brand_phone": 1, "created_at": 1}).to_list(10000)
+    umap = {u["user_id"]: u for u in users}
+
+    def _contact(uid):
+        u = umap.get(uid, {})
+        return {
+            "user_name": u.get("name") or "—",
+            "user_email": u.get("email") or "—",
+            "user_phone": u.get("phone") or u.get("brand_phone") or "—",
+            "user_company": u.get("company") or u.get("brand_company_name") or "—",
+            "user_plan": u.get("plan") or "free",
+        }
+
+    CONTACT_COLS = [
+        {"key": "user_name", "label": "Nom"},
+        {"key": "user_email", "label": "E-mail"},
+        {"key": "user_phone", "label": "Téléphone"},
+        {"key": "user_company", "label": "Société"},
+        {"key": "user_plan", "label": "Plan"},
+    ]
+
+    if metric == "users":
+        rows = [{**_contact(u["user_id"]), "role": u.get("role") or "user",
+                 "created_at": u.get("created_at")} for u in users]
+        rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+        return {"title": "Utilisateurs", "description": "Tous les comptes inscrits — cible publicitaire directe.",
+                "columns": CONTACT_COLS + [{"key": "role", "label": "Rôle"},
+                                           {"key": "created_at", "label": "Inscrit le"}],
+                "rows": rows}
+
+    if metric in ("projects", "estimated_volume"):
+        projs = await db.projects.find({}, {"_id": 0, "estimation.lots": 0}).to_list(10000)
+        rows = []
+        for p in projs:
+            val = round(((p.get("estimation") or {}).get("total_avg") or 0), 2)
+            rows.append({**_contact(p.get("user_id")),
+                         "project": p.get("name") or "Projet",
+                         "project_type": p.get("project_type") or "—",
+                         "city": p.get("city") or p.get("region") or "—",
+                         "value_eur": val,
+                         "created_at": p.get("created_at")})
+        rows.sort(key=lambda r: r["value_eur"] if metric == "estimated_volume" else (r.get("created_at") or ""),
+                  reverse=True)
+        title = "Volume estimé (par projet)" if metric == "estimated_volume" else "Projets"
+        return {"title": title,
+                "description": "Projets et leurs porteurs — potentiel de dépense et coordonnées.",
+                "columns": [{"key": "project", "label": "Projet"},
+                            {"key": "project_type", "label": "Type"},
+                            {"key": "city", "label": "Ville"},
+                            {"key": "value_eur", "label": "Valeur estimée (€)"}] + CONTACT_COLS
+                + [{"key": "created_at", "label": "Créé le"}],
+                "rows": rows}
+
+    if metric == "leads":
+        leads = await db.leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+        rows = [{"name": l.get("name") or "—", "email": l.get("email") or "—",
+                 "phone": l.get("phone") or "—", "address": l.get("address") or "—",
+                 "budget": l.get("budget") or "—", "status": l.get("status") or "nouveau",
+                 "description": (l.get("description") or "")[:160],
+                 "created_at": l.get("created_at")} for l in leads]
+        return {"title": "Demandes de devis",
+                "description": "Prospects ayant demandé un devis — cible publicitaire chaude.",
+                "columns": [{"key": "name", "label": "Nom"}, {"key": "email", "label": "E-mail"},
+                            {"key": "phone", "label": "Téléphone"}, {"key": "address", "label": "Adresse"},
+                            {"key": "budget", "label": "Budget"}, {"key": "status", "label": "Statut"},
+                            {"key": "description", "label": "Besoin"},
+                            {"key": "created_at", "label": "Reçu le"}],
+                "rows": rows}
+
+    if metric == "quote_analyses":
+        qs = await db.quote_analyses.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+        projs = await db.projects.find({}, {"_id": 0, "project_id": 1, "name": 1}).to_list(10000)
+        pmap = {p["project_id"]: p.get("name") for p in projs}
+        rows = [{**_contact(q.get("user_id")),
+                 "company_analysed": q.get("company") or "—",
+                 "project": pmap.get(q.get("project_id")) or "—",
+                 "created_at": q.get("created_at")} for q in qs]
+        return {"title": "Devis analysés",
+                "description": "Utilisateurs ayant analysé un devis — fort intérêt produit.",
+                "columns": [{"key": "company_analysed", "label": "Entreprise analysée"},
+                            {"key": "project", "label": "Projet"}] + CONTACT_COLS
+                + [{"key": "created_at", "label": "Analysé le"}],
+                "rows": rows}
+
+    if metric in ("total_revenue", "transactions"):
+        q = {"payment_status": "paid"} if metric == "total_revenue" else {}
+        txs = await db.payment_transactions.find(q, {"_id": 0}).sort("created_at", -1).to_list(5000)
+        rows = [{**_contact(t.get("user_id")),
+                 "plan_bought": t.get("plan_id") or "—",
+                 "amount_eur": round((t.get("amount_cents") or 0) / 100, 2),
+                 "status": t.get("payment_status") or t.get("status") or "—",
+                 "created_at": t.get("created_at")} for t in txs]
+        title = "Revenu total (paiements)" if metric == "total_revenue" else "Transactions"
+        return {"title": title, "description": "Clients payants — cible de rétention et d'upsell.",
+                "columns": CONTACT_COLS + [{"key": "plan_bought", "label": "Plan acheté"},
+                                           {"key": "amount_eur", "label": "Montant (€)"},
+                                           {"key": "status", "label": "Statut"},
+                                           {"key": "created_at", "label": "Date"}],
+                "rows": rows}
+
+    if metric in ("active_subscriptions", "active_project_pass"):
+        kind = "subscription" if metric == "active_subscriptions" else "one_time"
+        q = {"status": "active", "kind": kind}
+        if kind == "one_time":
+            q["$or"] = [{"expires_at": {"$exists": False}},
+                        {"expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}]
+        ents = await db.entitlements.find(q, {"_id": 0}).to_list(5000)
+        rows = [{**_contact(e.get("user_id")),
+                 "plan_code": e.get("plan_code") or e.get("plan_id") or "—",
+                 "granted_at": e.get("granted_at")} for e in ents]
+        title = "Abonnements actifs" if kind == "subscription" else "Project Pass actifs"
+        return {"title": title, "description": "Clients avec un accès actif — cible d'upsell prioritaire.",
+                "columns": CONTACT_COLS + [{"key": "plan_code", "label": "Offre"},
+                                           {"key": "granted_at", "label": "Depuis"}],
+                "rows": rows}
+
+    raise HTTPException(404, "Indicateur inconnu")
+
 
 
 @router.get("/prices")

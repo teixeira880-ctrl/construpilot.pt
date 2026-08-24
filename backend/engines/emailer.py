@@ -163,7 +163,8 @@ def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str 
 def wrap_company_html(title: str, body: str, *, company_name: str = "",
                       logo_b64: str | None = None, contact_line: str | None = None,
                       siret: str | None = None, vat: str | None = None,
-                      company_email: str | None = None, verified: bool = False) -> str:
+                      company_email: str | None = None, verified: bool = False,
+                      verify_url: str | None = None) -> str:
     """Habillage e-mail aux coordonnées de l'entreprise (logo + nom + contact).
 
     Utilisé pour les e-mails clients (devis/factures) afin d'afficher l'identité
@@ -179,12 +180,13 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
 
     badge = ""
     if verified:
-        badge = (
-            '<div style="text-align:center;margin-top:12px">'
-            '<span style="display:inline-block;background:#E8F3ED;color:#3F7D54;'
-            'font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;'
-            'border:1px solid #C4E1D0">&#10004; Pro vérifié par ConstruPilot</span>'
-            '</div>')
+        chip = ('<span style="display:inline-block;background:#E8F3ED;color:#3F7D54;'
+                'font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;'
+                'border:1px solid #C4E1D0">&#10004; Pro vérifié par ConstruPilot</span>')
+        if verify_url:
+            chip = (f'<a href="{verify_url}" style="text-decoration:none" '
+                    f'target="_blank" rel="noopener">{chip}</a>')
+        badge = f'<div style="text-align:center;margin-top:12px">{chip}</div>'
 
     coords = []
     if contact_line:

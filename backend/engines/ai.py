@@ -494,6 +494,69 @@ async def quote_lines_from_text(transcript: str, images: list[str] | None = None
     return lines, (data.get("title") or "").strip()[:160]
 
 
+async def extract_document_from_pdf(text: str = "", images: list[str] | None = None) -> dict:
+    """Extrait un devis/facture (venant d'un autre logiciel) en structure ConstruPilot.
+
+    `text` = texte extrait du PDF (PDF natif) ; `images` = pages rendues en PNG b64 (scans).
+    Retourne un dict : doc_type, number, issue_date, client{}, lines[], notes.
+    """
+    system = (BRAND + " Tu extrais les données d'un devis ou d'une facture du BTP (émis par un autre "
+              "logiciel) pour les importer. Tu lis les coordonnées du CLIENT (destinataire), le NUMÉRO "
+              "du document tel qu'imprimé, la DATE, et TOUTES les lignes de prestations avec quantités, "
+              "unités, prix unitaires HT et taux de TVA.")
+    body = (
+        "Analyse ce document" + (" (texte extrait ci-dessous)" if text else " (voir les images/pages jointes)")
+        + " et renvoie UNIQUEMENT ce JSON, sans commentaire :\n"
+        '{ "doc_type": "quote|invoice|credit_note", '
+        '"number": "numéro EXACT tel qu\'imprimé sur le document", '
+        '"issue_date": "AAAA-MM-JJ ou vide", '
+        '"client": { "first_name": "", "last_name": "", "company": "", "email": "", '
+        '"phone": "", "address": "", "postal_code": "", "city": "", "siret": "" }, '
+        '"lines": [ { "designation": "libellé de la prestation", "unit": "u|m²|ml|m³|forfait|ens|h|j|kg|L", '
+        '"qty": nombre, "unit_price_ht": nombre, "vat_rate": nombre } ], '
+        '"notes": "conditions/paiement éventuels" }\n'
+        "Règles : doc_type = 'invoice' si c'est une FACTURE, 'credit_note' si AVOIR, sinon 'quote' (DEVIS). "
+        "Le CLIENT est le destinataire, PAS l'entreprise émettrice. Reprends le numéro EXACTEMENT "
+        "(ex. '2024-045', 'FAC0012'). Prix unitaires HORS TAXES. Ne surtout rien inventer : laisse vide "
+        "si l'information est absente."
+    )
+    if text:
+        body += f"\n\n=== TEXTE DU DOCUMENT ===\n{text[:12000]}"
+    raw = await _complete(system, body, images=images or None, feature="doc_import")
+    data = _json(raw, {})
+    units = ("u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L")
+    dt = data.get("doc_type")
+    if dt not in ("quote", "invoice", "credit_note"):
+        dt = "quote"
+    lines: list[dict] = []
+    for l in (data.get("lines") or [])[:200]:
+        try:
+            lines.append({
+                "designation": str(l.get("designation") or "").strip()[:200],
+                "description": "",
+                "unit": l.get("unit") if l.get("unit") in units else "u",
+                "qty": max(0.0, float(l.get("qty") or 0)),
+                "unit_price_ht": max(0.0, float(l.get("unit_price_ht") or 0)),
+                "vat_rate": float(l.get("vat_rate") if l.get("vat_rate") is not None else 20),
+                "category": "Importé",
+            })
+        except Exception:
+            continue
+    cl = data.get("client") or {}
+    client = {k: str(cl.get(k) or "").strip()[:200] for k in
+              ("first_name", "last_name", "company", "email", "phone",
+               "address", "postal_code", "city", "siret")}
+    return {
+        "doc_type": dt,
+        "number": str(data.get("number") or "").strip()[:60],
+        "issue_date": str(data.get("issue_date") or "").strip()[:10],
+        "client": client,
+        "lines": lines,
+        "notes": str(data.get("notes") or "").strip()[:2000],
+    }
+
+
+
 def _analysis_prompt(description: str) -> str:
     """Construit le prompt JSON d'analyse (séparé pour lisibilité/testabilité)."""
     types = ", ".join(f"{p['key']}" for p in PROJECT_TYPES)

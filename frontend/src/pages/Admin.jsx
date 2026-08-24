@@ -13,6 +13,7 @@ import {
 import { api, eur, num } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 import { Stat, SectionTitle } from "@/components/Bits";
+import AdminDrillDialog from "@/components/AdminDrillDialog";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
 import AdminSharedLibraryTab from "@/components/AdminSharedLibraryTab";
@@ -28,6 +29,7 @@ import { TwoFaCard } from "@/components/account/TwoFaCard";
 export default function Admin() {
   const { t } = useI18n();
   const [stats, setStats] = useState(null);
+  const [drill, setDrill] = useState(null);
   const [prices, setPrices] = useState([]);
   const [edits, setEdits] = useState({});
   const [regions, setRegions] = useState([]);
@@ -102,12 +104,13 @@ export default function Admin() {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
-        <Stat label={t("admin.k_users")} value={num(stats.users)} testId="admin-stat-users" />
-        <Stat label={t("admin.k_projects")} value={num(stats.projects)} testId="admin-stat-projects" />
-        <Stat label={t("admin.k_quote_requests")} value={num(stats.leads)} testId="admin-stat-leads" accent />
-        <Stat label={t("admin.k_quotes_analyzed")} value={num(stats.quote_analyses)} testId="admin-stat-quotes" />
-        <Stat label={t("admin.k_estimated_volume")} value={eur(stats.estimated_volume)} testId="admin-stat-volume" />
+        <Stat label={t("admin.k_users")} value={num(stats.users)} testId="admin-stat-users" onClick={() => setDrill("users")} />
+        <Stat label={t("admin.k_projects")} value={num(stats.projects)} testId="admin-stat-projects" onClick={() => setDrill("projects")} />
+        <Stat label={t("admin.k_quote_requests")} value={num(stats.leads)} testId="admin-stat-leads" accent onClick={() => setDrill("leads")} />
+        <Stat label={t("admin.k_quotes_analyzed")} value={num(stats.quote_analyses)} testId="admin-stat-quotes" onClick={() => setDrill("quote_analyses")} />
+        <Stat label={t("admin.k_estimated_volume")} value={eur(stats.estimated_volume)} testId="admin-stat-volume" onClick={() => setDrill("estimated_volume")} />
       </div>
+      <AdminDrillDialog metric={drill} onClose={() => setDrill(null)} />
 
       <Tabs defaultValue="prices">
         <TabsList className="rounded-sm flex-wrap h-auto">
@@ -648,6 +651,7 @@ function PlansRevenuePanel() {
   const { t } = useI18n();
   const [plans, setPlans] = useState([]);
   const [revenue, setRevenue] = useState(null);
+  const [drill, setDrill] = useState(null);
   const [flags, setFlags] = useState({});
   const [busy, setBusy] = useState(false);
 
@@ -681,12 +685,13 @@ function PlansRevenuePanel() {
     <div className="grid gap-6">
       {revenue && (
         <div className="grid md:grid-cols-4 gap-4" data-testid="admin-revenue-stats">
-          <Stat label={t("admin.k_total_revenue")} value={eur(revenue.total_revenue_eur)} accent />
-          <Stat label={t("admin.k_active_subs")} value={num(revenue.active_subscriptions)} />
-          <Stat label={t("admin.k_active_pass")} value={num(revenue.active_project_pass)} />
-          <Stat label={t("admin.k_transactions")} value={num(revenue.transactions_count)} />
+          <Stat label={t("admin.k_total_revenue")} value={eur(revenue.total_revenue_eur)} accent testId="admin-stat-revenue-total" onClick={() => setDrill("total_revenue")} />
+          <Stat label={t("admin.k_active_subs")} value={num(revenue.active_subscriptions)} testId="admin-stat-revenue-subs" onClick={() => setDrill("active_subscriptions")} />
+          <Stat label={t("admin.k_active_pass")} value={num(revenue.active_project_pass)} testId="admin-stat-revenue-pass" onClick={() => setDrill("active_project_pass")} />
+          <Stat label={t("admin.k_transactions")} value={num(revenue.transactions_count)} testId="admin-stat-revenue-transactions" onClick={() => setDrill("transactions")} />
         </div>
       )}
+      <AdminDrillDialog metric={drill} onClose={() => setDrill(null)} />
 
       <div className="surface p-6 grid gap-4" data-testid="admin-flags">
         <p className="overline">Feature flags</p>

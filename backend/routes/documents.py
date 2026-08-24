@@ -205,6 +205,167 @@ async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     return doc
 
 
+# ---- Import de PDF externes (devis/factures d'autres logiciels) -------------
+
+def _pdf_extract_text(data: bytes) -> str:
+    """Texte des PDF natifs (texte sélectionnable)."""
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        return "\n".join((p.extract_text() or "") for p in reader.pages[:15]).strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _pdf_render_images(data: bytes, max_pages: int = 3) -> list[str]:
+    """Rend les premières pages du PDF en PNG base64 (repli pour les scans)."""
+    imgs: list[str] = []
+    try:
+        import pymupdf
+        pdf = pymupdf.open(stream=data, filetype="pdf")
+        for page in list(pdf)[:max_pages]:
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))
+            imgs.append(base64.b64encode(pix.tobytes("png")).decode())
+        pdf.close()
+    except Exception:  # noqa: BLE001
+        pass
+    return imgs
+
+
+def _seq_from_number(number: str) -> int:
+    import re
+    m = re.findall(r"\d+", number or "")
+    return int(m[-1]) if m else 0
+
+
+async def _find_or_create_client(user_id: str, cl: dict) -> str | None:
+    """Dédoublonne par e-mail, puis société, puis nom+prénom ; crée sinon."""
+    import re
+    email = (cl.get("email") or "").strip()
+    company = (cl.get("company") or "").strip()
+    last = (cl.get("last_name") or "").strip()
+    first = (cl.get("first_name") or "").strip()
+    if not any([email, company, last, first]):
+        return None
+
+    def _ci(val: str) -> dict:
+        return {"$regex": f"^{re.escape(val)}$", "$options": "i"}
+
+    existing = None
+    if email:
+        existing = await db.clients.find_one(
+            {"user_id": user_id, "email": _ci(email)}, {"_id": 0, "client_id": 1})
+    if not existing and company:
+        existing = await db.clients.find_one(
+            {"user_id": user_id, "company": _ci(company)}, {"_id": 0, "client_id": 1})
+    if not existing and (last or first):
+        existing = await db.clients.find_one(
+            {"user_id": user_id, "last_name": _ci(last), "first_name": _ci(first)},
+            {"_id": 0, "client_id": 1})
+    if existing:
+        return existing["client_id"]
+    cid = "cli_" + secrets.token_hex(6)
+    await db.clients.insert_one({
+        "client_id": cid, "user_id": user_id,
+        "first_name": first[:80], "last_name": last[:80], "company": company[:120],
+        "email": email[:160], "phone": (cl.get("phone") or "").strip()[:40],
+        "address": (cl.get("address") or "").strip()[:200],
+        "postal_code": (cl.get("postal_code") or "").strip()[:16],
+        "city": (cl.get("city") or "").strip()[:80],
+        "siret": (cl.get("siret") or "").strip()[:20],
+        "created_at": _now(), "updated_at": _now(),
+    })
+    return cid
+
+
+async def _bump_counter(user_id: str, doc_type: str, seq: int) -> None:
+    """Fait continuer le compteur ConstruPilot à partir du plus grand n° importé (année courante)."""
+    if seq <= 0:
+        return
+    year = datetime.now(timezone.utc).year
+    cur = await db.doc_counters.find_one(
+        {"user_id": user_id, "doc_type": doc_type, "year": year}, {"_id": 0, "seq": 1})
+    if (cur or {}).get("seq", 0) < seq:
+        await db.doc_counters.update_one(
+            {"user_id": user_id, "doc_type": doc_type, "year": year},
+            {"$set": {"seq": seq}}, upsert=True)
+
+
+@router.post("/import-pdf")
+async def import_documents_pdf(files: list[UploadFile] = File(...),
+                               user=Depends(current_user)) -> dict:
+    """Importe un lot de devis/factures PDF d'autres logiciels.
+
+    Extraction IA → crée/associe le client → crée le document au format ConstruPilot
+    en conservant le NUMÉRO d'origine, puis fait continuer la numérotation.
+    """
+    from engines.ai import extract_document_from_pdf
+    if not files:
+        raise HTTPException(400, "Aucun fichier fourni")
+    results: list[dict] = []
+    max_seq: dict[str, int] = {}
+    for f in files[:20]:
+        name = f.filename or "document.pdf"
+        try:
+            data = await f.read()
+            if not data or not name.lower().endswith(".pdf"):
+                results.append({"file": name, "ok": False, "error": "Fichier non PDF"})
+                continue
+            text = _pdf_extract_text(data)
+            images = [] if len(text) >= 120 else _pdf_render_images(data)
+            if len(text) < 120 and not images:
+                results.append({"file": name, "ok": False, "error": "PDF illisible"})
+                continue
+            ext = await extract_document_from_pdf(
+                text=text if len(text) >= 120 else "", images=images or None)
+            lines = ext.get("lines") or []
+            if not lines:
+                results.append({"file": name, "ok": False, "error": "Aucune ligne détectée"})
+                continue
+            dtype = ext.get("doc_type") or "quote"
+            client_id = await _find_or_create_client(user["user_id"], ext.get("client") or {})
+            number = (ext.get("number") or "").strip() or None
+            label = "Facture" if dtype == "invoice" else ("Avoir" if dtype == "credit_note" else "Devis")
+            doc = {
+                "doc_id": "doc_" + secrets.token_hex(6),
+                "user_id": user["user_id"],
+                "doc_type": dtype,
+                "number": number,
+                "title": f"{label} importé — {name[:60]}",
+                "client_id": client_id,
+                "client": await _client_snapshot(client_id, user),
+                "status": "sent",
+                "lines": lines,
+                "notes": ext.get("notes") or "",
+                "payment_terms": "",
+                "deposit_pct": 0,
+                "totals": _compute_totals(lines, 0),
+                "issue_date": ext.get("issue_date") or None,
+                "due_date": None,
+                "source": "import_pdf",
+                "imported_filename": name[:160],
+                "created_at": _now(),
+                "updated_at": _now(),
+            }
+            await db.pro_documents.insert_one(dict(doc))
+            doc.pop("_id", None)
+            if number:
+                max_seq[dtype] = max(max_seq.get(dtype, 0), _seq_from_number(number))
+            results.append({"file": name, "ok": True, "doc_id": doc["doc_id"],
+                            "doc_type": dtype, "number": number, "client_id": client_id,
+                            "lines": len(lines), "ttc": doc["totals"]["ttc"]})
+        except Exception as e:  # noqa: BLE001
+            logger.warning("import-pdf failed for %s: %s", name, e)
+            results.append({"file": name, "ok": False, "error": str(e)[:200]})
+    for dtype, seq in max_seq.items():
+        await _bump_counter(user["user_id"], dtype, seq)
+    return {"ok": True, "imported": sum(1 for r in results if r.get("ok")),
+            "total": len(results), "results": results}
+
+
+
+
 @router.post("/from-plan/{plan_id}")
 async def document_from_plan(plan_id: str, client_id: str | None = None,
                              user=Depends(current_user)) -> dict:
@@ -753,7 +914,9 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                              contact_line=branding.get("contact_line"),
                              siret=branding.get("siret"), vat=branding.get("vat"),
                              company_email=company_email,
-                             verified=bool(branding.get("verified")))
+                             verified=bool(branding.get("verified")),
+                             verify_url=(f"{os.getenv('FRONTEND_URL', '')}/pro-verifie/{user['user_id']}"
+                                         if branding.get("verified") else None))
     filename = f"{doc.get('number') or doc_id}.pdf"
     # Pièces jointes : attestation TVA (taux réduit) + rendu 3D éventuel
     extra_attachments: list[dict] = []

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { SectionTitle } from "@/components/Bits";
+import { ImportDocumentsDialog } from "@/components/ImportDocumentsDialog";
 import { RevenueChart } from "@/components/RevenueChart";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -258,6 +259,7 @@ export default function QuoteTracking() {
             <FileText className="h-4 w-4" /> Créer un devis
           </Button>
         </Link>
+        <ImportDocumentsDialog triggerLabel="Importer des PDF" onImported={load} />
       </div>
 
       {/* Chiffre d'affaires mensuel */}

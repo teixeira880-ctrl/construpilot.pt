@@ -46,6 +46,7 @@ import QuoteTracking from "@/pages/QuoteTracking";
 import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
 import PhotoMeasure from "@/pages/PhotoMeasure";
+import ProVerified from "@/pages/ProVerified";
 import TechAnalysis from "@/pages/TechAnalysis";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
@@ -154,6 +155,7 @@ function AppRouter() {
       <Route path="/pc" element={<Protected><Shell><PcDashboard /></Shell></Protected>} />
       <Route path="/plan" element={<Protected><Shell><PlanTakeoff /></Shell></Protected>} />
       <Route path="/mesure-photo" element={<Protected><Shell><PhotoMeasure /></Shell></Protected>} />
+      <Route path="/pro-verifie/:userId" element={<Shell><ProVerified /></Shell>} />
       <Route path="/plan/compare" element={<Protected><Shell><PlanCompare /></Shell></Protected>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />

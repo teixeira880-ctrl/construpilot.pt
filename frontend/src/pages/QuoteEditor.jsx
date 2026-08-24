@@ -63,48 +63,44 @@ export default function QuoteEditor() {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoPreviews, setPhotoPreviews] = useState([]);
 
-  // Photo → devis : lit une ou plusieurs photos (texte + prestations) via l'IA et ajoute les lignes
+  // Photo → devis : lit une ou plusieurs photos EN PARALLÈLE via l'IA et ajoute les lignes
   const addPhotosFromFiles = async (fileList) => {
     const files = Array.from(fileList || []).filter((f) => f && f.type.startsWith("image/"));
     if (!files.length) { toast.error("Choisissez une ou plusieurs images (photos)"); return; }
     setPhotoBusy(true);
     const tid = toast.loading(files.length > 1 ? `Lecture de ${files.length} photos…` : "Lecture de la photo…");
-    let totalLines = 0;
-    let okCount = 0;
     try {
-      for (const file of files) {
+      const b64s = await Promise.all(files.map((file) => new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      })));
+      const results = await Promise.all(b64s.map(async (b64) => {
         try {
-          const b64 = await new Promise((res, rej) => {
-            const r = new FileReader();
-            r.onload = () => res(r.result);
-            r.onerror = rej;
-            r.readAsDataURL(file);
-          });
           const { data } = await api.post("/quotes/analyse", { image_base64: b64 });
-          const found = (data?.analysis?.lines) || [];
-          setPhotoPreviews((prev) => [...prev, { src: b64, count: found.length }]);
-          if (found.length) {
-            okCount += 1;
-            totalLines += found.length;
-            setLines((ls) => {
-              const cleaned = ls.filter((l) => (l.designation || "").trim() || (l.qty || 0));
-              const mapped = found.map((l) => ({
-                ...blankLine(),
-                designation: l.label || "",
-                unit: l.unit || "u",
-                qty: Number(l.quantity) || 1,
-                unit_price_ht: Number(l.unit_price) || 0,
-                category: "Lu depuis photo",
-              }));
-              return [...cleaned, ...mapped];
-            });
-          }
-        } catch (e) {
-          // photo individuelle en échec — on continue avec les suivantes
+          return { src: b64, found: (data?.analysis?.lines) || [] };
+        } catch {
+          return { src: b64, found: [] };
         }
-      }
-      if (totalLines) {
-        toast.success(`${totalLines} ligne(s) ajoutée(s) depuis ${okCount} photo(s)`, { id: tid });
+      }));
+      setPhotoPreviews((prev) => [...prev, ...results.map((r) => ({ src: r.src, count: r.found.length }))]);
+      const allFound = results.flatMap((r) => r.found);
+      if (allFound.length) {
+        setLines((ls) => {
+          const cleaned = ls.filter((l) => (l.designation || "").trim() || (l.qty || 0));
+          const mapped = allFound.map((l) => ({
+            ...blankLine(),
+            designation: l.label || "",
+            unit: l.unit || "u",
+            qty: Number(l.quantity) || 1,
+            unit_price_ht: Number(l.unit_price) || 0,
+            category: "Lu depuis photo",
+          }));
+          return [...cleaned, ...mapped];
+        });
+        const okCount = results.filter((r) => r.found.length).length;
+        toast.success(`${allFound.length} ligne(s) ajoutée(s) depuis ${okCount} photo(s)`, { id: tid });
       } else {
         toast.error("Aucune prestation lisible sur les photos", { id: tid });
       }

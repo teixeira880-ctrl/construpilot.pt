@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
-  Ruler, Camera, Images, Trash2, RotateCcw, Square, Move, CheckCircle2, Info,
+  Ruler, Camera, Images, Trash2, RotateCcw, Square, Move, CheckCircle2, Info, FileText,
 } from "lucide-react";
 
 // A4 : 210 mm x 297 mm
@@ -42,6 +43,22 @@ export default function PhotoMeasure() {
   const [pending, setPending] = useState([]); // points en cours (coords natives)
   const [measures, setMeasures] = useState([]); // {type, pts, valueMm|valueMm2}
   const svgRef = useRef(null);
+  const nav = useNavigate();
+
+  // Envoie les mesures relevées vers l'éditeur de devis (réutilise le mécanisme "ouvrages en attente")
+  const sendToQuote = () => {
+    if (!measures.length) return;
+    const lines = measures.map((m, i) => (
+      m.type === "distance"
+        ? { designation: `Mesure photo — longueur ${i + 1}`, unit: "ml",
+            qty: Number((m.value / 1000).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
+        : { designation: `Mesure photo — surface ${i + 1}`, unit: "m²",
+            qty: Number((m.value / 1e6).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
+    ));
+    sessionStorage.setItem("construpilot_pending_ouvrages", JSON.stringify(lines));
+    toast.success(`${lines.length} mesure(s) envoyée(s) vers le devis`);
+    nav("/devis-editeur");
+  };
 
   const loadFile = (file) => {
     if (!file || !file.type.startsWith("image/")) { toast.error("Choisissez une image (photo)"); return; }
@@ -247,7 +264,12 @@ export default function PhotoMeasure() {
           {/* Résultats */}
           {measures.length > 0 && (
             <div className="space-y-1" data-testid="pm-results">
-              <p className="text-sm font-semibold">Résultats</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">Résultats</p>
+                <Button size="sm" className="gap-2" onClick={sendToQuote} data-testid="pm-to-quote-btn">
+                  <FileText className="h-4 w-4" /> Ajouter au devis
+                </Button>
+              </div>
               {measures.map((m, i) => (
                 <div key={i} className="flex items-center justify-between text-sm border border-border rounded-sm px-3 py-1.5"
                      data-testid={`pm-result-${i}`}>
@@ -268,9 +290,29 @@ export default function PhotoMeasure() {
       )}
 
       {!imgSrc && (
-        <Card className="p-8 text-center text-muted-foreground">
-          <Ruler className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Importez une photo contenant une feuille A4 pour démarrer.</p>
+        <Card className="p-8 text-center" data-testid="pm-empty-guide">
+          <p className="text-sm font-semibold mb-4">Comment bien préparer votre photo</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+            {/* Repère visuel A4 (proportions 210 × 297) */}
+            <div className="relative">
+              <div className="mx-auto border-2 border-dashed border-primary rounded-md bg-primary/5 flex items-center justify-center"
+                   style={{ width: 105, height: 148 }} data-testid="pm-a4-frame">
+                <span className="text-[11px] font-semibold text-primary text-center leading-tight">
+                  Feuille A4<br />21 × 29,7 cm
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">Posez-la à plat dans le plan à mesurer</p>
+            </div>
+            <ol className="text-left text-sm text-muted-foreground space-y-2 max-w-xs list-decimal list-inside">
+              <li>Placez une feuille <b>A4</b> sur le mur ou le sol à mesurer.</li>
+              <li>Prenez la photo <b>bien en face</b>, sans angle, feuille entièrement visible.</li>
+              <li>Calibrez l'échelle en cliquant les 2 coins d'un bord de la feuille.</li>
+              <li>Mesurez ensuite distances et surfaces.</li>
+            </ol>
+          </div>
+          <p className="text-xs text-muted-foreground mt-6 flex items-center justify-center gap-1">
+            <Info className="h-3.5 w-3.5" /> Plus la feuille est prise de face, plus la mesure est précise.
+          </p>
         </Card>
       )}
     </div>

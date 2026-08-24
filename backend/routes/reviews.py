@@ -44,6 +44,28 @@ async def get_reviews_for_user(user_id: str, limit: int = 3) -> dict:
     return {"count": len(docs), "average": avg, "items": items}
 
 
+@router.get("/pro-verified/{user_id}")
+async def pro_verified_public(user_id: str) -> dict:
+    """Page publique de confiance d'un pro vérifié (cible du badge « Pro vérifié »)."""
+    from routes.plans_common import _resolve_branding
+    u = await db.users.find_one({"user_id": user_id},
+                                {"_id": 0, "kyc_status": 1, "name": 1})
+    if not u:
+        raise HTTPException(404, "Profil introuvable")
+    branding = await _resolve_branding(user_id) or {}
+    reviews = await get_reviews_for_user(user_id, limit=5)
+    return {
+        "verified": u.get("kyc_status") == "verified",
+        "company_name": branding.get("company_name") or u.get("name") or "Professionnel",
+        "city": branding.get("city"),
+        "siret": branding.get("siret"),
+        "certifications": branding.get("certifications") or [],
+        "reviews": reviews,
+    }
+
+
+
+
 async def _send_review_request_email(to: str, client_name: str, company: str, url: str) -> None:
     from engines.emailer import send_email, wrap_html
     hello = f"Bonjour {client_name}," if client_name else "Bonjour,"

@@ -7,6 +7,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { SectionTitle } from "@/components/Bits";
+import { ImportDocumentsDialog } from "@/components/ImportDocumentsDialog";
 import { api, eur } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
 import { usePermissions } from "@/context/PermissionContext";
@@ -166,6 +167,7 @@ export default function Invoices() {
             onClick={() => nav("/situations")}>
             <TrendingUp className="h-4 w-4" /> Situations de travaux
           </Button>
+          <ImportDocumentsDialog triggerLabel="Importer des PDF" onImported={load} />
           <Dialog open={convOpen} onOpenChange={setConvOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="rounded-sm gap-2" data-testid="invoice-from-quote-btn">

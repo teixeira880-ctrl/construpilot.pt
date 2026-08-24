@@ -1,0 +1,24 @@
+{
+  "summary": "RETEST du bug HIGH iter 110 (ImportDocumentsDialog qui se fermait prématurément) + validation de la nouvelle fonctionnalité admin drill-down (cartes cliquables ouvrant un dialog avec coordonnées + recherche + export CSV). Import fix CONFIRMÉ: connecté en pro@construpilot.fr, sur /devis, upload d'un PDF reportlab 'DEVIS N° TEST-901' + client Durand Test + 2 lignes → réponse 200, le dialog RESTE OUVERT, import-docs-results affiche '1/1 document(s) importé(s) · Devis n° TEST-901 · 2 ligne(s) · 1 200,00 €', bouton import-docs-open-0 visible et cliquable → navigation vers /devis-editeur/doc_8b26471cc38e avec client 'Durand Test' pré-sélectionné, 2 lignes 'Peinture murs blanc mat' 50×12=600€ et 'Enduit de lissage sur murs' 50×8=400€, TVA 20% et Total TTC 1200,00 €. Admin drill (login teixeira8880@gmail.com/CP-D5615C-Prov!): les 5 cartes overview (users 153, projects 71, leads 60, quote_analyses 18, estimated_volume 2 661 230 €) et les 3 cartes revenu (Revenu total 89 656 €/4 rows, Abonnements actifs 3, Transactions 118) sont TOUTES cliquables et ouvrent admin-drill-dialog. Titres corrects: 'Utilisateurs', 'Demandes de devis', 'Volume estimé (par projet)', 'Projets', 'Devis analysés', 'Revenu total (paiements)', 'Abonnements actifs', 'Transactions'. Colonnes coordonnées présentes partout (Nom/E-mail/Téléphone/Société/Plan). Recherche admin-drill-search filtre bien (153→0 pour 'zzzznomatch'), compteur admin-drill-count se met à jour, export CSV télécharge un fichier construpilot-{metric}-YYYY-MM-DD.csv sans erreur JS pour les 8 métriques testées. Aucune erreur console.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_111.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AdminDrillDialog.jsx: pas de pagination côté client — pour 'users' (153 lignes) c'est OK, mais si 'transactions' passe à plusieurs milliers, le rendu <table> avec 1000+ <tr> peut ralentir. Envisager virtualisation (react-window) au-delà de 500 lignes.",
+    "AdminDrillDialog.jsx toCSV: pas d'échappement du séparateur CSV pour les valeurs contenant des retours à la ligne (les guillemets sont bien doublés, mais un '\\n' dans un champ notes pourrait déjà casser certains lecteurs CSV — Excel gère bien les newlines entre \"\"). Fonctionnel mais à surveiller.",
+    "Admin.jsx PlansRevenuePanel (l.688-691): les Stat de revenu n'ont PAS de prop testId — accessible via [data-testid='admin-revenue-stats'] > div contenant le texte, mais l'ajout d'un testId (ex: admin-stat-revenue-total, -subs, -pass, -transactions) rendrait les tests plus robustes. NON bloquant, la fonctionnalité marche.",
+    "ImportDocumentsDialog.jsx: le fix (onPointerDownOutside/onInteractOutside preventDefault quand busy||results + différer onImported au unmount via didImport) est propre et fonctionne. Reste absent: AbortController pour annuler l'upload IA si l'utilisateur ferme pendant le busy — non bloquant."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only)", "frontend": "100% — 3/3 scénarios validés (import fix + overview drill + revenue drill)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! + teixeira8880@gmail.com / CP-D5615C-Prov!",
+  "seed_data_creation": "Nettoyage OK: 1 document 'TEST-901' (doc_8b26471cc38e) supprimé via DELETE /api/documents et 1 client 'Durand Test' (cli_408429efd53f) supprimé via DELETE /api/clients. Aucune donnée résiduelle.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter 111 valide (a) le fix HIGH de l'iter 110 sur ImportDocumentsDialog (le dialog reste ouvert et affiche results + bouton Ouvrir qui navigue vers l'éditeur avec lignes pré-remplies) et (b) la nouvelle feature Admin drill-down: 8 métriques testées (users, projects, leads, quote_analyses, estimated_volume, total_revenue, active_subscriptions, transactions) — toutes ouvrent le dialog avec titre + colonnes coordonnées + recherche + export CSV fonctionnels. Petite amélioration UX suggérée: ajouter des data-testid=admin-stat-revenue/-subs/-pass/-transactions sur les Stat de PlansRevenuePanel pour tests plus robustes (aujourd'hui sélection via texte)."
+}

@@ -18,6 +18,7 @@ import {
 import { SectionTitle } from "@/components/Bits";
 import BrandingDialog from "@/components/BrandingDialog";
 import MailboxDialog from "@/components/MailboxDialog";
+import { ImportDocumentsDialog } from "@/components/ImportDocumentsDialog";
 import { api, eur } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
@@ -131,6 +132,7 @@ export default function Entreprise() {
         </SectionTitle>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="rounded-sm gap-1"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> {role_label || "Propriétaire"}</Badge>
+          <ImportDocumentsDialog triggerLabel="Importer devis/factures PDF" onImported={load} />
           <BrandingDialog />
           <MailboxDialog />
         </div>
