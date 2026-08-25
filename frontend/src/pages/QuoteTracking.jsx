@@ -7,8 +7,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { SectionTitle } from "@/components/Bits";
 import { ImportDocumentsDialog } from "@/components/ImportDocumentsDialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { RevenueChart } from "@/components/RevenueChart";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -20,6 +22,7 @@ const MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
 export default function QuoteTracking() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [sends, setSends] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -27,6 +30,18 @@ export default function QuoteTracking() {
   const [drafts, setDrafts] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [retrying, setRetrying] = useState(null);
+  const [autoRemind, setAutoRemind] = useState(true);
+
+  useEffect(() => {
+    api.get("/quotes/reminders/settings").then(({ data }) => setAutoRemind(data.enabled !== false)).catch(() => {});
+  }, []);
+  const toggleAutoRemind = async (val) => {
+    setAutoRemind(val);
+    try {
+      await api.post("/quotes/reminders/settings", { enabled: val });
+      toast.success(val ? "Relances automatiques activées" : "Relances automatiques désactivées");
+    } catch { setAutoRemind(!val); toast.error("Impossible de modifier le réglage"); }
+  };
 
   const QUOTE_STATUS = {
     draft: { label: "Brouillon", cls: "border-border text-muted-foreground" },
@@ -42,7 +57,11 @@ export default function QuoteTracking() {
     } catch { toast.error("Changement de statut impossible"); }
   };
   const deleteQuote = async (doc) => {
-    if (!window.confirm(`Supprimer définitivement le devis ${doc.number || ""} ?`)) return;
+    if (!(await confirm({
+      title: "Supprimer ce devis ?",
+      description: `Le devis ${doc.number || ""} sera définitivement supprimé.`,
+      confirmLabel: "Supprimer",
+    }))) return;
     try {
       await api.delete(`/documents/${doc.doc_id}`);
       setQuotes((qs) => qs.filter((x) => x.doc_id !== doc.doc_id));

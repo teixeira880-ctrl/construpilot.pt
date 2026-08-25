@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BillingProvider } from "@/context/BillingContext";
 import { PermissionProvider } from "@/context/PermissionContext";
 import { WhiteLabelProvider } from "@/context/WhiteLabelContext";
+import { ConfirmProvider } from "@/components/ConfirmProvider";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import HelpChatbot from "@/components/HelpChatbot";
@@ -190,10 +191,12 @@ function App() {
               <BillingProvider>
                 <PermissionProvider>
                   <WhiteLabelProvider>
-                    <AppRouter />
-                    <MobileTabBar />
-                    <InstallPrompt />
-                    <Toaster position="top-right" richColors />
+                    <ConfirmProvider>
+                      <AppRouter />
+                      <MobileTabBar />
+                      <InstallPrompt />
+                      <Toaster position="top-right" richColors />
+                    </ConfirmProvider>
                   </WhiteLabelProvider>
                 </PermissionProvider>
               </BillingProvider>

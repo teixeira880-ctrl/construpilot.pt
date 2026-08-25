@@ -28,6 +28,7 @@ from routes.plans_common import (
 logger = logging.getLogger(__name__)
 
 REMINDER_DELAY_DAYS = 5
+MAX_REMINDERS = 2
 QUOTE_DEPOSIT_DEFAULT_PCT = 30.0
 
 
@@ -699,7 +700,8 @@ async def _send_single_reminder(c: dict) -> None:
                                           company_email=company_email),
                         reply_to=company_email, from_name=company)
     await db.quote_sends.update_one({"log_id": c["log_id"]},
-        {"$set": {"reminder_sent": True, "reminder_sent_at": _now()}})
+        {"$set": {"reminder_sent": True, "reminder_sent_at": _now(), "last_reminder_at": _now()},
+         "$inc": {"reminder_count": 1}})
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(5),
         "user_id": c["user_id"], "type": "reminder_sent",
@@ -711,24 +713,48 @@ async def _send_single_reminder(c: dict) -> None:
 
 
 async def _run_reminders() -> dict:
-    """Envoie un rappel aux devis ouverts mais non signés depuis > 5 jours."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=REMINDER_DELAY_DAYS)).isoformat()
+    """Relance automatique des devis ENVOYÉS non signés, jusqu'à MAX_REMINDERS fois,
+    espacées de REMINDER_DELAY_DAYS jours. Respecte l'opt-out par utilisateur
+    (users.auto_quote_reminders == False) et n'agit que sur les devis encore au statut « sent »."""
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(days=REMINDER_DELAY_DAYS)).isoformat()
     candidates = await db.quote_sends.find(
-        {"opened": True, "signed": False, "reminder_sent": {"$ne": True},
-         "opened_at": {"$lte": cutoff}, "email_status": "sent"},
+        {"signed": False, "email_status": "sent",
+         "$or": [{"reminder_count": {"$lt": MAX_REMINDERS}}, {"reminder_count": {"$exists": False}}],
+         "$and": [{"$or": [
+             {"last_reminder_at": {"$lte": cutoff}},
+             {"last_reminder_at": {"$exists": False}, "created_at": {"$lte": cutoff}},
+         ]}]},
         {"_id": 0, "log_id": 1, "user_id": 1, "client_email": 1, "client_name": 1,
-         "total_ttc": 1, "signature_token": 1, "plan_id": 1, "subject": 1}
-    ).to_list(200)
+         "total_ttc": 1, "signature_token": 1, "plan_id": 1, "doc_id": 1, "subject": 1}
+    ).to_list(300)
 
-    sent, failed = 0, 0
+    # Opt-out : utilisateurs ayant désactivé les relances automatiques
+    uids = list({c["user_id"] for c in candidates})
+    disabled = set()
+    if uids:
+        async for u in db.users.find({"user_id": {"$in": uids}, "auto_quote_reminders": False},
+                                     {"_id": 0, "user_id": 1}):
+            disabled.add(u["user_id"])
+
+    sent, failed, skipped = 0, 0, 0
     for c in candidates:
+        if c["user_id"] in disabled or not c.get("client_email"):
+            skipped += 1
+            continue
+        # N'agir que sur les devis pro encore « sent » (ni refusé, ni signé, ni brouillon)
+        if c.get("doc_id"):
+            d = await db.pro_documents.find_one({"doc_id": c["doc_id"]}, {"_id": 0, "status": 1})
+            if d and d.get("status") != "sent":
+                skipped += 1
+                continue
         try:
             await _send_single_reminder(c)
             sent += 1
         except Exception as e:
             logger.warning(f"reminder for {c.get('log_id')} failed: {e}")
             failed += 1
-    return {"sent": sent, "failed": failed, "skipped": 0,
+    return {"sent": sent, "failed": failed, "skipped": skipped,
             "candidates": len(candidates)}
 
 
@@ -736,6 +762,25 @@ async def _run_reminders() -> dict:
 async def trigger_reminders(user=Depends(admin_user)):
     """Endpoint admin pour lancer manuellement le job de rappels."""
     return await _run_reminders()
+
+
+class ReminderSettingsIn(BaseModel):
+    enabled: bool
+
+
+@quote_router.get("/reminders/settings")
+async def get_reminder_settings(user=Depends(current_user)) -> dict:
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "auto_quote_reminders": 1}) or {}
+    return {"enabled": u.get("auto_quote_reminders", True),
+            "delay_days": REMINDER_DELAY_DAYS, "max_reminders": MAX_REMINDERS}
+
+
+@quote_router.post("/reminders/settings")
+async def set_reminder_settings(body: ReminderSettingsIn, user=Depends(current_user)) -> dict:
+    await db.users.update_one({"user_id": user["user_id"]},
+                              {"$set": {"auto_quote_reminders": body.enabled}})
+    return {"ok": True, "enabled": body.enabled}
 
 
 # ============ QUOTE TEMPLATES ============
