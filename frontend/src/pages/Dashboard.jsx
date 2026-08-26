@@ -34,12 +34,12 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [leads, setLeads] = useState([]);
   const [tab, setTab] = useState("projects");
-  const [seenLeads, setSeenLeads] = useState(() => Number(localStorage.getItem("cp_leads_seen") || 0));
   const [selectedLead, setSelectedLead] = useState(null);
-  const unreadLeads = Math.max(0, leads.length - seenLeads);
+  const unreadLeads = leads.filter((l) => !l.viewed).length;
   const markLeadsSeen = () => {
-    localStorage.setItem("cp_leads_seen", String(leads.length));
-    setSeenLeads(leads.length);
+    if (unreadLeads === 0) return;
+    api.post("/leads/mine/mark-viewed").catch(() => {});
+    setLeads((ls) => ls.map((l) => ({ ...l, viewed: true })));
   };
   const navigate = useNavigate();
 

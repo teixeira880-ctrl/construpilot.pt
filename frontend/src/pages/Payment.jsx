@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
+import { useAuth } from "@/context/AuthContext";
 
 const PLAN_LABELS = {
   pro_business_monthly: "Pro Business", pro_business_yearly: "Pro Business",
@@ -15,6 +16,7 @@ export function PaymentSuccess() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { refresh } = useBilling();
+  const { checkAuth } = useAuth();
   const sessionId = params.get("session_id");
   const [status, setStatus] = useState("checking");
   const [rec, setRec] = useState(null);
@@ -31,6 +33,7 @@ export function PaymentSuccess() {
         if (data.payment_status === "paid") {
           setStatus("ok");
           refresh?.();  // met à jour le tier dans toute l'app (débloque les options)
+          checkAuth?.();  // rafraîchit account_type (particulier -> pro) après upgrade
           return;
         }
         if (tries++ < 15) setTimeout(poll, 2000);
@@ -39,7 +42,7 @@ export function PaymentSuccess() {
     };
     poll();
     return () => { cancelled = true; };
-  }, [sessionId, refresh]);
+  }, [sessionId, refresh, checkAuth]);
 
   const planName = PLAN_LABELS[rec?.plan_id] || (rec?.mode === "subscription" ? "Votre abonnement" : "Votre achat");
 

@@ -127,6 +127,15 @@ async def my_leads(user=Depends(current_user)):
         .sort("created_at", -1).to_list(100)
 
 
+@router.post("/mine/mark-viewed")
+async def mark_mine_viewed(user=Depends(current_user)) -> dict:
+    """Marque toutes les demandes de l'utilisateur comme vues (notification persistante)."""
+    res = await db.leads.update_many(
+        {"user_id": user["user_id"], "viewed": {"$ne": True}},
+        {"$set": {"viewed": True, "viewed_at": datetime.now(timezone.utc).isoformat()}})
+    return {"ok": True, "marked": res.modified_count}
+
+
 def _j2_reminder_html(name: str) -> str:
     hello = f"Bonjour {name}," if name else "Bonjour,"
     return f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">

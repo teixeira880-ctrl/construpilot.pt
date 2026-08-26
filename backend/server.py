@@ -38,6 +38,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     help as help_routes,
                     evolution as evolution_routes,
                     einvoicing as einvoicing_routes,
+                    resend_webhook as resend_webhook_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -109,6 +110,7 @@ api_router.include_router(appro_routes.router)
 api_router.include_router(help_routes.router)
 api_router.include_router(evolution_routes.router)
 api_router.include_router(einvoicing_routes.router)
+api_router.include_router(resend_webhook_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -280,6 +282,8 @@ async def seed():
     await db.reviews.create_index("log_id")
     await db.clients.create_index("user_id")
     await db.clients.create_index("client_id")
+    await db.resend_webhook_events.create_index("svix_id", unique=True)
+    await db.quote_sends.create_index("email_id")
     await db.library_items.create_index("user_id")
     await db.library_items.create_index("item_id")
     await db.pro_documents.create_index("user_id")

@@ -368,9 +368,16 @@ async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict) -> None
     await db.entitlements.update_one(
         {"user_id": user_id, "plan_id": plan["plan_id"]},
         {"$set": doc}, upsert=True)
-    await db.users.update_one({"user_id": user_id},
-                              {"$set": {"active_plan_id": plan["plan_id"],
-                                        "active_audience": plan["audience"]}})
+    user_updates = {"active_plan_id": plan["plan_id"],
+                    "active_audience": plan["audience"]}
+    # Bascule automatique en compte Pro après souscription d'un plan Pro
+    # (accès immédiat ; le KYC SIRET/K-bis reste vérifié en parallèle).
+    if plan.get("audience") == "pro":
+        pro_type = "pro_business" if plan["plan_id"].startswith("pro_business") else "pro"
+        user_updates["account_type"] = pro_type
+        if user and user.get("account_type") == "particulier":
+            user_updates["upgraded_from_particulier_at"] = now.isoformat()
+    await db.users.update_one({"user_id": user_id}, {"$set": user_updates})
     logger.info(f"Entitlement granted: user={user_id} plan={plan['plan_id']}")
 
 

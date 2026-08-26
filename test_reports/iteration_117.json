@@ -1,0 +1,23 @@
+{
+  "summary": "Iter 117 — tested Admin suppression définitive + purge, Leads mark-viewed, E-invoicing reconcile/unreconcile, and ProUpsell/Stripe checkout gating for particulier. Backend: 14/14 pytest passed. Frontend: full UI e2e passed: (1) admin can delete a disposable particulier from /admin?tab=users via admin-delete-user-{id} → confirm-dialog-title → confirm → toast 'Compte X supprimé · N enregistrement(s) purgé(s)' → user gone from API list; admin rows correctly have NO delete button (data-testid absent, '—' rendered). (2) Pro reconcile UI: /factures-electroniques shows einv-reconcile-btn-{inv_id} per row → dialog einv-reconcile-dialog opens with einv-recon-order-select (shadcn combobox) + einv-recon-expected-input + einv-recon-confirm → gap block einv-recon-{inv_id} and einv-recon-gap-{inv_id} render with signed amount + pct ('+1 669 € (+1668.6%)') → einv-unreconcile-{inv_id} removes reconciliation with toast 'Rapprochement retiré'. (3) Particulier /factures → redirect to /passez-pro (only Pro plans: upsell-plan-pro_monthly + upsell-plan-pro_business_monthly); /scanner-devis → /passez-pro?feature=analyse with Premium (upsell-plan-premium_monthly) + both Pro plans, and separate 'Pour les particuliers' / 'Pour les professionnels' sections. Clicking upsell-checkout-pro_monthly triggers POST /billing/checkout → HTTP 200 (backend tests confirmed 'url' returned for both premium and pro plans).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter117_admin_delete_reconcile_billing.py",
+    "/app/test_reports/pytest/iter117.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/admin.py delete_user: correctly guards role=='admin' and self-delete with 403; iterates a comprehensive _PURGE_COLLECTIONS list with try/except per collection (robust). Consider also purging by 'owner_user_id' / 'created_by' fields in some collections (e.g., organizations, quotes) since current purge is only keyed on user_id — data owned via other keys may linger. Not blocking.",
+    "routes/leads.py mark_mine_viewed: idempotent update_many with {'viewed': {'$ne': True}} — good. Returns modified_count as 'marked'. GET /leads/mine correctly exposes 'viewed' field (since projection is {'_id': 0}).",
+    "routes/einvoicing.py _gap: gap_flag logic ('ok' if |pct|<=2, else 'over' if diff>0 else 'under') matches doc and behaves correctly on live data.",
+    "routes/billing.py checkout: raises 502 on Stripe error with detail; consider not leaking exception string in prod. Not blocking (FREE_PROMO_MODE preview)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter117_admin_delete_reconcile_billing.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Admin admin@construpilot.fr/Construpilot2026! ; Pro pro@construpilot.fr/Pro2026! ; Particulier client@construpilot.fr/Client2026!",
+  "seed_data_creation": "Two disposable particulier accounts (ui_del_*@construpilot.fr) created via /api/auth/register; one deleted via UI, one via backend pytest. E-invoicing inbox contains ~6 demo invoices on pro@ — reconcile/unreconcile cycled on the first invoice (final state: unreconciled).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All four feature areas (A admin delete + purge, B invoice reconcile, C ProUpsell/Stripe checkout, notification mark-viewed) are working end-to-end backend+frontend. Backend tests are in /app/backend/tests/test_iter117_admin_delete_reconcile_billing.py (14 tests). Note: Stripe checkout URL is generated in FREE_PROMO_MODE preview — do not complete real payments. Webhook Resend intentionally 503 in preview (RESEND_WEBHOOK_SECRET vide), not tested here."
+}

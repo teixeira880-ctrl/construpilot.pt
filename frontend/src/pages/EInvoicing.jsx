@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Network, PlugZap, Unplug, Inbox, Check, X, Loader2, RefreshCw,
-  ShieldCheck, Building2, ArrowLeft, Info, FileText,
+  ShieldCheck, Building2, ArrowLeft, Info, FileText, GitCompareArrows, AlertTriangle, Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -38,6 +41,11 @@ export default function EInvoicing() {
   const [decideOn, setDecideOn] = useState(null); // {inv, decision}
   const [reason, setReason] = useState("");
   const [decideBusy, setDecideBusy] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [reconOn, setReconOn] = useState(null); // invoice being reconciled
+  const [reconOrderId, setReconOrderId] = useState("");
+  const [reconExpected, setReconExpected] = useState("");
+  const [reconBusy, setReconBusy] = useState(false);
 
   const loadStatus = async () => {
     try {
@@ -52,10 +60,16 @@ export default function EInvoicing() {
       setInbox(data.invoices || []);
     } catch { /* noop */ }
   };
+  const loadOrders = async () => {
+    try {
+      const { data } = await api.get("/einvoicing/orders");
+      setOrders(data.orders || []);
+    } catch { /* noop */ }
+  };
   const loadAll = async () => {
     setLoading(true);
     const st = await loadStatus();
-    if (st?.connected) await loadInbox();
+    if (st?.connected) { await loadInbox(); await loadOrders(); }
     setLoading(false);
   };
   useEffect(() => { loadAll(); }, []); // eslint-disable-line
@@ -100,6 +114,38 @@ export default function EInvoicing() {
       await loadInbox();
     } catch (e) { toast.error(e?.response?.data?.detail || "Décision impossible"); }
     finally { setDecideBusy(false); }
+  };
+
+  const openReconcile = (inv) => {
+    setReconOn(inv);
+    setReconOrderId(inv.reconciliation?.order_id || "");
+    setReconExpected(inv.reconciliation?.expected_ht != null ? String(inv.reconciliation.expected_ht) : "");
+  };
+  const onPickOrder = (oid) => {
+    setReconOrderId(oid);
+    const o = orders.find((x) => x.order_id === oid);
+    if (o && o.est_ht > 0 && !reconExpected) setReconExpected(String(o.est_ht));
+  };
+  const submitReconcile = async () => {
+    if (!reconOn || !reconOrderId) return;
+    setReconBusy(true);
+    try {
+      await api.post(`/einvoicing/inbox/${reconOn.inv_id}/reconcile`, {
+        order_id: reconOrderId,
+        expected_ht: reconExpected === "" ? null : Number(reconExpected),
+      });
+      toast.success("Facture rapprochée du bon de commande");
+      setReconOn(null); setReconOrderId(""); setReconExpected("");
+      await loadInbox();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Rapprochement impossible"); }
+    finally { setReconBusy(false); }
+  };
+  const removeReconcile = async (inv) => {
+    try {
+      await api.post(`/einvoicing/inbox/${inv.inv_id}/unreconcile`);
+      toast.success("Rapprochement retiré");
+      await loadInbox();
+    } catch { toast.error("Action impossible"); }
   };
 
   const pending = inbox.filter((i) => i.status === "received");
@@ -182,30 +228,54 @@ export default function EInvoicing() {
             <div className="grid gap-3" data-testid="einv-inbox-list">
               {inbox.map((inv, idx) => (
                 <motion.div key={inv.inv_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
-                  className="surface rounded-sm p-4 flex flex-wrap items-center gap-4" data-testid={`einv-row-${inv.inv_id}`}>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display font-semibold">{inv.supplier}</p>
-                    <p className="text-xs text-muted-foreground num">N° {inv.number} · SIRET {inv.supplier_siret} · émise le {inv.issued_at}</p>
-                    {inv.status === "refused" && inv.reason && (
-                      <p className="text-xs text-red-500 mt-1">Motif de refus : {inv.reason}</p>
-                    )}
-                  </div>
-                  <StatusPill s={inv.status} />
-                  <div className="text-right">
-                    <p className="num text-lg font-bold text-primary">{eur(inv.amount_ttc)}</p>
-                    <p className="text-[11px] text-muted-foreground num">HT {eur(inv.amount_ht)} · TVA {eur(inv.vat)}</p>
-                  </div>
-                  {inv.status === "received" ? (
+                  className="surface rounded-sm p-4" data-testid={`einv-row-${inv.inv_id}`}>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display font-semibold">{inv.supplier}</p>
+                      <p className="text-xs text-muted-foreground num">N° {inv.number} · SIRET {inv.supplier_siret} · émise le {inv.issued_at}</p>
+                      {inv.status === "refused" && inv.reason && (
+                        <p className="text-xs text-red-500 mt-1">Motif de refus : {inv.reason}</p>
+                      )}
+                    </div>
+                    <StatusPill s={inv.status} />
+                    <div className="text-right">
+                      <p className="num text-lg font-bold text-primary">{eur(inv.amount_ttc)}</p>
+                      <p className="text-[11px] text-muted-foreground num">HT {eur(inv.amount_ht)} · TVA {eur(inv.vat)}</p>
+                    </div>
                     <div className="flex gap-2">
-                      <Button size="sm" className="rounded-sm gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => { setDecideOn({ inv, decision: "accepted" }); setReason(""); }} data-testid={`einv-accept-${inv.inv_id}`}>
-                        <Check className="h-4 w-4" /> Accepter
-                      </Button>
-                      <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-red-600 border-red-500/30 hover:bg-red-500/10" onClick={() => { setDecideOn({ inv, decision: "refused" }); setReason(""); }} data-testid={`einv-refuse-${inv.inv_id}`}>
-                        <X className="h-4 w-4" /> Refuser
+                      {inv.status === "received" && (
+                        <>
+                          <Button size="sm" className="rounded-sm gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => { setDecideOn({ inv, decision: "accepted" }); setReason(""); }} data-testid={`einv-accept-${inv.inv_id}`}>
+                            <Check className="h-4 w-4" /> Accepter
+                          </Button>
+                          <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-red-600 border-red-500/30 hover:bg-red-500/10" onClick={() => { setDecideOn({ inv, decision: "refused" }); setReason(""); }} data-testid={`einv-refuse-${inv.inv_id}`}>
+                            <X className="h-4 w-4" /> Refuser
+                          </Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="ghost" className="rounded-sm gap-1.5" onClick={() => openReconcile(inv)} data-testid={`einv-reconcile-btn-${inv.inv_id}`}>
+                        <GitCompareArrows className="h-4 w-4" /> {inv.reconciliation ? "Écart" : "Rapprocher"}
                       </Button>
                     </div>
-                  ) : (
-                    <span className="text-[11px] text-muted-foreground italic" data-testid={`einv-admin-status-${inv.inv_id}`}>{inv.admin_status || "transmis (simulé)"}</span>
+                  </div>
+                  {inv.reconciliation && (
+                    <div className={`mt-3 rounded-sm p-3 flex flex-wrap items-center gap-3 text-sm border ${inv.reconciliation.gap_flag === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`} data-testid={`einv-recon-${inv.inv_id}`}>
+                      {inv.reconciliation.gap_flag === "ok"
+                        ? <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                        : <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
+                      <span className="text-muted-foreground">
+                        Commande <b className="text-foreground">{inv.reconciliation.order_type || "matériaux"}</b> · prévu <b className="num text-foreground">{eur(inv.reconciliation.expected_ht)}</b> HT · facturé <b className="num text-foreground">{eur(inv.reconciliation.invoice_ht)}</b> HT
+                      </span>
+                      <span className={`num font-bold ${inv.reconciliation.gap_flag === "over" ? "text-red-600 dark:text-red-400" : inv.reconciliation.gap_flag === "under" ? "text-blue-600 dark:text-blue-400" : "text-emerald-600 dark:text-emerald-400"}`} data-testid={`einv-recon-gap-${inv.inv_id}`}>
+                        {inv.reconciliation.gap_ht > 0 ? "+" : ""}{eur(inv.reconciliation.gap_ht)} ({inv.reconciliation.gap_pct > 0 ? "+" : ""}{inv.reconciliation.gap_pct}%)
+                      </span>
+                      <span className="text-[11px] uppercase font-semibold tracking-wide">
+                        {inv.reconciliation.gap_flag === "ok" ? "Conforme" : inv.reconciliation.gap_flag === "over" ? "Surcoût" : "Économie"}
+                      </span>
+                      <Button size="sm" variant="ghost" className="rounded-sm h-7 gap-1 ml-auto text-muted-foreground" onClick={() => removeReconcile(inv)} data-testid={`einv-unreconcile-${inv.inv_id}`}>
+                        <Unlink className="h-3.5 w-3.5" /> Délier
+                      </Button>
+                    </div>
                   )}
                 </motion.div>
               ))}
@@ -239,6 +309,46 @@ export default function EInvoicing() {
               onClick={submitDecision} data-testid="einv-decision-confirm">
               {decideBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : (decideOn?.decision === "refused" ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />)}
               {decideOn?.decision === "refused" ? "Confirmer le refus" : "Confirmer l'acceptation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!reconOn} onOpenChange={(o) => { if (!o) setReconOn(null); }}>
+        <DialogContent className="max-w-md" data-testid="einv-reconcile-dialog">
+          <DialogHeader>
+            <DialogTitle>Rapprocher de mon bon de commande</DialogTitle>
+          </DialogHeader>
+          {reconOn && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Facture {reconOn.supplier} · {reconOn.number} · <b className="text-foreground num">{eur(reconOn.amount_ht)}</b> HT
+              </p>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Bon de commande matériaux</label>
+                <Select value={reconOrderId} onValueChange={onPickOrder}>
+                  <SelectTrigger className="rounded-sm mt-1" data-testid="einv-recon-order-select"><SelectValue placeholder="Sélectionner une commande…" /></SelectTrigger>
+                  <SelectContent>
+                    {orders.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Aucun bon de commande</div>}
+                    {orders.map((o) => (
+                      <SelectItem key={o.order_id} value={o.order_id} data-testid={`einv-recon-order-${o.order_id}`}>
+                        {(o.type || "Commande")} · {o.item_count} ligne(s){o.est_ht > 0 ? ` · ~${eur(o.est_ht)} HT` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Montant commande estimé HT (€)</label>
+                <Input type="number" value={reconExpected} onChange={(e) => setReconExpected(e.target.value)} placeholder="Ex : 1200" className="rounded-sm mt-1 num" data-testid="einv-recon-expected-input" />
+                <p className="text-[11px] text-muted-foreground mt-1">Pré-rempli depuis la commande si des prix unitaires sont connus, sinon saisissez le montant attendu.</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" className="rounded-sm" onClick={() => setReconOn(null)} data-testid="einv-recon-cancel">Annuler</Button>
+            <Button className="rounded-sm gap-2" disabled={reconBusy || !reconOrderId} onClick={submitReconcile} data-testid="einv-recon-confirm">
+              {reconBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitCompareArrows className="h-4 w-4" />} Rapprocher
             </Button>
           </DialogFooter>
         </DialogContent>

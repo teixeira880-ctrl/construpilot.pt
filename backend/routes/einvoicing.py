@@ -127,3 +127,83 @@ async def decide(inv_id: str, body: DecisionIn, user=Depends(pro_required)) -> d
     if not res.matched_count:
         raise HTTPException(404, "Facture introuvable")
     return {"ok": True, "status": body.decision, "admin_status": "transmis (simulé)"}
+
+
+# ---------- Rapprochement facture fournisseur ↔ bon de commande ----------
+
+def _order_est_ht(order: dict) -> float:
+    """Estime le montant HT d'un bon de commande à partir des prix unitaires connus."""
+    total = 0.0
+    for it in order.get("items") or []:
+        up = it.get("unit_price") or it.get("pu") or 0
+        qty = it.get("commandable_qty") or it.get("qty") or 0
+        try:
+            total += float(up) * float(qty)
+        except (TypeError, ValueError):
+            continue
+    return round(total, 2)
+
+
+@router.get("/orders")
+async def linkable_orders(user=Depends(pro_required)) -> dict:
+    """Bons de commande matériaux de l'utilisateur, pour rapprochement avec une facture."""
+    rows = await db.material_orders.find(
+        {"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    out = []
+    for o in rows:
+        out.append({"order_id": o["order_id"], "type": o.get("type"),
+                    "supplier": o.get("supplier"), "project": o.get("project"),
+                    "status": o.get("status"), "created_at": o.get("created_at"),
+                    "item_count": len(o.get("items") or []),
+                    "est_ht": _order_est_ht(o)})
+    return {"orders": out}
+
+
+class ReconcileIn(BaseModel):
+    order_id: str
+    expected_ht: float | None = None
+
+
+def _gap(invoice_ht: float, expected_ht: float) -> dict:
+    diff = round(invoice_ht - expected_ht, 2)
+    pct = round((diff / expected_ht * 100), 1) if expected_ht else 0.0
+    if abs(pct) <= 2:
+        flag = "ok"           # conforme
+    elif diff > 0:
+        flag = "over"         # facturé plus cher que prévu
+    else:
+        flag = "under"        # facturé moins cher que prévu
+    return {"gap_ht": diff, "gap_pct": pct, "gap_flag": flag}
+
+
+@router.post("/inbox/{inv_id}/reconcile")
+async def reconcile(inv_id: str, body: ReconcileIn, user=Depends(pro_required)) -> dict:
+    inv = await db.einvoice_inbox.find_one(
+        {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
+    if not inv:
+        raise HTTPException(404, "Facture introuvable")
+    order = await db.material_orders.find_one(
+        {"user_id": user["user_id"], "order_id": body.order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Bon de commande introuvable")
+    expected = body.expected_ht if body.expected_ht is not None else _order_est_ht(order)
+    expected = round(float(expected or 0), 2)
+    gap = _gap(float(inv.get("amount_ht") or 0), expected)
+    recon = {"order_id": body.order_id, "order_type": order.get("type"),
+             "order_supplier": order.get("supplier"),
+             "expected_ht": expected, "invoice_ht": float(inv.get("amount_ht") or 0),
+             "reconciled_at": _now(), **gap}
+    await db.einvoice_inbox.update_one(
+        {"user_id": user["user_id"], "inv_id": inv_id},
+        {"$set": {"reconciliation": recon}})
+    return {"ok": True, "reconciliation": recon}
+
+
+@router.post("/inbox/{inv_id}/unreconcile")
+async def unreconcile(inv_id: str, user=Depends(pro_required)) -> dict:
+    res = await db.einvoice_inbox.update_one(
+        {"user_id": user["user_id"], "inv_id": inv_id},
+        {"$unset": {"reconciliation": ""}})
+    if not res.matched_count:
+        raise HTTPException(404, "Facture introuvable")
+    return {"ok": True}

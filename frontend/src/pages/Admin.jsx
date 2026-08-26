@@ -14,6 +14,7 @@ import { api, eur, num } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 import { Stat, SectionTitle } from "@/components/Bits";
 import AdminDrillDialog from "@/components/AdminDrillDialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import CampaignsPanel from "@/components/admin/CampaignsPanel";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
@@ -29,6 +30,7 @@ import { TwoFaCard } from "@/components/account/TwoFaCard";
 
 export default function Admin() {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [stats, setStats] = useState(null);
   const [drill, setDrill] = useState(null);
   const [prices, setPrices] = useState([]);
@@ -41,6 +43,20 @@ export default function Admin() {
   const [leadFilter, setLeadFilter] = useState("all");
   const [suppliers, setSuppliers] = useState({ builtin: [], custom: [] });
   const [newSup, setNewSup] = useState({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
+
+  const deleteUser = async (u) => {
+    if (!(await confirm({
+      title: "Supprimer définitivement ce compte ?",
+      description: `Le compte ${u.email} et TOUTES ses données (projets, devis, factures, demandes, abonnements) seront supprimés définitivement. Cette action est irréversible.`,
+      confirmLabel: "Supprimer définitivement",
+      destructive: true,
+    }))) return;
+    try {
+      const { data } = await api.delete(`/admin/users/${u.user_id}`);
+      toast.success(`Compte ${u.email} supprimé · ${data.purged_total} enregistrement(s) purgé(s)`);
+      load();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
+  };
 
   const load = () => {
     api.get("/admin/stats").then(({ data }) => setStats(data));
@@ -294,6 +310,7 @@ export default function Admin() {
                   <TableHead>Plan</TableHead>
                   <TableHead>Auth</TableHead>
                   <TableHead>2FA</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -364,6 +381,20 @@ export default function Admin() {
                           <Mail className="h-3 w-3" /> {u.two_fa_email || "e-mail 2FA…"}
                         </Button>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {u.role === "admin" ? (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      ) : (
+                        <Button
+                          size="sm" variant="ghost"
+                          className="rounded-sm h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-500/10 gap-1.5"
+                          data-testid={`admin-delete-user-${u.user_id}`}
+                          onClick={() => deleteUser(u)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Supprimer
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

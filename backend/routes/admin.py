@@ -385,6 +385,49 @@ async def update_user(user_id: str, body: UserIn):
     return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
 
 
+# Collections purgées lors de la suppression définitive d'un compte (clé user_id).
+_PURGE_COLLECTIONS = [
+    "projects", "leads", "quote_analyses", "quote_sends", "quote_templates",
+    "clients", "entitlements", "payment_transactions", "plans_takeoff",
+    "plans_takeoff_history", "material_orders", "notifications", "photo_analyses",
+    "pro_documents", "doc_counters", "steel_analyses", "roofing_analyses",
+    "waterproofing_analyses", "vrd_analyses", "dpgf_imports",
+    "company_price_libraries", "library_items", "suppliers", "situations",
+    "prorata", "site_reports", "site_reserves", "site_checklist", "hr_files",
+    "hr_notes", "hr_photos", "hr_timesheets", "push_subscriptions",
+    "price_alerts", "api_keys", "referrals", "einvoice_accounts",
+    "einvoice_inbox", "shared_calcs", "tool_presets", "pc_settings",
+    "pc_study_history", "chat_messages", "activity_log", "user_sessions",
+    "two_fa_codes", "password_reset_tokens", "known_devices", "login_attempts",
+    "evolution_runs", "evolution_compares", "pro_documents_files",
+    "photo_analyses", "marketplace_pros",
+]
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(user_id: str, admin=Depends(admin_user)) -> dict:
+    """Supprime DÉFINITIVEMENT un compte et purge toutes ses données (irréversible)."""
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(404, "Utilisateur introuvable")
+    if target.get("role") == "admin":
+        raise HTTPException(403, "Impossible de supprimer un compte administrateur")
+    if user_id == admin["user_id"]:
+        raise HTTPException(403, "Vous ne pouvez pas supprimer votre propre compte")
+    purged: dict[str, int] = {}
+    for coll in dict.fromkeys(_PURGE_COLLECTIONS):
+        try:
+            res = await db[coll].delete_many({"user_id": user_id})
+            if res.deleted_count:
+                purged[coll] = purged.get(coll, 0) + res.deleted_count
+        except Exception:  # noqa: BLE001 — collection absente/robustesse
+            continue
+    await db.users.delete_one({"user_id": user_id})
+    return {"ok": True, "deleted_user": user_id,
+            "email": target.get("email"), "purged": purged,
+            "purged_total": sum(purged.values())}
+
+
 @router.get("/projects")
 async def all_projects():
     return await db.projects.find({}, {"_id": 0, "estimation.lots": 0}) \
