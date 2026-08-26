@@ -415,13 +415,28 @@ async def delete_user(user_id: str, admin=Depends(admin_user)) -> dict:
     if user_id == admin["user_id"]:
         raise HTTPException(403, "Vous ne pouvez pas supprimer votre propre compte")
     purged: dict[str, int] = {}
+    owner_keys = ("user_id", "owner_user_id", "created_by", "pro_user_id",
+                  "owner_id", "author_id", "from_user_id", "assigned_to")
+    owner_filter = {"$or": [{k: user_id} for k in owner_keys]}
     for coll in dict.fromkeys(_PURGE_COLLECTIONS):
         try:
-            res = await db[coll].delete_many({"user_id": user_id})
+            res = await db[coll].delete_many(owner_filter)
             if res.deleted_count:
                 purged[coll] = purged.get(coll, 0) + res.deleted_count
         except Exception:  # noqa: BLE001 — collection absente/robustesse
             continue
+    # Organisations détenues par l'utilisateur + retrait des adhésions.
+    try:
+        org_res = await db.organizations.delete_many(
+            {"$or": [{"owner_user_id": user_id}, {"owner_id": user_id}, {"user_id": user_id}]})
+        if org_res.deleted_count:
+            purged["organizations"] = purged.get("organizations", 0) + org_res.deleted_count
+        await db.organizations.update_many(
+            {"members.user_id": user_id},
+            {"$pull": {"members": {"user_id": user_id}}})
+        await db.org_members.delete_many({"user_id": user_id})
+    except Exception:  # noqa: BLE001
+        pass
     await db.users.delete_one({"user_id": user_id})
     return {"ok": True, "deleted_user": user_id,
             "email": target.get("email"), "purged": purged,

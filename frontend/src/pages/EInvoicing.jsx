@@ -46,11 +46,14 @@ export default function EInvoicing() {
   const [reconOrderId, setReconOrderId] = useState("");
   const [reconExpected, setReconExpected] = useState("");
   const [reconBusy, setReconBusy] = useState(false);
+  const [threshold, setThreshold] = useState(5);
+  const [savingThreshold, setSavingThreshold] = useState(false);
 
   const loadStatus = async () => {
     try {
       const { data } = await api.get("/einvoicing/status");
       setStatus(data);
+      if (data?.overspend_threshold_pct != null) setThreshold(data.overspend_threshold_pct);
       return data;
     } catch { return null; }
   };
@@ -130,11 +133,15 @@ export default function EInvoicing() {
     if (!reconOn || !reconOrderId) return;
     setReconBusy(true);
     try {
-      await api.post(`/einvoicing/inbox/${reconOn.inv_id}/reconcile`, {
+      const { data } = await api.post(`/einvoicing/inbox/${reconOn.inv_id}/reconcile`, {
         order_id: reconOrderId,
         expected_ht: reconExpected === "" ? null : Number(reconExpected),
       });
-      toast.success("Facture rapprochée du bon de commande");
+      if (data?.alert?.overspend) {
+        toast.warning(`Surcoût détecté : +${data.alert.gap_pct}% au-dessus du bon de commande (seuil ${data.alert.threshold_pct}%). Vous avez été alerté par e-mail.`);
+      } else {
+        toast.success("Facture rapprochée du bon de commande");
+      }
       setReconOn(null); setReconOrderId(""); setReconExpected("");
       await loadInbox();
     } catch (e) { toast.error(e?.response?.data?.detail || "Rapprochement impossible"); }
@@ -146,6 +153,14 @@ export default function EInvoicing() {
       toast.success("Rapprochement retiré");
       await loadInbox();
     } catch { toast.error("Action impossible"); }
+  };
+  const saveThreshold = async () => {
+    setSavingThreshold(true);
+    try {
+      await api.post("/einvoicing/settings", { overspend_threshold_pct: Number(threshold) });
+      toast.success(`Seuil d'alerte surcoût réglé à ${threshold}%`);
+    } catch { toast.error("Enregistrement impossible"); }
+    finally { setSavingThreshold(false); }
   };
 
   const pending = inbox.filter((i) => i.status === "received");
@@ -199,6 +214,15 @@ export default function EInvoicing() {
             <div>
               <p className="font-semibold text-sm flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /> Raccordé à <b>{status.platform}</b></p>
               <p className="text-xs text-muted-foreground num">SIRET {status.siret}</p>
+            </div>
+            <div className="flex items-center gap-2 sm:ml-4" data-testid="einv-threshold-control">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <label className="text-xs text-muted-foreground">Alerte surcoût &gt;</label>
+              <Input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)} className="rounded-sm h-8 w-16 num text-center" data-testid="einv-threshold-input" />
+              <span className="text-xs text-muted-foreground">%</span>
+              <Button size="sm" variant="outline" className="rounded-sm h-8" disabled={savingThreshold} onClick={saveThreshold} data-testid="einv-threshold-save">
+                {savingThreshold ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "OK"}
+              </Button>
             </div>
             <div className="ml-auto flex gap-2">
               <Button variant="outline" size="sm" className="rounded-sm gap-1.5" disabled={simBusy} onClick={simulate} data-testid="einv-simulate-btn">

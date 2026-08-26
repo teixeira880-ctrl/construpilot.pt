@@ -43,7 +43,21 @@ async def status(user=Depends(pro_required)) -> dict:
         await _seed_inbox(user["user_id"])
     return {"connected": bool(acc.get("connected")), "platform": acc.get("platform", "Iopole"),
             "siret": acc.get("siret"), "connected_at": acc.get("connected_at"),
+            "overspend_threshold_pct": acc.get("overspend_threshold_pct", 5),
             "mocked": True}
+
+
+class SettingsIn(BaseModel):
+    overspend_threshold_pct: float
+
+
+@router.post("/settings")
+async def update_settings(body: SettingsIn, user=Depends(pro_required)) -> dict:
+    pct = max(0, min(100, float(body.overspend_threshold_pct)))
+    await db.einvoice_accounts.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"user_id": user["user_id"], "overspend_threshold_pct": pct}}, upsert=True)
+    return {"ok": True, "overspend_threshold_pct": pct}
 
 
 class ConnectIn(BaseModel):
@@ -196,7 +210,41 @@ async def reconcile(inv_id: str, body: ReconcileIn, user=Depends(pro_required)) 
     await db.einvoice_inbox.update_one(
         {"user_id": user["user_id"], "inv_id": inv_id},
         {"$set": {"reconciliation": recon}})
-    return {"ok": True, "reconciliation": recon}
+    alert = await _maybe_overspend_alert(user, inv, recon)
+    return {"ok": True, "reconciliation": recon, "alert": alert}
+
+
+async def _maybe_overspend_alert(user: dict, inv: dict, recon: dict) -> dict | None:
+    """Alerte le pro si la facture dépasse le bon de commande de plus du seuil configuré."""
+    if recon.get("gap_flag") != "over":
+        return None
+    acc = await db.einvoice_accounts.find_one(
+        {"user_id": user["user_id"]}, {"_id": 0, "overspend_threshold_pct": 1}) or {}
+    threshold = acc.get("overspend_threshold_pct", 5)
+    if recon.get("gap_pct", 0) < threshold:
+        return None
+    msg = (f"Surcoût détecté : la facture {inv.get('supplier')} ({inv.get('number')}) dépasse "
+           f"le bon de commande de {recon['gap_pct']}% (+{recon['gap_ht']:.2f} € HT).")
+    await db.notifications.insert_one({
+        "user_id": user["user_id"], "type": "einvoice_overspend",
+        "inv_id": inv.get("inv_id"), "order_id": recon.get("order_id"),
+        "gap_ht": recon["gap_ht"], "gap_pct": recon["gap_pct"], "threshold_pct": threshold,
+        "message": msg, "read": False, "created_at": _now()})
+    try:
+        if user.get("email"):
+            from engines.emailer import send_email
+            html = (f'<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">'
+                    f'<h2 style="color:#B91C1C">⚠️ Surcoût fournisseur détecté</h2>'
+                    f'<p>{msg}</p>'
+                    f'<ul><li>Montant prévu (commande) : <b>{recon["expected_ht"]:.2f} € HT</b></li>'
+                    f'<li>Montant facturé : <b>{recon["invoice_ht"]:.2f} € HT</b></li>'
+                    f'<li>Écart : <b style="color:#B91C1C">+{recon["gap_ht"]:.2f} € ({recon["gap_pct"]}%)</b></li></ul>'
+                    f'<p style="color:#64748B;font-size:13px">Seuil d\'alerte configuré : {threshold}%. '
+                    f'Vérifiez la facture avant de l\'accepter.</p></div>')
+            await send_email(user["email"], "⚠️ Surcoût fournisseur détecté · ConstruPilot", html)
+    except Exception:  # noqa: BLE001
+        pass
+    return {"overspend": True, "gap_pct": recon["gap_pct"], "threshold_pct": threshold}
 
 
 @router.post("/inbox/{inv_id}/unreconcile")

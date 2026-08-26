@@ -207,13 +207,14 @@ def _build_checkout_kwargs(ctx: CheckoutContext) -> dict:
 
 
 async def _record_payment_transaction(session, price, plan: dict, user: dict,
-                                       mode: str, bonus_days_consumed: int) -> None:
+                                       mode: str, bonus_days_consumed: int,
+                                       origin_url: str | None = None) -> None:
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": user["user_id"],
         "plan_id": plan["plan_id"], "lookup_key": plan["lookup_key"],
         "amount_cents": price.unit_amount, "currency": price.currency,
         "mode": mode, "status": "initiated", "payment_status": "pending",
-        "bonus_days_consumed": bonus_days_consumed,
+        "bonus_days_consumed": bonus_days_consumed, "origin_url": origin_url,
         "created_at": now_iso(), "updated_at": now_iso(),
     })
 
@@ -244,7 +245,7 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
     ))
     session = stripe.checkout.Session.create(**kwargs)
     await _record_payment_transaction(session, price, plan, user,
-                                       kwargs["mode"], bonus_days_consumed)
+                                       kwargs["mode"], bonus_days_consumed, origin_url)
     return {"url": session.url, "session_id": session.id,
             "bonus_days_applied": bonus_days_consumed}
 
@@ -379,6 +380,45 @@ async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict) -> None
             user_updates["upgraded_from_particulier_at"] = now.isoformat()
     await db.users.update_one({"user_id": user_id}, {"$set": user_updates})
     logger.info(f"Entitlement granted: user={user_id} plan={plan['plan_id']}")
+    if plan.get("audience") == "pro" and plan.get("kind") == "subscription":
+        await _send_pro_welcome(user_id, plan, payment_rec, user)
+
+
+async def _send_pro_welcome(user_id: str, plan: dict, payment_rec: dict, user: dict | None) -> None:
+    """E-mail de bienvenue + reçu PDF après passage en Pro payant (best-effort, une seule fois)."""
+    try:
+        ent = await db.entitlements.find_one(
+            {"user_id": user_id, "plan_id": plan["plan_id"]}, {"_id": 0, "welcome_sent": 1})
+        if ent and ent.get("welcome_sent"):
+            return
+        user = user or await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        if not user or not user.get("email"):
+            return
+        from engines.emailer import send_email_with_pdf
+        from engines.pro_receipt import (build_pro_receipt_pdf, welcome_email_html,
+                                          receipt_no_for)
+        amount = round((payment_rec.get("amount_cents") or plan.get("amount_cents") or 0) / 100, 2)
+        now = datetime.now(timezone.utc)
+        rno = receipt_no_for(user_id)
+        pdf = build_pro_receipt_pdf(
+            receipt_no=rno, plan_name=plan.get("name") or "Pro",
+            interval=plan.get("interval") or "month", amount_ttc=amount,
+            customer_name=user.get("name") or "", customer_email=user["email"],
+            paid_at=now.strftime("%d/%m/%Y"),
+            stripe_ref=payment_rec.get("stripe_payment_intent_id") or payment_rec.get("session_id"))
+        origin = payment_rec.get("origin_url") or os.environ.get("APP_ORIGIN") or "https://construpilot.fr"
+        html = welcome_email_html(
+            customer_name=user.get("name") or "", plan_name=plan.get("name") or "Pro",
+            amount_ttc=amount, dashboard_url=f"{origin.rstrip('/')}/dashboard")
+        await send_email_with_pdf(
+            user["email"], f"Bienvenue en Pro · {plan.get('name') or 'ConstruPilot'}",
+            html, pdf, filename=f"{rno}.pdf")
+        await db.entitlements.update_one(
+            {"user_id": user_id, "plan_id": plan["plan_id"]},
+            {"$set": {"welcome_sent": True, "welcome_sent_at": now.isoformat()}})
+        logger.info(f"Reçu Pro envoyé à {user['email']} ({plan['plan_id']})")
+    except Exception as e:  # noqa: BLE001 — ne jamais bloquer le paiement
+        logger.warning(f"Envoi reçu Pro échoué pour {user_id}: {e}")
 
 
 async def revoke_entitlement(subscription_id: str, reason: str = "cancelled") -> None:

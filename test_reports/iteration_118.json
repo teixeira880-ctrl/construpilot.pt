@@ -1,0 +1,35 @@
+{
+  "summary": "Iter 118 — Alerte surcoût e-invoicing (backend+frontend) + purge élargie (backend re-confirm). Backend pytest: 9/9 PASSED covering (a) POST /einvoicing/settings threshold=5 persisted, (b) POST /einvoicing/inbox/einv_demo1/reconcile with expected_ht=1000 → gap_flag='over', gap_pct=24.05, alert={overspend:true,threshold_pct:5}, (c) einvoice_overspend notification created (verified via /api/quotes/notifications/me), (d) same reconcile with expected_ht=1230 → gap_flag='ok' + alert=null, (e) /unreconcile returns ok, (f) DELETE /admin/users/{id} on disposable particulier purges rows (returns purged dict + purged_total, user removed), (g) 404 on non-existent user, (h) 403 self-delete guard. Frontend UI on /factures-electroniques (pro@construpilot.fr): PASS #1 threshold control (einv-threshold-input=5 + einv-threshold-save) shows sonner toast 'Seuil d'alerte surcoût réglé à 5%'. PASS #2 after overspend reconcile (expected 1000), einv-recon-einv_demo1 block renders '+241 € (+24.1%) SURCOÛT' with amber border; alert API returns overspend=true. PASS #3 after conformant reconcile (expected 1230), same block shows '+11 € (+0.9%) CONFORME' with emerald border, alert=null. Warning-toast branch confirmed in code (EInvoicing.jsx submitReconcile: toast.warning when data.alert.overspend). Note: reconcile from UI dialog via shadcn Select flaked due to CRA dev error overlay (benign ResizeObserver loop event triggers overlay) — reconciliation API path and reconciliation-block UI both verified independently. Pro Welcome receipt (task 1) not e2e-testable without real Stripe payment (as noted in request).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Global (dev preview)", "issues": ["CRA/webpack dev error overlay is triggered by benign 'ResizeObserver loop completed with undelivered notifications' events, blocking user clicks during automated flows (and could confuse real users in preview). Consider adding a global window error handler in index.js to swallow ResizeObserver loop errors in dev, or disable the CRA overlay for warnings."]},
+      {"screen": "NotificationsBell", "issues": ["React console warning: 'Each child in a list should have a unique key prop' — add key on notif rows."]},
+      {"screen": "Reconcile & Decision Dialogs", "issues": ["Radix DialogContent missing Description / aria-describedby (a11y warning)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter118_overspend_and_purge.py",
+    "/app/test_reports/pytest/iter118.xml"
+  ],
+  "action_items": [
+    "(Optional) Silence CRA dev overlay for ResizeObserver loop warnings — add key prop in NotificationsBell map — add DialogDescription (or aria-describedby) to reconcile/decision dialogs for a11y."
+  ],
+  "critical_code_review_comments": [
+    "routes/einvoicing.py _maybe_overspend_alert: correctly gates on gap_flag=='over' AND gap_pct>=threshold. Threshold default 5 read from einvoice_accounts. Email send is wrapped in try/except — good.",
+    "routes/einvoicing.py update_settings: clamps threshold to [0,100] — good. Upsert on einvoice_accounts preserves other fields.",
+    "routes/admin.py delete_user: excellent — purges via $or over 8 owner keys (user_id, owner_user_id, created_by, pro_user_id, owner_id, author_id, from_user_id, assigned_to) across ~50 collections, plus organizations by owner_user_id/owner_id/user_id and member removal. Idempotent per-collection try/except.",
+    "frontend EInvoicing.jsx submitReconcile: correctly calls toast.warning when data?.alert?.overspend; falls back to toast.success. Reload of inbox after. LGTM.",
+    "Notifications endpoint is under /api/quotes/notifications/me — unusual location (registered on quote_router). Consider a top-level /api/notifications alias for discoverability; tests and clients must know the odd path."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter118_overspend_and_purge.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Pro pro@construpilot.fr/Pro2026! ; Admin admin@construpilot.fr/Construpilot2026!",
+  "seed_data_creation": "Disposable particulier TEST_purge_*@construpilot.fr registered then deleted via DELETE /api/admin/users/{id}. einv_demo1 invoice reconciled + unreconciled several times (final state: unreconciled).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests live in /app/backend/tests/test_iter118_overspend_and_purge.py (9 tests, ~4.5s). Notifications endpoint is at /api/quotes/notifications/me (not /api/notifications). Pro's einv_demo1 invoice = 1240.50 HT; use expected_ht=1000 for overspend and 1230 for conforme. Frontend UI dialog + shadcn Select can be flaky in preview due to CRA runtime error overlay hijacking pointer events — use direct API calls + page reload to verify UI render. Pro upgrade receipt PDF (build_pro_receipt_pdf, welcome_email_html) not e2e testable without real Stripe payment; do not attempt real payment (FREE_PROMO_MODE).",
+  "rca of the issue": "N/A — all requested features working. Only a minor DX issue: CRA dev overlay triggers on ResizeObserver warning."
+}
