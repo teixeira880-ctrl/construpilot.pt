@@ -49,6 +49,7 @@ import PlanTakeoff from "@/pages/PlanTakeoff";
 import PhotoMeasure from "@/pages/PhotoMeasure";
 import ProVerified from "@/pages/ProVerified";
 import ProUpsell from "@/pages/ProUpsell";
+import VerifyEmail from "@/pages/VerifyEmail";
 import TechAnalysis from "@/pages/TechAnalysis";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
@@ -190,6 +191,7 @@ function AppRouter() {
       <Route path="/mesure-photo" element={<ProRoute><Shell><PhotoMeasure /></Shell></ProRoute>} />
       <Route path="/pro-verifie/:userId" element={<Shell><ProVerified /></Shell>} />
       <Route path="/passez-pro" element={<Protected><Shell><ProUpsell /></Shell></Protected>} />
+      <Route path="/verifier-email/:token" element={<Shell><VerifyEmail /></Shell>} />
       <Route path="/plan/compare" element={<ProRoute><Shell><PlanCompare /></Shell></ProRoute>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />

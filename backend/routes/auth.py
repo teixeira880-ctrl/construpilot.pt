@@ -53,7 +53,19 @@ def _public(u: dict) -> dict:
                                   "lang", "created_at", "account_type", "kyc_status",
                                   "siret")}
     out["has_password"] = bool(u.get("password_hash"))
+    out["email_verified"] = bool(u.get("email_verified"))
     return out
+
+
+async def _verify_email_token(token: str) -> dict:
+    u = await db.users.find_one({"email_verify_token": token}, {"_id": 0, "user_id": 1, "email_verified": 1})
+    if not u:
+        raise HTTPException(status_code=404, detail="Lien de confirmation invalide ou expiré")
+    if not u.get("email_verified"):
+        await db.users.update_one({"user_id": u["user_id"]},
+                                  {"$set": {"email_verified": True},
+                                   "$unset": {"email_verify_token": ""}})
+    return {"ok": True, "already": bool(u.get("email_verified"))}
 
 
 async def _set_session(response: Response, user_id: str, token: str | None = None) -> str:
@@ -129,17 +141,20 @@ async def register(body: RegisterIn, response: Response) -> dict:
         "kyc_documents": {},
         "referred_by": (body.referred_by_code or "").upper().strip() or None,
         "lang": norm_lang(body.lang),
+        "email_verified": False,
+        "email_verify_token": uuid.uuid4().hex,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(user)
     # E-mail de bienvenue (best-effort, ne bloque jamais l'inscription)
     try:
+        import os
         from engines import emailer
+        verify_url = f"{os.getenv('FRONTEND_URL', '')}/verifier-email/{user['email_verify_token']}"
         body_html = (
             f"<p>Bonjour {body.name.split(' ')[0] if body.name else ''},</p>"
-            "<p>Bienvenue sur <b>ConstruPilot</b> ! Votre compte est actif et "
-            "<b>100% gratuit pendant la phase de lancement</b> — toutes les fonctionnalités "
-            "Pro sont débloquées.</p>"
+            "<p>Bienvenue sur <b>ConstruPilot</b> ! Merci de <b>confirmer votre adresse e-mail</b> "
+            "en cliquant sur le bouton ci-dessous pour activer toutes les fonctionnalités.</p>"
             "<p>Pour bien démarrer :</p>"
             "<ul style='margin:0 0 8px 18px;padding:0'>"
             "<li><b>Particulier</b> : estimez le coût de vos travaux et comparez les prix</li>"
@@ -148,11 +163,11 @@ async def register(body: RegisterIn, response: Response) -> dict:
             "<p>À très vite,<br/>L'équipe ConstruPilot</p>"
         )
         html = emailer.wrap_html(
-            "Bienvenue sur ConstruPilot 🎉", body_html,
-            cta_url="https://construpilot.fr/bienvenue",
-            cta_label="Démarrer maintenant",
+            "Confirmez votre e-mail — ConstruPilot 🎉", body_html,
+            cta_url=verify_url,
+            cta_label="Confirmer mon e-mail",
         )
-        await emailer.send_email(email, "Bienvenue sur ConstruPilot 🎉", html)
+        await emailer.send_email(email, "Confirmez votre e-mail — ConstruPilot", html)
     except Exception:
         pass
     # Credit the referrer (silent no-op if code invalid) — routed via referrals module
@@ -164,6 +179,11 @@ async def register(body: RegisterIn, response: Response) -> dict:
             pass  # never break signup on a bonus-credit error
     token = await _set_session(response, user["user_id"])
     return {"user": _public(user), "token": make_jwt(user["user_id"]), "session_token": token}
+
+
+@router.get("/verify-email/{token}")
+async def verify_email(token: str) -> dict:
+    return await _verify_email_token(token)
 
 
 async def run_signup_followups():

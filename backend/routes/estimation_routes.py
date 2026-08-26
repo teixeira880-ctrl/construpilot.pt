@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from core.db import db
+from core.security import optional_user
 from engines import estimation, ai, pdf
 from engines.catalog import (PROJECT_TYPES, LOTS, FINISH_LEVELS, REGIONS, DIFFICULTY,
                             CONDITION_COEF)
@@ -59,8 +60,21 @@ def _apply_overrides(overrides: dict) -> None:
                     LOTS_BY_KEY[key][f] = ov[f]
 
 
+def _price_for_audience(est: dict, user) -> None:
+    """Applique les prix particuliers (+30 %) sauf pour les pros/admins connectés."""
+    is_pro = bool(user) and (user.get("account_type") in ("pro", "pro_business")
+                             or user.get("role") == "admin")
+    if not is_pro:
+        estimation.apply_client_markup(est, estimation.PARTICULIER_MARKUP)
+        est["pricing_audience"] = "particulier"
+        est["client_markup_pct"] = 30
+    else:
+        est["pricing_audience"] = "pro"
+        est["client_markup_pct"] = 0
+
+
 @router.post("/compute")
-async def compute(body: EstimateIn):
+async def compute(body: EstimateIn, user=Depends(optional_user)):
     overrides = {d["key"]: d async for d in db.price_reference.find({}, {"_id": 0})}
     _apply_overrides(overrides)
     est = estimation.estimate(
@@ -71,11 +85,12 @@ async def compute(body: EstimateIn):
     est["planning"] = estimation.planning(est["lots"])
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)
     est["safety_alerts"] = estimation.safety_check("", [l["key"] for l in est["lots"]])
+    _price_for_audience(est, user)
     return est
 
 
 @router.post("/analyse")
-async def analyse(body: DescribeIn) -> dict:
+async def analyse(body: DescribeIn, user=Depends(optional_user)) -> dict:
     """Smart Project : IA comprend -> moteur déterministe estime.
 
     Priorité pour la hauteur sous plafond : override utilisateur > détection IA > 2.5m.
@@ -97,6 +112,7 @@ async def analyse(body: DescribeIn) -> dict:
                                                    [l["key"] for l in est["lots"]])
     # Enrichit l'analyse avec la hauteur effectivement utilisée
     analysis["ceiling_height_m"] = est["ceiling_height_m"]  # weighted-avg si multi-niveaux
+    _price_for_audience(est, user)
     return {"analysis": analysis, "estimation": est}
 
 

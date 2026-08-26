@@ -232,6 +232,29 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
     }
 
 
+PARTICULIER_MARKUP = 1.30  # +30 % pour les particuliers (prix de détail vs prix pro)
+_MONEY_KEYS = {
+    "material_cost", "labour_cost", "total", "material_unit_price", "labour_unit_price",
+    "price_per_unit", "materials", "labour", "equipment_rental", "waste_disposal",
+    "contingency", "equipment", "waste", "total_min", "total_avg", "total_max",
+    "price_per_sqm", "min", "max", "avg", "price_low", "price_high", "low", "high",
+}
+
+
+def apply_client_markup(obj, factor: float = PARTICULIER_MARKUP):
+    """Applique une majoration aux montants (prix particuliers). Ignore les taux/coefs."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(v, (dict, list)):
+                apply_client_markup(v, factor)
+            elif isinstance(v, (int, float)) and k in _MONEY_KEYS and not k.endswith("_rate"):
+                obj[k] = round(v * factor, 2)
+    elif isinstance(obj, list):
+        for it in obj:
+            apply_client_markup(it, factor)
+    return obj
+
+
 def _price_model(req: PricingRequest) -> dict:
     """Totaux eco/standard/premium pour un même projet (fourchette de finitions)."""
     out = {}

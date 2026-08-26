@@ -2481,3 +2481,10 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **CONSTAT prix particuliers** : l'estimateur (`engines/estimation.py`) N'APPLIQUE PAS de tarifs distincts particulier/pro — seul le ton du PDF change (`audience`). Décision produit en attente (markup particulier ?). 
 - Validé testing_agent iter115 = 100% frontend. ⚠️ PREVIEW → « Deploy Now » pour publier.
 - BACKLOG restant demandé : suivi d'ouverture Resend (webhook), parcours d'abonnement réel qui passe account_type=pro après paiement.
+
+## Changelog Iter 116 (24/08/2026) — Prix particuliers +30% + Confirmation e-mail
+- **Prix particuliers +30%** : `engines/estimation.py` → `apply_client_markup` (×1.30 sur montants, ignore taux). `estimation_routes.py` : `compute` et `analyse` détectent le demandeur via `optional_user` → pros/admins = prix pro (base), sinon (particulier/anonyme) = prix particulier +30%. Réponse: `pricing_audience`, `client_markup_pct`. Validé : particulier 115 354 € vs pro 88 734 € (×1.30).
+- **Confirmation d'e-mail à l'inscription** : `register` crée `email_verified=False` + `email_verify_token`, envoie un e-mail avec lien `FRONTEND_URL/verifier-email/{token}` (bouton « Confirmer mon e-mail »). Endpoint public `GET /auth/verify-email/{token}` → `email_verified=True` + token consommé. Page `VerifyEmail.jsx` (route `/verifier-email/:token`). `_public` expose `email_verified`. Validé e2e.
+- ⚠️ Le blocage `pro_required` n'exige PAS email_verified (pas de friction), la vérification est informative pour l'instant.
+- DÉFÉRÉ (budget contexte) : Abonnement particulier (Stripe) débloquant l'analyse de devis, bouton « Passer en Pro » → paiement Stripe + passage auto account_type=pro, webhook Resend pour taux d'ouverture.
+- ⚠️ PREVIEW → « Deploy Now » pour publier.
