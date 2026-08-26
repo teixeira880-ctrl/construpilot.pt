@@ -2488,3 +2488,9 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - ⚠️ Le blocage `pro_required` n'exige PAS email_verified (pas de friction), la vérification est informative pour l'instant.
 - DÉFÉRÉ (budget contexte) : Abonnement particulier (Stripe) débloquant l'analyse de devis, bouton « Passer en Pro » → paiement Stripe + passage auto account_type=pro, webhook Resend pour taux d'ouverture.
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 117 (24/08/2026) — E-mail vérifié requis pour l'envoi de devis
+- **Garde-fou envoi devis** : `POST /documents/{id}/send` → 403 si `user.email_verified is False` (message invitant à confirmer l'e-mail). Grand-fathering : comptes sans le champ (pros existants) = autorisés. Validé (403 non vérifié / 200 grand-fathering).
+- **Renvoi de confirmation** : `POST /auth/resend-verification` (authed) régénère le token et renvoie l'e-mail.
+- ENCORE DÉFÉRÉ (nécessite un tour dédié + budget) : Stripe abonnement particulier (débloque analyse devis) + bouton « Passer en Pro » → paiement Stripe + passage auto account_type=pro ; webhook Resend (taux d'ouverture). Ces items = intégrations paiement multi-fichiers via integration_expert, à traiter avec tests complets.
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

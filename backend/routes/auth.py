@@ -186,6 +186,32 @@ async def verify_email(token: str) -> dict:
     return await _verify_email_token(token)
 
 
+@router.post("/resend-verification")
+async def resend_verification(user=Depends(current_user)) -> dict:
+    u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "email": 1, "name": 1, "email_verified": 1,
+                                  "email_verify_token": 1})
+    if not u:
+        raise HTTPException(404, "Utilisateur introuvable")
+    if u.get("email_verified"):
+        return {"ok": True, "already_verified": True}
+    token = u.get("email_verify_token") or uuid.uuid4().hex
+    await db.users.update_one({"user_id": user["user_id"]},
+                              {"$set": {"email_verify_token": token}})
+    try:
+        import os
+        from engines import emailer
+        verify_url = f"{os.getenv('FRONTEND_URL', '')}/verifier-email/{token}"
+        html = emailer.wrap_html(
+            "Confirmez votre e-mail — ConstruPilot",
+            "<p>Confirmez votre adresse e-mail pour activer toutes les fonctionnalités.</p>",
+            cta_url=verify_url, cta_label="Confirmer mon e-mail")
+        await emailer.send_email(u["email"], "Confirmez votre e-mail — ConstruPilot", html)
+    except Exception:
+        pass
+    return {"ok": True, "sent": True}
+
+
 async def run_signup_followups():
     """Relance J+3 : email aux inscrits (email/mot de passe) qui n'ont pas encore créé
     de devis. Envoyé une seule fois par utilisateur (flag jplus3_sent)."""

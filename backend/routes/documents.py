@@ -1032,6 +1032,10 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     from routes.reviews import get_reviews_for_user
     if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.client_email or ""):
         raise HTTPException(400, "Email client invalide.")
+    # E-mail du pro requis vérifié avant tout envoi (grand-fathering : comptes sans le champ = OK)
+    if user.get("email_verified") is False:
+        raise HTTPException(
+            403, "Confirmez d'abord votre adresse e-mail (lien reçu à l'inscription) avant d'envoyer un devis.")
     doc = await _get_owned(doc_id, user)
     if not doc.get("number"):
         doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
