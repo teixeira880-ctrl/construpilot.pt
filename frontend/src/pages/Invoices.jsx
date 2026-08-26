@@ -7,6 +7,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { SectionTitle } from "@/components/Bits";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { ImportDocumentsDialog } from "@/components/ImportDocumentsDialog";
 import { api, eur } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
@@ -43,6 +44,7 @@ export default function Invoices() {
   const { can, in_org } = usePermissions();
   const { user } = useAuth();
   const { t } = useI18n();
+  const confirm = useConfirm();
   const isProBusiness = tier === "pro_business" || user?.role === "admin" || !!user?.invoicing_addon;
 
   const activateAddon = async () => {
@@ -133,7 +135,11 @@ export default function Invoices() {
   };
 
   const removeInvoice = async (inv) => {
-    if (!window.confirm(`Supprimer définitivement la facture ${inv.number || ""} ?`)) return;
+    if (!(await confirm({
+      title: "Supprimer cette facture ?",
+      description: `La facture ${inv.number || ""} sera définitivement supprimée.`,
+      confirmLabel: "Supprimer",
+    }))) return;
     try {
       await api.delete(`/documents/${inv.doc_id}`);
       toast.success("Facture supprimée");

@@ -311,6 +311,11 @@ export default function QuoteTracking() {
           </Button>
         </Link>
         <ImportDocumentsDialog triggerLabel="Importer des PDF" onImported={load} />
+        <label className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-sm px-3 py-2"
+               data-testid="auto-remind-toggle" title="Relance automatique par e-mail des devis envoyés non signés">
+          <Switch checked={autoRemind} onCheckedChange={toggleAutoRemind} data-testid="auto-remind-switch" />
+          Relances auto
+        </label>
       </div>
 
       {/* Chiffre d'affaires mensuel */}

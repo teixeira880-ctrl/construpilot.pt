@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
 import { useNavigate } from "react-router-dom";
+import { useConfirm } from "@/components/ConfirmProvider";
 
 const EMPTY = {
   first_name: "", last_name: "", company: "", email: "", phone: "",
@@ -26,6 +27,7 @@ export default function Clients() {
   const { user } = useAuth();
   const { t } = useI18n();
   const nav = useNavigate();
+  const confirm = useConfirm();
   const [clients, setClients] = useState([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
@@ -74,9 +76,13 @@ export default function Clients() {
   };
 
   const remove = async (c) => {
-    if (!window.confirm(t("crm.confirm_delete").replace("{name}", name(c)))) return;
+    if (!(await confirm({
+      title: "Supprimer ce client ?",
+      description: `${name(c)} sera supprimé. Impossible s'il a des devis/factures liés.`,
+      confirmLabel: "Supprimer",
+    }))) return;
     try { await api.delete(`/clients/${c.client_id}`); toast.success(t("crm.deleted")); load(q); }
-    catch { toast.error(t("crm.delete_fail")); }
+    catch (e) { toast.error(e?.response?.data?.detail || t("crm.delete_fail")); }
   };
 
   const name = (c) =>

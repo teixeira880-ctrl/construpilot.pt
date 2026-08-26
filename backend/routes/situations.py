@@ -14,11 +14,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import current_user
+from core.security import current_user, pro_required
 from routes.documents import _compute_totals, _next_number, _now, _client_snapshot
 from engines import emailer, activity
 
-router = APIRouter(prefix="/situations", tags=["situations"])
+router = APIRouter(prefix="/situations", tags=["situations"], dependencies=[Depends(pro_required)])
 
 
 def _uid(u):

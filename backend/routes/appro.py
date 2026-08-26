@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import current_user
+from core.security import current_user, pro_required
 from engines import pricing, order_pdf
 from engines.emailer import send_email_with_pdf, wrap_company_html
 
-router = APIRouter(prefix="/pro/appro", tags=["appro"])
+router = APIRouter(prefix="/pro/appro", tags=["appro"], dependencies=[Depends(pro_required)])
 
 
 def _now():

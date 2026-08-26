@@ -2466,3 +2466,10 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Import éditable (2 étapes)** : `POST /import-pdf/preview` (extraction sans création) → aperçu éditable (client, n°, type, lignes) → `POST /import-pdf/confirm` (création). Statut appliqué au lot.
 - **Historique campagnes** : `admin_bulk_email` enregistre dans `email_campaigns` ; `GET /admin/campaigns` ; onglet Admin « Campagnes e-mail » (`CampaignsPanel`).
 - Validé testing_agent iter113 = 100% (10/10 backend + frontend). ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 114 (24/08/2026) — Confirmation élégante + Relances auto + Séparation Particulier/Pro
+- **Séparation Particulier/Pro (CRITIQUE)** : `core/security.py` → dépendance `pro_required` (403 si `account_type=='particulier'` ; admins + comptes sans account_type conservent l'accès = grand-fathering). Appliquée aux routers : documents, clients, appro, situations, hr, company. Frontend : `ProRoute` (App.js) redirige les particuliers vers `/passez-pro` (`ProUpsell.jsx`) ; `Nav.jsx` masque les entrées pro (isPro = account_type !== 'particulier'). Estimateur/projets/dashboard restent ouverts aux particuliers. Comptes test : client@ = particulier, pro@ = pro.
+- **Confirmation élégante** : `ConfirmProvider` (`useConfirm`) monté globalement dans App.js ; remplace tous les `window.confirm` de suppression (QuoteTracking, Invoices, Clients, DataManagementPanel) par un AlertDialog stylé (`confirm-dialog`).
+- **Relances auto devis** : `_run_reminders` (plans_export.py) relance les devis ENVOYÉS non signés (statut pro_document 'sent'), jusqu'à MAX_REMINDERS=2 espacées de REMINDER_DELAY_DAYS=5j, avec opt-out `users.auto_quote_reminders`. Endpoints `GET/POST /quotes/reminders/settings`. Toggle UI sur /devis (`auto-remind-switch`).
+- **Suppression factures** : bouton sur /factures (`invoice-delete`).
+- Validé testing_agent iter114 = 100% (6/6 backend + frontend). ⚠️ PREVIEW → « Deploy Now » pour publier.

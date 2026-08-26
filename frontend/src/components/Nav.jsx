@@ -18,7 +18,7 @@ import { usePermissions } from "@/context/PermissionContext";
 // Nav v2 — menus groupés + relief (fin du débordement header)
 const NAV_MAIN = [
   { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
-  { to: "/devis-editeur", label: "Nouveau devis", key: "nav.newquote", icon: FileText, auth: true },
+  { to: "/devis-editeur", label: "Nouveau devis", key: "nav.newquote", icon: FileText, auth: true, pro: true },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
@@ -42,8 +42,8 @@ const NAV_PRO = [
 const NAV_DISCOVER = [
   { to: "/fonctionnalites", label: "Fonctionnalités", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
-  { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true },
-  { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true },
+  { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
+  { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
   { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
   { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
   { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
@@ -84,8 +84,9 @@ export const Nav = () => {
         ? "bg-primary text-primary-foreground shadow-md shadow-primary/30 font-semibold"
         : "text-muted-foreground hover:text-primary hover:bg-secondary/70 hover:-translate-y-0.5"}`;
   const groupActive = (items) => items.some((l) => location.pathname === l.to);
-  const proItems = NAV_PRO.filter((l) => !l.perm || can(l.perm));
-  const discoverItems = NAV_DISCOVER.filter((l) => !l.auth || user);
+  const isPro = user?.account_type !== "particulier" || user?.role === "admin";
+  const proItems = isPro ? NAV_PRO.filter((l) => !l.perm || can(l.perm)) : [];
+  const discoverItems = NAV_DISCOVER.filter((l) => (!l.auth || user) && (!l.pro || isPro));
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
@@ -98,7 +99,7 @@ export const Nav = () => {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
-          {NAV_MAIN.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm))).map((l) => (
+          {NAV_MAIN.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro)).map((l) => (
             <Link key={l.to} to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className={pill(location.pathname === l.to)}>
               <l.icon className="h-4 w-4" /> {t(l.key, l.label)}
             </Link>
@@ -210,7 +211,7 @@ export const Nav = () => {
 
       {open && (
         <div className="lg:hidden border-t border-border bg-background px-5 py-4 grid gap-1 max-h-[75vh] overflow-y-auto" data-testid="mobile-menu">
-          {ALL_LINKS.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm))).map((l) => (
+          {ALL_LINKS.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro) && (!NAV_PRO.includes(l) || isPro)).map((l) => (
             <Link
               key={l.to} to={l.to} onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg hover:bg-secondary transition-colors"

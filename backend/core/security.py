@@ -85,3 +85,18 @@ async def admin_user(user=Depends(current_user)):
     if user.get('role') != 'admin':
         raise HTTPException(status_code=403, detail="Accès administrateur requis")
     return user
+
+
+async def pro_required(user=Depends(current_user)):
+    """Réserve la ressource aux comptes professionnels.
+
+    Bloque uniquement les comptes explicitement « particulier » (y compris via l'API).
+    Les comptes existants sans `account_type` et les administrateurs conservent l'accès
+    (pas de verrouillage des pros historiques).
+    """
+    if user.get('role') == 'admin':
+        return user
+    if user.get('account_type') == 'particulier':
+        raise HTTPException(status_code=403,
+                            detail="Fonction réservée aux professionnels. Passez en compte Pro pour y accéder.")
+    return user

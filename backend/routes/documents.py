@@ -21,10 +21,10 @@ from pydantic import BaseModel, Field
 from pymongo import ReturnDocument
 
 from core.db import db
-from core.security import current_user
+from core.security import current_user, pro_required
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["documents"], prefix="/documents")
+router = APIRouter(tags=["documents"], prefix="/documents", dependencies=[Depends(pro_required)])
 
 DOC_TYPES = ("quote", "invoice", "credit_note")
 PREFIX = {"quote": "DEV", "invoice": "FAC", "credit_note": "AV"}

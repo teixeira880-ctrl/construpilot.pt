@@ -12,10 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
-from core.security import current_user, hash_password, new_user_id
+from core.security import current_user, hash_password, new_user_id, pro_required
 from engines import activity
 
-router = APIRouter(prefix="/company", tags=["company"])
+router = APIRouter(prefix="/company", tags=["company"], dependencies=[Depends(pro_required)])
 
 # Features gérées par le frontend (nav + pages métier).
 FEATURES = ["dashboard", "devis", "factures", "situations", "chantier",

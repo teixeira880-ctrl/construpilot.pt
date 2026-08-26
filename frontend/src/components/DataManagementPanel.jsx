@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Loader2, Trash2, FileText, Users, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ConfirmProvider";
 
 const eur = (n) => Math.round(Number(n) || 0).toLocaleString("fr-FR") + " €";
 
@@ -12,6 +13,7 @@ export default function DataManagementPanel() {
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const nav = useNavigate();
+  const confirm = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -27,7 +29,11 @@ export default function DataManagementPanel() {
   useEffect(() => { load(); }, []);
 
   const delClient = async (cl) => {
-    if (!window.confirm(`Supprimer le client ${cl.company || cl.name || ""} ?`)) return;
+    if (!(await confirm({
+      title: "Supprimer ce client ?",
+      description: `${cl.company || cl.name || "Ce client"} sera supprimé. Impossible s'il a des devis/factures liés.`,
+      confirmLabel: "Supprimer",
+    }))) return;
     try {
       await api.delete(`/clients/${cl.client_id}`);
       setClients((xs) => xs.filter((x) => x.client_id !== cl.client_id));
@@ -35,7 +41,11 @@ export default function DataManagementPanel() {
     } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
   };
   const delQuote = async (q) => {
-    if (!window.confirm(`Supprimer le devis ${q.number || ""} ?`)) return;
+    if (!(await confirm({
+      title: "Supprimer ce devis ?",
+      description: `Le devis ${q.number || ""} sera définitivement supprimé.`,
+      confirmLabel: "Supprimer",
+    }))) return;
     try {
       await api.delete(`/documents/${q.doc_id}`);
       setQuotes((xs) => xs.filter((x) => x.doc_id !== q.doc_id));

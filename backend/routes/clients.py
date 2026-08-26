@@ -12,9 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from core.db import db
-from core.security import current_user
+from core.security import current_user, pro_required
 
-router = APIRouter(tags=["clients"], prefix="/clients")
+router = APIRouter(tags=["clients"], prefix="/clients", dependencies=[Depends(pro_required)])
 
 
 def _now() -> str:

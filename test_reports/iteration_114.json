@@ -1,0 +1,21 @@
+{
+  "summary": "iter114 — Validation complète du lot séparation Particulier/Pro + Confirm dialog + Auto-remind toggle. Backend pytest: 6/6 (particulier 403 sur /api/documents et /api/clients, /api/projects 200; pro /api/documents 200; GET /api/quotes/reminders/settings retourne {enabled, delay_days, max_reminders}; POST persiste et GET renvoie la nouvelle valeur). Frontend: (1) client@construpilot.fr — nav-pro-btn ABSENT, nav-link-devis-editeur ABSENT; les 10 routes gatées (/devis /factures /situations /entreprise /clients /rh /mon-catalogue /devis-editeur /plan /mesure-photo) redirigent vers /passez-pro avec pro-upsell-page + pro-upsell-upgrade; /estimation et /dashboard restent accessibles (pas de redirect). (2) pro@construpilot.fr — nav-pro-btn PRÉSENT; /devis /factures /entreprise accessibles sans redirection. (3) Auto-remind toggle sur /devis: auto-remind-toggle + auto-remind-switch présents, état initial 'checked', bascule OFF (data-state=unchecked), après reload état persisté 'unchecked' (POST /quotes/reminders/settings persisté), restauration OK. (4) Confirm dialog: sur /devis clic sur quote-delete-{id} ouvre bien confirm-dialog avec confirm-dialog-title / confirm-dialog-cancel / confirm-dialog-confirm; Annuler ferme le dialog et la ligne reste. Sur /clients: création d'un client TEST_CLI_DEL via API, clic sur client-delete-{cid} → confirm-dialog visible → Confirmer supprime le client (toast 'Client supprimé', ligne disparue). window.confirm n'est plus utilisé (ConfirmProvider centralisé actif).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_iter114_separation.py", "/app/test_reports/pytest/iter114.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ProRoute + Nav.isPro filtrent correctement les routes/menus pour account_type='particulier' (redirection cohérente vers /passez-pro).",
+    "ConfirmProvider est monté globalement; QuoteTracking/Invoices/Clients l'utilisent uniformément — DataManagementPanel utilise aussi useConfirm (bonne cohérence).",
+    "Le scheduler d'envoi de relances (temporel) n'a pas été déclenché intentionnellement (consigne). Uniquement le toggle + endpoints /quotes/reminders/settings ont été validés.",
+    "Payload POST /api/documents plus strict qu'attendu (retour null lors d'une création rapide sans certains champs) — non bloquant pour ce lot; à documenter si un futur test veut créer un devis jetable par API."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter114_separation.py"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100%"},
+  "test_credentials": "Particulier client@construpilot.fr / Client2026! ; Pro pro@construpilot.fr / Pro2026!",
+  "seed_data_creation": "1 client TEST_CLI_DEL créé puis supprimé via le confirm-dialog UI. Le toggle auto-remind a été restauré à ON après test. Aucun devis/facture jetable persistant (les créations API test ont renvoyé null et n'ont donc pas créé de données).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Séparation particulier/pro complète et fonctionnelle (UI + serveur). Le token d'auth est dans localStorage 'construpilot_token' et le champ retourné par /api/auth/login est 'token' (pas 'access_token'). ProRoute redirige vers /passez-pro pour account_type=particulier; les routes /estimation et /dashboard restent ouvertes. auto-remind-switch reflète {enabled} du GET /quotes/reminders/settings et persiste via POST.",
+  "rca of the issue": "N/A — aucun bug détecté"
+}

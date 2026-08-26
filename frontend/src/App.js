@@ -48,6 +48,7 @@ import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
 import PhotoMeasure from "@/pages/PhotoMeasure";
 import ProVerified from "@/pages/ProVerified";
+import ProUpsell from "@/pages/ProUpsell";
 import TechAnalysis from "@/pages/TechAnalysis";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
@@ -89,6 +90,20 @@ const Protected = ({ children, admin }) => {
   return children;
 };
 
+const ProRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading)
+    return (
+      <div className="min-h-[60vh] grid place-items-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  if (!user) return <Navigate to="/login" replace />;
+  const isPro = user.account_type !== "particulier" || user.role === "admin";
+  if (!isPro) return <Navigate to="/passez-pro" replace />;
+  return children;
+};
+
 const Shell = ({ children }) => (
   <>
     <Nav />
@@ -114,9 +129,9 @@ function AppRouter() {
       <Route path="/estimation" element={<Shell><Estimator /></Shell>} />
       <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
       <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
-      <Route path="/mon-catalogue" element={<Protected><Shell><PriceCatalog /></Shell></Protected>} />
-      <Route path="/appro" element={<Protected><Shell><TechAnalysis /></Shell></Protected>} />
-      <Route path="/suivi-chantier" element={<Protected><Shell><SiteTracking /></Shell></Protected>} />
+      <Route path="/mon-catalogue" element={<ProRoute><Shell><PriceCatalog /></Shell></ProRoute>} />
+      <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
+      <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
@@ -132,39 +147,40 @@ function AppRouter() {
       <Route path="/parrainage" element={<Protected><Shell><Referrals /></Shell></Protected>} />
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
-      <Route path="/equipe" element={<Protected><Shell><Team /></Shell></Protected>} />
-      <Route path="/devis" element={<Protected><Shell><QuoteTracking /></Shell></Protected>} />
-      <Route path="/factures" element={<Protected><Shell><Invoices /></Shell></Protected>} />
-      <Route path="/situations" element={<Protected><Shell><Situations /></Shell></Protected>} />
-      <Route path="/entreprise" element={<Protected><Shell><Entreprise /></Shell></Protected>} />
-      <Route path="/rh" element={<Protected><Shell><HR /></Shell></Protected>} />
-      <Route path="/pointage" element={<Protected><WorkerApp /></Protected>} />
-      <Route path="/mes-avis" element={<Protected><Shell><MyReviews /></Shell></Protected>} />
-      <Route path="/clients" element={<Protected><Shell><Clients /></Shell></Protected>} />
-      <Route path="/clients/:clientId" element={<Protected><Shell><ClientDetail /></Shell></Protected>} />
-      <Route path="/bibliotheque" element={<Protected><Shell><Library /></Shell></Protected>} />
-      <Route path="/devis-editeur" element={<Protected><Shell><QuoteEditor /></Shell></Protected>} />
-      <Route path="/devis-editeur/:docId" element={<Protected><Shell><QuoteEditor /></Shell></Protected>} />
+      <Route path="/equipe" element={<ProRoute><Shell><Team /></Shell></ProRoute>} />
+      <Route path="/devis" element={<ProRoute><Shell><QuoteTracking /></Shell></ProRoute>} />
+      <Route path="/factures" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
+      <Route path="/situations" element={<ProRoute><Shell><Situations /></Shell></ProRoute>} />
+      <Route path="/entreprise" element={<ProRoute><Shell><Entreprise /></Shell></ProRoute>} />
+      <Route path="/rh" element={<ProRoute><Shell><HR /></Shell></ProRoute>} />
+      <Route path="/pointage" element={<ProRoute><WorkerApp /></ProRoute>} />
+      <Route path="/mes-avis" element={<ProRoute><Shell><MyReviews /></Shell></ProRoute>} />
+      <Route path="/clients" element={<ProRoute><Shell><Clients /></Shell></ProRoute>} />
+      <Route path="/clients/:clientId" element={<ProRoute><Shell><ClientDetail /></Shell></ProRoute>} />
+      <Route path="/bibliotheque" element={<ProRoute><Shell><Library /></Shell></ProRoute>} />
+      <Route path="/devis-editeur" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
+      <Route path="/devis-editeur/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
       <Route path="/scanner-devis" element={<Shell><QuoteScanner /></Shell>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/sign/:token" element={<SignQuote />} />
       <Route path="/fiche/:shareId" element={<SharedCalc />} />
       <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
-      <Route path="/etudes-pc" element={<Protected><Shell><PcDashboard /></Shell></Protected>} />
+      <Route path="/etudes-pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
       <Route path="/compte" element={<Protected><Shell><Account /></Shell></Protected>} />
-      <Route path="/pc" element={<Protected><Shell><PcDashboard /></Shell></Protected>} />
-      <Route path="/plan" element={<Protected><Shell><PlanTakeoff /></Shell></Protected>} />
-      <Route path="/mesure-photo" element={<Protected><Shell><PhotoMeasure /></Shell></Protected>} />
+      <Route path="/pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
+      <Route path="/plan" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
+      <Route path="/mesure-photo" element={<ProRoute><Shell><PhotoMeasure /></Shell></ProRoute>} />
       <Route path="/pro-verifie/:userId" element={<Shell><ProVerified /></Shell>} />
-      <Route path="/plan/compare" element={<Protected><Shell><PlanCompare /></Shell></Protected>} />
+      <Route path="/passez-pro" element={<Protected><Shell><ProUpsell /></Shell></Protected>} />
+      <Route path="/plan/compare" element={<ProRoute><Shell><PlanCompare /></Shell></ProRoute>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />
       <Route path="/pro/paiement/succes" element={<Protected><Shell><PaymentSuccess /></Shell></Protected>} />
-      <Route path="/developpeurs" element={<Protected><Shell><ApiKeys /></Shell></Protected>} />
+      <Route path="/developpeurs" element={<ProRoute><Shell><ApiKeys /></Shell></ProRoute>} />
       <Route path="/docs" element={<Shell><Docs /></Shell>} />
       <Route path="/enterprise" element={<Shell><Enterprise /></Shell>} />
-      <Route path="/fournisseur" element={<Protected><Shell><SupplierPortal /></Shell></Protected>} />
+      <Route path="/fournisseur" element={<ProRoute><Shell><SupplierPortal /></Shell></ProRoute>} />
       <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
       <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />

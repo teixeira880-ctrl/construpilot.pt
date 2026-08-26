@@ -12,11 +12,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from pydantic import BaseModel, EmailStr
 
 from core.db import db
-from core.security import current_user, hash_password, new_user_id
+from core.security import current_user, hash_password, new_user_id, pro_required
 from engines import storage
 from engines.monetization import require_pro_business
 
-router = APIRouter(prefix="/hr", tags=["hr"])
+router = APIRouter(prefix="/hr", tags=["hr"], dependencies=[Depends(pro_required)])
 
 
 def _now():
