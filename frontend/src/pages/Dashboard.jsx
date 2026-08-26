@@ -25,6 +25,7 @@ const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const isPro = user?.account_type !== "particulier" || user?.role === "admin";
   const { tier, active, flags } = useBilling();
   const { t } = useI18n();
   const [projects, setProjects] = useState([]);
@@ -64,6 +65,7 @@ export default function Dashboard() {
     <div className="grid gap-10">
       <OnboardingTour />
       <StarterChecklist
+        isPro={isPro}
         projectDone={projects.length > 0}
         planDone={plans.length > 0}
         quoteDone={quotes.length > 0}
@@ -104,11 +106,15 @@ export default function Dashboard() {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="dash-quick-actions">
-        {[
+        {(isPro ? [
           { to: "/devis-editeur", icon: FileText, title: "Nouveau devis", desc: "Créez un devis client détaillé en quelques clics", testid: "quick-new-quote" },
           { to: "/devis-editeur?type=invoice", icon: Receipt, title: "Nouvelle facture", desc: "Éditez une facture conforme (Factur-X)", testid: "quick-new-invoice" },
           { to: "/factures", icon: TrendingUp, title: "Suivi facturation", desc: "Encaissements, impayés et documents", testid: "quick-invoicing" },
-        ].map((a) => (
+        ] : [
+          { to: "/estimation", icon: FileText, title: "Estimer mes travaux", desc: "Obtenez une estimation détaillée en 30 s", testid: "quick-estimate" },
+          { to: "/prix", icon: TrendingUp, title: "Prix des matériaux", desc: "Consultez les prix du marché à jour", testid: "quick-prices" },
+          { to: "/calculateurs", icon: Receipt, title: "Calculateurs", desc: "Surfaces, volumes et quantités en un clin d'œil", testid: "quick-calculators" },
+        ]).map((a) => (
           <button
             key={a.to}
             onClick={() => navigate(a.to)}

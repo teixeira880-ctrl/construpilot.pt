@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { BillingProvider } from "@/context/BillingContext";
+import { BillingProvider, useBilling } from "@/context/BillingContext";
 import { PermissionProvider } from "@/context/PermissionContext";
 import { WhiteLabelProvider } from "@/context/WhiteLabelContext";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
@@ -104,6 +104,23 @@ const ProRoute = ({ children }) => {
   return children;
 };
 
+// Accès réservé aux abonnés : pros/admins OU particuliers avec un forfait payant.
+const SubscriberRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const { tier } = useBilling();
+  if (loading)
+    return (
+      <div className="min-h-[60vh] grid place-items-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  if (!user) return <Navigate to="/login" replace />;
+  const isPro = user.account_type !== "particulier" || user.role === "admin";
+  const subscribed = tier && tier !== "free";
+  if (!isPro && !subscribed) return <Navigate to="/passez-pro?feature=analyse" replace />;
+  return children;
+};
+
 const Shell = ({ children }) => (
   <>
     <Nav />
@@ -160,7 +177,7 @@ function AppRouter() {
       <Route path="/bibliotheque" element={<ProRoute><Shell><Library /></Shell></ProRoute>} />
       <Route path="/devis-editeur" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
       <Route path="/devis-editeur/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
-      <Route path="/scanner-devis" element={<Shell><QuoteScanner /></Shell>} />
+      <Route path="/scanner-devis" element={<SubscriberRoute><Shell><QuoteScanner /></Shell></SubscriberRoute>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/sign/:token" element={<SignQuote />} />
       <Route path="/fiche/:shareId" element={<SharedCalc />} />

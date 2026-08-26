@@ -4,12 +4,12 @@ import { CheckCircle2, Circle, X, Rocket, ArrowRight } from "lucide-react";
 
 const DISMISS_KEY = "construpilot_checklist_dismissed";
 
-export function StarterChecklist({ projectDone, planDone, quoteDone }) {
+export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = true }) {
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(DISMISS_KEY) === "1"
   );
 
-  const items = [
+  const items = isPro ? [
     {
       done: projectDone,
       title: "Estimez vos travaux",
@@ -30,6 +30,28 @@ export function StarterChecklist({ projectDone, planDone, quoteDone }) {
       desc: "Transformez votre estimation en devis prêt à envoyer.",
       to: "/devis-editeur",
       cta: "Créer",
+    },
+  ] : [
+    {
+      done: projectDone,
+      title: "Estimez vos travaux",
+      desc: "Décrivez votre projet et obtenez une estimation détaillée en 30 s.",
+      to: "/estimation",
+      cta: "Estimer",
+    },
+    {
+      done: false,
+      title: "Comparez les prix matériaux",
+      desc: "Consultez les prix du marché pour budgéter vos travaux.",
+      to: "/prix",
+      cta: "Voir les prix",
+    },
+    {
+      done: false,
+      title: "Utilisez les calculateurs",
+      desc: "Surfaces, volumes et quantités en quelques secondes.",
+      to: "/calculateurs",
+      cta: "Calculer",
     },
   ];
 

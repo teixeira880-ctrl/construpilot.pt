@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BadgeCheck, FileText, Receipt, Layers, Users, ArrowRight, Lock } from "lucide-react";
@@ -12,6 +12,8 @@ const FEATURES = [
 
 export default function ProUpsell() {
   const nav = useNavigate();
+  const [sp] = useSearchParams();
+  const analyse = sp.get("feature") === "analyse";
   return (
     <div className="max-w-3xl mx-auto px-4 py-12" data-testid="pro-upsell-page">
       <Card className="p-8 sm:p-10 text-center relative overflow-hidden">
@@ -19,11 +21,13 @@ export default function ProUpsell() {
         <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 grid place-items-center mb-5">
           <Lock className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Fonction réservée aux professionnels</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">
+          {analyse ? "Fonction réservée aux abonnés" : "Fonction réservée aux professionnels"}
+        </h1>
         <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
-          Cette section (devis, factures, chantiers, entreprise…) est réservée aux comptes
-          <b> Pro</b> et <b>Pro Business</b>. En tant que particulier, vous gardez l'accès à l'estimateur
-          de travaux et à vos devis reçus.
+          {analyse
+            ? "L'analyse de devis est incluse dans nos abonnements. Souscrivez un forfait (particulier ou pro) pour vérifier vos devis reçus et détecter les écarts de prix."
+            : (<>Cette section (devis, factures, chantiers, entreprise…) est réservée aux comptes <b>Pro</b> et <b>Pro Business</b>. En tant que particulier, vous gardez l'accès à l'estimateur de travaux et à vos devis reçus.</>)}
         </p>
 
         <div className="grid sm:grid-cols-2 gap-3 mt-8 text-left">

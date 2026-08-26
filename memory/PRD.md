@@ -2473,3 +2473,11 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Relances auto devis** : `_run_reminders` (plans_export.py) relance les devis ENVOYÉS non signés (statut pro_document 'sent'), jusqu'à MAX_REMINDERS=2 espacées de REMINDER_DELAY_DAYS=5j, avec opt-out `users.auto_quote_reminders`. Endpoints `GET/POST /quotes/reminders/settings`. Toggle UI sur /devis (`auto-remind-switch`).
 - **Suppression factures** : bouton sur /factures (`invoice-delete`).
 - Validé testing_agent iter114 = 100% (6/6 backend + frontend). ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 115 (24/08/2026) — Dashboard particulier + Cadence relances + Scanner devis abonnés
+- **Dashboard particulier** : `Dashboard.jsx` + `StarterChecklist.jsx` reçoivent `isPro`. Pour un particulier, la checklist et les actions rapides n'affichent plus les fonctions pro (Mesurer plan, Créer devis, Facturation) mais Estimateur / Prix matériaux / Calculateurs.
+- **Cadence relances** : `GET/POST /quotes/reminders/settings` gèrent `delay_days` (3/5/7) + `max_reminders` (1/2/3) par utilisateur ; `_run_reminders` applique la cadence par utilisateur. UI : selects `remind-delay-select` / `remind-max-select` sur /devis.
+- **Analyser un devis réservé aux abonnés** : route `/scanner-devis` derrière `SubscriberRoute` (pros/admins OU particuliers avec `tier !== 'free'`). Les particuliers free → `/passez-pro?feature=analyse` (message dédié).
+- **CONSTAT prix particuliers** : l'estimateur (`engines/estimation.py`) N'APPLIQUE PAS de tarifs distincts particulier/pro — seul le ton du PDF change (`audience`). Décision produit en attente (markup particulier ?). 
+- Validé testing_agent iter115 = 100% frontend. ⚠️ PREVIEW → « Deploy Now » pour publier.
+- BACKLOG restant demandé : suivi d'ouverture Resend (webhook), parcours d'abonnement réel qui passe account_type=pro après paiement.

@@ -717,29 +717,42 @@ async def _run_reminders() -> dict:
     espacées de REMINDER_DELAY_DAYS jours. Respecte l'opt-out par utilisateur
     (users.auto_quote_reminders == False) et n'agit que sur les devis encore au statut « sent »."""
     now = datetime.now(timezone.utc)
-    cutoff = (now - timedelta(days=REMINDER_DELAY_DAYS)).isoformat()
+    # On récupère large (délai minimum possible = 3 j), puis on affine par utilisateur.
+    min_cutoff = (now - timedelta(days=3)).isoformat()
     candidates = await db.quote_sends.find(
         {"signed": False, "email_status": "sent",
-         "$or": [{"reminder_count": {"$lt": MAX_REMINDERS}}, {"reminder_count": {"$exists": False}}],
+         "$or": [{"reminder_count": {"$lt": 3}}, {"reminder_count": {"$exists": False}}],
          "$and": [{"$or": [
-             {"last_reminder_at": {"$lte": cutoff}},
-             {"last_reminder_at": {"$exists": False}, "created_at": {"$lte": cutoff}},
+             {"last_reminder_at": {"$lte": min_cutoff}},
+             {"last_reminder_at": {"$exists": False}, "created_at": {"$lte": min_cutoff}},
          ]}]},
         {"_id": 0, "log_id": 1, "user_id": 1, "client_email": 1, "client_name": 1,
-         "total_ttc": 1, "signature_token": 1, "plan_id": 1, "doc_id": 1, "subject": 1}
-    ).to_list(300)
+         "total_ttc": 1, "signature_token": 1, "plan_id": 1, "doc_id": 1, "subject": 1,
+         "created_at": 1, "last_reminder_at": 1, "reminder_count": 1}
+    ).to_list(500)
 
-    # Opt-out : utilisateurs ayant désactivé les relances automatiques
+    # Réglages par utilisateur (opt-out + cadence)
     uids = list({c["user_id"] for c in candidates})
-    disabled = set()
+    settings = {}
     if uids:
-        async for u in db.users.find({"user_id": {"$in": uids}, "auto_quote_reminders": False},
-                                     {"_id": 0, "user_id": 1}):
-            disabled.add(u["user_id"])
+        async for u in db.users.find({"user_id": {"$in": uids}},
+                                     {"_id": 0, "user_id": 1, "auto_quote_reminders": 1,
+                                      "reminder_delay_days": 1, "reminder_max": 1}):
+            settings[u["user_id"]] = u
 
     sent, failed, skipped = 0, 0, 0
     for c in candidates:
-        if c["user_id"] in disabled or not c.get("client_email"):
+        st = settings.get(c["user_id"], {})
+        if st.get("auto_quote_reminders", True) is False or not c.get("client_email"):
+            skipped += 1
+            continue
+        delay = st.get("reminder_delay_days", REMINDER_DELAY_DAYS)
+        maxr = st.get("reminder_max", MAX_REMINDERS)
+        if (c.get("reminder_count") or 0) >= maxr:
+            skipped += 1
+            continue
+        base = c.get("last_reminder_at") or c.get("created_at") or ""
+        if base and base > (now - timedelta(days=delay)).isoformat():
             skipped += 1
             continue
         # N'agir que sur les devis pro encore « sent » (ni refusé, ni signé, ni brouillon)
@@ -766,21 +779,29 @@ async def trigger_reminders(user=Depends(admin_user)):
 
 class ReminderSettingsIn(BaseModel):
     enabled: bool
+    delay_days: int | None = None
+    max_reminders: int | None = None
 
 
 @quote_router.get("/reminders/settings")
 async def get_reminder_settings(user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
-                                 {"_id": 0, "auto_quote_reminders": 1}) or {}
+                                 {"_id": 0, "auto_quote_reminders": 1,
+                                  "reminder_delay_days": 1, "reminder_max": 1}) or {}
     return {"enabled": u.get("auto_quote_reminders", True),
-            "delay_days": REMINDER_DELAY_DAYS, "max_reminders": MAX_REMINDERS}
+            "delay_days": u.get("reminder_delay_days", REMINDER_DELAY_DAYS),
+            "max_reminders": u.get("reminder_max", MAX_REMINDERS)}
 
 
 @quote_router.post("/reminders/settings")
 async def set_reminder_settings(body: ReminderSettingsIn, user=Depends(current_user)) -> dict:
-    await db.users.update_one({"user_id": user["user_id"]},
-                              {"$set": {"auto_quote_reminders": body.enabled}})
-    return {"ok": True, "enabled": body.enabled}
+    upd = {"auto_quote_reminders": body.enabled}
+    if body.delay_days in (3, 5, 7):
+        upd["reminder_delay_days"] = body.delay_days
+    if body.max_reminders in (1, 2, 3):
+        upd["reminder_max"] = body.max_reminders
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
+    return {"ok": True, **upd}
 
 
 # ============ QUOTE TEMPLATES ============

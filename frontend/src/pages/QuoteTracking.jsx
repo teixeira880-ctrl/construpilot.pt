@@ -31,17 +31,25 @@ export default function QuoteTracking() {
   const [quotes, setQuotes] = useState([]);
   const [retrying, setRetrying] = useState(null);
   const [autoRemind, setAutoRemind] = useState(true);
+  const [remindDelay, setRemindDelay] = useState(5);
+  const [remindMax, setRemindMax] = useState(2);
 
   useEffect(() => {
-    api.get("/quotes/reminders/settings").then(({ data }) => setAutoRemind(data.enabled !== false)).catch(() => {});
+    api.get("/quotes/reminders/settings").then(({ data }) => {
+      setAutoRemind(data.enabled !== false);
+      setRemindDelay(data.delay_days || 5);
+      setRemindMax(data.max_reminders || 2);
+    }).catch(() => {});
   }, []);
-  const toggleAutoRemind = async (val) => {
-    setAutoRemind(val);
+  const saveRemind = async (patch) => {
+    const next = { enabled: autoRemind, delay_days: remindDelay, max_reminders: remindMax, ...patch };
+    setAutoRemind(next.enabled); setRemindDelay(next.delay_days); setRemindMax(next.max_reminders);
     try {
-      await api.post("/quotes/reminders/settings", { enabled: val });
-      toast.success(val ? "Relances automatiques activées" : "Relances automatiques désactivées");
-    } catch { setAutoRemind(!val); toast.error("Impossible de modifier le réglage"); }
+      await api.post("/quotes/reminders/settings", next);
+      toast.success("Relances mises à jour");
+    } catch { toast.error("Impossible de modifier le réglage"); }
   };
+  const toggleAutoRemind = (val) => saveRemind({ enabled: val });
 
   const QUOTE_STATUS = {
     draft: { label: "Brouillon", cls: "border-border text-muted-foreground" },
@@ -315,6 +323,22 @@ export default function QuoteTracking() {
                data-testid="auto-remind-toggle" title="Relance automatique par e-mail des devis envoyés non signés">
           <Switch checked={autoRemind} onCheckedChange={toggleAutoRemind} data-testid="auto-remind-switch" />
           Relances auto
+          {autoRemind && (
+            <span className="flex items-center gap-1 ml-1">
+              <select value={remindDelay} onChange={(e) => saveRemind({ delay_days: Number(e.target.value) })}
+                      className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs" data-testid="remind-delay-select">
+                <option value={3}>tous les 3 j</option>
+                <option value={5}>tous les 5 j</option>
+                <option value={7}>tous les 7 j</option>
+              </select>
+              <select value={remindMax} onChange={(e) => saveRemind({ max_reminders: Number(e.target.value) })}
+                      className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs" data-testid="remind-max-select">
+                <option value={1}>1 relance</option>
+                <option value={2}>2 relances</option>
+                <option value={3}>3 relances</option>
+              </select>
+            </span>
+          )}
         </label>
       </div>
 

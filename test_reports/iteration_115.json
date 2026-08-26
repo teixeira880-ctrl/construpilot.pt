@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend testing for ConstruPilot separation Particulier/Pro + reminder cadence. All 4 scenarios PASS: (1) Dashboard particulier shows correct checklist (Estimez/Comparez prix/Calculateurs) and quick actions (quick-estimate/quick-prices/quick-calculators) with no pro items. (2) Dashboard pro still shows quick-new-quote/quick-new-invoice/quick-invoicing. (3) Particulier free navigating /scanner-devis is redirected to /passez-pro?feature=analyse showing 'Fonction réservée aux abonnés'; Pro accesses /scanner-devis directly. (4) On /devis, auto-remind-switch ON reveals remind-delay-select (3/5/7) and remind-max-select (1/2/3); setting delay=7, max=3 persists after reload.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "StarterChecklist.jsx: for particulier branch, items 'Comparez les prix' and 'Utilisez les calculateurs' are hard-coded done:false — no persistence, but acceptable per spec.",
+    "Dashboard.jsx isPro logic identical to ProRoute — could be extracted to a shared hook (useIsPro) to DRY."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "client@construpilot.fr / Client2026! (particulier free), pro@construpilot.fr / Pro2026! (pro)",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 4 checks green. Particulier dashboard cleaned up, subscriber gating for /scanner-devis works, cadence persistence via POST/GET /api/quotes/reminders/settings confirmed via UI reload (delay=7, max=3 preserved)."
+}
