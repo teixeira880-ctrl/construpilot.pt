@@ -37,6 +37,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     appro as appro_routes,
                     help as help_routes,
                     evolution as evolution_routes,
+                    einvoicing as einvoicing_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -107,6 +108,7 @@ api_router.include_router(vrd_routes.router)
 api_router.include_router(appro_routes.router)
 api_router.include_router(help_routes.router)
 api_router.include_router(evolution_routes.router)
+api_router.include_router(einvoicing_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(

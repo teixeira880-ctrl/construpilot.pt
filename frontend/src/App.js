@@ -63,6 +63,7 @@ import ClientDetail from "@/pages/ClientDetail";
 import Library from "@/pages/Library";
 import QuoteEditor from "@/pages/QuoteEditor";
 import Invoices from "@/pages/Invoices";
+import EInvoicing from "@/pages/EInvoicing";
 import HR from "@/pages/HR";
 import WorkerApp from "@/pages/WorkerApp";
 import SharedCalc from "@/pages/SharedCalc";
@@ -168,6 +169,7 @@ function AppRouter() {
       <Route path="/equipe" element={<ProRoute><Shell><Team /></Shell></ProRoute>} />
       <Route path="/devis" element={<ProRoute><Shell><QuoteTracking /></Shell></ProRoute>} />
       <Route path="/factures" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
+      <Route path="/factures-electroniques" element={<ProRoute><Shell><EInvoicing /></Shell></ProRoute>} />
       <Route path="/situations" element={<ProRoute><Shell><Situations /></Shell></ProRoute>} />
       <Route path="/entreprise" element={<ProRoute><Shell><Entreprise /></Shell></ProRoute>} />
       <Route path="/rh" element={<ProRoute><Shell><HR /></Shell></ProRoute>} />

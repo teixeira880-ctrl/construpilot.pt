@@ -1,0 +1,23 @@
+{
+  "summary": "Tested new e-invoicing (facturation électronique — mode simulé/mocked) feature end-to-end. Backend: 13/13 pytest cases passed covering pro_required gating (particulier 403), status, connect (valid + invalid SIRET 400), inbox seed, simulate reception (400 when disconnected), decision accept/refuse (with admin_status='transmis (simulé)'), invalid decision 400, unknown inv_id 404, disconnect. Frontend: Pro login -> /factures shows einvoicing-banner -> click navigates to /factures-electroniques -> connected bar shown (Pro was already seeded) -> simulate adds 1 row (5->6) -> accept dialog + confirm updates row to einv-status-accepted -> refuse confirm is correctly disabled without reason, enabled with reason, updates row to einv-status-refused. All data-testids verified.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter116_einvoicing.py",
+    "/app/test_reports/pytest/iter116_einvoicing.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "einvoicing.py: correctly excludes _id via projection {'_id': 0} on find/find_one — good. simulate_reception also pops _id after insert_one — good.",
+    "connect endpoint idempotent via upsert — good. SIRET normalised (digits only) before validating length 14 — robust.",
+    "pro_required is correctly enforced both at router-level dependencies and per-endpoint Depends (double-guarded). Fine, no duplication issue.",
+    "Frontend EInvoicing.jsx correctly disables confirm button when decision='refused' and reason is empty; UX is aligned with backend which stores reason[:300]."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Pro: pro@construpilot.fr / Pro2026! ; Particulier: client@construpilot.fr / Client2026!",
+  "seed_data_creation": "Backend auto-seeds 2 demo invoices (Point.P, Rexel) on first connect via _seed_inbox. Tests added a few more via simulate + decision updates on the pro user's inbox.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Feature fully working end-to-end. The Pro demo account is now connected to platform 'Iopole' with SIRET 54210922700018 and has ~6 invoices with mixed accepted/refused/received statuses due to testing. If a clean state is needed, call POST /api/einvoicing/disconnect then reconnect; existing inbox rows persist across (dis)connect cycles by design."
+}

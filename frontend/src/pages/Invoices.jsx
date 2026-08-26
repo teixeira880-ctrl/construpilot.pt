@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2, ShieldCheck, ShieldAlert, Loader2, TrendingUp, Trash2 } from "lucide-react";
+import { FileText, Plus, FileSignature, Download, Lock, ArrowRight, User, FileCheck2, ShieldCheck, ShieldAlert, Loader2, TrendingUp, Trash2, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -213,6 +213,25 @@ export default function Invoices() {
           </Button>
         </div>
       </div>
+
+      <button
+        onClick={() => nav("/factures-electroniques")}
+        className="w-full text-left surface rounded-sm p-4 mb-8 flex flex-wrap items-center gap-4 border-primary/30 hover:border-primary/60 hover:bg-primary/[0.03] transition-colors"
+        data-testid="einvoicing-banner">
+        <div className="h-11 w-11 rounded-lg bg-primary/10 grid place-items-center shrink-0">
+          <Network className="h-5 w-5 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-display font-semibold flex items-center gap-2">
+            Facturation électronique (réseau PDP)
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400">démo</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Recevez, acceptez ou refusez vos factures fournisseurs via une plateforme agréée.</p>
+        </div>
+        <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+          Ouvrir <ArrowRight className="h-4 w-4" />
+        </span>
+      </button>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
         <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold">{invoices.length}</p><p className="text-xs text-muted-foreground mt-1">{t("crm.kpi_invoices")}</p></div>
