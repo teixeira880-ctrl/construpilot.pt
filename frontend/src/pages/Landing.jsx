@@ -129,6 +129,15 @@ export default function Landing() {
   const [openFaq, setOpenFaq] = useState(0);
   const videoRef = useRef(null);
   const [videoMuted, setVideoMuted] = useState(true);
+  const masterVideoRef = useRef(null);
+  const [masterMuted, setMasterMuted] = useState(true);
+  const toggleMasterSound = () => {
+    const v = masterVideoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMasterMuted(v.muted);
+    if (!v.muted) v.play().catch(() => {});
+  };
   const toggleVideoSound = () => {
     const v = videoRef.current;
     if (!v) return;
@@ -346,6 +355,61 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── VIDÉO DE PRÉSENTATION (16:9) ──────────────────────── */}
+      <section className="border-b border-border bg-background" data-testid="master-video-section">
+        <div className="mx-auto max-w-[1200px] px-6 lg:px-10 py-20 lg:py-28">
+          <motion.div
+            className="text-center max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="overline">{t("landing.master_video.overline", "Découvrez ConstruPilot")}</p>
+            <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+              {t("landing.master_video.title_a", "L'estimation BTP,")}{" "}
+              <span className="text-primary italic">{t("landing.master_video.title_b", "réinventée.")}</span>
+            </h2>
+            <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed">
+              {t("landing.master_video.subtitle", "En 30 secondes, découvrez comment chiffrer, éditer et piloter vos chantiers avec l'IA.")}
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="relative mt-12 mx-auto w-full max-w-[960px]"
+            initial={{ opacity: 0, scale: 0.97 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.7 }}
+          >
+            <div className="absolute -inset-4 bg-primary/15 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
+            <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video">
+              <video
+                ref={masterVideoRef}
+                className="h-full w-full object-cover"
+                src="/master.mp4"
+                autoPlay
+                muted
+                loop
+                controls
+                playsInline
+                data-testid="master-video-player"
+              />
+              <button
+                onClick={toggleMasterSound}
+                data-testid="master-video-sound-toggle"
+                aria-label={masterMuted ? "Activer le son" : "Couper le son"}
+                className="absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3.5 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
+              >
+                {masterMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                {masterMuted ? t("landing.master_video.unmute", "Activer le son") : t("landing.master_video.sound", "Son")}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
 
       {/* ── VIDÉO EXPLICATIVE : lecture des plans ─────────────── */}
       <section className="border-b border-border bg-secondary/20" data-testid="intro-video-section">
