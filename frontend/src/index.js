@@ -5,6 +5,18 @@ import { HelmetProvider } from "react-helmet-async";
 import "@/index.css";
 import App from "@/App";
 
+// Neutralise l'erreur bénigne "ResizeObserver loop ..." qui déclenche l'overlay
+// d'erreur CRA en dev et bloque parfois les clics (aucun impact fonctionnel).
+if (typeof window !== "undefined") {
+  const RO_MSG = /ResizeObserver loop (limit exceeded|completed with undelivered notifications)/;
+  window.addEventListener("error", (e) => {
+    if (e?.message && RO_MSG.test(e.message)) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  }, true);
+}
+
 // Force non-www (construpilot.fr) : aligne avec le canonical/sitemap ET garantit que
 // les appels API restent same-origin (évite les blocages CORS www -> non-www).
 if (typeof window !== "undefined" && window.location.hostname.startsWith("www.")) {

@@ -126,6 +126,7 @@ async def simulate_reception(user=Depends(pro_required)) -> dict:
 class DecisionIn(BaseModel):
     decision: str  # accepted | refused
     reason: str = ""
+    project_id: str | None = None  # chantier pour créer une dépense auto (si accepté)
 
 
 @router.post("/inbox/{inv_id}/decision")
@@ -140,7 +141,84 @@ async def decide(inv_id: str, body: DecisionIn, user=Depends(pro_required)) -> d
                   "admin_status": "transmis (simulé)"}})
     if not res.matched_count:
         raise HTTPException(404, "Facture introuvable")
-    return {"ok": True, "status": body.decision, "admin_status": "transmis (simulé)"}
+    expense = None
+    if body.decision == "accepted" and body.project_id:
+        inv = await db.einvoice_inbox.find_one(
+            {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
+        expense = await _create_einvoice_expense(user, inv, body.project_id)
+    return {"ok": True, "status": body.decision,
+            "admin_status": "transmis (simulé)", "expense": expense}
+
+
+# ---------- Dépense chantier automatique depuis une facture acceptée ----------
+
+@router.get("/projects")
+async def list_user_projects(user=Depends(pro_required)) -> dict:
+    rows = await db.projects.find(
+        {"user_id": user["user_id"]}, {"_id": 0, "project_id": 1, "name": 1}) \
+        .sort("created_at", -1).to_list(300)
+    return {"projects": [{"project_id": r["project_id"], "name": r.get("name") or "Chantier"}
+                         for r in rows]}
+
+
+async def _create_einvoice_expense(user: dict, inv: dict, project_id: str) -> dict:
+    """Crée (ou remplace) une dépense chantier depuis une facture fournisseur acceptée."""
+    proj = await db.projects.find_one(
+        {"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0, "name": 1})
+    if not proj:
+        raise HTTPException(404, "Chantier introuvable")
+    prev = inv.get("expense")
+    if prev and prev.get("project_id") and prev.get("expense_id"):
+        await db.projects.update_one(
+            {"project_id": prev["project_id"]},
+            {"$pull": {"expenses": {"expense_id": prev["expense_id"]}}})
+    exp_id = f"exp_{uuid4().hex[:8]}"
+    amount = round(float(inv.get("amount_ht") or 0), 2)
+    exp = {"expense_id": exp_id,
+           "label": f"Facture {inv.get('supplier')} · {inv.get('number')}",
+           "amount": amount, "lot": None, "date": _now(),
+           "source": "einvoice", "einvoice_id": inv.get("inv_id")}
+    await db.projects.update_one(
+        {"project_id": project_id},
+        {"$push": {"expenses": exp}, "$set": {"updated_at": _now()}})
+    link = {"project_id": project_id, "project_name": proj.get("name"),
+            "expense_id": exp_id, "amount": amount}
+    await db.einvoice_inbox.update_one(
+        {"user_id": user["user_id"], "inv_id": inv.get("inv_id")},
+        {"$set": {"expense": link}})
+    return link
+
+
+class ExpenseLinkIn(BaseModel):
+    project_id: str
+
+
+@router.post("/inbox/{inv_id}/expense")
+async def link_expense(inv_id: str, body: ExpenseLinkIn, user=Depends(pro_required)) -> dict:
+    inv = await db.einvoice_inbox.find_one(
+        {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
+    if not inv:
+        raise HTTPException(404, "Facture introuvable")
+    if inv.get("status") != "accepted":
+        raise HTTPException(400, "Seule une facture acceptée peut être enregistrée en dépense")
+    link = await _create_einvoice_expense(user, inv, body.project_id)
+    return {"ok": True, "expense": link}
+
+
+@router.post("/inbox/{inv_id}/expense/remove")
+async def unlink_expense(inv_id: str, user=Depends(pro_required)) -> dict:
+    inv = await db.einvoice_inbox.find_one(
+        {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
+    if not inv:
+        raise HTTPException(404, "Facture introuvable")
+    prev = inv.get("expense")
+    if prev and prev.get("project_id") and prev.get("expense_id"):
+        await db.projects.update_one(
+            {"project_id": prev["project_id"]},
+            {"$pull": {"expenses": {"expense_id": prev["expense_id"]}}})
+    await db.einvoice_inbox.update_one(
+        {"user_id": user["user_id"], "inv_id": inv_id}, {"$unset": {"expense": ""}})
+    return {"ok": True}
 
 
 # ---------- Rapprochement facture fournisseur ↔ bon de commande ----------
@@ -255,3 +333,114 @@ async def unreconcile(inv_id: str, user=Depends(pro_required)) -> dict:
     if not res.matched_count:
         raise HTTPException(404, "Facture introuvable")
     return {"ok": True}
+
+
+# ---------- Résumé mensuel des surcoûts / économies fournisseurs ----------
+
+def _prev_month_range(ref: datetime | None = None) -> tuple[datetime, datetime, str]:
+    ref = ref or datetime.now(timezone.utc)
+    first_this = ref.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end = first_this
+    prev_last = first_this.replace(tzinfo=timezone.utc)
+    start = (first_this.replace(year=first_this.year - 1, month=12) if first_this.month == 1
+             else first_this.replace(month=first_this.month - 1))
+    months = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+              "août", "septembre", "octobre", "novembre", "décembre"]
+    label = f"{months[start.month - 1]} {start.year}"
+    return start, end, label
+
+
+async def _user_overspend_summary(user_id: str, start: datetime, end: datetime) -> dict:
+    """Agrège les rapprochements du mois pour un pro (surcoûts + économies)."""
+    rows = await db.einvoice_inbox.find(
+        {"user_id": user_id, "reconciliation": {"$exists": True}},
+        {"_id": 0, "supplier": 1, "number": 1, "reconciliation": 1}).to_list(2000)
+    overspend_total = savings_total = 0.0
+    over_items, under_items = [], []
+    for r in rows:
+        rec = r.get("reconciliation") or {}
+        ra = rec.get("reconciled_at")
+        if not ra:
+            continue
+        try:
+            dt = datetime.fromisoformat(ra)
+        except ValueError:
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        if not (start <= dt < end):
+            continue
+        gap = rec.get("gap_ht", 0)
+        if rec.get("gap_flag") == "over" and gap > 0:
+            overspend_total += gap
+            over_items.append({"supplier": r.get("supplier"), "number": r.get("number"),
+                               "gap_ht": round(gap, 2), "gap_pct": rec.get("gap_pct")})
+        elif rec.get("gap_flag") == "under" and gap < 0:
+            savings_total += abs(gap)
+            under_items.append({"supplier": r.get("supplier"), "number": r.get("number"),
+                                "gap_ht": round(abs(gap), 2), "gap_pct": rec.get("gap_pct")})
+    return {"overspend_total": round(overspend_total, 2),
+            "savings_total": round(savings_total, 2),
+            "over_count": len(over_items), "under_count": len(under_items),
+            "over_items": over_items[:10], "under_items": under_items[:10]}
+
+
+def _monthly_report_html(name: str, label: str, s: dict) -> str:
+    def _eur(v):
+        return f"{v:,.2f} €".replace(",", " ")
+    rows = "".join(
+        f'<tr><td style="padding:6px 0">{i["supplier"]} · {i["number"]}</td>'
+        f'<td style="text-align:right;color:#B91C1C;padding:6px 0">+{_eur(i["gap_ht"])} ({i["gap_pct"]}%)</td></tr>'
+        for i in s["over_items"]) or '<tr><td style="color:#059669;padding:6px 0">Aucun surcoût ce mois-ci 🎉</td></tr>'
+    return f"""
+<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A0D14">
+  <div style="text-align:center;padding:20px 0">
+    <div style="font-size:24px;font-weight:800"><span style="color:#FF5A00">Constru</span>Pilot</div>
+  </div>
+  <h2 style="margin:0 0 4px">Résumé fournisseurs — {label}</h2>
+  <p style="color:#64748B;margin:0 0 18px">Bonjour {name}, voici votre bilan des factures fournisseurs rapprochées.</p>
+  <div style="display:flex;gap:12px;margin-bottom:18px">
+    <div style="flex:1;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px">
+      <div style="font-size:22px;font-weight:800;color:#B91C1C">+{_eur(s['overspend_total'])}</div>
+      <div style="font-size:12px;color:#64748B">Surcoûts détectés ({s['over_count']})</div></div>
+    <div style="flex:1;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:16px">
+      <div style="font-size:22px;font-weight:800;color:#059669">{_eur(s['savings_total'])}</div>
+      <div style="font-size:12px;color:#64748B">Économies réalisées ({s['under_count']})</div></div>
+  </div>
+  <h3 style="font-size:15px;margin:0 0 6px">Principaux surcoûts</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">{rows}</table>
+  <p style="color:#94A3B8;font-size:12px;text-align:center;margin-top:22px">
+    ConstruPilot · Suivez votre marge en temps réel</p>
+</div>"""
+
+
+async def run_monthly_overspend_reports(ref: datetime | None = None) -> dict:
+    """Job mensuel : envoie à chaque pro connecté un récap surcoûts/économies du mois écoulé."""
+    from engines.emailer import send_email
+    start, end, label = _prev_month_range(ref)
+    accounts = await db.einvoice_accounts.find(
+        {"connected": True}, {"_id": 0, "user_id": 1}).to_list(5000)
+    sent = 0
+    for acc in accounts:
+        uid = acc["user_id"]
+        s = await _user_overspend_summary(uid, start, end)
+        if s["over_count"] == 0 and s["under_count"] == 0:
+            continue
+        u = await db.users.find_one({"user_id": uid}, {"_id": 0, "email": 1, "name": 1})
+        if not u or not u.get("email"):
+            continue
+        try:
+            html = _monthly_report_html((u.get("name") or "").split(" ")[0] or "cher pro", label, s)
+            await send_email(u["email"], f"Votre résumé fournisseurs — {label} · ConstruPilot", html)
+            sent += 1
+        except Exception:  # noqa: BLE001
+            continue
+    return {"month": label, "reports_sent": sent, "accounts": len(accounts)}
+
+
+@router.post("/reports/monthly/preview")
+async def preview_monthly_report(user=Depends(pro_required)) -> dict:
+    """Aperçu du résumé mensuel pour le pro courant (mois précédent), sans envoi."""
+    start, end, label = _prev_month_range()
+    s = await _user_overspend_summary(user["user_id"], start, end)
+    return {"month": label, **s}

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   Network, PlugZap, Unplug, Inbox, Check, X, Loader2, RefreshCw,
   ShieldCheck, Building2, ArrowLeft, Info, FileText, GitCompareArrows, AlertTriangle, Unlink,
+  Wallet, HardHat, CalendarClock, TrendingDown, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,13 @@ export default function EInvoicing() {
   const [reconBusy, setReconBusy] = useState(false);
   const [threshold, setThreshold] = useState(5);
   const [savingThreshold, setSavingThreshold] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [decisionProject, setDecisionProject] = useState("");
+  const [expenseOn, setExpenseOn] = useState(null); // invoice for standalone expense dialog
+  const [expenseProject, setExpenseProject] = useState("");
+  const [expenseBusy, setExpenseBusy] = useState(false);
+  const [monthly, setMonthly] = useState(null);
+  const [monthlyOpen, setMonthlyOpen] = useState(false);
 
   const loadStatus = async () => {
     try {
@@ -69,10 +77,16 @@ export default function EInvoicing() {
       setOrders(data.orders || []);
     } catch { /* noop */ }
   };
+  const loadProjects = async () => {
+    try {
+      const { data } = await api.get("/einvoicing/projects");
+      setProjects(data.projects || []);
+    } catch { /* noop */ }
+  };
   const loadAll = async () => {
     setLoading(true);
     const st = await loadStatus();
-    if (st?.connected) { await loadInbox(); await loadOrders(); }
+    if (st?.connected) { await loadInbox(); await loadOrders(); await loadProjects(); }
     setLoading(false);
   };
   useEffect(() => { loadAll(); }, []); // eslint-disable-line
@@ -109,14 +123,43 @@ export default function EInvoicing() {
     if (!decideOn) return;
     setDecideBusy(true);
     try {
-      await api.post(`/einvoicing/inbox/${decideOn.inv.inv_id}/decision`, {
+      const { data } = await api.post(`/einvoicing/inbox/${decideOn.inv.inv_id}/decision`, {
         decision: decideOn.decision, reason,
+        project_id: decideOn.decision === "accepted" && decisionProject ? decisionProject : null,
       });
-      toast.success(decideOn.decision === "accepted" ? "Facture acceptée (transmise à l'administration — simulé)" : "Facture refusée (transmise à l'administration — simulé)");
-      setDecideOn(null); setReason("");
+      if (data?.expense) {
+        toast.success(`Facture acceptée · dépense de ${eur(data.expense.amount)} ajoutée au chantier ${data.expense.project_name}`);
+      } else {
+        toast.success(decideOn.decision === "accepted" ? "Facture acceptée (transmise à l'administration — simulé)" : "Facture refusée (transmise à l'administration — simulé)");
+      }
+      setDecideOn(null); setReason(""); setDecisionProject("");
       await loadInbox();
     } catch (e) { toast.error(e?.response?.data?.detail || "Décision impossible"); }
     finally { setDecideBusy(false); }
+  };
+  const submitExpense = async () => {
+    if (!expenseOn || !expenseProject) return;
+    setExpenseBusy(true);
+    try {
+      const { data } = await api.post(`/einvoicing/inbox/${expenseOn.inv_id}/expense`, { project_id: expenseProject });
+      toast.success(`Dépense de ${eur(data.expense.amount)} ajoutée au chantier ${data.expense.project_name}`);
+      setExpenseOn(null); setExpenseProject("");
+      await loadInbox();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Action impossible"); }
+    finally { setExpenseBusy(false); }
+  };
+  const removeExpense = async (inv) => {
+    try {
+      await api.post(`/einvoicing/inbox/${inv.inv_id}/expense/remove`);
+      toast.success("Dépense retirée du chantier");
+      await loadInbox();
+    } catch { toast.error("Action impossible"); }
+  };
+  const openMonthly = async () => {
+    try {
+      const { data } = await api.post("/einvoicing/reports/monthly/preview");
+      setMonthly(data); setMonthlyOpen(true);
+    } catch { toast.error("Aperçu indisponible"); }
   };
 
   const openReconcile = (inv) => {
@@ -225,6 +268,9 @@ export default function EInvoicing() {
               </Button>
             </div>
             <div className="ml-auto flex gap-2">
+              <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={openMonthly} data-testid="einv-monthly-btn">
+                <CalendarClock className="h-4 w-4" /> Résumé du mois
+              </Button>
               <Button variant="outline" size="sm" className="rounded-sm gap-1.5" disabled={simBusy} onClick={simulate} data-testid="einv-simulate-btn">
                 {simBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Simuler une réception
               </Button>
@@ -280,8 +326,24 @@ export default function EInvoicing() {
                       <Button size="sm" variant="ghost" className="rounded-sm gap-1.5" onClick={() => openReconcile(inv)} data-testid={`einv-reconcile-btn-${inv.inv_id}`}>
                         <GitCompareArrows className="h-4 w-4" /> {inv.reconciliation ? "Écart" : "Rapprocher"}
                       </Button>
+                      {inv.status === "accepted" && !inv.expense && (
+                        <Button size="sm" variant="ghost" className="rounded-sm gap-1.5 text-primary" onClick={() => { setExpenseOn(inv); setExpenseProject(""); }} data-testid={`einv-expense-btn-${inv.inv_id}`}>
+                          <HardHat className="h-4 w-4" /> Chantier
+                        </Button>
+                      )}
                     </div>
                   </div>
+                  {inv.expense && (
+                    <div className="mt-3 rounded-sm p-3 flex flex-wrap items-center gap-3 text-sm border border-primary/30 bg-primary/5" data-testid={`einv-expense-${inv.inv_id}`}>
+                      <Wallet className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-muted-foreground">
+                        Dépense de <b className="num text-foreground">{eur(inv.expense.amount)}</b> HT imputée au chantier <b className="text-foreground">{inv.expense.project_name}</b>
+                      </span>
+                      <Button size="sm" variant="ghost" className="rounded-sm h-7 gap-1 ml-auto text-muted-foreground" onClick={() => removeExpense(inv)} data-testid={`einv-remove-expense-${inv.inv_id}`}>
+                        <Unlink className="h-3.5 w-3.5" /> Retirer
+                      </Button>
+                    </div>
+                  )}
                   {inv.reconciliation && (
                     <div className={`mt-3 rounded-sm p-3 flex flex-wrap items-center gap-3 text-sm border ${inv.reconciliation.gap_flag === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`} data-testid={`einv-recon-${inv.inv_id}`}>
                       {inv.reconciliation.gap_flag === "ok"
@@ -322,6 +384,21 @@ export default function EInvoicing() {
                 <label className="text-xs font-semibold text-muted-foreground">{decideOn.decision === "refused" ? "Motif du refus (obligatoire)" : "Commentaire (facultatif)"}</label>
                 <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-sm mt-1" placeholder={decideOn.decision === "refused" ? "Ex : quantités non conformes au bon de livraison" : ""} data-testid="einv-reason-input" />
               </div>
+              {decideOn.decision === "accepted" && (
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><HardHat className="h-3.5 w-3.5" /> Imputer sur un chantier (dépense auto)</label>
+                  <Select value={decisionProject} onValueChange={setDecisionProject}>
+                    <SelectTrigger className="rounded-sm mt-1" data-testid="einv-decision-project-select"><SelectValue placeholder="Aucun (facultatif)…" /></SelectTrigger>
+                    <SelectContent>
+                      {projects.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Aucun chantier</div>}
+                      {projects.map((p) => (
+                        <SelectItem key={p.project_id} value={p.project_id} data-testid={`einv-decision-project-${p.project_id}`}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">Le montant HT sera ajouté aux dépenses du chantier pour suivre votre marge en temps réel.</p>
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground flex items-start gap-1.5"><Info className="h-3.5 w-3.5 mt-px shrink-0" /> Le statut sera transmis à l'administration via la plateforme (simulé).</p>
             </div>
           )}
@@ -374,6 +451,79 @@ export default function EInvoicing() {
             <Button className="rounded-sm gap-2" disabled={reconBusy || !reconOrderId} onClick={submitReconcile} data-testid="einv-recon-confirm">
               {reconBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitCompareArrows className="h-4 w-4" />} Rapprocher
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!expenseOn} onOpenChange={(o) => { if (!o) setExpenseOn(null); }}>
+        <DialogContent className="max-w-md" data-testid="einv-expense-dialog">
+          <DialogHeader>
+            <DialogTitle>Imputer la facture sur un chantier</DialogTitle>
+          </DialogHeader>
+          {expenseOn && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {expenseOn.supplier} · {expenseOn.number} · <b className="text-foreground num">{eur(expenseOn.amount_ht)}</b> HT
+              </p>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Chantier</label>
+                <Select value={expenseProject} onValueChange={setExpenseProject}>
+                  <SelectTrigger className="rounded-sm mt-1" data-testid="einv-expense-project-select"><SelectValue placeholder="Sélectionner un chantier…" /></SelectTrigger>
+                  <SelectContent>
+                    {projects.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Aucun chantier</div>}
+                    {projects.map((p) => (
+                      <SelectItem key={p.project_id} value={p.project_id} data-testid={`einv-expense-project-${p.project_id}`}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">Le montant HT sera ajouté aux dépenses du chantier (suivi de marge).</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" className="rounded-sm" onClick={() => setExpenseOn(null)} data-testid="einv-expense-cancel">Annuler</Button>
+            <Button className="rounded-sm gap-2" disabled={expenseBusy || !expenseProject} onClick={submitExpense} data-testid="einv-expense-confirm">
+              {expenseBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />} Ajouter la dépense
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={monthlyOpen} onOpenChange={setMonthlyOpen}>
+        <DialogContent className="max-w-md" data-testid="einv-monthly-dialog">
+          <DialogHeader>
+            <DialogTitle>Résumé fournisseurs — {monthly?.month || ""}</DialogTitle>
+          </DialogHeader>
+          {monthly && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-sm p-4 border border-red-500/30 bg-red-500/5">
+                  <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400"><TrendingUp className="h-4 w-4" /><span className="num text-xl font-extrabold" data-testid="einv-monthly-overspend">+{eur(monthly.overspend_total)}</span></div>
+                  <p className="text-xs text-muted-foreground mt-1">Surcoûts détectés ({monthly.over_count})</p>
+                </div>
+                <div className="rounded-sm p-4 border border-emerald-500/30 bg-emerald-500/5">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400"><TrendingDown className="h-4 w-4" /><span className="num text-xl font-extrabold" data-testid="einv-monthly-savings">{eur(monthly.savings_total)}</span></div>
+                  <p className="text-xs text-muted-foreground mt-1">Économies réalisées ({monthly.under_count})</p>
+                </div>
+              </div>
+              {monthly.over_items?.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Principaux surcoûts</p>
+                  {monthly.over_items.map((i, k) => (
+                    <div key={k} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground truncate">{i.supplier} · {i.number}</span>
+                      <span className="num font-semibold text-red-600 dark:text-red-400">+{eur(i.gap_ht)} ({i.gap_pct}%)</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400">Aucun surcoût ce mois-ci 🎉</p>
+              )}
+              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5"><Info className="h-3.5 w-3.5 mt-px shrink-0" /> Ce résumé vous est envoyé automatiquement par e-mail le 1er de chaque mois.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" className="rounded-sm" onClick={() => setMonthlyOpen(false)} data-testid="einv-monthly-close">Fermer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

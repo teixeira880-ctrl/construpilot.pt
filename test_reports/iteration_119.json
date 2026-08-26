@@ -1,0 +1,36 @@
+{
+  "summary": "Iter 119 — Dépense chantier auto (e-invoicing) + Résumé mensuel. Backend pytest: 8/8 PASSED (test_iter119_einvoice_expense_monthly.py). Endpoints validés: (a) GET /api/einvoicing/projects (200, forbidden 403 pour particulier), (b) POST /api/einvoicing/inbox/{inv_id}/decision {accepted, project_id} crée expense (data.expense.project_id + amount === amount_ht, GET /api/projects/{pid}/budget confirme spent+=amount_ht et expense.source='einvoice'), (c) POST .../expense sur facture non acceptée => 400, (d) sur facture acceptée => 200; re-link idempotent (une seule expense pour le même einvoice_id, spent inchangé au 2e appel), (e) POST .../expense/remove supprime l'entry expense et ramène spent au baseline, (f) POST /api/einvoicing/reports/monthly/preview renvoie month + overspend_total + savings_total + over_count + under_count + over_items (list) — 403 côté client. Frontend UI /factures-electroniques (pro@construpilot.fr): PASS #1 einv-monthly-btn ouvre einv-monthly-dialog affichant einv-monthly-overspend='+0 €' et einv-monthly-savings='0 €' (données seed du mois courant vides — normal), einv-monthly-close ferme. PASS #2 flux ACCEPT+PROJECT: click einv-accept-{inv_id} → einv-decision-dialog → einv-decision-project-select → option (Radix role=option) → einv-decision-confirm → encart einv-expense-{inv_id} rendu avec texte 'Dépense de 2 889 € HT imputée au chantier before.png'. PASS #3 flux STANDALONE: einv-expense-btn-{inv_id} → einv-expense-dialog → einv-expense-project-select → einv-expense-confirm → encart einv-expense-{inv_id} rendu ('Dépense de 2 285 € HT imputée au chantier before.png'). Le click sur einv-remove-expense-{inv_id} a été hijacké par l'overlay CRA (ResizeObserver, cf. iter118) — la suppression via API est validée par le pytest test_link_and_relink_idempotent qui appelle .../expense/remove et vérifie spent=baseline. Toutes les fonctions demandées fonctionnent.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Global (dev preview)", "issues": ["CRA/webpack dev error overlay continue de se déclencher sur des 'ResizeObserver loop completed with undelivered notifications' bénins et bloque des clics (ex: einv-remove-expense). Déjà signalé iter118. Une simple installation de resize-observer-polyfill ou l'ajout d'un handler window.onerror qui ignore ce message éliminerait le problème en dev."]},
+      {"screen": "EInvoicing dialogs", "issues": ["einv-decision-dialog, einv-expense-dialog, einv-reconcile-dialog, einv-monthly-dialog: DialogContent sans DialogDescription (Radix a11y warning). Ajouter un <DialogDescription> ou aria-describedby."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter119_einvoice_expense_monthly.py",
+    "/app/test_reports/pytest/iter119.xml"
+  ],
+  "action_items": [
+    "(Optionnel, DX) Neutraliser l'overlay CRA sur ResizeObserver loop (add window.addEventListener('error', ...)) — améliorer a11y en ajoutant DialogDescription aux 4 dialogs de la page e-invoicing."
+  ],
+  "critical_code_review_comments": [
+    "routes/einvoicing.py _create_einvoice_expense: idempotent — pull d'un éventuel expense_id précédent avant push. Bien.",
+    "routes/einvoicing.py decide: retourne expense=None si pas de project_id (comportement optionnel correct). Le toast frontend gère les deux cas.",
+    "routes/einvoicing.py list_user_projects: filtre bien sur user_id, projection légère (project_id + name). Aucune fuite de _id.",
+    "routes/einvoicing.py _prev_month_range: gère bien le rollover janvier→décembre. run_monthly_overspend_reports skip si over_count==0 et under_count==0, évitant les emails vides — good.",
+    "frontend EInvoicing.jsx: file grew to 532 lines with 5 dialogs. Consider extracting DecisionDialog, ExpenseDialog, ReconcileDialog, MonthlyDialog into separate components (file-split, DRY).",
+    "frontend EInvoicing.jsx submitDecision: le fallback toast success n'utilise pas de conditional pour 'accepted sans expense' — le message dit toujours 'transmise à l'administration'; c'est OK mais un utilisateur qui a oublié de choisir un chantier ne saura pas qu'il peut encore rattacher via 'Chantier' (petit hint UI serait bienvenu).",
+    "Sécurité: pro_required correctement appliqué au router (dependencies=[Depends(pro_required)]) — particulier bloqué en 403 sur tous les endpoints, vérifié."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter119_einvoice_expense_monthly.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (fonctionnel; retire-expense via UI bloqué par overlay CRA connu)"},
+  "test_credentials": "Pro: pro@construpilot.fr/Pro2026! ; Particulier (403 attendu): client@construpilot.fr/Client2026!",
+  "seed_data_creation": "Plusieurs factures simulées via einv-simulate-btn + POST /api/einvoicing/inbox/simulate (Cedeo, Würth, Saint-Gobain). Dépenses 'einvoice' créées sur le chantier 'before.png' — peuvent être purgées via UI 'Retirer' ou POST /api/einvoicing/inbox/{inv_id}/expense/remove.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression: /app/backend/tests/test_iter119_einvoice_expense_monthly.py (~3.5s, 8 tests). L'API /auth/login renvoie 'token' (pas 'access_token') — utiliser .get('access_token') or .get('token'). Overlay CRA ResizeObserver bloque toujours certains clics UI: préférer déclencher les états via API + reload de la page pour vérifier le rendu. La démo pro a plusieurs factures 'received' et 'accepted' — utiliser einv-simulate-btn pour en générer de nouvelles au besoin. Les options Radix Select n'ont pas leur data-testid appliqué correctement (le SelectItem passe data-testid mais Radix ne le propage pas sur l'élément role=option); préférer sélectionner via role=option.",
+  "rca of the issue": "N/A — feature fonctionne end-to-end. Seule limitation observée: CRA dev overlay (ResizeObserver bénin) intercepte des clics UI, non bloquant en production."
+}

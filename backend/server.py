@@ -398,6 +398,10 @@ async def seed():
     scheduler.add_job(leads.run_prospect_reminders,
                       "interval", hours=6, id="prospect_j2_reminders",
                       max_instances=1, coalesce=True)
+    # Résumé mensuel des surcoûts/économies fournisseurs — le 1er de chaque mois à 07:00 UTC
+    scheduler.add_job(einvoicing_routes.run_monthly_overspend_reports,
+                      CronTrigger(day=1, hour=7, minute=0),
+                      id="einvoice_monthly_report", max_instances=1, coalesce=True)
     # Vérification du budget IA (seuil mensuel d'appels) — toutes les heures
     from engines import ai as ai_engine
     scheduler.add_job(ai_engine.check_ai_budget,
