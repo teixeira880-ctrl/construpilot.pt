@@ -6,6 +6,7 @@ Réutilise les helpers de mise en page de pdf_takeoff.
 from __future__ import annotations
 
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -54,6 +55,16 @@ def _client_block(story: list, client: dict | None, S: dict, L: dict) -> None:
     story.append(Spacer(1, 10))
 
 
+def _desig_cell(ln: dict, S: dict):
+    """Cellule désignation : titre en gras + description détaillée (puces) en dessous."""
+    html = f"<b>{escape(ln.get('designation') or '')}</b>"
+    desc = (ln.get("description") or "").strip()
+    if desc:
+        desc_html = escape(desc).replace("\r\n", "\n").replace("\n", "<br/>")
+        html += f'<br/><font size="7.5" color="#5B6472">{desc_html}</font>'
+    return Paragraph(html, S["body"])
+
+
 def _lines_table(story: list, lines: list, S: dict, L: dict) -> None:
     story.append(Paragraph(L["lines_title"], S["h2"]))
     rows = [[L["c_designation"], L["c_qty"], L["c_unit"], L["c_pu_ht"], L["c_vat"], L["c_total_ht"]]]
@@ -61,7 +72,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict) -> None:
         qty = ln.get("qty") or 0
         pu = ln.get("unit_price_ht") or 0
         rows.append([
-            ln.get("designation") or "",
+            _desig_cell(ln, S),
             _fmt(qty), ln.get("unit") or "",
             _fmt(pu, "€"),
             f"{_fmt(ln.get('vat_rate') or 0)}%",
@@ -78,6 +89,9 @@ def _lines_table(story: list, lines: list, S: dict, L: dict) -> None:
             ("FONTSIZE", (0, 0), (-1, -1), 8.5),
             ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
             ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("VALIGN", (0, 1), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 1), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
         ], repeat_rows=1))
 
