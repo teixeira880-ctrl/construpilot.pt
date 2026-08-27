@@ -84,6 +84,18 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
 
 BRAND = "#FF5A00"
 COMPANY_NAME = "ConstruPilot"
+
+
+def logo_url_for(user_id: str | None, branding: dict | None) -> str | None:
+    """URL HTTPS publique du logo entreprise pour les e-mails (Gmail bloque le data:base64)."""
+    if not user_id or not branding or not branding.get("logo_b64"):
+        return None
+    base = os.environ.get("PUBLIC_BACKEND_URL") or os.environ.get("FRONTEND_URL")
+    if not base:
+        return None
+    return f"{base.rstrip('/')}/api/branding/{user_id}/logo"
+
+
 COMPANY_ADDRESS = "ConstruPilot · France"  # override via env in prod
 COMPANY_WEBSITE = "https://construpilot.fr"
 
@@ -164,14 +176,22 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
                       logo_b64: str | None = None, contact_line: str | None = None,
                       siret: str | None = None, vat: str | None = None,
                       company_email: str | None = None, verified: bool = False,
-                      verify_url: str | None = None) -> str:
+                      verify_url: str | None = None, logo_url: str | None = None) -> str:
     """Habillage e-mail aux coordonnées de l'entreprise (logo + nom + contact).
 
     Utilisé pour les e-mails clients (devis/factures) afin d'afficher l'identité
     de l'entreprise émettrice et non celle de ConstruPilot.
+
+    IMPORTANT : Gmail & la plupart des clients bloquent les images en data:base64.
+    On privilégie donc `logo_url` (HTTPS public). Le data:base64 n'est jamais
+    utilisé dans les e-mails (fallback = nom de l'entreprise en texte).
     """
-    if logo_b64:
-        src = logo_b64 if logo_b64.startswith("data:") else f"data:image/png;base64,{logo_b64}"
+    src = None
+    if logo_url:
+        src = logo_url
+    elif logo_b64 and logo_b64.startswith("http"):
+        src = logo_b64
+    if src:
         header = (f'<img src="{src}" alt="{company_name}" '
                   f'style="max-height:76px;max-width:260px;display:block;margin:0 auto"/>')
     else:

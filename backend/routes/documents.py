@@ -1067,7 +1067,10 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                   f'text-decoration:none;font-weight:bold;display:inline-block">'
                   f'✍️ Consulter et signer le devis en ligne</a></p>'
                   f'<p style="font-size:12px;color:#666">Ou copiez ce lien : {sign_url}</p>')
+    from engines.emailer import logo_url_for
+    logo_url = logo_url_for(user["user_id"], branding)
     html = wrap_company_html(subject, inner, company_name=company,
+                             logo_url=logo_url,
                              logo_b64=branding.get("logo_b64"),
                              contact_line=branding.get("contact_line"),
                              siret=branding.get("siret"), vat=branding.get("vat"),
@@ -1470,9 +1473,12 @@ async def run_invoice_reminders() -> int:
                 f"<p>{T(lang, 'invrem.greeting', name=name)}</p>"
                 f"<p>{T(lang, 'invrem.body1', number=number, amount=f'{remaining:.2f} €')}</p>"
                 f"<p>{T(lang, 'invrem.body2')}</p>")
+            from engines.emailer import logo_url_for
             html = wrap_company_html(
                 T(lang, "invrem.title", number=number), inner,
-                company_name=company_name or "", logo_b64=branding.get("logo_b64"),
+                company_name=company_name or "",
+                logo_url=logo_url_for(inv["user_id"], branding),
+                logo_b64=branding.get("logo_b64"),
                 contact_line=branding.get("contact_line"), siret=branding.get("siret"),
                 vat=branding.get("vat"), company_email=company_email)
             await deliver_email(

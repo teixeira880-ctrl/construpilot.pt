@@ -501,7 +501,10 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         pixel_tag=pixel_tag,
     )
     subject = (body.subject or "").strip()[:180] or f"Devis · {company}"
+    from engines.emailer import logo_url_for
+    _logo_url = logo_url_for(user["user_id"], branding)
     html = wrap_company_html(subject, inner, company_name=company,
+                             logo_url=_logo_url,
                              logo_b64=branding.get("logo_b64"), contact_line=contact,
                              siret=branding.get("siret"), vat=branding.get("vat"),
                              company_email=company_email)
@@ -517,6 +520,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
             "devis estimatif indicatif"
         )
         html = wrap_company_html(subject, inner_with_att, company_name=company,
+                                 logo_url=_logo_url,
                                  logo_b64=branding.get("logo_b64"), contact_line=contact,
                                  siret=branding.get("siret"), vat=branding.get("vat"),
                                  company_email=company_email)
@@ -680,6 +684,7 @@ async def _ensure_signature_token(log: dict) -> str:
 async def _send_single_reminder(c: dict) -> None:
     from engines.emailer import wrap_company_html
     from routes.plans_common import deliver_email
+    from engines.emailer import logo_url_for
     branding = await _resolve_branding(c["user_id"]) or {}
     company = branding.get("company_name") or "ConstruPilot"
     company_email = branding.get("company_email")
@@ -694,7 +699,9 @@ async def _send_single_reminder(c: dict) -> None:
                                   company=company)
     await deliver_email(c["user_id"], c["client_email"], f"Rappel : votre devis · {company}",
                         wrap_company_html(f"Rappel devis · {company}", inner,
-                                          company_name=company, logo_b64=branding.get("logo_b64"),
+                                          company_name=company,
+                                          logo_url=logo_url_for(c["user_id"], branding),
+                                          logo_b64=branding.get("logo_b64"),
                                           contact_line=branding.get("contact_line"),
                                           siret=branding.get("siret"), vat=branding.get("vat"),
                                           company_email=company_email),
