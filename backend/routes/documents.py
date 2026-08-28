@@ -1020,6 +1020,48 @@ async def get_email_template(doc_id: str, client_name: str | None = None,
             "attach_tva_attestation": is_quote and _reduced_vat_rate(doc) is not None}
 
 
+class EmailPreviewIn(BaseModel):
+    message: str | None = None
+    client_name: str | None = None
+
+
+@router.post("/{doc_id}/email-preview")
+async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_user)) -> dict:
+    """Rend l'e-mail exact (avec logo/branding) tel que le client le recevra."""
+    from routes.plans_common import _resolve_branding
+    from engines.emailer import wrap_company_html, logo_url_for
+    doc = await _get_owned(doc_id, user)
+    branding = await _resolve_branding(user["user_id"]) or {}
+    company = branding.get("company_name") or user.get("name") or "ConstruPilot"
+    company_email = branding.get("company_email")
+    is_quote = doc["doc_type"] == "quote"
+    number = doc.get("number") or ""
+    name = body.client_name or ((doc.get("client") or {}).get("first_name") or "")
+    body_text = (body.message or "").strip() or _email_template(doc, company, name)
+    inner = _text_to_html(body_text)
+    subject = (f"Devis n° {number} · {company}" if is_quote
+               else f"Facture n° {number} · {company}")
+    if is_quote:
+        inner += ('<p style="margin:22px 0"><a href="#" '
+                  'style="background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;'
+                  'text-decoration:none;font-weight:bold;display:inline-block">'
+                  '✍️ Consulter et signer le devis en ligne</a></p>')
+    html = wrap_company_html(
+        subject, inner, company_name=company,
+        logo_url=logo_url_for(user["user_id"], branding),
+        logo_b64=branding.get("logo_b64"),
+        contact_line=branding.get("contact_line"),
+        siret=branding.get("siret"), vat=branding.get("vat"),
+        company_email=company_email,
+        verified=bool(branding.get("verified")),
+        verify_url=(f"{os.getenv('FRONTEND_URL', '')}/pro-verifie/{user['user_id']}"
+                    if branding.get("verified") else None))
+    attachments = [f"{number or doc_id}.pdf"]
+    if is_quote and _reduced_vat_rate(doc) is not None:
+        attachments.append(f"attestation-tva-{number or doc_id}.pdf")
+    return {"subject": subject, "html": html, "attachments": attachments}
+
+
 @router.post("/{doc_id}/send")
 async def send_document(doc_id: str, body: DocSendIn, background_tasks: BackgroundTasks,
                         user=Depends(current_user)):

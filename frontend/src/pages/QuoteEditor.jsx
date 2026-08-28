@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send, X,
-  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -476,6 +476,22 @@ export default function QuoteEditor() {
   const [attach3d, setAttach3d] = useState(true);
   const [preview3d, setPreview3d] = useState(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+  const [emailPreviewHtml, setEmailPreviewHtml] = useState(null);
+  const [loadingEmailPreview, setLoadingEmailPreview] = useState(false);
+
+  const loadEmailPreview = async () => {
+    let id = docId;
+    if (!id) { const d = await save(); if (!d) return; id = d.doc_id; }
+    setLoadingEmailPreview(true);
+    try {
+      const { data } = await api.post(`/documents/${id}/email-preview`, {
+        message: sendMsg, client_name: sendName,
+      });
+      setEmailPreviewHtml(data?.html || "");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Aperçu indisponible");
+    } finally { setLoadingEmailPreview(false); }
+  };
 
   const openSend = async () => {
     const c = clients.find((x) => x.client_id === clientId);
@@ -485,6 +501,7 @@ export default function QuoteEditor() {
     setSendMsg("");
     setPreview3d(null);
     setPdfPreviewUrl(null);
+    setEmailPreviewHtml(null);
     setSendOpen(true);
     let id = docId;
     if (!id) { const d = await save(); if (!d) return; id = d.doc_id; }
@@ -652,6 +669,21 @@ export default function QuoteEditor() {
               <Label htmlFor="send-msg">Message (optionnel)</Label>
               <Textarea id="send-msg" rows={3} value={sendMsg} onChange={(e) => setSendMsg(e.target.value)}
                         placeholder="Un mot pour votre client…" data-testid="send-quote-msg" />
+            </div>
+            <div className="grid gap-2">
+              <Button type="button" variant="outline" size="sm"
+                      className="rounded-sm gap-2 justify-self-start"
+                      onClick={loadEmailPreview} disabled={loadingEmailPreview}
+                      data-testid="send-email-preview-btn">
+                {loadingEmailPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                Aperçu de l'e-mail (ce que verra le client)
+              </Button>
+              {emailPreviewHtml && (
+                <div className="rounded-sm border border-border overflow-hidden" data-testid="send-email-preview">
+                  <iframe title="Aperçu e-mail" srcDoc={emailPreviewHtml}
+                          className="w-full h-72 bg-white" />
+                </div>
+              )}
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer" data-testid="send-quote-attach3d">
               <input type="checkbox" checked={attach3d} onChange={(e) => setAttach3d(e.target.checked)}
