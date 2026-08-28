@@ -40,6 +40,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     einvoicing as einvoicing_routes,
                     resend_webhook as resend_webhook_routes,
                     branding_public as branding_public_routes,
+                    notifications as notifications_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -113,6 +114,7 @@ api_router.include_router(evolution_routes.router)
 api_router.include_router(einvoicing_routes.router)
 api_router.include_router(resend_webhook_routes.router)
 api_router.include_router(branding_public_routes.router)
+api_router.include_router(notifications_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(
