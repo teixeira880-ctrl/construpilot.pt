@@ -95,6 +95,16 @@ def _reduced_vat_rate(doc: dict) -> float | None:
     return reduced[0] if reduced else None
 
 
+def _resolved_email_message(doc: dict, company: str, name: str, branding: dict | None) -> str:
+    """Message d'accompagnement : texte perso du pro (avec variables) sinon modèle type."""
+    custom = (branding or {}).get("default_email_message")
+    if custom:
+        return (custom.replace("{client}", name or "").replace("{nom}", name or "")
+                .replace("{entreprise}", company or "").replace("{numero}", doc.get("number") or ""))
+    return _email_template(doc, company, name)
+
+
+
 def _email_template(doc: dict, company: str, client_name: str | None) -> str:
     """Modèle d'e-mail type selon type de document + taux de TVA."""
     number = doc.get("number") or ""
@@ -1016,7 +1026,7 @@ async def get_email_template(doc_id: str, client_name: str | None = None,
     subject = (f"Devis n° {number} · {company}" if is_quote
                else f"Facture n° {number} · {company}")
     return {"subject": subject,
-            "message": _email_template(doc, company, name),
+            "message": _resolved_email_message(doc, company, name, branding),
             "attach_tva_attestation": is_quote and _reduced_vat_rate(doc) is not None}
 
 
@@ -1037,7 +1047,7 @@ async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_
     is_quote = doc["doc_type"] == "quote"
     number = doc.get("number") or ""
     name = body.client_name or ((doc.get("client") or {}).get("first_name") or "")
-    body_text = (body.message or "").strip() or _email_template(doc, company, name)
+    body_text = (body.message or "").strip() or _resolved_email_message(doc, company, name, branding)
     inner = _text_to_html(body_text)
     subject = (f"Devis n° {number} · {company}" if is_quote
                else f"Facture n° {number} · {company}")
@@ -1094,7 +1104,8 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     ttc = (doc.get("totals") or {}).get("ttc") or doc.get("total_ttc") or 0
     is_quote = doc["doc_type"] == "quote"
     number = doc.get("number") or ""
-    body_text = (body.message or "").strip() or _email_template(doc, company, body.client_name)
+    body_text = (body.message or "").strip() or _resolved_email_message(
+        doc, company, body.client_name or ((doc.get("client") or {}).get("first_name") or ""), branding)
     inner = _text_to_html(body_text)
     subject = (f"Devis n° {number} · {company}" if is_quote
                else f"Facture n° {number} · {company}")

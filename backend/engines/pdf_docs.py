@@ -67,33 +67,73 @@ def _desig_cell(ln: dict, S: dict):
 
 def _lines_table(story: list, lines: list, S: dict, L: dict) -> None:
     story.append(Paragraph(L["lines_title"], S["h2"]))
-    rows = [[L["c_designation"], L["c_qty"], L["c_unit"], L["c_pu_ht"], L["c_vat"], L["c_total_ht"]]]
-    for ln in lines:
+    header = [L["c_designation"], L["c_qty"], L["c_unit"], L["c_pu_ht"], L["c_vat"], L["c_total_ht"]]
+    rows = [header]
+
+    def _line_row(ln):
         qty = ln.get("qty") or 0
         pu = ln.get("unit_price_ht") or 0
-        rows.append([
-            _desig_cell(ln, S),
-            _fmt(qty), ln.get("unit") or "",
-            _fmt(pu, "€"),
-            f"{_fmt(ln.get('vat_rate') or 0)}%",
-            _fmt(round(qty * pu, 2), "€"),
-        ])
-    if len(rows) == 1:
+        return [_desig_cell(ln, S), _fmt(qty), ln.get("unit") or "",
+                _fmt(pu, "€"), f"{_fmt(ln.get('vat_rate') or 0)}%",
+                _fmt(round(qty * pu, 2), "€")]
+
+    # Regroupement par lot (champ `category`), en conservant l'ordre d'apparition.
+    groups, order = [], {}
+    for ln in lines:
+        cat = (ln.get("category") or "").strip()
+        if cat not in order:
+            order[cat] = len(groups)
+            groups.append((cat, []))
+        groups[order[cat]][1].append(ln)
+    use_groups = any(cat for cat, _ in groups)
+
+    header_rows, subtotal_rows = [], []
+    if not lines:
         rows.append([L["no_line"], "", "", "", "", ""])
+    elif not use_groups:
+        for ln in lines:
+            rows.append(_line_row(ln))
+    else:
+        for cat, lns in groups:
+            label = cat or L.get("other_lot", "Autres")
+            header_rows.append(len(rows))
+            rows.append([Paragraph(f"<b>{escape(label)}</b>", S["body"]), "", "", "", "", ""])
+            sub = 0.0
+            for ln in lns:
+                rows.append(_line_row(ln))
+                sub += round((ln.get("qty") or 0) * (ln.get("unit_price_ht") or 0), 2)
+            subtotal_rows.append(len(rows))
+            rows.append([Paragraph(f'<b>{L.get("subtotal", "Sous-total")} · {escape(label)}</b>',
+                                   S["body"]), "", "", "", "",
+                         Paragraph(f"<b>{_fmt(round(sub, 2), '€')}</b>", S["body"])])
+
+    extras = [
+        ("BACKGROUND", (0, 0), (-1, 0), DARK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+        ("ALIGN", (0, 0), (0, -1), "LEFT"),
+        ("VALIGN", (0, 1), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+    ]
+    if use_groups:
+        for r in header_rows:
+            extras += [("SPAN", (0, r), (4, r)),
+                       ("BACKGROUND", (0, r), (-1, r), colors.HexColor("#EEEBE6")),
+                       ("TOPPADDING", (0, r), (-1, r), 7)]
+        for r in subtotal_rows:
+            extras += [("SPAN", (0, r), (4, r)),
+                       ("ALIGN", (0, r), (4, r), "RIGHT"),
+                       ("LINEABOVE", (0, r), (-1, r), 0.5, LIGHT_GREY),
+                       ("BACKGROUND", (0, r), (-1, r), colors.HexColor("#FAF8F5"))]
+    else:
+        extras += [("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY])]
+
     story.append(_table(
         rows, [78 * mm, 16 * mm, 16 * mm, 22 * mm, 14 * mm, 26 * mm],
-        style_extras=[
-            ("BACKGROUND", (0, 0), (-1, 0), DARK),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-            ("ALIGN", (0, 0), (0, -1), "LEFT"),
-            ("VALIGN", (0, 1), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 1), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
-        ], repeat_rows=1))
+        style_extras=extras, repeat_rows=1))
 
 
 def _recap(story: list, doc: dict, S: dict, L: dict) -> None:

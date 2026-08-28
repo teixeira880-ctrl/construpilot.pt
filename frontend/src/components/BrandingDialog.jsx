@@ -30,6 +30,7 @@ export function BrandingDialog({ trigger }) {
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("FR");
   const [logoB64, setLogoB64] = useState("");
+  const [defaultEmailMsg, setDefaultEmailMsg] = useState("");
   const [certSel, setCertSel] = useState({});
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState("user");
@@ -49,6 +50,7 @@ export function BrandingDialog({ trigger }) {
       setPostalCode(data.postal_code || "");
       setCountry(data.country || "FR");
       setLogoB64(data.logo_b64 || "");
+      setDefaultEmailMsg(data.default_email_message || "");
       const map = {};
       (data.certifications || []).forEach((c) => { map[c.code] = c.number || ""; });
       setCertSel(map);
@@ -80,6 +82,7 @@ export function BrandingDialog({ trigger }) {
         company_name: companyName, company_email: companyEmail, contact_line: contactLine, logo_b64: logoB64 || null,
         siret: siret, vat: vat,
         address: address, city: city, postal_code: postalCode, country: country,
+        default_email_message: defaultEmailMsg,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
       toast.success("Identité pro enregistrée");
@@ -208,6 +211,18 @@ export function BrandingDialog({ trigger }) {
                 );
               })}
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Message d'accompagnement par défaut (e-mails devis/factures)</Label>
+            <Textarea value={defaultEmailMsg} onChange={(e) => setDefaultEmailMsg(e.target.value)}
+                      placeholder={"Bonjour {client},\n\nVeuillez trouver ci-joint votre devis n° {numero}...\n\nCordialement,\n{entreprise}"}
+                      disabled={!canEdit}
+                      data-testid="branding-default-msg-input"
+                      className="rounded-sm text-sm" rows={5} maxLength={1500} />
+            <p className="text-[11px] text-muted-foreground">
+              Réutilisé automatiquement à chaque envoi. Variables : <b>{"{client}"}</b>, <b>{"{entreprise}"}</b>, <b>{"{numero}"}</b>. Laissez vide pour le message type automatique.
+            </p>
           </div>
 
           <div className="grid gap-2">

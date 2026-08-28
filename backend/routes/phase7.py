@@ -125,6 +125,7 @@ class BrandingIn(BaseModel):
     postal_code: str | None = None
     country: str | None = None
     certifications: list[dict] | None = None
+    default_email_message: str | None = None
 
 
 CERT_LABELS = {"qualibat": "Qualibat", "rge": "RGE", "qualipac": "QualiPAC",
@@ -149,7 +150,8 @@ async def get_branding(user=Depends(current_user)) -> dict:
                                   "brand_siret": 1, "brand_vat": 1,
                                   "brand_address": 1, "brand_city": 1,
                                   "brand_postal": 1, "brand_country": 1,
-                                  "brand_logo_b64": 1, "brand_certifications": 1}) or {}
+                                  "brand_logo_b64": 1, "brand_certifications": 1,
+                                  "brand_default_email_message": 1}) or {}
     org_id = u.get("organization_id")
     if org_id:
         org = await db.organizations.find_one({"org_id": org_id},
@@ -169,6 +171,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
                     "contact_line": org.get("brand_contact_line"),
                     "has_logo": bool(org.get("brand_logo_b64")),
                     "logo_b64": org.get("brand_logo_b64"),
+                    "default_email_message": u.get("brand_default_email_message"),
                     "certifications": org.get("brand_certifications") or []}
     return {"source": "user", "can_edit": True,
             "company_name": u.get("brand_company_name"),
@@ -182,6 +185,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
             "country": u.get("brand_country"),
             "has_logo": bool(u.get("brand_logo_b64")),
             "logo_b64": u.get("brand_logo_b64"),
+            "default_email_message": u.get("brand_default_email_message"),
             "certifications": u.get("brand_certifications") or []}
 
 
@@ -226,6 +230,12 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         if len(b64_clean) > 500_000:
             raise HTTPException(413, "Logo trop volumineux (max ~375 Ko)")
         upd["brand_logo_b64"] = b64_clean or None
+    # Message d'accompagnement : préférence PERSONNELLE (toujours sur l'utilisateur,
+    # même pour un membre d'organisation) → chacun peut avoir sa propre signature.
+    if body.default_email_message is not None:
+        await db.users.update_one(
+            {"user_id": user["user_id"]},
+            {"$set": {"brand_default_email_message": body.default_email_message.strip()[:1500] or None}})
 
     if org_id:
         # Seul le owner/admin de l'org peut modifier le branding partagé
