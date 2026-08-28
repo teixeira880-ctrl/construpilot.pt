@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send, X,
-  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, Eye,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, Eye, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,6 +180,25 @@ export default function QuoteEditor() {
     const dep = ttc * (Number(depositPct) || 0) / 100;
     return { ht, tva, tvaTotal, ttc, dep, remaining: ttc - dep };
   }, [lines, depositPct]);
+
+  const lotSubtotals = useMemo(() => {
+    const map = new Map();
+    for (const l of lines) {
+      const cat = (l.category || "").trim();
+      if (!cat) continue;
+      const lh = (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0);
+      map.set(cat, (map.get(cat) || 0) + lh);
+    }
+    return [...map.entries()].map(([cat, ht]) => ({ cat, ht }));
+  }, [lines]);
+
+  const knownLots = useMemo(() => {
+    const s = new Set();
+    lines.forEach((l) => { const c = (l.category || "").trim(); if (c) s.add(c); });
+    ["Gros œuvre", "Toiture", "Plomberie", "Électricité", "Peinture", "Menuiserie",
+     "Carrelage", "Isolation", "Sol", "Placo", "VRD"].forEach((c) => s.add(c));
+    return [...s];
+  }, [lines]);
 
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
   const setAllVat = (rate) => {
@@ -894,7 +913,13 @@ export default function QuoteEditor() {
                    placeholder="Description / détail de l'ouvrage (optionnel — archivé en bibliothèque)"
                    rows={2}
                    className="rounded-sm text-sm w-full bg-background border border-input px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary" data-testid={`editor-line-desc-${i}`} />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                <Input list="qe-lots" value={l.category || ""} onChange={(e) => setLine(i, "category", e.target.value)}
+                       placeholder="Lot (ex : Peinture)" className="rounded-sm h-7 text-xs w-44"
+                       data-testid={`editor-line-lot-${i}`} />
+              </div>
               <Button size="sm" variant="outline" disabled={aiLineBusy === i || !l.designation.trim()}
                       onClick={() => suggestDescription(i)} data-testid={`editor-line-ai-${i}`}
                       className="rounded-sm gap-1 h-7 text-xs text-primary border-primary/40">
@@ -907,6 +932,9 @@ export default function QuoteEditor() {
         {lines.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">{t("crm.no_lines")}</p>
         )}
+        <datalist id="qe-lots">
+          {knownLots.map((c) => <option key={c} value={c} />)}
+        </datalist>
       </div>
 
       {/* Récap + acompte + notes */}
@@ -924,6 +952,19 @@ export default function QuoteEditor() {
           </div>
         </div>
         <div className="surface p-5 grid gap-2 content-start" data-testid="editor-totals">
+          {lotSubtotals.length > 0 && (
+            <div className="mb-1 pb-2 border-b border-border" data-testid="editor-lot-subtotals">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5" /> Sous-totaux par lot (HT)
+              </p>
+              {lotSubtotals.map(({ cat, ht }) => (
+                <div key={cat} className="flex justify-between text-xs py-0.5" data-testid={`editor-lot-subtotal-${cat}`}>
+                  <span className="text-muted-foreground truncate">{cat}</span>
+                  <span className="num font-semibold">{eur(ht)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t("crm.total_ht")}</span><span className="num font-bold">{eur(totals.ht)}</span></div>
           {Object.entries(totals.tva).sort((a, b) => a[0] - b[0]).map(([r, v]) => (
             <div key={r} className="flex justify-between text-xs"><span className="text-muted-foreground">{t("crm.col_vat")} {r}%</span><span className="num">{eur(v)}</span></div>
