@@ -294,6 +294,7 @@ export default function QuoteEditor() {
   const [recording, setRecording] = useState(false);
   const [recSecs, setRecSecs] = useState(0);
   const [recMode, setRecMode] = useState("video");
+  const [streamReady, setStreamReady] = useState(false);
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -306,6 +307,7 @@ export default function QuoteEditor() {
     recorderRef.current = null;
     if (streamRef.current) { streamRef.current.getTracks().forEach((tr) => tr.stop()); streamRef.current = null; }
     if (videoElRef.current) videoElRef.current.srcObject = null;
+    setStreamReady(false);
     setRecording(false);
     setRecSecs(0);
     setRecOpen(false);
@@ -314,6 +316,7 @@ export default function QuoteEditor() {
   const openRecorder = async (mode = "video") => {
     if (!navigator.mediaDevices?.getUserMedia) { toast.error("Micro/caméra non supporté — utilisez la galerie"); return; }
     setRecMode(mode);
+    setStreamReady(false);
     setRecOpen(true);
     try {
       const constraints = mode === "audio"
@@ -322,6 +325,7 @@ export default function QuoteEditor() {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       if (mode !== "audio" && videoElRef.current) { videoElRef.current.srcObject = stream; videoElRef.current.play().catch(() => {}); }
+      setStreamReady(true);
     } catch {
       toast.error(mode === "audio" ? "Accès micro refusé — utilisez la galerie" : "Accès caméra refusé — utilisez la galerie");
       closeRecorder();
@@ -374,21 +378,27 @@ export default function QuoteEditor() {
     if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
     const url = URL.createObjectURL(file);
     const sizeMB = file.size / (1024 * 1024);
+    let done = false;
     const finalize = (duration) => {
+      if (done) return;
+      done = true;
       setReviewFile(file);
       setReviewInfo({ sizeMB, duration: isFinite(duration) && duration > 0 ? duration : 0, url });
       setReviewOpen(true);
     };
+    // Garde-fou : certains navigateurs (webm MediaRecorder) ne fournissent jamais
+    // les métadonnées de durée → on ouvre quand même la revue après 2,5 s.
+    const guard = setTimeout(() => finalize(0), 2500);
     const v = document.createElement("video");
     v.preload = "metadata";
     v.muted = true;
     v.onloadedmetadata = () => {
       if (v.duration === Infinity || isNaN(v.duration)) {
         v.currentTime = 1e101;
-        v.ontimeupdate = () => { v.ontimeupdate = null; finalize(v.duration); };
-      } else finalize(v.duration);
+        v.ontimeupdate = () => { v.ontimeupdate = null; clearTimeout(guard); finalize(v.duration); };
+      } else { clearTimeout(guard); finalize(v.duration); }
     };
-    v.onerror = () => finalize(0);
+    v.onerror = () => { clearTimeout(guard); finalize(0); };
     v.src = url;
   };
 
@@ -1029,8 +1039,8 @@ export default function QuoteEditor() {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={closeRecorder} className="rounded-sm" data-testid="video-recorder-cancel">Annuler</Button>
             {!recording ? (
-              <Button onClick={startRec} disabled={!streamRef.current} className="rounded-sm gap-2 bg-red-600 hover:bg-red-700" data-testid="video-recorder-start">
-                {recMode === "audio" ? <Mic className="h-4 w-4" /> : <Video className="h-4 w-4" />} Démarrer
+              <Button onClick={startRec} disabled={!streamReady} className="rounded-sm gap-2 bg-red-600 hover:bg-red-700" data-testid="video-recorder-start">
+                {recMode === "audio" ? <Mic className="h-4 w-4" /> : <Video className="h-4 w-4" />} {streamReady ? "Démarrer" : "Initialisation…"}
               </Button>
             ) : (
               <Button onClick={stopRec} className="rounded-sm gap-2 bg-primary" data-testid="video-recorder-stop">
