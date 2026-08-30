@@ -79,6 +79,7 @@ import { I18nProvider } from "@/context/I18nContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
+import CookieConsent from "@/components/CookieConsent";
 
 const Protected = ({ children, admin }) => {
   const { user, loading } = useAuth();
@@ -236,6 +237,7 @@ function App() {
                       <AppRouter />
                       <MobileTabBar />
                       <InstallPrompt />
+                      <CookieConsent />
                       <Toaster position="top-right" richColors />
                     </ConfirmProvider>
                   </WhiteLabelProvider>
