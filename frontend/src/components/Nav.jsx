@@ -258,6 +258,11 @@ export const Footer = () => (
     </div>
     <div className="border-t border-border">
       <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-4 text-center" data-testid="footer-legal">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-2 text-[11px]">
+          <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Mentions légales</a>
+          <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Politique de confidentialité</a>
+          <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">CGU / CGV</a>
+        </div>
         <p className="text-[11px] text-muted-foreground">
           © {new Date().getFullYear()} ConstruPilot — Tous droits réservés · Brevet n° FR261104
         </p>
