@@ -140,6 +140,16 @@ def _text_to_html(text: str) -> str:
     return "".join(out)
 
 
+def _render_button_html(url: str) -> str:
+    """Bouton e-mail vers la projection avant/après du chantier (rendu IA)."""
+    if not url:
+        return ""
+    return (f'<p style="margin:18px 0"><a href="{url}" '
+            f'style="background:#0A0D14;color:#fff;padding:12px 22px;border-radius:8px;'
+            f'text-decoration:none;font-weight:bold;display:inline-block">'
+            f'🏠 Voir la projection avant / après du chantier</a></p>')
+
+
 
 async def _next_number(user_id: str, doc_type: str) -> str:
     year = datetime.now(timezone.utc).year
@@ -1004,6 +1014,7 @@ class DocSendIn(BaseModel):
     client_name: str = ""
     message: str = ""
     attach_3d: bool = True
+    render_url: str = ""
 
 
 @router.get("/{doc_id}/email-template")
@@ -1033,6 +1044,7 @@ async def get_email_template(doc_id: str, client_name: str | None = None,
 class EmailPreviewIn(BaseModel):
     message: str | None = None
     client_name: str | None = None
+    render_url: str | None = None
 
 
 @router.post("/{doc_id}/email-preview")
@@ -1056,6 +1068,7 @@ async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_
                   'style="background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;'
                   'text-decoration:none;font-weight:bold;display:inline-block">'
                   '✍️ Consulter et signer le devis en ligne</a></p>')
+    inner += _render_button_html((body.render_url or "").strip())
     html = wrap_company_html(
         subject, inner, company_name=company,
         logo_url=logo_url_for(user["user_id"], branding),
@@ -1120,6 +1133,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                   f'text-decoration:none;font-weight:bold;display:inline-block">'
                   f'✍️ Consulter et signer le devis en ligne</a></p>'
                   f'<p style="font-size:12px;color:#666">Ou copiez ce lien : {sign_url}</p>')
+    inner += _render_button_html((body.render_url or "").strip())
     from engines.emailer import logo_url_for
     logo_url = logo_url_for(user["user_id"], branding)
     html = wrap_company_html(subject, inner, company_name=company,

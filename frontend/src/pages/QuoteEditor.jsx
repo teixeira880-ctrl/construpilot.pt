@@ -507,6 +507,17 @@ export default function QuoteEditor() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [emailPreviewHtml, setEmailPreviewHtml] = useState(null);
   const [loadingEmailPreview, setLoadingEmailPreview] = useState(false);
+  const [renderUrl, setRenderUrl] = useState("");
+  const [doneRenders, setDoneRenders] = useState([]);
+
+  const pickRender = async (rid) => {
+    if (!rid) { setRenderUrl(""); return; }
+    try {
+      const { data } = await api.post(`/runway/renders/${rid}/share`);
+      setRenderUrl(data.share_url || "");
+      toast.success("Rendu avant/après joint à l'e-mail");
+    } catch { toast.error("Impossible de joindre le rendu"); }
+  };
 
   const loadEmailPreview = async () => {
     let id = docId;
@@ -514,7 +525,7 @@ export default function QuoteEditor() {
     setLoadingEmailPreview(true);
     try {
       const { data } = await api.post(`/documents/${id}/email-preview`, {
-        message: sendMsg, client_name: sendName,
+        message: sendMsg, client_name: sendName, render_url: renderUrl,
       });
       setEmailPreviewHtml(data?.html || "");
     } catch (e) {
@@ -531,12 +542,17 @@ export default function QuoteEditor() {
     setPreview3d(null);
     setPdfPreviewUrl(null);
     setEmailPreviewHtml(null);
+    setRenderUrl("");
     setSendOpen(true);
     let id = docId;
     if (!id) { const d = await save(); if (!d) return; id = d.doc_id; }
     // Message type pré-rempli (selon type de document + taux de TVA)
     api.get(`/documents/${id}/email-template`, { params: { client_name: nm } })
       .then(({ data }) => { if (data?.message) setSendMsg(data.message); })
+      .catch(() => {});
+    // Rendus IA avant/après disponibles (prêts) à joindre
+    api.get("/runway/renders")
+      .then(({ data }) => setDoneRenders((data.renders || []).filter((r) => r.status === "done")))
       .catch(() => {});
     // Aperçu rendu 3D
     api.get(`/documents/${id}`).then(({ data }) => {
@@ -561,7 +577,7 @@ export default function QuoteEditor() {
     try {
       let id = docId;
       if (!id) { const d = await save(); if (!d) { setSending(false); return; } id = d.doc_id; }
-      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d })
+      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d, render_url: renderUrl })
         .then(({ data }) => {
           toast.success(data?.attached_3d ? "Devis envoyé (rendu 3D joint) ✅" : "Devis envoyé au client ✅");
         });
@@ -719,6 +735,22 @@ export default function QuoteEditor() {
                      className="h-4 w-4 rounded border-input accent-primary" />
               Joindre le rendu 3D du projet (si disponible)
             </label>
+            {doneRenders.length > 0 && (
+              <div className="grid gap-1.5" data-testid="send-quote-render-block">
+                <Label htmlFor="send-render">Rendu IA avant/après (optionnel)</Label>
+                <select id="send-render" onChange={(e) => pickRender(e.target.value)}
+                        className="rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        data-testid="send-quote-render-select">
+                  <option value="">— Aucun —</option>
+                  {doneRenders.map((r) => (
+                    <option key={r.render_id} value={r.render_id}>
+                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Rendu") + " · " + new Date(r.created_at).toLocaleDateString("fr-FR")}
+                    </option>
+                  ))}
+                </select>
+                {renderUrl && <p className="text-[11px] text-primary">Lien avant/après ajouté à l'e-mail ✓</p>}
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => closeSend(false)} className="rounded-sm" data-testid="send-quote-cancel">Annuler</Button>
               <Button onClick={sendNow} disabled={sending} className="rounded-sm gap-2" data-testid="send-quote-confirm">

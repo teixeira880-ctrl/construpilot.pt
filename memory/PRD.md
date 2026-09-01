@@ -2537,3 +2537,11 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Partage client** : `POST /api/runway/renders/{id}/share` → `share_token` + `share_url` (`FRONTEND_URL/rendu/{token}`), `DELETE .../share`. Endpoints PUBLICS (sans auth) : `GET /api/runway/public/{token}` + `/file?which=input|output`. Page publique `pages/RenderShare.jsx` route `/rendu/:token` (avant/après, prompt, disclaimer, branding). Bouton « Partager au client » + copie du lien dans le studio et l'historique. Validé e2e (meta + fichiers publics 200 sans token auth, screenshot page publique OK).
 - Fichiers : `routes/runway_render.py` (étendu), `pages/RenderStudio.jsx` (réécrit), `pages/RenderShare.jsx` (nouveau), `App.js` (route publique), tous testés.
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 124 (01/09/2026) — Rendu IA : devis + variantes + comparateur (+ cloche déjà OK)
+- **Cloche notifications** : DÉJÀ EN PLACE (composant `components/NotificationsBell.jsx` rendu dans `Nav.jsx`, badge non-lus, endpoints `/api/quotes/notifications/me|read-all|{id}/read` dans `plans_export.py`). Aucune action nécessaire.
+- **Rendu dans le devis** : `DocSendIn`/`EmailPreviewIn` + `render_url`; helper `_render_button_html` injecte un bouton « 🏠 Voir la projection avant/après du chantier » dans l'e-mail (preview + envoi). QuoteEditor : sélecteur « Rendu IA avant/après (optionnel) » dans la fenêtre d'envoi (liste les rendus prêts, crée le lien de partage à la sélection, passe `render_url`). Validé (email-preview injecte bouton+lien).
+- **3 Variantes de style** : bouton studio « 3 variantes de style (Moderne · Classique · Éco) » (image only). Fire 3 appels `/runway/generate` avec suffixes de prompt par style, poll multiple, affichage 3-up avec partage. Contrôle quota (≥3 requis). Réutilise l'endpoint single-generate déjà prouvé (les 3 appels n'ont pas été exécutés en test pour économiser les crédits).
+- **Comparateur avant/après** : composant `Comparator` sur `RenderShare.jsx` (page publique) — curseur glissant superposant avant/après (clip-path) pour les rendus image ; vidéo reste en côte-à-côte. Validé (screenshot slider fonctionnel).
+- Fichiers : `routes/documents.py`, `routes/runway_render.py` (inchangé cette itér.), `pages/RenderStudio.jsx`, `pages/RenderShare.jsx`, `pages/QuoteEditor.jsx`.
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

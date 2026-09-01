@@ -16,6 +16,12 @@ const RATIOS = [
   { v: "960:960", label: "Carré 1:1" },
 ];
 
+const STYLES = [
+  { key: "moderne", label: "Moderne", suffix: "style moderne, lignes épurées, matériaux contemporains, tons neutres et lumineux" },
+  { key: "classique", label: "Classique", suffix: "style classique et chaleureux, matériaux traditionnels, finitions élégantes et intemporelles" },
+  { key: "economique", label: "Économique", suffix: "finitions simples et économiques, matériaux standard d'entrée de gamme, budget maîtrisé" },
+];
+
 async function fetchBlobUrl(path, params) {
   const res = await api.get(path, { params, responseType: "blob" });
   return URL.createObjectURL(res.data);
@@ -100,6 +106,7 @@ export default function RenderStudio() {
   const [quota, setQuota] = useState(null);
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [variants, setVariants] = useState([]);
   // Source projet
   const [projects, setProjects] = useState([]);
   const [selProject, setSelProject] = useState("");
@@ -161,10 +168,53 @@ export default function RenderStudio() {
 
   const canGenerate = source === "upload" ? !!file : !!selPhoto;
 
+  const buildInputForm = () => {
+    const fd = new FormData();
+    if (source === "upload") fd.append("file", file);
+    else { fd.append("project_id", selProject); fd.append("photo_id", selPhoto.photo_id); }
+    return fd;
+  };
+
+  const pollVariants = (ids) => {
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      const updated = await Promise.all(ids.map((id) =>
+        api.get(`/runway/renders/${id}`).then((r) => r.data).catch(() => null)));
+      setVariants((prev) => prev.map((v, i) => (updated[i] ? { ...updated[i], style: v.style } : v)));
+      if (updated.every((u) => u && u.status !== "processing")) {
+        clearInterval(pollRef.current); setBusy(false); loadHistory(); loadQuota();
+        toast.success("3 variantes prêtes !");
+      }
+    }, 3000);
+  };
+
+  const generateVariants = async () => {
+    if (!canGenerate) return toast.error(source === "upload" ? "Importez une photo" : "Choisissez une photo du projet");
+    if (quota && !quota.unlimited && quota.remaining < 3) return toast.error("Il faut au moins 3 rendus disponibles ce mois pour les 3 variantes");
+    setBusy(true); setCurrent(null); setShareUrl(""); setVariants([]);
+    try {
+      const results = [];
+      for (const st of STYLES) {
+        const fd = buildInputForm();
+        fd.append("prompt", (prompt ? prompt.trim() + ", " : "") + st.suffix);
+        fd.append("kind", "image");
+        fd.append("ratio", ratio);
+        const { data } = await api.post("/runway/generate", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        results.push({ ...data, style: st.label });
+      }
+      setVariants(results);
+      toast.info("3 variantes en génération…");
+      pollVariants(results.map((r) => r.render_id));
+    } catch (e) {
+      setBusy(false);
+      toast.error(e?.response?.data?.detail || "Erreur lors du lancement");
+    }
+  };
+
   const generate = async () => {
     if (!canGenerate) return toast.error(source === "upload" ? "Importez une photo" : "Choisissez une photo du projet");
     if (quota && !quota.unlimited && quota.remaining <= 0) return toast.error("Quota mensuel atteint");
-    setBusy(true); setCurrent(null); setShareUrl("");
+    setBusy(true); setCurrent(null); setShareUrl(""); setVariants([]);
     try {
       const fd = new FormData();
       if (source === "upload") fd.append("file", file);
@@ -322,6 +372,12 @@ export default function RenderStudio() {
             {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Génération…</> : <><Sparkles className="h-4 w-4 mr-2" /> Générer le rendu</>}
           </Button>
 
+          {kind === "image" && (
+            <Button onClick={generateVariants} disabled={busy || !canGenerate} variant="outline" className="w-full" data-testid="render-variants-btn">
+              <Sparkles className="h-4 w-4 mr-2" /> 3 variantes de style (Moderne · Classique · Éco)
+            </Button>
+          )}
+
           <p className="text-xs text-muted-foreground flex items-start gap-1.5">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             Le rendu IA est une visualisation indicative, sans valeur contractuelle ni technique.
@@ -332,28 +388,58 @@ export default function RenderStudio() {
         <div className="space-y-3">
           <div className="rounded-xl border border-border bg-card p-4 min-h-[300px]">
             <div className="text-sm font-medium mb-3">Résultat</div>
-            {!current && <div className="h-56 grid place-items-center text-sm text-muted-foreground">Le rendu apparaîtra ici</div>}
-            {current?.status === "processing" && (
-              <div className="h-56 grid place-items-center text-sm text-muted-foreground" data-testid="render-processing">
-                <div className="text-center"><Loader2 className="h-7 w-7 mx-auto mb-2 animate-spin" /> Génération {current.kind === "video" ? "vidéo" : "image"} en cours…</div>
+            {variants.length > 0 ? (
+              <div className="grid gap-3" data-testid="render-variants">
+                {variants.map((v) => (
+                  <div key={v.render_id} className="rounded-lg border border-border p-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="secondary" className="text-[10px]">{v.style}</Badge>
+                      {v.status === "done" && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => share(v.render_id)} data-testid={`variant-share-${v.render_id}`}>
+                          <Share2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    {v.status === "processing" && <div className="h-32 grid place-items-center text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+                    {v.status === "failed" && <div className="h-32 grid place-items-center text-xs text-destructive">Échec</div>}
+                    {v.status === "done" && <ResultViewer render={v} />}
+                  </div>
+                ))}
               </div>
-            )}
-            {current?.status === "failed" && <div className="h-56 grid place-items-center text-sm text-destructive" data-testid="render-failed">{current.error || "La génération a échoué"}</div>}
-            {current?.status === "done" && (
-              <div className="space-y-3">
-                <ResultViewer render={current} />
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" onClick={downloadCurrent} data-testid="render-download-btn"><Download className="h-4 w-4 mr-2" /> Télécharger</Button>
-                  <Button onClick={() => share(current.render_id)} data-testid="render-share-btn"><Share2 className="h-4 w-4 mr-2" /> Partager au client</Button>
-                </div>
-                {shareUrl && (
-                  <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2" data-testid="render-share-link">
-                    <input readOnly value={shareUrl} className="flex-1 bg-transparent text-xs outline-none" />
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={copyLink} data-testid="render-copy-link">
-                      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                    </Button>
+            ) : (
+              <>
+                {!current && <div className="h-56 grid place-items-center text-sm text-muted-foreground">Le rendu apparaîtra ici</div>}
+                {current?.status === "processing" && (
+                  <div className="h-56 grid place-items-center text-sm text-muted-foreground" data-testid="render-processing">
+                    <div className="text-center"><Loader2 className="h-7 w-7 mx-auto mb-2 animate-spin" /> Génération {current.kind === "video" ? "vidéo" : "image"} en cours…</div>
                   </div>
                 )}
+                {current?.status === "failed" && <div className="h-56 grid place-items-center text-sm text-destructive" data-testid="render-failed">{current.error || "La génération a échoué"}</div>}
+                {current?.status === "done" && (
+                  <div className="space-y-3">
+                    <ResultViewer render={current} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" onClick={downloadCurrent} data-testid="render-download-btn"><Download className="h-4 w-4 mr-2" /> Télécharger</Button>
+                      <Button onClick={() => share(current.render_id)} data-testid="render-share-btn"><Share2 className="h-4 w-4 mr-2" /> Partager au client</Button>
+                    </div>
+                    {shareUrl && (
+                      <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2" data-testid="render-share-link">
+                        <input readOnly value={shareUrl} className="flex-1 bg-transparent text-xs outline-none" />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={copyLink} data-testid="render-copy-link">
+                          {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            {variants.length > 0 && shareUrl && (
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2 mt-3" data-testid="render-share-link">
+                <input readOnly value={shareUrl} className="flex-1 bg-transparent text-xs outline-none" />
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={copyLink} data-testid="render-copy-link">
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                </Button>
               </div>
             )}
           </div>
