@@ -9,6 +9,7 @@ import io
 import os
 import base64
 import uuid
+import secrets
 import asyncio
 import logging
 from datetime import datetime, timezone
@@ -28,6 +29,25 @@ MAX_BYTES = 12 * 1024 * 1024  # 12 Mo en entrée
 MAX_SIDE = 1280               # on réduit l'image d'entrée (data URI léger)
 ALLOWED_RATIOS = {"1280:720", "720:1280", "960:960"}
 POLL_TIMEOUT_S = 600
+MONTHLY_QUOTA = int(os.environ.get("RUNWAY_MONTHLY_QUOTA") or 30)
+FRONTEND_URL = (os.environ.get("FRONTEND_URL") or "").rstrip("/")
+
+
+def _month_start_iso() -> str:
+    n = datetime.now(timezone.utc)
+    return datetime(n.year, n.month, 1, tzinfo=timezone.utc).isoformat()
+
+
+async def _quota_status(user: dict) -> dict:
+    if user.get("role") == "admin":
+        return {"unlimited": True, "limit": None, "used": 0, "remaining": None}
+    used = await db.runway_renders.count_documents({
+        "user_id": user["user_id"],
+        "status": {"$ne": "failed"},
+        "created_at": {"$gte": _month_start_iso()},
+    })
+    return {"unlimited": False, "limit": MONTHLY_QUOTA, "used": used,
+            "remaining": max(0, MONTHLY_QUOTA - used)}
 
 _runway = None
 
@@ -61,6 +81,7 @@ def _downscale_to_jpeg(data: bytes) -> bytes:
 
 
 def _public_doc(d: dict) -> dict:
+    token = d.get("share_token")
     return {
         "render_id": d["render_id"],
         "kind": d["kind"],
@@ -74,6 +95,8 @@ def _public_doc(d: dict) -> dict:
         "finished_at": d.get("finished_at"),
         "has_output": bool(d.get("output_path")),
         "has_input": bool(d.get("input_path")),
+        "share_token": token,
+        "share_url": (f"{FRONTEND_URL}/rendu/{token}" if token and FRONTEND_URL else None),
     }
 
 
@@ -128,11 +151,13 @@ async def _poll_and_store(render_id: str, task_id: str):
 
 
 @router.post("/generate")
-async def generate(file: UploadFile = File(...),
+async def generate(file: UploadFile = File(None),
                    prompt: str = Form(""),
                    kind: str = Form("image"),
                    ratio: str = Form("1280:720"),
                    duration: int = Form(5),
+                   project_id: str = Form(""),
+                   photo_id: str = Form(""),
                    user=Depends(pro_required)):
     if kind not in {"image", "video"}:
         raise HTTPException(status_code=400, detail="Type invalide (image|video)")
@@ -140,7 +165,29 @@ async def generate(file: UploadFile = File(...),
         raise HTTPException(status_code=400, detail="Format invalide")
     duration = 5 if kind == "image" else max(2, min(10, int(duration or 5)))
 
-    data = await file.read()
+    # Quota mensuel (les admins sont illimités)
+    q = await _quota_status(user)
+    if not q["unlimited"] and q["remaining"] <= 0:
+        raise HTTPException(status_code=403,
+                            detail=f"Quota mensuel de rendus IA atteint ({q['limit']}/mois). Réessayez le mois prochain.")
+
+    # Source : photo d'un projet existant OU fichier importé
+    if project_id and photo_id:
+        proj = await db.projects.find_one(
+            {"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0, "photos": 1})
+        if not proj:
+            raise HTTPException(status_code=404, detail="Projet introuvable")
+        photo = next((p for p in (proj.get("photos") or []) if p.get("photo_id") == photo_id), None)
+        if not photo or not photo.get("storage_path"):
+            raise HTTPException(status_code=404, detail="Photo introuvable dans le projet")
+        try:
+            data, _ = await asyncio.to_thread(storage.get_object, photo["storage_path"])
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Lecture de la photo impossible: {e}")
+    else:
+        if file is None:
+            raise HTTPException(status_code=400, detail="Importez une photo ou choisissez-en une dans un projet")
+        data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Fichier vide")
     if len(data) > MAX_BYTES:
@@ -195,11 +242,17 @@ async def generate(file: UploadFile = File(...),
         "duration": duration if kind == "video" else None,
         "status": "processing", "input_path": input_path,
         "output_path": None, "content_type": None, "error": None,
+        "project_id": project_id or None, "photo_id": photo_id or None,
         "created_at": _now(), "finished_at": None,
     }
     await db.runway_renders.insert_one(doc)
     asyncio.create_task(_poll_and_store(render_id, task_id))
     return _public_doc(doc)
+
+
+@router.get("/quota")
+async def quota(user=Depends(current_user)) -> dict:
+    return await _quota_status(user)
 
 
 @router.get("/renders")
@@ -242,3 +295,59 @@ async def delete_render(render_id: str, user=Depends(current_user)) -> dict:
     if not res.deleted_count:
         raise HTTPException(status_code=404, detail="Rendu introuvable")
     return {"ok": True}
+
+
+@router.post("/renders/{render_id}/share")
+async def share_render(render_id: str, user=Depends(current_user)) -> dict:
+    d = await db.runway_renders.find_one({"render_id": render_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not d:
+        raise HTTPException(status_code=404, detail="Rendu introuvable")
+    if d.get("status") != "done":
+        raise HTTPException(status_code=400, detail="Le rendu n'est pas encore prêt")
+    token = d.get("share_token") or secrets.token_urlsafe(16)
+    await db.runway_renders.update_one({"render_id": render_id},
+                                       {"$set": {"share_token": token}})
+    return {"share_token": token,
+            "share_url": (f"{FRONTEND_URL}/rendu/{token}" if FRONTEND_URL else f"/rendu/{token}")}
+
+
+@router.delete("/renders/{render_id}/share")
+async def unshare_render(render_id: str, user=Depends(current_user)) -> dict:
+    res = await db.runway_renders.update_one(
+        {"render_id": render_id, "user_id": user["user_id"]},
+        {"$unset": {"share_token": ""}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Rendu introuvable")
+    return {"ok": True}
+
+
+# ---- Endpoints publics (sans authentification) pour le partage client ----
+@router.get("/public/{token}")
+async def public_render(token: str) -> dict:
+    d = await db.runway_renders.find_one({"share_token": token, "status": "done"}, {"_id": 0})
+    if not d:
+        raise HTTPException(status_code=404, detail="Lien invalide ou expiré")
+    return {
+        "kind": d["kind"],
+        "prompt": d.get("prompt") or "",
+        "created_at": d.get("created_at"),
+        "has_input": bool(d.get("input_path")),
+        "has_output": bool(d.get("output_path")),
+    }
+
+
+@router.get("/public/{token}/file")
+async def public_render_file(token: str, which: str = "output"):
+    d = await db.runway_renders.find_one({"share_token": token, "status": "done"}, {"_id": 0})
+    if not d:
+        raise HTTPException(status_code=404, detail="Lien invalide ou expiré")
+    path = d.get("input_path") if which == "input" else d.get("output_path")
+    if not path:
+        raise HTTPException(status_code=404, detail="Fichier indisponible")
+    try:
+        content, ctype = await asyncio.to_thread(storage.get_object, path)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Lecture impossible: {e}")
+    return Response(content=content,
+                    media_type=(d.get("content_type") if which == "output" else "image/jpeg") or ctype,
+                    headers={"Cache-Control": "public, max-age=3600"})

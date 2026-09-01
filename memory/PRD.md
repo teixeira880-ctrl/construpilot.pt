@@ -2530,3 +2530,10 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
   - Validé e2e réel : gating 401/403, génération PHOTO (PNG 1 Mo, ~24s) et VIDÉO (MP4 1 Mo, ~24s), téléchargement input/output, UI screenshot OK.
 - ⚠️ Le rendu IA consomme des crédits Runway réels (clé du compte utilisateur). Pas de quota par utilisateur pour l'instant (gate Pro seulement).
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 123 (01/09/2026) — Rendu IA : Quota + Depuis Projet + Partage client
+- **Quota mensuel** : `RUNWAY_MONTHLY_QUOTA` (défaut 30) par compte Pro ; admins illimités. `GET /api/runway/quota` → {unlimited, limit, used, remaining}. Blocage 403 dans `generate` si quota atteint. Badge « X/30 ce mois » dans l'UI (`render-quota-badge`).
+- **Génération depuis un projet** : `generate` accepte `project_id`+`photo_id` (fichier alors optionnel) et charge la photo depuis le stockage objet (galerie chantier). UI : onglets « Importer » / « Depuis un projet » + sélecteur projet + grille de photos (composant `AuthImg`, blobs authentifiés). Validé e2e (image générée depuis photo projet).
+- **Partage client** : `POST /api/runway/renders/{id}/share` → `share_token` + `share_url` (`FRONTEND_URL/rendu/{token}`), `DELETE .../share`. Endpoints PUBLICS (sans auth) : `GET /api/runway/public/{token}` + `/file?which=input|output`. Page publique `pages/RenderShare.jsx` route `/rendu/:token` (avant/après, prompt, disclaimer, branding). Bouton « Partager au client » + copie du lien dans le studio et l'historique. Validé e2e (meta + fichiers publics 200 sans token auth, screenshot page publique OK).
+- Fichiers : `routes/runway_render.py` (étendu), `pages/RenderStudio.jsx` (réécrit), `pages/RenderShare.jsx` (nouveau), `App.js` (route publique), tous testés.
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

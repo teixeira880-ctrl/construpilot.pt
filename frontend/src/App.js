@@ -71,6 +71,7 @@ import SharedCalc from "@/pages/SharedCalc";
 import PriceCatalog from "@/pages/PriceCatalog";
 import SiteTracking from "@/pages/SiteTracking";
 import RenderStudio from "@/pages/RenderStudio";
+import RenderShare from "@/pages/RenderShare";
 import Comparatif from "@/pages/Comparatif";
 import Situations from "@/pages/Situations";
 import Entreprise from "@/pages/Entreprise";
@@ -186,6 +187,7 @@ function AppRouter() {
       <Route path="/devis-editeur/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
       <Route path="/scanner-devis" element={<SubscriberRoute><Shell><QuoteScanner /></Shell></SubscriberRoute>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
+      <Route path="/rendu/:token" element={<RenderShare />} />
       <Route path="/sign/:token" element={<SignQuote />} />
       <Route path="/fiche/:shareId" element={<SharedCalc />} />
       <Route path="/avis/:token" element={<ReviewCollect />} />
