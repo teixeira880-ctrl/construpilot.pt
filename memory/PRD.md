@@ -2519,3 +2519,14 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Renvoi de confirmation** : `POST /auth/resend-verification` (authed) régénère le token et renvoie l'e-mail.
 - ENCORE DÉFÉRÉ (nécessite un tour dédié + budget) : Stripe abonnement particulier (débloque analyse devis) + bouton « Passer en Pro » → paiement Stripe + passage auto account_type=pro ; webhook Resend (taux d'ouverture). Ces items = intégrations paiement multi-fichiers via integration_expert, à traiter avec tests complets.
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 122 (01/09/2026) — Admin Debora + Rendu IA Runway (avant/après)
+- **Nouvel admin** `deboradsmelo@gmail.com` (mdp `Miguel1156.`) : créé en preview via `backend/scripts/add_admin_debora.py` ET seedé au démarrage dans `server.py::seed()` (bloc « troisième administrateur », idempotent, override `THIRD_ADMIN_EMAIL`/`THIRD_ADMIN_PASSWORD`). Le seed nettoie aussi le verrou anti-brute-force résiduel pour ce compte. Redéploiement lancé pour créer le compte en PROD (bases preview/prod distinctes).
+- **Rendu IA avant/après (Runway)** — Pro/Business uniquement :
+  - Intégration Runway SDK `runwayml==5.17.0`, clé `RUNWAYML_API_SECRET` (backend/.env). Modèles : `gen4_image` (photo, via `text_to_image.create` + reference_images @AvantChantier) et `gen4_turbo` (vidéo, via `image_to_video.create`).
+  - Backend `routes/runway_render.py` : `POST /api/runway/generate` (multipart photo+prompt+kind+ratio+duration, gate `pro_required`), soumission asynchrone + polling en tâche de fond (`asyncio.create_task`), téléchargement du résultat (URL temporaire Runway) vers le stockage objet permanent. `GET /api/runway/renders`, `GET /api/runway/renders/{id}`, `GET /api/runway/renders/{id}/file?which=input|output`, `DELETE /api/runway/renders/{id}`.
+  - Image d'entrée envoyée en **data URI** (downscale Pillow max 1280px) car le stockage objet n'est pas public. Collection `runway_renders`.
+  - Frontend `pages/RenderStudio.jsx` (route `/rendu-ia`, ProRoute) + entrée nav NAV_PRO « Rendu IA (avant/après) ». Affichage via fetch blob authentifié (auth = Bearer). Historique avant/après.
+  - Validé e2e réel : gating 401/403, génération PHOTO (PNG 1 Mo, ~24s) et VIDÉO (MP4 1 Mo, ~24s), téléchargement input/output, UI screenshot OK.
+- ⚠️ Le rendu IA consomme des crédits Runway réels (clé du compte utilisateur). Pas de quota par utilisateur pour l'instant (gate Pro seulement).
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

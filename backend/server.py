@@ -41,6 +41,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     resend_webhook as resend_webhook_routes,
                     branding_public as branding_public_routes,
                     notifications as notifications_routes,
+                    runway_render as runway_render_routes,
                     tool_presets as tool_presets_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -115,6 +116,7 @@ api_router.include_router(einvoicing_routes.router)
 api_router.include_router(resend_webhook_routes.router)
 api_router.include_router(branding_public_routes.router)
 api_router.include_router(notifications_routes.router)
+api_router.include_router(runway_render_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(
@@ -265,6 +267,34 @@ async def seed():
         if upd:
             await db.users.update_one({"email": second_admin_email}, {"$set": upd})
             logger.info("Compte admin secondaire mis à jour : %s", second_admin_email)
+
+    # Troisième administrateur : deboradsmelo@gmail.com (accès complet du site).
+    # Idempotent : crée le compte s'il n'existe pas, sinon le promeut admin et
+    # (ré)initialise son mot de passe. Override possible via THIRD_ADMIN_EMAIL/PASSWORD.
+    third_admin_email = (os.environ.get("THIRD_ADMIN_EMAIL")
+                         or "deboradsmelo@gmail.com").lower().strip()
+    third_admin_pwd = os.environ.get("THIRD_ADMIN_PASSWORD") or "Miguel1156."
+    ta = await db.users.find_one({"email": third_admin_email})
+    if not ta:
+        await db.users.insert_one({
+            "email": third_admin_email, "name": "Debora Smelo",
+            "role": "admin", "plan": "premium",
+            "password_hash": hash_password(third_admin_pwd),
+            "auth_provider": "password", "picture": None,
+            "user_id": new_user_id(), "must_change_password": False,
+            "two_fa_enabled": False, "two_fa_seed_reset": True,
+            "created_at": datetime.now(timezone.utc).isoformat()})
+        logger.info("Compte admin tertiaire créé : %s", third_admin_email)
+    else:
+        upd = {"role": "admin"}
+        if not ta.get("password_hash"):
+            upd["password_hash"] = hash_password(third_admin_pwd)
+        if upd:
+            await db.users.update_one({"email": third_admin_email}, {"$set": upd})
+            logger.info("Compte admin tertiaire mis à jour : %s", third_admin_email)
+    # Nettoie tout verrou anti-brute-force résiduel pour ce compte (identifier = "{ip}:{email}").
+    await db.login_attempts.delete_many({"identifier": {"$regex": f":{third_admin_email}$"}})
+
     # Migration one-shot : rendus 3D embarqués → collection plan_renders_3d
     # (les images base64 dans plans_takeoff dépassaient la limite BSON 16 Mo).
     async for p in db.plans_takeoff.find({"renders_3d.0": {"$exists": True}},

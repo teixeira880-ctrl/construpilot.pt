@@ -70,6 +70,7 @@ import WorkerApp from "@/pages/WorkerApp";
 import SharedCalc from "@/pages/SharedCalc";
 import PriceCatalog from "@/pages/PriceCatalog";
 import SiteTracking from "@/pages/SiteTracking";
+import RenderStudio from "@/pages/RenderStudio";
 import Comparatif from "@/pages/Comparatif";
 import Situations from "@/pages/Situations";
 import Entreprise from "@/pages/Entreprise";
@@ -153,6 +154,7 @@ function AppRouter() {
       <Route path="/mon-catalogue" element={<ProRoute><Shell><PriceCatalog /></Shell></ProRoute>} />
       <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
+      <Route path="/rendu-ia" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
