@@ -553,6 +553,18 @@ export default function Admin() {
                     estimation {eur(l.project_snapshot.estimation)} · lots : {(l.project_snapshot.lots || []).join(", ")}
                   </p>
                 )}
+                {l.assignment_log && l.assignment_log.length > 0 && (
+                  <div className="text-[11px] text-muted-foreground bg-muted/40 rounded-sm p-2 space-y-0.5" data-testid={`admin-lead-history-${l.lead_id}`}>
+                    <p className="font-semibold uppercase tracking-wide text-[10px]">Historique d'attribution</p>
+                    {l.assignment_log.slice(-6).map((e, i) => (
+                      <p key={i}>
+                        {{ proposee: "→ Proposée à", acceptee: "✔ Acceptée par", refusee: "✕ Refusée par", assignee_manuelle: "→ Assignée à", en_cours: "… En cours par" }[e.action] || e.action}{" "}
+                        <span className="font-medium">{e.user_name || "—"}</span>
+                        {" · "}{new Date(e.at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    ))}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border mt-1">
                   <Select
                     value={l.assigned_to || "none"}

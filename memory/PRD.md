@@ -2578,3 +2578,11 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Dashboard leads admin** : `admin/leads/stats` étendu (assignes, en_attente, pris_en_charge, refuses, auto_assignes, conversion). `Admin.jsx` : 2e ligne de cartes (Nouveaux non assignés, Assignés, En attente pro, Pris en charge, Refusés, Taux de conversion).
 - Fichiers : `routes/phase7.py`, `routes/leads.py`, `routes/admin.py`, `server.py`, `components/BrandingDialog.jsx`, `pages/Admin.jsx`. Validé e2e (curl + screenshot dashboard).
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 129 (02/09/2026) — Multi-pros, score de priorité, départements FR, historique
+- **Départements FR** : `leads.py::_dept_from_text` extrait le département (2 chiffres, 2A/2B, 97x/98x) du code postal (champ `postal_code` ajouté à LeadIn + parsé dans adresse/description). Stocké `lead.department`. Utilisé dans `_zone_match`.
+- **Score de priorité pro** : `_pro_score` = note moyenne (avis publiés) ×2 + réactivité (acceptations − 0.5×refus). `_rank_pros_for_zone` trie les pros de la zone par score décroissant (limite 3).
+- **Assignation multi-pros** : `_propose_to_pros` met la demande en concurrence (`candidates: [user_ids]`), notifie chaque pro. Le 1er qui accepte (`handling=acceptee`) la remporte : `assigned_to` fixé, `candidates` vidé, les autres reçoivent une notif « déjà prise ». `GET /leads/assigned` renvoie assigned OU candidate (+ flags `is_mine`/`is_candidate`). Refus → retiré des candidats (+ refused_by) ; si plus personne → reproposé aux pros suivants.
+- **Historique d'attribution** : `assignment_log` (push) — actions proposee/acceptee/refusee/assignee_manuelle/en_cours avec user + horodatage. Affiché dans la fiche admin ; assignation manuelle admin vide les candidats + log.
+- Frontend : `MyLeads.jsx` (badge « Proposée — à saisir », Dépt, mention concurrence), `Admin.jsx` (bloc « Historique d'attribution »). Validé e2e (2 pros candidats → A accepte → B perd ; dept 33 ; log complet ; screenshot).
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

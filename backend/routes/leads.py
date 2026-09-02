@@ -53,6 +53,7 @@ class LeadIn(BaseModel):
     email: EmailStr
     phone: str = ""
     address: str = ""
+    postal_code: str = ""
     availability: str = ""
     budget: float | None = None
     description: str = ""
@@ -82,6 +83,7 @@ async def create_lead(body: LeadIn, user=Depends(optional_user)):
         } if project else None,
         "status": "nouveau", "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    doc["department"] = _dept_from_text(body.postal_code, body.address, body.description)
     await db.leads.insert_one(doc)
     doc.pop("_id", None)
     # E-mail de bienvenue automatique pour les leads venant de la page d'accueil
@@ -143,41 +145,87 @@ async def _notify_lead_pro(pro: dict, lead: dict) -> None:
         pass
 
 
-async def _find_pro_for_zone(lead: dict, exclude_ids=None):
-    """Trouve un pro dont la zone (brand_city ou service_zones) matche l'adresse/description."""
-    exclude = set(exclude_ids or [])
-    hay = f"{lead.get('address', '')} {lead.get('description', '')}".lower()
-    if not hay.strip():
+def _dept_from_text(*parts) -> str | None:
+    """Déduit le département FR (2 chiffres, ou 2A/2B/97x/98x) depuis un code postal trouvé."""
+    import re as _re
+    m = _re.search(r"\b(\d{5})\b", " ".join(p or "" for p in parts))
+    if not m:
         return None
+    cp = m.group(1)
+    d = cp[:2]
+    if d == "20":
+        return "2A" if cp[:3] in ("200", "201") else "2B"
+    if d in ("97", "98"):
+        return cp[:3]
+    return d
+
+
+def _zone_match(pro: dict, lead: dict) -> bool:
+    hay = f"{lead.get('address', '')} {lead.get('description', '')} {lead.get('postal_code', '')}".lower()
+    dept = (lead.get("department") or "").lower()
+    zones = [z for z in ([pro.get("brand_city")] + (pro.get("service_zones") or [])) if z]
+    for z in zones:
+        zl = (z or "").lower().strip()
+        if not zl:
+            continue
+        if zl in hay or (dept and zl == dept):
+            return True
+    return False
+
+
+async def _pro_score(pro: dict) -> float:
+    """Score de priorité : note moyenne (avis) + réactivité (acceptations - refus)."""
+    uid = pro["user_id"]
+    revs = await db.reviews.find(
+        {"user_id": uid, "submitted": True, "published": True}, {"_id": 0, "rating": 1}).to_list(500)
+    ratings = [r["rating"] for r in revs if r.get("rating")]
+    avg = (sum(ratings) / len(ratings)) if ratings else 0
+    acc = await db.leads.count_documents({"assigned_to": uid, "handling_status": "acceptee"})
+    ref = await db.leads.count_documents({"refused_by": uid})
+    return round(avg * 2 + acc - 0.5 * ref + (0.5 if ratings else 0), 2)
+
+
+async def _rank_pros_for_zone(lead: dict, exclude_ids=None, limit: int = 3) -> list:
+    """Pros de la zone triés par score de priorité (meilleurs d'abord)."""
+    exclude = set(exclude_ids or [])
     pros = await db.users.find(
         {"account_type": {"$in": ["pro", "pro_business"]}},
         {"_id": 0, "user_id": 1, "email": 1, "name": 1, "brand_city": 1, "service_zones": 1}
     ).to_list(300)
+    matching = [p for p in pros if p["user_id"] not in exclude and _zone_match(p, lead)]
+    scored = [(await _pro_score(p), p) for p in matching]
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [p for _, p in scored[:limit]]
+
+
+async def _log_assignment(lead_id: str, action: str, pro: dict | None = None, note: str | None = None) -> None:
+    entry = {"action": action, "at": datetime.now(timezone.utc).isoformat()}
+    if pro:
+        entry["user_id"] = pro.get("user_id")
+        entry["user_name"] = pro.get("name") or pro.get("email")
+    if note:
+        entry["note"] = note
+    await db.leads.update_one({"lead_id": lead_id}, {"$push": {"assignment_log": entry}})
+
+
+async def _propose_to_pros(lead: dict, pros: list) -> None:
+    """Propose la demande à plusieurs pros (le premier qui accepte la remporte)."""
+    ids = [p["user_id"] for p in pros]
+    await db.leads.update_one({"lead_id": lead["lead_id"]}, {"$set": {
+        "candidates": ids, "candidates_at": datetime.now(timezone.utc).isoformat(),
+        "auto_assigned": True, "response_reminded_at": None}})
     for p in pros:
-        if p["user_id"] in exclude:
-            continue
-        zones = [z for z in ([p.get("brand_city")] + (p.get("service_zones") or [])) if z]
-        if any((z or "").lower() in hay for z in zones):
-            return p
-    return None
-
-
-async def _assign_lead_to(lead_id: str, pro: dict, auto: bool = False) -> None:
-    await db.leads.update_one({"lead_id": lead_id}, {"$set": {
-        "assigned_to": pro["user_id"], "assigned_to_name": pro.get("name") or pro.get("email"),
-        "assigned_at": datetime.now(timezone.utc).isoformat(), "auto_assigned": auto,
-        "handling_status": None, "response_reminded_at": None}})
-    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
-    await _notify_lead_pro(pro, lead)
+        await _notify_lead_pro(p, lead)
+        await _log_assignment(lead["lead_id"], "proposee", p)
 
 
 async def _auto_assign_lead(lead: dict) -> None:
-    """Assigne automatiquement la demande à un pro dont la zone correspond."""
-    if lead.get("assigned_to"):
+    """Propose automatiquement la demande aux meilleurs pros de la zone."""
+    if lead.get("assigned_to") or lead.get("candidates"):
         return
-    pro = await _find_pro_for_zone(lead, exclude_ids=lead.get("refused_by"))
-    if pro:
-        await _assign_lead_to(lead["lead_id"], pro, auto=True)
+    pros = await _rank_pros_for_zone(lead, exclude_ids=lead.get("refused_by"), limit=3)
+    if pros:
+        await _propose_to_pros(lead, pros)
 
 
 @router.get("/public-count")
@@ -227,54 +275,95 @@ async def my_leads(user=Depends(current_user)):
 
 @router.get("/assigned")
 async def assigned_leads(user=Depends(current_user)):
-    """Demandes assignées au professionnel connecté (« Mes demandes »)."""
-    return await db.leads.find({"assigned_to": user["user_id"]}, {"_id": 0}) \
-        .sort("assigned_at", -1).to_list(200)
+    """Demandes assignées OU proposées au pro connecté (« Mes demandes »)."""
+    uid = user["user_id"]
+    docs = await db.leads.find(
+        {"$or": [{"assigned_to": uid}, {"candidates": uid}]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    for d in docs:
+        d["is_mine"] = d.get("assigned_to") == uid
+        d["is_candidate"] = (uid in (d.get("candidates") or [])) and not d.get("assigned_to")
+    return docs
 
 
 class HandlingIn(BaseModel):
     handling_status: str  # acceptee | refusee | en_cours
 
 
-@router.put("/{lead_id}/handling")
-async def update_handling(lead_id: str, body: HandlingIn, user=Depends(current_user)):
-    """Le pro assigné met à jour sa prise en charge (acceptée / refusée)."""
-    if body.handling_status not in {"acceptee", "refusee", "en_cours"}:
-        from fastapi import HTTPException
-        raise HTTPException(400, "Statut invalide")
-    lead = await db.leads.find_one({"lead_id": lead_id, "assigned_to": user["user_id"]}, {"_id": 0})
-    if not lead:
-        from fastapi import HTTPException
-        raise HTTPException(404, "Demande introuvable ou non assignée")
-    upd = {"handling_status": body.handling_status,
-           "handling_updated_at": datetime.now(timezone.utc).isoformat()}
-    op = {"$set": upd}
-    if body.handling_status == "refusee":
-        upd["assigned_to"] = None
-        upd["assigned_to_name"] = None
-        op["$addToSet"] = {"refused_by": user["user_id"]}
-    await db.leads.update_one({"lead_id": lead_id}, op)
-    # Notifie les admins de la décision du pro
-    label = {"acceptee": "a pris en charge", "refusee": "a refusé", "en_cours": "traite"}[body.handling_status]
-    pro_name = user.get("name") or user.get("email")
+async def _notify_admins_handling(lead: dict, pro_name: str, status: str) -> None:
+    label = {"acceptee": "a pris en charge", "refusee": "a refusé", "en_cours": "traite"}[status]
+    client = lead.get("name") or lead.get("email") or "client"
     admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1}).to_list(20)
     for a in admins:
         try:
             await db.notifications.insert_one({
-                "notif_id": "n_" + uuid.uuid4().hex[:10],
-                "user_id": a["user_id"], "type": "lead_handling", "lead_id": lead_id,
-                "message": f"{pro_name} {label} la demande de {lead.get('name') or lead.get('email') or 'client'}.",
+                "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": a["user_id"],
+                "type": "lead_handling", "lead_id": lead.get("lead_id"),
+                "message": f"{pro_name} {label} la demande de {client}.",
                 "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
         except Exception:
             pass
-    # Réattribution automatique à un autre pro de la zone en cas de refus
+
+
+@router.put("/{lead_id}/handling")
+async def update_handling(lead_id: str, body: HandlingIn, user=Depends(current_user)):
+    """Le pro assigné ou candidat prend en charge / refuse la demande."""
+    from fastapi import HTTPException
+    if body.handling_status not in {"acceptee", "refusee", "en_cours"}:
+        raise HTTPException(400, "Statut invalide")
+    uid = user["user_id"]
+    me = {"user_id": uid, "name": user.get("name"), "email": user.get("email")}
+    pro_name = user.get("name") or user.get("email")
+    lead = await db.leads.find_one(
+        {"lead_id": lead_id, "$or": [{"assigned_to": uid}, {"candidates": uid}]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(404, "Demande introuvable ou non proposée")
+    now = datetime.now(timezone.utc).isoformat()
     reassigned_to = None
-    if body.handling_status == "refusee":
+
+    if body.handling_status == "acceptee":
+        if lead.get("assigned_to") and lead["assigned_to"] != uid:
+            raise HTTPException(409, "Cette demande a déjà été prise par un autre professionnel")
+        await db.leads.update_one({"lead_id": lead_id}, {"$set": {
+            "assigned_to": uid, "assigned_to_name": pro_name, "assigned_at": now,
+            "handling_status": "acceptee", "handling_updated_at": now, "candidates": []}})
+        await _log_assignment(lead_id, "acceptee", me)
+        # Informe les autres pros candidats que la demande est déjà attribuée
+        for oid in (lead.get("candidates") or []):
+            if oid == uid:
+                continue
+            try:
+                await db.notifications.insert_one({
+                    "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": oid,
+                    "type": "lead_taken", "lead_id": lead_id,
+                    "message": f"La demande de {lead.get('name') or 'client'} a été prise par un autre pro.",
+                    "created_at": now, "read": False})
+            except Exception:
+                pass
+        await _notify_admins_handling(lead, pro_name, "acceptee")
+
+    elif body.handling_status == "refusee":
+        op = {"$addToSet": {"refused_by": uid}, "$pull": {"candidates": uid},
+              "$set": {"handling_updated_at": now}}
+        if lead.get("assigned_to") == uid:
+            op["$set"]["assigned_to"] = None
+            op["$set"]["assigned_to_name"] = None
+            op["$set"]["handling_status"] = None
+        await db.leads.update_one({"lead_id": lead_id}, op)
+        await _log_assignment(lead_id, "refusee", me)
+        await _notify_admins_handling(lead, pro_name, "refusee")
+        # Réattribution : si plus aucun candidat/assigné, on propose aux pros suivants
         fresh = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
-        pro = await _find_pro_for_zone(fresh, exclude_ids=fresh.get("refused_by"))
-        if pro:
-            await _assign_lead_to(lead_id, pro, auto=True)
-            reassigned_to = pro.get("name") or pro.get("email")
+        if not fresh.get("assigned_to") and not fresh.get("candidates"):
+            pros = await _rank_pros_for_zone(fresh, exclude_ids=fresh.get("refused_by"), limit=3)
+            if pros:
+                await _propose_to_pros(fresh, pros)
+                reassigned_to = ", ".join(p.get("name") or p.get("email") for p in pros)
+    else:  # en_cours
+        await db.leads.update_one({"lead_id": lead_id},
+                                  {"$set": {"handling_status": "en_cours", "handling_updated_at": now}})
+        await _log_assignment(lead_id, "en_cours", me)
+
     result = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     result["reassigned_to"] = reassigned_to
     return result

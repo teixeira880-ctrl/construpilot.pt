@@ -537,12 +537,21 @@ async def update_lead(lead_id: str, body: LeadStatusIn):
             upd["assigned_to"] = pro["user_id"]
             upd["assigned_to_name"] = pro.get("name") or pro.get("email")
             upd["assigned_at"] = datetime.now(timezone.utc).isoformat()
+            upd["candidates"] = []  # attribution manuelle directe : plus de mise en concurrence
+            upd["handling_status"] = None
             if lead.get("assigned_to") != pro["user_id"]:
                 notify_pro = pro
     if upd:
         await db.leads.update_one({"lead_id": lead_id}, {"$set": upd})
     if notify_pro:
         await _notify_assigned_pro(notify_pro, {**lead, **upd})
+        try:
+            await db.leads.update_one({"lead_id": lead_id}, {"$push": {"assignment_log": {
+                "action": "assignee_manuelle", "user_id": notify_pro["user_id"],
+                "user_name": notify_pro.get("name") or notify_pro.get("email"),
+                "at": datetime.now(timezone.utc).isoformat()}}})
+        except Exception:
+            pass
     return await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
 
 

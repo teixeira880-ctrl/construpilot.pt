@@ -81,7 +81,9 @@ export default function MyLeads() {
                   <p className="font-semibold">{l.name || l.email || "Client"}</p>
                   {l.budget ? <span className="num text-primary font-bold">{eur(l.budget)}</span> : null}
                   {h ? <span className={`px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase border ${h.cls}`}>{h.label}</span>
+                     : l.is_candidate ? <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase border bg-primary/15 text-primary border-primary/30">Proposée — à saisir</span>
                      : <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase border bg-secondary text-muted-foreground border-border flex items-center gap-1"><Clock className="h-3 w-3" /> À traiter</span>}
+                  {l.department && <Badge variant="outline" className="text-[10px]">Dépt {l.department}</Badge>}
                   {l.auto_assigned && <Badge variant="outline" className="text-[10px]">Auto</Badge>}
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -90,6 +92,7 @@ export default function MyLeads() {
                   {l.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {l.address}</span>}
                 </div>
                 {l.description && <p className="text-sm">{l.description}</p>}
+                {l.is_candidate && <p className="text-xs text-primary">Cette demande est proposée à plusieurs professionnels — le premier qui l'accepte la remporte.</p>}
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
                   {l.handling_status !== "acceptee" && (
                     <Button size="sm" className="rounded-sm gap-1.5 h-8" disabled={busy.startsWith(l.lead_id)} onClick={() => setHandling(l, "acceptee")} data-testid={`my-lead-accept-${l.lead_id}`}>
