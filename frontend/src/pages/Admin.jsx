@@ -474,6 +474,23 @@ export default function Admin() {
               ))}
             </div>
           )}
+          {leadStats && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6" data-testid="admin-lead-assign-stats">
+              {[
+                { label: "Nouveaux (non assignés)", value: leadStats.nouveaux ?? leadStats.nouveau, cls: "text-foreground" },
+                { label: "Assignés", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
+                { label: "En attente pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
+                { label: "Pris en charge", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
+                { label: "Refusés", value: leadStats.refuses ?? 0, cls: "text-red-500" },
+                { label: "Taux de conversion", value: `${leadStats.conversion ?? 0}%`, cls: "text-primary" },
+              ].map((s) => (
+                <div key={s.label} className="surface p-4 rounded-sm" data-testid={`admin-lead-assign-stat-${s.label}`}>
+                  <p className={`num text-2xl font-extrabold ${s.cls}`}>{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="admin-leads-filter">
             {[["all", "Tous"], ["nouveau", "Nouveaux"], ["contacté", "Contactés"],
               ["devis envoyé", "Devis envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],

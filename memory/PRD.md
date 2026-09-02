@@ -2569,3 +2569,12 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Suivi de prise en charge** : `PUT /leads/{id}/handling` (pro assigné) → `handling_status` acceptee/refusee/en_cours (refusee désassigne le lead) + notifie les admins (type lead_handling). UI : boutons « Prendre en charge » / « Refuser » + badge de statut.
 - Fichiers : `routes/leads.py`, `pages/MyLeads.jsx`, `App.js`, `components/Nav.jsx`. Validé e2e (nouveau lead→notif admin ; assign ; /assigned ; handling ; UI screenshot).
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 128 (02/09/2026) — Zones pro, réattribution au refus, relance délai, dashboard leads
+- **Zones de couverture pro** : champ `service_zones` (villes/départements) ajouté au branding (`phase7.py` BrandingIn/get/update ; UI `BrandingDialog.jsx` « Zones d'intervention », séparées par virgules). Stocké sur l'utilisateur.
+- **Auto-assignation fiabilisée** : `leads.py::_find_pro_for_zone` matche brand_city OU service_zones dans l'adresse/description. `_auto_assign_lead` + `_assign_lead_to` réutilisables.
+- **Réattribution auto au refus** : `update_handling` (refusee) ajoute le pro à `refused_by`, désassigne, puis réassigne au prochain pro de la zone (hors refused_by) via `_find_pro_for_zone` ; renvoie `reassigned_to`. Validé e2e (Pro A refuse → réassigné à Pro B Bordeaux).
+- **Relance délai** : `run_assignment_reminders` (job APScheduler interval 6 h) — demandes assignées sans réponse >24 h → notif pro + notif admin + e-mail pro ; marque `response_reminded_at`.
+- **Dashboard leads admin** : `admin/leads/stats` étendu (assignes, en_attente, pris_en_charge, refuses, auto_assignes, conversion). `Admin.jsx` : 2e ligne de cartes (Nouveaux non assignés, Assignés, En attente pro, Pris en charge, Refusés, Taux de conversion).
+- Fichiers : `routes/phase7.py`, `routes/leads.py`, `routes/admin.py`, `server.py`, `components/BrandingDialog.jsx`, `pages/Admin.jsx`. Validé e2e (curl + screenshot dashboard).
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

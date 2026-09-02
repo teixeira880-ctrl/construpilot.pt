@@ -143,23 +143,41 @@ async def _notify_lead_pro(pro: dict, lead: dict) -> None:
         pass
 
 
-async def _auto_assign_lead(lead: dict) -> None:
-    """Assigne automatiquement la demande à un pro dont la zone (brand_city) correspond."""
-    if lead.get("assigned_to"):
-        return
+async def _find_pro_for_zone(lead: dict, exclude_ids=None):
+    """Trouve un pro dont la zone (brand_city ou service_zones) matche l'adresse/description."""
+    exclude = set(exclude_ids or [])
     hay = f"{lead.get('address', '')} {lead.get('description', '')}".lower()
     if not hay.strip():
-        return
+        return None
     pros = await db.users.find(
-        {"account_type": {"$in": ["pro", "pro_business"]}, "brand_city": {"$nin": [None, ""]}},
-        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "brand_city": 1}).to_list(100)
-    match = next((p for p in pros if (p.get("brand_city") or "").lower() in hay), None)
-    if not match:
+        {"account_type": {"$in": ["pro", "pro_business"]}},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "brand_city": 1, "service_zones": 1}
+    ).to_list(300)
+    for p in pros:
+        if p["user_id"] in exclude:
+            continue
+        zones = [z for z in ([p.get("brand_city")] + (p.get("service_zones") or [])) if z]
+        if any((z or "").lower() in hay for z in zones):
+            return p
+    return None
+
+
+async def _assign_lead_to(lead_id: str, pro: dict, auto: bool = False) -> None:
+    await db.leads.update_one({"lead_id": lead_id}, {"$set": {
+        "assigned_to": pro["user_id"], "assigned_to_name": pro.get("name") or pro.get("email"),
+        "assigned_at": datetime.now(timezone.utc).isoformat(), "auto_assigned": auto,
+        "handling_status": None, "response_reminded_at": None}})
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    await _notify_lead_pro(pro, lead)
+
+
+async def _auto_assign_lead(lead: dict) -> None:
+    """Assigne automatiquement la demande à un pro dont la zone correspond."""
+    if lead.get("assigned_to"):
         return
-    await db.leads.update_one({"lead_id": lead["lead_id"]}, {"$set": {
-        "assigned_to": match["user_id"], "assigned_to_name": match.get("name") or match.get("email"),
-        "assigned_at": datetime.now(timezone.utc).isoformat(), "auto_assigned": True}})
-    await _notify_lead_pro(match, lead)
+    pro = await _find_pro_for_zone(lead, exclude_ids=lead.get("refused_by"))
+    if pro:
+        await _assign_lead_to(lead["lead_id"], pro, auto=True)
 
 
 @router.get("/public-count")
@@ -230,10 +248,12 @@ async def update_handling(lead_id: str, body: HandlingIn, user=Depends(current_u
         raise HTTPException(404, "Demande introuvable ou non assignée")
     upd = {"handling_status": body.handling_status,
            "handling_updated_at": datetime.now(timezone.utc).isoformat()}
+    op = {"$set": upd}
     if body.handling_status == "refusee":
         upd["assigned_to"] = None
         upd["assigned_to_name"] = None
-    await db.leads.update_one({"lead_id": lead_id}, {"$set": upd})
+        op["$addToSet"] = {"refused_by": user["user_id"]}
+    await db.leads.update_one({"lead_id": lead_id}, op)
     # Notifie les admins de la décision du pro
     label = {"acceptee": "a pris en charge", "refusee": "a refusé", "en_cours": "traite"}[body.handling_status]
     pro_name = user.get("name") or user.get("email")
@@ -247,7 +267,64 @@ async def update_handling(lead_id: str, body: HandlingIn, user=Depends(current_u
                 "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
         except Exception:
             pass
-    return await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    # Réattribution automatique à un autre pro de la zone en cas de refus
+    reassigned_to = None
+    if body.handling_status == "refusee":
+        fresh = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+        pro = await _find_pro_for_zone(fresh, exclude_ids=fresh.get("refused_by"))
+        if pro:
+            await _assign_lead_to(lead_id, pro, auto=True)
+            reassigned_to = pro.get("name") or pro.get("email")
+    result = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    result["reassigned_to"] = reassigned_to
+    return result
+
+
+async def run_assignment_reminders() -> int:
+    """Relance le pro + alerte l'admin si une demande assignée reste sans réponse > 24 h."""
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(hours=24)).isoformat()
+    sent = 0
+    leads = await db.leads.find({
+        "assigned_to": {"$nin": [None, ""]},
+        "handling_status": {"$in": [None, "en_cours"]},
+        "assigned_at": {"$lte": cutoff},
+        "response_reminded_at": {"$in": [None]},
+    }, {"_id": 0}).to_list(200)
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1, "email": 1}).to_list(20)
+    for lead in leads:
+        pro = await db.users.find_one({"user_id": lead["assigned_to"]}, {"_id": 0, "user_id": 1, "email": 1, "name": 1})
+        client = lead.get("name") or lead.get("email") or "un client"
+        if pro:
+            try:
+                await db.notifications.insert_one({
+                    "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": pro["user_id"],
+                    "type": "lead_reminder", "lead_id": lead.get("lead_id"),
+                    "message": f"Rappel : la demande de {client} attend votre réponse.",
+                    "created_at": now.isoformat(), "read": False})
+            except Exception:
+                pass
+        for a in admins:
+            try:
+                await db.notifications.insert_one({
+                    "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": a["user_id"],
+                    "type": "lead_reminder_admin", "lead_id": lead.get("lead_id"),
+                    "message": f"Sans réponse >24 h : {(pro or {}).get('name') or 'un pro'} n'a pas traité la demande de {client}.",
+                    "created_at": now.isoformat(), "read": False})
+            except Exception:
+                pass
+        try:
+            from engines.emailer import send_email, wrap_html
+            if pro and pro.get("email"):
+                html = wrap_html("Une demande attend votre réponse",
+                                 f"<p>La demande de <b>{client}</b> vous est assignée depuis plus de 24 h et attend votre réponse.</p>",
+                                 cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Voir mes demandes")
+                await send_email(pro["email"], "Rappel : une demande attend votre réponse — ConstruPilot", html)
+        except Exception:
+            pass
+        await db.leads.update_one({"lead_id": lead["lead_id"]}, {"$set": {"response_reminded_at": now.isoformat()}})
+        sent += 1
+    return sent
 
 
 @router.post("/mine/mark-viewed")

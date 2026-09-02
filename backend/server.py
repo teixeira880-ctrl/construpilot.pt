@@ -432,6 +432,10 @@ async def seed():
     scheduler.add_job(leads.run_prospect_reminders,
                       "interval", hours=6, id="prospect_j2_reminders",
                       max_instances=1, coalesce=True)
+    # Relance des demandes assignées sans réponse depuis > 24 h (pro + admin)
+    scheduler.add_job(leads.run_assignment_reminders,
+                      "interval", hours=6, id="lead_assignment_reminders",
+                      max_instances=1, coalesce=True)
     # Résumé mensuel des surcoûts/économies fournisseurs — le 1er de chaque mois à 07:00 UTC
     scheduler.add_job(einvoicing_routes.run_monthly_overspend_reports,
                       CronTrigger(day=1, hour=7, minute=0),

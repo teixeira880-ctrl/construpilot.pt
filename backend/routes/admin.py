@@ -463,8 +463,17 @@ async def leads_stats() -> dict:
     landing = await db.leads.count_documents({"source": {"$regex": "^landing"}})
     nouveau = await db.leads.count_documents({"status": "nouveau"})
     gagne = await db.leads.count_documents({"status": "gagné"})
+    assignes = await db.leads.count_documents({"assigned_to": {"$nin": [None, ""]}})
+    en_attente = await db.leads.count_documents({"assigned_to": {"$nin": [None, ""]}, "handling_status": {"$in": [None, "en_cours"]}})
+    pris_en_charge = await db.leads.count_documents({"handling_status": "acceptee"})
+    refuses = await db.leads.count_documents({"handling_status": "refusee"})
+    auto_assignes = await db.leads.count_documents({"auto_assigned": True})
+    conversion = round(pris_en_charge / total * 100) if total else 0
     return {"total": total, "particulier": particulier, "pro": pro,
-            "landing": landing, "nouveau": nouveau, "gagne": gagne}
+            "landing": landing, "nouveau": nouveau, "gagne": gagne,
+            "assignes": assignes, "en_attente": en_attente,
+            "pris_en_charge": pris_en_charge, "refuses": refuses,
+            "auto_assignes": auto_assignes, "conversion": conversion}
 
 
 class LeadStatusIn(BaseModel):

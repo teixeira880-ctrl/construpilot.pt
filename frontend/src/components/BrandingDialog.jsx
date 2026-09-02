@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Upload, Trash2, Save, Award } from "lucide-react";
+import { Building2, Upload, Trash2, Save, Award, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,7 @@ export function BrandingDialog({ trigger }) {
   const [country, setCountry] = useState("FR");
   const [logoB64, setLogoB64] = useState("");
   const [defaultEmailMsg, setDefaultEmailMsg] = useState("");
+  const [serviceZones, setServiceZones] = useState("");
   const [certSel, setCertSel] = useState({});
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState("user");
@@ -51,6 +52,7 @@ export function BrandingDialog({ trigger }) {
       setCountry(data.country || "FR");
       setLogoB64(data.logo_b64 || "");
       setDefaultEmailMsg(data.default_email_message || "");
+      setServiceZones((data.service_zones || []).join(", "));
       const map = {};
       (data.certifications || []).forEach((c) => { map[c.code] = c.number || ""; });
       setCertSel(map);
@@ -83,6 +85,7 @@ export function BrandingDialog({ trigger }) {
         siret: siret, vat: vat,
         address: address, city: city, postal_code: postalCode, country: country,
         default_email_message: defaultEmailMsg,
+        service_zones: serviceZones.split(",").map((s) => s.trim()).filter(Boolean),
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
       toast.success("Identité pro enregistrée");
@@ -183,6 +186,17 @@ export function BrandingDialog({ trigger }) {
                      placeholder="FR" disabled={!canEdit}
                      data-testid="branding-country-input" className="rounded-sm h-11 num" maxLength={2} />
             </div>
+          </div>
+
+
+          <div className="grid gap-2">
+            <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-primary" /> Zones d'intervention</Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Villes ou départements couverts, séparés par des virgules. Sert à vous attribuer automatiquement les demandes de votre secteur.
+            </p>
+            <Input value={serviceZones} onChange={(e) => setServiceZones(e.target.value)}
+                   placeholder="Paris, Lyon, Rhône, 69, Villeurbanne" disabled={!canEdit}
+                   data-testid="branding-zones-input" className="rounded-sm h-11" maxLength={600} />
           </div>
 
 
