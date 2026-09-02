@@ -586,6 +586,11 @@ export default function Admin() {
                   </Button>
                   {l.email && (
                     <>
+                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Invitation envoyée à ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); } }}
+                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
+                              data-testid={`admin-lead-invite-send-${l.lead_id}`}>
+                        <Mail className="h-3.5 w-3.5" /> Inviter à créer un compte{l.invited_at ? " ✓" : ""}
+                      </button>
                       <a href={`mailto:${l.email}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"
                          data-testid={`admin-lead-email-${l.lead_id}`}>
                         <Mail className="h-3.5 w-3.5" /> E-mail

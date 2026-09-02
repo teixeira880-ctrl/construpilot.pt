@@ -48,6 +48,15 @@ async def _send_welcome(email: str, name: str) -> None:
         pass
 
 
+async def send_account_invite(email: str, name: str = "") -> None:
+    """Invitation (manuelle) à créer un compte, envoyée à un lead depuis l'admin."""
+    from engines.emailer import send_email
+    await send_email(
+        email,
+        "Créez votre compte ConstruPilot pour profiter pleinement du logiciel",
+        _welcome_html(name, email))
+
+
 class LeadIn(BaseModel):
     name: str = ""
     email: EmailStr

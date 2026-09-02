@@ -2586,3 +2586,9 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Historique d'attribution** : `assignment_log` (push) — actions proposee/acceptee/refusee/assignee_manuelle/en_cours avec user + horodatage. Affiché dans la fiche admin ; assignation manuelle admin vide les candidats + log.
 - Frontend : `MyLeads.jsx` (badge « Proposée — à saisir », Dépt, mention concurrence), `Admin.jsx` (bloc « Historique d'attribution »). Validé e2e (2 pros candidats → A accepte → B perd ; dept 33 ; log complet ; screenshot).
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 130 (02/09/2026) — Invitation lead à créer un compte
+- `leads.py::send_account_invite(email, name)` réutilise `_welcome_html` (CTA « Créer mon compte gratuit » → /inscription?email=...).
+- `admin.py::POST /leads/{lead_id}/invite` : envoie l'invitation au lead + set `invited_at`. Bouton admin « Inviter à créer un compte » (data-testid admin-lead-invite-send-*) avec coche ✓ si déjà envoyé.
+- E-mail réel envoyé manuellement à uwaifonelson779@gmail.com (livraison Resend confirmée).
+- ⚠️ PREVIEW → « Deploy Now » pour le bouton en prod.

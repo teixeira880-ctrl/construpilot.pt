@@ -514,6 +514,24 @@ async def _notify_assigned_pro(pro: dict, lead: dict) -> None:
         pass
 
 
+@router.post("/leads/{lead_id}/invite")
+async def invite_lead(lead_id: str) -> dict:
+    """Envoie au lead un e-mail l'incitant à créer un compte."""
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(404, "Demande introuvable")
+    if not lead.get("email"):
+        raise HTTPException(400, "Cette demande n'a pas d'adresse e-mail")
+    from routes.leads import send_account_invite
+    try:
+        await send_account_invite(lead["email"], lead.get("name") or "")
+    except Exception as e:
+        raise HTTPException(502, f"Envoi impossible : {e}")
+    await db.leads.update_one({"lead_id": lead_id},
+                              {"$set": {"invited_at": datetime.now(timezone.utc).isoformat()}})
+    return {"ok": True, "email": lead["email"]}
+
+
 @router.put("/leads/{lead_id}")
 async def update_lead(lead_id: str, body: LeadStatusIn):
     lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
