@@ -2545,3 +2545,12 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **Comparateur avant/après** : composant `Comparator` sur `RenderShare.jsx` (page publique) — curseur glissant superposant avant/après (clip-path) pour les rendus image ; vidéo reste en côte-à-côte. Validé (screenshot slider fonctionnel).
 - Fichiers : `routes/documents.py`, `routes/runway_render.py` (inchangé cette itér.), `pages/RenderStudio.jsx`, `pages/RenderShare.jsx`, `pages/QuoteEditor.jsx`.
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 125 (02/09/2026) — Leads : compte obligatoire + créer devis + fiche enrichie
+- **Objectif** : pousser chaque prospect à CRÉER UN COMPTE pour utiliser le logiciel.
+- **(b) E-mail lead orienté compte** : `leads.py::_welcome_html` réécrit → CTA « Créer mon compte gratuit » vers `{FRONTEND_URL}/inscription?email=...` (au lieu de /smart-project). Envoyé auto à la création d'un lead landing.
+- **Inscription pré-remplie** : `Login.jsx` lit `?email=` → onglet « Créer un compte » actif + e-mail pré-rempli. (`?signup=1` force aussi l'onglet register.)
+- **(a) Créer un devis depuis un lead** : bouton dans la fiche lead admin → `POST /clients` (mappe nom/email/tel/adresse/notes du lead) puis navigation `/devis-editeur?client=<id>` (client pré-sélectionné). Validé e2e.
+- **(c) Fiche lead enrichie** : boutons Créer un devis · E-mail (mailto) · Lien création de compte · Appeler (tel). Affiche nom, e-mail, tél, source, budget, adresse, dispo, description, projet.
+- Fichiers : `routes/leads.py`, `pages/Login.jsx`, `pages/Admin.jsx`. Tous testés (screenshots + navigation + prefill).
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

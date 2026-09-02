@@ -19,7 +19,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [tfa, setTfa] = useState(null);
   const [tfaCode, setTfaCode] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
+  const [form, setForm] = useState({ name: "", email: params.get("email") || "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   useEffect(() => {
@@ -215,7 +215,7 @@ export default function Login() {
               </div>
             </form>
           ) : (
-          <Tabs defaultValue="login">
+          <Tabs defaultValue={(params.get("email") || params.get("signup")) ? "register" : "login"}>
             <TabsList className="w-full rounded-sm">
               <TabsTrigger value="login" className="flex-1 rounded-sm" data-testid="tab-login">{t("login.tab_login")}</TabsTrigger>
               <TabsTrigger value="register" className="flex-1 rounded-sm" data-testid="tab-register">{t("login.tab_register")}</TabsTrigger>

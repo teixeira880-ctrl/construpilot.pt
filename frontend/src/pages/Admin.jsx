@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Shield, Save, Plus, Trash2, RefreshCw, Phone, Mail, CheckCircle2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import { TwoFaCard } from "@/components/account/TwoFaCard";
 
 export default function Admin() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const [stats, setStats] = useState(null);
   const [drill, setDrill] = useState(null);
@@ -41,6 +43,24 @@ export default function Admin() {
   const [leads, setLeads] = useState([]);
   const [leadStats, setLeadStats] = useState(null);
   const [leadFilter, setLeadFilter] = useState("all");
+
+  const createQuoteForLead = async (l) => {
+    try {
+      const parts = (l.name || "").trim().split(" ").filter(Boolean);
+      const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : (parts[0] || "");
+      const last = parts.length > 1 ? parts[parts.length - 1] : "";
+      const snap = l.project_snapshot || {};
+      const notes = [l.description, snap.name ? `Projet: ${snap.name} ${snap.surface || ""} m²` : "", l.availability ? `Dispo: ${l.availability}` : ""].filter(Boolean).join(" — ");
+      const { data } = await api.post("/clients", {
+        first_name: first, last_name: last || first || "Client",
+        email: l.email || "", phone: l.phone || "", address: l.address || "", notes,
+      });
+      toast.success("Client créé depuis la demande — ouverture de l'éditeur de devis");
+      navigate(`/devis-editeur?client=${data.client_id}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Création impossible");
+    }
+  };
   const [suppliers, setSuppliers] = useState({ builtin: [], custom: [] });
   const [newSup, setNewSup] = useState({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
 
@@ -502,7 +522,7 @@ export default function Admin() {
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-sm text-muted-foreground">{l.address} · {l.availability}</p>
+                <p className="text-sm text-muted-foreground">{[l.address, l.availability].filter(Boolean).join(" · ")}</p>
                 {l.description && <p className="text-sm">{l.description}</p>}
                 {l.project_snapshot && (
                   <p className="num text-xs text-muted-foreground">
@@ -510,6 +530,31 @@ export default function Admin() {
                     estimation {eur(l.project_snapshot.estimation)} · lots : {(l.project_snapshot.lots || []).join(", ")}
                   </p>
                 )}
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border mt-1">
+                  <Button size="sm" className="rounded-sm gap-2 h-8" onClick={() => createQuoteForLead(l)}
+                          data-testid={`admin-lead-create-quote-${l.lead_id}`}>
+                    <Plus className="h-3.5 w-3.5" /> Créer un devis
+                  </Button>
+                  {l.email && (
+                    <>
+                      <a href={`mailto:${l.email}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"
+                         data-testid={`admin-lead-email-${l.lead_id}`}>
+                        <Mail className="h-3.5 w-3.5" /> E-mail
+                      </a>
+                      <a href={`${window.location.origin}/inscription?email=${encodeURIComponent(l.email)}`} target="_blank" rel="noreferrer"
+                         className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"
+                         data-testid={`admin-lead-invite-${l.lead_id}`}>
+                        <Plus className="h-3.5 w-3.5" /> Lien création de compte
+                      </a>
+                    </>
+                  )}
+                  {l.phone && (
+                    <a href={`tel:${l.phone}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"
+                       data-testid={`admin-lead-call-${l.lead_id}`}>
+                      <Phone className="h-3.5 w-3.5" /> Appeler
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
               </>);

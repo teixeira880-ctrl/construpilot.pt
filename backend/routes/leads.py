@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -11,19 +12,26 @@ from core.security import current_user, optional_user
 router = APIRouter(prefix="/leads", tags=["leads"])
 
 
-def _welcome_html(name: str) -> str:
+def _frontend_url() -> str:
+    return (os.getenv("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+
+
+def _welcome_html(name: str, email: str = "") -> str:
     hello = f"Bonjour {name}," if name else "Bonjour,"
+    from urllib.parse import quote
+    signup = f"{_frontend_url()}/inscription?email={quote(email)}" if email else f"{_frontend_url()}/inscription"
     return f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">
 <tr><td style="background:#3f7d54;padding:24px 32px;color:#fff;font-size:20px;font-weight:800;">ConstruPilot</td></tr>
 <tr><td style="padding:32px;color:#1a1d20;font-size:15px;line-height:1.6;">
 <p>{hello}</p>
-<p>Merci de votre intérêt pour <strong>ConstruPilot</strong> ! Votre estimation de travaux est à portée de clic.</p>
-<p>Décrivez votre projet et obtenez en 30 secondes une estimation détaillée, poste par poste — gratuitement et sans engagement.</p>
+<p>Merci pour votre demande de travaux sur <strong>ConstruPilot</strong> ! Nous l'avons bien reçue.</p>
+<p><strong>Pour suivre votre demande, obtenir votre estimation détaillée et recevoir vos devis, créez votre compte gratuit</strong> — cela prend moins d'une minute.</p>
 <p style="text-align:center;margin:32px 0;">
-<a href="https://construpilot.fr/smart-project" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Reprendre mon estimation</a>
+<a href="{signup}" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Créer mon compte gratuit</a>
 </p>
+<p style="color:#78716c;font-size:13px;">Votre compte vous permet de&nbsp;: suivre l'avancement de votre demande, comparer les prix, et échanger avec un professionnel.</p>
 <p style="color:#78716c;font-size:13px;">Une question ? Répondez simplement à cet e-mail.</p>
 <p style="color:#78716c;font-size:13px;">— L'équipe ConstruPilot</p>
 </td></tr>
@@ -34,8 +42,8 @@ def _welcome_html(name: str) -> str:
 async def _send_welcome(email: str, name: str) -> None:
     try:
         from engines.emailer import send_email
-        await send_email(email, "Bienvenue sur ConstruPilot — votre estimation vous attend",
-                         _welcome_html(name))
+        await send_email(email, "Votre demande ConstruPilot — créez votre compte pour la suivre",
+                         _welcome_html(name, email))
     except Exception:
         pass
 
