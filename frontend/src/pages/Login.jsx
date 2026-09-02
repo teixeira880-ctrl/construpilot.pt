@@ -75,6 +75,12 @@ export default function Login() {
           toast.success(`Code parrainage ${ref.toUpperCase()} appliqué — bienvenue !`);
           sessionStorage.removeItem("construpilot_ref");
         }
+        // Envoi de la demande de travaux mise en attente avant l'inscription
+        const pend = sessionStorage.getItem("construpilot_pending_lead");
+        if (pend) {
+          try { await api.post("/leads", JSON.parse(pend)); } catch { /* ignore */ }
+          sessionStorage.removeItem("construpilot_pending_lead");
+        }
       }
       if (logged?.two_fa_required) {
         setTfa(logged);

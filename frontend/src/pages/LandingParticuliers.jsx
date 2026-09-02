@@ -54,18 +54,23 @@ export default function LandingParticuliers() {
     const text = description.trim() || EXAMPLE;
     sessionStorage.setItem("estimator_prefill", JSON.stringify({ description: text, _raw: text }));
     const mail = email.trim();
-    if (mail && mail.includes("@")) {
-      sessionStorage.setItem("construpilot_lead_email", mail);
-      if (name.trim()) sessionStorage.setItem("construpilot_lead_name", name.trim());
-      api.post("/leads", {
-        name: name.trim(), email: mail, description: text,
-        source: sessionStorage.getItem("construpilot_utm_source") || "landing-particuliers",
-        utm_source: sessionStorage.getItem("construpilot_utm_source") || "",
-        utm_medium: sessionStorage.getItem("construpilot_utm_medium") || "",
-        utm_campaign: sessionStorage.getItem("construpilot_utm_campaign") || "",
-      }).catch(() => {});
+    if (mail) sessionStorage.setItem("construpilot_lead_email", mail);
+    if (name.trim()) sessionStorage.setItem("construpilot_lead_name", name.trim());
+    const leadPayload = {
+      name: name.trim(), email: mail, description: text,
+      source: sessionStorage.getItem("construpilot_utm_source") || "landing-particuliers",
+      utm_source: sessionStorage.getItem("construpilot_utm_source") || "",
+      utm_medium: sessionStorage.getItem("construpilot_utm_medium") || "",
+      utm_campaign: sessionStorage.getItem("construpilot_utm_campaign") || "",
+    };
+    const isLoggedIn = !!localStorage.getItem("construpilot_token");
+    if (isLoggedIn) {
+      if (mail && mail.includes("@")) api.post("/leads", leadPayload).catch(() => {});
+      navigate("/estimation");
+      return;
     }
-    navigate("/estimation");
+    sessionStorage.setItem("construpilot_pending_lead", JSON.stringify(leadPayload));
+    navigate(`/inscription?email=${encodeURIComponent(mail)}&signup=1`);
   };
 
   return (

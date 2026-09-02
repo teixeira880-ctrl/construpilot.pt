@@ -509,6 +509,12 @@ export default function Admin() {
                       ✉ Relancé J+2
                     </span>
                   )}
+                  {l.assigned_to_name && (
+                    <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                          data-testid={`admin-lead-assigned-${l.lead_id}`}>
+                      ✔ Assignée à {l.assigned_to_name}
+                    </span>
+                  )}
                   {l.budget ? <p className="num ml-auto text-lg font-bold text-primary">{eur(l.budget)}</p> : <span className="ml-auto" />}
                   <Select
                     value={l.status}
@@ -531,6 +537,20 @@ export default function Admin() {
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border mt-1">
+                  <Select
+                    value={l.assigned_to || "none"}
+                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { assigned_to: v === "none" ? "" : v }); toast.success(v === "none" ? "Assignation retirée" : "Demande assignée — le pro est notifié"); load(); }}
+                  >
+                    <SelectTrigger className="rounded-sm h-8 w-48" data-testid={`admin-lead-assign-${l.lead_id}`}>
+                      <SelectValue placeholder="Assigner à un pro" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Non assignée —</SelectItem>
+                      {users.filter((u) => u.role !== "worker" && u.account_type !== "particulier").map((u) => (
+                        <SelectItem key={u.user_id} value={u.user_id}>{u.name || u.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button size="sm" className="rounded-sm gap-2 h-8" onClick={() => createQuoteForLead(l)}
                           data-testid={`admin-lead-create-quote-${l.lead_id}`}>
                     <Plus className="h-3.5 w-3.5" /> Créer un devis

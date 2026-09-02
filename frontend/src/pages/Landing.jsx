@@ -172,17 +172,20 @@ export default function Landing() {
     const text = description.trim() || EXAMPLE;
     sessionStorage.setItem("construpilot_description", text);
     const mail = email.trim();
-    if (mail && mail.includes("@")) {
-      const utm_source = sessionStorage.getItem("construpilot_utm_source") || "";
-      const utm_medium = sessionStorage.getItem("construpilot_utm_medium") || "";
-      const utm_campaign = sessionStorage.getItem("construpilot_utm_campaign") || "";
-      api.post("/leads", {
-        email: mail, description: text,
-        source: utm_source || `landing-hero-${audience}`,
-        utm_source, utm_medium, utm_campaign,
-      }).catch(() => {});
+    const utm_source = sessionStorage.getItem("construpilot_utm_source") || "";
+    const utm_medium = sessionStorage.getItem("construpilot_utm_medium") || "";
+    const utm_campaign = sessionStorage.getItem("construpilot_utm_campaign") || "";
+    const source = utm_source || `landing-hero-${audience}`;
+    const leadPayload = { email: mail, description: text, source, utm_source, utm_medium, utm_campaign };
+    const isLoggedIn = !!localStorage.getItem("construpilot_token");
+    if (isLoggedIn) {
+      if (mail && mail.includes("@")) api.post("/leads", leadPayload).catch(() => {});
+      navigate(hero.dest);
+      return;
     }
-    navigate(hero.dest);
+    // Compte requis avant d'envoyer la demande : on garde la demande et on redirige vers l'inscription
+    sessionStorage.setItem("construpilot_pending_lead", JSON.stringify(leadPayload));
+    navigate(`/inscription?email=${encodeURIComponent(mail)}&signup=1`);
   };
 
   return (

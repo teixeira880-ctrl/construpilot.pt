@@ -2554,3 +2554,10 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - **(c) Fiche lead enrichie** : boutons Créer un devis · E-mail (mailto) · Lien création de compte · Appeler (tel). Affiche nom, e-mail, tél, source, budget, adresse, dispo, description, projet.
 - Fichiers : `routes/leads.py`, `pages/Login.jsx`, `pages/Admin.jsx`. Tous testés (screenshots + navigation + prefill).
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 126 (02/09/2026) — Compte requis (lead) + Assignation lead → pro
+- **Compte requis avant demande** : `Landing.jsx` + `LandingParticuliers.jsx` — si le visiteur n'est PAS connecté, la demande n'est plus envoyée anonymement : elle est stockée (`sessionStorage.construpilot_pending_lead`) et l'utilisateur est redirigé vers `/inscription?email=...&signup=1` (onglet « Créer un compte », e-mail pré-rempli). Après inscription, `Login.jsx` (branche register) envoie la demande en attente (POST /leads, désormais rattachée au compte). Connecté = comportement inchangé. Validé e2e (redirection + pending_lead + prefill).
+- **Assignation lead → pro** : `admin.py::update_lead` (LeadStatusIn: status optionnel + `assigned_to`) — assigne la demande à un pro, stocke `assigned_to/assigned_to_name/assigned_at`, crée une notification (`db.notifications`, type lead_assigned) et envoie un e-mail au pro avec les coordonnées client. `Admin.jsx` : dropdown « Assigner à un pro » (liste users non-worker/non-particulier) + badge « ✔ Assignée à … ». Validé e2e (assign → assigned_to_name + notif créée + UI).
+- Fichiers : `routes/admin.py`, `pages/Admin.jsx`, `pages/Landing.jsx`, `pages/LandingParticuliers.jsx`, `pages/Login.jsx`.
+- Suivi possible : page pro « Mes demandes assignées » (endpoint GET /leads/assigned à créer).
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

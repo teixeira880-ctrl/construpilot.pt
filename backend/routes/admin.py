@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -467,12 +468,72 @@ async def leads_stats() -> dict:
 
 
 class LeadStatusIn(BaseModel):
-    status: str
+    status: str | None = None
+    assigned_to: str | None = None
+
+
+async def _notify_assigned_pro(pro: dict, lead: dict) -> None:
+    """Notifie le pro qu'une demande de travaux lui a été assignée (cloche + e-mail)."""
+    name = lead.get("name") or lead.get("email") or "un client"
+    try:
+        await db.notifications.insert_one({
+            "notif_id": "n_" + secrets.token_hex(5),
+            "user_id": pro["user_id"], "type": "lead_assigned",
+            "lead_id": lead.get("lead_id"),
+            "message": f"Nouvelle demande de travaux à prendre en charge : {name}",
+            "created_at": datetime.now(timezone.utc).isoformat(), "read": False,
+        })
+    except Exception:
+        pass
+    try:
+        from engines.emailer import send_email, wrap_html
+        rows = [
+            ("Client", lead.get("name") or "—"),
+            ("E-mail", lead.get("email") or "—"),
+            ("Téléphone", lead.get("phone") or "—"),
+            ("Adresse", lead.get("address") or "—"),
+            ("Disponibilité", lead.get("availability") or "—"),
+            ("Budget", f"{lead.get('budget')} €" if lead.get("budget") else "—"),
+            ("Demande", lead.get("description") or "—"),
+        ]
+        body = "".join(f'<p style="margin:0 0 8px 0"><b>{k} :</b> {v}</p>' for k, v in rows)
+        html = wrap_html("Nouvelle demande de travaux à prendre en charge",
+                         f"<p>Bonjour,</p><p>Une demande de travaux vous a été assignée :</p>{body}"
+                         f"<p>Contactez le client pour la prendre en charge.</p>")
+        await send_email(pro["email"], "Une demande de travaux vous a été assignée — ConstruPilot", html)
+    except Exception:
+        pass
 
 
 @router.put("/leads/{lead_id}")
 async def update_lead(lead_id: str, body: LeadStatusIn):
-    await db.leads.update_one({"lead_id": lead_id}, {"$set": {"status": body.status}})
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(404, "Demande introuvable")
+    upd = {}
+    if body.status is not None:
+        upd["status"] = body.status
+    notify_pro = None
+    if body.assigned_to is not None:
+        if body.assigned_to == "":
+            upd["assigned_to"] = None
+            upd["assigned_to_name"] = None
+            upd["assigned_at"] = None
+        else:
+            pro = await db.users.find_one(
+                {"user_id": body.assigned_to},
+                {"_id": 0, "user_id": 1, "email": 1, "name": 1})
+            if not pro:
+                raise HTTPException(404, "Professionnel introuvable")
+            upd["assigned_to"] = pro["user_id"]
+            upd["assigned_to_name"] = pro.get("name") or pro.get("email")
+            upd["assigned_at"] = datetime.now(timezone.utc).isoformat()
+            if lead.get("assigned_to") != pro["user_id"]:
+                notify_pro = pro
+    if upd:
+        await db.leads.update_one({"lead_id": lead_id}, {"$set": upd})
+    if notify_pro:
+        await _notify_assigned_pro(notify_pro, {**lead, **upd})
     return await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
 
 
