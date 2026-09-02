@@ -87,7 +87,79 @@ async def create_lead(body: LeadIn, user=Depends(optional_user)):
     # E-mail de bienvenue automatique pour les leads venant de la page d'accueil
     if body.email and (body.source or "").startswith("landing"):
         asyncio.create_task(_send_welcome(body.email, body.name))
+    # Alerte admin (cloche + e-mail) + tentative d'assignation automatique par zone
+    asyncio.create_task(_notify_new_lead_admins(doc))
+    asyncio.create_task(_auto_assign_lead(doc))
     return doc
+
+
+async def _notify_new_lead_admins(lead: dict) -> None:
+    name = lead.get("name") or lead.get("email") or "un client"
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1, "email": 1}).to_list(20)
+    for a in admins:
+        try:
+            await db.notifications.insert_one({
+                "notif_id": "n_" + uuid.uuid4().hex[:10],
+                "user_id": a["user_id"], "type": "new_lead", "lead_id": lead.get("lead_id"),
+                "message": f"Nouvelle demande de travaux : {name}",
+                "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
+        except Exception:
+            pass
+    try:
+        from engines.emailer import send_email, wrap_html
+        rows = [("Client", lead.get("name") or "—"), ("E-mail", lead.get("email") or "—"),
+                ("Téléphone", lead.get("phone") or "—"), ("Adresse", lead.get("address") or "—"),
+                ("Demande", lead.get("description") or "—")]
+        body_html = "".join(f'<p style="margin:0 0 8px 0"><b>{k} :</b> {v}</p>' for k, v in rows)
+        html = wrap_html("Nouvelle demande de travaux",
+                         f"<p>Une nouvelle demande vient d'arriver sur ConstruPilot :</p>{body_html}",
+                         cta_url=f"{_frontend_url()}/admin", cta_label="Voir dans l'admin")
+        for a in admins:
+            if a.get("email"):
+                await send_email(a["email"], "Nouvelle demande de travaux — ConstruPilot", html)
+    except Exception:
+        pass
+
+
+async def _notify_lead_pro(pro: dict, lead: dict) -> None:
+    name = lead.get("name") or lead.get("email") or "un client"
+    try:
+        await db.notifications.insert_one({
+            "notif_id": "n_" + uuid.uuid4().hex[:10],
+            "user_id": pro["user_id"], "type": "lead_assigned", "lead_id": lead.get("lead_id"),
+            "message": f"Nouvelle demande de travaux à prendre en charge : {name}",
+            "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
+    except Exception:
+        pass
+    try:
+        from engines.emailer import send_email, wrap_html
+        html = wrap_html("Une demande vous a été assignée",
+                         f"<p>Bonjour,</p><p>Une demande de travaux ({name}) vous a été assignée. "
+                         f"Retrouvez-la dans votre espace « Mes demandes ».</p>",
+                         cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Voir mes demandes")
+        if pro.get("email"):
+            await send_email(pro["email"], "Une demande de travaux vous a été assignée — ConstruPilot", html)
+    except Exception:
+        pass
+
+
+async def _auto_assign_lead(lead: dict) -> None:
+    """Assigne automatiquement la demande à un pro dont la zone (brand_city) correspond."""
+    if lead.get("assigned_to"):
+        return
+    hay = f"{lead.get('address', '')} {lead.get('description', '')}".lower()
+    if not hay.strip():
+        return
+    pros = await db.users.find(
+        {"account_type": {"$in": ["pro", "pro_business"]}, "brand_city": {"$nin": [None, ""]}},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "brand_city": 1}).to_list(100)
+    match = next((p for p in pros if (p.get("brand_city") or "").lower() in hay), None)
+    if not match:
+        return
+    await db.leads.update_one({"lead_id": lead["lead_id"]}, {"$set": {
+        "assigned_to": match["user_id"], "assigned_to_name": match.get("name") or match.get("email"),
+        "assigned_at": datetime.now(timezone.utc).isoformat(), "auto_assigned": True}})
+    await _notify_lead_pro(match, lead)
 
 
 @router.get("/public-count")
@@ -133,6 +205,49 @@ async def run_signup_followups() -> int:
 async def my_leads(user=Depends(current_user)):
     return await db.leads.find({"user_id": user["user_id"]}, {"_id": 0}) \
         .sort("created_at", -1).to_list(100)
+
+
+@router.get("/assigned")
+async def assigned_leads(user=Depends(current_user)):
+    """Demandes assignées au professionnel connecté (« Mes demandes »)."""
+    return await db.leads.find({"assigned_to": user["user_id"]}, {"_id": 0}) \
+        .sort("assigned_at", -1).to_list(200)
+
+
+class HandlingIn(BaseModel):
+    handling_status: str  # acceptee | refusee | en_cours
+
+
+@router.put("/{lead_id}/handling")
+async def update_handling(lead_id: str, body: HandlingIn, user=Depends(current_user)):
+    """Le pro assigné met à jour sa prise en charge (acceptée / refusée)."""
+    if body.handling_status not in {"acceptee", "refusee", "en_cours"}:
+        from fastapi import HTTPException
+        raise HTTPException(400, "Statut invalide")
+    lead = await db.leads.find_one({"lead_id": lead_id, "assigned_to": user["user_id"]}, {"_id": 0})
+    if not lead:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Demande introuvable ou non assignée")
+    upd = {"handling_status": body.handling_status,
+           "handling_updated_at": datetime.now(timezone.utc).isoformat()}
+    if body.handling_status == "refusee":
+        upd["assigned_to"] = None
+        upd["assigned_to_name"] = None
+    await db.leads.update_one({"lead_id": lead_id}, {"$set": upd})
+    # Notifie les admins de la décision du pro
+    label = {"acceptee": "a pris en charge", "refusee": "a refusé", "en_cours": "traite"}[body.handling_status]
+    pro_name = user.get("name") or user.get("email")
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1}).to_list(20)
+    for a in admins:
+        try:
+            await db.notifications.insert_one({
+                "notif_id": "n_" + uuid.uuid4().hex[:10],
+                "user_id": a["user_id"], "type": "lead_handling", "lead_id": lead_id,
+                "message": f"{pro_name} {label} la demande de {lead.get('name') or lead.get('email') or 'client'}.",
+                "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
+        except Exception:
+            pass
+    return await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
 
 
 @router.post("/mine/mark-viewed")

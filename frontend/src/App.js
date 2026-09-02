@@ -71,6 +71,7 @@ import SharedCalc from "@/pages/SharedCalc";
 import PriceCatalog from "@/pages/PriceCatalog";
 import SiteTracking from "@/pages/SiteTracking";
 import RenderStudio from "@/pages/RenderStudio";
+import MyLeads from "@/pages/MyLeads";
 import RenderShare from "@/pages/RenderShare";
 import Comparatif from "@/pages/Comparatif";
 import Situations from "@/pages/Situations";
@@ -156,6 +157,7 @@ function AppRouter() {
       <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="/rendu-ia" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
+      <Route path="/mes-demandes" element={<ProRoute><Shell><MyLeads /></Shell></ProRoute>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />

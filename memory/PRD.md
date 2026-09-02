@@ -2561,3 +2561,11 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - Fichiers : `routes/admin.py`, `pages/Admin.jsx`, `pages/Landing.jsx`, `pages/LandingParticuliers.jsx`, `pages/Login.jsx`.
 - Suivi possible : page pro « Mes demandes assignées » (endpoint GET /leads/assigned à créer).
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 127 (02/09/2026) — Leads : notif admin + auto-assignation + espace pro + prise en charge
+- **Notif admin nouveau lead** : `leads.py::create_lead` déclenche `_notify_new_lead_admins` (cloche `db.notifications` type new_lead pour chaque admin + e-mail avec CTA /admin).
+- **Auto-assignation par zone** : `_auto_assign_lead` — si `brand_city` d'un pro (account_type pro/pro_business) apparaît dans l'adresse/description du lead, la demande lui est assignée automatiquement (`auto_assigned:true`) + notification pro. Best-effort (sinon reste non assignée).
+- **Espace pro « Mes demandes »** : `GET /leads/assigned` (leads où assigned_to == moi). Page `pages/MyLeads.jsx` route `/mes-demandes` (ProRoute) + lien nav pro (icône Inbox). Affiche coordonnées client + actions.
+- **Suivi de prise en charge** : `PUT /leads/{id}/handling` (pro assigné) → `handling_status` acceptee/refusee/en_cours (refusee désassigne le lead) + notifie les admins (type lead_handling). UI : boutons « Prendre en charge » / « Refuser » + badge de statut.
+- Fichiers : `routes/leads.py`, `pages/MyLeads.jsx`, `App.js`, `components/Nav.jsx`. Validé e2e (nouveau lead→notif admin ; assign ; /assigned ; handling ; UI screenshot).
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

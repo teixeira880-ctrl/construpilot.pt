@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers, Wand2,
+  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers, Wand2, Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,7 @@ const NAV_PRO = [
   { to: "/rendu-ia", label: "Rendu IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
   { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
+  { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox },
   { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
   { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
   { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
