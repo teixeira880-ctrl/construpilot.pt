@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send, X,
-  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, Eye, Layers,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, Eye, Layers, Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -509,6 +509,30 @@ export default function QuoteEditor() {
   const [loadingEmailPreview, setLoadingEmailPreview] = useState(false);
   const [renderUrl, setRenderUrl] = useState("");
   const [doneRenders, setDoneRenders] = useState([]);
+  const [sendFiles, setSendFiles] = useState([]);
+
+  const fileToB64 = (file) => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",", 2)[1] || "");
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+
+  const addSendFiles = (fileList) => {
+    const incoming = Array.from(fileList || []);
+    if (!incoming.length) return;
+    setSendFiles((prev) => {
+      const merged = [...prev, ...incoming].slice(0, 5);
+      const total = merged.reduce((s, f) => s + f.size, 0);
+      if (total > 15 * 1024 * 1024) {
+        toast.error("Pièces jointes trop volumineuses (15 Mo maximum au total)");
+        return prev;
+      }
+      if (prev.length + incoming.length > 5) toast.error("5 pièces jointes maximum");
+      return merged;
+    });
+  };
+  const removeSendFile = (idx) => setSendFiles((prev) => prev.filter((_, i) => i !== idx));
 
   const pickRender = async (rid) => {
     if (!rid) { setRenderUrl(""); return; }
@@ -543,6 +567,7 @@ export default function QuoteEditor() {
     setPdfPreviewUrl(null);
     setEmailPreviewHtml(null);
     setRenderUrl("");
+    setSendFiles([]);
     setSendOpen(true);
     let id = docId;
     if (!id) { const d = await save(); if (!d) return; id = d.doc_id; }
@@ -577,7 +602,11 @@ export default function QuoteEditor() {
     try {
       let id = docId;
       if (!id) { const d = await save(); if (!d) { setSending(false); return; } id = d.doc_id; }
-      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d, render_url: renderUrl })
+      const attachments = await Promise.all(sendFiles.map(async (f) => ({
+        filename: f.name, content_type: f.type || "application/octet-stream",
+        content_b64: await fileToB64(f),
+      })));
+      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d, render_url: renderUrl, attachments })
         .then(({ data }) => {
           toast.success(data?.attached_3d ? "Devis envoyé (rendu 3D joint) ✅" : "Devis envoyé au client ✅");
         });
@@ -735,6 +764,26 @@ export default function QuoteEditor() {
                      className="h-4 w-4 rounded border-input accent-primary" />
               Joindre le rendu 3D du projet (si disponible)
             </label>
+            <div className="grid gap-1.5" data-testid="send-attachments-block">
+              <Label className="flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" /> Pièces jointes (PDF, images… — 5 fichiers, 15 Mo max)</Label>
+              <input type="file" multiple
+                     onChange={(e) => { addSendFiles(e.target.files); e.target.value = ""; }}
+                     className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:cursor-pointer hover:file:bg-secondary/80"
+                     data-testid="send-attachments-input" />
+              {sendFiles.length > 0 && (
+                <ul className="grid gap-1 mt-1">
+                  {sendFiles.map((f, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2 text-xs surface px-2.5 py-1.5 rounded-sm"
+                        data-testid={`send-attachment-item-${i}`}>
+                      <span className="truncate">{f.name} · {(f.size / 1024).toFixed(0)} Ko</span>
+                      <button type="button" onClick={() => removeSendFile(i)}
+                              className="text-muted-foreground hover:text-destructive shrink-0"
+                              data-testid={`send-attachment-remove-${i}`}><X className="h-3.5 w-3.5" /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             {doneRenders.length > 0 && (
               <div className="grid gap-1.5" data-testid="send-quote-render-block">
                 <Label htmlFor="send-render">Rendu IA avant/après (optionnel)</Label>

@@ -1209,12 +1209,19 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
+class DocAttachmentIn(BaseModel):
+    filename: str
+    content_b64: str
+    content_type: str = "application/octet-stream"
+
+
 class DocSendIn(BaseModel):
     client_email: str
     client_name: str = ""
     message: str = ""
     attach_3d: bool = True
     render_url: str = ""
+    attachments: list[DocAttachmentIn] = []
 
 
 @router.get("/{doc_id}/email-template")
@@ -1394,6 +1401,25 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
             has_3d = True
         except Exception:  # noqa: BLE001
             pass
+    # Pièces jointes libres ajoutées par le pro (max 5 fichiers, 15 Mo au total)
+    if body.attachments:
+        import base64 as _b64u
+        total = 0
+        for att in body.attachments[:5]:
+            raw = att.content_b64 or ""
+            if "," in raw and raw.strip().startswith("data:"):
+                raw = raw.split(",", 1)[1]
+            try:
+                content = _b64u.b64decode(raw)
+            except Exception:  # noqa: BLE001
+                continue
+            total += len(content)
+            if total > 15 * 1024 * 1024:
+                raise HTTPException(400, "Pièces jointes trop volumineuses (15 Mo maximum au total).")
+            extra_attachments.append({
+                "filename": (att.filename or "piece-jointe").strip()[:120],
+                "content": content,
+                "content_type": att.content_type or "application/octet-stream"})
     extra_attachments = extra_attachments or None
     await db.quote_sends.insert_one({
         "log_id": log_id, "doc_id": doc_id, "user_id": user["user_id"],
