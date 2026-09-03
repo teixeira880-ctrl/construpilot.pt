@@ -669,8 +669,8 @@ export default function QuoteEditor() {
           <Button onClick={save} disabled={saving} variant="outline" className="rounded-sm gap-2" data-testid="editor-save-btn">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("crm.save")}
           </Button>
-          <Button onClick={openSend} disabled={saving || docType !== "quote"} className="rounded-sm gap-2 bg-primary" data-testid="editor-send-btn">
-            <Send className="h-4 w-4" /> Envoyer le devis
+          <Button onClick={openSend} disabled={saving} className="rounded-sm gap-2 bg-primary" data-testid="editor-send-btn">
+            <Send className="h-4 w-4" /> {docType === "invoice" ? "Envoyer la facture" : docType === "credit_note" ? "Envoyer l'avoir" : "Envoyer le devis"}
           </Button>
         </div>
       </div>
@@ -678,7 +678,7 @@ export default function QuoteEditor() {
       <Dialog open={sendOpen} onOpenChange={closeSend}>
         <DialogContent data-testid="send-quote-dialog">
           <DialogHeader>
-            <DialogTitle>Envoyer le devis au client</DialogTitle>
+            <DialogTitle>{docType === "invoice" ? "Envoyer la facture au client" : docType === "credit_note" ? "Envoyer l'avoir au client" : "Envoyer le devis au client"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-1">
             {(pdfPreviewUrl || preview3d) && (
