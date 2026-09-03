@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers, Wand2, Inbox,
+  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers, Wand2, Inbox, Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +32,7 @@ const NAV_PRO = [
   { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations" },
   { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
   { to: "/rendu-ia", label: "Rendu IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
+  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true },
   { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
   { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox },

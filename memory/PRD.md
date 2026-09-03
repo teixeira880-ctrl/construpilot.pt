@@ -2592,3 +2592,7 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 - `admin.py::POST /leads/{lead_id}/invite` : envoie l'invitation au lead + set `invited_at`. Bouton admin « Inviter à créer un compte » (data-testid admin-lead-invite-send-*) avec coche ✓ si déjà envoyé.
 - E-mail réel envoyé manuellement à uwaifonelson779@gmail.com (livraison Resend confirmée).
 - ⚠️ PREVIEW → « Deploy Now » pour le bouton en prod.
+
+## Changelog Iter 131 (03/09/2026) — « Analyse technique & Appro IA » dans l'Espace Pro
+- Ajout de l'entrée `{ to: "/appro", label: "Analyse technique & Appro IA", icon: Truck, auth:true, pro:true }` dans NAV_PRO (`components/Nav.jsx`). La page `TechAnalysis.jsx` (/appro) est déjà en ProRoute → accessible aux pro/business, hors admin. Vérifié (screenshot menu Espace Pro).
+- ⚠️ PREVIEW → « Deploy Now » pour publier.
