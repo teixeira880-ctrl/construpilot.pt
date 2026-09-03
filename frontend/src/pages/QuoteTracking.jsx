@@ -85,6 +85,15 @@ export default function QuoteTracking() {
     } catch (e) { toast.error(e?.response?.data?.detail || "Facturation impossible"); }
   };
 
+  const facturerAcompte = async (doc) => {
+    if (doc.status !== "signed") { toast.error("Le devis doit être signé avant de facturer un acompte"); return; }
+    try {
+      const { data } = await api.post(`/documents/${doc.doc_id}/deposit-invoice`, { pct: 30 });
+      toast.success("Facture d'acompte 30% créée — vérifiez et envoyez ✅");
+      navigate(`/devis-editeur/${data.doc_id}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Facturation d'acompte impossible"); }
+  };
+
   const retrySend = async (send) => {
     if (!send.doc_id) { toast.error("Devis introuvable pour la relance"); return; }
     setRetrying(send.log_id);
@@ -387,6 +396,12 @@ export default function QuoteTracking() {
                           title={d.status !== "signed" ? "Le devis doit être signé" : "Transformer en facture"}
                           data-testid={`quote-invoice-${d.doc_id}`}>
                     <Receipt className="h-3.5 w-3.5" /> Facturer
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
+                          disabled={d.status !== "signed"} onClick={() => facturerAcompte(d)}
+                          title={d.status !== "signed" ? "Le devis doit être signé" : "Facture d'acompte 30%"}
+                          data-testid={`quote-deposit-${d.doc_id}`}>
+                    <Receipt className="h-3.5 w-3.5" /> Acompte 30%
                   </Button>
                   <Button size="sm" variant="ghost" className="rounded-sm h-8 w-8 p-0 text-muted-foreground hover:text-red-600 shrink-0"
                           onClick={() => deleteQuote(d)} data-testid={`quote-delete-${d.doc_id}`}>

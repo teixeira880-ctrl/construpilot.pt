@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Upload, Trash2, Save, Award, MapPin } from "lucide-react";
+import { Building2, Upload, Trash2, Save, Award, MapPin, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,7 @@ export function BrandingDialog({ trigger }) {
   const [logoB64, setLogoB64] = useState("");
   const [defaultEmailMsg, setDefaultEmailMsg] = useState("");
   const [serviceZones, setServiceZones] = useState("");
+  const [bankDetails, setBankDetails] = useState("");
   const [certSel, setCertSel] = useState({});
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState("user");
@@ -53,6 +54,7 @@ export function BrandingDialog({ trigger }) {
       setLogoB64(data.logo_b64 || "");
       setDefaultEmailMsg(data.default_email_message || "");
       setServiceZones((data.service_zones || []).join(", "));
+      setBankDetails(data.bank_details || "");
       const map = {};
       (data.certifications || []).forEach((c) => { map[c.code] = c.number || ""; });
       setCertSel(map);
@@ -86,6 +88,7 @@ export function BrandingDialog({ trigger }) {
         address: address, city: city, postal_code: postalCode, country: country,
         default_email_message: defaultEmailMsg,
         service_zones: serviceZones.split(",").map((s) => s.trim()).filter(Boolean),
+        bank_details: bankDetails,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
       toast.success("Identité pro enregistrée");
@@ -197,6 +200,19 @@ export function BrandingDialog({ trigger }) {
             <Input value={serviceZones} onChange={(e) => setServiceZones(e.target.value)}
                    placeholder="Paris, Lyon, Rhône, 69, Villeurbanne" disabled={!canEdit}
                    data-testid="branding-zones-input" className="rounded-sm h-11" maxLength={600} />
+          </div>
+
+
+          <div className="grid gap-2">
+            <Label className="flex items-center gap-1"><Landmark className="h-3.5 w-3.5 text-primary" /> Coordonnées bancaires (RIB)</Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              IBAN, BIC et banque. Affichés uniquement sur vos factures pour faciliter le paiement.
+            </p>
+            <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)}
+                      placeholder={"IBAN : FR76 3000 4000 0512 3456 7890 143\nBIC : BNPAFRPPXXX\nBanque : BNP Paribas"}
+                      disabled={!canEdit} rows={3} maxLength={600}
+                      data-testid="branding-bank-input"
+                      className="rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-y" />
           </div>
 
 

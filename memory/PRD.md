@@ -2596,3 +2596,9 @@ PROD : ces 4 features nécessitent un REDÉPLOIEMENT pour être actives sur cons
 ## Changelog Iter 131 (03/09/2026) — « Analyse technique & Appro IA » dans l'Espace Pro
 - Ajout de l'entrée `{ to: "/appro", label: "Analyse technique & Appro IA", icon: Truck, auth:true, pro:true }` dans NAV_PRO (`components/Nav.jsx`). La page `TechAnalysis.jsx` (/appro) est déjà en ProRoute → accessible aux pro/business, hors admin. Vérifié (screenshot menu Espace Pro).
 - ⚠️ PREVIEW → « Deploy Now » pour publier.
+
+## Changelog Iter 132 (03/09/2026) — Facture d'acompte 30% + RIB bancaire
+- **Facture d'acompte** : `POST /api/documents/{quote_id}/deposit-invoice` (body pct, défaut 30) — devis SIGNÉ requis. Crée une facture (numérotée, statut draft, échéance +30j) avec UNE ligne par taux de TVA « Acompte X% sur devis N°… » (montant = pct% du HT par taux), SANS le détail du devis. Réf. `source_quote_id/number`, lien `deposit_invoice_id` sur le devis. UI : bouton « Acompte 30% » sur chaque devis signé (`QuoteTracking.jsx`, testid quote-deposit-*) → ouvre l'éditeur pour vérif + envoi. Validé e2e (2 lignes TVA 10%/20%, N° FAC, TTC correct).
+- **RIB bancaire** : champ `bank_details` (multiligne IBAN/BIC/banque) ajouté au branding (`phase7.py` BrandingIn/get/update ; `plans_common._resolve_branding` ; UI `BrandingDialog.jsx` « Coordonnées bancaires (RIB) »). Affiché sur le PDF des factures/avoirs (`pdf_docs.py`, bloc « Coordonnées bancaires »). Round-trip + PDF validés.
+- Fichiers : `routes/documents.py`, `routes/phase7.py`, `routes/plans_common.py`, `engines/pdf_docs.py`, `pages/QuoteTracking.jsx`, `components/BrandingDialog.jsx`.
+- ⚠️ PREVIEW → « Deploy Now » pour publier.

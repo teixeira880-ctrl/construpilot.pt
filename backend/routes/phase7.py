@@ -127,6 +127,7 @@ class BrandingIn(BaseModel):
     certifications: list[dict] | None = None
     default_email_message: str | None = None
     service_zones: list[str] | None = None
+    bank_details: str | None = None
 
 
 CERT_LABELS = {"qualibat": "Qualibat", "rge": "RGE", "qualipac": "QualiPAC",
@@ -153,6 +154,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
                                   "brand_postal": 1, "brand_country": 1,
                                   "brand_logo_b64": 1, "brand_certifications": 1,
                                   "service_zones": 1,
+                                  "bank_details": 1,
                                   "brand_default_email_message": 1}) or {}
     org_id = u.get("organization_id")
     if org_id:
@@ -175,6 +177,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
                     "logo_b64": org.get("brand_logo_b64"),
                     "default_email_message": u.get("brand_default_email_message"),
                     "service_zones": u.get("service_zones") or [],
+                    "bank_details": u.get("bank_details") or "",
                     "certifications": org.get("brand_certifications") or []}
     return {"source": "user", "can_edit": True,
             "company_name": u.get("brand_company_name"),
@@ -190,6 +193,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
             "logo_b64": u.get("brand_logo_b64"),
             "default_email_message": u.get("brand_default_email_message"),
             "service_zones": u.get("service_zones") or [],
+            "bank_details": u.get("bank_details") or "",
             "certifications": u.get("brand_certifications") or []}
 
 
@@ -244,6 +248,10 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         zones = [z.strip()[:80] for z in body.service_zones if z and z.strip()][:30]
         await db.users.update_one(
             {"user_id": user["user_id"]}, {"$set": {"service_zones": zones}})
+    if body.bank_details is not None:
+        await db.users.update_one(
+            {"user_id": user["user_id"]},
+            {"$set": {"bank_details": body.bank_details.strip()[:600] or None}})
 
     if org_id:
         # Seul le owner/admin de l'org peut modifier le branding partagé

@@ -215,6 +215,12 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
         story.append(Paragraph(L["notes"], S["h2"]))
         story.append(Paragraph(doc["notes"].replace("\n", "<br/>"), S["body"]))
 
+    # RIB / coordonnées bancaires (factures et avoirs uniquement)
+    if doc.get("doc_type") in ("invoice", "credit_note") and (branding or {}).get("bank_details"):
+        story.append(Spacer(1, 12))
+        story.append(Paragraph("Coordonnées bancaires", S["h2"]))
+        story.append(Paragraph(str(branding["bank_details"]).replace("\n", "<br/>"), S["body"]))
+
     if doc.get("doc_type") == "quote":
         story.append(Spacer(1, 16))
         story.append(Paragraph(L["agreement"], S["muted"]))

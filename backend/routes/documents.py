@@ -188,6 +188,68 @@ async def ai_describe_line(body: DescribeIn, user=Depends(current_user)) -> dict
     return {"description": (text or "").strip()}
 
 
+class DepositIn(BaseModel):
+    pct: float = Field(default=30, ge=1, le=100)
+
+
+@router.post("/{doc_id}/deposit-invoice")
+async def create_deposit_invoice(doc_id: str, body: DepositIn, user=Depends(current_user)) -> dict:
+    """Crée une facture d'acompte (ex. 30%) à partir d'un devis SIGNÉ.
+    Une ligne par taux de TVA, sans le détail du devis, référencée « Acompte …% sur devis N°… »."""
+    q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not q or q.get("doc_type") != "quote":
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+    if not (q.get("signed") or q.get("status") == "signed"):
+        raise HTTPException(status_code=400, detail="Le devis doit être signé pour facturer un acompte")
+    pct = max(1.0, min(100.0, float(body.pct or 30)))
+
+    ht_by_rate: dict[float, float] = {}
+    for ln in q.get("lines", []):
+        rate = float(ln.get("vat_rate") or 0)
+        ht_by_rate[rate] = ht_by_rate.get(rate, 0) + (ln.get("qty") or 0) * (ln.get("unit_price_ht") or 0)
+    if not ht_by_rate:
+        raise HTTPException(status_code=400, detail="Le devis ne contient aucune ligne chiffrée")
+
+    num = q.get("number") or q["doc_id"]
+    pct_txt = f"{pct:g}"
+    multi = len(ht_by_rate) > 1
+    lines = []
+    for rate, ht in sorted(ht_by_rate.items()):
+        desig = f"Acompte {pct_txt}% sur devis N°{num}" + (f" — TVA {rate:g}%" if multi else "")
+        lines.append({"designation": desig, "description": (q.get("title") or "").strip()[:200],
+                      "unit": "forfait", "qty": 1, "unit_price_ht": round(ht * pct / 100, 2),
+                      "vat_rate": rate, "category": "Acompte"})
+
+    from datetime import timedelta
+    number = await _next_number(user["user_id"], "invoice")
+    now = _now()
+    totals = _compute_totals(lines, 0)
+    inv = {
+        "doc_id": "doc_" + secrets.token_hex(6), "user_id": user["user_id"],
+        "doc_type": "invoice", "number": number,
+        "title": f"Facture d'acompte {pct_txt}% — devis N°{num}",
+        "client_id": q.get("client_id"), "client": q.get("client"),
+        "status": "draft", "lines": lines,
+        "notes": f"Facture d'acompte de {pct_txt}% correspondant au devis N°{num}.",
+        "payment_terms": q.get("payment_terms") or "",
+        "deposit_pct": 0, "totals": totals,
+        "payments": [], "paid": 0.0, "remaining_due": totals["ttc"],
+        "issue_date": now,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "source": "deposit", "parent_doc_id": q["doc_id"],
+        "source_quote_id": q["doc_id"], "source_quote_number": num,
+        "deposit_pct_of_quote": pct,
+        "created_at": now, "updated_at": now,
+    }
+    await db.pro_documents.insert_one(dict(inv))
+    inv.pop("_id", None)
+    await db.pro_documents.update_one({"doc_id": q["doc_id"]},
+                                      {"$set": {"deposit_invoice_id": inv["doc_id"], "updated_at": now}})
+    from engines import activity
+    await activity.log(user, "invoice.deposit", "document", inv["title"], {"doc_id": inv["doc_id"], "quote_id": q["doc_id"]})
+    return inv
+
+
 @router.post("")
 async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     dtype = body.doc_type if body.doc_type in DOC_TYPES else "quote"
