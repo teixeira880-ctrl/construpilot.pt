@@ -12,7 +12,7 @@ import { SectionTitle } from "@/components/Bits";
 import { ImportDocumentsDialog } from "@/components/ImportDocumentsDialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { RevenueChart } from "@/components/RevenueChart";
-import { api } from "@/lib/api";
+import { api, eur } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -92,6 +92,30 @@ export default function QuoteTracking() {
       toast.success("Facture d'acompte 30% créée — vérifiez et envoyez ✅");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Facturation d'acompte impossible"); }
+  };
+
+  const [billQuote, setBillQuote] = useState(null);
+  const [recap, setRecap] = useState(null);
+  const [sitPct, setSitPct] = useState(50);
+  const [sitDeduct, setSitDeduct] = useState(0);
+  const openBilling = async (doc) => {
+    if (doc.status !== "signed") { toast.error("Le devis doit être signé"); return; }
+    setBillQuote(doc); setRecap(null); setSitPct(50); setSitDeduct(0);
+    try { const { data } = await api.get(`/documents/${doc.doc_id}/billing-recap`); setRecap(data); } catch { /* */ }
+  };
+  const makeSituation = async () => {
+    try {
+      const { data } = await api.post(`/documents/${billQuote.doc_id}/situation-invoice`, { pct: Number(sitPct), deduct_deposit_pct: Number(sitDeduct) });
+      toast.success("Facture de situation créée — vérifiez et envoyez ✅");
+      setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Situation impossible"); }
+  };
+  const makeBalance = async () => {
+    try {
+      const { data } = await api.post(`/documents/${billQuote.doc_id}/balance-invoice`);
+      toast.success("Facture de solde créée — vérifiez et envoyez ✅");
+      setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Solde impossible"); }
   };
 
   const retrySend = async (send) => {
@@ -403,6 +427,12 @@ export default function QuoteTracking() {
                           data-testid={`quote-deposit-${d.doc_id}`}>
                     <Receipt className="h-3.5 w-3.5" /> Acompte 30%
                   </Button>
+                  <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
+                          disabled={d.status !== "signed"} onClick={() => openBilling(d)}
+                          title={d.status !== "signed" ? "Le devis doit être signé" : "Décompte, situation, solde"}
+                          data-testid={`quote-billing-${d.doc_id}`}>
+                    <Receipt className="h-3.5 w-3.5" /> Décompte / Situation
+                  </Button>
                   <Button size="sm" variant="ghost" className="rounded-sm h-8 w-8 p-0 text-muted-foreground hover:text-red-600 shrink-0"
                           onClick={() => deleteQuote(d)} data-testid={`quote-delete-${d.doc_id}`}>
                     <Trash2 className="h-4 w-4" />
@@ -600,6 +630,54 @@ export default function QuoteTracking() {
                     disabled={!!invoicing} data-testid="invoice-vat-confirm">
               <Receipt className="h-4 w-4" /> Créer la facture
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!billQuote} onOpenChange={(o) => !o && setBillQuote(null)}>
+        <DialogContent className="max-w-lg" data-testid="billing-modal">
+          <DialogHeader>
+            <DialogTitle>Décompte général — {billQuote?.number || billQuote?.title}</DialogTitle>
+            <DialogDescription>Facturez au prorata (situation) ou le solde. Les acomptes déjà facturés sont pris en compte.</DialogDescription>
+          </DialogHeader>
+          {recap ? (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="surface p-2 rounded-sm"><p className="num font-bold">{eur(recap.quote.ttc)}</p><p className="text-[11px] text-muted-foreground">Devis TTC</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold text-emerald-500">{eur(recap.billed_ttc)}</p><p className="text-[11px] text-muted-foreground">Déjà facturé</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold text-primary">{eur(recap.remaining_ttc)}</p><p className="text-[11px] text-muted-foreground">Reste à facturer</p></div>
+              </div>
+              <div className="text-xs text-muted-foreground">Avancement facturé : {recap.progress_pct}%</div>
+              {recap.invoices.length > 0 && (
+                <div className="border border-border rounded-sm divide-y divide-border max-h-32 overflow-auto" data-testid="billing-recap-list">
+                  {recap.invoices.map((i) => (
+                    <div key={i.doc_id} className="flex justify-between px-3 py-1.5 text-xs">
+                      <span>{i.number || "—"} · {{ deposit: "Acompte", situation: "Situation", balance: "Solde" }[i.source] || "Facture"}</span>
+                      <span className="num">{eur(i.ttc)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="rounded-sm border border-border p-3 space-y-2">
+                <p className="font-semibold text-xs uppercase tracking-wide">Nouvelle facture de situation</p>
+                <div className="flex items-end gap-3">
+                  <label className="flex-1 text-xs">Avancement %
+                    <input type="number" min="1" max="100" value={sitPct} onChange={(e) => setSitPct(e.target.value)}
+                           className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-pct" />
+                  </label>
+                  <label className="flex-1 text-xs">Déduction acompte %
+                    <input type="number" min="0" max="100" value={sitDeduct} onChange={(e) => setSitDeduct(e.target.value)}
+                           className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-deduct" />
+                  </label>
+                  <Button size="sm" className="h-9" onClick={makeSituation} data-testid="billing-make-situation">Créer situation</Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">0% = facture normale sans déduction d'acompte.</p>
+              </div>
+            </div>
+          ) : <p className="text-sm text-muted-foreground py-6 text-center">Chargement du décompte…</p>}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setBillQuote(null)}>Fermer</Button>
+            <Button onClick={makeBalance} data-testid="billing-make-balance">Facturer le solde</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

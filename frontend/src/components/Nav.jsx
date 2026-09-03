@@ -32,7 +32,7 @@ const NAV_PRO = [
   { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations" },
   { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
   { to: "/rendu-ia", label: "Rendu IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
-  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true },
+  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Nouveau" },
   { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
   { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox },
@@ -121,6 +121,7 @@ export const Nav = () => {
                     <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} title={l.hint || undefined} className="flex items-center gap-2.5">
                       <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
                       {t(l.key, l.label)}
+                      {l.badge && <span data-testid={`nav-badge-${l.to.slice(1)}`} className="ml-1.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>}
                       {l.hint && <span className="ml-auto text-[10px] text-muted-foreground">{l.hint}</span>}
                     </Link>
                   </DropdownMenuItem>
@@ -220,6 +221,7 @@ export const Nav = () => {
               className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg hover:bg-secondary transition-colors"
             >
               <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span> {t(l.key, l.label)}
+              {l.badge && <span className="ml-auto text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>}
             </Link>
           ))}
         </div>

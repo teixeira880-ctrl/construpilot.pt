@@ -250,6 +250,144 @@ async def create_deposit_invoice(doc_id: str, body: DepositIn, user=Depends(curr
     return inv
 
 
+def _ht_by_rate(lines: list) -> dict:
+    res: dict[float, float] = {}
+    for ln in lines or []:
+        rate = float(ln.get("vat_rate") or 0)
+        res[rate] = res.get(rate, 0) + (ln.get("qty") or 0) * (ln.get("unit_price_ht") or 0)
+    return res
+
+
+async def _quote_children(user_id: str, quote_id: str) -> list:
+    return await db.pro_documents.find(
+        {"user_id": user_id, "source_quote_id": quote_id, "doc_type": "invoice"},
+        {"_id": 0, "doc_id": 1, "number": 1, "source": 1, "title": 1, "status": 1,
+         "lines": 1, "totals": 1, "created_at": 1}).sort("created_at", 1).to_list(200)
+
+
+@router.get("/{doc_id}/billing-recap")
+async def billing_recap(doc_id: str, user=Depends(current_user)) -> dict:
+    """Décompte général : devis + toutes ses factures liées (acomptes, situations, solde)."""
+    q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not q or q.get("doc_type") != "quote":
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+    children = await _quote_children(user["user_id"], doc_id)
+    q_ht = q.get("totals", {}).get("ht", 0)
+    q_ttc = q.get("totals", {}).get("ttc", 0)
+    billed_ht = sum(c.get("totals", {}).get("ht", 0) for c in children)
+    billed_ttc = sum(c.get("totals", {}).get("ttc", 0) for c in children)
+    return {
+        "quote": {"doc_id": q["doc_id"], "number": q.get("number"), "ht": q_ht, "ttc": q_ttc,
+                  "signed": bool(q.get("signed") or q.get("status") == "signed")},
+        "invoices": [{"doc_id": c["doc_id"], "number": c.get("number"), "title": c.get("title"),
+                      "source": c.get("source"), "status": c.get("status"),
+                      "ht": c.get("totals", {}).get("ht", 0), "ttc": c.get("totals", {}).get("ttc", 0),
+                      "created_at": c.get("created_at")} for c in children],
+        "billed_ht": round(billed_ht, 2), "billed_ttc": round(billed_ttc, 2),
+        "remaining_ht": round(q_ht - billed_ht, 2), "remaining_ttc": round(q_ttc - billed_ttc, 2),
+        "progress_pct": round(billed_ht / q_ht * 100, 1) if q_ht else 0,
+    }
+
+
+class SituationIn(BaseModel):
+    pct: float = Field(default=100, ge=0.1, le=100)
+    deduct_deposit_pct: float = Field(default=0, ge=0, le=100)
+
+
+async def _create_child_invoice(q: dict, user: dict, lines: list, title: str, note: str, source: str) -> dict:
+    from datetime import timedelta
+    number = await _next_number(user["user_id"], "invoice")
+    now = _now()
+    totals = _compute_totals(lines, 0)
+    inv = {
+        "doc_id": "doc_" + secrets.token_hex(6), "user_id": user["user_id"],
+        "doc_type": "invoice", "number": number, "title": title,
+        "client_id": q.get("client_id"), "client": q.get("client"),
+        "status": "draft", "lines": lines, "notes": note,
+        "payment_terms": q.get("payment_terms") or "", "deposit_pct": 0, "totals": totals,
+        "payments": [], "paid": 0.0, "remaining_due": totals["ttc"], "issue_date": now,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "source": source, "parent_doc_id": q["doc_id"],
+        "source_quote_id": q["doc_id"], "source_quote_number": q.get("number") or q["doc_id"],
+        "created_at": now, "updated_at": now,
+    }
+    await db.pro_documents.insert_one(dict(inv))
+    inv.pop("_id", None)
+    return inv
+
+
+@router.post("/{doc_id}/situation-invoice")
+async def create_situation_invoice(doc_id: str, body: SituationIn, user=Depends(current_user)) -> dict:
+    """Facture de situation au prorata (pct d'avancement), avec déduction optionnelle des acomptes."""
+    q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not q or q.get("doc_type") != "quote":
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+    if not (q.get("signed") or q.get("status") == "signed"):
+        raise HTTPException(status_code=400, detail="Le devis doit être signé")
+    pct = float(body.pct)
+    ded = float(body.deduct_deposit_pct or 0)
+    num = q.get("number") or q["doc_id"]
+    children = await _quote_children(user["user_id"], doc_id)
+    sit_no = sum(1 for c in children if c.get("source") == "situation") + 1
+    quote_ht_by_rate = _ht_by_rate(q.get("lines", []))
+    # HT d'acompte déjà facturé par taux (pour la déduction)
+    acompte_ht_by_rate: dict[float, float] = {}
+    for c in children:
+        if c.get("source") == "deposit":
+            for r, ht in _ht_by_rate(c.get("lines", [])).items():
+                acompte_ht_by_rate[r] = acompte_ht_by_rate.get(r, 0) + ht
+    multi = len(quote_ht_by_rate) > 1
+    lines = []
+    for rate, ht in sorted(quote_ht_by_rate.items()):
+        suffix = f" — TVA {rate:g}%" if multi else ""
+        lines.append({"designation": f"Situation n°{sit_no} — avancement {pct:g}% — devis N°{num}{suffix}",
+                      "description": (q.get("title") or "").strip()[:200], "unit": "forfait", "qty": 1,
+                      "unit_price_ht": round(ht * pct / 100, 2), "vat_rate": rate, "category": "Situation"})
+        if ded > 0 and acompte_ht_by_rate.get(rate):
+            lines.append({"designation": f"Déduction acompte {ded:g}%{suffix}", "description": "",
+                          "unit": "forfait", "qty": 1,
+                          "unit_price_ht": -round(acompte_ht_by_rate[rate] * ded / 100, 2),
+                          "vat_rate": rate, "category": "Déduction"})
+    title = f"Situation n°{sit_no} ({pct:g}%) — devis N°{num}"
+    note = f"Facture de situation n°{sit_no} au prorata ({pct:g}% d'avancement) du devis N°{num}." \
+           + (f" Déduction de {ded:g}% des acomptes." if ded > 0 else "")
+    inv = await _create_child_invoice(q, user, lines, title, note, "situation")
+    return inv
+
+
+@router.post("/{doc_id}/balance-invoice")
+async def create_balance_invoice(doc_id: str, user=Depends(current_user)) -> dict:
+    """Facture de solde : reste dû = total devis − déjà facturé (acomptes + situations), par taux de TVA."""
+    q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not q or q.get("doc_type") != "quote":
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+    if not (q.get("signed") or q.get("status") == "signed"):
+        raise HTTPException(status_code=400, detail="Le devis doit être signé")
+    num = q.get("number") or q["doc_id"]
+    children = await _quote_children(user["user_id"], doc_id)
+    quote_ht_by_rate = _ht_by_rate(q.get("lines", []))
+    billed_ht_by_rate: dict[float, float] = {}
+    for c in children:
+        for r, ht in _ht_by_rate(c.get("lines", [])).items():
+            billed_ht_by_rate[r] = billed_ht_by_rate.get(r, 0) + ht
+    multi = len(quote_ht_by_rate) > 1
+    lines = []
+    for rate, ht in sorted(quote_ht_by_rate.items()):
+        remaining = round(ht - billed_ht_by_rate.get(rate, 0), 2)
+        if abs(remaining) < 0.01:
+            continue
+        suffix = f" — TVA {rate:g}%" if multi else ""
+        lines.append({"designation": f"Solde — devis N°{num}{suffix}",
+                      "description": (q.get("title") or "").strip()[:200], "unit": "forfait", "qty": 1,
+                      "unit_price_ht": remaining, "vat_rate": rate, "category": "Solde"})
+    if not lines:
+        raise HTTPException(status_code=400, detail="Rien à facturer : le devis est déjà entièrement facturé")
+    inv = await _create_child_invoice(q, user, lines, f"Facture de solde — devis N°{num}",
+                                      f"Facture de solde du devis N°{num} (déduction des acomptes et situations déjà facturés).",
+                                      "balance")
+    return inv
+
+
 @router.post("")
 async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     dtype = body.doc_type if body.doc_type in DOC_TYPES else "quote"
@@ -1131,6 +1269,11 @@ async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_
                   'text-decoration:none;font-weight:bold;display:inline-block">'
                   '✍️ Consulter et signer le devis en ligne</a></p>')
     inner += _render_button_html((body.render_url or "").strip())
+    if doc.get("doc_type") in ("invoice", "credit_note") and user.get("bank_details"):
+        _bank = str(user["bank_details"]).replace(chr(10), "<br/>")
+        inner += (f'<div style="margin:18px 0;padding:14px 16px;background:#f6f8fa;border-radius:8px">'
+                  f'<p style="margin:0 0 6px 0;font-weight:bold">Coordonnées bancaires</p>'
+                  f'<p style="margin:0;color:#333;font-size:13px">{_bank}</p></div>')
     html = wrap_company_html(
         subject, inner, company_name=company,
         logo_url=logo_url_for(user["user_id"], branding),
@@ -1196,6 +1339,11 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                   f'✍️ Consulter et signer le devis en ligne</a></p>'
                   f'<p style="font-size:12px;color:#666">Ou copiez ce lien : {sign_url}</p>')
     inner += _render_button_html((body.render_url or "").strip())
+    if doc.get("doc_type") in ("invoice", "credit_note") and user.get("bank_details"):
+        _bank = str(user["bank_details"]).replace(chr(10), "<br/>")
+        inner += (f'<div style="margin:18px 0;padding:14px 16px;background:#f6f8fa;border-radius:8px">'
+                  f'<p style="margin:0 0 6px 0;font-weight:bold">Coordonnées bancaires</p>'
+                  f'<p style="margin:0;color:#333;font-size:13px">{_bank}</p></div>')
     from engines.emailer import logo_url_for
     logo_url = logo_url_for(user["user_id"], branding)
     html = wrap_company_html(subject, inner, company_name=company,
