@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { Clock, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { BLOG_ARTICLES } from "@/lib/blogArticles";
+import { BLOG_ARTICLES_PT } from "@/lib/blogPortugal";
+import { useI18n } from "@/context/I18nContext";
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -19,31 +21,40 @@ const JSON_LD = {
 };
 
 export default function Blog() {
+  const { lang } = useI18n();
+  const isPT = lang === "pt";
+  const articles = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
   return (
     <>
       <SEO
         title="Blog"
-        description="Guides, astuces et actualités BTP par ConstruPilot : coût rénovation 2026, TVA à 10 %, métré 2D, comparateur de prix matériaux, devis client, plans 3D."
-        keywords="blog BTP, coût rénovation, TVA 10 pourcent, métré 2D, devis travaux, prix matériaux"
+        description={isPT
+          ? "Guias e atualidades da construção por ConstruPilot: custo de renovação 2026 por distrito, IVA das obras (6%/23%), como estimar uma obra em minutos."
+          : "Guides, astuces et actualités BTP par ConstruPilot : coût rénovation 2026, TVA à 10 %, métré 2D, comparateur de prix matériaux, devis client, plans 3D."}
+        keywords={isPT
+          ? "blog construção Portugal, custo renovação, IVA obras 6, estimar obra, orçamento obras"
+          : "blog BTP, coût rénovation, TVA 10 pourcent, métré 2D, devis travaux, prix matériaux"}
         canonical="/blog"
         jsonLd={JSON_LD}
       />
       <section className="border-b border-border">
         <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16 lg:py-20">
-          <p className="overline">Le journal</p>
+          <p className="overline">{isPT ? "O jornal" : "Le journal"}</p>
           <h1 className="mt-3 font-display text-4xl lg:text-5xl font-extrabold tracking-tighter">
-            Guides & actualités <span className="text-primary">BTP 2026</span>
+            {isPT ? <>Guias & atualidades <span className="text-primary">Construção 2026</span></>
+                  : <>Guides & actualités <span className="text-primary">BTP 2026</span></>}
           </h1>
           <p className="mt-4 text-sm md:text-base text-muted-foreground max-w-2xl">
-            Prix travaux, méthodes de métré, fiscalité rénovation, comparatifs matériaux : le journal
-            de ConstruPilot vous donne les réponses concrètes du terrain, actualisées chaque semaine.
+            {isPT
+              ? "Preços de obras, IVA na reabilitação, métodos e orçamentos: o jornal do ConstruPilot com respostas concretas para o mercado português."
+              : "Prix travaux, méthodes de métré, fiscalité rénovation, comparatifs matériaux : le journal de ConstruPilot vous donne les réponses concrètes du terrain, actualisées chaque semaine."}
           </p>
         </div>
       </section>
 
       <section className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="blog-list">
-          {BLOG_ARTICLES.map((a) => (
+          {articles.map((a) => (
             <Link
               key={a.slug}
               to={`/blog/${a.slug}`}
@@ -70,7 +81,7 @@ export default function Blog() {
                 </h2>
                 <p className="text-sm text-muted-foreground line-clamp-3">{a.excerpt}</p>
                 <span className="text-primary text-sm font-semibold inline-flex items-center gap-1 mt-1">
-                  Lire l'article <ArrowRight className="h-3 w-3" />
+                  {isPT ? "Ler o artigo" : "Lire l'article"} <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
             </Link>

@@ -4,17 +4,22 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { BLOG_ARTICLES, getArticle } from "@/lib/blogArticles";
 import { ARTICLE_BODIES } from "@/lib/blogBodies";
+import { BLOG_ARTICLES_PT, getArticlePT, ARTICLE_BODIES_PT } from "@/lib/blogPortugal";
+import { useI18n } from "@/context/I18nContext";
 import AutoSeoBlogPost from "@/components/AutoSeoBlogPost";
 
 export default function BlogPost() {
   const { slug } = useParams();
-  const article = getArticle(slug);
+  const { lang } = useI18n();
+  const isPT = lang === "pt";
+  const article = isPT ? getArticlePT(slug) : getArticle(slug);
   if (!article) return <AutoSeoBlogPost slug={slug} />;
 
-  const body = ARTICLE_BODIES[slug];
-  const idx = BLOG_ARTICLES.findIndex((a) => a.slug === slug);
-  const prev = BLOG_ARTICLES[idx - 1];
-  const next = BLOG_ARTICLES[idx + 1];
+  const body = (isPT ? ARTICLE_BODIES_PT : ARTICLE_BODIES)[slug];
+  const list = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
+  const idx = list.findIndex((a) => a.slug === slug);
+  const prev = list[idx - 1];
+  const next = list[idx + 1];
 
   const jsonLd = {
     "@context": "https://schema.org",
