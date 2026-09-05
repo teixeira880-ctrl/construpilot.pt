@@ -70,7 +70,7 @@ export default function BlogPost() {
       <article className="mx-auto max-w-3xl px-5 lg:px-8 py-12 lg:py-16">
         <nav aria-label="Fil d'Ariane" className="mb-6" data-testid="breadcrumb">
           <ol className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <li><Link to="/" className="hover:text-primary" data-testid="breadcrumb-home">Accueil</Link></li>
+            <li><Link to="/" className="hover:text-primary" data-testid="breadcrumb-home">{isPT ? "Início" : "Accueil"}</Link></li>
             <li aria-hidden="true" className="opacity-50">/</li>
             <li><Link to="/blog" className="hover:text-primary" data-testid="breadcrumb-blog">Blog</Link></li>
             <li aria-hidden="true" className="opacity-50">/</li>
@@ -90,7 +90,7 @@ export default function BlogPost() {
             {new Date(article.published).toLocaleDateString("fr-FR", { day:"numeric", month:"long", year:"numeric" })}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" /> {article.readingMinutes} min de lecture
+            <Clock className="h-3 w-3" /> {article.readingMinutes} {isPT ? "min de leitura" : "min de lecture"}
           </span>
         </div>
 
@@ -122,7 +122,7 @@ export default function BlogPost() {
             <Link to={`/blog/${prev.slug}`}
                   data-testid="blog-prev-link"
                   className="surface p-4 hover:border-primary transition-colors group">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">← Précédent</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">← {isPT ? "Anterior" : "Précédent"}</span>
               <p className="mt-1 font-display font-semibold group-hover:text-primary transition-colors">
                 {prev.title}
               </p>
@@ -132,7 +132,7 @@ export default function BlogPost() {
             <Link to={`/blog/${next.slug}`}
                   data-testid="blog-next-link"
                   className="surface p-4 hover:border-primary transition-colors group text-right">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Suivant →</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{isPT ? "Seguinte" : "Suivant"} →</span>
               <p className="mt-1 font-display font-semibold group-hover:text-primary transition-colors">
                 {next.title}
               </p>
