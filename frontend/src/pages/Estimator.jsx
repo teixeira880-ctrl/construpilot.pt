@@ -346,13 +346,17 @@ export default function Estimator() {
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           {est.default_vat_rate != null && (
-            <div className="flex items-start gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2 text-xs" data-testid="est-pt-vat-note">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2.5 text-xs" data-testid="est-pt-vat-note">
               <span className="text-base leading-none">🇵🇹</span>
-              <div>
+              <div className="flex-1">
                 {est.vat_eligible_6
                   ? <>IVA aplicável: <b>6%</b> (taxa reduzida — reabilitação de habitação, Verba 2.27 do CIVA). Os valores acima são <b>sem IVA</b>.</>
                   : <>IVA aplicável: <b>23%</b> (taxa normal). Os valores acima são <b>sem IVA</b>.</>}
               </div>
+              <Button size="sm" variant="outline" onClick={downloadPdf} disabled={busy}
+                      data-testid="est-download-pdf-vat" className="rounded-sm gap-1.5 shrink-0 text-primary border-primary/40">
+                <Download className="h-3.5 w-3.5" /> Descarregar PDF (com IVA)
+              </Button>
             </div>
           )}
           <EstimationView est={est} />

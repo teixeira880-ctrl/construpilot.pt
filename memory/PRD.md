@@ -10,6 +10,11 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 05/09/2026 — Lançamento Portugal — Parte 6** [testado UI]:
+> - **Banner promocional traduzido** (`Landing.jsx`, chaves `landing.promo`/`landing.promo_cta`): «100% GRÁTIS durante a fase de lançamento…» + «Aproveitar →» em PT. Verificado no ecrã.
+> - **Botão PDF (com IVA) no estimador** (`Estimator.jsx`, testid `est-download-pdf-vat`): dentro da nota de IVA PT, botão «Descarregar PDF (com IVA)» que gera o PDF (já com a linha de IVA 6%/23%). Nota de taxa aplicável mantida.
+> - **Domínio construpilot.pt**: orientação oficial dada ao utilizador (Link domain → Entri, remover A records, propagação DNS; registo do domínio é feito num registrar externo). Não é código; a app já deteta `.pt`.
+>
 > **Session 05/09/2026 — Lançamento Portugal — Parte 5** [testado curl + UI]:
 > - **Seletor de mercado FR/PT no topo** (`I18nContext.MarketToggle`, testids `market-toggle`, `market-toggle-fr`, `market-toggle-pt`): toggle segmentado com bandeiras 🇫🇷/🇵🇹 no nav (desktop, ambos os estados login/anónimo), um clique troca o mercado/idioma. Coexiste com o `LangToggle` (restantes idiomas). Verificado no ecrã.
 > - **IVA 6% automático no orçamento gerado** (`documents.py` `_apply_pt_vat`): para pros com `brand_country=PT`, as linhas geradas por `/from-text`, `/from-video` (`_quote_doc_from_text`) e `/from-plan/{id}` recebem IVA **6%** quando o texto indica reabilitação/remodelação de habitação (palavras-chave PT), senão **23%**. Fora de PT não altera. Verificado por curl: reno cozinha moradia→6%, escritório comercial novo→23%.

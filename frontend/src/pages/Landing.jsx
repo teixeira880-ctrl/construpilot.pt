@@ -209,8 +209,8 @@ export default function Landing() {
 
       <div className="bg-primary text-primary-foreground text-center text-sm font-semibold px-4 py-2.5 flex items-center justify-center gap-2" data-testid="promo-banner">
         <Sparkles className="h-4 w-4" />
-        🎉 100% GRATUIT pendant la phase de lancement — toutes les fonctionnalités Pro débloquées, sans carte bancaire.
-        <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">J'en profite →</Link>
+        {t("landing.promo")}
+        <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">{t("landing.promo_cta")}</Link>
       </div>
       <SignupCounter />
       <LandingInstallBanner />
