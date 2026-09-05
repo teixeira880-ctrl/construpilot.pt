@@ -249,6 +249,13 @@ export const Footer = () => (
         </a>
         <div className="flex items-center gap-3">
           <Link
+            to="/portugal"
+            className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
+            data-testid="footer-portugal-link"
+          >
+            🇵🇹 Portugal
+          </Link>
+          <Link
             to="/investisseurs"
             className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
             data-testid="footer-investors-link"

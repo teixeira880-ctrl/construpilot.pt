@@ -70,9 +70,9 @@ export default function QuoteEditor() {
   // Photo → devis : lit une ou plusieurs photos EN PARALLÈLE via l'IA et ajoute les lignes
   const addPhotosFromFiles = async (fileList) => {
     const files = Array.from(fileList || []).filter((f) => f && f.type.startsWith("image/"));
-    if (!files.length) { toast.error("Choisissez une ou plusieurs images (photos)"); return; }
+    if (!files.length) { toast.error(t("crm.t_need_photo")); return; }
     setPhotoBusy(true);
-    const tid = toast.loading(files.length > 1 ? `Lecture de ${files.length} photos…` : "Lecture de la photo…");
+    const tid = toast.loading(files.length > 1 ? t("crm.t_reading_photos").replace("{n}", files.length) : t("crm.t_reading_photo"));
     try {
       const b64s = await Promise.all(files.map((file) => new Promise((res, rej) => {
         const r = new FileReader();
@@ -104,9 +104,9 @@ export default function QuoteEditor() {
           return [...cleaned, ...mapped];
         });
         const okCount = results.filter((r) => r.found.length).length;
-        toast.success(`${allFound.length} ligne(s) ajoutée(s) depuis ${okCount} photo(s)`, { id: tid });
+        toast.success(t("crm.t_lines_from_photos").replace("{n}", allFound.length).replace("{p}", okCount), { id: tid });
       } else {
-        toast.error("Aucune prestation lisible sur les photos", { id: tid });
+        toast.error(t("crm.t_no_prestation"), { id: tid });
       }
     } finally { setPhotoBusy(false); }
   };
@@ -159,7 +159,7 @@ export default function QuoteEditor() {
                 const base = ls.filter((l) => (l.designation || "").trim() || (Number(l.unit_price_ht) || 0));
                 return [...base, ...arr.map((l) => ({ ...blankLine(), ...l, _saveToLib: false }))];
               });
-              toast.success(`${arr.length} ouvrage(s) composé(s) ajouté(s) depuis le plan`);
+              toast.success(t("crm.t_ouvrages_from_plan").replace("{n}", arr.length));
             }
           } catch { /* ignore */ }
           sessionStorage.removeItem("construpilot_pending_ouvrages");
@@ -207,27 +207,27 @@ export default function QuoteEditor() {
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
   const setAllVat = (rate) => {
     setLines((ls) => ls.map((l) => ({ ...l, vat_rate: rate })));
-    toast.success(`TVA ${rate}% appliquée à toutes les lignes`);
+    toast.success(t("crm.t_vat_applied").replace("{r}", rate));
   };
   const addLine = () => setLines((ls) => [...ls, blankLine(defVat)]);
   const delLine = (i) => setLines((ls) => ls.filter((_, idx) => idx !== i));
 
   const suggestDescription = async (i) => {
     const l = lines[i];
-    if (!l?.designation.trim()) return toast.error("Renseignez d'abord la désignation");
+    if (!l?.designation.trim()) return toast.error(t("crm.t_need_desig"));
     setAiLineBusy(i);
     try {
       const { data } = await api.post("/documents/ai/describe", {
         designation: l.designation, context: title || "",
       });
       const suggestion = (data.description || "").trim();
-      if (!suggestion) return toast.error("Aucune suggestion générée");
+      if (!suggestion) return toast.error(t("crm.t_no_suggest"));
       setLines((ls) => ls.map((ln, idx) => idx === i
         ? { ...ln, description: ln.description?.trim() ? ln.description + "\n" + suggestion : suggestion }
         : ln));
-      toast.success("Suggestions IA ajoutées à la description");
+      toast.success(t("crm.t_suggest_added"));
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Suggestion IA indisponible");
+      toast.error(e?.response?.data?.detail || t("crm.t_suggest_unavailable"));
     } finally { setAiLineBusy(null); }
   };
   const addFromLib = (it) => {
@@ -282,7 +282,7 @@ export default function QuoteEditor() {
 
   const createClientInline = async () => {
     if (!(nc.first_name || nc.last_name || nc.company || nc.email)) {
-      toast.error("Renseignez au moins un nom, une société ou un email"); return;
+      toast.error(t("crm.t_need_client_identity")); return;
     }
     setNcBusy(true);
     try {
@@ -291,24 +291,24 @@ export default function QuoteEditor() {
       setClientId(data.client_id);
       setNewClientOpen(false);
       setNc({ first_name: "", last_name: "", company: "", email: "", phone: "", address: "" });
-      toast.success("Client ajouté et sélectionné");
+      toast.success(t("crm.t_client_added"));
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Création du client impossible");
+      toast.error(e?.response?.data?.detail || t("crm.t_client_create_fail"));
     } finally { setNcBusy(false); }
   };
 
   const addPlanFromFile = async (file) => {
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) { toast.error("Fichier trop volumineux (>20 Mo)"); return; }
+    if (file.size > 20 * 1024 * 1024) { toast.error(t("crm.t_file_too_big20")); return; }
     setPlanBusy(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/takeoffs/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success("Plan importé — ouverture de l'outil Mesurer");
+      toast.success(t("crm.t_plan_imported"));
       nav(`/plan?open=${data.plan_id}&auto=1`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import du plan impossible");
+      toast.error(e?.response?.data?.detail || t("crm.t_plan_import_fail"));
     } finally { setPlanBusy(false); }
   };
 
@@ -337,7 +337,7 @@ export default function QuoteEditor() {
   };
 
   const openRecorder = async (mode = "video") => {
-    if (!navigator.mediaDevices?.getUserMedia) { toast.error("Micro/caméra non supporté — utilisez la galerie"); return; }
+    if (!navigator.mediaDevices?.getUserMedia) { toast.error(t("crm.t_mic_cam_unsupported")); return; }
     setRecMode(mode);
     setStreamReady(false);
     setRecOpen(true);
@@ -350,7 +350,7 @@ export default function QuoteEditor() {
       if (mode !== "audio" && videoElRef.current) { videoElRef.current.srcObject = stream; videoElRef.current.play().catch(() => {}); }
       setStreamReady(true);
     } catch {
-      toast.error(mode === "audio" ? "Accès micro refusé — utilisez la galerie" : "Accès caméra refusé — utilisez la galerie");
+      toast.error(mode === "audio" ? t("crm.t_mic_denied") : t("crm.t_cam_denied"));
       closeRecorder();
     }
   };
@@ -398,7 +398,7 @@ export default function QuoteEditor() {
 
   const reviewVideo = (file) => {
     if (!file) return;
-    if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
+    if (file.size > 80 * 1024 * 1024) { toast.error(t("crm.t_video_too_big")); return; }
     const url = URL.createObjectURL(file);
     const sizeMB = file.size / (1024 * 1024);
     let done = false;
@@ -443,21 +443,21 @@ export default function QuoteEditor() {
 
   const transcribeVideo = async (file) => {
     if (!file) return;
-    if (file.size > 80 * 1024 * 1024) { toast.error("Vidéo trop volumineuse (>80 Mo) — filmez plus court"); return; }
+    if (file.size > 80 * 1024 * 1024) { toast.error(t("crm.t_video_too_big")); return; }
     setVideoBusy(true);
-    const tid = toast.loading("Transcription de la vidéo…");
+    const tid = toast.loading(t("crm.t_transcribing"));
     try {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/documents/video-transcribe", fd, {
         headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
       });
-      toast.success("Transcription prête — relisez et corrigez avant de générer", { id: tid });
+      toast.success(t("crm.t_transcript_ready"), { id: tid });
       setTranscript(data.transcript || "");
       setTranscriptPhotos([]);
       setTranscriptDialog(true);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Transcription impossible", { id: tid });
+      toast.error(e?.response?.data?.detail || t("crm.t_transcript_fail"), { id: tid });
     } finally { setVideoBusy(false); }
   };
 
@@ -472,19 +472,19 @@ export default function QuoteEditor() {
   };
 
   const generateFromTranscript = async () => {
-    if (!transcript.trim()) { toast.error("La transcription est vide"); return; }
+    if (!transcript.trim()) { toast.error(t("crm.t_transcript_empty")); return; }
     setTranscriptBusy(true);
-    const tid = toast.loading("Génération du devis…");
+    const tid = toast.loading(t("crm.t_generating_quote"));
     try {
       const { data } = await api.post("/documents/from-text", { text: transcript, images: transcriptPhotos });
       toast.success(
         data.priced_lines > 0
-          ? `Devis créé — ${data.priced_lines} ligne(s) chiffrée(s) depuis votre bibliothèque`
-          : "Devis créé à partir de la description", { id: tid });
+          ? t("crm.t_quote_created_lines").replace("{n}", data.priced_lines)
+          : t("crm.t_quote_created"), { id: tid });
       setTranscriptDialog(false);
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Génération du devis impossible", { id: tid });
+      toast.error(e?.response?.data?.detail || t("crm.t_gen_quote_fail"), { id: tid });
     } finally { setTranscriptBusy(false); }
   };
 
@@ -529,10 +529,10 @@ export default function QuoteEditor() {
       const merged = [...prev, ...incoming].slice(0, 5);
       const total = merged.reduce((s, f) => s + f.size, 0);
       if (total > 15 * 1024 * 1024) {
-        toast.error("Pièces jointes trop volumineuses (15 Mo maximum au total)");
+        toast.error(t("crm.t_attach_too_big"));
         return prev;
       }
-      if (prev.length + incoming.length > 5) toast.error("5 pièces jointes maximum");
+      if (prev.length + incoming.length > 5) toast.error(t("crm.t_attach_max5"));
       return merged;
     });
   };
@@ -543,8 +543,8 @@ export default function QuoteEditor() {
     try {
       const { data } = await api.post(`/runway/renders/${rid}/share`);
       setRenderUrl(data.share_url || "");
-      toast.success("Rendu avant/après joint à l'e-mail");
-    } catch { toast.error("Impossible de joindre le rendu"); }
+      toast.success(t("crm.t_render_attached"));
+    } catch { toast.error(t("crm.t_render_attach_fail")); }
   };
 
   const loadEmailPreview = async () => {
@@ -557,7 +557,7 @@ export default function QuoteEditor() {
       });
       setEmailPreviewHtml(data?.html || "");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Aperçu indisponible");
+      toast.error(e?.response?.data?.detail || t("crm.t_preview_unavailable"));
     } finally { setLoadingEmailPreview(false); }
   };
 
@@ -600,7 +600,7 @@ export default function QuoteEditor() {
 
   const sendNow = async () => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(sendEmail)) {
-      toast.error("Email client invalide"); return;
+      toast.error(t("crm.t_email_invalid")); return;
     }
     setSending(true);
     try {
@@ -612,12 +612,12 @@ export default function QuoteEditor() {
       })));
       await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d, render_url: renderUrl, attachments })
         .then(({ data }) => {
-          toast.success(data?.attached_3d ? "Devis envoyé (rendu 3D joint) ✅" : "Devis envoyé au client ✅");
+          toast.success(data?.attached_3d ? t("crm.t_quote_sent_3d") : t("crm.t_quote_sent"));
         });
       closeSend(false);
       setStatus("sent");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || t("crm.t_send_fail"));
     } finally { setSending(false); }
   };
 

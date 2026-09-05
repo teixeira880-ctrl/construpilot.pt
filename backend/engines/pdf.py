@@ -106,6 +106,25 @@ def _esti_totals(story: list, estimation: dict, S: dict) -> None:
         ('BOX', (0, 0), (-1, -1), 0.5, LINE_GREY),
     ]))
     story += [tot, Spacer(1, 8)]
+    _vat = estimation.get("default_vat_rate")
+    if _vat is not None:
+        _avg = float(estimation.get("total_avg") or 0)
+        _rate = float(_vat)
+        _label = ("IVA reduzido — reabilitação (Verba 2.27 do CIVA)"
+                  if estimation.get("vat_eligible_6") else "IVA — taxa normal")
+        vt = Table([[f"{_label} — {_rate:.0f}%", _money(round(_avg * _rate / 100.0, 2))],
+                    ["Total c/ IVA (preço médio)", _money(round(_avg * (1 + _rate / 100.0), 2))]],
+                   colWidths=[110 * mm, 64 * mm])
+        vt.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#FFF1E8')),
+            ('BOX', (0, 0), (-1, -1), 0.5, LINE_GREY),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        story += [vt, Spacer(1, 8)]
 
 
 def _esti_breakdown(story: list, estimation: dict) -> None:

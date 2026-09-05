@@ -10,6 +10,11 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 05/09/2026 — Lançamento Portugal — Parte 4** [testado curl + UI]:
+> - **Toasts do editor traduzidos**: ~35 mensagens `toast.*` hard-coded em FR (`QuoteEditor.jsx`) migradas para i18n (chaves `crm.t_*` em `crmI18n.js`, fr+pt), incl. templates com variáveis (`.replace("{n}"…)`). Já não há francês visível no editor.
+> - **IVA no PDF de estimativa** (`engines/pdf.py` `_esti_totals`): quando `estimation.default_vat_rate` está definido (PT), acrescenta linha «IVA reduzido — reabilitação (Verba 2.27) — 6%» (ou «IVA — taxa normal — 23%») + «Total c/ IVA (preço médio)». Verificado por curl (PDF PT reno mostra 6% + Total c/ IVA).
+> - **Link «🇵🇹 Portugal» no rodapé** (`Nav.jsx` Footer, testid `footer-portugal-link`) → `/portugal`.
+>
 > **Session 05/09/2026 — Lançamento Portugal — Parte 3** [testado curl + UI]:
 > - **Chrome global traduzido**: banner de cookies (`CookieConsent.jsx`) e widget de ajuda (`HelpChatbot.jsx`) migrados para i18n (chaves `cookie.*` / `help.*` em `I18nContext`, fr+pt). Verificado em PT: «Aceitar tudo»/«Recusar», «Precisa de ajuda?». (Nota: ~43 toasts do editor continuam em FR.)
 > - **IVA 6% automático no estimador** (`estimation.py`): novo helper `pt_default_vat_rate(country, project_type, building_type, condition)` → 6% (reabilitação de habitação elegível, Verba 2.27), 23% (PT restante), None (FR). `estimate()` devolve `default_vat_rate` + `vat_eligible_6`. Verificado via curl (PT reno maison→6, PT neuf→23, FR→None). Nota de IVA mostrada no resultado do estimador (`Estimator.jsx`, testid `est-pt-vat-note`).
