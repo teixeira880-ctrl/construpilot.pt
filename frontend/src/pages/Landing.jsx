@@ -481,11 +481,11 @@ export default function Landing() {
                   <button
                     onClick={toggleVideoSound}
                     data-testid="video-sound-toggle"
-                    aria-label={videoMuted ? "Activer le son" : "Couper le son"}
+                    aria-label={videoMuted ? t("landing.master_video.unmute", "Activer le son") : "Couper le son"}
                     className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
                   >
                     {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    {videoMuted ? "Activer le son" : "Son"}
+                    {videoMuted ? t("landing.master_video.unmute", "Activer le son") : t("landing.master_video.sound", "Son")}
                   </button>
                 </div>
               </div>

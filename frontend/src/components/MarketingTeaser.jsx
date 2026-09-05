@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, Smartphone } from "lucide-react";
+import { useI18n } from "@/context/I18nContext";
 
 /**
  * MarketingTeaser — 20 s loop of the app in action, framed inside a mobile mockup.
@@ -9,6 +10,8 @@ import { Play, Smartphone } from "lucide-react";
  * If missing, a friendly gradient fallback with a Play icon is shown.
  */
 export function MarketingTeaser() {
+  const { lang } = useI18n();
+  const pt = lang === "pt";
   const [failed, setFailed] = useState(false);
   const videoRef = useRef(null);
   const VIDEO_URL =
@@ -47,19 +50,19 @@ export function MarketingTeaser() {
             <Smartphone className="h-4 w-4" /> ConstruPilot Mobile
           </div>
           <h2 className="font-display text-3xl lg:text-5xl font-bold tracking-tight leading-tight">
-            Chiffrez un chantier <br />
-            <span className="text-primary italic">depuis le chantier.</span>
+            {pt ? "Orçamente uma obra" : "Chiffrez un chantier"} <br />
+            <span className="text-primary italic">{pt ? "a partir da obra." : "depuis le chantier."}</span>
           </h2>
           <p className="mt-5 text-base text-muted-foreground max-w-md leading-relaxed">
-            Prenez une photo du plan, décrivez le projet à voix haute, envoyez
-            le devis signé au client — le tout en 30 s, sans quitter le camion.
+            {pt
+              ? "Tire uma foto da planta, descreva o projeto em voz alta e envie o orçamento assinado ao cliente — tudo em 30 s, sem sair da carrinha."
+              : "Prenez une photo du plan, décrivez le projet à voix haute, envoyez le devis signé au client — le tout en 30 s, sans quitter le camion."}
           </p>
           <ul className="mt-8 grid gap-2 text-sm text-muted-foreground">
-            {[
-              "Analyse IA gros œuvre en 8 s",
-              "Rendu 3D photoréaliste (Nano Banana)",
-              "Devis signé + PDF envoyé par email",
-            ].map((f) => (
+            {(pt
+              ? ["Análise IA de estrutura em 8 s", "Render 3D fotorrealista (Nano Banana)", "Orçamento assinado + PDF enviado por e-mail"]
+              : ["Analyse IA gros œuvre en 8 s", "Rendu 3D photoréaliste (Nano Banana)", "Devis signé + PDF envoyé par email"]
+            ).map((f) => (
               <li key={f} className="flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" /> {f}
               </li>
@@ -97,7 +100,7 @@ export function MarketingTeaser() {
                   className="w-full h-full object-cover"
                   data-testid="teaser-video"
                 >
-                  Votre navigateur ne prend pas en charge la vidéo.
+                  {pt ? "O seu navegador não suporta vídeo." : "Votre navigateur ne prend pas en charge la vidéo."}
                 </video>
               ) : (
                 <div
@@ -109,10 +112,10 @@ export function MarketingTeaser() {
                       <Play className="h-7 w-7 text-primary fill-primary" />
                     </div>
                     <p className="mt-4 font-display font-bold text-lg">
-                      Aperçu de l'app
+                      {pt ? "Pré-visualização da app" : "Aperçu de l'app"}
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Vidéo indisponible sur ce navigateur
+                      {pt ? "Vídeo indisponível neste navegador" : "Vidéo indisponible sur ce navigateur"}
                     </p>
                   </div>
                 </div>

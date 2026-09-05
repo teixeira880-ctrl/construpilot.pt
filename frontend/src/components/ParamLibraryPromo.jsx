@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Boxes, Layers, MapPin, PlugZap, CheckCircle2 } from "lucide-react";
+import { useI18n } from "@/context/I18nContext";
 
-const FEATURES = [
+const FEATURES_FR = [
   { icon: Layers, title: "Déboursé sec automatique",
     desc: "Coût de revient et prix de vente calculés par ouvrage : matériaux + main d'œuvre + pertes, marge appliquée." },
   { icon: MapPin, title: "Coefficients régionaux",
@@ -9,9 +10,20 @@ const FEATURES = [
   { icon: PlugZap, title: "Connexion fournisseurs",
     desc: "Prêt à connecter Point.P, Chausson, Gedimat, Leroy Merlin… pour actualiser les prix matériaux." },
 ];
+const FEATURES_PT = [
+  { icon: Layers, title: "Custo direto automático",
+    desc: "Custo de produção e preço de venda calculados por trabalho: materiais + mão de obra + perdas, com margem aplicada." },
+  { icon: MapPin, title: "Coeficientes por distrito",
+    desc: "Preços ajustados automaticamente à zona: Lisboa, Porto, Algarve, interior…" },
+  { icon: PlugZap, title: "Ligação a fornecedores",
+    desc: "Pronto para ligar a fornecedores de materiais e atualizar os preços." },
+];
 
 /** Section pub : bibliothèque paramétrique ConstruPilot (ouvrages composés). */
 export function ParamLibraryPromo() {
+  const { lang } = useI18n();
+  const pt = lang === "pt";
+  const FEATURES = pt ? FEATURES_PT : FEATURES_FR;
   return (
     <section className="relative overflow-hidden border-y border-border bg-[#0A0D14] text-white"
              data-testid="param-promo">
@@ -21,19 +33,23 @@ export function ParamLibraryPromo() {
         <div className="grid lg:grid-cols-[1.1fr,1fr] gap-14 items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
-              <Boxes className="h-4 w-4" /> Nouveau · Moteur de chiffrage
+              <Boxes className="h-4 w-4" /> {pt ? "Novo · Motor de orçamentação" : "Nouveau · Moteur de chiffrage"}
             </div>
             <h2 className="mt-6 text-4xl sm:text-5xl font-black leading-[1.05] tracking-tight">
-              Une bibliothèque de <span className="text-primary">191&nbsp;ouvrages composés</span>,
-              chiffrés au réel.
+              {pt
+                ? <>Uma biblioteca de <span className="text-primary">191&nbsp;trabalhos compostos</span>, orçamentados ao real.</>
+                : <>Une bibliothèque de <span className="text-primary">191&nbsp;ouvrages composés</span>, chiffrés au réel.</>}
             </h2>
             <p className="mt-6 text-lg text-white/70 max-w-xl leading-relaxed">
-              Fini les prix « au doigt mouillé ». Chaque ouvrage est décomposé en matériaux, main d'œuvre
-              et pertes, avec des formules de quantité paramétriques. ConstruPilot calcule pour vous le
-              déboursé sec, le coût de revient et le prix de vente — ajusté à votre région et votre marge.
+              {pt
+                ? "Acabaram os preços «a olho». Cada trabalho é decomposto em materiais, mão de obra e perdas, com fórmulas de quantidade paramétricas. O ConstruPilot calcula o custo direto, o custo de produção e o preço de venda — ajustado ao seu distrito e à sua margem."
+                : "Fini les prix « au doigt mouillé ». Chaque ouvrage est décomposé en matériaux, main d'œuvre et pertes, avec des formules de quantité paramétriques. ConstruPilot calcule pour vous le déboursé sec, le coût de revient et le prix de vente — ajusté à votre région et votre marge."}
             </p>
             <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3">
-              {["1 127 lignes de recettes", "12 corps de métier", "Taux horaires 2026", "TVA 5,5 / 10 / 20 %"].map((t) => (
+              {(pt
+                ? ["1 127 linhas de receitas", "12 especialidades", "Custos horários 2026", "IVA 6 / 13 / 23 %"]
+                : ["1 127 lignes de recettes", "12 corps de métier", "Taux horaires 2026", "TVA 5,5 / 10 / 20 %"]
+              ).map((t) => (
                 <div key={t} className="flex items-center gap-2 text-sm text-white/80">
                   <CheckCircle2 className="h-4 w-4 text-primary" /> {t}
                 </div>
