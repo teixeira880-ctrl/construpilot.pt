@@ -25,6 +25,8 @@ export function BrandingDialog({ trigger }) {
   const [contactLine, setContactLine] = useState("");
   const [siret, setSiret] = useState("");
   const [vat, setVat] = useState("");
+  const [nif, setNif] = useState("");
+  const [alvara, setAlvara] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
@@ -47,6 +49,8 @@ export function BrandingDialog({ trigger }) {
       setContactLine(data.contact_line || "");
       setSiret(data.siret || "");
       setVat(data.vat || "");
+      setNif(data.nif || "");
+      setAlvara(data.alvara || "");
       setAddress(data.address || "");
       setCity(data.city || "");
       setPostalCode(data.postal_code || "");
@@ -84,7 +88,7 @@ export function BrandingDialog({ trigger }) {
     try {
       await api.put("/users/me/branding", {
         company_name: companyName, company_email: companyEmail, contact_line: contactLine, logo_b64: logoB64 || null,
-        siret: siret, vat: vat,
+        siret: siret, vat: vat, nif: nif, alvara: alvara,
         address: address, city: city, postal_code: postalCode, country: country,
         default_email_message: defaultEmailMsg,
         service_zones: serviceZones.split(",").map((s) => s.trim()).filter(Boolean),
@@ -148,21 +152,49 @@ export function BrandingDialog({ trigger }) {
                       className="rounded-sm text-sm" rows={2} maxLength={200} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <Label>SIRET</Label>
-              <Input value={siret} onChange={(e) => setSiret(e.target.value)}
-                     placeholder="14 chiffres" disabled={!canEdit}
-                     data-testid="branding-siret-input" className="rounded-sm h-11 num" maxLength={14} />
-            </div>
-            <div className="grid gap-2">
-              <Label>TVA intracom.</Label>
-              <Input value={vat} onChange={(e) => setVat(e.target.value)}
-                     placeholder="FR12345678901" disabled={!canEdit}
-                     data-testid="branding-vat-input" className="rounded-sm h-11 num" maxLength={20} />
-            </div>
-          </div>
-          <p className="text-[11px] text-muted-foreground">Requis pour des factures électroniques Factur-X 100 % conformes.</p>
+          {country === "PT" ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label>NIF</Label>
+                  <Input value={nif} onChange={(e) => setNif(e.target.value)}
+                         placeholder="9 dígitos" disabled={!canEdit}
+                         data-testid="branding-nif-input" className="rounded-sm h-11 num" maxLength={9} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>N.º de IVA</Label>
+                  <Input value={vat} onChange={(e) => setVat(e.target.value)}
+                         placeholder="PT123456789" disabled={!canEdit}
+                         data-testid="branding-vat-input" className="rounded-sm h-11 num" maxLength={20} />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Alvará / Certidão (opcional)</Label>
+                <Input value={alvara} onChange={(e) => setAlvara(e.target.value)}
+                       placeholder="Alvará IMPIC ou Certidão Permanente" disabled={!canEdit}
+                       data-testid="branding-alvara-input" className="rounded-sm h-11" maxLength={40} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Apresentado no cabeçalho dos seus orçamentos e faturas para clientes em Portugal.</p>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label>SIRET</Label>
+                  <Input value={siret} onChange={(e) => setSiret(e.target.value)}
+                         placeholder="14 chiffres" disabled={!canEdit}
+                         data-testid="branding-siret-input" className="rounded-sm h-11 num" maxLength={14} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>TVA intracom.</Label>
+                  <Input value={vat} onChange={(e) => setVat(e.target.value)}
+                         placeholder="FR12345678901" disabled={!canEdit}
+                         data-testid="branding-vat-input" className="rounded-sm h-11 num" maxLength={20} />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Requis pour des factures électroniques Factur-X 100 % conformes.</p>
+            </>
+          )}
 
           <div className="grid gap-2">
             <Label>Adresse (rue)</Label>

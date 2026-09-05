@@ -236,7 +236,7 @@ export const LANDING_TRANSLATIONS = {
 
     "landing.aud.overline": "Para quem?",
     "landing.aud.title": "Um ecossistema conectado para todos os agentes da construção",
-    "landing.for_pro": "Artesãos", "landing.for_pro_text": "Gere os seus orçamentos em 30 s com certificado de IVA 10%, assinatura eletrónica e seguimento de abertura.",
+    "landing.for_pro": "Artesãos", "landing.for_pro_text": "Gere os seus orçamentos em 30 s com IVA à taxa correta (23% ou 6% na reabilitação), assinatura eletrónica e seguimento de abertura.",
     "landing.for_particulier": "Particulares", "landing.for_particulier_text": "Estime a sua renovação antes de contactar um profissional. Compare os orçamentos recebidos.",
     "landing.aud.arch_t": "Arquitetos", "landing.aud.arch_d": "Medição 2D automática a partir das suas plantas PDF/DXF, orçamento instantâneo por lote, render 3D para os seus clientes.",
     "landing.aud.merch_t": "Comerciantes", "landing.aud.merch_d": "Os seus preços, comparados em tempo real. Gere a lista de compras a partir de uma planta.",
@@ -245,7 +245,7 @@ export const LANDING_TRANSLATIONS = {
 
     "landing.faq.overline": "Perguntas frequentes", "landing.faq.title": "Tudo o que precisa de saber",
     "landing.faq.q1": "Quanto custa uma renovação completa por m² em 2026?",
-    "landing.faq.a1": "Numa renovação profunda, conte 900 a 1 800 €/m² consoante a região e a gama. O ConstruPilot calcula a sua estimativa exata em 30 segundos.",
+    "landing.faq.a1": "Numa renovação profunda em Portugal, conte 500 a 1 100 €/m² consoante o distrito e a gama. O ConstruPilot calcula a sua estimativa exata em 30 segundos.",
     "landing.faq.q2": "O ConstruPilot é gratuito?",
     "landing.faq.a2": "Sim para particulares. Um plano Pro (orçamentos PDF ilimitados, assinatura do cliente, render 3D IA, tour de vídeo) está disponível para profissionais a partir de 39 €/mês.",
     "landing.faq.q3": "Como funciona a medição 2D automática?",

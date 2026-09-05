@@ -124,6 +124,17 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
             S["muted"]))
     if branding.get("contact_line"):
         info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
+    _fisc = []
+    if branding.get("nif"):
+        _fisc.append(f"NIF {branding['nif']}")
+    if not branding.get("nif") and branding.get("siret"):
+        _fisc.append(f"SIRET {branding['siret']}")
+    if branding.get("vat"):
+        _fisc.append(f"{'IVA' if branding.get('nif') else 'TVA'} {branding['vat']}")
+    if branding.get("alvara"):
+        _fisc.append(f"Alvará {branding['alvara']}")
+    if _fisc:
+        info_lines.append(Paragraph(" · ".join(_fisc), S["muted"]))
     certs = branding.get("certifications") or []
     if certs:
         _cert_labels = {"qualibat": "Qualibat", "rge": "RGE", "qualipac": "QualiPAC",

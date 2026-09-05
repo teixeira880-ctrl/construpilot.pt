@@ -175,6 +175,7 @@ def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str 
 def wrap_company_html(title: str, body: str, *, company_name: str = "",
                       logo_b64: str | None = None, contact_line: str | None = None,
                       siret: str | None = None, vat: str | None = None,
+                      nif: str | None = None, alvara: str | None = None,
                       company_email: str | None = None, verified: bool = False,
                       verify_url: str | None = None, logo_url: str | None = None) -> str:
     """Habillage e-mail aux coordonnées de l'entreprise (logo + nom + contact).
@@ -211,8 +212,16 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
     coords = []
     if contact_line:
         coords.append(contact_line)
-    ids = " · ".join([x for x in [f"SIRET {siret}" if siret else "",
-                                   f"TVA {vat}" if vat else ""] if x])
+    _id_parts = []
+    if nif:
+        _id_parts.append(f"NIF {nif}")
+    if not nif and siret:
+        _id_parts.append(f"SIRET {siret}")
+    if vat:
+        _id_parts.append(f"{'IVA' if nif else 'TVA'} {vat}")
+    if alvara:
+        _id_parts.append(f"Alvará {alvara}")
+    ids = " · ".join(_id_parts)
     if ids:
         coords.append(ids)
     if company_email:

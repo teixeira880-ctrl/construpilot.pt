@@ -22,12 +22,13 @@ import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
 const VAT_RATES = [0, 5.5, 10, 20];
+const VAT_RATES_PT = [0, 6, 13, 23];
 const STATUSES = [
   ["draft", "crm.st_e_draft"], ["sent", "crm.st_e_sent"], ["signed", "crm.st_e_signed"], ["refused", "crm.st_e_refused"],
 ];
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-const blankLine = () => ({
-  designation: "", description: "", unit: "u", qty: 1, unit_price_ht: 0, vat_rate: 10, category: "", _saveToLib: true,
+const blankLine = (vat = 10) => ({
+  designation: "", description: "", unit: "u", qty: 1, unit_price_ht: 0, vat_rate: vat, category: "", _saveToLib: true,
 });
 
 export default function QuoteEditor() {
@@ -36,6 +37,9 @@ export default function QuoteEditor() {
   const nav = useNavigate();
   const { user } = useAuth();
   const { t, lang } = useI18n();
+  const isPT = lang === "pt";
+  const vatRates = isPT ? VAT_RATES_PT : VAT_RATES;
+  const defVat = isPT ? 23 : 10;
 
   const [docId, setDocId] = useState(paramDocId || null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +60,7 @@ export default function QuoteEditor() {
   const [depositPct, setDepositPct] = useState(0);
   const [status, setStatus] = useState("draft");
   const [number, setNumber] = useState(null);
-  const [lines, setLines] = useState([blankLine()]);
+  const [lines, setLines] = useState([blankLine(isPT ? 23 : 10)]);
   const [aiLineBusy, setAiLineBusy] = useState(null);
   const [planBusy, setPlanBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
@@ -205,7 +209,7 @@ export default function QuoteEditor() {
     setLines((ls) => ls.map((l) => ({ ...l, vat_rate: rate })));
     toast.success(`TVA ${rate}% appliquée à toutes les lignes`);
   };
-  const addLine = () => setLines((ls) => [...ls, blankLine()]);
+  const addLine = () => setLines((ls) => [...ls, blankLine(defVat)]);
   const delLine = (i) => setLines((ls) => ls.filter((_, idx) => idx !== i));
 
   const suggestDescription = async (i) => {
@@ -932,14 +936,14 @@ export default function QuoteEditor() {
           <p className="font-display font-bold text-sm">{t("crm.lines_title")}</p>
           <div className="flex gap-2 items-center">
             <div className="flex items-center gap-1 mr-1" data-testid="bulk-vat-control">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold whitespace-nowrap">TVA toutes lignes</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold whitespace-nowrap">{isPT ? "IVA todas as linhas" : "TVA toutes lignes"}</span>
               <select
                 value=""
                 onChange={(e) => { if (e.target.value !== "") setAllVat(Number(e.target.value)); }}
                 data-testid="bulk-vat-select"
                 className="rounded-sm border border-border bg-background px-2 h-8 text-sm">
-                <option value="">Appliquer…</option>
-                {VAT_RATES.map((r) => <option key={r} value={r}>{r === 0 ? "0 % (sous-traitance)" : `${r}%`}</option>)}
+                <option value="">{isPT ? "Aplicar…" : "Appliquer…"}</option>
+                {vatRates.map((r) => <option key={r} value={r}>{r === 0 ? (isPT ? "0 % (subcontratação)" : "0 % (sous-traitance)") : `${r}%`}</option>)}
               </select>
             </div>
             <OuvrageComposeDialog onAdd={(line) => setLines((ls) => [...ls, { ...blankLine(), ...line, _saveToLib: false }])} />
@@ -978,7 +982,7 @@ export default function QuoteEditor() {
                    className="rounded-sm num h-9 md:col-span-2 text-right" data-testid={`editor-line-price-${i}`} />
             <select value={l.vat_rate} onChange={(e) => setLine(i, "vat_rate", e.target.value)}
                     className="rounded-sm border border-border bg-background px-2 h-9 text-sm md:col-span-1">
-              {VAT_RATES.map((r) => <option key={r} value={r}>{r === 0 ? "0 %" : `${r}%`}</option>)}
+              {vatRates.map((r) => <option key={r} value={r}>{r === 0 ? "0 %" : `${r}%`}</option>)}
             </select>
             <span className="md:col-span-1 text-right num text-sm font-bold">
               {eur((Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0))}

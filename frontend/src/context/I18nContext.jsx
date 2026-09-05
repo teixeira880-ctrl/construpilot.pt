@@ -317,14 +317,14 @@ const TRANSLATIONS = {
     "landing.hero.trust_subtitle": "Artesãos e Arquitetos equipados",
     "landing.social.stat_value": "142 orçamentos",
     "landing.social.stat_label": "Gerados esta semana",
-    "landing.social.subtitle": "Usado por profissionais da construção em França",
+    "landing.social.subtitle": "Usado por profissionais da construção em Portugal",
     "landing.features.overline": "O arsenal completo",
     "landing.features.title_a": "Ferramentas profissionais,",
     "landing.features.title_b": "repensadas para a eficácia.",
     "landing.cta.start": "Começar",
     "landing.cta.explore": "Explorar",
     "landing.for_pro": "Profissionais da construção",
-    "landing.for_pro_text": "Gere os seus orçamentos para clientes em 30 s com atestado de IVA 10%, assinatura eletrónica e rastreio de abertura.",
+    "landing.for_pro_text": "Gere os seus orçamentos para clientes em 30 s com IVA à taxa correta (23% ou 6% na reabilitação), assinatura eletrónica e rastreio de abertura.",
     "landing.for_particulier": "Particulares",
     "landing.for_particulier_text": "Estime a sua renovação antes de contactar um profissional. Compare os orçamentos recebidos.",
     "coach.over": "Coach IA ConstruPilot",
@@ -1443,6 +1443,17 @@ const RTL_LANGS = ["ar"];
 function detectLang() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && SUPPORTED.includes(stored)) return stored;
+  // Lançamento em Portugal : deteta visitantes de Portugal (idioma/fuso horário
+  // do navegador ou domínio .pt) e abre automaticamente em PT-PT.
+  try {
+    const host = (window.location.hostname || "").toLowerCase();
+    if (host.endsWith(".pt")) return "pt";
+    const nav = (navigator.language || navigator.userLanguage || "").toLowerCase();
+    const langs = [nav, ...((navigator.languages || []).map((l) => l.toLowerCase()))];
+    if (langs.some((l) => l === "pt" || l === "pt-pt")) return "pt";
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if (["Europe/Lisbon", "Atlantic/Madeira", "Atlantic/Azores"].includes(tz)) return "pt";
+  } catch { /* SSR / navegador restrito */ }
   // Produit français-first (construpilot.fr) : FR par défaut, l'utilisateur peut changer.
   return "fr";
 }

@@ -231,11 +231,23 @@ REGIONS = [
     {"country": "FR", "region": "Centre-Val de Loire", "coef": 0.94},
     {"country": "FR", "region": "Bourgogne-Franche-Comté", "coef": 0.92},
     {"country": "FR", "region": "Corse", "coef": 1.18},
-    {"country": "PT", "region": "Lisboa", "coef": 0.72},
-    {"country": "PT", "region": "Porto", "coef": 0.66},
-    {"country": "PT", "region": "Algarve", "coef": 0.70},
-    {"country": "PT", "region": "Centro", "coef": 0.60},
-    {"country": "PT", "region": "Norte", "coef": 0.62},
+    # Portugal — coeficientes de mercado 2026 por distrito/região (base preços de referência)
+    {"country": "PT", "region": "Lisboa", "coef": 0.74},
+    {"country": "PT", "region": "Porto", "coef": 0.67},
+    {"country": "PT", "region": "Algarve (Faro)", "coef": 0.72},
+    {"country": "PT", "region": "Setúbal", "coef": 0.66},
+    {"country": "PT", "region": "Braga", "coef": 0.60},
+    {"country": "PT", "region": "Aveiro", "coef": 0.61},
+    {"country": "PT", "region": "Coimbra", "coef": 0.60},
+    {"country": "PT", "region": "Leiria", "coef": 0.59},
+    {"country": "PT", "region": "Santarém", "coef": 0.58},
+    {"country": "PT", "region": "Viseu", "coef": 0.56},
+    {"country": "PT", "region": "Évora / Alentejo", "coef": 0.57},
+    {"country": "PT", "region": "Viana do Castelo", "coef": 0.57},
+    {"country": "PT", "region": "Vila Real / Bragança", "coef": 0.55},
+    {"country": "PT", "region": "Castelo Branco / Guarda", "coef": 0.55},
+    {"country": "PT", "region": "Madeira", "coef": 0.70},
+    {"country": "PT", "region": "Açores", "coef": 0.71},
 ]
 
 CONDITION_COEF = {

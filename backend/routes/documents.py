@@ -1287,6 +1287,7 @@ async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_
         logo_b64=branding.get("logo_b64"),
         contact_line=branding.get("contact_line"),
         siret=branding.get("siret"), vat=branding.get("vat"),
+        nif=branding.get("nif"), alvara=branding.get("alvara"),
         company_email=company_email,
         verified=bool(branding.get("verified")),
         verify_url=(f"{os.getenv('FRONTEND_URL', '')}/pro-verifie/{user['user_id']}"
@@ -1358,6 +1359,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                              logo_b64=branding.get("logo_b64"),
                              contact_line=branding.get("contact_line"),
                              siret=branding.get("siret"), vat=branding.get("vat"),
+                             nif=branding.get("nif"), alvara=branding.get("alvara"),
                              company_email=company_email,
                              verified=bool(branding.get("verified")),
                              verify_url=(f"{os.getenv('FRONTEND_URL', '')}/pro-verifie/{user['user_id']}"
@@ -1783,7 +1785,8 @@ async def run_invoice_reminders() -> int:
                 logo_url=logo_url_for(inv["user_id"], branding),
                 logo_b64=branding.get("logo_b64"),
                 contact_line=branding.get("contact_line"), siret=branding.get("siret"),
-                vat=branding.get("vat"), company_email=company_email)
+                vat=branding.get("vat"), nif=branding.get("nif"),
+                alvara=branding.get("alvara"), company_email=company_email)
             await deliver_email(
                 inv["user_id"], email, T(lang, "invrem.subject", number=number),
                 html, pdf_bytes=pdf, filename=f"{number}.pdf",

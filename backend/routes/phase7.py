@@ -120,6 +120,8 @@ class BrandingIn(BaseModel):
     logo_b64: str | None = None
     siret: str | None = None
     vat: str | None = None
+    nif: str | None = None
+    alvara: str | None = None
     address: str | None = None
     city: str | None = None
     postal_code: str | None = None
@@ -150,6 +152,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
                                   "brand_company_name": 1, "brand_contact_line": 1,
                                   "brand_company_email": 1,
                                   "brand_siret": 1, "brand_vat": 1,
+                                  "brand_nif": 1, "brand_alvara": 1,
                                   "brand_address": 1, "brand_city": 1,
                                   "brand_postal": 1, "brand_country": 1,
                                   "brand_logo_b64": 1, "brand_certifications": 1,
@@ -164,6 +167,9 @@ async def get_branding(user=Depends(current_user)) -> dict:
                                                  "brand_company_email": 1,
                                                  "brand_logo_b64": 1, "org_code": 1,
                                                  "brand_certifications": 1,
+                                                 "brand_siret": 1, "brand_vat": 1,
+                                                 "brand_nif": 1, "brand_alvara": 1,
+                                                 "brand_country": 1,
                                                  "org_id": 1, "name": 1})
         if org:
             role = u.get("org_role", "member")
@@ -175,6 +181,11 @@ async def get_branding(user=Depends(current_user)) -> dict:
                     "contact_line": org.get("brand_contact_line"),
                     "has_logo": bool(org.get("brand_logo_b64")),
                     "logo_b64": org.get("brand_logo_b64"),
+                    "siret": org.get("brand_siret"),
+                    "vat": org.get("brand_vat"),
+                    "nif": org.get("brand_nif"),
+                    "alvara": org.get("brand_alvara"),
+                    "country": org.get("brand_country"),
                     "default_email_message": u.get("brand_default_email_message"),
                     "service_zones": u.get("service_zones") or [],
                     "bank_details": u.get("bank_details") or "",
@@ -185,6 +196,8 @@ async def get_branding(user=Depends(current_user)) -> dict:
             "contact_line": u.get("brand_contact_line"),
             "siret": u.get("brand_siret"),
             "vat": u.get("brand_vat"),
+            "nif": u.get("brand_nif"),
+            "alvara": u.get("brand_alvara"),
             "address": u.get("brand_address"),
             "city": u.get("brand_city"),
             "postal_code": u.get("brand_postal"),
@@ -217,6 +230,10 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         upd["brand_siret"] = "".join(ch for ch in body.siret if ch.isdigit())[:14] or None
     if body.vat is not None:
         upd["brand_vat"] = body.vat.strip().upper().replace(" ", "")[:20] or None
+    if body.nif is not None:
+        upd["brand_nif"] = "".join(ch for ch in body.nif if ch.isdigit())[:9] or None
+    if body.alvara is not None:
+        upd["brand_alvara"] = body.alvara.strip()[:40] or None
     if body.address is not None:
         upd["brand_address"] = body.address.strip()[:160] or None
     if body.city is not None:
