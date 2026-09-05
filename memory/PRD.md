@@ -10,6 +10,8 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 05/09/2026 — Détection langue par DOMAINE uniquement** [testé UI] : `I18nContext.detectLang` simplifié → auto-PT **seulement** pour les hôtes `.pt` (+ préférence mémorisée). Retiré l'auto-switch par `navigator.language`/fuseau horaire pour que **construpilot.fr reste 100% FR par défaut** (comportement inchangé). Vérifié : preview/`.fr` en FR (menu, bannière, widget 3D), aucune fuite PT ; toggle FR/PT toujours dispo. Domaine `.pt` déjà possédé par l'utilisateur → à brancher via Deploy → « Link domain » → « Entri » (guidage fourni).
+>
 > **Session 05/09/2026 — Lançamento Portugal — Parte 7** [testado UI]:
 > - **Widget 3D traduzido** (`Interactive3D.jsx`, chaves `plan3d.*`): «Altura das paredes / Repor / Vista de cima» em PT (FR mantém original).
 > - **Página de planos** (`Pricing.jsx` via `pricing.pass_title`): corrigido o PT que estava em FR → «Project Pass avulso».

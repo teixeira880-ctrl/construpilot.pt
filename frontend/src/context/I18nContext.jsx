@@ -1471,18 +1471,14 @@ const RTL_LANGS = ["ar"];
 function detectLang() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && SUPPORTED.includes(stored)) return stored;
-  // Lançamento em Portugal : deteta visitantes de Portugal (idioma/fuso horário
-  // do navegador ou domínio .pt) e abre automaticamente em PT-PT.
+  // Détection par DOMAINE uniquement :
+  //  - construpilot.pt (et tout .pt) → ouvre en PT-PT
+  //  - construpilot.fr et tout le reste → FR par défaut (comportement inchangé)
+  // L'utilisateur peut toujours changer de langue manuellement (mémorisé ensuite).
   try {
     const host = (window.location.hostname || "").toLowerCase();
     if (host.endsWith(".pt")) return "pt";
-    const nav = (navigator.language || navigator.userLanguage || "").toLowerCase();
-    const langs = [nav, ...((navigator.languages || []).map((l) => l.toLowerCase()))];
-    if (langs.some((l) => l === "pt" || l === "pt-pt")) return "pt";
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    if (["Europe/Lisbon", "Atlantic/Madeira", "Atlantic/Azores"].includes(tz)) return "pt";
-  } catch { /* SSR / navegador restrito */ }
-  // Produit français-first (construpilot.fr) : FR par défaut, l'utilisateur peut changer.
+  } catch { /* SSR / navigateur restreint */ }
   return "fr";
 }
 
