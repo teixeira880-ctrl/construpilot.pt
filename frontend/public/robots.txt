@@ -1,0 +1,26 @@
+# robots.txt for construpilot.fr
+User-agent: *
+Allow: /
+
+# Private/protected areas — no need to index
+Disallow: /login
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /project/
+Disallow: /plan/
+Disallow: /signature/
+Disallow: /suivi-devis
+Disallow: /billing
+
+# Google-specific
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Bing
+User-agent: bingbot
+Allow: /
+Crawl-delay: 2
+
+# Sitemap
+Sitemap: https://construpilot.fr/sitemap.xml

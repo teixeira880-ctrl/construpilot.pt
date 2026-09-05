@@ -11,7 +11,6 @@ const config = {
   enableHealthCheck: process.env.ENABLE_HEALTH_CHECK === "true",
 };
 
-// react-scripts@5 emits webpack-dev-server v4 options; strip/translate them for v5.
 function makeDevServerV5Compatible(devServerConfig) {
   const {
     https,
@@ -145,13 +144,8 @@ if (isDevServer) {
   }
 }
 
-// Run last so it also wraps whatever devServer withVisualEdits leaves in place.
 const configureDevServer = webpackConfig.devServer;
 webpackConfig.devServer = (devServerConfig) =>
-  makeDevServerV5Compatible(
-    typeof configureDevServer === "function"
-      ? configureDevServer(devServerConfig)
-      : devServerConfig,
-  );
+  makeDevServerV5Compatible(configureDevServer(devServerConfig));
 
 module.exports = webpackConfig;
