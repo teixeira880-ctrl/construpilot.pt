@@ -47,7 +47,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
 
-app = FastAPI(title="ConstruPilot API")
+app = FastAPI(title="ConstruPilot API", openapi_url="/api/openapi.json", docs_url="/api/docs", redoc_url="/api/redoc")
 api_router = APIRouter(prefix="/api")
 
 
