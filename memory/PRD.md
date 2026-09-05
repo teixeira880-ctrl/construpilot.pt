@@ -10,6 +10,10 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 05/09/2026 — Lançamento Portugal — Parte 5** [testado curl + UI]:
+> - **Seletor de mercado FR/PT no topo** (`I18nContext.MarketToggle`, testids `market-toggle`, `market-toggle-fr`, `market-toggle-pt`): toggle segmentado com bandeiras 🇫🇷/🇵🇹 no nav (desktop, ambos os estados login/anónimo), um clique troca o mercado/idioma. Coexiste com o `LangToggle` (restantes idiomas). Verificado no ecrã.
+> - **IVA 6% automático no orçamento gerado** (`documents.py` `_apply_pt_vat`): para pros com `brand_country=PT`, as linhas geradas por `/from-text`, `/from-video` (`_quote_doc_from_text`) e `/from-plan/{id}` recebem IVA **6%** quando o texto indica reabilitação/remodelação de habitação (palavras-chave PT), senão **23%**. Fora de PT não altera. Verificado por curl: reno cozinha moradia→6%, escritório comercial novo→23%.
+>
 > **Session 05/09/2026 — Lançamento Portugal — Parte 4** [testado curl + UI]:
 > - **Toasts do editor traduzidos**: ~35 mensagens `toast.*` hard-coded em FR (`QuoteEditor.jsx`) migradas para i18n (chaves `crm.t_*` em `crmI18n.js`, fr+pt), incl. templates com variáveis (`.replace("{n}"…)`). Já não há francês visível no editor.
 > - **IVA no PDF de estimativa** (`engines/pdf.py` `_esti_totals`): quando `estimation.default_vat_rate` está definido (PT), acrescenta linha «IVA reduzido — reabilitação (Verba 2.27) — 6%» (ou «IVA — taxa normal — 23%») + «Total c/ IVA (preço médio)». Verificado por curl (PDF PT reno mostra 6% + Total c/ IVA).

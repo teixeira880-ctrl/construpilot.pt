@@ -95,6 +95,28 @@ def _reduced_vat_rate(doc: dict) -> float | None:
     return reduced[0] if reduced else None
 
 
+async def _apply_pt_vat(user: dict, lines: list, *text_hints: str) -> None:
+    """Ajuste o IVA das linhas geradas para profissionais em Portugal.
+
+    23% por defeito ; 6% (Verba 2.27 do CIVA) quando o contexto indica
+    reabilitação/remodelação de imóvel de habitação. Não faz nada fora de PT.
+    """
+    branding = None
+    if user:
+        from routes.plans_common import _resolve_branding
+        branding = await _resolve_branding(user["user_id"])
+    country = ((branding or {}).get("country") or "").upper()
+    if country != "PT":
+        return
+    blob = " ".join(h for h in text_hints if h).lower()
+    reno = any(k in blob for k in ("renov", "reabilit", "remodel", "restaur", "beneficia", "obra"))
+    habit = any(k in blob for k in ("casa", "moradia", "apartament", "habita", "quarto",
+                                     "cozinha", "casa de banho", "wc", "sala", "vivenda", "t1", "t2", "t3"))
+    rate = 6.0 if (reno and habit) else 23.0
+    for ln in lines:
+        ln["vat_rate"] = rate
+
+
 def _resolved_email_message(doc: dict, company: str, name: str, branding: dict | None) -> str:
     """Message d'accompagnement : texte perso du pro (avec variables) sinon modèle type."""
     custom = (branding or {}).get("default_email_message")
@@ -750,6 +772,7 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
             "vat_rate": 10,
             "category": "Depuis plan IA",
         })
+    await _apply_pt_vat(user, lines, quote.get("filename") or "")
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"],
@@ -997,6 +1020,7 @@ async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
     if not lines:
         raise HTTPException(422, "L'IA n'a pas pu générer de lignes de devis à partir de la description.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
+    await _apply_pt_vat(user, lines, title or "", text or "")
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"], "doc_type": "quote", "number": None,

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { LangToggle, useI18n } from "@/context/I18nContext";
+import { LangToggle, MarketToggle, useI18n } from "@/context/I18nContext";
 import { usePermissions } from "@/context/PermissionContext";
 
 // Nav v2 — menus groupés + relief (fin du débordement header)
@@ -176,6 +176,7 @@ export const Nav = () => {
           )}
           {user ? (
             <>
+              <MarketToggle />
               <LangToggle />
               <NotificationsBell />
               <Link to="/compte" data-testid="nav-account-link" className="hidden 2xl:flex items-center gap-2 text-sm text-muted-foreground max-w-[170px] hover:text-primary transition-colors">
@@ -194,6 +195,7 @@ export const Nav = () => {
             </>
           ) : (
             <>
+              <MarketToggle />
               <LangToggle />
               <Link to="/login" data-testid="nav-login-btn">
                 <Button size="sm" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">

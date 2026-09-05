@@ -1548,3 +1548,32 @@ export function LangToggle() {
     </div>
   );
 }
+
+export function MarketToggle() {
+  const { lang, setLang } = useI18n();
+  const MARKETS = [
+    { code: "fr", flag: "🇫🇷", label: "FR" },
+    { code: "pt", flag: "🇵🇹", label: "PT" },
+  ];
+  const active = lang === "pt" ? "pt" : "fr";
+  return (
+    <div className="inline-flex items-center rounded-full border border-border overflow-hidden" data-testid="market-toggle">
+      {MARKETS.map((m) => (
+        <button
+          key={m.code}
+          type="button"
+          onClick={() => setLang(m.code)}
+          data-testid={`market-toggle-${m.code}`}
+          aria-pressed={active === m.code}
+          title={m.code === "pt" ? "Portugal" : "France"}
+          className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold transition-colors ${
+            active === m.code ? "bg-primary text-white" : "text-muted-foreground hover:text-primary"
+          }`}
+        >
+          <span className="text-sm leading-none">{m.flag}</span>
+          <span className="hidden sm:inline">{m.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
