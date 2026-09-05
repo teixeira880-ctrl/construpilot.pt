@@ -10,6 +10,11 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 05/09/2026 — Lançamento Portugal — Parte 3** [testado curl + UI]:
+> - **Chrome global traduzido**: banner de cookies (`CookieConsent.jsx`) e widget de ajuda (`HelpChatbot.jsx`) migrados para i18n (chaves `cookie.*` / `help.*` em `I18nContext`, fr+pt). Verificado em PT: «Aceitar tudo»/«Recusar», «Precisa de ajuda?». (Nota: ~43 toasts do editor continuam em FR.)
+> - **IVA 6% automático no estimador** (`estimation.py`): novo helper `pt_default_vat_rate(country, project_type, building_type, condition)` → 6% (reabilitação de habitação elegível, Verba 2.27), 23% (PT restante), None (FR). `estimate()` devolve `default_vat_rate` + `vat_eligible_6`. Verificado via curl (PT reno maison→6, PT neuf→23, FR→None). Nota de IVA mostrada no resultado do estimador (`Estimator.jsx`, testid `est-pt-vat-note`).
+> - **Landing dedicada `/portugal`** (`LandingPortugal.jsx`, rota em `App.js` dentro de `<Shell>`): abre sempre em PT-PT (setLang pt), hero, 6 funcionalidades, tabela de preços €/m² de reabilitação por distrito (16 distritos), CTAs para /estimation, /login, /tarifs, SEO. Verificado no ecrã.
+>
 > **Session 05/09/2026 — Lançamento Portugal — Parte 2** [testado UI]:
 > - **Tradução completa do editor de orçamento/fatura** (`QuoteEditor.jsx`): todos os botões da barra (Adicionar planta, Fotos/Vídeo/Áudio galeria, Foto/Filmar/Ditar → orçamento, Guardar, Enviar orçamento/fatura), diálogo de envio (anexos, pré-visualização, mensagem), diálogo de novo cliente, cabeçalhos de colunas, notas, totais, diálogos de vídeo/gravação/transcrição — migrados para i18n (`crm.ed_*` em `crmI18n.js`, fr+pt; outras línguas caem em fr). Também: nav «Novo orçamento» (`nav.newquote`), badge «Pro verificado» (`VerifiedProBadge`), botão «Trabalho composto» (`OuvrageComposeDialog`). Verificado no ecrã: editor 100% PT-PT.
 > - **Regra inteligente IVA 6%** (`QuoteEditor.jsx`, só PT): aviso «Reabilitação de habitação? … IVA reduzido de 6% (Verba 2.27 do CIVA)» com botão «Aplicar 6%» (aplica 6% a todas as linhas). testids `pt-iva6-hint`, `pt-apply-iva6`.

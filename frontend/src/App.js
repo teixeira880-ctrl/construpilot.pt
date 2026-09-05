@@ -12,6 +12,7 @@ import { Nav, Footer } from "@/components/Nav";
 import HelpChatbot from "@/components/HelpChatbot";
 import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
+import LandingPortugal from "@/pages/LandingPortugal";
 import Investors from "@/pages/Investors";
 import Features from "@/pages/Features";
 import Login from "@/pages/Login";
@@ -144,6 +145,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
+      <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
       <Route path="/investisseurs" element={<Investors />} />
       <Route path="/fonctionnalites" element={<Features />} />
       <Route path="/login" element={<Login />} />

@@ -87,6 +87,25 @@ def region_coef(country: str, region: str | None) -> float:
     return 1.0 if (country or "FR").upper() == "FR" else 0.68
 
 
+def pt_default_vat_rate(country: str, project_type: str | None = None,
+                         building_type: str | None = None,
+                         condition: str | None = None) -> float | None:
+    """Taxa de IVA por defeito em Portugal.
+
+    Verba 2.27 do CIVA : empreitadas de reabilitação/beneficiação de imóveis de
+    habitação → 6% ; caso contrário 23% (taxa normal). Devolve None fora de PT
+    (para os chamadores manterem a taxa própria, ex. França).
+    """
+    if (country or "").upper() != "PT":
+        return None
+    pt = (project_type or "").lower()
+    is_reno = ("renovation" in pt or "reno" in pt or "rehab" in pt or "reabilit" in pt)
+    is_habitation = building_type in ("maison", "appartement")
+    if is_reno and is_habitation and condition != "neuf":
+        return 6.0
+    return 23.0
+
+
 def _mat_price(lot: dict, finish: str) -> float:
     if finish == "eco":
         return lot["mat_eco"]
@@ -211,6 +230,8 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
         "country": country, "region": region, "building_type": building_type,
         "condition": condition, "construction_year": construction_year,
         "labour_only": labour_only,
+        "default_vat_rate": pt_default_vat_rate(country, tpl["key"], building_type, condition),
+        "vat_eligible_6": pt_default_vat_rate(country, tpl["key"], building_type, condition) == 6.0,
         "coefficients": {"region": rc, "condition": cc, "building": bc, "year": yc,
                          "finish": finish_cfg["coef"]},
         "lots": lots,

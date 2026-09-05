@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Cookie } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/context/I18nContext";
 
 const KEY = "cp_cookie_consent";
 
 export default function CookieConsent() {
+  const { t } = useI18n();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -33,10 +35,9 @@ export default function CookieConsent() {
             <Cookie className="h-5 w-5 text-primary" />
           </div>
           <p className="text-sm text-foreground/90 leading-relaxed">
-            Nous utilisons des cookies nécessaires au fonctionnement du site et, avec votre accord,
-            des cookies de mesure d'audience et publicité. En savoir plus dans notre{" "}
+            {t("cookie.text")}{" "}
             <Link to="/confidentialite" className="text-primary underline underline-offset-2">
-              politique de confidentialité
+              {t("cookie.policy")}
             </Link>.
           </p>
         </div>
@@ -47,14 +48,14 @@ export default function CookieConsent() {
             onClick={() => decide("refused")}
             data-testid="cookie-refuse-btn"
           >
-            Refuser
+            {t("cookie.refuse")}
           </Button>
           <Button
             className="rounded-sm flex-1 sm:flex-none"
             onClick={() => decide("accepted")}
             data-testid="cookie-accept-btn"
           >
-            Tout accepter
+            {t("cookie.accept")}
           </Button>
         </div>
       </div>

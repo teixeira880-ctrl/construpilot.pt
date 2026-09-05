@@ -1,21 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Loader2, Bot } from "lucide-react";
 import { api } from "@/lib/api";
-
-const SUGGESTIONS = [
-  "Quelles fonctionnalités pour un particulier ?",
-  "Comment analyser un plan DWG ?",
-  "C'est quoi le module Approvisionnement ?",
-  "Quelle offre choisir ?",
-];
+import { useI18n } from "@/context/I18nContext";
 
 export default function HelpChatbot() {
+  const { t } = useI18n();
+  const SUGGESTIONS = [t("help.s1"), t("help.s2"), t("help.s3"), t("help.s4")];
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Bonjour 👷 Je suis l'assistant ConstruPilot. Posez-moi une question sur les fonctionnalités, l'analyse de plans, les devis ou l'offre Pro." },
+    { role: "assistant", content: t("help.greeting") },
   ]);
   const endRef = useRef(null);
 
@@ -33,7 +29,7 @@ export default function HelpChatbot() {
       setSessionId(data.session_id);
       setMessages((m) => [...m, { role: "assistant", content: data.reply, actions: data.actions || [] }]);
     } catch {
-      setMessages((m) => [...m, { role: "assistant", content: "Désolé, une erreur est survenue. Réessayez dans un instant." }]);
+      setMessages((m) => [...m, { role: "assistant", content: t("help.error") }]);
     } finally { setBusy(false); }
   };
 
@@ -43,14 +39,14 @@ export default function HelpChatbot() {
         <button onClick={() => setOpen(true)} data-testid="help-chatbot-open"
           className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 hover:scale-105 transition-transform">
           <MessageCircle className="h-5 w-5" />
-          <span className="text-sm font-semibold hidden sm:inline">Besoin d'aide ?</span>
+          <span className="text-sm font-semibold hidden sm:inline">{t("help.open")}</span>
         </button>
       )}
 
       {open && (
         <div className="fixed bottom-5 right-5 z-50 w-[92vw] max-w-[380px] h-[70vh] max-h-[560px] flex flex-col rounded-xl border border-border bg-background shadow-2xl overflow-hidden" data-testid="help-chatbot-panel">
           <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground">
-            <div className="flex items-center gap-2"><Bot className="h-5 w-5" /><span className="font-bold text-sm">Assistant ConstruPilot</span></div>
+            <div className="flex items-center gap-2"><Bot className="h-5 w-5" /><span className="font-bold text-sm">{t("help.title")}</span></div>
             <button onClick={() => setOpen(false)} data-testid="help-chatbot-close"><X className="h-5 w-5" /></button>
           </div>
 
@@ -91,7 +87,7 @@ export default function HelpChatbot() {
           <div className="border-t border-border p-2 flex items-center gap-2">
             <input value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-              placeholder="Écrivez votre question…" data-testid="help-chatbot-input"
+              placeholder={t("help.placeholder")} data-testid="help-chatbot-input"
               className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary" />
             <button onClick={() => send()} disabled={busy || !input.trim()} data-testid="help-chatbot-send"
               className="rounded-full bg-primary text-primary-foreground p-2.5 disabled:opacity-40 hover:scale-105 transition-transform">
