@@ -10,6 +10,8 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 05/09/2026 — Imagem social (OG) PT** : gerada uma imagem de partilha de lançamento «ConstruPilot chega a Portugal» e ligada ao `og:image`/twitter da landing `/portugal` (`LandingPortugal.jsx` prop `image` do `SEO`). Melhora as pré-visualizações de partilha (redes sociais, WhatsApp).
+>
 > **Session 05/09/2026 — +3 artigos SEO PT** [testé UI] : adicionados a `lib/blogPortugal.jsx` os artigos «Licenciamento de obras em Portugal», «Quanto custa remodelar uma casa de banho» e «Eficiência energética e certificado energético» (metadados + corpos JSX). Blog PT passa a ter **6 artigos**. Traduzidos os rótulos de `BlogPost.jsx` (Início / min de leitura / Anterior / Seguinte) quando `lang==='pt'`. Verificado: /blog PT lista 6 e o artigo de licenciamento renderiza em PT.
 >
 > **Session 05/09/2026 — Correção: página inicial em FR mesmo em PT** [testé UI, 0 fuite] : as secções de marketing da landing (`MarketingTeaser`, `TrustSection`, `ParamLibraryPromo`) não usavam i18n → FR fixo. Adicionadas traduções PT (ternário `lang==='pt'`, referências adaptadas a Portugal: distritos, IVA 6/13/23, e-Fatura). Adicionadas as chaves em falta `landing.master_video.*` e `landing.video.*` no bloco pt do `I18nContext`. Corrigido o botão «Activer le son» hard-coded (Landing.jsx L488). Verificado: home 100% PT ao mudar para PT, `FR leaks: []`. FR inalterado.

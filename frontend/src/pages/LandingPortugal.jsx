@@ -39,6 +39,7 @@ export default function LandingPortugal() {
         title="ConstruPilot Portugal — Estimativa de obras grátis"
         description="Estime o custo das suas obras em Portugal em 5 minutos, verifique orçamentos, calcule materiais e IVA (23% ou 6% na reabilitação). Preços €/m² por distrito. Grátis."
         keywords="estimativa obras Portugal, preço renovação casa, orçamento obras, IVA reabilitação 6%, custo remodelação, comparador materiais"
+        image="https://static.prod-images.emergentagent.com/jobs/24c1027c-3500-4369-9271-1f0502b94a6a/images/fbaf496274fa11a9c5394225aca188f1a65432f532c0018128117c37f0228ffc.jpeg"
         canonical="/portugal"
       />
 
