@@ -127,6 +127,41 @@ export default function LandingPortugal() {
         </p>
       </section>
 
+      {/* SOCIAL PROOF / TRUST */}
+      <section className="grid gap-6" data-testid="pt-social-proof">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+          {[
+            { k: "16", v: "distritos cobertos" },
+            { k: "6% / 23%", v: "IVA aplicado corretamente" },
+            { k: "30 s", v: "para uma estimativa" },
+            { k: "100%", v: "grátis para começar" },
+          ].map((s, i) => (
+            <div key={i} className="surface rounded-xl p-4" data-testid={`pt-stat-${i}`}>
+              <div className="font-display font-extrabold text-2xl sm:text-3xl text-primary">{s.k}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{s.v}</div>
+            </div>
+          ))}
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          {[
+            { q: "Fiz a estimativa da remodelação do meu T3 em Lisboa em 5 minutos. Ajudou-me a perceber se o orçamento do empreiteiro era justo.", n: "Sofia M.", c: "Lisboa" },
+            { q: "Como empreiteiro no Porto, faço os orçamentos com IVA e NIF em minutos. Os clientes adoram receber tudo por e-mail.", n: "Ricardo A.", c: "Porto" },
+            { q: "Detetou lotes em falta no orçamento que recebi para a minha moradia no Algarve. Poupou-me uma discussão desagradável.", n: "João P.", c: "Faro" },
+          ].map((tst, i) => (
+            <figure key={i} className="surface rounded-xl p-5 flex flex-col gap-3" data-testid={`pt-testimonial-${i}`}>
+              <div className="text-primary text-lg leading-none">★★★★★</div>
+              <blockquote className="text-sm text-foreground/90 leading-relaxed flex-1">“{tst.q}”</blockquote>
+              <figcaption className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{tst.n}</span> · {tst.c}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+        <p className="text-[11px] text-center text-muted-foreground">
+          Testemunhos ilustrativos da fase de lançamento em Portugal.
+        </p>
+      </section>
+
       {/* CTA */}
       <section className="rounded-2xl border border-primary/30 bg-primary/5 p-8 sm:p-10 text-center grid gap-4">
         <h2 className="font-display font-bold text-2xl sm:text-3xl">Pronto para começar a sua obra?</h2>

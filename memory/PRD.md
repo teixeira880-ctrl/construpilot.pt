@@ -10,6 +10,12 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 05/09/2026 — Lançamento Portugal — Parte 7** [testado UI]:
+> - **Widget 3D traduzido** (`Interactive3D.jsx`, chaves `plan3d.*`): «Altura das paredes / Repor / Vista de cima» em PT (FR mantém original).
+> - **Página de planos** (`Pricing.jsx` via `pricing.pass_title`): corrigido o PT que estava em FR → «Project Pass avulso».
+> - **Prova social PT na landing `/portugal`** (`LandingPortugal.jsx`, testid `pt-social-proof`): faixa de estatísticas (16 distritos, IVA 6%/23%, 30 s, 100% grátis) + 3 testemunhos (Lisboa/Porto/Faro) com aviso «ilustrativos». Verificado no ecrã.
+> - **Domínio construpilot.pt**: orientação da plataforma já entregue (não é código).
+>
 > **Session 05/09/2026 — Lançamento Portugal — Parte 6** [testado UI]:
 > - **Banner promocional traduzido** (`Landing.jsx`, chaves `landing.promo`/`landing.promo_cta`): «100% GRÁTIS durante a fase de lançamento…» + «Aproveitar →» em PT. Verificado no ecrã.
 > - **Botão PDF (com IVA) no estimador** (`Estimator.jsx`, testid `est-download-pdf-vat`): dentro da nota de IVA PT, botão «Descarregar PDF (com IVA)» que gera o PDF (já com a linha de IVA 6%/23%). Nota de taxa aplicável mantida.

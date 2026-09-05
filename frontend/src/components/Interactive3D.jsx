@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RotateCcw, Maximize2, Home, Move3d, Download, Paperclip } from "lucide-react";
+import { useI18n } from "@/context/I18nContext";
 
 /**
  * Composant 3D interactif — extrusion des rooms mesurés + segments de murs détectés.
@@ -14,6 +15,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
                                  poutreLM = 0.2, poutreHM = 0.4,
                                  scaleMperPx = 0.01,
                                  wallHeightM = 2.5, imageHeight = 600, onAttach = null }) {
+  const { t } = useI18n();
   const mountRef = useRef(null);
   const [wallHeight, setWallHeight] = useState(wallHeightM);
   const [glError, setGlError] = useState(false);
@@ -331,7 +333,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <Label className="text-xs">Hauteur murs :</Label>
+        <Label className="text-xs">{t("plan3d.wall_height")}</Label>
         <input type="range" min="2" max="4" step="0.1" value={wallHeight}
                onChange={(e) => setWallHeight(parseFloat(e.target.value))}
                data-testid="wall-height-slider"
@@ -341,13 +343,13 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
                 onClick={() => controlsRef.current?.resetCam()}
                 data-testid="cam-reset-btn"
                 className="rounded-sm gap-1 h-7 text-xs ml-auto">
-          <RotateCcw className="h-3 w-3" /> Reset
+          <RotateCcw className="h-3 w-3" /> {t("plan3d.reset")}
         </Button>
         <Button size="sm" variant="outline"
                 onClick={() => controlsRef.current?.topView()}
                 data-testid="cam-top-btn"
                 className="rounded-sm gap-1 h-7 text-xs">
-          <Home className="h-3 w-3" /> Vue dessus
+          <Home className="h-3 w-3" /> {t("plan3d.top_view")}
         </Button>
         <Button size="sm" variant="outline"
                 onClick={() => controlsRef.current?.snapshot()}
