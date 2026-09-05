@@ -7,11 +7,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { useI18n } from "@/context/I18nContext";
 
 const LEVELS = ["bas", "moyen", "haut"];
 
 /** Insère un ouvrage composé (bibliothèque paramétrique) chiffré dans le devis. */
 export function OuvrageComposeDialog({ onAdd, planVariables }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [ouvrages, setOuvrages] = useState([]);
@@ -55,7 +57,7 @@ export function OuvrageComposeDialog({ onAdd, planVariables }) {
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="rounded-sm gap-1 text-primary border-primary/40"
                 data-testid="editor-add-ouvrage">
-          <Boxes className="h-3.5 w-3.5" /> Ouvrage composé
+          <Boxes className="h-3.5 w-3.5" /> {t("crm.ed_ouvrage", "Ouvrage composé")}
         </Button>
       </DialogTrigger>
       <DialogContent className="rounded-sm max-w-2xl max-h-[86vh] overflow-y-auto" data-testid="ouvrage-compose-dialog">

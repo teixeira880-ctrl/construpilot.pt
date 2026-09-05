@@ -639,7 +639,7 @@ export default function QuoteEditor() {
               <button onClick={() => nav(`/plan?open=${srcPlanId}&auto=1`)}
                       className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
                       data-testid="editor-back-to-plan">
-                <Ruler className="h-3 w-3" /> Retour au plan
+                <Ruler className="h-3 w-3" /> {t("crm.ed_back_plan")}
               </button>
             )}
           </div>
@@ -658,43 +658,43 @@ export default function QuoteEditor() {
                  data-testid="editor-add-plan-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-plan-input").click()}
                   disabled={planBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-add-plan-btn">
-            {planBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ruler className="h-4 w-4" />} Ajouter un plan
+            {planBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ruler className="h-4 w-4" />} {t("crm.ed_add_plan")}
           </Button>
           <input type="file" accept="image/*" multiple className="hidden" id="qe-photo-input"
                  onChange={(e) => { addPhotosFromFiles(e.target.files); e.target.value = ""; }}
                  data-testid="editor-photo-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-photo-input").click()}
                   disabled={photoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-photo-gallery-btn">
-            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} Photos galerie
+            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} {t("crm.ed_photos_gallery")}
           </Button>
           <input type="file" accept="image/*" capture="environment" multiple className="hidden" id="qe-photo-cam-input"
                  onChange={(e) => { addPhotosFromFiles(e.target.files); e.target.value = ""; }}
                  data-testid="editor-photo-cam-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-photo-cam-input").click()}
                   disabled={photoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-photo-cam-btn">
-            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} Photo → devis
+            {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} {t("crm.ed_photo_to_quote")}
           </Button>
           <input type="file" accept="video/*" className="hidden" id="qe-video-input"
                  onChange={(e) => { reviewVideo(e.target.files?.[0]); e.target.value = ""; }}
                  data-testid="editor-video-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-video-input").click()}
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-gallery-btn">
-            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} Vidéo galerie
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} {t("crm.ed_video_gallery")}
           </Button>
           <Button variant="outline" onClick={() => openRecorder("video")}
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-video-record-btn">
-            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} Filmer → devis
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} {t("crm.ed_film_to_quote")}
           </Button>
           <input type="file" accept="audio/*" className="hidden" id="qe-audio-input"
                  onChange={(e) => { reviewVideo(e.target.files?.[0]); e.target.value = ""; }}
                  data-testid="editor-audio-input" />
           <Button variant="outline" onClick={() => document.getElementById("qe-audio-input").click()}
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-audio-gallery-btn">
-            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music className="h-4 w-4" />} Audio galerie
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music className="h-4 w-4" />} {t("crm.ed_audio_gallery")}
           </Button>
           <Button variant="outline" onClick={() => openRecorder("audio")}
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-audio-record-btn">
-            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />} Dicter → devis
+            {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />} {t("crm.ed_dictate")}
           </Button>
           <Button variant="outline" onClick={downloadPdf} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
             <Download className="h-4 w-4" /> {t("crm.pdf")}
@@ -703,7 +703,7 @@ export default function QuoteEditor() {
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("crm.save")}
           </Button>
           <Button onClick={openSend} disabled={saving} className="rounded-sm gap-2 bg-primary" data-testid="editor-send-btn">
-            <Send className="h-4 w-4" /> {docType === "invoice" ? "Envoyer la facture" : docType === "credit_note" ? "Envoyer l'avoir" : "Envoyer le devis"}
+            <Send className="h-4 w-4" /> {docType === "invoice" ? t("crm.ed_send_invoice") : docType === "credit_note" ? t("crm.ed_send_credit") : t("crm.ed_send_quote")}
           </Button>
         </div>
       </div>
@@ -711,12 +711,12 @@ export default function QuoteEditor() {
       <Dialog open={sendOpen} onOpenChange={closeSend}>
         <DialogContent data-testid="send-quote-dialog">
           <DialogHeader>
-            <DialogTitle>{docType === "invoice" ? "Envoyer la facture au client" : docType === "credit_note" ? "Envoyer l'avoir au client" : "Envoyer le devis au client"}</DialogTitle>
+            <DialogTitle>{docType === "invoice" ? t("crm.ed_send_invoice_to") : docType === "credit_note" ? t("crm.ed_send_credit_to") : t("crm.ed_send_quote_to")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-1">
             {(pdfPreviewUrl || preview3d) && (
               <div className="grid gap-2" data-testid="send-preview">
-                <p className="text-xs font-semibold text-muted-foreground">Aperçu avant envoi</p>
+                <p className="text-xs font-semibold text-muted-foreground">{t("crm.ed_preview_before")}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {pdfPreviewUrl ? (
                     <iframe title="Aperçu PDF" src={pdfPreviewUrl} data-testid="send-preview-pdf"
@@ -728,25 +728,25 @@ export default function QuoteEditor() {
                     <img src={preview3d} alt="Rendu 3D" data-testid="send-preview-3d"
                          className="w-full h-40 object-contain rounded-sm border border-border bg-secondary/30" />
                   ) : (
-                    <div className="w-full h-40 rounded-sm border border-dashed border-border grid place-items-center text-[10px] text-muted-foreground text-center px-2">Aucun rendu 3D pour ce devis</div>
+                    <div className="w-full h-40 rounded-sm border border-dashed border-border grid place-items-center text-[10px] text-muted-foreground text-center px-2">{t("crm.ed_no_render3d")}</div>
                   )}
                 </div>
               </div>
             )}
             <div className="grid gap-1.5">
-              <Label htmlFor="send-name">Nom du client</Label>
+              <Label htmlFor="send-name">{t("crm.ed_client_name")}</Label>
               <Input id="send-name" value={sendName} onChange={(e) => setSendName(e.target.value)}
-                     placeholder="Nom du client" data-testid="send-quote-name" />
+                     placeholder={t("crm.ed_client_name")} data-testid="send-quote-name" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="send-email">Email du client *</Label>
+              <Label htmlFor="send-email">{t("crm.ed_client_email_req")}</Label>
               <Input id="send-email" type="email" value={sendEmail} onChange={(e) => setSendEmail(e.target.value)}
                      placeholder="client@email.com" data-testid="send-quote-email" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="send-msg">Message (optionnel)</Label>
+              <Label htmlFor="send-msg">{t("crm.ed_msg_optional")}</Label>
               <Textarea id="send-msg" rows={3} value={sendMsg} onChange={(e) => setSendMsg(e.target.value)}
-                        placeholder="Un mot pour votre client…" data-testid="send-quote-msg" />
+                        placeholder={t("crm.ed_msg_ph")} data-testid="send-quote-msg" />
             </div>
             <div className="grid gap-2">
               <Button type="button" variant="outline" size="sm"
@@ -754,7 +754,7 @@ export default function QuoteEditor() {
                       onClick={loadEmailPreview} disabled={loadingEmailPreview}
                       data-testid="send-email-preview-btn">
                 {loadingEmailPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                Aperçu de l'e-mail (ce que verra le client)
+                {t("crm.ed_email_preview_btn")}
               </Button>
               {emailPreviewHtml && (
                 <div className="rounded-sm border border-border overflow-hidden" data-testid="send-email-preview">
@@ -766,10 +766,10 @@ export default function QuoteEditor() {
             <label className="flex items-center gap-2 text-sm cursor-pointer" data-testid="send-quote-attach3d">
               <input type="checkbox" checked={attach3d} onChange={(e) => setAttach3d(e.target.checked)}
                      className="h-4 w-4 rounded border-input accent-primary" />
-              Joindre le rendu 3D du projet (si disponible)
+              {t("crm.ed_attach_3d")}
             </label>
             <div className="grid gap-1.5" data-testid="send-attachments-block">
-              <Label className="flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" /> Pièces jointes (PDF, images… — 5 fichiers, 15 Mo max)</Label>
+              <Label className="flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" /> {t("crm.ed_attachments")}</Label>
               <input type="file" multiple
                      onChange={(e) => { addSendFiles(e.target.files); e.target.value = ""; }}
                      className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:cursor-pointer hover:file:bg-secondary/80"
@@ -790,24 +790,24 @@ export default function QuoteEditor() {
             </div>
             {doneRenders.length > 0 && (
               <div className="grid gap-1.5" data-testid="send-quote-render-block">
-                <Label htmlFor="send-render">Rendu IA avant/après (optionnel)</Label>
+                <Label htmlFor="send-render">{t("crm.ed_ai_render_opt")}</Label>
                 <select id="send-render" onChange={(e) => pickRender(e.target.value)}
                         className="rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                         data-testid="send-quote-render-select">
-                  <option value="">— Aucun —</option>
+                  <option value="">{t("crm.ed_none")}</option>
                   {doneRenders.map((r) => (
                     <option key={r.render_id} value={r.render_id}>
                       {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Rendu") + " · " + new Date(r.created_at).toLocaleDateString("fr-FR")}
                     </option>
                   ))}
                 </select>
-                {renderUrl && <p className="text-[11px] text-primary">Lien avant/après ajouté à l'e-mail ✓</p>}
+                {renderUrl && <p className="text-[11px] text-primary">{t("crm.ed_link_added")}</p>}
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => closeSend(false)} className="rounded-sm" data-testid="send-quote-cancel">Annuler</Button>
+              <Button variant="outline" onClick={() => closeSend(false)} className="rounded-sm" data-testid="send-quote-cancel">{t("crm.cancel")}</Button>
               <Button onClick={sendNow} disabled={sending} className="rounded-sm gap-2" data-testid="send-quote-confirm">
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Envoyer
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {t("crm.ed_send")}
               </Button>
             </div>
           </div>
@@ -830,8 +830,8 @@ export default function QuoteEditor() {
             </select>
             <Button type="button" variant="outline" size="sm"
                     onClick={() => setNewClientOpen(true)} data-testid="editor-new-client-btn"
-                    className="rounded-sm gap-1 whitespace-nowrap" title="Ajouter un client non enregistré">
-              <Plus className="h-3.5 w-3.5" /> Nouveau
+                    className="rounded-sm gap-1 whitespace-nowrap" title={t("crm.ed_add_unreg_title")}>
+              <Plus className="h-3.5 w-3.5" /> {t("crm.ed_new")}
             </Button>
           </div>
         </div>
@@ -853,50 +853,50 @@ export default function QuoteEditor() {
       <Dialog open={newClientOpen} onOpenChange={setNewClientOpen}>
         <DialogContent className="max-w-md" data-testid="new-client-dialog">
           <DialogHeader>
-            <DialogTitle>Nouveau client</DialogTitle>
-            <DialogDescription>Créez un client non enregistré ; il sera ajouté à votre CRM et sélectionné pour ce devis.</DialogDescription>
+            <DialogTitle>{t("crm.new_client")}</DialogTitle>
+            <DialogDescription>{t("crm.ed_new_client_desc")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Prénom</Label>
+                <Label>{t("crm.firstname")}</Label>
                 <Input value={nc.first_name} onChange={(e) => setNc({ ...nc, first_name: e.target.value })}
                        className="rounded-sm mt-1" data-testid="nc-first-name" placeholder="Jean" />
               </div>
               <div>
-                <Label>Nom</Label>
+                <Label>{t("crm.lastname")}</Label>
                 <Input value={nc.last_name} onChange={(e) => setNc({ ...nc, last_name: e.target.value })}
                        className="rounded-sm mt-1" data-testid="nc-last-name" placeholder="Dupont" />
               </div>
             </div>
             <div>
-              <Label>Société (optionnel)</Label>
+              <Label>{t("crm.ed_company_opt")}</Label>
               <Input value={nc.company} onChange={(e) => setNc({ ...nc, company: e.target.value })}
                      className="rounded-sm mt-1" data-testid="nc-company" placeholder="SCI Dupont" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Email</Label>
+                <Label>{t("crm.email")}</Label>
                 <Input value={nc.email} onChange={(e) => setNc({ ...nc, email: e.target.value })}
                        className="rounded-sm mt-1" data-testid="nc-email" placeholder="jean@email.com" />
               </div>
               <div>
-                <Label>Téléphone</Label>
+                <Label>{t("crm.phone")}</Label>
                 <Input value={nc.phone} onChange={(e) => setNc({ ...nc, phone: e.target.value })}
                        className="rounded-sm mt-1" data-testid="nc-phone" placeholder="06 12 34 56 78" />
               </div>
             </div>
             <div>
-              <Label>Adresse</Label>
+              <Label>{t("crm.address")}</Label>
               <Input value={nc.address} onChange={(e) => setNc({ ...nc, address: e.target.value })}
                      className="rounded-sm mt-1" data-testid="nc-address" placeholder="12 rue des Travaux, 75000 Paris" />
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="outline" onClick={() => setNewClientOpen(false)} className="rounded-sm" data-testid="nc-cancel">
-                Annuler
+                {t("crm.cancel")}
               </Button>
               <Button onClick={createClientInline} disabled={ncBusy} className="rounded-sm gap-1" data-testid="nc-save">
-                {ncBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Ajouter
+                {ncBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {t("crm.ed_add")}
               </Button>
             </div>
           </div>
@@ -907,8 +907,8 @@ export default function QuoteEditor() {
         <div className="surface p-3" data-testid="photo-preview">
           <div className="flex items-center justify-between mb-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold">{photoPreviews.length} photo(s) lue(s) par l'IA</p>
-              <p className="text-[11px] text-muted-foreground">Les lignes ci-dessous en sont issues — vérifiez et ajustez si besoin.</p>
+              <p className="text-xs font-semibold">{t("crm.ed_photos_read").replace("{n}", photoPreviews.length)}</p>
+              <p className="text-[11px] text-muted-foreground">{t("crm.ed_photos_read_sub")}</p>
             </div>
             <button onClick={() => setPhotoPreviews([])} className="text-muted-foreground hover:text-foreground" data-testid="photo-preview-close">
               <X className="h-4 w-4" />
@@ -956,6 +956,19 @@ export default function QuoteEditor() {
           </div>
         </div>
 
+        {isPT && (
+          <div className="flex items-start gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2 text-xs" data-testid="pt-iva6-hint">
+            <span className="text-base leading-none">💡</span>
+            <div className="flex-1">
+              <b>Reabilitação de habitação?</b> Obras em imóveis de habitação com mais de 2 anos podem beneficiar do <b>IVA reduzido de 6%</b> (Verba 2.27 do CIVA). Caso contrário, aplica-se a taxa normal de 23%.
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setAllVat(6)}
+                    className="rounded-sm h-7 text-xs shrink-0 text-primary border-primary/40" data-testid="pt-apply-iva6">
+              Aplicar 6%
+            </Button>
+          </div>
+        )}
+
         <div className="hidden md:grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">
           <span className="col-span-5">{t("crm.col_designation")}</span>
           <span className="col-span-1 text-center">{t("crm.col_qty")}</span>
@@ -995,21 +1008,21 @@ export default function QuoteEditor() {
             </div>
             </div>
             <textarea value={l.description || ""} onChange={(e) => setLine(i, "description", e.target.value)}
-                   placeholder="Description / détail de l'ouvrage (optionnel — archivé en bibliothèque)"
+                   placeholder={t("crm.ed_desc_ph")}
                    rows={2}
                    className="rounded-sm text-sm w-full bg-background border border-input px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary" data-testid={`editor-line-desc-${i}`} />
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5 text-muted-foreground" />
                 <Input list="qe-lots" value={l.category || ""} onChange={(e) => setLine(i, "category", e.target.value)}
-                       placeholder="Lot (ex : Peinture)" className="rounded-sm h-7 text-xs w-44"
+                       placeholder={t("crm.ed_lot_ph")} className="rounded-sm h-7 text-xs w-44"
                        data-testid={`editor-line-lot-${i}`} />
               </div>
               <Button size="sm" variant="outline" disabled={aiLineBusy === i || !l.designation.trim()}
                       onClick={() => suggestDescription(i)} data-testid={`editor-line-ai-${i}`}
                       className="rounded-sm gap-1 h-7 text-xs text-primary border-primary/40">
                 <Sparkles className={`h-3.5 w-3.5 ${aiLineBusy === i ? "animate-pulse" : ""}`} />
-                {aiLineBusy === i ? "Suggestion…" : "Suggestions IA"}
+                {aiLineBusy === i ? t("crm.ed_ai_suggesting") : t("crm.ed_ai_suggest")}
               </Button>
             </div>
           </div>
@@ -1040,7 +1053,7 @@ export default function QuoteEditor() {
           {lotSubtotals.length > 0 && (
             <div className="mb-1 pb-2 border-b border-border" data-testid="editor-lot-subtotals">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5" /> Sous-totaux par lot (HT)
+                <Layers className="h-3.5 w-3.5" /> {t("crm.ed_lot_subtotals")}
               </p>
               {lotSubtotals.map(({ cat, ht }) => (
                 <div key={cat} className="flex justify-between text-xs py-0.5" data-testid={`editor-lot-subtotal-${cat}`}>
@@ -1097,18 +1110,18 @@ export default function QuoteEditor() {
       <Dialog open={reviewOpen} onOpenChange={(v) => { if (!v) closeReview(); }}>
         <DialogContent className="max-w-md" data-testid="video-review-dialog">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><FileVideo className="h-5 w-5 text-primary" /> Vérifier la vidéo</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><FileVideo className="h-5 w-5 text-primary" /> {t("crm.ed_check_video")}</DialogTitle>
           </DialogHeader>
           {reviewInfo.url && (
             <video src={reviewInfo.url} controls playsInline className="w-full rounded-sm bg-black aspect-video object-contain" data-testid="video-review-preview" />
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-sm border border-border p-3">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><FileVideo className="h-3 w-3" /> Taille</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><FileVideo className="h-3 w-3" /> {t("crm.ed_size")}</p>
               <p className="text-lg font-semibold" data-testid="video-review-size">{reviewInfo.sizeMB.toFixed(1)} Mo</p>
             </div>
             <div className="rounded-sm border border-border p-3">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Durée</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {t("crm.ed_duration")}</p>
               <p className="text-lg font-semibold" data-testid="video-review-duration">
                 {reviewInfo.duration > 0 ? fmtSecs(Math.round(reviewInfo.duration)) : "—"}
               </p>
@@ -1116,18 +1129,18 @@ export default function QuoteEditor() {
           </div>
           <p className="text-xs text-muted-foreground -mt-1" data-testid="video-review-esttime">
             <Clock className="h-3 w-3 inline mr-1" />
-            Temps de traitement estimé : ~{Math.max(12, Math.round((reviewInfo.duration || reviewInfo.sizeMB * 5) * 0.8) + 8)} s
+            {t("crm.ed_est_time").replace("{s}", Math.max(12, Math.round((reviewInfo.duration || reviewInfo.sizeMB * 5) * 0.8) + 8))}
           </p>
           {(reviewInfo.duration > 90 || reviewInfo.sizeMB > 30) && (
             <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-600 flex gap-2" data-testid="video-review-warning">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>Cette vidéo est longue/lourde et la transcription sera plus lente. Pour aller plus vite, refilmez une séquence plus courte (30-60 s suffisent) en décrivant l'essentiel.</span>
+              <span>{t("crm.ed_video_warn")}</span>
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={closeReview} className="rounded-sm" data-testid="video-review-restart">Changer de vidéo</Button>
+            <Button variant="outline" onClick={closeReview} className="rounded-sm" data-testid="video-review-restart">{t("crm.ed_change_video")}</Button>
             <Button onClick={confirmTranscribe} disabled={videoBusy} className="rounded-sm gap-2 bg-primary" data-testid="video-review-transcribe">
-              {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Transcrire maintenant
+              {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {t("crm.ed_transcribe_now")}
             </Button>
           </div>
         </DialogContent>
@@ -1138,19 +1151,19 @@ export default function QuoteEditor() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {recMode === "audio" ? <Mic className="h-5 w-5 text-primary" /> : <Camera className="h-5 w-5 text-primary" />}
-              {recMode === "audio" ? "Dicter le devis" : "Filmer le chantier"}
+              {recMode === "audio" ? t("crm.ed_dictate_quote") : t("crm.ed_film_site")}
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-1">
             {recMode === "audio"
-              ? "Décrivez les travaux à voix haute : l'IA transcrit puis génère le devis."
-              : "Enregistrement en basse résolution (480p) pour un envoi rapide. Décrivez les travaux à voix haute."}
+              ? t("crm.ed_audio_hint")
+              : t("crm.ed_video_hint")}
           </p>
           {recMode === "audio" ? (
             <div className="relative bg-secondary/40 rounded-sm overflow-hidden h-40 flex flex-col items-center justify-center gap-3" data-testid="audio-recorder-visual">
               <Mic className={`h-12 w-12 ${recording ? "text-red-500 animate-pulse" : "text-muted-foreground"}`} />
               <div className="text-sm font-mono" data-testid="audio-recorder-timer">{fmtSecs(recSecs)}</div>
-              {recording && <div className="text-xs text-muted-foreground">Enregistrement en cours…</div>}
+              {recording && <div className="text-xs text-muted-foreground">{t("crm.ed_saving")}</div>}
             </div>
           ) : (
             <div className="relative bg-black rounded-sm overflow-hidden aspect-video">
@@ -1163,14 +1176,14 @@ export default function QuoteEditor() {
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={closeRecorder} className="rounded-sm" data-testid="video-recorder-cancel">Annuler</Button>
+            <Button variant="outline" onClick={closeRecorder} className="rounded-sm" data-testid="video-recorder-cancel">{t("crm.cancel")}</Button>
             {!recording ? (
               <Button onClick={startRec} disabled={!streamReady} className="rounded-sm gap-2 bg-red-600 hover:bg-red-700" data-testid="video-recorder-start">
-                {recMode === "audio" ? <Mic className="h-4 w-4" /> : <Video className="h-4 w-4" />} {streamReady ? "Démarrer" : "Initialisation…"}
+                {recMode === "audio" ? <Mic className="h-4 w-4" /> : <Video className="h-4 w-4" />} {streamReady ? t("crm.ed_start") : t("crm.ed_initializing")}
               </Button>
             ) : (
               <Button onClick={stopRec} className="rounded-sm gap-2 bg-primary" data-testid="video-recorder-stop">
-                <Square className="h-4 w-4" /> Arrêter & générer
+                <Square className="h-4 w-4" /> {t("crm.ed_stop_gen")}
               </Button>
             )}
           </div>
@@ -1180,23 +1193,23 @@ export default function QuoteEditor() {
       <Dialog open={transcriptDialog} onOpenChange={setTranscriptDialog}>
         <DialogContent className="max-w-xl" data-testid="video-transcript-dialog">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Video className="h-5 w-5 text-primary" /> Relire la transcription</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Video className="h-5 w-5 text-primary" /> {t("crm.ed_reread_transcript")}</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-1">
-            Corrigez la transcription si besoin, puis générez le devis (lignes chiffrées depuis votre bibliothèque).
+            {t("crm.ed_transcript_hint")}
           </p>
           <Textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={7}
                     data-testid="video-transcript-text" className="rounded-sm text-sm" />
           <div>
             <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs">Photos du chantier (optionnel, max 6)</Label>
+              <Label className="text-xs">{t("crm.ed_site_photos")}</Label>
               <input type="file" accept="image/*" capture="environment" multiple className="hidden" id="qe-transcript-photos"
                      onChange={(e) => { addTranscriptPhotos(e.target.files); e.target.value = ""; }}
                      data-testid="video-transcript-photo-input" />
               <Button size="sm" variant="outline" onClick={() => document.getElementById("qe-transcript-photos").click()}
                       disabled={transcriptPhotos.length >= 6} className="rounded-sm h-7 text-xs gap-1"
                       data-testid="video-transcript-add-photo">
-                <Plus className="h-3 w-3" /> Ajouter des photos
+                <Plus className="h-3 w-3" /> {t("crm.ed_add_photos")}
               </Button>
             </div>
             {transcriptPhotos.length > 0 && (
@@ -1214,10 +1227,10 @@ export default function QuoteEditor() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setTranscriptDialog(false)}
-                    className="rounded-sm" data-testid="video-transcript-cancel">Annuler</Button>
+                    className="rounded-sm" data-testid="video-transcript-cancel">{t("crm.cancel")}</Button>
             <Button onClick={generateFromTranscript} disabled={transcriptBusy || !transcript.trim()}
                     className="rounded-sm gap-2" data-testid="video-transcript-generate">
-              {transcriptBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Générer le devis
+              {transcriptBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {t("crm.ed_gen_quote")}
             </Button>
           </div>
         </DialogContent>
