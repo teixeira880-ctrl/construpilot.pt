@@ -9,20 +9,40 @@ from engines import price_search, emailer
 logger = logging.getLogger(__name__)
 
 
-def _send_sms(to: str, body: str) -> bool:
-    """Envoi SMS Twilio best-effort. Renvoie True si envoyé, False sinon (log warning)."""
+def _twilio_client():
+    """Devolve um cliente Twilio inicializado, ou None se credenciais faltam.
+
+    Usado por engines.sms_provider.get_sms_client() para wrapper unificado.
+    """
     sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
     token = os.environ.get("TWILIO_AUTH_TOKEN", "")
-    from_ = os.environ.get("TWILIO_FROM_NUMBER", "")
-    if not (sid and token and from_ and to):
-        return False
+    if not (sid and token):
+        return None
     try:
         from twilio.rest import Client
-        Client(sid, token).messages.create(to=to, from_=from_, body=body[:320])
-        return True
+        return Client(sid, token)
     except Exception as e:
-        logger.warning(f"SMS alert failed to={to[:-4] + '…' if len(to) > 6 else to}: {e}")
+        logger.warning(f"Twilio client init failed: {e}")
+        return None
+
+
+def _send_sms(to: str, body: str) -> bool:
+    """Envio SMS via provider seleccionado (SMS_PROVIDER=twilio|smsto).
+
+    Best-effort: True se enviado com sucesso, False caso contrário.
+    """
+    if not to:
         return False
+    from engines.sms_provider import get_sms_client
+    client = get_sms_client()
+    if client is None:
+        return False
+    resp = client.send(to=to, message=body[:320])
+    if resp.get("ok"):
+        return True
+    logger.warning(f"SMS alert failed provider={resp.get('provider')} "
+                   f"to={to[:-4] + '…' if len(to) > 6 else to}: {resp.get('reason') or resp.get('body')}")
+    return False
 
 
 async def _notify_user(user: dict, alert: dict, best: dict) -> bool:

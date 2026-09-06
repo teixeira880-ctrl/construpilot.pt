@@ -5,6 +5,7 @@ Refactor iter53 : extrait de `routes/plans.py`.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -1328,6 +1329,105 @@ def _build_pro_signature_email(pro_name: str, signer: str, ttc: float,
     )
 
 
+async def _send_client_receipt_pt(log: dict, signer: str, signed_at_iso: str) -> None:
+    """Envia o recibo PT-PT ao cliente após assinatura (fire-and-forget).
+
+    Idempotente via campo `receipt_sent_at` em `quote_sends`.
+    """
+    log_id = log.get("log_id")
+    client_email = (log.get("client_email") or "").strip()
+    if not client_email:
+        logger.info(f"Recibo PT skip (no client_email) log_id={log_id}")
+        return
+    existing = await db.quote_sends.find_one(
+        {"log_id": log_id, "receipt_sent_at": {"$exists": True, "$ne": None}},
+        {"_id": 0, "receipt_sent_at": 1},
+    )
+    if existing:
+        logger.info(f"Recibo PT skip (already sent) log_id={log_id}")
+        return
+    try:
+        from engines.quote_receipt import (
+            receipt_email_html_pt, receipt_subject_pt, receipt_filename,
+        )
+        from engines.emailer import send_email_with_pdf, send_email
+        user_id = log["user_id"]
+        branding = await _resolve_branding(user_id)
+        signature_block = {
+            "b64": log.get("signature_b64"),
+            "name": signer,
+            "at": signed_at_iso,
+            "client_email": client_email,
+        }
+        pdf_bytes: bytes
+        quote_number: str | None = None
+        quote_title: str | None = None
+        total_ttc: float = float(log.get("total_ttc") or 0)
+        client_name = (log.get("client_name") or "").strip()
+        if log.get("doc_id"):
+            from engines.pdf_docs import build_document_pdf
+            doc = await db.pro_documents.find_one(
+                {"doc_id": log["doc_id"], "user_id": user_id}, {"_id": 0})
+            if not doc:
+                logger.warning(f"Recibo PT skip (doc missing) doc_id={log.get('doc_id')}")
+                return
+            quote_number = doc.get("numero") or doc.get("number") or doc.get("doc_id")
+            quote_title = doc.get("title") or doc.get("object")
+            if not total_ttc:
+                total_ttc = float(doc.get("total_ttc") or 0)
+            if not client_name:
+                client_name = (doc.get("client_name")
+                               or (doc.get("client") or {}).get("name") or "").strip()
+            try:
+                pdf_bytes = build_document_pdf(doc, branding=branding,
+                                               signature=signature_block, lang="pt")
+            except TypeError:
+                pdf_bytes = build_document_pdf(doc, branding=branding, lang="pt")
+        elif log.get("plan_id"):
+            from engines.pdf_takeoff import build_quote_pdf
+            quote, _pdf = await _build_quote_and_pdf(
+                log["plan_id"], user_id, log.get("finish", "std"),
+                log.get("floor_material", "carrelage"),
+                True, True, True, True,
+            )
+            quote_number = str(log.get("plan_id"))[-8:]
+            quote_title = quote.get("title") if isinstance(quote, dict) else None
+            if not total_ttc:
+                total_ttc = float((quote or {}).get("total_ttc") or 0)
+            pdf_bytes = build_quote_pdf(quote, branding=branding, signature=signature_block)
+        else:
+            logger.warning(f"Recibo PT skip (no doc_id/plan_id) log_id={log_id}")
+            return
+        subject = receipt_subject_pt(quote_number)
+        html = receipt_email_html_pt(
+            client_name=client_name, quote_number=quote_number,
+            quote_title=quote_title, total_ttc=total_ttc,
+            signed_at_iso=signed_at_iso,
+        )
+        max_bytes = 10 * 1024 * 1024
+        if len(pdf_bytes) > max_bytes:
+            logger.info(f"Recibo PT: PDF too large ({len(pdf_bytes)} bytes) — sem anexo")
+            resp = await send_email(
+                client_email, subject,
+                html + "<p style='font-size:12px;color:#94A3B8'>Recibo em anexo "
+                       "omitido (tamanho excessivo). Contacte-nos para envio manual.</p>",
+            )
+        else:
+            filename = receipt_filename(quote_number)
+            resp = await send_email_with_pdf(
+                client_email, subject, html, pdf_bytes, filename=filename)
+        await db.quote_sends.update_one(
+            {"log_id": log_id},
+            {"$set": {"receipt_sent_at": _now(),
+                      "receipt_message_id": (resp or {}).get("id")}},
+        )
+        logger.info(f"Recibo PT enviado log_id={log_id} to={client_email} "
+                    f"resend_id={(resp or {}).get('id')}")
+    except Exception as e:
+        logger.error(f"Recibo PT envio falhou log_id={log_id}: {e}")
+
+
+
 async def _notify_pro_on_signature(log: dict, signer: str, client_email: str) -> None:
     """Best-effort push + email notifications to the pro."""
     try:
@@ -1385,7 +1485,11 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
         "created_at": _now(), "read": False,
     })
     await _notify_pro_on_signature(log, signer, client_email)
-    return {"ok": True, "signed_at": _now()}
+    # Envio do recibo automático PT-PT ao cliente (fire-and-forget, idempotente)
+    signed_at_iso = _now()
+    if os.environ.get("RECEIPT_EMAIL_ENABLED", "true").lower() in ("1", "true", "yes"):
+        asyncio.create_task(_send_client_receipt_pt(log, signer, signed_at_iso))
+    return {"ok": True, "signed_at": signed_at_iso}
 
 
 # ---- Acompte en ligne (Stripe Checkout, page publique de signature) --------
