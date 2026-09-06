@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
-  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
+  FileSearch, Shield, Menu, X, LogOut, LogIn, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
   Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers, Wand2, Inbox, Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -197,6 +197,11 @@ export const Nav = () => {
             <>
               <MarketToggle />
               <LangToggle />
+              <Link to="/login" data-testid="nav-signin-btn">
+                <Button variant="outline" size="sm" className="rounded-sm gap-2 hidden sm:inline-flex">
+                  <LogIn className="h-4 w-4" /> {t("nav.login")}
+                </Button>
+              </Link>
               <Link to="/login" data-testid="nav-login-btn">
                 <Button size="sm" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
                   <Sparkles className="h-4 w-4" /> {t("nav.start")}
@@ -226,6 +231,15 @@ export const Nav = () => {
               {l.badge && <span className="ml-auto text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>}
             </Link>
           ))}
+          {!user && (
+            <Link
+              to="/login" onClick={() => setOpen(false)}
+              data-testid="mobile-nav-login"
+              className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg border border-border hover:bg-secondary transition-colors mt-2"
+            >
+              <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><LogIn className="h-4 w-4 text-primary" /></span> {t("nav.login")}
+            </Link>
+          )}
         </div>
       )}
     </header>
