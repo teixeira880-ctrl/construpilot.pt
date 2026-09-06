@@ -86,3 +86,9 @@ mobile/.expo/
 mobile/.metro-cache/
 frontend/node_modules/.cache/default-development/1.pack
 frontend/node_modules/.cache/default-development/0.pack
+.env
+.env.*
+*.env
+credentials.json
+*.key
+.credentials
