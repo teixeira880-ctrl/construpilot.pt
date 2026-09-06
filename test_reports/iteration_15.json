@@ -1,0 +1,31 @@
+{
+  "summary": "Validated the 3 final fixes (A) PT admin idempotent seed, (B) SEO PT in served HTML, (C) MP4 videos with <source type=video/mp4>, plus aria-labels PT. All requested checks PASS on preview URL.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing / (root)", "issues": ["React dynamically overrides <html lang> from 'pt-PT' to 'pt' and document.title to French version even for PT users navigating to '/'. Static HTML served by server is correct (pt-PT, PT title, canonical construpilot.pt) which is what crawlers see, but the browser-rendered head shows FR title. Consider syncing i18n locale to 'pt-PT' and updating document.title/lang when country=PT."]},
+      {"screen": "Global aria-labels", "issues": ["Several French aria-labels still remain in the PT UI: 'Activer le son', 'Calculateurs pros', 'Comparateur de prix', 'Génération 3D', 'Mode « je le fais moi-même »', 'Estimation par photo', 'Scanner de devis', 'Consentement aux cookies', 'Notifications alt+T'. Only 'Mudar tema', 'Fechar', 'Eliminar' were translated."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: translate remaining FR aria-labels ('Activer le son', 'Calculateurs pros', 'Comparateur de prix', 'Génération 3D', 'Mode « je le fais moi-même »', 'Estimation par photo', 'Scanner de devis', 'Consentement aux cookies', 'Notifications alt+T') to PT when country=PT.",
+    "Optional: ensure client-side i18n also updates document.documentElement.lang to 'pt-PT' (currently forced to 'pt') and document.title to the PT variant for PT users."
+  ],
+  "critical_code_review_comments": [
+    "Seed idempotency confirmed: server.py L248-271 correctly skips log when account already exists with role=admin and password_hash, which explains absence of new 'Compte admin secondaire' log after restart (expected)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Admin PT: info@construpilot.pt / Ruquinha2020. — LOGIN OK (200 + JWT). Admin principal: admin@construpilot.io / VJAiUOI90Ss2brVH — LOGIN OK (200 + JWT).",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 fixes verified: (1) PT admin login works after restart (idempotent seed intact); (2) served HTML at '/' contains lang=pt-PT, PT title starting with 'ConstruPilot — Orçamentos', PT description, og:locale=pt_PT, canonical=https://construpilot.pt/; (3) /portugal route renders 2 videos with <source src=/hero-pt.mp4 type=video/mp4> (autoplay) and <source src=/demo-pt.mp4 type=video/mp4> (controls). aria-label 'Mudar tema' present. Note: React rewrites lang to 'pt' and title to FR after hydration — raw HTML for crawlers is correct so SEO is fine for indexing.",
+  "rca of the issue": "N/A — no bugs found for the requested scope."
+}

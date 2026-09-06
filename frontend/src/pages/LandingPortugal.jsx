@@ -69,7 +69,6 @@ export default function LandingPortugal() {
         <div className="mt-6 rounded-xl overflow-hidden border border-border bg-black/5 aspect-video">
           <video
             ref={heroRef}
-            src="/hero-pt.mp4"
             autoPlay
             muted
             loop
@@ -78,7 +77,9 @@ export default function LandingPortugal() {
             className="w-full h-full object-cover"
             aria-label="Demonstração ConstruPilot"
             data-testid="pt-hero-video"
-          />
+          >
+            <source src="/hero-pt.mp4" type="video/mp4" />
+          </video>
         </div>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link to="/estimation">
@@ -199,14 +200,15 @@ export default function LandingPortugal() {
         </p>
         <div className="mt-8 rounded-xl overflow-hidden border border-border shadow-lg bg-black/5">
           <video
-            src="/demo-pt.mp4"
             controls
             playsInline
             preload="metadata"
             className="w-full"
             aria-label="Demonstração ConstruPilot Portugal"
             data-testid="pt-demo-video"
-          />
+          >
+            <source src="/demo-pt.mp4" type="video/mp4" />
+          </video>
         </div>
       </section>
 

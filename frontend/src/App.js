@@ -159,7 +159,8 @@ function AppRouter() {
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<LandingPortugal />} />
+      <Route path="/fr" element={<Landing />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
       <Route path="/investidores" element={<Investors />} />

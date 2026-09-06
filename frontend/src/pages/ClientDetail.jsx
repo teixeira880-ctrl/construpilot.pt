@@ -115,7 +115,7 @@ export default function ClientDetail() {
       <St s={d.status} />
       <span className="num font-bold text-sm w-24 text-right">{eur(d.totals?.ttc)}</span>
       <div className="flex gap-1 shrink-0">
-        <Button size="icon" variant="ghost" className="h-7 w-7" title="Ouvrir"
+        <Button size="icon" variant="ghost" className="h-7 w-7" title="Abrir"
                 onClick={() => nav(`/devis-editeur/${d.doc_id}`)} data-testid={`doc-open-${d.doc_id}`}>
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>

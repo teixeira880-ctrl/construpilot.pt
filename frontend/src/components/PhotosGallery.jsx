@@ -60,7 +60,7 @@ const PhotoThumb = ({ projectId, photo, onDelete }) => {
           onClick={() => onDelete(photo)}
           data-testid={`photo-delete-${photo.photo_id}`}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 shrink-0"
-          aria-label="Supprimer"
+          aria-label="Eliminar"
         >
           <Trash2 className="h-4 w-4" />
         </button>

@@ -20,7 +20,7 @@ export const InstallPrompt = () => {
     >
       <button
         onClick={dismiss}
-        aria-label="Fermer"
+        aria-label="Fechar"
         data-testid="pwa-install-dismiss"
         className="absolute right-3 top-3 text-white/40 hover:text-white transition-colors"
       >

@@ -42,7 +42,7 @@ export const LandingInstallBanner = () => {
 
         <button
           onClick={dismiss}
-          aria-label="Fermer"
+          aria-label="Fechar"
           data-testid="landing-install-dismiss"
           className="shrink-0 text-foreground/40 hover:text-foreground transition-colors"
         >

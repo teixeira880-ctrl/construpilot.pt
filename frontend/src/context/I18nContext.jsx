@@ -1506,7 +1506,8 @@ export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(detectLang);
 
   const applyDir = (l) => {
-    document.documentElement.lang = l;
+    // Use ISO regional code for pt (pt-PT) — better SEO alignment with hreflang.
+    document.documentElement.lang = l === "pt" ? "pt-PT" : l;
     document.documentElement.dir = RTL_LANGS.includes(l) ? "rtl" : "ltr";
   };
 

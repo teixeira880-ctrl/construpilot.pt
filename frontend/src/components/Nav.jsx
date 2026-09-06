@@ -162,7 +162,7 @@ export const Nav = () => {
           <button
             onClick={toggleTheme}
             data-testid="theme-toggle"
-            aria-label="Changer de thème"
+            aria-label="Mudar tema"
             className="h-9 w-9 grid place-items-center rounded-sm border border-border hover:border-primary transition-colors"
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

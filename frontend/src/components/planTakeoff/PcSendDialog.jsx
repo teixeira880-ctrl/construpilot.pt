@@ -86,7 +86,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
                     </button>
                     <button onClick={() => deleteTemplate(t.template_id)}
                             className="text-muted-foreground hover:text-destructive transition"
-                            title="Supprimer ce modèle"
+                            title="Eliminar este modelo"
                             data-testid={`pc-msg-template-delete-${t.template_id}`}>
                       <X className="h-3 w-3" />
                     </button>

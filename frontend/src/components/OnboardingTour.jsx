@@ -50,7 +50,7 @@ export const OnboardingTour = () => {
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm grid place-items-center p-4" data-testid="onboarding-overlay">
       <div className="surface p-8 max-w-lg w-full grid gap-6 relative animate-rise" data-testid="onboarding-tour">
-        <button onClick={skip} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-sm hover:bg-secondary" aria-label="Fermer" data-testid="onboarding-skip">
+        <button onClick={skip} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-sm hover:bg-secondary" aria-label="Fechar" data-testid="onboarding-skip">
           <X className="h-4 w-4" />
         </button>
         {step === 0 && chMsg && (
