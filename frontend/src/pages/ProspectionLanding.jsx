@@ -13,7 +13,7 @@ export default function ProspectionLanding() {
   const { token } = useParams();
   const [state, setState] = useState("loading"); // loading | ready | notfound | done
   const [d, setD] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "", website: "" });
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -110,6 +110,9 @@ export default function ProspectionLanding() {
               <Input placeholder="Votre nom" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="prospection-name" />
               <Input type="email" required placeholder="Votre e-mail *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} data-testid="prospection-email" />
               <Input placeholder="Votre téléphone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} data-testid="prospection-phone" />
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" value={form.website}
+                onChange={(e) => setForm({ ...form, website: e.target.value })}
+                style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} aria-hidden="true" />
               <Textarea placeholder="Décrivez votre projet (facultatif)" rows={3} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} data-testid="prospection-message" />
               <Button type="submit" disabled={sending} className="rounded-lg bg-emerald-700 hover:bg-emerald-800 h-11 text-base" data-testid="prospection-submit">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Demander mon estimation gratuite"}

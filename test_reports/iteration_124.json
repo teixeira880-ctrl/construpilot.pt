@@ -1,0 +1,29 @@
+{
+  "summary": "Radar V2 nouvelles fonctionnalités validées E2E (backend + UI). Backend pytest 5/5 PASS (/app/backend/tests/test_radar_v2_new.py): (A) POST /api/radar/opportunities/CP-2026-95402/prospection/ai avec {tone=commercial,length=court} et {tone=formel,length=moyen} renvoie 200 + message FR commençant par 'Bonjour,' via Claude claude-sonnet-4-6; opp inconnue -> 404. (B) POST /api/radar/admin/import-sitadel avec CSV 2 lignes -> inserted>=1, /admin/permits/count using='db.radar_permits'; DELETE /admin/permits ok:true; count==0 using contient 'mock'. (C) 6 POST rapides /api/radar/public/prospection/{token}/lead depuis même IP -> au moins un 429 dans la séquence (rate-limit Mongo TTL radar_rate_hits partagé confirmé). UI Playwright: PRO (pro@construpilot.fr) /radar -> click radar-opp-CP-2026-95402 -> drawer radar-detail; select radar-ai-tone=commercial + radar-ai-length=court; clic radar-ai-write -> textarea radar-letter-message se met à jour (555 -> 816 chars, préfixe 'Bonjour,'), toast 'Texte rédigé par l'IA', API 200 en 7.5s. Puis radar-generate-letter -> bloc radar-campaign apparaît, bouton 'Regénérer' visible. ADMIN (teixeira8880@gmail.com) /admin -> onglet admin-tab-radar -> admin-radar-panel: upload CSV via admin-radar-file, clic admin-radar-import -> admin-radar-result '2 importés · 0 ignorés · 2 au total', statut passe à 'db.radar_permits'. admin-radar-clear (dialog accepté) -> toast '2 permis supprimés', statut revient à 'mock (échantillon 95)'. État final: db.radar_permits VIDE (using 'mock').",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/radar drawer", "issues": ["Le bandeau cookies (bas droit) recouvre partiellement le bouton 'Rédiger avec l'IA' lors du premier chargement — cliquable seulement après 'Tout accepter' ou scroll. Non bloquant en usage réel mais peut gêner les nouveaux visiteurs. Envisager de repositionner le banner en bas centré ou de le rendre dismissible plus facilement."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_radar_v2_new.py", "/app/test_reports/pytest/radar_v2_new.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/radar.py 835 lignes — dépasse largement la limite recommandée de 700; splitter en radar_core / radar_prospection / radar_admin / radar_ai.",
+    "engines/ai._complete: appel Claude sans timeout explicite dans la route ai_letter — un stream lent bloquerait l'endpoint sans borne. Ajouter un asyncio.wait_for(timeout=30) côté route.",
+    "POST /radar/admin/import-sitadel: toujours aucune limite de taille de fichier ni de nombre de rows, ni de timeout global pour le géocodage BAN. Un CSV de 5000 lignes pourrait faire timeout ou saturer BAN. (déjà noté iter 123)",
+    "_rate_limited insère TOUJOURS un doc puis compte — plus élégant/rapide: incrémenter un compteur unique par IP avec upsert et se baser sur le compteur; l'index TTL sur 'at' fonctionne mais un doc par requête pour chaque hit crée du churn inutile.",
+    "Pas de test frontend pour l'état 'disabled' du bouton radar-ai-write pendant la génération (loading state) — vérifier visuellement que double-clic ne double-appelle pas l'API.",
+    "AiLetterIn accepte tone/length arbitraires (fallback vers 'formel'/'moyen') mais ne valide pas via Literal[...] — envisager Pydantic Literal pour rejeter les valeurs inattendues en 422 plutôt que fallback silencieux."
+  ],
+  "updated_files": ["/app/backend/tests/test_radar_v2_new.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! ; teixeira8880@gmail.com / CP-D5615C-Prov!",
+  "seed_data_creation": "Campagnes rop_* créées côté pro@construpilot.fr sur CP-2026-95402 (via /prospection/ai + /prospection + rate-limit test). Leads TEST_rate_* supprimés en cleanup. db.radar_permits: import 2 rows puis DELETE — laissé VIDE (using 'mock'). Aucun résidu de permis test en DB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "V2 features (Assistant IA Claude, admin SITADEL panel, rate-limit Mongo TTL) validées OK. Fichier réutilisable: /app/backend/tests/test_radar_v2_new.py. Attention rate-limit 5/10min par IP: tests répétés depuis même IP pod peuvent 429 (Mongo TTL partagé maintenant). Le compte pro a plusieurs campagnes rop_* résiduelles. Le cookie banner recouvre parfois le bouton IA au 1er chargement — accepter cookies avant tout test UI /radar.",
+  "rca of the issue": "N/A — no bugs identified."
+}

@@ -3,10 +3,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   Radar, MapPin, Star, Flame, TrendingUp, Building2, X, Loader2,
-  Settings, Mail, Copy, Download, Check, Crosshair,
+  Settings, Mail, Copy, Download, Check, Crosshair, BarChart3, Eye, Users, Sparkles,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR") + " €";
@@ -37,6 +38,12 @@ export default function RadarChantiers() {
   const [campaign, setCampaign] = useState(null);
   const [genLoading, setGenLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [letterMsg, setLetterMsg] = useState("");
+  const [aiTone, setAiTone] = useState("formel");
+  const [aiLength, setAiLength] = useState("moyen");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showCampaigns, setShowCampaigns] = useState(false);
+  const [campaigns, setCampaigns] = useState(null);
 
   const mapRef = useRef(null);
   const mapObj = useRef(null);
@@ -95,10 +102,17 @@ export default function RadarChantiers() {
   }, [data, draftBase]);
 
   const openDetail = async (id) => {
-    setCampaign(null);
-    try { const { data: o } = await api.get(`/radar/opportunities/${id}`); setSel(o); }
-    catch { toast.error("Fiche indisponible"); }
+    setCampaign(null); setLetterMsg("");
+    try {
+      const { data: o } = await api.get(`/radar/opportunities/${id}`);
+      setSel(o); setLetterMsg(o.suggested_message || "");
+    } catch { toast.error("Fiche indisponible"); }
   };
+
+  const loadCampaigns = useCallback(async () => {
+    try { const { data } = await api.get("/radar/campaigns"); setCampaigns(data); }
+    catch { toast.error("Suivi indisponible"); }
+  }, []);
 
   const toggleFav = async (id) => {
     try {
@@ -131,10 +145,21 @@ export default function RadarChantiers() {
     if (!sel) return;
     setGenLoading(true);
     try {
-      const { data: c } = await api.post(`/radar/opportunities/${sel.id}/prospection`, { message: "" });
+      const { data: c } = await api.post(`/radar/opportunities/${sel.id}/prospection`, { message: letterMsg });
       setCampaign(c);
+      if (showCampaigns) loadCampaigns();
     } catch { toast.error("Génération impossible"); }
     finally { setGenLoading(false); }
+  };
+
+  const writeWithAI = async () => {
+    if (!sel) return;
+    setAiLoading(true);
+    try {
+      const { data } = await api.post(`/radar/opportunities/${sel.id}/prospection/ai`, { tone: aiTone, length: aiLength });
+      if (data.message) { setLetterMsg(data.message); toast.success("Texte rédigé par l'IA"); }
+    } catch { toast.error("Rédaction IA indisponible"); }
+    finally { setAiLoading(false); }
   };
 
   const copyLink = async () => {
@@ -157,10 +182,45 @@ export default function RadarChantiers() {
           <h1 className="font-display text-2xl font-extrabold tracking-tight">Radar Chantiers</h1>
           <p className="text-xs text-muted-foreground">Détecte les futurs chantiers autour de votre entreprise et estime leur potentiel.</p>
         </div>
+        <Button variant="outline" size="sm" className="rounded-sm gap-1" onClick={() => { const n = !showCampaigns; setShowCampaigns(n); if (n) loadCampaigns(); }} data-testid="radar-campaigns-btn">
+          <BarChart3 className="h-4 w-4" /> Suivi
+        </Button>
         <Button variant="outline" size="sm" className="rounded-sm gap-1" onClick={() => setShowSettings((s) => !s)} data-testid="radar-settings-btn">
           <Settings className="h-4 w-4" /> Réglages
         </Button>
       </div>
+
+      {showCampaigns && (
+        <div className="surface rounded-xl p-4 my-4" data-testid="radar-campaigns">
+          <div className="flex items-center gap-4 mb-3 text-sm">
+            <span className="font-bold">Suivi des campagnes</span>
+            {campaigns && (
+              <span className="text-muted-foreground flex items-center gap-3">
+                <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {campaigns.total_opens} ouvertures</span>
+                <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {campaigns.total_leads} réponses</span>
+              </span>
+            )}
+          </div>
+          {!campaigns && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>}
+          {campaigns && campaigns.count === 0 && <p className="text-sm text-muted-foreground">Aucune campagne encore. Générez un courrier de prospection depuis une opportunité.</p>}
+          {campaigns && campaigns.count > 0 && (
+            <div className="grid gap-2">
+              {campaigns.campaigns.map((c) => (
+                <div key={c.token} className="flex items-center justify-between gap-3 rounded-md border border-border p-2.5 text-sm" data-testid={`radar-campaign-row-${c.token}`}>
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{c.batiment}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {c.commune}</div>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="inline-flex items-center gap-1 text-muted-foreground" title="Ouvertures / scans QR"><Eye className="h-3.5 w-3.5" /> {c.open_count}</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-primary" title="Prospects captés"><Users className="h-3.5 w-3.5" /> {c.lead_count}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showSettings && profile && (
         <div className="surface rounded-xl p-4 my-4 grid gap-4" data-testid="radar-settings">
@@ -280,12 +340,38 @@ export default function RadarChantiers() {
               <p className="text-[10px] text-muted-foreground mt-2">Estimation indicative basée sur les données publiques disponibles — à confirmer.</p>
             </div>
 
-            <div className="flex gap-2 mt-4">
+            <div className="mt-4">
+              <label className="text-xs font-bold uppercase text-muted-foreground">Texte du courrier (personnalisable)</label>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap" data-testid="radar-ai-controls">
+                <select value={aiTone} onChange={(e) => setAiTone(e.target.value)} data-testid="radar-ai-tone"
+                  className="h-8 rounded-md border border-border bg-background text-xs px-2">
+                  <option value="formel">Ton : formel</option>
+                  <option value="chaleureux">Ton : chaleureux</option>
+                  <option value="direct">Ton : direct</option>
+                  <option value="commercial">Ton : commercial</option>
+                </select>
+                <select value={aiLength} onChange={(e) => setAiLength(e.target.value)} data-testid="radar-ai-length"
+                  className="h-8 rounded-md border border-border bg-background text-xs px-2">
+                  <option value="court">Longueur : court</option>
+                  <option value="moyen">Longueur : moyen</option>
+                  <option value="long">Longueur : long</option>
+                </select>
+                <Button variant="outline" size="sm" className="rounded-sm gap-1 h-8" onClick={writeWithAI} disabled={aiLoading} data-testid="radar-ai-write">
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Rédiger avec l'IA
+                </Button>
+              </div>
+              <Textarea value={letterMsg} onChange={(e) => setLetterMsg(e.target.value)} rows={6}
+                className="mt-2 text-sm" data-testid="radar-letter-message"
+                placeholder="Rédigez le texte de votre courrier de prospection…" />
+              <p className="text-[10px] text-muted-foreground mt-1">Ce texte apparaîtra dans le courrier PDF. Vous pouvez l'adapter puis (re)générer.</p>
+            </div>
+
+            <div className="flex gap-2 mt-3">
               <Button variant="outline" className="rounded-sm gap-1 flex-1" onClick={() => toggleFav(sel.id)} data-testid="radar-detail-fav">
                 <Star className={`h-4 w-4 ${sel.is_favorite ? "fill-primary text-primary" : ""}`} /> {sel.is_favorite ? "Favori" : "Ajouter aux favoris"}
               </Button>
               <Button className="rounded-sm gap-1 flex-1" onClick={generateLetter} disabled={genLoading} data-testid="radar-generate-letter">
-                {genLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Courrier de prospection
+                {genLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {campaign ? "Regénérer" : "Générer le courrier"}
               </Button>
             </div>
 

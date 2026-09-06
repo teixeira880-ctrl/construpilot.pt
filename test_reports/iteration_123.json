@@ -1,0 +1,28 @@
+{
+  "summary": "Full validation of the 4 new Radar V2 features (Pro=pro@construpilot.fr, Admin=teixeira8880@gmail.com). Backend pytest 4/4 PASS (/app/backend/tests/test_radar_v2_features.py): (1) GET /radar/opportunities/CP-2026-95119 returns suggested_message starting with 'Bonjour,'; (2) POST /radar/opportunities/{id}/prospection + GET /radar/campaigns lists the fresh campaign; hitting public landing GET /radar/public/prospection/{token} without auth increments open_count>=1; (3) honeypot 'website' filled -> API returns {ok:true} but NO lead is inserted (verified via /api/leads/assigned); (4) admin SITADEL: POST /radar/admin/import-sitadel with a 3-row CSV inserts>=1, GET count returns using='db.radar_permits', DELETE /radar/admin/permits restores using='mock (échantillon 95)'. UI e2e via Playwright: /radar loads with leaflet-container + KPIs, click radar-opp-CP-2026-95119 opens radar-detail; radar-letter-message Textarea is PRE-REMPLI (561 chars, starts with 'Bonjour,'). Editing then clicking radar-generate-letter -> radar-campaign appears (radar-campaign-qr, public_url, copy+download), button becomes 'Regénérer'. radar-campaigns-btn opens radar-campaigns showing totals + radar-campaign-row-<token> rows including the just-generated token. Public landing at /prospection/<token> loads without auth, honeypot input[name=website] is positioned OFF-SCREEN (bbox x=-9999, size 1x1, opacity 0) — invisible to humans, still findable by bots as intended. Submitting prospection-form -> prospection-done screen. Re-opening Suivi shows updated open_count>=1 for the campaign. Final state: db.radar_permits empty (using 'mock'), ready for demo.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/radar", "issues": ["Cookie banner RGPD (bas-droit) peut recouvrir le coin des cartes en test automatisé, non bloquant en usage réel (déjà noté iter 122)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_radar_v2_features.py", "/app/test_reports/pytest/radar_v2.xml", "/app/backend/tests/test_radar_prospection.py"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/radar.py atteint 766 lignes — dépasse la limite recommandée de 700; envisager de splitter en radar_core.py (permits/opportunities/profile) + radar_prospection.py (prospection/PDF/campaigns/landing) + radar_admin.py (import SITADEL).",
+    "Rate-limit anti-spam _LEAD_HITS est in-memory par worker uniquement — en scale-out multi-workers/pods il sera facilement contournable. Prévoir un stockage partagé (Redis) ou une collection Mongo TTL avant prod.",
+    "Honeypot 'website' est un champ Pydantic obligatoire dans ProspectLeadIn avec valeur par défaut ''; OK. Cependant la valeur remplie par un bot n'est ni loguée ni comptée — envisager un compteur d'attaques (metrics) pour observabilité.",
+    "POST /radar/admin/import-sitadel: pas de limite de taille de fichier ni de nombre de rows, ni de timeout global pour le géocodage BAN (qui fait 1 requête HTTP par ligne sans lat/lon). Un CSV de 5000 lignes pourrait faire timeout ou saturer BAN.",
+    "Landing publique: honeypot déclenche return {ok: True} silencieux -> bien; mais anti-doublon renvoie aussi ok+duplicate=True -> le pro ne saura jamais qu'un même email a re-tenté. Envisager de logger côté serveur.",
+    "GET /radar/public/prospection/{token} incrémente open_count à CHAQUE hit y compris rafraichissements/preview crawlers (WhatsApp, iMessage, etc.) → gonflement artificiel. Envisager de filtrer par User-Agent ou de dédupliquer par IP+ua fenêtre 1h."
+  ],
+  "updated_files": ["/app/backend/tests/test_radar_v2_features.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! ; teixeira8880@gmail.com / CP-D5615C-Prov!",
+  "seed_data_creation": "Campagnes rop_* créées pour pro@construpilot.fr sur CP-2026-95119, 95588 (via tests). Lead TEST_UI2 (test_ui2_v2@example.com) capté via landing publique. db.radar_permits: import+delete effectué, laissé VIDE à la fin (using 'mock'). Aucun résidu de permis test en DB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Les 4 features V2 (honeypot+rate-limit+dédoublonnage, message personnalisable, import SITADEL admin, suivi campagnes) sont fonctionnelles E2E backend+frontend. Fichier réutilisable: /app/backend/tests/test_radar_v2_features.py. Attention rate-limit 5/10min par IP: tests répétés depuis même IP pod peuvent 429 (partagé avec autres agents). Le compte pro a ~4 campagnes rop_* résiduelles pour tests suivants."
+}

@@ -1,18 +1,30 @@
 """Radar Chantiers — V1 socle : détection d'opportunités depuis données urbanisme (échantillon SITADEL 95),
 géoloc + rayon, scoring IA, estimation potentiel, favoris. RGPD : données publiques uniquement."""
+import asyncio
 import base64
+import csv
+import io
 import math
 import os
 import secrets
 import uuid
-from datetime import datetime, timezone, date
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel, EmailStr
 
 from core.db import db
-from core.security import current_user, optional_user
+from core.security import admin_user, current_user, optional_user
 
 router = APIRouter(prefix="/radar", tags=["radar"])
 
@@ -144,6 +156,12 @@ def _build(permit, base, company_metiers):
             "score": score, "metier_labels": METIER_LABELS}
 
 
+async def _get_permits():
+    """Permis réels importés (db.radar_permits) s'ils existent, sinon échantillon mock."""
+    docs = await db.radar_permits.find({}, {"_id": 0}).to_list(3000)
+    return docs if docs else PERMITS
+
+
 async def _profile(user):
     u = await db.users.find_one({"user_id": user["user_id"]},
                                 {"_id": 0, "radar_km": 1, "radar_metiers": 1,
@@ -187,7 +205,8 @@ async def list_opportunities(km: int | None = None, metier: str | None = None, f
                              user=Depends(current_user)):
     p = await _profile(user)
     radius = km or p["km"]
-    items = [_build(pm, p["base"], p["metiers"]) for pm in PERMITS]
+    permits = await _get_permits()
+    items = [_build(pm, p["base"], p["metiers"]) for pm in permits]
     items = [x for x in items if x["distance_km"] <= radius]
     if metier:
         items = [x for x in items if metier in x["lots"] or any(l["metier"] == metier for l in x["lots"])]
@@ -202,7 +221,8 @@ async def list_opportunities(km: int | None = None, metier: str | None = None, f
 @router.get("/opportunities/{opp_id}")
 async def get_opportunity(opp_id: str, user=Depends(current_user)):
     p = await _profile(user)
-    pm = next((x for x in PERMITS if x["id"] == opp_id), None)
+    permits = await _get_permits()
+    pm = next((x for x in permits if x["id"] == opp_id), None)
     if not pm:
         raise HTTPException(404, "Opportunité introuvable")
     o = _build(pm, p["base"], p["metiers"])
@@ -211,12 +231,15 @@ async def get_opportunity(opp_id: str, user=Depends(current_user)):
     o["contact_status"] = "green" if pm["mo"] in ("ENTREPRISE", "PROMOTEUR", "SCI", "BAILLEUR", "COLLECTIVITE") else "orange"
     o["source"] = {"name": "SITADEL / autorisations d'urbanisme", "type": "public",
                    "imported_at": datetime.now(timezone.utc).isoformat()}
+    company = await _company_name(user["user_id"])
+    o["suggested_message"] = _default_intro_plain(o, company)
     return o
 
 
 @router.post("/opportunities/{opp_id}/favorite")
 async def toggle_favorite(opp_id: str, user=Depends(current_user)):
-    if not any(x["id"] == opp_id for x in PERMITS):
+    permits = await _get_permits()
+    if not any(x["id"] == opp_id for x in permits):
         raise HTTPException(404, "Opportunité introuvable")
     p = await _profile(user)
     favs = set(p["favorites"])
@@ -228,7 +251,8 @@ async def toggle_favorite(opp_id: str, user=Depends(current_user)):
 @router.get("/stats")
 async def stats(user=Depends(current_user)):
     p = await _profile(user)
-    items = [_build(pm, p["base"], p["metiers"]) for pm in PERMITS if _haversine(
+    permits = await _get_permits()
+    items = [_build(pm, p["base"], p["metiers"]) for pm in permits if _haversine(
         p["base"]["lat"], p["base"]["lon"], pm["lat"], pm["lon"]) <= p["km"]]
     strong = [x for x in items if x["score"] >= 85]
     return {"detected": len(items), "strong": len(strong),
@@ -257,20 +281,47 @@ def _eur_fr(v) -> str:
     return f"{int(v or 0):,}".replace(",", "\u202f") + " €"
 
 
+async def _company_name(user_id: str) -> str:
+    from routes.plans_common import _resolve_branding
+    b = await _resolve_branding(user_id) or {}
+    return b.get("company_name") or "notre entreprise"
+
+
+def _default_intro_plain(opp: dict, company: str) -> str:
+    surf_txt = f" (surface créée ≈ {opp.get('surf_created')} m²)" if opp.get("surf_created") else ""
+    low, high = opp.get("my_lot_low") or 0, opp.get("my_lot_high") or 0
+    price = ""
+    if high:
+        price = (f"\n\nÀ titre indicatif, nos prestations sur un projet de cette nature se situent "
+                 f"généralement entre {_eur_fr(low)} et {_eur_fr(high)} "
+                 f"(estimation préliminaire, à affiner ensemble selon vos besoins).")
+    return (
+        f"Bonjour,\n\nNous avons constaté qu'une autorisation d'urbanisme a récemment été délivrée à "
+        f"{opp.get('commune')} pour un projet de {opp.get('batiment')}{surf_txt}.\n\n"
+        f"Entreprise locale du bâtiment, {company} réalise ce type de travaux dans votre secteur. "
+        f"Nous serions ravis de vous accompagner sur ce projet — de l'étude au chiffrage détaillé, "
+        f"jusqu'à la réalisation." + price)
+
+
 def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
                            qr_png: bytes, custom_message: str = "") -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.platypus import (Image, Paragraph, SimpleDocTemplate, Spacer,
-                                    Table, TableStyle)
+    from reportlab.platypus import (
+        Image,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
     b = branding or {}
     company = b.get("company_name") or "Votre entreprise du bâtiment"
     ink = colors.HexColor("#0A0D14")
     muted = colors.HexColor("#64748B")
-    brand = colors.HexColor("#3f7d54")
 
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20 * mm,
@@ -278,7 +329,6 @@ def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
     h1 = ParagraphStyle("h1", fontName="Helvetica-Bold", fontSize=15, textColor=ink, leading=19)
     body = ParagraphStyle("body", fontName="Helvetica", fontSize=10.5, textColor=ink, leading=16)
     small = ParagraphStyle("small", fontName="Helvetica", fontSize=8.5, textColor=muted, leading=12)
-    label = ParagraphStyle("label", fontName="Helvetica-Bold", fontSize=9, textColor=brand, leading=12)
     el = []
 
     # En-tête entreprise
@@ -306,25 +356,12 @@ def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
     el.append(Paragraph(f"Objet : votre projet « {opp.get('batiment')} »", h1))
     el.append(Spacer(1, 10))
 
-    surf_txt = f" (surface créée ≈ {opp.get('surf_created')} m²)" if opp.get("surf_created") else ""
-    intro = custom_message.strip() or (
-        f"Bonjour,<br/><br/>Nous avons constaté qu'une autorisation d'urbanisme a récemment été "
-        f"délivrée à <b>{opp.get('commune')}</b> pour un projet de <b>{opp.get('batiment')}</b>"
-        f"{surf_txt}.<br/><br/>"
-        f"Entreprise locale du bâtiment, <b>{company}</b> réalise ce type de travaux dans votre secteur. "
-        f"Nous serions ravis de vous accompagner sur ce projet — de l'étude au chiffrage détaillé, "
-        f"jusqu'à la réalisation.")
-    el.append(Paragraph(intro, body))
-    el.append(Spacer(1, 10))
-
-    my_low = opp.get("my_lot_low") or 0
-    my_high = opp.get("my_lot_high") or 0
-    if my_high:
-        el.append(Paragraph(
-            f"À titre indicatif, nos prestations sur un projet de cette nature se situent généralement "
-            f"entre <b>{_eur_fr(my_low)}</b> et <b>{_eur_fr(my_high)}</b> (estimation préliminaire, à affiner "
-            f"ensemble selon vos besoins).", body))
-        el.append(Spacer(1, 10))
+    msg = (custom_message or "").strip() or _default_intro_plain(opp, company)
+    for para in msg.split("\n\n"):
+        if para.strip():
+            el.append(Paragraph(para.strip().replace("\n", "<br/>"), body))
+            el.append(Spacer(1, 8))
+    el.append(Spacer(1, 2))
 
     el.append(Paragraph(
         "Pour recevoir <b>gratuitement et sans engagement</b> une première estimation personnalisée, "
@@ -372,7 +409,8 @@ class ProspectionIn(BaseModel):
 @router.post("/opportunities/{opp_id}/prospection")
 async def create_prospection(opp_id: str, body: ProspectionIn, user=Depends(current_user)):
     """Crée (ou réutilise) une campagne de prospection : courrier PDF + QR + landing publique."""
-    pm = next((x for x in PERMITS if x["id"] == opp_id), None)
+    permits = await _get_permits()
+    pm = next((x for x in permits if x["id"] == opp_id), None)
     if not pm:
         raise HTTPException(404, "Opportunité introuvable")
     p = await _profile(user)
@@ -411,13 +449,75 @@ async def create_prospection(opp_id: str, body: ProspectionIn, user=Depends(curr
     }
 
 
+class AiLetterIn(BaseModel):
+    tone: Literal["formel", "chaleureux", "direct", "commercial"] = "formel"
+    length: Literal["court", "moyen", "long"] = "moyen"
+
+
+_TONE_HINT = {
+    "formel": "ton formel et professionnel, vouvoiement, registre soutenu",
+    "chaleureux": "ton chaleureux et humain, proche et rassurant, vouvoiement",
+    "direct": "ton direct et concis, orienté action, sans fioritures",
+    "commercial": "ton commercial et persuasif, met en avant les bénéfices et crée l'envie",
+}
+_LEN_HINT = {"court": "environ 90 à 130 mots", "moyen": "environ 150 à 220 mots",
+             "long": "environ 250 à 320 mots"}
+
+
+@router.post("/opportunities/{opp_id}/prospection/ai")
+async def ai_letter(opp_id: str, body: AiLetterIn, user=Depends(current_user)):
+    """Rédige avec l'IA (Claude) le corps d'un courrier de prospection sur-mesure."""
+    permits = await _get_permits()
+    pm = next((x for x in permits if x["id"] == opp_id), None)
+    if not pm:
+        raise HTTPException(404, "Opportunité introuvable")
+    p = await _profile(user)
+    opp = _build(pm, p["base"], p["metiers"])
+    company = await _company_name(user["user_id"])
+    tone = _TONE_HINT.get(body.tone, _TONE_HINT["formel"])
+    length = _LEN_HINT.get(body.length, _LEN_HINT["moyen"])
+    system = (
+        "Tu es un expert en prospection commerciale pour les entreprises du bâtiment en France. "
+        "Tu rédiges le CORPS d'un courrier de prospection en français, prêt à être posté, adressé "
+        "au maître d'ouvrage d'un projet de construction/rénovation détecté via les autorisations "
+        "d'urbanisme publiques. Règles STRICTES : commence par « Bonjour, ». N'invente jamais de chiffres "
+        "précis ni de fausses références. N'inclus PAS l'en-tête entreprise, ni la date, ni l'adresse du "
+        "destinataire, ni la formule de politesse finale, ni la signature (ils sont ajoutés automatiquement). "
+        "N'inclus PAS de lien ni de QR code (ajoutés automatiquement). Reste crédible, local et non intrusif "
+        "(RGPD)."
+    )
+    price = ""
+    if opp.get("my_lot_high"):
+        price = (f"- Fourchette indicative de nos prestations : {_eur_fr(opp['my_lot_low'])} à "
+                 f"{_eur_fr(opp['my_lot_high'])}\n")
+    prompt = (
+        f"Rédige le corps du courrier ({length}), {tone}.\n\n"
+        f"Informations :\n"
+        f"- Entreprise expéditrice : {company}\n"
+        f"- Projet détecté : {opp.get('batiment')} ({opp.get('nature')})\n"
+        f"- Commune : {opp.get('commune')} ({opp.get('cp')})\n"
+        f"- Surface créée : {opp.get('surf_created') or 'n.c.'} m²\n"
+        f"{price}"
+        f"\nObjectif : proposer notre accompagnement et inviter à demander une estimation gratuite "
+        f"et sans engagement, sans être insistant. Termine le corps par une phrase invitant à la prise "
+        f"de contact, SANS formule de politesse finale ni signature."
+    )
+    from engines.ai import _complete
+    try:
+        text = await asyncio.wait_for(_complete(system, prompt, feature="radar_letter"), timeout=30)
+    except asyncio.TimeoutError:
+        raise HTTPException(504, "La rédaction IA a pris trop de temps, réessayez.")
+    return {"message": (text or "").strip()}
+
+
 @router.get("/prospection/{token}/letter.pdf")
 async def download_prospection_letter(token: str, user=Depends(current_user)):
     rec = await db.radar_prospections.find_one(
         {"token": token, "user_id": user["user_id"]}, {"_id": 0})
     if not rec:
         raise HTTPException(404, "Campagne introuvable")
-    pm = next((x for x in PERMITS if x["id"] == rec["opp_id"]), None)
+    permits = await _get_permits()
+    pm = next((x for x in permits if x["id"] == rec["opp_id"]), None)
     if not pm:
         raise HTTPException(404, "Opportunité introuvable")
     p = await _profile(user)
@@ -432,11 +532,18 @@ async def download_prospection_letter(token: str, user=Depends(current_user)):
 
 
 @router.get("/public/prospection/{token}")
-async def public_prospection(token: str, _=Depends(optional_user)):
+async def public_prospection(token: str, request: Request, _=Depends(optional_user)):
     """Landing publique (sans auth) : présente l'entreprise + l'opportunité au prospect."""
     rec = await db.radar_prospections.find_one({"token": token}, {"_id": 0})
     if not rec:
         raise HTTPException(404, "Lien introuvable ou expiré")
+    ua = (request.headers.get("user-agent") or "").lower()
+    bots = ("bot", "crawl", "spider", "facebookexternalhit", "whatsapp", "slack",
+            "telegram", "discord", "preview", "embedly", "twitter")
+    if not any(b in ua for b in bots):  # ne pas gonfler les ouvertures avec les aperçus de lien
+        await db.radar_prospections.update_one(
+            {"token": token},
+            {"$inc": {"open_count": 1}, "$set": {"last_open_at": datetime.now(timezone.utc).isoformat()}})
     branding, u = await _pro_branding_and_user(rec["user_id"])
     b = branding or {}
     snap = rec.get("opp_snapshot") or {}
@@ -465,11 +572,43 @@ class ProspectLeadIn(BaseModel):
     email: EmailStr
     phone: str = ""
     message: str = ""
+    website: str = ""  # honeypot anti-bot (doit rester vide)
+
+
+_RATE_IDX_READY = False
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def _rate_limited(ip: str, *, limit: int = 5, window: int = 600) -> bool:
+    """Anti-spam partagé (multi-workers/pods) via MongoDB + index TTL."""
+    global _RATE_IDX_READY
+    if not _RATE_IDX_READY:
+        try:
+            await db.radar_rate_hits.create_index("at", expireAfterSeconds=window)
+        except Exception:
+            pass
+        _RATE_IDX_READY = True
+    now = datetime.now(timezone.utc)
+    await db.radar_rate_hits.insert_one({"ip": ip, "at": now})
+    cutoff = now - timedelta(seconds=window)
+    n = await db.radar_rate_hits.count_documents({"ip": ip, "at": {"$gte": cutoff}})
+    return n > limit
 
 
 @router.post("/public/prospection/{token}/lead")
-async def public_prospection_lead(token: str, body: ProspectLeadIn):
+async def public_prospection_lead(token: str, body: ProspectLeadIn, request: Request):
     """Capture le prospect → crée un lead assigné au pro (visible dans « Mes demandes »)."""
+    # Honeypot : un bot remplira ce champ caché → on ignore silencieusement.
+    if (body.website or "").strip():
+        return {"ok": True}
+    if await _rate_limited(_client_ip(request)):
+        raise HTTPException(429, "Trop de demandes, réessayez dans quelques minutes.")
     rec = await db.radar_prospections.find_one({"token": token}, {"_id": 0})
     if not rec:
         raise HTTPException(404, "Lien introuvable ou expiré")
@@ -522,3 +661,179 @@ async def public_prospection_lead(token: str, body: ProspectLeadIn):
     except Exception:
         pass
     return {"ok": True}
+
+
+
+# =====================================================================
+# Suivi des campagnes (ouvertures / scans QR + réponses par courrier)
+# =====================================================================
+
+@router.get("/campaigns")
+async def list_campaigns(user=Depends(current_user)):
+    recs = await db.radar_prospections.find(
+        {"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    out = []
+    total_opens = total_leads = 0
+    for r in recs:
+        snap = r.get("opp_snapshot") or {}
+        opens = int(r.get("open_count", 0))
+        leads = int(r.get("lead_count", 0))
+        total_opens += opens
+        total_leads += leads
+        out.append({
+            "token": r["token"], "opp_id": r.get("opp_id"),
+            "commune": snap.get("commune"), "batiment": snap.get("batiment"),
+            "public_url": f"{_frontend_url()}/prospection/{r['token']}",
+            "open_count": opens, "lead_count": leads,
+            "created_at": r.get("created_at"), "last_open_at": r.get("last_open_at"),
+        })
+    return {"count": len(out), "total_opens": total_opens, "total_leads": total_leads,
+            "campaigns": out}
+
+
+# =====================================================================
+# Import SITADEL réel (admin) → db.radar_permits (sinon échantillon mock)
+# =====================================================================
+
+def _norm_date(v: str) -> str:
+    v = (v or "").strip()
+    if not v:
+        return date.today().isoformat()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(v[:10], fmt).date().isoformat()
+        except ValueError:
+            continue
+    return date.today().isoformat()
+
+
+def _norm_nature(v: str) -> str:
+    t = (v or "").lower()
+    if any(k in t for k in ("rénov", "renov", "réhab", "rehab", "transform", "extension", "amenag", "aménag")):
+        return "renovation"
+    return "neuf"
+
+
+_MO_ALIASES = {
+    "particulier": "PARTICULIER", "personne physique": "PARTICULIER",
+    "promoteur": "PROMOTEUR", "sci": "SCI", "entreprise": "ENTREPRISE",
+    "société": "ENTREPRISE", "societe": "ENTREPRISE", "bailleur": "BAILLEUR",
+    "hlm": "BAILLEUR", "collectivité": "COLLECTIVITE", "collectivite": "COLLECTIVITE",
+    "commune": "COLLECTIVITE", "état": "COLLECTIVITE", "etat": "COLLECTIVITE",
+}
+
+
+def _norm_mo(v: str) -> str:
+    t = (v or "").strip().lower()
+    for k, val in _MO_ALIASES.items():
+        if k in t:
+            return val
+    return "PARTICULIER"
+
+
+def _pick(row: dict, *keys):
+    low = {(k or "").strip().lower(): v for k, v in row.items()}
+    for k in keys:
+        val = low.get(k)
+        if val not in (None, ""):
+            return str(val).strip()
+    return ""
+
+
+async def _geocode(query: str):
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=6) as c:
+            r = await c.get("https://api-adresse.data.gouv.fr/search/",
+                            params={"q": query, "limit": 1})
+            feats = (r.json() or {}).get("features") or []
+            if feats:
+                lon, lat = feats[0]["geometry"]["coordinates"]
+                return float(lat), float(lon)
+    except Exception:
+        pass
+    return None
+
+
+def _to_int(v) -> int:
+    try:
+        return int(float(str(v).replace(",", ".").strip()))
+    except (ValueError, TypeError):
+        return 0
+
+
+async def _row_to_permit(row: dict, idx: int):
+    commune = _pick(row, "commune", "comm", "nom_commune", "ville")
+    cp = _pick(row, "cp", "code_postal", "postal_code")
+    dep = _pick(row, "dep", "departement", "dept") or cp[:2]
+    lat = _pick(row, "lat", "latitude")
+    lon = _pick(row, "lon", "lng", "longitude")
+    adresse = _pick(row, "adresse", "address")
+    if lat and lon:
+        coords = (float(lat.replace(",", ".")), float(lon.replace(",", ".")))
+    else:
+        q = " ".join([x for x in [adresse, cp, commune] if x]) or commune
+        coords = await _geocode(q) if q else None
+    if not coords:
+        return None
+    num = _pick(row, "num", "num_dau", "numero", "reference")
+    pid = _pick(row, "id") or (num.replace(" ", "") if num else f"SITADEL-{idx}")
+    typ = _pick(row, "type", "type_dau") or "Permis de construire"
+    nature = _norm_nature(_pick(row, "nature", "nature_projet", "nature_projet_declaree", "type"))
+    batiment = _pick(row, "batiment", "libelle", "projet", "description") or typ
+    return {
+        "id": pid, "num": num or pid, "type": typ, "nature": nature,
+        "commune": commune or "—", "cp": cp or "", "dep": dep or "",
+        "lat": round(coords[0], 6), "lon": round(coords[1], 6),
+        "batiment": batiment,
+        "surf_created": _to_int(_pick(row, "surf_created", "surface", "surface_taxable", "surface_creee")),
+        "logements": _to_int(_pick(row, "logements", "nb_lgt", "nb_lgt_tot_crees")),
+        "date_depot": _norm_date(_pick(row, "date_depot", "date_depot_dau")),
+        "date_auth": _norm_date(_pick(row, "date_auth", "date_autorisation", "date_reelle_autorisation")),
+        "statut": _pick(row, "statut", "etat") or "Autorisé",
+        "mo": _norm_mo(_pick(row, "mo", "maitre_ouvrage", "moa", "demandeur")),
+        "imported_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.post("/admin/import-sitadel")
+async def import_sitadel(file: UploadFile = File(...), replace: bool = True,
+                         _=Depends(admin_user)):
+    """Importe un fichier SITADEL (CSV) dans db.radar_permits. Géocodage BAN si lat/lon absents.
+    Colonnes reconnues (insensible casse) : commune, cp, dep, lat, lon, adresse, num, type,
+    nature, batiment, surf_created, logements, date_depot, date_auth, statut, mo."""
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+    delim = ";" if text.splitlines()[0].count(";") >= text.splitlines()[0].count(",") else ","
+    reader = csv.DictReader(io.StringIO(text), delimiter=delim)
+    inserted, skipped = 0, 0
+    MAX_ROWS = 8000
+    if replace:
+        await db.radar_permits.delete_many({})
+    for i, row in enumerate(reader):
+        if i >= MAX_ROWS:
+            break
+        permit = await _row_to_permit(row, i)
+        if not permit:
+            skipped += 1
+            continue
+        await db.radar_permits.update_one({"id": permit["id"]}, {"$set": permit}, upsert=True)
+        inserted += 1
+    total = await db.radar_permits.count_documents({})
+    return {"ok": True, "inserted": inserted, "skipped": skipped, "total_in_db": total,
+            "source": "db.radar_permits"}
+
+
+@router.get("/admin/permits/count")
+async def permits_count(_=Depends(admin_user)):
+    n = await db.radar_permits.count_documents({})
+    return {"count": n, "using": "db.radar_permits" if n else "mock (échantillon 95)"}
+
+
+@router.delete("/admin/permits")
+async def clear_permits(_=Depends(admin_user)):
+    res = await db.radar_permits.delete_many({})
+    return {"ok": True, "deleted": res.deleted_count, "using": "mock (échantillon 95)"}
