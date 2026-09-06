@@ -92,6 +92,8 @@ api_router.include_router(emails_routes.router)
 from routes import hr as hr_routes
 api_router.include_router(hr_routes.router)
 from routes import ads as ads_routes
+from routes import radar as radar_routes
+api_router.include_router(radar_routes.router)
 api_router.include_router(ads_routes.router)
 from routes import site as site_routes
 api_router.include_router(site_routes.router)

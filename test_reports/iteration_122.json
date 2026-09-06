@@ -1,0 +1,26 @@
+{
+  "summary": "Full end-to-end validation of Radar Chantiers V1 + Prospection flow (Pro=pro@construpilot.fr). Backend: 6/6 pytest passed (profile GET/PUT persistence, opportunities filtering by radius, favorite toggle, prospection creation, public landing GET no-auth, public lead POST no-auth, letter PDF download, lead correctly assigned to pro via /api/leads/assigned). Frontend: /radar no longer times out — Leaflet map bundled via npm renders correctly (12+ OSM tiles), radar-page + radar-map + radar-list + 4 KPIs visible. Radius switch (10/30/100 km) reloads list. Opportunity CP-2026-95731 click opens radar-detail modal; favorite toggle works and star appears in list card. 'Générer courrier' -> radar-campaign with QR image, public URL, copy & download buttons. Settings (radar-settings-btn) opens metier grid, toggling couverture + radar-save-profile triggers toast 'Profil Radar enregistré' and the potentiel KPI updates (2 808 475 € -> 2 335 470 €), confirming reload. Public landing at /prospection/<token> opens without auth, shows company 'Marc BTP (Pro)' + title 'Maison individuelle R+1 — Pontoise', form submission -> prospection-done confirmation screen.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/radar", "issues": ["Cookie banner (RGPD) recouvre le coin bas-droit; en mode test j'ai dû cliquer 'Tout accepter' pour libérer les cartes d'opportunités. Non bloquant en usage réel car l'overlay ne couvre pas les cartes, mais peut intercepter des clics selon le viewport."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_radar_prospection.py", "/app/test_reports/pytest/radar_iter122.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/radar.py (520 lignes) frôle la limite recommandée — envisager d'extraire la partie prospection/PDF dans un module dédié (radar_prospection.py).",
+    "L'échantillon PERMITS est en dur dans radar.py (mock SITADEL) — c'est explicitement V1 MVP, mais prévoir une source persistée (db.radar_permits) avant scale.",
+    "Aucune limite de rate sur POST /radar/public/prospection/{token}/lead : un endpoint public non authentifié devrait avoir un throttling/captcha anti-spam avant prod."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!",
+  "seed_data_creation": "Leads TEST_ créés via landing publique (email TEST_prospect_radar@example.com, TEST_ui2@example.com) assignés à pro@construpilot.fr — visibles dans /api/leads/assigned. Profil radar du pro modifié (métiers=[gros_oeuvre, maconnerie, couverture], km=30).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Radar V1 + prospection E2E fonctionnel. Fichier de tests réutilisable: /app/backend/tests/test_radar_prospection.py. Les 10 permis mock sont tous <10km de Pontoise donc le filtre rayon ne change pas le count en dessous de 10km (par design). Le compte pro a plusieurs favoris/leads TEST_ à nettoyer si besoin.",
+  "rca of the issue": "Blocage précédent de /radar : Leaflet chargé depuis unpkg.com bloqué par le CSP/réseau -> ERR_ABORTED, event load jamais déclenché, page reste en spinner. Fix appliqué par E1 : import npm 'leaflet' + import CSS 'leaflet/dist/leaflet.css'. Confirmé opérationnel — 12 tuiles OSM chargées, marqueurs visibles."
+}

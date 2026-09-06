@@ -13,6 +13,7 @@ import HelpChatbot from "@/components/HelpChatbot";
 import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
 import LandingPortugal from "@/pages/LandingPortugal";
+import RadarChantiers from "@/pages/RadarChantiers";
 import Investors from "@/pages/Investors";
 import Features from "@/pages/Features";
 import Login from "@/pages/Login";
@@ -42,6 +43,7 @@ import SupplierPortal from "@/pages/SupplierPortal";
 import Invite from "@/pages/Invite";
 import Team from "@/pages/Team";
 import SignQuote from "@/pages/SignQuote";
+import ProspectionLanding from "@/pages/ProspectionLanding";
 import PcSignPage from "@/pages/PcSignPage";
 import PcDashboard from "@/pages/PcDashboard";
 import Account from "@/pages/Account";
@@ -146,6 +148,7 @@ function AppRouter() {
       <Route path="/" element={<Landing />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
+      <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
       <Route path="/investisseurs" element={<Investors />} />
       <Route path="/fonctionnalites" element={<Features />} />
       <Route path="/login" element={<Login />} />
@@ -193,6 +196,7 @@ function AppRouter() {
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/rendu/:token" element={<RenderShare />} />
       <Route path="/sign/:token" element={<SignQuote />} />
+      <Route path="/prospection/:token" element={<ProspectionLanding />} />
       <Route path="/fiche/:shareId" element={<SharedCalc />} />
       <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
