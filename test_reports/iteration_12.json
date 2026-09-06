@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend-only validation of MailboxDialog fixes A+B+C. All 4 aliases (/caixa-correio, /caixa-de-correio, /mailbox, /webmail) correctly redirect via <Navigate> to /empresa?open=mailbox and the MailboxDialog auto-opens through the defaultOpen prop driven by the useSearchParams detection in Entreprise.jsx. Modal content is 100% PT-PT (no French leftovers detected among the tested vocabulary). Info alert with title 'Só envio (SMTP)' is visible at the top; webmail.construpilot.pt link has target=_blank and correct href. PTISP preset is present in the provider list. Gmail help box appears when Gmail is selected. Direct /empresa (no query) does NOT auto-open the modal but the [data-testid=mailbox-open-btn] correctly opens it on click.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "MailboxDialog useEffect on defaultOpen only sets open=true when defaultOpen becomes true; it never syncs back to false. Acceptable for current single-shot open-on-load use case, but the query param '?open=mailbox' remains in the URL after the user closes the modal. Consider clearing the search param on close via setSearchParams({}) in Entreprise.jsx to avoid re-opening the modal on refresh.",
+    "DialogTrigger still renders the default 'Caixa de correio' button even when defaultOpen is true and MailboxDialog is rendered via <MailboxDialog defaultOpen=...>. This is fine (button also acts as opener), but if you ever hide the button on that page, the trigger disappears — currently no bug."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020. (works)",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "MailboxDialog PT-PT translation complete. Verified via headless browser on public URL: all 4 aliases → /empresa?open=mailbox, modal auto-opens, info alert visible, PTISP preset present, Gmail help visible when Gmail selected, save button label 'Ligar' when not configured. Webmail link opens in new tab. No French strings found in modal.",
+  "rca of the issue": "N/A - all requested changes work as expected"
+}

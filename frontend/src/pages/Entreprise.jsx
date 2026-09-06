@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Building2, Lock, ArrowRight, Users, UserPlus, Trash2, FileText, Layers,
@@ -44,6 +44,8 @@ const Kpi = ({ icon: Icon, label, value, accent }) => (
 
 export default function Empresa() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const openMailboxOnLoad = searchParams.get("open") === "mailbox";
   const { user } = useAuth();
   const { tier, active: sub } = useBilling();
   const { can, role, role_label, refresh: refreshPerms } = usePermissions();
@@ -135,7 +137,7 @@ export default function Empresa() {
           <Badge variant="outline" className="rounded-sm gap-1"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> {role_label || "Proprietário"}</Badge>
           <ImportDocumentsDialog triggerLabel="Importar orçamentos/faturas PDF" onImported={load} />
           <BrandingDialog />
-          <MailboxDialog />
+          <MailboxDialog defaultOpen={openMailboxOnLoad} />
         </div>
       </div>
 

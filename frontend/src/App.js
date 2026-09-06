@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -138,6 +138,22 @@ const Shell = ({ children }) => (
   </>
 );
 
+/** Redirect externo: envia o utilizador para uma URL fora da SPA
+ *  (ex.: webmail PTISP em webmail.construpilot.pt). */
+function ExternalRedirect({ to }) {
+  useEffect(() => { window.location.replace(to); }, [to]);
+  return (
+    <div style={{ padding: "3rem", textAlign: "center", fontFamily: "system-ui" }}>
+      <p style={{ fontSize: 16, color: "#334155" }}>A redirecionar para o webmail…</p>
+      <p style={{ marginTop: 12 }}>
+        <a href={to} style={{ color: "#FF5A00", textDecoration: "underline" }}>
+          Se não fores redirecionado automaticamente, clica aqui
+        </a>
+      </p>
+    </div>
+  );
+}
+
 function AppRouter() {
   const location = useLocation();
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
@@ -220,6 +236,15 @@ function AppRouter() {
       <Route path="/mentions-legales" element={<Shell><MentionsLegales /></Shell>} />
       <Route path="/confidentialite" element={<Shell><Confidentialite /></Shell>} />
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />
+      {/* Redirect externo — webmail PTISP (utilizador tem info@/contacto@/geral@ hospedados no PTISP) */}
+      <Route path="/webmail" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
+      <Route path="/mail" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
+      <Route path="/roundcube" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
+      <Route path="/rainloop" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
+      {/* Aliases directos para a caixa de correio interna (config SMTP saída) → abrem o modal em /empresa */}
+      <Route path="/caixa-correio" element={<Navigate to="/empresa?open=mailbox" replace />} />
+      <Route path="/caixa-de-correio" element={<Navigate to="/empresa?open=mailbox" replace />} />
+      <Route path="/mailbox" element={<Navigate to="/empresa?open=mailbox" replace />} />
       {/* Client-side 301-style redirects FR/EN -> PT canonical (SEO signal via _redirects file if host supports it) */}
       <Route path="/investisseurs" element={<Navigate to="/investidores" replace />} />
       <Route path="/investors" element={<Navigate to="/investidores" replace />} />
