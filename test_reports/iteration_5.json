@@ -1,0 +1,49 @@
+{
+  "summary": "Validated SoroBlog PT/FR data-source switch + Soro embed conditional. All 4 acceptance criteria PASS on preview URL.",
+  "tests_executed": {
+    "landing_pt": {
+      "localStorage": "construpilot_lang=pt",
+      "cards_count": 3,
+      "titles": [
+        "Quanto custa renovar em Portugal em 2026: preços €/m² por distrito",
+        "IVA nas obras em Portugal: 23% ou 6% na reabilitação (Verba 2.27 do CIVA)",
+        "Como estimar uma obra em 5 minutos com o ConstruPilot"
+      ],
+      "categories_rendered": ["RENOVAÇÃO", "FISCALIDADE", "MÉTODO"],
+      "soro_embed_present": false,
+      "fr_content_hits": {"calculer le carrelage": 0, "carrelage nécessaire": 0, "coût de": 0, "dpe": 0, "re2020": 0},
+      "result": "PASS"
+    },
+    "landing_fr": {
+      "localStorage": "construpilot_lang=fr",
+      "cards_count": 3,
+      "soro_embed_present": true,
+      "result": "PASS (no regression, embed div rendered, BLOG_ARTICLES source used)"
+    },
+    "blog_page_pt": {
+      "url": "/blog",
+      "all_6_pt_slugs_present": true,
+      "slugs_verified": ["custo-renovacao-portugal-2026","iva-obras-portugal-6-23","estimar-obra-5-minutos","licenciamento-obras-portugal","orcamento-casa-de-banho-portugal","eficiencia-energetica-certificado-portugal"],
+      "calculer_carrelage_hits": 0,
+      "result": "PASS"
+    },
+    "http_get_root": {"status": 200, "result": "PASS"}
+  },
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "SoroBlog.jsx still injects the Soro <script> tag globally in useEffect even when lang==='pt' (the holder div is conditional but the script is not). Since the script targets id='soro-blog', it produces a benign console warning 'Soro Blog: No element with id=soro-blog found' in PT mode. Recommend also gating the script injection on lang !== 'pt' to keep console clean."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only)", "frontend": "100%"},
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "PT blog filter fully working. Only nit: Soro remote <script> tag is still appended in PT (holder div is correctly hidden). Console shows 'Soro Blog: No element with id=soro-blog found' which is cosmetic."
+}
