@@ -40,7 +40,7 @@ export const PcSituations = ({ planId }) => {
   return (
     <section data-testid="pc-situations-section">
       <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-        <Receipt className="h-4 w-4 text-primary" /> Situations de travaux & solde
+        <Receipt className="h-4 w-4 text-primary" /> Autos de medição & saldo
       </h3>
       <div className="rounded-sm border border-border p-2.5 space-y-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">

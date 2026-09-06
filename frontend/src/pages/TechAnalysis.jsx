@@ -102,7 +102,7 @@ const SupplierManager = ({ suppliers, reload }) => {
 
         <div className="pt-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold">Catalogue de prix (mots-clés → PU HT)</label>
+            <label className="text-xs font-semibold">Catálogo de preços (palavras-chave → PU s/ IVA)</label>
             <Button size="sm" variant="outline" onClick={addPrice} className="h-7 gap-1 rounded-sm" data-testid="add-price-row"><Plus className="h-3 w-3" />Ligne</Button>
           </div>
           <p className="text-[11px] text-muted-foreground mb-1">Ex : « tuiles terre cuite » · unité · 0,85 €. Utilisé pour chiffrer les bons de encomenda.</p>

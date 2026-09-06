@@ -1,0 +1,34 @@
+{
+  "summary": "Wave C3 close-out testing. Backend tagline PT confirmed via public URL. Admin login works. Sitemap.xml serves PT canonical URLs with hreflang=pt-PT. _redirects file served correctly. All 6 hardcoded string changes verified in PT on public URL (SiteTracking, Situations, Invoices, Comparatif, TechAnalysis). CRITICAL: All 5 client-side FR->PT redirects (/investisseurs, /calculateurs, /prix, /estimation, /fonctionnalites) are BROKEN - URL does not change and FR page renders because of duplicate/earlier route registration in App.js.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "App.js Router", "issue": "FR->PT client-side redirects do not fire. Lines 149-165 register FR paths (/investisseurs, /fonctionnalites, /estimation, /calculateurs, /prix) pointing to real components (Investors, Features, Estimator, Calculators, PriceSearch). Lines 235-244 later define <Navigate to=PT/> for the SAME paths, but React Router matches the first registered Route, so redirects never execute. Verified in browser: navigating each FR URL keeps URL unchanged and renders the FR page.", "selector": "App.js L149-L165 vs L235-L244", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/comparatif (public)", "issues": ["Substantial French leftovers still visible on this page: heading 'ConstruPilot face aux logiciels BTP du marché', 'Fonctionnalité' column header, 'Notre solution', 'Sur devis', 'Gratuit', 'Ver les tarifs', 'Essayer gratuitement'. Only the specific 'Suivi de chantier' string was fixed."]},
+      {"screen": "/appro (TechAnalysis)", "issues": ["Heavy FR leftovers on suppliers tab: 'Editar le fournisseur', 'Adicionar un fournisseur', 'Agence', 'Téléphone', 'Adresse de livraison', 'Ligne', 'désignation / mot-clé', tab names 'Ferraillage/Acier', 'Étanchéité', 'Toiture', 'VRD/Réseaux', 'Commandes', 'Mes fournisseurs'. Only the target 'Catálogo de preços' label is PT."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "CRITICAL: Fix App.js route order/duplication for FR->PT redirects. Either (a) remove the FR Route definitions at lines 149,152,160,162,165 (Investors, Features, Estimator, Calculators, PriceSearch) so the Navigate redirects at L235-244 take effect, or (b) move the Navigate redirect Routes above those component Routes. Currently the first matching Route wins so /investisseurs, /fonctionnalites, /calculateurs, /prix, /estimation all serve the FR component and never redirect.",
+    "(Optional/next wave) Additional FR leftover strings remain on /comparatif and /appro pages – out of Wave C3 scope but visible to users."
+  ],
+  "critical_code_review_comments": [
+    "Duplicate Route paths in App.js is a bug pattern: react-router silently uses the first match. Consider consolidating FR aliases into a single lookup or removing legacy FR Routes entirely once PT paths are canonical.",
+    "TechAnalysis.jsx and Comparatif.jsx still contain many FR string literals; targeted single-line changes leave mixed-language UI (e.g. 'Editar le fournisseur' mixes PT+FR)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "64% (7/11 features pass; 5 redirects fail counted as 1 blocker + 6 string changes pass)"},
+  "test_credentials": "admin@construpilot.io / VJAiUOI90Ss2brVH (works)",
+  "seed_data_creation": "none",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After E1 fixes App.js route ordering, re-verify each of /investisseurs, /investors, /calculateurs, /calculators, /prix, /prices, /estimation, /fonctionnalites, /inscription, /reinitialiser redirects to the PT counterpart via browser navigation (curl won't work since redirects are client-side unless underlying host honors _redirects). Other Wave C3 items already verified PT.",
+  "rca of the issue": "React Router evaluates Routes in registration order and picks the first match. App.js registers <Route path='/investisseurs' element={<Investors/>}> at L149 before <Route path='/investisseurs' element={<Navigate to='/investidores'/>}> at L235. The first Route wins so the Navigate is unreachable. Same duplication for /calculateurs, /prix, /estimation, /fonctionnalites. Mitigation: delete the legacy FR component routes or move the Navigate redirects above them."
+}

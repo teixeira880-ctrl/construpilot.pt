@@ -95,7 +95,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
               </div>
             )}
             <Textarea id="pc-send-message" rows={4}
-                      placeholder="Bonjour, veuillez trouver ci-joint l'étude gros œuvre de votre projet…"
+                      placeholder="Olá, segue em anexo o estudo de estrutura do seu projeto…"
                       value={message} onChange={(e) => setMessage(e.target.value)}
                       data-testid="pc-send-message-input" className="rounded-sm" />
             {message.trim() && (

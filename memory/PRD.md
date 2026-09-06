@@ -1,6 +1,17 @@
 # ConstruPilot — PRD
 
 
+> **Session 06/09/2026 — Fecho Wave C3 (2ª parte)** [testado iter_9→iter_11, frontend 100%]:
+> - **API tagline** (`GET /api/`): "Estimez, Comparez, Construisez." → **"Orçamente, Compare, Construa."**
+> - **6 strings FR hardcoded corrigidas**: `SiteTracking.jsx` (3), `Comparatif.jsx`, `Situations.jsx`, `Invoices.jsx`, `PcSituations.jsx`, `TechAnalysis.jsx`. Placeholders de email traduzidos em `EmailPdfDialog.jsx`, `PcSendDialog.jsx`, `BrandingDialog.jsx`.
+> - **Features.jsx**: 17 strings FR residuais traduzidas (hero, service cards, CTA "Ver preços", "Sem compromisso").
+> - **`Bonjour → Olá` no backend**: mais 21 substituições em `routes/auth.py`, `documents.py`, `plans_pc.py`, `leads.py`. Total Wave C3: 58 substituições. Preservados 9 "Bonjour" em `email_i18n.py` (bloco FR intencional) + 1 em `tests/test_c3_wave.py` (regex de detecção).
+> - **13 client-side redirects FR/EN→PT** em `App.js` via `<Navigate to=… replace/>`: /investisseurs, /investors, /calculateurs, /calculators, /prix, /prices, /estimation, /inscription, /reinitialiser, /fonctionnalites, /devis, /factures, /entreprise → todos para o canónico PT. Removidas as rotas FR/EN duplicadas que bloqueavam os Navigates (bug iter_9 → fix iter_10). Removida também `/parrainage` duplicada (dead code).
+> - **`frontend/public/_redirects`** criado com 13 regras 301 (Netlify-style, servido pelo host).
+> - **`frontend/public/sitemap.xml`** reescrito: só URLs PT canónicos + `hreflang="pt-PT"` correcto (~18 URLs). Removidos os FR.
+> - **Nova RESEND_API_KEY** (`re_SCxupRVP_…`) validada via `GET https://api.resend.com/domains` (HTTP 200). Domínios verificados: **construpilot.pt** ✅ (2026-09-06, eu-west-1), construpilot.fr ✅, cmrenov.com ✅, lifeaifluxo.fun ✅. `SENDER_EMAIL` mantém-se `no-reply@construpilot.local` (a aguardar decisão do utilizador — recomendo `no-reply@construpilot.pt`).
+
+
 > **Session 06/09/2026 — Wave C3 de localização FR→PT-PT** [testado (backend 100% / frontend 93%→100% após fixes)]:
 > - **Frontend (~1300 substituições)** aplicadas via 3 passagens de glossário Python + fixes manuais em: `Entreprise.jsx`, `Admin.jsx`, `EInvoicing.jsx`, `RenderStudio.jsx`, `PcSignPage.jsx`, `PlanTakeoff.jsx` (~500 subs), `QuoteEditor.jsx`, `Invoices.jsx`, `Situations.jsx`, `DataManagementPanel.jsx`, `PcSettingsDialog.jsx`, `SiteTracking.jsx`, `QuoteTracking.jsx`, `Comparatif.jsx`, `Features.jsx`, `QuoteScanner.jsx`, `TechAnalysis.jsx`, `ObjectPanel.jsx`, `Nav.jsx`, `MailboxDialog.jsx`, `BrandingDialog.jsx`. Hero de `/plan`, tabs do `/admin`, badges do `/entreprise`, cards de `/funcionalidades`, todos PT-PT.
 > - **Backend (37 substituições)**: substituído `"Bonjour"` por `"Olá"` em 13 ficheiros (`engines/retention.py`, `pro_receipt.py`, `ai.py`, `alerting.py`, `routes/appro.py`, `einvoicing.py`, `reviews.py`, `site.py`, `situations.py`, `hr.py`, `admin.py`, `plans_export.py`, `estimation_routes.py`). Preservadas as strings FR em `email_i18n.py` (secção `fr` correta).

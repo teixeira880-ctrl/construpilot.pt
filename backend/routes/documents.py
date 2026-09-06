@@ -132,18 +132,18 @@ def _email_template(doc: dict, company: str, client_name: str | None) -> str:
     number = doc.get("number") or ""
     name = (client_name or "").strip() or "Madame, Monsieur"
     if doc.get("doc_type") == "invoice":
-        return (f"Bonjour {name},\n\n"
+        return (f"Olá {name},\n\n"
                 f"Vous trouverez ci-joint votre facture n° {number}.\n\n"
                 f"Dans l'attente de votre aimable règlement.\n\n"
                 f"Cordialement,\n{company}")
     if _reduced_vat_rate(doc) is not None:
-        return (f"Bonjour {name},\n\n"
+        return (f"Olá {name},\n\n"
                 f"Vous trouverez ci-joint votre devis n° {number} ainsi que l'attestation de TVA "
                 f"correspondante, pré-remplie et vous permettant de bénéficier de la TVA à taux "
                 f"réduit sur vos travaux.\n\n"
                 f"Nous vous remercions pour votre confiance.\n\n"
                 f"Cordialement,\n{company}")
-    return (f"Bonjour {name},\n\n"
+    return (f"Olá {name},\n\n"
             f"Veuillez trouver ci-joint le devis correspondant à votre demande devis n° {number}.\n\n"
             f"Nous restons à votre entière disposition pour toute information complémentaire ou pour "
             f"échanger sur certains points si nécessaire.\n\n"

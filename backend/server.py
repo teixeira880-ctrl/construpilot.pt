@@ -53,7 +53,7 @@ api_router = APIRouter(prefix="/api")
 
 @api_router.get("/")
 async def root():
-    return {"app": "ConstruPilot", "tagline": "Estimez, Comparez, Construisez.",
+    return {"app": "ConstruPilot", "tagline": "Orçamente, Compare, Construa.",
             "status": "ok"}
 
 

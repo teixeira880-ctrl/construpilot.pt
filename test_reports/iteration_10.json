@@ -1,0 +1,23 @@
+{
+  "summary": "Validated client-side FR/EN→PT redirects after removal of duplicate FR/EN routes in App.js. All 10 redirects work correctly, PT canonical routes render, and admin login is functional.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "App.js line 175 and 176 both register /parrainage twice with different components (Referrals vs Referral). Second one is dead code — remove duplicate.",
+    "App.js is ~293 lines mostly Route definitions; consider splitting into a routes config module for maintainability."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "test_credentials": "admin@construpilot.io / VJAiUOI90Ss2brVH (works, redirects to /compte)",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration_10 confirms redirects fix. All FR/EN aliases (/investisseurs, /investors, /calculateurs, /calculators, /prix, /prices, /estimation, /inscription, /reinitialiser, /fonctionnalites) client-side navigate to their PT canonical counterparts. PT canonicals still render their intended components. Login flow intact.",
+  "rca of the issue": "In iter_9, FR/EN Route entries preceded Navigate redirect entries in App.js, so React Router matched the first FR/EN component route and skipped the redirect. Main agent removed duplicate FR/EN component-route entries at top of Routes, leaving only the single Navigate redirects for those paths. Verified: 10/10 aliases redirect properly."
+}

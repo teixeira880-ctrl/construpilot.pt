@@ -146,25 +146,15 @@ function AppRouter() {
       <Route path="/" element={<Landing />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
-      <Route path="/investisseurs" element={<Investors />} />
       <Route path="/investidores" element={<Investors />} />
-      <Route path="/investors" element={<Investors />} />
-      <Route path="/fonctionnalites" element={<Features />} />
       <Route path="/funcionalidades" element={<Features />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/inscription" element={<Login />} />
       <Route path="/registo" element={<Login />} />
-      <Route path="/reinitialiser" element={<ResetPassword />} />
       <Route path="/redefinir" element={<ResetPassword />} />
       <Route path="/smart-project" element={<Shell><SmartProject /></Shell>} />
-      <Route path="/estimation" element={<Shell><Estimator /></Shell>} />
       <Route path="/estimativa" element={<Shell><Estimator /></Shell>} />
-      <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
       <Route path="/calculadoras" element={<Shell><Calculators /></Shell>} />
-      <Route path="/calculators" element={<Shell><Calculators /></Shell>} />
-      <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
       <Route path="/precos" element={<Shell><PriceSearch /></Shell>} />
-      <Route path="/prices" element={<Shell><PriceSearch /></Shell>} />
       <Route path="/mon-catalogue" element={<ProRoute><Shell><PriceCatalog /></Shell></ProRoute>} />
       <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
@@ -183,14 +173,13 @@ function AppRouter() {
                element={<Shell><LocalLanding /></Shell>} />
       ))}
       <Route path="/parrainage" element={<Protected><Shell><Referrals /></Shell></Protected>} />
-      <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
       <Route path="/equipe" element={<ProRoute><Shell><Team /></Shell></ProRoute>} />
-      <Route path="/devis" element={<ProRoute><Shell><QuoteTracking /></Shell></ProRoute>} />
-      <Route path="/factures" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
+      <Route path="/devis" element={<Navigate to="/orcamentos" replace />} />
+      <Route path="/factures" element={<Navigate to="/faturas" replace />} />
       <Route path="/factures-electroniques" element={<ProRoute><Shell><EInvoicing /></Shell></ProRoute>} />
       <Route path="/situations" element={<ProRoute><Shell><Situations /></Shell></ProRoute>} />
-      <Route path="/entreprise" element={<ProRoute><Shell><Entreprise /></Shell></ProRoute>} />
+      <Route path="/entreprise" element={<Navigate to="/empresa" replace />} />
       <Route path="/rh" element={<ProRoute><Shell><HR /></Shell></ProRoute>} />
       <Route path="/pointage" element={<ProRoute><WorkerApp /></ProRoute>} />
       <Route path="/mes-avis" element={<ProRoute><Shell><MyReviews /></Shell></ProRoute>} />
@@ -231,6 +220,17 @@ function AppRouter() {
       <Route path="/mentions-legales" element={<Shell><MentionsLegales /></Shell>} />
       <Route path="/confidentialite" element={<Shell><Confidentialite /></Shell>} />
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />
+      {/* Client-side 301-style redirects FR/EN -> PT canonical (SEO signal via _redirects file if host supports it) */}
+      <Route path="/investisseurs" element={<Navigate to="/investidores" replace />} />
+      <Route path="/investors" element={<Navigate to="/investidores" replace />} />
+      <Route path="/calculateurs" element={<Navigate to="/calculadoras" replace />} />
+      <Route path="/calculators" element={<Navigate to="/calculadoras" replace />} />
+      <Route path="/prix" element={<Navigate to="/precos" replace />} />
+      <Route path="/prices" element={<Navigate to="/precos" replace />} />
+      <Route path="/estimation" element={<Navigate to="/estimativa" replace />} />
+      <Route path="/inscription" element={<Navigate to="/registo" replace />} />
+      <Route path="/reinitialiser" element={<Navigate to="/redefinir" replace />} />
+      <Route path="/fonctionnalites" element={<Navigate to="/funcionalidades" replace />} />
       {/* PT-PT route aliases */}
       <Route path="/planta" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
       <Route path="/plans" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />

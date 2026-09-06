@@ -46,13 +46,13 @@ export default function SiteTracking() {
   };
   useEffect(() => { if (allowed) load(); /* eslint-disable-next-line */ }, [project, allowed]);
 
-  if (in_org && !can("chantier")) return <NoAccess title="Suivi de chantier non autorisé" />;
+  if (in_org && !can("chantier")) return <NoAccess title="Acompanhamento de obra não autorizado" />;
 
   if (!allowed) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="site-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
-        <h1 className="font-display text-3xl font-bold">Suivi de chantier</h1>
+        <h1 className="font-display text-3xl font-bold">Acompanhamento de obra</h1>
         <p className="text-muted-foreground mt-3">Contas-renders, réserves et checklists d'avancement — réservé au <b>pack Empresa</b>.</p>
         <Button className="rounded-sm mt-6" onClick={() => navigate("/tarifs")} data-testid="site-upgrade-btn">Passer au pack Empresa</Button>
       </div>
@@ -103,7 +103,7 @@ export default function SiteTracking() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-6" data-testid="site-tracking-page">
-      <SectionTitle overline="Pack Business" title="Suivi de chantier" />
+      <SectionTitle overline="Pack Empresa" title="Acompanhamento de obra" />
       <div className="flex flex-wrap items-center gap-3">
         <HardHat className="h-4 w-4 text-primary" />
         <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Nom du chantier (ex. Moradia Dupont)"

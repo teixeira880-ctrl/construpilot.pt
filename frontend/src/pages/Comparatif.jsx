@@ -16,7 +16,7 @@ const ROWS = [
   { label: "Multi-langue (7 langues)", values: [true, false, false, false, false, false, false, false] },
   { label: "Calculateurs métier (placo, carrelage…)", values: [true, "~", "~", false, false, false, false, "~"] },
   { label: "Comparador de preços fornecedores", values: [true, true, false, false, false, false, false, "~"] },
-  { label: "Suivi de chantier (réserves, CR, photos)", values: [true, "~", true, false, true, true, true, true] },
+  { label: "Acompanhamento de obra (reservas, RC, fotos)", values: [true, "~", true, false, true, true, true, true] },
   { label: "Module RH / pointage GPS", values: [true, false, true, false, false, false, true, true] },
   { label: "Orçamento & facturation", values: [true, true, true, true, true, true, true, true] },
   { label: "Assinatura electrónica de orçamentos", values: [true, "~", true, "~", true, true, "~", true] },

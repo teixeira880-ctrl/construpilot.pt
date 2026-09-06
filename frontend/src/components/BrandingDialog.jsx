@@ -278,7 +278,7 @@ export function BrandingDialog({ trigger }) {
           <div className="grid gap-2">
             <Label>Message d'accompagnement par défaut (e-mails devis/factures)</Label>
             <Textarea value={defaultEmailMsg} onChange={(e) => setDefaultEmailMsg(e.target.value)}
-                      placeholder={"Bonjour {client},\n\nVeuillez trouver ci-joint votre devis n° {numero}...\n\nCordialement,\n{entreprise}"}
+                      placeholder={"Olá {client},\n\nSegue em anexo o seu orçamento n.º {numero}...\n\nCom os melhores cumprimentos,\n{entreprise}"}
                       disabled={!canEdit}
                       data-testid="branding-default-msg-input"
                       className="rounded-sm text-sm" rows={5} maxLength={1500} />

@@ -329,7 +329,7 @@ async def create_pc_situation(plan_id: str, body: PcSituationIn,
                 f"Facture {label} {invoice_no} — {amount} € · {filename}",
                 wrap_html(
                     f"Facture {label} — {invoice_no}",
-                    f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
+                    f"<p>Olá {_html.escape(entry.get('accepted_by') or '')},</p>"
                     f"<p>Les travaux du chantier « {_html.escape(filename)} » avancent"
                     f"{'' if sit['is_final'] else f' ({pct_cumul:g} % réalisés)'} : "
                     f"vous trouverez en pièce jointe la facture {label} de "
@@ -409,7 +409,7 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
         notes_html = ("<p><b>Notes :</b><br/>"
                       f"{_html.escape(body.notes.strip()).replace(chr(10), '<br/>')}</p>")
     html_body = (
-        f"<p>Bonjour{' ' + _html.escape(body.supplier_name) if body.supplier_name else ''},</p>"
+        f"<p>Olá{' ' + _html.escape(body.supplier_name) if body.supplier_name else ''},</p>"
         f"<p>Veuillez trouver ci-joint notre <b>bon de commande {ref}</b> pour la phase "
         f"« {_html.escape(lvl['name'])} » de notre chantier "
         f"« {_html.escape(p.get('filename') or 'construction')} » — "
@@ -669,7 +669,7 @@ async def _notify_study_opened(track_id: str) -> None:
     if mode in ("email", "both") and u and u.get("email"):
         html = wrap_html(
             "Votre étude vient d'être ouverte",
-            f"<p>Bonjour {_html.escape(u.get('name') or '')},</p>"
+            f"<p>Olá {_html.escape(u.get('name') or '')},</p>"
             f"<p>Bonne nouvelle : <b>{_html.escape(client)}</b> vient d'ouvrir "
             f"l'étude gros œuvre du chantier « {_html.escape(filename)} ».</p>"
             "<p>C'est le bon moment pour le rappeler.</p>")
@@ -723,7 +723,7 @@ async def _send_pc_reminder(p: dict, s: dict) -> None:
     t = (p["pc_study"].get("totals") or {})
     filename = p.get("filename") or "permis de construire"
     html_body = (
-        "<p>Bonjour,</p>"
+        "<p>Olá,</p>"
         f"<p>Petit rappel : l'<b>étude gros œuvre</b> de votre projet "
         f"« {_html.escape(filename)} » vous attend. Vous la trouverez de nouveau "
         "en pièce jointe de cet email.</p>"
@@ -755,7 +755,7 @@ async def _send_deposit_reminder(p: dict, s: dict, pct: float, amount: float) ->
         f"Rappel — acompte de {amount} € à régler · {filename}",
         wrap_html(
             "Votre chantier n'attend plus que l'acompte",
-            f"<p>Bonjour {_html.escape(s.get('accepted_by') or '')},</p>"
+            f"<p>Olá {_html.escape(s.get('accepted_by') or '')},</p>"
             f"<p>Vous avez accepté l'étude gros œuvre du chantier "
             f"« {_html.escape(filename)} » — il ne reste que l'acompte de "
             f"<b>{pct:g} %</b>, soit <b>{amount} €</b>, à régler par carte "
@@ -1126,7 +1126,7 @@ async def _apply_pc_deposit(rec: dict) -> None:
                 entry["to_email"],
                 f"Votre facture d'acompte {invoice_no} · {filename}",
                 wrap_html("Facture d'acompte — merci !",
-                          f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
+                          f"<p>Olá {_html.escape(entry.get('accepted_by') or '')},</p>"
                           f"<p>Nous avons bien reçu votre acompte de <b>{amount} €</b> "
                           f"pour le chantier « {_html.escape(filename)} ». "
                           f"Votre facture d'acompte <b>{invoice_no}</b> est en pièce "
@@ -1470,7 +1470,7 @@ async def _send_weekly_pc_report_email(u: dict, rows: list[dict]) -> None:
     name = _html.escape(u.get("name") or "")
     html = wrap_html(
         "Rapport hebdo — Études PC",
-        f"<p>Bonjour {name},</p>"
+        f"<p>Olá {name},</p>"
         f"<p>Le point du lundi sur vos <b>{len(rows)} études PC</b> :</p>"
         f"<ul><li><b>{len(accepted)}</b> acceptée(s)</li>"
         f"<li><b>{len(opened)}</b> ouverte(s) par le client mais pas encore "

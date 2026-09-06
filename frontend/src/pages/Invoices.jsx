@@ -180,7 +180,7 @@ export default function Invoices() {
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" className="rounded-sm gap-2" data-testid="invoices-situations-link"
             onClick={() => nav("/situations")}>
-            <TrendingUp className="h-4 w-4" /> Situations de travaux
+            <TrendingUp className="h-4 w-4" /> Autos de medição
           </Button>
           <ImportDocumentsDialog triggerLabel="Importar PDF" onImported={load} />
           <Dialog open={convOpen} onOpenChange={setConvOpen}>

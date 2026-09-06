@@ -145,7 +145,7 @@ export default function Situations() {
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="situations-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Facturation à l'avancement</h1>
-        <p className="text-muted-foreground mt-3">Situations de travaux, avancement cumulé, retenue de garantie et compte prorata — réservé au <b>pack Empresa</b>.</p>
+        <p className="text-muted-foreground mt-3">Autos de medição, adiantamento acumulado, retenção de garantia e conta prorata — reservado ao <b>pack Empresa</b>.</p>
         <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="situations-upgrade-btn">Passer au pack Empresa <ArrowRight className="h-4 w-4" /></Button>
       </div>
     );

@@ -1,0 +1,16 @@
+# FR/EN legacy paths -> PT canonical (Netlify-style, honored by many static hosts)
+# Note: if the underlying host does not support this file, the same paths are
+# also handled client-side via <Navigate> in App.js so users never hit a 404.
+/investisseurs      /investidores       301
+/investors          /investidores       301
+/calculateurs       /calculadoras       301
+/calculators        /calculadoras       301
+/prix               /precos             301
+/prices             /precos             301
+/estimation         /estimativa         301
+/inscription        /registo            301
+/reinitialiser      /redefinir          301
+/fonctionnalites    /funcionalidades    301
+/devis              /orcamentos         301
+/factures           /faturas            301
+/entreprise         /empresa            301

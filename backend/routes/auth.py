@@ -155,7 +155,7 @@ async def register(body: RegisterIn, response: Response) -> dict:
         from engines import emailer
         verify_url = f"{os.getenv('FRONTEND_URL', '')}/verifier-email/{user['email_verify_token']}"
         body_html = (
-            f"<p>Bonjour {body.name.split(' ')[0] if body.name else ''},</p>"
+            f"<p>Olá {body.name.split(' ')[0] if body.name else ''},</p>"
             "<p>Bienvenue sur <b>ConstruPilot</b> ! Merci de <b>confirmer votre adresse e-mail</b> "
             "en cliquant sur le bouton ci-dessous pour activer toutes les fonctionnalités.</p>"
             "<p>Pour bien démarrer :</p>"
@@ -244,7 +244,7 @@ async def run_signup_followups():
         try:
             first = (u.get("name") or "").split(" ")[0]
             body_html = (
-                f"<p>Bonjour {first},</p>"
+                f"<p>Olá {first},</p>"
                 "<p>Vous avez créé votre compte ConstruPilot il y a quelques jours, "
                 "mais vous n'avez pas encore commencé. On est là pour vous aider !</p>"
                 "<p>En quelques minutes, vous pouvez :</p>"
@@ -512,7 +512,7 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
         first = (u.get("name") or "").split(" ")[0]
         if body.approve:
             body_html = (
-                f"<p>Bonjour {first},</p>"
+                f"<p>Olá {first},</p>"
                 "<p>Bonne nouvelle : votre compte professionnel ConstruPilot vient d'être "
                 "<b>validé</b> ✅.</p>"
                 "<p>Vos justificatifs (K-bis, assurance décennale) sont conformes. "
@@ -526,7 +526,7 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
         else:
             reason = upd["kyc_rejection_reason"]
             body_html = (
-                f"<p>Bonjour {first},</p>"
+                f"<p>Olá {first},</p>"
                 "<p>Après vérification, nous ne pouvons pas valider votre compte professionnel "
                 "pour le moment.</p>"
                 f"<p><b>Motif :</b> {reason}</p>"
@@ -659,7 +659,7 @@ async def _register_device(user: dict, request: Request) -> None:
     if user.get("role") != "admin":
         return
     html = (
-        f"<p>Bonjour {user.get('name') or ''},</p>"
+        f"<p>Olá {user.get('name') or ''},</p>"
         f"<p>Une connexion à votre compte <b>administrateur ConstruPilot</b> vient d'avoir lieu "
         f"depuis un nouvel appareil :</p>"
         f"<ul><li><b>Adresse IP</b> : {ip}</li>"
