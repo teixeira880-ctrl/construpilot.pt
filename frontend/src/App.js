@@ -147,14 +147,24 @@ function AppRouter() {
       <Route path="/particuliers" element={<LandingParticuliers />} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
       <Route path="/investisseurs" element={<Investors />} />
+      <Route path="/investidores" element={<Investors />} />
+      <Route path="/investors" element={<Investors />} />
       <Route path="/fonctionnalites" element={<Features />} />
+      <Route path="/funcionalidades" element={<Features />} />
       <Route path="/login" element={<Login />} />
       <Route path="/inscription" element={<Login />} />
+      <Route path="/registo" element={<Login />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />
+      <Route path="/redefinir" element={<ResetPassword />} />
       <Route path="/smart-project" element={<Shell><SmartProject /></Shell>} />
       <Route path="/estimation" element={<Shell><Estimator /></Shell>} />
+      <Route path="/estimativa" element={<Shell><Estimator /></Shell>} />
       <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
+      <Route path="/calculadoras" element={<Shell><Calculators /></Shell>} />
+      <Route path="/calculators" element={<Shell><Calculators /></Shell>} />
       <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
+      <Route path="/precos" element={<Shell><PriceSearch /></Shell>} />
+      <Route path="/prices" element={<Shell><PriceSearch /></Shell>} />
       <Route path="/mon-catalogue" element={<ProRoute><Shell><PriceCatalog /></Shell></ProRoute>} />
       <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />

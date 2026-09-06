@@ -50,8 +50,8 @@ def _public(u: dict) -> dict:
     out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
-                                  "lang", "created_at", "account_type", "kyc_status",
-                                  "siret")}
+                                  "lang", "language", "country", "created_at", "account_type",
+                                  "kyc_status", "siret")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
     return out

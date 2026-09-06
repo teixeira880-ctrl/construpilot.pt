@@ -1,0 +1,37 @@
+{
+  "summary": "C2 Wave PT-PT validation. All 18 backend + narrow-scope frontend acceptance criteria PASS: /api/auth/me now exposes country='PT'+language='pt'; PT and FR admin logins OK; /api/estimation/compute defaults country=PT, default_vat_rate=6.0, vat_eligible_6=true for renovation_complete; /api/estimation/catalog returns 25 PT lots (Demolição, Alvenaria, Fundações confirmed), 27 project_types, 4 finish_levels, 16 PT regions (no FR regions leaked); all 13 SPA aliases (EN+PT+FR) return HTTP 200 HTML. Frontend: /investors renders full PT-PT (own layout), /calculators renders PT-PT hero, NotFound hero fully PT ('Esta página não existe' + 'Voltar à página inicial' + 'Estimar um projecto' / 'Preços dos materiais' / 'O blogue'). NEW FINDING outside C2 scope: the SHARED layout (Header nav, global Footer, Cookie banner, Chat widget) rendered on NotFound and other pages is still fully in FRENCH.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Shared Layout (visible on NotFound and any page using default layout)", "issues": [
+        "Header nav still FR: 'Estimateur', 'Calculateurs', 'Prix matériaux', 'Blog', 'Découvrir', 'Connexion', 'Commencer'",
+        "Global Footer still FR: 'Estimez. Comparez. Construisez.', 'info@construpilot.fr' (should be .pt), footer link 'Investisseurs', 'Estimations indicatives — ne constituent pas un devis contractuel.'",
+        "Cookie banner 100% FR: 'Nous utilisons des cookies nécessaires au fonctionnement du site...', buttons 'Refuser' / 'Tout accepter', 'politique de confidentialité' — leaks on EVERY page including /investors",
+        "Chat widget button label 'Besoin d'aide ?' still FR",
+        "Header shows two FR flags + one PT flag (FR|PT|FR selector duplicated)"
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_c2_wave.py", "/app/test_reports/pytest/c2_results.xml"],
+  "action_items": [
+    "Translate shared Header component nav links to PT-PT (Estimador/Calculadoras/Preços de materiais/Blogue/Descobrir/Entrar/Começar)",
+    "Translate shared Footer to PT-PT and change info@construpilot.fr -> info@construpilot.pt; footer link 'Investisseurs' -> 'Investidores'",
+    "Translate CookieBanner component to PT-PT (leaks on ALL pages including /investors)",
+    "Translate ChatWidget label 'Besoin d'aide ?' -> 'Precisa de ajuda?'",
+    "Fix header language selector duplicated FR flag (currently FR|PT|FR)"
+  ],
+  "critical_code_review_comments": [
+    "PT-PT translation wave only covered page components, not shared layout chrome (Header/Footer/CookieBanner/ChatWidget). Recommend centralising strings via i18n dictionary keyed on user.language so future waves auto-apply.",
+    "Auth _public() correctly exposes country+language; consider also exposing timezone for full locale support.",
+    "Backend catalog is fully PT with correct region list — good."
+  ],
+  "updated_files": ["/app/backend/tests/test_c2_wave.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% for C2 acceptance criteria; shared-layout translation is a separate un-tracked gap"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020. and admin@construpilot.io / VJAiUOI90Ss2brVH — both valid.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "C2 acceptance closed. Next wave should translate shared layout: Header, Footer, CookieBanner, ChatWidget. Test file /app/backend/tests/test_c2_wave.py is a good regression baseline (18 tests, all passing)."
+}
