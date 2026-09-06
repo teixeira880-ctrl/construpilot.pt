@@ -1486,15 +1486,20 @@ const RTL_LANGS = ["ar"];
 function detectLang() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && SUPPORTED.includes(stored)) return stored;
-  // Détection par DOMAINE uniquement :
-  //  - construpilot.pt (et tout .pt) → ouvre en PT-PT
-  //  - construpilot.fr et tout le reste → FR par défaut (comportement inchangé)
-  // L'utilisateur peut toujours changer de langue manuellement (mémorisé ensuite).
+  // Ordem de precedência :
+  //  1) escolha manual do utilizador (localStorage) — tratada acima
+  //  2) domínio .pt → PT
+  //  3) navigator.language começa por 'pt' → PT
+  //  4) navigator.language começa por 'fr' → FR (único caso não-PT auto)
+  //  5) default absoluto : PT-PT (100% PT-PT policy)
   try {
     const host = (window.location.hostname || "").toLowerCase();
     if (host.endsWith(".pt")) return "pt";
+    const nav = (navigator.language || "").toLowerCase();
+    if (nav.startsWith("pt")) return "pt";
+    if (nav.startsWith("fr")) return "fr";
   } catch { /* SSR / navigateur restreint */ }
-  return "fr";
+  return "pt";
 }
 
 export function I18nProvider({ children }) {

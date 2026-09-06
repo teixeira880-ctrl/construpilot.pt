@@ -628,7 +628,7 @@ async def run_forgotten_clockouts() -> int:
         emp = await db.users.find_one({"user_id": ts["employer_id"]},
                                       {"_id": 0, "email": 1, "lang": 1})
         if emp and emp.get("email"):
-            html = (f"<p>Bonjour,</p><p>L'ouvrier <b>{ts.get('worker_name')}</b> a pointé "
+            html = (f"<p>Olá,</p><p>L'ouvrier <b>{ts.get('worker_name')}</b> a pointé "
                     f"son entrée le {ts['clock_in'][:16].replace('T',' ')} sur le chantier "
                     f"<b>{ts.get('project_name')}</b> mais n'a jamais pointé sa sortie.</p>"
                     f"<p>Vérifiez le pointage dans votre espace RH.</p><p>— ConstruPilot</p>")

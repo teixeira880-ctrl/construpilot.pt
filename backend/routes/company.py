@@ -37,8 +37,8 @@ ROLE_PERMISSIONS: dict[str, dict] = {
 }
 ASSIGNABLE_ROLES = ["admin", "chef_chantier", "comptable", "member", "ouvrier"]
 ROLE_LABELS = {
-    "owner": "Propriétaire", "admin": "Administrateur", "chef_chantier": "Chef de chantier",
-    "comptable": "Comptable", "member": "Membre", "ouvrier": "Ouvrier",
+    "owner": "Proprietário", "admin": "Administrador", "chef_chantier": "Chefe de obra",
+    "comptable": "Contabilista", "member": "Membro", "ouvrier": "Trabalhador",
 }
 
 

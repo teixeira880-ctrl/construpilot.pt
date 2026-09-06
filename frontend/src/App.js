@@ -231,6 +231,25 @@ function AppRouter() {
       <Route path="/mentions-legales" element={<Shell><MentionsLegales /></Shell>} />
       <Route path="/confidentialite" element={<Shell><Confidentialite /></Shell>} />
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />
+      {/* PT-PT route aliases */}
+      <Route path="/planta" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
+      <Route path="/plans" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
+      <Route path="/faturas" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
+      <Route path="/invoices" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
+      <Route path="/faturacao-eletronica" element={<ProRoute><Shell><EInvoicing /></Shell></ProRoute>} />
+      <Route path="/e-invoicing" element={<ProRoute><Shell><EInvoicing /></Shell></ProRoute>} />
+      <Route path="/situacoes" element={<ProRoute><Shell><Situations /></Shell></ProRoute>} />
+      <Route path="/empresa" element={<ProRoute><Shell><Entreprise /></Shell></ProRoute>} />
+      <Route path="/render-ia" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
+      <Route path="/render-studio" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
+      <Route path="/features" element={<Features />} />
+      <Route path="/conta" element={<Protected><Shell><Account /></Shell></Protected>} />
+      <Route path="/orcamentos" element={<ProRoute><Shell><QuoteTracking /></Shell></ProRoute>} />
+      <Route path="/orcamento-editor" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
+      <Route path="/orcamento-editor/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
+      <Route path="/equipa" element={<ProRoute><Shell><Team /></Shell></ProRoute>} />
+      <Route path="/biblioteca" element={<ProRoute><Shell><Library /></Shell></ProRoute>} />
+      <Route path="/obra" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="*" element={<Shell><NotFound /></Shell>} />
     </Routes>
   );

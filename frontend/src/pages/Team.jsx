@@ -331,7 +331,7 @@ export default function Team() {
                   <span>{m.name || m.email}</span>
                   {m.org_role === "owner" && (
                     <Badge className="rounded-sm bg-primary/10 text-primary text-[10px]">
-                      <Crown className="h-3 w-3 inline mr-1" /> Propriétaire
+                      <Crown className="h-3 w-3 inline mr-1" /> Proprietário
                     </Badge>
                   )}
                   {m.org_role === "admin" && (

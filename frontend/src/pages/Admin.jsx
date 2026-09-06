@@ -52,13 +52,13 @@ export default function Admin() {
       const snap = l.project_snapshot || {};
       const notes = [l.description, snap.name ? `Projet: ${snap.name} ${snap.surface || ""} m²` : "", l.availability ? `Dispo: ${l.availability}` : ""].filter(Boolean).join(" — ");
       const { data } = await api.post("/clients", {
-        first_name: first, last_name: last || first || "Client",
+        first_name: first, last_name: last || first || "Cliente",
         email: l.email || "", phone: l.phone || "", address: l.address || "", notes,
       });
-      toast.success("Client créé depuis la demande — ouverture de l'éditeur de devis");
+      toast.success("Cliente criado a partir do pedido — a abrir o editor de orçamento");
       navigate(`/devis-editeur?client=${data.client_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Création impossible");
+      toast.error(e?.response?.data?.detail || "Création impossível");
     }
   };
   const [suppliers, setSuppliers] = useState({ builtin: [], custom: [] });
@@ -66,16 +66,16 @@ export default function Admin() {
 
   const deleteUser = async (u) => {
     if (!(await confirm({
-      title: "Supprimer définitivement ce compte ?",
+      title: "Eliminar définitivement ce compte ?",
       description: `Le compte ${u.email} et TOUTES ses données (projets, devis, factures, demandes, abonnements) seront supprimés définitivement. Cette action est irréversible.`,
-      confirmLabel: "Supprimer définitivement",
+      confirmLabel: "Eliminar définitivement",
       destructive: true,
     }))) return;
     try {
       const { data } = await api.delete(`/admin/users/${u.user_id}`);
-      toast.success(`Compte ${u.email} supprimé · ${data.purged_total} enregistrement(s) purgé(s)`);
+      toast.success(`Conta ${u.email} supprimé · ${data.purged_total} enregistrement(s) purgé(s)`);
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Eliminação impossível"); }
   };
 
   const load = () => {
@@ -96,7 +96,7 @@ export default function Admin() {
     await api.put(`/admin/prices/${key}`, Object.fromEntries(
       Object.entries(body).map(([k, v]) => [k, Number(v)])
     ));
-    toast.success("Prix de référence mis à jour");
+    toast.success("Prix de referência mis à jour");
     setEdits({ ...edits, [key]: undefined });
     load();
   };
@@ -108,11 +108,11 @@ export default function Admin() {
   };
 
   const addSupplier = async () => {
-    if (!newSup.key || !newSup.name || !newSup.domain) return toast.error("Clé, nom et domaine requis");
+    if (!newSup.key || !newSup.name || !newSup.domain) return toast.error("Clé, nom et domaine obrigatório");
     await api.post("/admin/suppliers", {
       ...newSup, shipping: Number(newSup.shipping), free_from: Number(newSup.free_from),
     });
-    toast.success("Fournisseur ajouté");
+    toast.success("Fornecedor ajouté");
     setNewSup({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
     load();
   };
@@ -130,12 +130,12 @@ export default function Admin() {
           onClick={async () => {
             try {
               const { data } = await api.post("/admin/demo-unlock");
-              toast.success(`Mode démo activé — ${data.tier} · toutes les options débloquées`);
+              toast.success(`Modo de demonstração ativado — ${data.tier} · todas as opções desbloqueadas`);
               setTimeout(() => window.location.reload(), 900);
-            } catch { toast.error("Activation du mode démo impossible"); }
+            } catch { toast.error("Ativação do modo de demonstração impossível"); }
           }}
           className="shrink-0 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 text-sm font-semibold transition-colors">
-          🎬 Mode démo — tout débloquer
+          🎬 Modo de demonstração — desbloquear tudo
           <span className="block text-[11px] font-normal text-muted-foreground">Stripe test · carte 4242 4242 4242 4242</span>
         </button>
       </div>
@@ -166,10 +166,10 @@ export default function Admin() {
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
           <TabsTrigger value="evolution" className="rounded-sm" data-testid="admin-tab-evolution">AI Evolution Lab</TabsTrigger>
-          <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Bibliothèque</TabsTrigger>
-          <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Ouvrages composés</TabsTrigger>
-          <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicité</TabsTrigger>
-          <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campagnes e-mail</TabsTrigger>
+          <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Biblioteca</TabsTrigger>
+          <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Trabalhos compostos</TabsTrigger>
+          <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicidade</TabsTrigger>
+          <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campanhas de email</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
           <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">{t("admin.t_account")}</TabsTrigger>
@@ -204,8 +204,8 @@ export default function Admin() {
 
         <TabsContent value="account" className="mt-6">
           <div className="max-w-lg space-y-6" data-testid="admin-account-section">
-            <SectionTitle over="Administrateur" title="Mon compte">
-              Gérez vos informations de profil et votre mot de passe.
+            <SectionTitle over="Administrador" title="A minha conta">
+              Gérez vos informations de profil et votre palavra-passe.
             </SectionTitle>
             <ProfileForm />
             <TwoFaCard />
@@ -220,7 +220,7 @@ export default function Admin() {
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Lot</TableHead>
-                  <TableHead>Unité</TableHead>
+                  <TableHead>Unidade</TableHead>
                   <TableHead className="w-28">Éco</TableHead>
                   <TableHead className="w-28">Standard</TableHead>
                   <TableHead className="w-28">Premium</TableHead>
@@ -284,14 +284,14 @@ export default function Admin() {
               </div>
             ))}
             <Button onClick={addSupplier} data-testid="add-supplier-btn" className="rounded-sm gap-2 sm:col-span-5 w-fit hover:bg-orange-600 hover:text-white">
-              <Plus className="h-4 w-4" /> Ajouter le fournisseur
+              <Plus className="h-4 w-4" /> Adicionar le fournisseur
             </Button>
           </div>
           <div className="surface overflow-x-auto">
             <Table data-testid="admin-suppliers-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Fournisseur</TableHead>
+                  <TableHead>Fornecedor</TableHead>
                   <TableHead>Domaine</TableHead>
                   <TableHead className="text-right">Livraison</TableHead>
                   <TableHead className="text-right">Franco</TableHead>
@@ -326,7 +326,7 @@ export default function Admin() {
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Nom</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Rôle</TableHead>
+                  <TableHead>Função</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Auth</TableHead>
                   <TableHead>2FA</TableHead>
@@ -341,7 +341,7 @@ export default function Admin() {
                     <TableCell>
                       <Select
                         value={u.role}
-                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { role: v }); toast.success("Rôle mis à jour"); load(); }}
+                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { role: v }); toast.success("Função atualizada"); load(); }}
                       >
                         <SelectTrigger className="rounded-sm h-9 w-32" data-testid={`admin-role-${u.user_id}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -372,11 +372,11 @@ export default function Admin() {
                             data-testid={`admin-disable-2fa-${u.user_id}`}
                             onClick={async () => {
                               await api.put(`/admin/users/${u.user_id}`, { two_fa_enabled: false });
-                              toast.success("2FA désactivée pour " + u.email);
+                              toast.success("2FA desativada para " + u.email);
                               load();
                             }}
                           >
-                            Désactiver 2FA
+                            Desativar 2FA
                           </Button>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
@@ -388,8 +388,8 @@ export default function Admin() {
                           data-testid={`admin-set-2fa-email-${u.user_id}`}
                           onClick={async () => {
                             const val = window.prompt(
-                              "E-mail de réception des codes 2FA pour " + u.email +
-                              "\n(laisser vide = e-mail du compte)", u.two_fa_email || "");
+                              "Email de receção dos códigos 2FA para " + u.email +
+                              "\n(deixe vazio = email da conta)", u.two_fa_email || "");
                             if (val === null) return;
                             const { data } = await api.put(`/admin/users/${u.user_id}`, { two_fa_email: val });
                             toast.success(data.two_fa_email
@@ -412,7 +412,7 @@ export default function Admin() {
                           data-testid={`admin-delete-user-${u.user_id}`}
                           onClick={() => deleteUser(u)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Supprimer
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
                         </Button>
                       )}
                     </TableCell>
@@ -430,7 +430,7 @@ export default function Admin() {
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Projet</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Surface</TableHead>
+                  <TableHead className="text-right">Superfície</TableHead>
                   <TableHead className="text-right">Budget</TableHead>
                   <TableHead>Ville</TableHead>
                   <TableHead>Créé le</TableHead>
@@ -462,7 +462,7 @@ export default function Admin() {
                 { label: "Via page d'accueil", value: leadStats.landing, accent: false },
                 { label: "Particuliers", value: leadStats.particulier, accent: true },
                 { label: "Pros", value: leadStats.pro, accent: true },
-                { label: "Nouveaux", value: leadStats.nouveau, accent: false },
+                { label: "Novos", value: leadStats.novo, accent: false },
                 { label: "Gagnés", value: leadStats.gagne, accent: false },
               ].map((s) => (
                 <div key={s.label}
@@ -477,10 +477,10 @@ export default function Admin() {
           {leadStats && (
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6" data-testid="admin-lead-assign-stats">
               {[
-                { label: "Nouveaux (non assignés)", value: leadStats.nouveaux ?? leadStats.nouveau, cls: "text-foreground" },
-                { label: "Assignés", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
-                { label: "En attente pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
-                { label: "Pris en charge", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
+                { label: "Novos (não atribuídos)", value: leadStats.nouveaux ?? leadStats.novo, cls: "text-foreground" },
+                { label: "Atribuídos", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
+                { label: "Pendente pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
+                { label: "Assumido", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
                 { label: "Refusés", value: leadStats.refuses ?? 0, cls: "text-red-500" },
                 { label: "Taux de conversion", value: `${leadStats.conversion ?? 0}%`, cls: "text-primary" },
               ].map((s) => (
@@ -492,8 +492,8 @@ export default function Admin() {
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="admin-leads-filter">
-            {[["all", "Tous"], ["nouveau", "Nouveaux"], ["contacté", "Contactés"],
-              ["devis envoyé", "Devis envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
+            {[["all", "Tous"], ["novo", "Novos"], ["contacté", "Contactés"],
+              ["devis envoyé", "Orçamento envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
               ["j2", "Relancés J+2"]].map(([v, lbl]) => (
               <button key={v} onClick={() => setLeadFilter(v)} data-testid={`admin-leads-filter-${v}`}
                 className={`px-3 py-1.5 rounded-sm text-xs font-semibold border transition-colors ${leadFilter === v ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/40"}`}>
@@ -506,7 +506,7 @@ export default function Admin() {
               const shown = leads.filter((l) =>
                 leadFilter === "all" ? true : leadFilter === "j2" ? l.j2_reminded : l.status === leadFilter);
               return (<>
-                {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Aucune demande.</p>}
+                {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Nenhuma demande.</p>}
                 {shown.map((l) => (
               <div key={l.lead_id} className="surface p-6 grid gap-3">
                 <div className="flex flex-wrap items-center gap-4">
@@ -535,11 +535,11 @@ export default function Admin() {
                   {l.budget ? <p className="num ml-auto text-lg font-bold text-primary">{eur(l.budget)}</p> : <span className="ml-auto" />}
                   <Select
                     value={l.status}
-                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { status: v }); toast.success("Statut mis à jour"); load(); }}
+                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { status: v }); toast.success("Estado mis à jour"); load(); }}
                   >
                     <SelectTrigger className="rounded-sm h-9 w-40" data-testid={`admin-lead-status-${l.lead_id}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["nouveau", "contacté", "visite planifiée", "devis envoyé", "gagné", "perdu"].map((s) => (
+                      {["novo", "contacté", "visite planifiée", "devis envoyé", "gagné", "perdu"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
@@ -558,7 +558,7 @@ export default function Admin() {
                     <p className="font-semibold uppercase tracking-wide text-[10px]">Historique d'attribution</p>
                     {l.assignment_log.slice(-6).map((e, i) => (
                       <p key={i}>
-                        {{ proposee: "→ Proposée à", acceptee: "✔ Acceptée par", refusee: "✕ Refusée par", assignee_manuelle: "→ Assignée à", en_cours: "… En cours par" }[e.action] || e.action}{" "}
+                        {{ proposee: "→ Proposée à", acceptee: "✔ Aceite par", refusee: "✕ Recusada par", assignee_manuelle: "→ Assignée à", en_cours: "… Em curso par" }[e.action] || e.action}{" "}
                         <span className="font-medium">{e.user_name || "—"}</span>
                         {" · "}{new Date(e.at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </p>
@@ -568,10 +568,10 @@ export default function Admin() {
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border mt-1">
                   <Select
                     value={l.assigned_to || "none"}
-                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { assigned_to: v === "none" ? "" : v }); toast.success(v === "none" ? "Assignation retirée" : "Demande assignée — le pro est notifié"); load(); }}
+                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { assigned_to: v === "none" ? "" : v }); toast.success(v === "none" ? "Assignation removida" : "Pedido atribuído — o profissional foi notificado"); load(); }}
                   >
                     <SelectTrigger className="rounded-sm h-8 w-48" data-testid={`admin-lead-assign-${l.lead_id}`}>
-                      <SelectValue placeholder="Assigner à un pro" />
+                      <SelectValue placeholder="Atribuir a um profissional" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— Non assignée —</SelectItem>
@@ -582,11 +582,11 @@ export default function Admin() {
                   </Select>
                   <Button size="sm" className="rounded-sm gap-2 h-8" onClick={() => createQuoteForLead(l)}
                           data-testid={`admin-lead-create-quote-${l.lead_id}`}>
-                    <Plus className="h-3.5 w-3.5" /> Créer un devis
+                    <Plus className="h-3.5 w-3.5" /> Criar un devis
                   </Button>
                   {l.email && (
                     <>
-                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Invitation envoyée à ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); } }}
+                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Invitation envoyée à ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); } }}
                               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
                               data-testid={`admin-lead-invite-send-${l.lead_id}`}>
                         <Mail className="h-3.5 w-3.5" /> Inviter à créer un compte{l.invited_at ? " ✓" : ""}
@@ -620,7 +620,7 @@ export default function Admin() {
           <div className="surface p-6">
             <p className="overline">Produits les plus recherchés</p>
             <div className="mt-5 grid gap-2" data-testid="admin-top-searches">
-              {stats.top_searches.length === 0 && <p className="text-sm text-muted-foreground">Aucune recherche enregistrée.</p>}
+              {stats.top_searches.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma recherche enregistrée.</p>}
               {stats.top_searches.map((s) => (
                 <div key={s.query} className="flex items-center justify-between border-b border-border pb-2 text-sm">
                   <span>{s.query}</span>
@@ -674,7 +674,7 @@ function PromoCodesPanel() {
 
   const create = async () => {
     if (!form.code || (!form.percent_off && !form.amount_off_cents)) {
-      return toast.error("Code + réduction (% ou €) requis");
+      return toast.error("Code + réduction (% ou €) obrigatório");
     }
     setBusy(true);
     try {
@@ -687,11 +687,11 @@ function PromoCodesPanel() {
         max_redemptions: form.max_redemptions ? Number(form.max_redemptions) : null,
       };
       await api.post("/admin/promo-codes", payload);
-      toast.success("Code créé sur Stripe et activé");
+      toast.success("Código criado no Stripe e ativado");
       setForm({ code: "", percent_off: "", amount_off_cents: "", max_redemptions: "", duration: "once", name: "" });
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Création impossible");
+      toast.error(err?.response?.data?.detail || "Création impossível");
     } finally { setBusy(false); }
   };
 
@@ -699,13 +699,13 @@ function PromoCodesPanel() {
     try {
       await api.patch(`/admin/promo-codes/${c.code}?active=${active}`);
       load();
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
 
   return (
     <div className="grid gap-6">
       <div className="surface p-6 grid gap-4" data-testid="promo-form">
-        <p className="overline">Créer un code promo</p>
+        <p className="overline">Criar un code promo</p>
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="grid gap-1.5">
             <Label className="text-xs">Code (ex: LANCEMENT10)</Label>
@@ -740,7 +740,7 @@ function PromoCodesPanel() {
           </div>
         </div>
         <Button onClick={create} disabled={busy} data-testid="promo-create-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-          <Plus className="h-4 w-4" /> Créer le code
+          <Plus className="h-4 w-4" /> Criar le code
         </Button>
       </div>
 
@@ -749,7 +749,7 @@ function PromoCodesPanel() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>Code</TableHead><TableHead>Réduction</TableHead><TableHead>Utilisations max</TableHead>
-            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Estado</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody data-testid="promo-list">
             {codes.map((c) => (
@@ -762,18 +762,18 @@ function PromoCodesPanel() {
                 <TableCell className="num">{c.max_redemptions || "illimité"}</TableCell>
                 <TableCell>
                   <Badge variant={c.active ? "default" : "outline"} className="rounded-sm">
-                    {c.active ? "Actif" : "Désactivé"}
+                    {c.active ? "Actif" : "Desativado"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant="outline" onClick={() => toggle(c, !c.active)} className="rounded-sm">
-                    {c.active ? "Désactiver" : "Activer"}
+                    {c.active ? "Desativar" : "Ativar"}
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
             {codes.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">Aucun code promo</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">Nenhum code promo</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -803,7 +803,7 @@ function PlansRevenuePanel() {
     try {
       await api.put("/admin/feature-flags", flags);
       toast.success("Flags sauvegardés");
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
     finally { setBusy(false); }
   };
 
@@ -813,7 +813,7 @@ function PlansRevenuePanel() {
       await api.post("/admin/plans/sync-stripe");
       toast.success("Catalogue Stripe synchronisé");
       load();
-    } catch { toast.error("Sync Stripe impossible"); }
+    } catch { toast.error("Sync Stripe impossível"); }
     finally { setBusy(false); }
   };
 
@@ -899,7 +899,7 @@ function KycPanel() {
   useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (user_id, approve, reason) => {
     try { await api.post("/admin/kyc/review", { user_id, approve, reason: reason || null }); load(); }
-    catch { toast.error("Impossible"); }
+    catch { toast.error("Impossível"); }
   };
   return (
     <div className="grid gap-4">
@@ -914,8 +914,8 @@ function KycPanel() {
       <div className="surface p-6" data-testid="kyc-list">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Entreprise</TableHead><TableHead>SIREN</TableHead><TableHead>Métiers</TableHead>
-            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Empresa</TableHead><TableHead>SIREN</TableHead><TableHead>Métiers</TableHead>
+            <TableHead>Estado</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {rows.map((r) => (
@@ -931,14 +931,14 @@ function KycPanel() {
                 <TableCell className="text-right space-x-2">
                   {!r.verified && (
                     <>
-                      <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Valider</Button>
-                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motif du refus ?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
+                      <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Validar</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motivo du rejeição ?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
                     </>
                   )}
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">Aucun dossier</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">Nenhum dossier</TableCell></TableRow>}
           </TableBody>
         </Table>
       </div>
@@ -957,7 +957,7 @@ function InboxPanel() {
     setLoading(true);
     api.get(`/admin/inbox?hours=${hours}`)
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Chargement impossible"))
+      .catch(() => toast.error("Não foi possível carregar"))
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
@@ -969,11 +969,11 @@ function InboxPanel() {
 
   const approveReview = async (id) => {
     try { await api.post(`/reviews/site/${id}/approve`); toast.success("Avis publié"); loadPendingReviews(); }
-    catch { toast.error("Action impossible"); }
+    catch { toast.error("Action impossível"); }
   };
   const deleteReview = async (id) => {
     try { await api.delete(`/reviews/site/${id}`); toast.success("Avis supprimé"); loadPendingReviews(); }
-    catch { toast.error("Action impossible"); }
+    catch { toast.error("Action impossível"); }
   };
 
   const exportDeckCsv = async () => {
@@ -983,9 +983,9 @@ function InboxPanel() {
       const a = document.createElement("a");
       a.href = url; a.download = "leads-investisseurs.csv"; a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export CSV téléchargé");
+      toast.success("Exportação CSV descarregada");
     } catch {
-      toast.error("Export impossible");
+      toast.error("Export impossível");
     }
   };
 
@@ -1024,17 +1024,17 @@ function InboxPanel() {
 
       {data && (
         <>
-          <InboxSection title="Leads reçus" items={data.leads || []} empty="Aucun lead sur la période.">
+          <InboxSection title="Leads reçus" items={data.leads || []} empty="Nenhum lead no período.">
             {(l) => <LeadRow lead={l} onUpdated={load} />}
           </InboxSection>
 
-          <InboxSection title="Nouveaux comptes" items={data.new_users || []} empty="Aucun nouvel utilisateur.">
+          <InboxSection title="Novas contas" items={data.new_users || []} empty="Nenhum novo utilizador.">
             {(u) => (
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold truncate">{u.name || u.email}</p>
                   <p className="text-muted-foreground truncate">
-                    {u.email} · rôle <b>{u.role || "user"}</b> · plan {u.plan || "free"}
+                    {u.email} · função <b>{u.role || "user"}</b> · plano {u.plan || "free"}
                   </p>
                 </div>
                 <span className="text-[10px] text-muted-foreground ml-2">
@@ -1044,7 +1044,7 @@ function InboxPanel() {
             )}
           </InboxSection>
 
-          <InboxSection title="Devis récents (activité pros)" items={data.recent_sends || []} empty="Aucun devis envoyé sur la période.">
+          <InboxSection title="Orçamento récents (activité pros)" items={data.recent_sends || []} empty="Nenhum orçamento enviado no período.">
             {(s) => (
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 flex-1">
@@ -1066,7 +1066,7 @@ function InboxPanel() {
           <div className="surface p-5" data-testid="pending-reviews-section">
             <p className="overline mb-3">Avis clients en attente ({pendingReviews.length})</p>
             {pendingReviews.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucun avis à modérer.</p>
+              <p className="text-xs text-muted-foreground">Nenhum avis à modérer.</p>
             ) : (
               <div className="grid gap-2">
                 {pendingReviews.map((r) => (
@@ -1087,7 +1087,7 @@ function InboxPanel() {
             )}
           </div>
 
-          <InboxSection title="Téléchargements pitch deck (VC)" items={data.deck_downloads || []} empty="Aucun téléchargement du pitch deck sur la période."
+          <InboxSection title="Descargas do pitch deck (VC)" items={data.deck_downloads || []} empty="Nenhuma descarga do pitch deck no período."
             action={
               <Button size="sm" variant="outline" className="rounded-sm gap-2 h-8"
                       data-testid="deck-export-csv-btn" onClick={exportDeckCsv}>
@@ -1112,7 +1112,7 @@ function InboxPanel() {
             )}
           </InboxSection>
 
-          <InboxSection title="Erreurs client (extrait)" items={(data.recent_errors || []).slice(0, 10)} empty="Aucune erreur sur la période.">
+          <InboxSection title="Erreurs client (extrait)" items={(data.recent_errors || []).slice(0, 10)} empty="Nenhum erro no período.">
             {(e) => (
               <div className="text-xs">
                 <p className="font-mono font-semibold break-all">{e.message}</p>
@@ -1154,7 +1154,7 @@ function InboxSection({ title, items, empty, children, action }) {
 
 /* ---------- LeadRow with direct actions (call / email / mark handled) ---------- */
 function LeadRow({ lead, onUpdated }) {
-  const [status, setStatus] = useState(lead.status || "nouveau");
+  const [status, setStatus] = useState(lead.status || "novo");
   const [busy, setBusy] = useState(false);
 
   const setLeadStatus = async (next) => {
@@ -1162,9 +1162,9 @@ function LeadRow({ lead, onUpdated }) {
     try {
       await api.put(`/admin/leads/${lead.lead_id}`, { status: next });
       setStatus(next);
-      toast.success(`Statut : ${next}`);
+      toast.success(`Estado : ${next}`);
       if (onUpdated) onUpdated();
-    } catch { toast.error("Mise à jour impossible"); }
+    } catch { toast.error("Actualização impossível"); }
     setBusy(false);
   };
 
@@ -1226,7 +1226,7 @@ function LeadRow({ lead, onUpdated }) {
               data-testid={`lead-inprogress-${lead.lead_id}`}
               className="rounded-sm h-7 text-[10px]"
             >
-              En cours
+              Em curso
             </Button>
             <Button
               size="sm"
@@ -1242,7 +1242,7 @@ function LeadRow({ lead, onUpdated }) {
           <Button
             size="sm" variant="outline"
             disabled={busy}
-            onClick={() => setLeadStatus("nouveau")}
+            onClick={() => setLeadStatus("novo")}
             className="rounded-sm h-7 text-[10px]"
           >
             Rouvrir
@@ -1253,7 +1253,7 @@ function LeadRow({ lead, onUpdated }) {
   );
 }
 
-/* ---------- Client Errors (ErrorBoundary reports) ---------- */
+/* ---------- Cliente Errors (ErrorBoundary reports) ---------- */
 function ClientErrorsPanel() {
   const { t } = useI18n();
   const [hours, setHours] = useState(24);
@@ -1266,7 +1266,7 @@ function ClientErrorsPanel() {
     setLoading(true);
     api.get(`/errors/admin/list?hours=${hours}&limit=200`)
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Chargement impossible"))
+      .catch(() => toast.error("Não foi possível carregar"))
       .finally(() => setLoading(false));
     api.get(`/errors/admin/trend?days=14`).then(({ data }) => setTrend(data)).catch(() => {});
   };
@@ -1332,14 +1332,14 @@ function ClientErrorsPanel() {
             <p className="overline mb-4">Top 10 des messages (regroupés)</p>
             {(data.top_messages || []).length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                Aucune erreur sur la période — tout va bien.
+                Nenhuma erro sur la période — tout va bien.
               </p>
             ) : (
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Message</TableHead>
                   <TableHead className="w-24 text-right">Occurrences</TableHead>
-                  <TableHead className="w-24 text-right">Utilisateurs</TableHead>
+                  <TableHead className="w-24 text-right">Utilizadores</TableHead>
                   <TableHead className="w-40">Dernière fois</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -1413,7 +1413,7 @@ function AffiliatePanel() {
   useEffect(() => { load(); }, []);
   const toggle = async (cfg, enabled) => {
     try { await api.post("/admin/affiliate/configs", { ...cfg, affiliate_enabled: enabled }); load(); }
-    catch { toast.error("Impossible"); }
+    catch { toast.error("Impossível"); }
   };
   return (
     <div className="grid gap-6" data-testid="affiliate-panel">
@@ -1429,7 +1429,7 @@ function AffiliatePanel() {
         <p className="overline mb-4">Configurations partenaires</p>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Fournisseur</TableHead><TableHead>Réseau</TableHead>
+            <TableHead>Fornecedor</TableHead><TableHead>Rede</TableHead>
             <TableHead>Commission</TableHead><TableHead>Cookie</TableHead>
             <TableHead>Actif</TableHead>
           </TableRow></TableHeader>

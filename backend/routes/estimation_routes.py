@@ -182,7 +182,7 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
     safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
     fmt = lambda v: f"{v:,.0f}".replace(",", " ")
     if b2c:
-        hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
+        hello = f"Olá {body.client_name}," if body.client_name else "Olá,"
         fourchette = (f"<li><b>Fourchette de budget</b> : {fmt(total_min)} € à {fmt(total_max)} €</li>"
                       if total_min and total_max else "")
         subject = f"Votre estimation travaux — {fmt(total)} € (indicatif)"
@@ -206,7 +206,7 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
                  if body.message else "")
         html = emailer.wrap_html(
             f"Votre estimation : {name}",
-            f"""<p>Bonjour,</p>
+            f"""<p>Olá,</p>
 <p>Vous trouverez en pièce jointe l'estimation détaillée générée par <b>ConstruPilot</b>.</p>
 <ul>
 <li><b>Surface</b> : {surface} m²</li>

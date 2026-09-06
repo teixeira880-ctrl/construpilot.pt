@@ -70,7 +70,7 @@ export function MailboxDialog({ trigger }) {
       setConfigured(!!data.configured);
       setVerified(!!data.verified);
       setPassword("");
-      toast.success("Boîte e-mail connectée et vérifiée ✅");
+      toast.success("Caixa de email ligada e verificada ✅");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Connexion impossible");
     } finally { setBusy(false); }
@@ -91,7 +91,7 @@ export function MailboxDialog({ trigger }) {
     try {
       await api.delete("/users/me/mailbox");
       setConfigured(false); setVerified(false); setEmail(""); setPassword("");
-      toast.success("Boîte e-mail déconnectée");
+      toast.success("Caixa de email desligada");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Déconnexion impossible");
     } finally { setBusy(false); }
@@ -102,7 +102,7 @@ export function MailboxDialog({ trigger }) {
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" data-testid="mailbox-open-btn" className="rounded-sm gap-2">
-            <Mailbox className="h-4 w-4" /> Boîte e-mail
+            <Mailbox className="h-4 w-4" /> Caixa de email
           </Button>
         )}
       </DialogTrigger>

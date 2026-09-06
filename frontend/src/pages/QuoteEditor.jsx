@@ -51,7 +51,7 @@ export default function QuoteEditor() {
 
   const [clientId, setClientId] = useState(sp.get("client") || "");
   const [srcPlanId, setSrcPlanId] = useState(sp.get("plan") || "");
-  // P2 — création d'un client à la volée depuis l'éditeur de devis
+  // P2 — création d'un client à la volée desde l'editor de devis
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [ncBusy, setNcBusy] = useState(false);
   const [nc, setNc] = useState({ first_name: "", last_name: "", company: "", email: "", phone: "", address: "" });
@@ -82,7 +82,7 @@ export default function QuoteEditor() {
       })));
       const results = await Promise.all(b64s.map(async (b64) => {
         try {
-          const { data } = await api.post("/quotes/analyse", { image_base64: b64 });
+          const { data } = await api.post("/quotes/análise", { image_base64: b64 });
           return { src: b64, found: (data?.analysis?.lines) || [] };
         } catch {
           return { src: b64, found: [] };
@@ -99,7 +99,7 @@ export default function QuoteEditor() {
             unit: l.unit || "u",
             qty: Number(l.quantity) || 1,
             unit_price_ht: Number(l.unit_price) || 0,
-            category: "Lu depuis photo",
+            category: "Lu desde photo",
           }));
           return [...cleaned, ...mapped];
         });
@@ -256,7 +256,7 @@ export default function QuoteEditor() {
     for (const l of toSave) {
       try {
         await api.post("/library", {
-          type: "ouvrage", category: l.category || "Devis", designation: l.designation,
+          type: "ouvrage", category: l.category || "Orçamento", designation: l.designation,
           unit: l.unit, unit_price_ht: Number(l.unit_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
         });
       } catch { /* ignore */ }
@@ -579,15 +579,15 @@ export default function QuoteEditor() {
     api.get(`/documents/${id}/email-template`, { params: { client_name: nm } })
       .then(({ data }) => { if (data?.message) setSendMsg(data.message); })
       .catch(() => {});
-    // Rendus IA avant/après disponibles (prêts) à joindre
+    // Renders IA avant/après disponíveis (prêts) à joindre
     api.get("/runway/renders")
       .then(({ data }) => setDoneRenders((data.renders || []).filter((r) => r.status === "done")))
       .catch(() => {});
-    // Aperçu rendu 3D
+    // Pré-visualização de render 3D
     api.get(`/documents/${id}`).then(({ data }) => {
       if (data?.attachment_image_b64) setPreview3d(data.attachment_image_b64);
     }).catch(() => {});
-    // Aperçu PDF
+    // Pré-visualização PDF
     api.get(`/documents/${id}/pdf?lang=${lang}`, { responseType: "blob" })
       .then((res) => setPdfPreviewUrl(URL.createObjectURL(res.data)))
       .catch(() => {});
@@ -719,13 +719,13 @@ export default function QuoteEditor() {
                 <p className="text-xs font-semibold text-muted-foreground">{t("crm.ed_preview_before")}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {pdfPreviewUrl ? (
-                    <iframe title="Aperçu PDF" src={pdfPreviewUrl} data-testid="send-preview-pdf"
+                    <iframe title="Pré-visualização PDF" src={pdfPreviewUrl} data-testid="send-preview-pdf"
                             className="w-full h-40 rounded-sm border border-border bg-white" />
                   ) : (
                     <div className="w-full h-40 rounded-sm border border-border grid place-items-center text-[10px] text-muted-foreground">PDF…</div>
                   )}
                   {preview3d ? (
-                    <img src={preview3d} alt="Rendu 3D" data-testid="send-preview-3d"
+                    <img src={preview3d} alt="Render 3D" data-testid="send-preview-3d"
                          className="w-full h-40 object-contain rounded-sm border border-border bg-secondary/30" />
                   ) : (
                     <div className="w-full h-40 rounded-sm border border-dashed border-border grid place-items-center text-[10px] text-muted-foreground text-center px-2">{t("crm.ed_no_render3d")}</div>
@@ -758,7 +758,7 @@ export default function QuoteEditor() {
               </Button>
               {emailPreviewHtml && (
                 <div className="rounded-sm border border-border overflow-hidden" data-testid="send-email-preview">
-                  <iframe title="Aperçu e-mail" srcDoc={emailPreviewHtml}
+                  <iframe title="Pré-visualização de email" srcDoc={emailPreviewHtml}
                           className="w-full h-72 bg-white" />
                 </div>
               )}
@@ -797,7 +797,7 @@ export default function QuoteEditor() {
                   <option value="">{t("crm.ed_none")}</option>
                   {doneRenders.map((r) => (
                     <option key={r.render_id} value={r.render_id}>
-                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Rendu") + " · " + new Date(r.created_at).toLocaleDateString("pt-PT")}
+                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Render") + " · " + new Date(r.created_at).toLocaleDateString("pt-PT")}
                     </option>
                   ))}
                 </select>
@@ -889,7 +889,7 @@ export default function QuoteEditor() {
             <div>
               <Label>{t("crm.address")}</Label>
               <Input value={nc.address} onChange={(e) => setNc({ ...nc, address: e.target.value })}
-                     className="rounded-sm mt-1" data-testid="nc-address" placeholder="12 rue des Travaux, 75000 Paris" />
+                     className="rounded-sm mt-1" data-testid="nc-address" placeholder="Rua das Obras 12, 1000-000 Lisboa" />
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="outline" onClick={() => setNewClientOpen(false)} className="rounded-sm" data-testid="nc-cancel">
@@ -1035,7 +1035,7 @@ export default function QuoteEditor() {
         </datalist>
       </div>
 
-      {/* Récap + acompte + notes */}
+      {/* Récap + sinal + notes */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="surface p-4 grid gap-3">
           <Label>{t("crm.notes_cond")}</Label>

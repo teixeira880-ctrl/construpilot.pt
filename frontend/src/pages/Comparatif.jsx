@@ -11,22 +11,22 @@ const ROWS = [
   { label: "Preço de entrada", values: ["Gratuit → 39€", "Gratuit → 12,50€", "32€/mois", "25€/mois", "Sur devis", "Sur devis", "Sur devis", "29€/mois"] },
   { label: "Versão gratuita ilimitada", values: [true, true, false, false, false, false, false, false] },
   { label: "IA (extraction matériaux, coaching)", values: [true, "~", false, false, false, false, false, false] },
-  { label: "Rendu 3D depuis un plan 2D", values: [true, false, false, false, false, false, false, false] },
+  { label: "Render 3D desde un plan 2D", values: [true, false, false, false, false, false, false, false] },
   { label: "Estimativa por foto", values: [true, false, false, false, false, false, false, false] },
   { label: "Multi-langue (7 langues)", values: [true, false, false, false, false, false, false, false] },
   { label: "Calculateurs métier (placo, carrelage…)", values: [true, "~", "~", false, false, false, false, "~"] },
   { label: "Comparador de preços fornecedores", values: [true, true, false, false, false, false, false, "~"] },
   { label: "Suivi de chantier (réserves, CR, photos)", values: [true, "~", true, false, true, true, true, true] },
   { label: "Module RH / pointage GPS", values: [true, false, true, false, false, false, true, true] },
-  { label: "Devis & facturation", values: [true, true, true, true, true, true, true, true] },
+  { label: "Orçamento & facturation", values: [true, true, true, true, true, true, true, true] },
   { label: "Assinatura electrónica de orçamentos", values: [true, "~", true, "~", true, true, "~", true] },
-  { label: "Facture électronique Factur-X (2026)", values: ["~", true, "~", "~", true, true, "~", true] },
+  { label: "Fatura électronique Factur-X (2026)", values: ["~", true, "~", "~", true, true, "~", true] },
   { label: "Facturação por autos de medição", values: [false, false, true, false, true, true, true, true] },
   { label: "Marketing & captation de leads intégrés", values: [true, false, false, false, false, false, false, false] },
 ];
 
 const REASONS = [
-  { icon: Cuboid, title: "Rendu 3D unique", text: "Générez une visualisation 3D depuis un simple plan 2D. Aucun autre logiciel BTP grand public ne le propose." },
+  { icon: Cuboid, title: "Render 3D unique", text: "Gere une visualisation 3D desde un simple plan 2D. Nenhum autre logiciel BTP grand public ne le propose." },
   { icon: Sparkles, title: "IA nativa de ponta a ponta", text: "Extracção de materiais, coaching de obra e análise de orçamentos por IA — muito além de um simples gerador." },
   { icon: Globe2, title: "Multi-idioma (7 línguas)", text: "A única ferramenta pensada para internacional: Portugal, Espanha, Brasil e mais, quando os outros ficam restritos ao seu mercado." },
   { icon: Megaphone, title: "Aquisição integrada", text: "Landing dupla Profissional/Particular, captação de leads e painel Ads. Os seus concorrentes param no negócio, você não." },
@@ -55,7 +55,7 @@ export default function Comparatif() {
         name: "Quelle est la différence entre ConstruPilot et Costructor, Obat ou Tolteck ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "ConstruPilot combine l'IA (extraction de matériaux, coaching), le rendu 3D depuis un plan 2D, une interface multi-langue et une brique marketing intégrée — des atouts uniques face à Costructor, Obat, Tolteck, Graneet, Batigest, OptimBTP et ProGBat, tout en restant gratuit pour démarrer.",
+          text: "ConstruPilot combine l'IA (extraction de matériaux, coaching), le rendu 3D desde un plan 2D, une interface multi-langue et une brique marketing intégrée — des atouts uniques face à Costructor, Obat, Tolteck, Graneet, Batigest, OptimBTP et ProGBat, tout en restant gratuit pour démarrer.",
         },
       },
       {
@@ -93,7 +93,7 @@ export default function Comparatif() {
             <Link to="/inscription">Essayer gratuitement <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild variant="outline" className="rounded-sm" data-testid="comparatif-cta-pricing">
-            <Link to="/tarifs">Voir les tarifs</Link>
+            <Link to="/tarifs">Ver les tarifs</Link>
           </Button>
         </div>
       </section>
@@ -187,10 +187,10 @@ export default function Comparatif() {
           Testez ConstruPilot gratuitement en 30 secondes
         </h2>
         <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-          Sans carte bancaire. Générez votre premier devis IA, un rendu 3D ou une estimation par photo dès maintenant.
+          Sans carte bancaire. Gere votre premier devis IA, un rendu 3D ou une estimation par photo dès maintenant.
         </p>
         <Button asChild className="rounded-sm mt-6 gap-2" size="lg" data-testid="comparatif-final-cta-btn">
-          <Link to="/inscription">Créer mon compte gratuit <ArrowRight className="h-4 w-4" /></Link>
+          <Link to="/inscription">Criar mon compte gratuit <ArrowRight className="h-4 w-4" /></Link>
         </Button>
       </div>
     </>

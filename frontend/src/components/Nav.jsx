@@ -17,8 +17,8 @@ import { usePermissions } from "@/context/PermissionContext";
 
 // Nav v2 — menus groupés + relief (fin du débordement header)
 const NAV_MAIN = [
-  { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
-  { to: "/devis-editeur", label: "Nouveau devis", key: "nav.newquote", icon: FileText, auth: true, pro: true },
+  { to: "/dashboard", label: "Painel", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
+  { to: "/devis-editeur", label: "Novo devis", key: "nav.newquote", icon: FileText, auth: true, pro: true },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
@@ -26,20 +26,20 @@ const NAV_MAIN = [
 ];
 
 const NAV_PRO = [
-  { to: "/entreprise", label: "Espace Entreprise", key: "nav.company", icon: Building2, perm: "entreprise" },
+  { to: "/entreprise", label: "Espaço Empresa", key: "nav.company", icon: Building2, perm: "entreprise" },
   { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, perm: "devis" },
-  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, perm: "factures" },
+  { to: "/factures", label: "Faturas", key: "nav.invoices", icon: FileText, perm: "factures" },
   { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations" },
   { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
-  { to: "/rendu-ia", label: "Rendu IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
-  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Nouveau" },
+  { to: "/rendu-ia", label: "Render IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
+  { to: "/appro", label: "Análise technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Novo" },
   { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
-  { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },
+  { to: "/clients", label: "Clientes", key: "nav.clients", icon: Contact },
   { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox },
   { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
   { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
-  { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users },
-  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch, hint: "Permis de construire" },
+  { to: "/equipe", label: "Equipa", key: "nav.team", icon: Users },
+  { to: "/etudes-pc", label: "Estudos PC", key: "nav.studies", icon: FileSearch, hint: "Permis de construire" },
 ];
 
 const NAV_DISCOVER = [
@@ -47,7 +47,7 @@ const NAV_DISCOVER = [
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
   { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
   { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
-  { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
+  { to: "/photo", label: "Análise photo", key: "nav.photo", icon: Camera },
   { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
   { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
   { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },

@@ -16,11 +16,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
 import { toast } from "sonner";
 
-export const NoAccess = ({ title = "Accès non autorisé" }) => (
+export const NoAccess = ({ title = "Acesso não autorizado" }) => (
   <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="no-access">
     <div className="h-14 w-14 rounded-xl bg-red-500/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-red-500" /></div>
     <h1 className="font-display text-3xl font-bold">{title}</h1>
-    <p className="text-muted-foreground mt-3">Votre rôle dans l'entreprise ne donne pas accès à ce module. Contactez le responsable de votre société.</p>
+    <p className="text-muted-foreground mt-3">A sua função na empresa não dá acesso a este módulo. Contacte o responsável da sua sociedade.</p>
   </div>
 );
 
@@ -71,9 +71,9 @@ export default function Invoices() {
     setBatchBusy(true);
     try {
       const { data } = await api.post("/documents/issue-batch", { doc_ids: selected });
-      toast.success(`${data.issued} facture(s) émise(s) · ${data.conformes} conforme(s) EN16931`);
+      toast.success(`${data.issued} facture(s) emitida(s) · ${data.conformes} conforme(s) EN16931`);
       setSelected([]); load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Émission groupée impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Emissão em lote impossível"); }
     finally { setBatchBusy(false); }
   };
 
@@ -117,7 +117,7 @@ export default function Invoices() {
       setFxReport({ ...data, number: doc.number });
       setFxOpen(true);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Validation Factur-X impossible");
+      toast.error(e?.response?.data?.detail || "Validation Factur-X impossível");
     } finally {
       setFxBusyId("");
     }
@@ -136,15 +136,15 @@ export default function Invoices() {
 
   const removeInvoice = async (inv) => {
     if (!(await confirm({
-      title: "Supprimer cette facture ?",
+      title: "Eliminar cette facture ?",
       description: `La facture ${inv.number || ""} sera définitivement supprimée.`,
-      confirmLabel: "Supprimer",
+      confirmLabel: "Eliminar",
     }))) return;
     try {
       await api.delete(`/documents/${inv.doc_id}`);
-      toast.success("Facture supprimée");
+      toast.success("Fatura eliminada");
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossível"); }
   };
 
   if (!isProBusiness) {
@@ -171,7 +171,7 @@ export default function Invoices() {
 
   const totalDue = invoices.filter(i => i.status !== "paid").reduce((s, i) => s + (i.totals?.ttc || 0) - (i.paid || 0), 0);
 
-  if (in_org && !can("factures")) return <NoAccess title="Factures non autorisées" />;
+  if (in_org && !can("factures")) return <NoAccess title="Faturas não autorizadas" />;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10" data-testid="invoices-page">
@@ -182,7 +182,7 @@ export default function Invoices() {
             onClick={() => nav("/situations")}>
             <TrendingUp className="h-4 w-4" /> Situations de travaux
           </Button>
-          <ImportDocumentsDialog triggerLabel="Importer des PDF" onImported={load} />
+          <ImportDocumentsDialog triggerLabel="Importar PDF" onImported={load} />
           <Dialog open={convOpen} onOpenChange={setConvOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="rounded-sm gap-2" data-testid="invoice-from-quote-btn">
@@ -223,10 +223,10 @@ export default function Invoices() {
         </div>
         <div className="min-w-0">
           <p className="font-display font-semibold flex items-center gap-2">
-            Facturation électronique (réseau PDP)
+            Faturação eletrónica (rede PDP)
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400">démo</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5">Recevez, acceptez ou refusez vos factures fournisseurs via une plateforme agréée.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Receba, aceite ou rejeite as faturas dos seus fornecedores através de uma plataforma autorizada.</p>
         </div>
         <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
           Ouvrir <ArrowRight className="h-4 w-4" />
@@ -251,12 +251,12 @@ export default function Invoices() {
         <div className="grid gap-3" data-testid="invoices-list">
           {selected.length > 0 && (
             <div className="surface rounded-sm p-3 flex flex-wrap items-center gap-3 border-primary/40 sticky top-16 z-10" data-testid="batch-bar">
-              <span className="text-sm font-semibold">{selected.length} sélectionnée(s)</span>
-              <span className="text-xs text-muted-foreground">Émission + contrôle de conformité Factur-X en lot</span>
+              <span className="text-sm font-semibold">{selected.length} selecionada(s)</span>
+              <span className="text-xs text-muted-foreground">Emissão + controlo de conformidade Factur-X em lote</span>
               <div className="ml-auto flex gap-2">
-                <Button size="sm" variant="ghost" className="rounded-sm" onClick={() => setSelected([])} data-testid="batch-clear">Annuler</Button>
+                <Button size="sm" variant="ghost" className="rounded-sm" onClick={() => setSelected([])} data-testid="batch-clear">Cancelar</Button>
                 <Button size="sm" className="rounded-sm gap-2" disabled={batchBusy} onClick={issueBatch} data-testid="batch-issue-btn">
-                  {batchBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />} Émettre la sélection
+                  {batchBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />} Emitir a seleção
                 </Button>
               </div>
             </div>
@@ -267,7 +267,7 @@ export default function Invoices() {
               className="surface rounded-sm p-4 flex flex-wrap items-center gap-4" data-testid={`invoice-row-${inv.doc_id}`}>
               {(inv.status === "draft" || !inv.number) && (
                 <input type="checkbox" checked={selected.includes(inv.doc_id)} onChange={() => toggleSel(inv.doc_id)}
-                  className="h-4 w-4 accent-primary cursor-pointer" data-testid={`invoice-select-${inv.doc_id}`} title="Sélectionner pour émission groupée" />
+                  className="h-4 w-4 accent-primary cursor-pointer" data-testid={`invoice-select-${inv.doc_id}`} title="Selecionar para emissão em lote" />
               )}
               <div className="min-w-0">
                 <p className="font-display font-semibold">{inv.number || t("crm.st_draft")} · {inv.title || t("crm.untitled")}</p>
@@ -303,7 +303,7 @@ export default function Invoices() {
                   {inv.facturx_validation && (
                     <span className={`h-2 w-2 rounded-full ${inv.facturx_validation.valid ? "bg-emerald-500" : "bg-red-500"}`} />
                   )}
-                  Valider
+                  Validar
                 </Button>
                 <Button size="sm" variant="ghost" className="rounded-sm h-8 w-8 p-0 text-muted-foreground hover:text-red-600" data-testid={`invoice-delete-${inv.doc_id}`}
                   onClick={() => removeInvoice(inv)}><Trash2 className="h-4 w-4" /></Button>
@@ -318,9 +318,9 @@ export default function Invoices() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {fxReport?.valid ? (
-                <><ShieldCheck className="h-5 w-5 text-emerald-500" /> Facture conforme</>
+                <><ShieldCheck className="h-5 w-5 text-emerald-500" /> Fatura conforme</>
               ) : (
-                <><ShieldAlert className="h-5 w-5 text-red-500" /> Non-conformités détectées</>
+                <><ShieldAlert className="h-5 w-5 text-red-500" /> Não conformidades detetadas</>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -328,17 +328,17 @@ export default function Invoices() {
             <div className="space-y-4 mt-1" data-testid="facturx-report-body">
               <div className={`rounded-sm p-4 border ${fxReport.valid ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"}`}>
                 <p className="text-sm">
-                  Facture <b>{fxReport.number || "—"}</b> · profil détecté{" "}
+                  Fatura <b>{fxReport.number || "—"}</b> · profil detetado{" "}
                   <b>{fxReport.profile || "inconnu"}</b>
                 </p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                  <span><b className="text-red-600 dark:text-red-400">{fxReport.error_count}</b> erreur(s)</span>
+                  <span><b className="text-red-600 dark:text-red-400">{fxReport.error_count}</b> erro(s)</span>
                   <span><b className="text-amber-600 dark:text-amber-400">{fxReport.warning_count}</b> avertissement(s)</span>
                 </div>
               </div>
               {fxReport.valid ? (
                 <p className="text-sm text-muted-foreground">
-                  Le fichier Factur-X respecte le socle XSD + Schematron EN16931. Diagnostic technique — ne vaut pas acceptation par une Plateforme Agréée.
+                  O ficheiro Factur-X respeita a base XSD + Schematron EN16931. Diagnóstico técnico — não vale como aceitação por uma Plataforma Autorizada.
                 </p>
               ) : (
                 <div className="max-h-[45vh] overflow-y-auto space-y-2" data-testid="facturx-issues">
@@ -353,7 +353,7 @@ export default function Invoices() {
                     </div>
                   ))}
                   {(!fxReport.issues || fxReport.issues.length === 0) && (
-                    <p className="text-sm text-muted-foreground">Aucun détail d'erreur fourni par le validateur.</p>
+                    <p className="text-sm text-muted-foreground">Nenhum detalhe de erro fornecido pelo validador.</p>
                   )}
                 </div>
               )}

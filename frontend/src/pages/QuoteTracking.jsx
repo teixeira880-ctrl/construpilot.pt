@@ -53,22 +53,22 @@ export default function QuoteTracking() {
 
   const QUOTE_STATUS = {
     draft: { label: "Rascunho", cls: "border-border text-muted-foreground" },
-    sent: { label: "Envoyé", cls: "border-sky-500/60 text-sky-600" },
+    sent: { label: "Enviado", cls: "border-sky-500/60 text-sky-600" },
     signed: { label: "Signé", cls: "border-primary/60 text-primary bg-primary/5" },
-    refused: { label: "Refusé", cls: "border-red-500/60 text-red-600" },
+    refused: { label: "Recusado", cls: "border-red-500/60 text-red-600" },
   };
   const changeStatus = async (doc, status) => {
     try {
       await api.patch(`/documents/${doc.doc_id}/status`, { status });
       setQuotes((qs) => qs.map((x) => x.doc_id === doc.doc_id ? { ...x, status } : x));
-      toast.success(`Statut : ${QUOTE_STATUS[status]?.label || status}`);
+      toast.success(`Estado : ${QUOTE_STATUS[status]?.label || status}`);
     } catch { toast.error("Alteração de estado impossível"); }
   };
   const deleteQuote = async (doc) => {
     if (!(await confirm({
-      title: "Supprimer ce devis ?",
-      description: `Le devis ${doc.number || ""} sera définitivement supprimé.`,
-      confirmLabel: "Supprimer",
+      title: "Eliminar ce devis ?",
+      description: `O orçamento ${doc.number || ""} será eliminado definitivamente.`,
+      confirmLabel: "Eliminar",
     }))) return;
     try {
       await api.delete(`/documents/${doc.doc_id}`);
@@ -80,7 +80,7 @@ export default function QuoteTracking() {
     if (doc.status !== "signed") { toast.error("O orçamento tem de estar assinado antes de ser facturado"); return; }
     try {
       const { data } = await api.post(`/documents/${doc.doc_id}/to-invoice`, { mode: "total", pct: 100 });
-      toast.success("Facture créée ✅");
+      toast.success("Fatura créée ✅");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Facturação impossível"); }
   };
@@ -89,7 +89,7 @@ export default function QuoteTracking() {
     if (doc.status !== "signed") { toast.error("O orçamento tem de estar assinado para facturar um adiantamento"); return; }
     try {
       const { data } = await api.post(`/documents/${doc.doc_id}/deposit-invoice`, { pct: 30 });
-      toast.success("Facture d'acompte 30% créée — vérifiez et envoyez ✅");
+      toast.success("Fatura d'sinal 30% créée — verifique et envoyez ✅");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Facturação do adiantamento impossível"); }
   };
@@ -106,14 +106,14 @@ export default function QuoteTracking() {
   const makeSituation = async () => {
     try {
       const { data } = await api.post(`/documents/${billQuote.doc_id}/situation-invoice`, { pct: Number(sitPct), deduct_deposit_pct: Number(sitDeduct) });
-      toast.success("Facture de situation créée — vérifiez et envoyez ✅");
+      toast.success("Fatura de situation créée — verifique et envoyez ✅");
       setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Auto de medição impossível"); }
   };
   const makeBalance = async () => {
     try {
       const { data } = await api.post(`/documents/${billQuote.doc_id}/balance-invoice`);
-      toast.success("Facture de solde créée — vérifiez et envoyez ✅");
+      toast.success("Fatura de solde créée — verifique et envoyez ✅");
       setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Saldo final impossível"); }
   };
@@ -164,7 +164,7 @@ export default function QuoteTracking() {
       a.download = "construpilot-clientes-orcamentos.csv";
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export CSV téléchargé");
+      toast.success("Exportação CSV descarregada");
     } catch {
       toast.error("Exportação impossível");
     }
@@ -180,7 +180,7 @@ export default function QuoteTracking() {
       a.download = `recap-comptable-${recapY}-${String(recapM).padStart(2, "0")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Rapport PDF téléchargé");
+      toast.success("Relatório PDF descarregado");
     } catch {
       toast.error("Geração impossível");
     }
@@ -188,7 +188,7 @@ export default function QuoteTracking() {
 
   const copySignLink = async (send) => {
     const raw = window.prompt(
-      "Acompte demandé à la signature (% du TTC) — laissez 30 par défaut, ou 0 pour désactiver :",
+      "Sinal demandé à la signature (% du TTC) — laissez 30 par défaut, ou 0 pour désactiver :",
       "30");
     if (raw === null) return; // annulé
     const pct = Math.max(0, Math.min(100, parseFloat(raw) || 0));
@@ -201,8 +201,8 @@ export default function QuoteTracking() {
         : `${window.location.origin}${data.url}`;
       await navigator.clipboard.writeText(fullUrl);
       toast.success(pct > 0
-        ? `Lien copié — acompte ${pct}% à la signature`
-        : "Lien de signature copié (sans acompte)");
+        ? `Lien copiado — sinal ${pct}% à la signature`
+        : "Link de assinatura copiado (sem sinal)");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Geração impossível");
     }
@@ -212,9 +212,9 @@ export default function QuoteTracking() {
     try {
       await api.post(`/reviews/request/${send.log_id}`);
       setCompleted((prev) => new Set(prev).add(send.log_id));
-      toast.success("Chantier terminé — demande d'avis envoyée au client 🎉");
+      toast.success("Obra terminé — demande d'avis envoyée au client 🎉");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Action impossible");
+      toast.error(e?.response?.data?.detail || "Action impossível");
     }
   };
 
@@ -229,12 +229,12 @@ export default function QuoteTracking() {
       const { data } = await api.post(`/quotes/sends/${send.log_id}/to-invoice`,
         { vat_rate: Number(invoiceVat) });
       toast.success(data.already
-        ? "Facture déjà créée — ouverture de l'éditeur"
-        : `Facture ${data.number || ""} créée depuis le devis 🎉`);
+        ? "Fatura déjà créée — ouverture de l'editor"
+        : `Fatura ${data.number || ""} créée desde le devis 🎉`);
       setInvoiceSend(null);
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Conversion impossible");
+      toast.error(e?.response?.data?.detail || "Conversion impossível");
     } finally { setInvoicing(null); }
   };
 
@@ -274,7 +274,7 @@ export default function QuoteTracking() {
             <button onClick={() => retrySend(send)} disabled={retrying === send.log_id}
                     data-testid={`retry-send-${send.log_id}`}
                     className="text-[10px] px-2 py-0.5 rounded-sm border border-red-500/40 text-red-600 font-semibold">
-              {retrying === send.log_id ? "Envoi…" : "Réessayer"}
+              {retrying === send.log_id ? "Envoi…" : "Tentar novamente"}
             </button>
           </div>
         )}
@@ -282,7 +282,7 @@ export default function QuoteTracking() {
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-amber-500/15 text-amber-600" data-testid={`send-queued-${send.log_id}`}>Envoi en cours…</span>
         )}
         <p className="text-[10px] num text-muted-foreground">
-          Envoyé {daysSince(send.created_at)}
+          Enviado {daysSince(send.created_at)}
           {send.opened && send.opened_at && ` · ouvert ${daysSince(send.opened_at)}`}
           {send.signed && send.signed_at && ` · signé ${daysSince(send.signed_at)}`}
           {send.open_count > 1 && ` (${send.open_count} ouvertures)`}
@@ -307,7 +307,7 @@ export default function QuoteTracking() {
           <button onClick={() => navigate(`/devis-editeur/${send.invoice_doc_id}`)}
                   data-testid={`open-invoice-${send.log_id}`}
                   className="w-full inline-flex items-center justify-center gap-1 rounded-sm border border-primary/40 text-primary text-[11px] h-7 mt-1 hover:bg-primary hover:text-primary-foreground transition-colors">
-            <Receipt className="h-3 w-3" /> Voir la facture
+            <Receipt className="h-3 w-3" /> Ver la facture
           </button>
         ) : (
           <Button size="sm" variant="outline"
@@ -331,7 +331,7 @@ export default function QuoteTracking() {
                     className="w-full rounded-sm gap-1 text-[11px] h-7 mt-1 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
                     onClick={() => markCompleted(send)}
                     data-testid={`worksite-complete-${send.log_id}`}>
-              <CheckCircle2 className="h-3 w-3" /> Chantier terminé → demander un avis
+              <CheckCircle2 className="h-3 w-3" /> Obra terminé → demander un avis
             </Button>
           )
         )}
@@ -342,16 +342,16 @@ export default function QuoteTracking() {
   return (
     <div className="grid gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle over="Suivi Devis" title="Où en sont vos devis envoyés ?">
+        <SectionTitle over="Suivi Orçamento" title="Où en sont vos devis envoyés ?">
           Toutes les propositions envoyées à vos clients, organisées par état d'avancement.
           Relancez au bon moment grâce au suivi d'ouverture et de signature.
         </SectionTitle>
         <Link to="/devis-editeur">
           <Button className="rounded-sm gap-2" data-testid="create-quote-btn">
-            <FileText className="h-4 w-4" /> Créer un devis
+            <FileText className="h-4 w-4" /> Criar un devis
           </Button>
         </Link>
-        <ImportDocumentsDialog triggerLabel="Importer des PDF" onImported={load} />
+        <ImportDocumentsDialog triggerLabel="Importar PDF" onImported={load} />
         <label className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-sm px-3 py-2"
                data-testid="auto-remind-toggle" title="Relance automatique par e-mail des devis envoyés non signés">
           <Switch checked={autoRemind} onCheckedChange={toggleAutoRemind} data-testid="auto-remind-switch" />
@@ -378,15 +378,15 @@ export default function QuoteTracking() {
       {/* Chiffre d'affaires mensuel */}
       <RevenueChart />
 
-      {/* Devis enregistrés (brouillons, non encore envoyés) */}
+      {/* Orçamento enregistrés (brouillons, non encore envoyés) */}
       <div className="surface p-5" data-testid="saved-drafts-section">
         <div className="flex items-center justify-between mb-3">
-          <p className="overline">Devis enregistrés</p>
+          <p className="overline">Orçamento enregistrés</p>
           <span className="text-xs text-muted-foreground num">{quotes.length}</span>
         </div>
         {quotes.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Aucun devis enregistré. Vos devis apparaîtront ici après « Enregistrer ».
+            Nenhum devis enregistré. Vos devis apparaîtront ici après « Guardar ».
           </p>
         ) : (
           <div className="grid gap-2">
@@ -398,7 +398,7 @@ export default function QuoteTracking() {
                   <button onClick={() => navigate(`/devis-editeur/${d.doc_id}`)}
                           className="min-w-0 text-left flex-1" data-testid={`quote-open-${d.doc_id}`}>
                     <p className="text-sm font-semibold truncate">
-                      {d.number || "Brouillon"}{d.client_name ? ` · ${d.client_name}` : ""}
+                      {d.number || "Rascunho"}{d.client_name ? ` · ${d.client_name}` : ""}
                     </p>
                     <p className="text-[11px] text-muted-foreground">{(d.created_at || "").slice(0, 10)}</p>
                   </button>
@@ -410,10 +410,10 @@ export default function QuoteTracking() {
                   <select value={d.status || "draft"} onChange={(e) => changeStatus(d, e.target.value)}
                           data-testid={`quote-status-select-${d.doc_id}`}
                           className="rounded-sm border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary shrink-0">
-                    <option value="draft">Brouillon</option>
-                    <option value="sent">Envoyé</option>
+                    <option value="draft">Rascunho</option>
+                    <option value="sent">Enviado</option>
                     <option value="signed">Signé</option>
-                    <option value="refused">Refusé</option>
+                    <option value="refused">Recusado</option>
                   </select>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => facturer(d)}
@@ -423,9 +423,9 @@ export default function QuoteTracking() {
                   </Button>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => facturerAcompte(d)}
-                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Facture d'acompte 30%"}
+                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Fatura d'sinal 30%"}
                           data-testid={`quote-deposit-${d.doc_id}`}>
-                    <Receipt className="h-3.5 w-3.5" /> Acompte 30%
+                    <Receipt className="h-3.5 w-3.5" /> Sinal 30%
                   </Button>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => openBilling(d)}
@@ -488,12 +488,12 @@ export default function QuoteTracking() {
         <div>
           <p className="overline">Export comptable</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Rapport mensuel PDF prêt à envoyer à votre comptable, ou export CSV brut.
+            Relatório mensuel PDF pronto à envoyer à votre comptable, ou export CSV brut.
           </p>
         </div>
         <div className="flex items-end gap-2 ml-auto flex-wrap">
           <div className="flex flex-col">
-            <label className="text-[10px] text-muted-foreground mb-1">Mois</label>
+            <label className="text-[10px] text-muted-foreground mb-1">Mês</label>
             <select value={recapM} onChange={(e) => setRecapM(Number(e.target.value))}
                     data-testid="recap-month-select"
                     className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary">
@@ -503,7 +503,7 @@ export default function QuoteTracking() {
             </select>
           </div>
           <div className="flex flex-col">
-            <label className="text-[10px] text-muted-foreground mb-1">Année</label>
+            <label className="text-[10px] text-muted-foreground mb-1">Ano</label>
             <select value={recapY} onChange={(e) => setRecapY(Number(e.target.value))}
                     data-testid="recap-year-select"
                     className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary">
@@ -514,7 +514,7 @@ export default function QuoteTracking() {
           </div>
           <Button onClick={exportRecapPdf} className="rounded-sm gap-2"
                   data-testid="export-recap-pdf-btn">
-            <FileDown className="h-4 w-4" /> Rapport PDF comptable
+            <FileDown className="h-4 w-4" /> Relatório PDF comptable
           </Button>
           <Button variant="outline" onClick={exportCsv} className="rounded-sm gap-2"
                   data-testid="export-csv-btn">
@@ -537,9 +537,9 @@ export default function QuoteTracking() {
       {sends.length === 0 ? (
         <div className="surface p-10 text-center space-y-3">
           <Mail className="h-10 w-10 mx-auto text-muted-foreground" />
-          <p className="font-display font-bold">Aucun devis envoyé pour l'instant</p>
+          <p className="font-display font-bold">Nenhum devis envoyé pour l'instant</p>
           <p className="text-sm text-muted-foreground">
-            Ouvrez un plan métré, cliquez sur <b>Devis PDF → Envoyer au client</b>,
+            Ouvrez un plan medição, cliquez sur <b>Orçamento PDF → Enviar au client</b>,
             et suivez tout ici en temps réel.
           </p>
         </div>
@@ -572,7 +572,7 @@ export default function QuoteTracking() {
             </div>
             {opened.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Aucun devis lu sans signature.
+                Nenhum devis lu sans signature.
               </p>
             )}
             {opened.map(s => <Card key={s.log_id} send={s}
@@ -590,7 +590,7 @@ export default function QuoteTracking() {
             </div>
             {signed.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Aucune signature pour l'instant.
+                Nenhuma signature pour l'instant.
               </p>
             )}
             {signed.map(s => <Card key={s.log_id} send={s} showComplete
@@ -611,7 +611,7 @@ export default function QuoteTracking() {
           <div className="grid gap-2">
             <label className="text-xs text-muted-foreground">Taux de TVA</label>
             <div className="grid grid-cols-3 gap-2">
-              {[["5.5", "5,5 % — 1ère nécessité"], ["10", "10 % — Rénovation"], ["20", "20 % — Neuf"]].map(([v, lbl]) => (
+              {[["5.5", "5,5 % — 1ère nécessité"], ["10", "10 % — Reabilitação"], ["20", "20 % — Neuf"]].map(([v, lbl]) => (
                 <button key={v} onClick={() => setInvoiceVat(v)}
                   data-testid={`vat-opt-${v}`}
                   className={`rounded-sm border px-2 py-3 text-center transition-colors ${
@@ -625,10 +625,10 @@ export default function QuoteTracking() {
           </div>
           <DialogFooter>
             <Button variant="ghost" className="rounded-sm" onClick={() => setInvoiceSend(null)}
-                    data-testid="invoice-vat-cancel">Annuler</Button>
+                    data-testid="invoice-vat-cancel">Cancelar</Button>
             <Button className="rounded-sm gap-2" onClick={convertToInvoice}
                     disabled={!!invoicing} data-testid="invoice-vat-confirm">
-              <Receipt className="h-4 w-4" /> Créer la facture
+              <Receipt className="h-4 w-4" /> Criar la facture
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -643,7 +643,7 @@ export default function QuoteTracking() {
           {recap ? (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="surface p-2 rounded-sm"><p className="num font-bold">{eur(recap.quote.ttc)}</p><p className="text-[11px] text-muted-foreground">Devis TTC</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold">{eur(recap.quote.ttc)}</p><p className="text-[11px] text-muted-foreground">Orçamento TTC</p></div>
                 <div className="surface p-2 rounded-sm"><p className="num font-bold text-emerald-500">{eur(recap.billed_ttc)}</p><p className="text-[11px] text-muted-foreground">Déjà facturé</p></div>
                 <div className="surface p-2 rounded-sm"><p className="num font-bold text-primary">{eur(recap.remaining_ttc)}</p><p className="text-[11px] text-muted-foreground">Reste à facturer</p></div>
               </div>
@@ -652,26 +652,26 @@ export default function QuoteTracking() {
                 <div className="border border-border rounded-sm divide-y divide-border max-h-32 overflow-auto" data-testid="billing-recap-list">
                   {recap.invoices.map((i) => (
                     <div key={i.doc_id} className="flex justify-between px-3 py-1.5 text-xs">
-                      <span>{i.number || "—"} · {{ deposit: "Acompte", situation: "Situation", balance: "Solde" }[i.source] || "Facture"}</span>
+                      <span>{i.number || "—"} · {{ deposit: "Sinal", situation: "Situation", balance: "Solde" }[i.source] || "Fatura"}</span>
                       <span className="num">{eur(i.ttc)}</span>
                     </div>
                   ))}
                 </div>
               )}
               <div className="rounded-sm border border-border p-3 space-y-2">
-                <p className="font-semibold text-xs uppercase tracking-wide">Nouvelle facture de situation</p>
+                <p className="font-semibold text-xs uppercase tracking-wide">Nova facture de situation</p>
                 <div className="flex items-end gap-3">
                   <label className="flex-1 text-xs">Avancement %
                     <input type="number" min="1" max="100" value={sitPct} onChange={(e) => setSitPct(e.target.value)}
                            className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-pct" />
                   </label>
-                  <label className="flex-1 text-xs">Déduction acompte %
+                  <label className="flex-1 text-xs">Déduction sinal %
                     <input type="number" min="0" max="100" value={sitDeduct} onChange={(e) => setSitDeduct(e.target.value)}
                            className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-deduct" />
                   </label>
-                  <Button size="sm" className="h-9" onClick={makeSituation} data-testid="billing-make-situation">Créer situation</Button>
+                  <Button size="sm" className="h-9" onClick={makeSituation} data-testid="billing-make-situation">Criar situation</Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">0% = facture normale sans déduction d'acompte.</p>
+                <p className="text-[11px] text-muted-foreground">0% = facture normale sans déduction d'sinal.</p>
               </div>
             </div>
           ) : <p className="text-sm text-muted-foreground py-6 text-center">Chargement du décompte…</p>}

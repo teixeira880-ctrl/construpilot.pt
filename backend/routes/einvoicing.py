@@ -398,7 +398,7 @@ def _monthly_report_html(name: str, label: str, s: dict) -> str:
     <div style="font-size:24px;font-weight:800"><span style="color:#FF5A00">Constru</span>Pilot</div>
   </div>
   <h2 style="margin:0 0 4px">Résumé fournisseurs — {label}</h2>
-  <p style="color:#64748B;margin:0 0 18px">Bonjour {name}, voici votre bilan des factures fournisseurs rapprochées.</p>
+  <p style="color:#64748B;margin:0 0 18px">Olá {name}, voici votre bilan des factures fournisseurs rapprochées.</p>
   <div style="display:flex;gap:12px;margin-bottom:18px">
     <div style="flex:1;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px">
       <div style="font-size:22px;font-weight:800;color:#B91C1C">+{_eur(s['overspend_total'])}</div>

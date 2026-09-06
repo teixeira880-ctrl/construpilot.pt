@@ -1,5 +1,15 @@
 # ConstruPilot — PRD
 
+
+> **Session 06/09/2026 — Wave C3 de localização FR→PT-PT** [testado (backend 100% / frontend 93%→100% após fixes)]:
+> - **Frontend (~1300 substituições)** aplicadas via 3 passagens de glossário Python + fixes manuais em: `Entreprise.jsx`, `Admin.jsx`, `EInvoicing.jsx`, `RenderStudio.jsx`, `PcSignPage.jsx`, `PlanTakeoff.jsx` (~500 subs), `QuoteEditor.jsx`, `Invoices.jsx`, `Situations.jsx`, `DataManagementPanel.jsx`, `PcSettingsDialog.jsx`, `SiteTracking.jsx`, `QuoteTracking.jsx`, `Comparatif.jsx`, `Features.jsx`, `QuoteScanner.jsx`, `TechAnalysis.jsx`, `ObjectPanel.jsx`, `Nav.jsx`, `MailboxDialog.jsx`, `BrandingDialog.jsx`. Hero de `/plan`, tabs do `/admin`, badges do `/entreprise`, cards de `/funcionalidades`, todos PT-PT.
+> - **Backend (37 substituições)**: substituído `"Bonjour"` por `"Olá"` em 13 ficheiros (`engines/retention.py`, `pro_receipt.py`, `ai.py`, `alerting.py`, `routes/appro.py`, `einvoicing.py`, `reviews.py`, `site.py`, `situations.py`, `hr.py`, `admin.py`, `plans_export.py`, `estimation_routes.py`). Preservadas as strings FR em `email_i18n.py` (secção `fr` correta).
+> - **Backend `engines/diy.py` traduzido via LLM (GPT-4o)** com glossário técnico rigoroso de construção PT-PT (Pladur, betão, betonilha, azulejos, casa de banho, sótão, tabique, viga, sapata, etc.). Preservados os `key`/`lot` internos.
+> - **Backend `ROLE_LABELS`** (`routes/company.py`) traduzido: Proprietário/Administrador/Chefe de obra/Contabilista/Membro/Trabalhador. Nomes dos admins seeded atualizados para "Administrador" (+ 3 users existentes migrados na DB).
+> - **Rotas SPA — 18 aliases PT-PT** adicionados em `App.js`: `/planta`, `/plans`, `/faturas`, `/invoices`, `/faturacao-eletronica`, `/e-invoicing`, `/situacoes`, `/empresa`, `/render-ia`, `/render-studio`, `/features`, `/conta`, `/orcamentos`, `/orcamento-editor(/:docId)`, `/equipa`, `/biblioteca`, `/obra`. Todas funcionais (200).
+> - **Scripts persistidos** em `/app/scripts/translate_fr_pt.py`, `translate_fr_pt_v2.py`, `translate_fr_pt_v3.py`, `translate_diy.py` para futuras waves.
+> - **Yarn build OK** (compiled with warnings apenas). Backend arranca limpo. Testing agent iterations 7 e 8 aprovadas.
+
 > **Rebranding 12/02/2026** : l'app était initialement nommée « CMRENOV Travaux AI ». Elle est renommée **ConstruPilot** — tagline : *Estimez. Comparez. Construisez.*
 
 > **État prod 16/06/2026** : incidents production résolus — (1) connexion impossible = domaine `www`

@@ -53,8 +53,8 @@ export default function SiteTracking() {
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="site-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Suivi de chantier</h1>
-        <p className="text-muted-foreground mt-3">Comptes-rendus, réserves et checklists d'avancement — réservé au <b>pack Business</b>.</p>
-        <Button className="rounded-sm mt-6" onClick={() => navigate("/tarifs")} data-testid="site-upgrade-btn">Passer au pack Business</Button>
+        <p className="text-muted-foreground mt-3">Contas-renders, réserves et checklists d'avancement — réservé au <b>pack Empresa</b>.</p>
+        <Button className="rounded-sm mt-6" onClick={() => navigate("/tarifs")} data-testid="site-upgrade-btn">Passer au pack Empresa</Button>
       </div>
     );
   }
@@ -64,15 +64,15 @@ export default function SiteTracking() {
   const addReport = async () => {
     if (!need()) return;
     await api.post("/site/reports", { project, title: rep.title, notes: rep.notes, photos: repPhotos });
-    setRep({ title: "", notes: "" }); setRepPhotos([]); toast.success("Compte-rendu ajouté"); load();
+    setRep({ title: "", notes: "" }); setRepPhotos([]); toast.success("Conta-rendu ajouté"); load();
   };
   const addReserve = async () => {
-    if (!need() || !res.description.trim()) return toast.error("Description requise");
+    if (!need() || !res.description.trim()) return toast.error("Descrição obrigatória");
     await api.post("/site/reserves", { project, ...res, photos: resPhotos });
     setRes({ lot: "", description: "", company: "", company_email: "" }); setResPhotos([]); toast.success("Réserve créée"); load();
   };
   const addCk = async () => {
-    if (!need() || !ck.label.trim()) return toast.error("Libellé requis");
+    if (!need() || !ck.label.trim()) return toast.error("Libellé obrigatório");
     await api.post("/site/checklist", { project, ...ck });
     setCk({ lot: "", label: "" }); toast.success("Point ajouté"); load();
   };
@@ -85,7 +85,7 @@ export default function SiteTracking() {
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
       const a = document.createElement("a"); a.href = url; a.download = `chantier-${project}.pdf`;
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    } catch { toast.error("Export impossible"); } finally { setBusy(false); }
+    } catch { toast.error("Export impossível"); } finally { setBusy(false); }
   };
   const remind = async () => {
     if (!need()) return;
@@ -93,8 +93,8 @@ export default function SiteTracking() {
     try {
       const { data } = await api.post(`/site/reserves/remind?project=${encodeURIComponent(project)}`);
       if (data.emails_sent) toast.success(`${data.emails_sent} e-mail(s) envoyé(s) aux entreprises`);
-      else toast.info("Aucune entreprise avec e-mail sur les réserves en cours");
-    } catch { toast.error("Envoi impossible"); } finally { setBusy(false); }
+      else toast.info("Nenhuma entreprise avec e-mail sur les réserves en cours");
+    } catch { toast.error("Envoi impossível"); } finally { setBusy(false); }
   };
 
   const openCount = reserves.filter((r) => r.status !== "lifted").length;
@@ -106,7 +106,7 @@ export default function SiteTracking() {
       <SectionTitle overline="Pack Business" title="Suivi de chantier" />
       <div className="flex flex-wrap items-center gap-3">
         <HardHat className="h-4 w-4 text-primary" />
-        <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Nom du chantier (ex. Villa Dupont)"
+        <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Nom du chantier (ex. Moradia Dupont)"
           className="rounded-sm max-w-sm" data-testid="site-project" />
         <Button variant="outline" className="rounded-sm gap-2" disabled={busy} onClick={exportPdf} data-testid="site-pdf-btn">
           <FileDown className="h-4 w-4" /> Export PDF chantier
@@ -115,7 +115,7 @@ export default function SiteTracking() {
 
       <Tabs defaultValue="reports">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="reports" className="rounded-sm gap-2" data-testid="tab-reports"><ClipboardList className="h-4 w-4" /> Comptes-rendus ({reports.length})</TabsTrigger>
+          <TabsTrigger value="reports" className="rounded-sm gap-2" data-testid="tab-reports"><ClipboardList className="h-4 w-4" /> Contas-renders ({reports.length})</TabsTrigger>
           <TabsTrigger value="reserves" className="rounded-sm gap-2" data-testid="tab-reserves"><AlertTriangle className="h-4 w-4" /> Réserves ({openCount})</TabsTrigger>
           <TabsTrigger value="checklist" className="rounded-sm gap-2" data-testid="tab-checklist"><CheckCircle2 className="h-4 w-4" /> Avancement ({ckPct}%)</TabsTrigger>
         </TabsList>
@@ -126,12 +126,12 @@ export default function SiteTracking() {
             <Textarea value={rep.notes} onChange={(e) => setRep({ ...rep, notes: e.target.value })} placeholder="Observations, avancement, points bloquants…" rows={3} className="rounded-sm" data-testid="report-notes" />
             <div className="flex items-center gap-3 flex-wrap">
               <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-primary" data-testid="report-photo-label">
-                <Camera className="h-4 w-4" /> Ajouter des photos
+                <Camera className="h-4 w-4" /> Adicionar des photos
                 <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => readFiles(e.target.files, setRepPhotos)} data-testid="report-photo-input" />
               </label>
               {repPhotos.map((p, i) => <img key={i} src={p} alt="" className="h-12 w-12 object-cover rounded" />)}
             </div>
-            <Button onClick={addReport} className="rounded-sm gap-2 w-fit" data-testid="report-add"><Plus className="h-4 w-4" /> Ajouter le compte-rendu</Button>
+            <Button onClick={addReport} className="rounded-sm gap-2 w-fit" data-testid="report-add"><Plus className="h-4 w-4" /> Adicionar le compte-rendu</Button>
           </div>
           {reports.map((r) => (
             <div key={r.report_id} className="surface p-4 rounded-md flex justify-between gap-4" data-testid={`report-${r.report_id}`}>
@@ -146,14 +146,14 @@ export default function SiteTracking() {
         <TabsContent value="reserves" className="mt-5 space-y-4">
           <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-4 items-end">
             <Input value={res.lot} onChange={(e) => setRes({ ...res, lot: e.target.value })} placeholder="Lot (ex. Plomberie)" className="rounded-sm" data-testid="reserve-lot" />
-            <Input value={res.description} onChange={(e) => setRes({ ...res, description: e.target.value })} placeholder="Description de la réserve" className="rounded-sm md:col-span-2" data-testid="reserve-desc" />
-            <Input value={res.company} onChange={(e) => setRes({ ...res, company: e.target.value })} placeholder="Entreprise" className="rounded-sm" data-testid="reserve-company" />
+            <Input value={res.description} onChange={(e) => setRes({ ...res, description: e.target.value })} placeholder="Descrição de la réserve" className="rounded-sm md:col-span-2" data-testid="reserve-desc" />
+            <Input value={res.company} onChange={(e) => setRes({ ...res, company: e.target.value })} placeholder="Empresa" className="rounded-sm" data-testid="reserve-company" />
             <Input value={res.company_email} onChange={(e) => setRes({ ...res, company_email: e.target.value })} placeholder="E-mail entreprise (pour relance)" className="rounded-sm md:col-span-2" data-testid="reserve-email" />
             <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-primary">
               <Camera className="h-4 w-4" /> Photos {resPhotos.length > 0 && `(${resPhotos.length})`}
               <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => readFiles(e.target.files, setResPhotos)} data-testid="reserve-photo-input" />
             </label>
-            <Button onClick={addReserve} className="rounded-sm gap-2 w-fit" data-testid="reserve-add"><Plus className="h-4 w-4" /> Créer la réserve</Button>
+            <Button onClick={addReserve} className="rounded-sm gap-2 w-fit" data-testid="reserve-add"><Plus className="h-4 w-4" /> Criar la réserve</Button>
           </div>
           <div className="flex justify-end">
             <Button variant="outline" className="rounded-sm gap-2" disabled={busy} onClick={remind} data-testid="reserve-remind-btn">
@@ -173,7 +173,7 @@ export default function SiteTracking() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={r.status === "lifted" ? "secondary" : "default"}>{r.status === "lifted" ? "Levée" : "En cours"}</Badge>
+                <Badge variant={r.status === "lifted" ? "secondary" : "default"}>{r.status === "lifted" ? "Levée" : "Em curso"}</Badge>
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => api.delete(`/site/reserves/${r.reserve_id}`).then(load)} data-testid={`reserve-del-${r.reserve_id}`}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
@@ -188,7 +188,7 @@ export default function SiteTracking() {
           <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-3 items-end">
             <Input value={ck.lot} onChange={(e) => setCk({ ...ck, lot: e.target.value })} placeholder="Lot" className="rounded-sm" data-testid="ck-lot" />
             <Input value={ck.label} onChange={(e) => setCk({ ...ck, label: e.target.value })} placeholder="Point à contrôler" className="rounded-sm" data-testid="ck-label" />
-            <Button onClick={addCk} className="rounded-sm gap-2 w-fit" data-testid="ck-add"><Plus className="h-4 w-4" /> Ajouter</Button>
+            <Button onClick={addCk} className="rounded-sm gap-2 w-fit" data-testid="ck-add"><Plus className="h-4 w-4" /> Adicionar</Button>
           </div>
           {checklist.map((c) => (
             <div key={c.item_id} className="surface p-3 px-4 rounded-md flex items-center justify-between gap-3" data-testid={`ck-${c.item_id}`}>

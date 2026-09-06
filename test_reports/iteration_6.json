@@ -1,0 +1,38 @@
+{
+  "summary": "T1 (PT-PT default) largely PASSED — fresh localStorage on preview host yields html lang='pt', PT nav (Estimador, Calculadoras, Preços, Blogue, Descobrir), PT footer tokens (Estime/Compare/Construa, Investidores, Menções legais), no FR leaks; MarketToggle FR click persists in localStorage across reload and PT click restores. Backend regression: 18/18 pytest passing (test_c2_wave.py — admin PT/FR login, /me lang/country, /compute PT default, catalog PT, all SPA routes PT/FR/EN). GET /hero-pt.mp4 → 200 video/mp4 content-length=2138786. GET / → <html lang=\"pt-PT\">. T2 (hero video) has TWO defects: (a) Route '/' does NOT delegate to LandingPortugal for PT users — App.js line 146 always renders <Landing/>, so a PT default user never sees the pt-hero-video on '/'. Video only exists on '/portugal'. (b) Even on /portugal, the <video> renders but does NOT autoplay: DOM shows autoplay='' but muted attribute is null and video.paused=true, currentTime=0, box height collapses to 150px, area appears black/empty. This is React's known caveat: JSX `muted` boolean prop is not reliably reflected as HTML attribute, so browser blocks unmuted autoplay.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "LandingPortugal.jsx hero <video>", "issue": "Video does not autoplay — muted attribute not applied to DOM (React JSX `muted` prop caveat). Result: video.paused=true, currentTime=0, black frame visible. Fix: use `muted={true}` combined with a ref that sets videoRef.current.muted=true and .play() on mount, OR use dangerouslySetInnerHTML/plain <video muted>. Also add poster attribute to avoid blank frame while loading, and give the container a fixed aspect-ratio (currently collapses to 150px height).", "selector": "[data-testid=\"pt-hero-video\"]", "priority": "HIGH"},
+      {"component": "App.js routing", "issue": "Route path=\"/\" always renders <Landing/> regardless of detected lang. Spec says PT default user visiting / should automatically render <LandingPortugal/>. Fix: wrap root route with a small selector that returns <LandingPortugal/> when lang==='pt' (or add a redirect to /portugal for pt users). Currently pt-hero-video is unreachable from /.", "selector": "Route path=\"/\"", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/portugal hero", "issues": ["Video container has max-h-[520px] but no min-height / aspect-ratio → collapses to ~150px until metadata loads; renders black empty rectangle. Add aspectRatio 16/9 or a poster image."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_c2_wave.py", "/app/test_reports/pytest/pytest_iter6.xml"],
+  "action_items": [
+    "Fix <video> autoplay on LandingPortugal.jsx: replace JSX `muted` with ref-based imperative muted+play, or use static <video muted autoPlay loop playsInline preload=\"auto\" poster=\"...\">. Consider adding a poster (e.g. demo-plans-poster.jpg) so the hero is not blank while the mp4 loads.",
+    "Fix container: give <video> wrapper a defined aspect-ratio (e.g. aspect-video) so it does not collapse to 150px height.",
+    "Route '/' to LandingPortugal when detected lang==='pt' (or redirect /→/portugal for pt users) so new PT visitors actually see the pt-hero-video as specified in the T2 acceptance."
+  ],
+  "critical_code_review_comments": [
+    "I18nContext.detectLang correctly defaults to 'pt' (line 1502). Good.",
+    "index.html served with <html lang=\"pt-PT\"> as required.",
+    "hero-pt.mp4 file present at 2,138,786 bytes and served with content-type video/mp4 through the CDN.",
+    "Root route wiring does not match the T2 spec (\"visitar / — cai automaticamente em LandingPortugal\"). Either the spec must be relaxed to /portugal or App.js must be updated to render LandingPortugal for lang==='pt'.",
+    "React <video muted> attribute serialization pitfall — always set muted imperatively via ref for reliable autoplay across Chromium/Safari."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "70%"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020. (admin PT) — login returns 200 OK",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend regression suite (test_c2_wave.py) is green. T1 PT-PT default policy verified on preview host with cleared localStorage. Remaining T2 defects: root route not delegating to LandingPortugal for PT users, and <video> not autoplaying (muted prop not applied → paused, black frame). Once main agent fixes routing + muted-via-ref (and ideally adds a poster + aspect-ratio), re-run only the T2 checks on /portugal AND /.",
+  "rca_of_the_issue": "React JSX renders boolean HTML attribute `muted` inconsistently; when `<video muted autoPlay>` is rendered, some Chromium builds see no `muted` attribute in DOM → treat as unmuted → block autoplay per user-gesture policy. Confirmed here by DOM inspection (getAttribute('muted') === null while getAttribute('autoplay') === ''). Combined with the root-route not delegating to LandingPortugal, new PT users cannot see the demo video from /."
+}

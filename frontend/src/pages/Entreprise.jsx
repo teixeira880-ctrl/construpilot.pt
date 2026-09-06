@@ -27,12 +27,12 @@ import { usePermissions } from "@/context/PermissionContext";
 import { toast } from "sonner";
 
 const QUICK = [
-  { key: "devis", to: "/devis", label: "Devis & suivi", icon: FileText },
-  { key: "factures", to: "/factures", label: "Factures", icon: FileText },
-  { key: "situations", to: "/situations", label: "Situations de travaux", icon: Layers },
-  { key: "chantier", to: "/suivi-chantier", label: "Suivi de chantier", icon: ClipboardList },
-  { key: "rh", to: "/rh", label: "RH & Pointage", icon: HardHat },
-  { key: "catalogue", to: "/mon-catalogue", label: "Catalogue de prix", icon: Tag },
+  { key: "devis", to: "/devis", label: "Orçamentos & seguimento", icon: FileText },
+  { key: "factures", to: "/factures", label: "Faturas", icon: FileText },
+  { key: "situations", to: "/situations", label: "Situações de obra", icon: Layers },
+  { key: "chantier", to: "/suivi-chantier", label: "Seguimento de obra", icon: ClipboardList },
+  { key: "rh", to: "/rh", label: "RH & Registo de ponto", icon: HardHat },
+  { key: "catalogue", to: "/mon-catalogue", label: "Catálogo de preços", icon: Tag },
 ];
 
 const Kpi = ({ icon: Icon, label, value, accent }) => (
@@ -42,7 +42,7 @@ const Kpi = ({ icon: Icon, label, value, accent }) => (
   </div>
 );
 
-export default function Entreprise() {
+export default function Empresa() {
   const nav = useNavigate();
   const { user } = useAuth();
   const { tier, active: sub } = useBilling();
@@ -74,7 +74,7 @@ export default function Entreprise() {
       const url = URL.createObjectURL(new Blob([data], { type: "text/csv" }));
       const a = document.createElement("a"); a.href = url; a.download = "journal-activite.csv"; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Export impossible"); }
+    } catch { toast.error("Exportação impossível"); }
   };
   const exportJournalPdf = async () => {
     try {
@@ -83,41 +83,41 @@ export default function Entreprise() {
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
       const a = document.createElement("a"); a.href = url; a.download = "journal-activite.pdf"; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Export PDF impossible"); }
+    } catch { toast.error("Export PDF impossível"); }
   };
   useEffect(() => { if (isProBusiness) load(); /* eslint-disable-next-line */ }, [isProBusiness, isManager]);
 
   const createEmp = async () => {
-    if (!emp.name || !emp.email || emp.password.length < 6) return toast.error("Nom, e-mail et mot de passe (6+) requis");
+    if (!emp.name || !emp.email || emp.password.length < 6) return toast.error("Nom, e-mail et palavra-passe (6+) obrigatório");
     setBusy(true);
     try {
       await api.post("/company/employees", emp);
-      toast.success("Employé créé — mot de passe provisoire à communiquer");
+      toast.success("Colaborador criado — palavra-passe provisória a comunicar");
       setEmp({ name: "", email: "", password: "", role: "member" });
       setOpenEmp(false); load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Création impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
     finally { setBusy(false); }
   };
   const setRole = async (uid, r) => {
-    try { await api.put(`/company/members/${uid}`, { role: r }); toast.success("Rôle mis à jour"); load(); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
+    try { await api.put(`/company/members/${uid}`, { role: r }); toast.success("Função atualizada"); load(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
   const toggleActive = async (m) => {
-    try { await api.put(`/company/members/${m.user_id}`, { active: !m.active }); toast.success(m.active ? "Accès désactivé" : "Accès réactivé"); load(); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
+    try { await api.put(`/company/members/${m.user_id}`, { active: !m.active }); toast.success(m.active ? "Acesso desactivado" : "Acesso reactivado"); load(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
   const removeMember = async (uid) => {
-    try { await api.delete(`/company/members/${uid}`); toast.success("Employé retiré"); load(); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
+    try { await api.delete(`/company/members/${uid}`); toast.success("Colaborador removido"); load(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
 
   if (!isProBusiness) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="entreprise-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
-        <h1 className="font-display text-3xl font-bold">Espace Entreprise</h1>
-        <p className="text-muted-foreground mt-3">Pilotez toute votre entreprise, vos équipes et leurs accès — réservé au <b>pack Business</b>.</p>
-        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-upgrade-btn">Passer au pack Business <ArrowRight className="h-4 w-4" /></Button>
+        <h1 className="font-display text-3xl font-bold">Espaço Empresa</h1>
+        <p className="text-muted-foreground mt-3">Faça a gestão de toda a sua empresa, das suas equipas e dos seus acessos — reservado ao <b>pack Empresa</b>.</p>
+        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-upgrade-btn">Passer au pack Empresa <ArrowRight className="h-4 w-4" /></Button>
       </div>
     );
   }
@@ -128,12 +128,12 @@ export default function Entreprise() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8" data-testid="entreprise-page">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <SectionTitle over="Pack Business" title="Espace Entreprise">
-          Le tableau de bord central de votre société : activité, équipe, accès et modules métier.
+        <SectionTitle over="Pack Empresa" title="Espaço Empresa">
+          O painel central da sua empresa: atividade, equipa, acessos e módulos de negócio.
         </SectionTitle>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="rounded-sm gap-1"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> {role_label || "Propriétaire"}</Badge>
-          <ImportDocumentsDialog triggerLabel="Importer devis/factures PDF" onImported={load} />
+          <Badge variant="outline" className="rounded-sm gap-1"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> {role_label || "Proprietário"}</Badge>
+          <ImportDocumentsDialog triggerLabel="Importar orçamentos/faturas PDF" onImported={load} />
           <BrandingDialog />
           <MailboxDialog />
         </div>
@@ -141,14 +141,14 @@ export default function Entreprise() {
 
       {isManager && k && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="entreprise-kpis">
-          <Kpi icon={Wallet} label="CA facturé TTC" value={eur(k.ca_ttc)} accent />
-          <Kpi icon={TrendingUp} label="Encours à encaisser" value={eur(k.encours)} />
-          <Kpi icon={ShieldCheck} label="Factures conformes" value={`${k.invoices_conformes}/${k.invoices}`} />
+          <Kpi icon={Wallet} label="Faturação c/ IVA" value={eur(k.ca_ttc)} accent />
+          <Kpi icon={TrendingUp} label="Por receber" value={eur(k.encours)} />
+          <Kpi icon={ShieldCheck} label="Faturas conformes" value={`${k.invoices_conformes}/${k.invoices}`} />
           <Kpi icon={Layers} label="Situations" value={k.situations} />
-          <Kpi icon={FileText} label="Devis" value={k.quotes} />
-          <Kpi icon={ClipboardList} label="Chantiers" value={k.chantiers} />
-          <Kpi icon={XCircle} label="Réserves en cours" value={k.open_reserves} />
-          <Kpi icon={Users} label="Équipe" value={`${k.members} (${k.workers} ouvriers)`} />
+          <Kpi icon={FileText} label="Orçamento" value={k.quotes} />
+          <Kpi icon={ClipboardList} label="Obras" value={k.chantiers} />
+          <Kpi icon={XCircle} label="Reservas em curso" value={k.open_reserves} />
+          <Kpi icon={Users} label="Equipa" value={`${k.members} (${k.workers} trabalhadores)`} />
         </div>
       )}
 
@@ -169,21 +169,21 @@ export default function Entreprise() {
       {isManager && (
         <div data-testid="entreprise-team">
           <div className="flex items-center justify-between mb-3">
-            <p className="overline flex items-center gap-2"><Users className="h-4 w-4" /> Équipe & accès</p>
+            <p className="overline flex items-center gap-2"><Users className="h-4 w-4" /> Equipa & acessos</p>
             <Dialog open={openEmp} onOpenChange={setOpenEmp}>
               <DialogTrigger asChild>
-                <Button size="sm" className="rounded-sm gap-2" data-testid="add-employee-btn"><UserPlus className="h-4 w-4" /> Ajouter un employé</Button>
+                <Button size="sm" className="rounded-sm gap-2" data-testid="add-employee-btn"><UserPlus className="h-4 w-4" /> Adicionar colaborador</Button>
               </DialogTrigger>
               <DialogContent className="max-w-md" data-testid="employee-dialog">
-                <DialogHeader><DialogTitle>Nouvel employé</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>Novo colaborador</DialogTitle></DialogHeader>
                 <div className="grid gap-3 mt-1">
                   <div className="grid gap-1.5"><Label>Nom</Label>
                     <Input value={emp.name} onChange={(e) => setEmp({ ...emp, name: e.target.value })} className="rounded-sm" data-testid="emp-name" /></div>
                   <div className="grid gap-1.5"><Label>E-mail</Label>
                     <Input type="email" value={emp.email} onChange={(e) => setEmp({ ...emp, email: e.target.value })} className="rounded-sm" data-testid="emp-email" /></div>
-                  <div className="grid gap-1.5"><Label>Mot de passe provisoire</Label>
-                    <Input value={emp.password} onChange={(e) => setEmp({ ...emp, password: e.target.value })} className="rounded-sm" placeholder="6 caractères min." data-testid="emp-password" /></div>
-                  <div className="grid gap-1.5"><Label>Rôle</Label>
+                  <div className="grid gap-1.5"><Label>Palavra-passe provisoire</Label>
+                    <Input value={emp.password} onChange={(e) => setEmp({ ...emp, password: e.target.value })} className="rounded-sm" placeholder="6 caracteres mín." data-testid="emp-password" /></div>
+                  <div className="grid gap-1.5"><Label>Função</Label>
                     <Select value={emp.role} onValueChange={(v) => setEmp({ ...emp, role: v })}>
                       <SelectTrigger className="rounded-sm" data-testid="emp-role"><SelectValue /></SelectTrigger>
                       <SelectContent>{roles.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
@@ -191,7 +191,7 @@ export default function Entreprise() {
                   </div>
                 </div>
                 <DialogFooter className="mt-2">
-                  <Button onClick={createEmp} disabled={busy} className="rounded-sm gap-2" data-testid="emp-create-btn"><UserPlus className="h-4 w-4" /> Créer le compte</Button>
+                  <Button onClick={createEmp} disabled={busy} className="rounded-sm gap-2" data-testid="emp-create-btn"><UserPlus className="h-4 w-4" /> Criar a conta</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -208,7 +208,7 @@ export default function Entreprise() {
                   <p className="text-xs text-muted-foreground">{m.email}</p>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
-                  {!m.active && <Badge variant="outline" className="rounded-sm text-red-500 border-red-500/30">Désactivé</Badge>}
+                  {!m.active && <Badge variant="outline" className="rounded-sm text-red-500 border-red-500/30">Desativado</Badge>}
                   {m.role === "owner" || m.is_self ? (
                     <Badge className="rounded-sm">{m.role_label}</Badge>
                   ) : (
@@ -218,7 +218,7 @@ export default function Entreprise() {
                         <SelectContent>{roles.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                       </Select>
                       <Button size="sm" variant="outline" className="rounded-sm" onClick={() => toggleActive(m)} data-testid={`member-toggle-${m.user_id}`}>
-                        {m.active ? "Désactiver" : "Réactiver"}
+                        {m.active ? "Desativar" : "Reativar"}
                       </Button>
                       <Button size="icon" variant="ghost" className="h-9 w-9 text-red-500" onClick={() => removeMember(m.user_id)} data-testid={`member-remove-${m.user_id}`}><Trash2 className="h-4 w-4" /></Button>
                     </>
@@ -228,7 +228,7 @@ export default function Entreprise() {
             ))}
             {(!data?.members || data.members.length === 0) && (
               <div className="surface rounded-md p-8 text-center text-sm text-muted-foreground">
-                Aucun employé pour l'instant. Créez une organisation depuis <button className="text-primary underline" onClick={() => nav("/equipe")}>Équipe</button>, puis ajoutez vos employés.
+                Sem colaboradores. Crie uma organização em <button className="text-primary underline" onClick={() => nav("/equipe")}>Equipa</button>, depois adicione os seus colaboradores.
               </div>
             )}
           </div>
@@ -238,12 +238,12 @@ export default function Entreprise() {
       {isManager && activity.length >= 0 && (
         <div data-testid="entreprise-activity">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <p className="overline flex items-center gap-2"><History className="h-4 w-4" /> Activité récente</p>
+            <p className="overline flex items-center gap-2"><History className="h-4 w-4" /> Atividade recente</p>
             <div className="flex items-center gap-2">
               <Select value={actorFilter} onValueChange={onActorFilter}>
-                <SelectTrigger className="rounded-sm h-9 w-[180px]" data-testid="activity-filter"><SelectValue placeholder="Tous les employés" /></SelectTrigger>
+                <SelectTrigger className="rounded-sm h-9 w-[180px]" data-testid="activity-filter"><SelectValue placeholder="Todos os colaboradores" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous les employés</SelectItem>
+                  <SelectItem value="all">Todos os colaboradores</SelectItem>
                   {(data?.members || []).map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.name || m.email}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -252,7 +252,7 @@ export default function Entreprise() {
             </div>
           </div>
           <div className="surface rounded-md divide-y divide-border/60">
-            {activity.length === 0 && <p className="px-4 py-6 text-sm text-muted-foreground text-center">Aucune activité pour ce filtre.</p>}
+            {activity.length === 0 && <p className="px-4 py-6 text-sm text-muted-foreground text-center">Sem atividade para este filtro.</p>}
             {activity.slice(0, 30).map((a) => (
               <div key={a.log_id} className="flex items-center gap-3 px-4 py-3" data-testid={`activity-${a.log_id}`}>
                 <div className="h-8 w-8 rounded-full bg-primary/10 grid place-items-center shrink-0">
@@ -278,7 +278,7 @@ export default function Entreprise() {
           <p className="overline">Abonnement</p>
           <p className="font-display font-semibold mt-1 capitalize">{(tier || "free").replace("_", " ")}{typeof sub?.plan === "string" ? ` · ${sub.plan}` : ""}</p>
         </div>
-        <Button variant="outline" className="rounded-sm gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-manage-sub"><Wallet className="h-4 w-4" /> Gérer l'abonnement</Button>
+        <Button variant="outline" className="rounded-sm gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-manage-sub"><Wallet className="h-4 w-4" /> Gerir a subscrição</Button>
       </div>
     </div>
   );

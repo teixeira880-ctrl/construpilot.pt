@@ -95,7 +95,7 @@ export function BrandingDialog({ trigger }) {
         bank_details: bankDetails,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
-      toast.success("Identité pro enregistrée");
+      toast.success("Identidade profissional guardada");
       setOpen(false);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Sauvegarde impossible");
@@ -109,13 +109,13 @@ export function BrandingDialog({ trigger }) {
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" data-testid="branding-open-btn" className="rounded-sm gap-2">
-            <Building2 className="h-4 w-4" /> Identité pro
+            <Building2 className="h-4 w-4" /> Identidade profissional
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="rounded-sm max-w-lg max-h-[88vh] overflow-y-auto" data-testid="branding-dialog">
         <DialogHeader>
-          <DialogTitle>Identité pro & certifications</DialogTitle>
+          <DialogTitle>Identidade profissional & certificações</DialogTitle>
           <DialogDescription>
             {source === "organization"
               ? <>Identité partagée avec l'équipe <b>{orgName}</b>. {canEdit

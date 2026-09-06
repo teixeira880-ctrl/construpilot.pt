@@ -95,7 +95,7 @@ async def check_ai_budget() -> None:
         if not email:
             return
         from engines.emailer import send_email
-        html = (f"<p>Bonjour,</p>"
+        html = (f"<p>Olá,</p>"
                 f"<p>Le nombre d'appels IA de ConstruPilot pour le mois <b>{month}</b> a atteint "
                 f"<b>{total}</b>, dépassant le seuil configuré de <b>{threshold}</b>.</p>"
                 f"<p>Vous pouvez ajuster ce seuil ou changer de modèle IA depuis "

@@ -31,7 +31,7 @@ async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
     frontend = os.environ.get("FRONTEND_URL", "")
     html = emailer.wrap_html(
         "Un matériau vient d'atteindre votre prix cible",
-        f"""<p>Bonjour {user.get("name") or ""},</p>
+        f"""<p>Olá {user.get("name") or ""},</p>
 <p>Le matériau que vous surveillez sur ConstruPilot est disponible à un prix intéressant :</p>
 <ul>
 <li><b>Produit</b> : {alert.get("product") or alert.get("query")}</li>

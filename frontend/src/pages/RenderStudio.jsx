@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { SEO } from "@/components/SEO";
 
 const RATIOS = [
-  { v: "1280:720", label: "Paysage 16:9" },
+  { v: "1280:720", label: "Paisagem 16:9" },
   { v: "720:1280", label: "Portrait 9:16" },
   { v: "960:960", label: "Carré 1:1" },
 ];
@@ -57,7 +57,7 @@ function ResultViewer({ render }) {
   return render.kind === "video" ? (
     <video src={url} controls className="w-full rounded-lg border border-border" data-testid="render-output-video" />
   ) : (
-    <img src={url} alt="Rendu après travaux" className="w-full rounded-lg border border-border" data-testid="render-output-image" />
+    <img src={url} alt="Render après travaux" className="w-full rounded-lg border border-border" data-testid="render-output-image" />
   );
 }
 
@@ -137,7 +137,7 @@ export default function RenderStudio() {
     try {
       const { data } = await api.get(`/projects/${pid}/photos`);
       setProjPhotos(data.photos || []);
-    } catch { toast.error("Photos indisponibles"); }
+    } catch { toast.error("Fotografias indisponíveis"); }
   };
 
   const onFile = (f) => {
@@ -159,8 +159,8 @@ export default function RenderStudio() {
         setCurrent(data);
         if (data.status !== "processing") {
           clearInterval(pollRef.current); setBusy(false); loadHistory(); loadQuota();
-          if (data.status === "done") toast.success("Rendu généré !");
-          else toast.error(data.error || "La génération a échoué");
+          if (data.status === "done") toast.success("Render gerado!");
+          else toast.error(data.error || "A geração falhou");
         }
       } catch { /* keep polling */ }
     }, 3000);
@@ -183,14 +183,14 @@ export default function RenderStudio() {
       setVariants((prev) => prev.map((v, i) => (updated[i] ? { ...updated[i], style: v.style } : v)));
       if (updated.every((u) => u && u.status !== "processing")) {
         clearInterval(pollRef.current); setBusy(false); loadHistory(); loadQuota();
-        toast.success("3 variantes prêtes !");
+        toast.success("3 variantes prontas!");
       }
     }, 3000);
   };
 
   const generateVariants = async () => {
-    if (!canGenerate) return toast.error(source === "upload" ? "Importez une photo" : "Choisissez une photo du projet");
-    if (quota && !quota.unlimited && quota.remaining < 3) return toast.error("Il faut au moins 3 rendus disponibles ce mois pour les 3 variantes");
+    if (!canGenerate) return toast.error(source === "upload" ? "Importe uma foto" : "Escolha uma foto do projeto");
+    if (quota && !quota.unlimited && quota.remaining < 3) return toast.error("São necessários pelo menos 3 renders disponíveis este mês para as 3 variantes");
     setBusy(true); setCurrent(null); setShareUrl(""); setVariants([]);
     try {
       const results = [];
@@ -203,16 +203,16 @@ export default function RenderStudio() {
         results.push({ ...data, style: st.label });
       }
       setVariants(results);
-      toast.info("3 variantes en génération…");
+      toast.info("3 variantes en geração…");
       pollVariants(results.map((r) => r.render_id));
     } catch (e) {
       setBusy(false);
-      toast.error(e?.response?.data?.detail || "Erreur lors du lancement");
+      toast.error(e?.response?.data?.detail || "Erro ao iniciar");
     }
   };
 
   const generate = async () => {
-    if (!canGenerate) return toast.error(source === "upload" ? "Importez une photo" : "Choisissez une photo du projet");
+    if (!canGenerate) return toast.error(source === "upload" ? "Importe uma foto" : "Escolha uma foto do projeto");
     if (quota && !quota.unlimited && quota.remaining <= 0) return toast.error("Quota mensuel atteint");
     setBusy(true); setCurrent(null); setShareUrl(""); setVariants([]);
     try {
@@ -225,11 +225,11 @@ export default function RenderStudio() {
       fd.append("duration", String(duration));
       const { data } = await api.post("/runway/generate", fd, { headers: { "Content-Type": "multipart/form-data" } });
       setCurrent(data);
-      toast.info(kind === "video" ? "Génération vidéo lancée (1 à 3 min)…" : "Génération en cours…");
+      toast.info(kind === "video" ? "Geração vidéo lancée (1 à 3 min)…" : "Geração en cours…");
       poll(data.render_id);
     } catch (e) {
       setBusy(false);
-      toast.error(e?.response?.data?.detail || "Erreur lors du lancement");
+      toast.error(e?.response?.data?.detail || "Erro ao iniciar");
     }
   };
 
@@ -240,42 +240,42 @@ export default function RenderStudio() {
       const a = document.createElement("a");
       a.href = url; a.download = `rendu-${current.render_id}.${current.kind === "video" ? "mp4" : "jpg"}`; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Téléchargement impossible"); }
+    } catch { toast.error("Descarga impossível"); }
   };
 
   const share = async (id) => {
     try {
       const { data } = await api.post(`/runway/renders/${id}/share`);
       setShareUrl(data.share_url);
-      try { await navigator.clipboard.writeText(data.share_url); setCopied(true); setTimeout(() => setCopied(false), 2000); toast.success("Lien copié — prêt à envoyer au client"); }
+      try { await navigator.clipboard.writeText(data.share_url); setCopied(true); setTimeout(() => setCopied(false), 2000); toast.success("Link copiado — pronto para enviar ao cliente"); }
       catch { toast.success("Lien de partage créé"); }
       loadHistory();
-    } catch { toast.error("Partage impossible"); }
+    } catch { toast.error("Partage impossível"); }
   };
 
   const copyLink = async () => {
-    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); toast.success("Lien copié"); } catch { /* */ }
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); toast.success("Lien copiado"); } catch { /* */ }
   };
 
   const remove = async (id) => {
     try { await api.delete(`/runway/renders/${id}`); loadHistory(); loadQuota(); if (current?.render_id === id) setCurrent(null); }
-    catch { toast.error("Suppression impossible"); }
+    catch { toast.error("Suppression impossível"); }
   };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8" data-testid="render-studio-page">
-      <SEO title="Rendu IA avant/après — ConstruPilot" description="Générez une photo ou vidéo du chantier après rénovation grâce à l'IA." />
+      <SEO title="Render IA avant/après — ConstruPilot" description="Gere uma foto ou vídeo da obra após reabilitação através da IA." />
 
       <div className="flex items-center gap-3 mb-2">
         <span className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10"><Wand2 className="h-5 w-5 text-primary" /></span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rendu IA — Avant / Après</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Render IA — Avant / Après</h1>
           <p className="text-sm text-muted-foreground">Transformez une photo du chantier actuel en rendu « après travaux » (image ou vidéo).</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {quota && (
             <Badge variant="secondary" data-testid="render-quota-badge">
-              {quota.unlimited ? "Rendus illimités" : `${quota.used}/${quota.limit} ce mois`}
+              {quota.unlimited ? "Renders illimités" : `${quota.used}/${quota.limit} ce mois`}
             </Badge>
           )}
           <Badge variant="outline" className="hidden sm:inline-flex">Pro / Business</Badge>
@@ -291,7 +291,7 @@ export default function RenderStudio() {
               <Upload className="h-4 w-4 mr-1.5" /> Importer
             </Button>
             <Button variant={source === "project" ? "default" : "outline"} onClick={() => setSource("project")} className="flex-1" data-testid="render-source-project">
-              <FolderOpen className="h-4 w-4 mr-1.5" /> Depuis un projet
+              <FolderOpen className="h-4 w-4 mr-1.5" /> Desde un projet
             </Button>
           </div>
 
@@ -306,7 +306,7 @@ export default function RenderStudio() {
               {preview ? <img src={preview} alt="chantier actuel" className="w-full rounded-lg max-h-72 object-contain" /> : (
                 <div className="py-12 text-center text-muted-foreground">
                   <Upload className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-sm font-medium">Importez une photo du chantier</p>
+                  <p className="text-sm font-medium">Importe uma foto du chantier</p>
                   <p className="text-xs">JPEG, PNG, WEBP · glissez-déposez ou cliquez</p>
                 </div>
               )}
@@ -315,11 +315,11 @@ export default function RenderStudio() {
             <div className="rounded-xl border border-border bg-card p-4 space-y-3" data-testid="render-project-picker">
               <select value={selProject} onChange={(e) => pickProject(e.target.value)}
                       className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm" data-testid="render-project-select">
-                <option value="">— Choisir un projet —</option>
-                {projects.map((p) => <option key={p.project_id} value={p.project_id}>{p.name || "Projet sans nom"}</option>)}
+                <option value="">— Escolher un projet —</option>
+                {projects.map((p) => <option key={p.project_id} value={p.project_id}>{p.name || "Projeto sem nome"}</option>)}
               </select>
               {selProject && (projPhotos.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-4 text-center">Aucune photo dans ce projet. Ajoutez-en depuis le suivi de chantier.</p>
+                <p className="text-xs text-muted-foreground py-4 text-center">Nenhuma photo dans ce projet. Adicione-en desde le suivi de chantier.</p>
               ) : (
                 <div className="grid grid-cols-3 gap-2 max-h-72 overflow-auto" data-testid="render-project-photos">
                   {projPhotos.map((ph) => (
@@ -337,7 +337,7 @@ export default function RenderStudio() {
           <div>
             <label className="text-sm font-medium">Prompt (optionnel)</label>
             <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} maxLength={1000} rows={3}
-              placeholder="Ex : cuisine moderne terminée, sol en parquet clair, murs peints en blanc, plan de travail en quartz…"
+              placeholder="Ex : cuisine moderne terminée, sol en parquet clair, paredes peints en blanc, plan de travail en quartz…"
               className="mt-1" data-testid="render-prompt-input" />
           </div>
 
@@ -369,7 +369,7 @@ export default function RenderStudio() {
           </div>
 
           <Button onClick={generate} disabled={busy || !canGenerate} className="w-full" size="lg" data-testid="render-generate-btn">
-            {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Génération…</> : <><Sparkles className="h-4 w-4 mr-2" /> Générer le rendu</>}
+            {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Geração…</> : <><Sparkles className="h-4 w-4 mr-2" /> Gerar le rendu</>}
           </Button>
 
           {kind === "image" && (
@@ -411,15 +411,15 @@ export default function RenderStudio() {
                 {!current && <div className="h-56 grid place-items-center text-sm text-muted-foreground">Le rendu apparaîtra ici</div>}
                 {current?.status === "processing" && (
                   <div className="h-56 grid place-items-center text-sm text-muted-foreground" data-testid="render-processing">
-                    <div className="text-center"><Loader2 className="h-7 w-7 mx-auto mb-2 animate-spin" /> Génération {current.kind === "video" ? "vidéo" : "image"} en cours…</div>
+                    <div className="text-center"><Loader2 className="h-7 w-7 mx-auto mb-2 animate-spin" /> Geração {current.kind === "video" ? "vidéo" : "image"} en cours…</div>
                   </div>
                 )}
-                {current?.status === "failed" && <div className="h-56 grid place-items-center text-sm text-destructive" data-testid="render-failed">{current.error || "La génération a échoué"}</div>}
+                {current?.status === "failed" && <div className="h-56 grid place-items-center text-sm text-destructive" data-testid="render-failed">{current.error || "A geração falhou"}</div>}
                 {current?.status === "done" && (
                   <div className="space-y-3">
                     <ResultViewer render={current} />
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" onClick={downloadCurrent} data-testid="render-download-btn"><Download className="h-4 w-4 mr-2" /> Télécharger</Button>
+                      <Button variant="outline" onClick={downloadCurrent} data-testid="render-download-btn"><Download className="h-4 w-4 mr-2" /> Descarregar</Button>
                       <Button onClick={() => share(current.render_id)} data-testid="render-share-btn"><Share2 className="h-4 w-4 mr-2" /> Partager au client</Button>
                     </div>
                     {shareUrl && (
@@ -456,7 +456,7 @@ export default function RenderStudio() {
                 <HistoryThumb render={r} />
                 <div className="flex items-center justify-between">
                   <Badge variant={r.status === "done" ? "default" : r.status === "failed" ? "destructive" : "secondary"} className="text-[10px]">
-                    {r.kind === "video" ? "Vidéo" : "Photo"} · {r.status === "done" ? "Prêt" : r.status === "failed" ? "Échec" : "En cours"}
+                    {r.kind === "video" ? "Vidéo" : "Photo"} · {r.status === "done" ? "Pronto" : r.status === "failed" ? "Échec" : "Em curso"}
                   </Badge>
                   <div className="flex items-center gap-1">
                     {r.status === "done" && (

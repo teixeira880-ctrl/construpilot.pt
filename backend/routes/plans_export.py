@@ -480,7 +480,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
 
     from engines.emailer import wrap_company_html
     from routes.plans_common import deliver_email
-    hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
+    hello = f"Olá {body.client_name}," if body.client_name else "Olá,"
     intro_html = (f"<p>{body.intro}</p>" if body.intro
                    else "<p>Veuillez trouver ci-joint votre <b>devis estimatif</b>"
                         f" ({finish_label}) élaboré depuis votre plan.</p>")
@@ -688,7 +688,7 @@ async def _send_single_reminder(c: dict) -> None:
     branding = await _resolve_branding(c["user_id"]) or {}
     company = branding.get("company_name") or "ConstruPilot"
     company_email = branding.get("company_email")
-    hello = f"Bonjour {c['client_name']}," if c.get("client_name") else "Bonjour,"
+    hello = f"Olá {c['client_name']}," if c.get("client_name") else "Olá,"
     token = await _ensure_signature_token(c)
     sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{token}"
     portal_token = build_client_portal_token(c.get("client_email") or "")
@@ -1313,7 +1313,7 @@ def _build_pro_signature_email(pro_name: str, signer: str, ttc: float,
         f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
         f"<h1 style='margin:0;font-size:22px'>✍️ Devis signé</h1></div>"
         f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
-        f"<p>Bonjour {pro_name or ''},</p>"
+        f"<p>Olá {pro_name or ''},</p>"
         f"<p><strong>{signer}</strong> vient de signer votre devis{ttc_html}.</p>"
         f"<p>Client : <em>{client_email}</em><br/>"
         f"Date : {_now()[:10]}</p>"
@@ -1480,7 +1480,7 @@ async def _apply_quote_deposit(rec: dict) -> None:
                     f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
                     f"<h1 style='margin:0;font-size:22px'>💶 Acompte reçu</h1></div>"
                     f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
-                    f"<p>Bonjour {pro.get('name') or ''},</p>"
+                    f"<p>Olá {pro.get('name') or ''},</p>"
                     f"<p>Un acompte de <strong>{amount} €</strong> vient d'être réglé en ligne "
                     f"sur un devis signé.</p>"
                     f"<p style='margin-top:24px'><a href='https://construpilot.fr/devis' "

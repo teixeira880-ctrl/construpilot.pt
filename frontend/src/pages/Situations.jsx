@@ -116,7 +116,7 @@ export default function Situations() {
     try {
       const { data } = await api.put(`/situations/${marcheId}/prorata`, cfg);
       setProrata(data); toast.success("Conta rateada guardada");
-    } catch { toast.error("Erreur"); }
+    } catch { toast.error("Erro"); }
   };
   const addExpense = () => setProrata({ ...prorata, expenses: [...(prorata.expenses || []), { label: "", amount: 0 }] });
   const updExpense = (i, k, v) => {
@@ -128,15 +128,15 @@ export default function Situations() {
   const setReception = async (mid, date) => {
     if (!date) return;
     try { await api.post(`/situations/${mid}/reception`, { reception_date: date }); toast.success("Data de recepção guardada"); loadRetentions(); }
-    catch { toast.error("Erreur"); }
+    catch { toast.error("Erro"); }
   };
   const releaseRet = async (mid) => {
     try { await api.post(`/situations/retentions/${mid}/release`); toast.success("Retenue libérée"); loadRetentions(); }
-    catch { toast.error("Erreur"); }
+    catch { toast.error("Erro"); }
   };
   const remindRet = async (mid) => {
-    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Relance envoyée à ${data.to}` : "E-mail non envoyé (client sans e-mail ou service indispo)"); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
+    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Relance envoyée à ${data.to}` : "Email não enviado (cliente sem email ou serviço indisponível)"); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
 
   if (in_org && !can("situations")) return <NoAccess title="Autos de medição não autorizados" />;
@@ -145,14 +145,14 @@ export default function Situations() {
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="situations-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Facturation à l'avancement</h1>
-        <p className="text-muted-foreground mt-3">Situations de travaux, avancement cumulé, retenue de garantie et compte prorata — réservé au <b>pack Business</b>.</p>
-        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="situations-upgrade-btn">Passer au pack Business <ArrowRight className="h-4 w-4" /></Button>
+        <p className="text-muted-foreground mt-3">Situations de travaux, avancement cumulé, retenue de garantie et compte prorata — réservé au <b>pack Empresa</b>.</p>
+        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="situations-upgrade-btn">Passer au pack Empresa <ArrowRight className="h-4 w-4" /></Button>
       </div>
     );
   }
 
   const RetStatus = ({ s }) => {
-    const map = { released: ["Libérée", "text-muted-foreground border-border"], due: ["À libérer", "text-red-500 border-red-500/30"], pending: ["En cours", "text-amber-500 border-amber-500/30"], held: ["Détenue", "text-primary border-primary/30"] };
+    const map = { released: ["Libérée", "text-muted-foreground border-border"], due: ["À libérer", "text-red-500 border-red-500/30"], pending: ["Em curso", "text-amber-500 border-amber-500/30"], held: ["Détenue", "text-primary border-primary/30"] };
     const [l, c] = map[s] || map.held;
     return <Badge variant="outline" className={`rounded-sm ${c}`}>{l}</Badge>;
   };
@@ -164,13 +164,13 @@ export default function Situations() {
       </SectionTitle>
 
       <div className="grid gap-1.5 max-w-md">
-        <label className="text-xs text-muted-foreground">Marché de référence (devis ou facture)</label>
+        <label className="text-xs text-muted-foreground">Mercado de referência (devis ou facture)</label>
         <Select value={marcheId} onValueChange={loadMarche}>
-          <SelectTrigger className="rounded-sm" data-testid="situation-marche-select"><SelectValue placeholder="Choisir un marché…" /></SelectTrigger>
+          <SelectTrigger className="rounded-sm" data-testid="situation-marche-select"><SelectValue placeholder="Escolher um mercado…" /></SelectTrigger>
           <SelectContent>
             {marches.map((m) => (
               <SelectItem key={m.doc_id} value={m.doc_id} data-testid={`marche-opt-${m.doc_id}`}>
-                {(m.number || "Brouillon")} · {m.title || "Sans titre"} — {eur(m.total_ht)} HT
+                {(m.number || "Rascunho")} · {m.title || "Sem título"} — {eur(m.total_ht)} HT
               </SelectItem>
             ))}
           </SelectContent>
@@ -179,20 +179,20 @@ export default function Situations() {
 
       <Tabs defaultValue="situation" className="w-full">
         <TabsList className="rounded-sm flex-wrap h-auto" data-testid="situations-tabs">
-          <TabsTrigger value="situation" data-testid="tab-situation">Nouvelle situation</TabsTrigger>
+          <TabsTrigger value="situation" data-testid="tab-situation">Nova situation</TabsTrigger>
           <TabsTrigger value="avancement" data-testid="tab-avancement">Avancement</TabsTrigger>
-          <TabsTrigger value="prorata" data-testid="tab-prorata">Compte prorata</TabsTrigger>
+          <TabsTrigger value="prorata" data-testid="tab-prorata">Conta prorata</TabsTrigger>
           <TabsTrigger value="retenue" data-testid="tab-retenue">Retenue de garantie</TabsTrigger>
         </TabsList>
 
-        {/* ---------- Nouvelle situation ---------- */}
+        {/* ---------- Nova situation ---------- */}
         <TabsContent value="situation" className="space-y-4 mt-4">
           {!marcheId ? <Empty text="Escolha uma empreitada para criar um auto." /> : (
             <>
               <div className="surface rounded-md overflow-hidden" data-testid="situation-lines">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Poste</th><th className="p-3 text-right">Marché HT</th>
+                    <th className="p-3">Poste</th><th className="p-3 text-right">Mercado HT</th>
                     <th className="p-3 text-center">% préc.</th><th className="p-3 text-center">% cumulé</th>
                     <th className="p-3 text-right">Cette situation HT</th></tr></thead>
                   <tbody>
@@ -226,7 +226,7 @@ export default function Situations() {
                   <p className="num text-2xl font-extrabold text-primary" data-testid="situation-total-ht">{eur(totalHT)}</p>
                 </div>
                 <Button className="rounded-sm gap-2" disabled={busy || totalHT <= 0} onClick={submit} data-testid="situation-create-btn">
-                  <Plus className="h-4 w-4" /> Créer la situation n°{situations.length + 1}
+                  <Plus className="h-4 w-4" /> Criar la situation n°{situations.length + 1}
                 </Button>
               </div>
               {situations.length > 0 && (
@@ -242,7 +242,7 @@ export default function Situations() {
                       <div className="ml-auto flex gap-2">
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" onClick={() => downloadSituationPdf(s)} data-testid={`situation-pdf-${s.situation_id}`}><FileText className="h-4 w-4" /> Décompte PDF</Button>
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => downloadCertificate(s)} data-testid={`situation-cert-${s.situation_id}`}><ShieldCheck className="h-4 w-4" /> Certificat</Button>
-                        <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => nav(`/devis-editeur/${s.invoice_doc_id}`)} data-testid={`situation-open-${s.situation_id}`}><FileText className="h-4 w-4" /> Facture</Button>
+                        <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => nav(`/devis-editeur/${s.invoice_doc_id}`)} data-testid={`situation-open-${s.situation_id}`}><FileText className="h-4 w-4" /> Fatura</Button>
                         <Button size="sm" variant="ghost" className="rounded-sm text-red-500" onClick={() => del(s.situation_id)} data-testid={`situation-del-${s.situation_id}`}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
@@ -258,7 +258,7 @@ export default function Situations() {
           {!summary ? <Empty text="Escolha uma empreitada para ver o avanço." /> : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="avancement-kpis">
-                <Kpi label="Montant marché HT" value={eur(summary.totals.contract_ht)} />
+                <Kpi label="Montante marché HT" value={eur(summary.totals.contract_ht)} />
                 <Kpi label="Déjà facturé HT" value={eur(summary.totals.billed_ht)} accent />
                 <Kpi label="Restante a facturar" value={eur(summary.totals.remaining_ht)} />
                 <Kpi label="Caução retida" value={eur(summary.totals.retention_held)} />
@@ -271,12 +271,12 @@ export default function Situations() {
                 <div className="h-3 rounded-full bg-secondary overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(summary.totals.pct_global, 100)}%` }} data-testid="avancement-bar" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">{summary.totals.situations_count} situation(s) émise(s) · {eur(summary.totals.billed_ttc)} TTC facturés</p>
+                <p className="text-xs text-muted-foreground mt-2">{summary.totals.situations_count} situation(s) emitida(s) · {eur(summary.totals.billed_ttc)} TTC facturés</p>
               </div>
               <div className="surface rounded-md overflow-hidden" data-testid="avancement-lines">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Lot</th><th className="p-3 text-right">Marché HT</th>
+                    <th className="p-3">Lot</th><th className="p-3 text-right">Mercado HT</th>
                     <th className="p-3 text-center">Avancement</th><th className="p-3 text-right">Facturé HT</th>
                     <th className="p-3 text-right">Restant HT</th></tr></thead>
                   <tbody>
@@ -301,7 +301,7 @@ export default function Situations() {
           )}
         </TabsContent>
 
-        {/* ---------- Compte prorata ---------- */}
+        {/* ---------- Conta prorata ---------- */}
         <TabsContent value="prorata" className="space-y-4 mt-4">
           {!prorata ? <Empty text="Escolha uma empreitada para gerir a conta rateada." /> : (
             <>
@@ -317,12 +317,12 @@ export default function Situations() {
                   <p className="text-xs text-muted-foreground">Cagnotte prorata totale</p>
                   <p className="num text-2xl font-extrabold text-primary" data-testid="prorata-pot">{eur(prorata.pot)}</p>
                 </div>
-                <Button className="rounded-sm gap-2" onClick={() => saveProrata({ rate_pct: prorata.rate_pct, expenses: prorata.expenses })} data-testid="prorata-save"><CheckCircle2 className="h-4 w-4" /> Enregistrer</Button>
+                <Button className="rounded-sm gap-2" onClick={() => saveProrata({ rate_pct: prorata.rate_pct, expenses: prorata.expenses })} data-testid="prorata-save"><CheckCircle2 className="h-4 w-4" /> Guardar</Button>
               </div>
 
               <div className="surface rounded-md p-4 space-y-2" data-testid="prorata-expenses">
                 <div className="flex items-center justify-between"><p className="overline">Dépenses communes</p>
-                  <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={addExpense} data-testid="prorata-add-expense"><Plus className="h-4 w-4" /> Ajouter</Button></div>
+                  <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={addExpense} data-testid="prorata-add-expense"><Plus className="h-4 w-4" /> Adicionar</Button></div>
                 {(prorata.expenses || []).map((e, i) => (
                   <div key={i} className="flex items-center gap-2" data-testid={`prorata-exp-${i}`}>
                     <Input value={e.label} onChange={(ev) => updExpense(i, "label", ev.target.value)} placeholder="Ex. benne, nettoyage, gardiennage" className="rounded-sm h-9 flex-1" />
@@ -336,7 +336,7 @@ export default function Situations() {
               <div className="surface rounded-md overflow-hidden" data-testid="prorata-participants">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Lot</th><th className="p-3 text-right">Montant lot HT</th>
+                    <th className="p-3">Lot</th><th className="p-3 text-right">Montante lot HT</th>
                     <th className="p-3 text-center">Quote-part</th><th className="p-3 text-right">Contribution prorata</th></tr></thead>
                   <tbody>
                     {prorata.participants.map((p, i) => (
@@ -362,13 +362,13 @@ export default function Situations() {
                 <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center"><ShieldCheck className="h-5 w-5 text-primary" /></div>
                 <div className="min-w-0">
                   <p className="font-semibold">{r.label} <RetStatus s={r.status} /></p>
-                  <p className="text-xs text-muted-foreground">Retenue détenue : <b className="text-foreground num">{eur(r.held)}</b>{r.release_due ? ` · libération prévue le ${r.release_due}` : " · réception non renseignée"}</p>
+                  <p className="text-xs text-muted-foreground">Retenue détenue : <b className="text-foreground num">{eur(r.held)}</b>{r.release_due ? ` · libération prévue le ${r.release_due}` : " · receção non renseignée"}</p>
                 </div>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   {!r.released && (
                     <div className="flex items-center gap-1">
                       <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                      <Input type="date" defaultValue={r.reception_date || ""} onChange={(e) => setReception(r.marche_id, e.target.value)} className="rounded-sm h-9 w-40 num" data-testid={`retenue-reception-${r.marche_id}`} title="Date de réception des travaux" />
+                      <Input type="date" defaultValue={r.reception_date || ""} onChange={(e) => setReception(r.marche_id, e.target.value)} className="rounded-sm h-9 w-40 num" data-testid={`retenue-reception-${r.marche_id}`} title="Date de receção des travaux" />
                     </div>
                   )}
                   {!r.released && r.client?.email && (
@@ -389,7 +389,7 @@ export default function Situations() {
       {marches.length === 0 && (
         <div className="surface rounded-md p-10 text-center">
           <Layers className="h-10 w-10 mx-auto text-muted-foreground/50" />
-          <p className="mt-4 font-semibold">Aucun marché disponible</p>
+          <p className="mt-4 font-semibold">Nenhum marché disponível</p>
           <p className="text-sm text-muted-foreground mt-1">Créez d'abord un devis ou une facture avec des lignes.</p>
         </div>
       )}

@@ -331,7 +331,7 @@ async def remind_retention(marche_id: str, user=Depends(current_user)):
     held = round(sum(s.get("retention_amount", 0) for s in sits), 2)
     label = base.get("number") or base.get("title") or marche_id
     due = base.get("retention_release_due") or "—"
-    html = (f"<p>Bonjour,</p><p>La retenue de garantie du marché <b>{label}</b> "
+    html = (f"<p>Olá,</p><p>La retenue de garantie du marché <b>{label}</b> "
             f"d'un montant de <b>{held:.2f} €</b> arrive à échéance de libération le <b>{due}</b>.</p>"
             f"<p>Nous vous remercions de bien vouloir procéder à sa libération.</p>"
             f"<p>Cordialement.</p>")
@@ -369,7 +369,7 @@ async def run_retention_reminders() -> int:
             continue
         label = m.get("number") or m.get("title") or m["doc_id"]
         due = m.get("retention_release_due")
-        html = (f"<p>Bonjour,</p><p>La retenue de garantie du marché <b>{label}</b> "
+        html = (f"<p>Olá,</p><p>La retenue de garantie du marché <b>{label}</b> "
                 f"({held:.2f} €) arrive à échéance de libération le <b>{due}</b>.</p>"
                 f"<p>Merci de bien vouloir procéder à sa libération.</p><p>Cordialement.</p>")
         try:

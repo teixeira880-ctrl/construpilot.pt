@@ -258,7 +258,7 @@ async def remind_companies(project: str, user=Depends(current_user)):
     sent, skipped = 0, len(reserves)
     for email, grp in by_email.items():
         lis = "".join(f"<li>{r.get('lot','')} — {r.get('description','')}</li>" for r in grp["items"])
-        html = (f"<p>Bonjour {grp['company'] or ''},</p>"
+        html = (f"<p>Olá {grp['company'] or ''},</p>"
                 f"<p>Réserves à lever sur le chantier <b>{project}</b> :</p><ul>{lis}</ul>"
                 f"<p>Merci de planifier leur reprise au plus vite.</p><p>— {user.get('name') or 'ConstruPilot'}</p>")
         try:

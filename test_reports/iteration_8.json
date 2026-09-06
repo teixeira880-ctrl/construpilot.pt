@@ -1,0 +1,28 @@
+{
+  "summary": "Wave C3 post-fixes frontend validation. Login successful (admin@construpilot.io). Verified PT-PT text fixes on /admin (Biblioteca, Trabalhos compostos, Publicidade, Campanhas de email tabs, 'Modo de demonstração — desbloquear tudo' banner, 'Unidade' column). Verified /plan hero section fully in PT-PT (Importe o seu plano, Meça automaticamente, Importar o meu plano, Corrigir a perspetiva, Comparar 2 planos, Formatos variados, Multi-pisos). Verified /entreprise shows 'Gerir', 'Identidade profissional' and 'Caixa de email' buttons. Verified /funcionalidades has 'Pesquisa de preços' and 'Biblioteca de preços DPGF'. All 10 PT-PT alias routes (/planta, /faturas, /empresa, /render-studio, /features, /conta, /orcamentos, /equipa, /biblioteca, /obra) return 200 and render their target pages (no 404). Success rate 26/28 checks (login false-fail on nav race and one intended limitation described below).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Nav.jsx (top-right user role badge)", "issue": "Still displays 'Administrateur' in FR for admin users (visible on all authenticated pages including /admin). Task item #1 said Admin.jsx should not show 'Administrateur' — Admin.jsx page content itself is correctly translated (uses 'Administrador' in the Account tab), but Nav.jsx role label is out of scope of the applied fixes and remains in French.", "selector": "nav header user role text", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Translate the admin role label 'Administrateur' → 'Administrador' in Nav.jsx (top-right badge visible on all authenticated pages)."
+  ],
+  "critical_code_review_comments": [
+    "App.js has duplicate /parrainage routes (lines 185 and 186) — the second one for <Referral/> is unreachable. Remove one.",
+    "Admin.jsx is 1200+ lines mixing tabs, sub-panels (PromoCodesPanel, PlansRevenuePanel, KycPanel, InboxPanel, LeadRow, PendingReviews) — should be split for maintainability.",
+    "Admin.jsx contains residual French strings mixed with PT-PT throughout (e.g., 'Le compte ... et TOUTES ses données ...', 'Créer un devis', 'Sauvegarder les flags', 'Actualiser', 'Non assignée', many toast messages). Full PT-PT normalization is not complete but was out of scope for this wave.",
+    "PlanTakeoff.jsx (1900+ lines) also has heavy FR/PT-PT mixing in toasts and dialogs — not blocking but hurts UX consistency."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (per request)", "frontend": "~93% (26/28 asserted checks, only login-wait race and Nav badge Administrateur label failing)"},
+  "test_credentials": "admin@construpilot.io / VJAiUOI90Ss2brVH — works",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Wave C3 PT-PT fixes are all applied and verified in the DOM. Remaining FR residue is in Nav.jsx role badge and scattered toasts/labels in Admin.jsx & PlanTakeoff.jsx (not in scope of this iteration). PT-PT alias routes work correctly. All flagged pages load fine when authenticated as admin."
+}

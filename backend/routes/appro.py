@@ -175,7 +175,7 @@ async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) 
     type_lbl = {"acier": "ferraillage", "etancheite": "étanchéité",
                 "toiture": "toiture", "vrd": "VRD"}.get(order.get("type"), "matériaux")
     subject = f"Bon de commande {type_lbl} — {company_name} (n° {order_id})"
-    body_html = (f"<p>Bonjour,</p><p>{body.message or f'Veuillez trouver ci-joint notre bon de commande {type_lbl}.'}</p>"
+    body_html = (f"<p>Olá,</p><p>{body.message or f'Veuillez trouver ci-joint notre bon de commande {type_lbl}.'}</p>"
                  f"<p>Le détail est en pièce jointe (PDF + CSV). Merci de nous confirmer "
                  f"disponibilités et délai de livraison.</p>"
                  f"<p>Cordialement,<br/>{company_name}</p>")

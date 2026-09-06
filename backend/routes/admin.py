@@ -507,7 +507,7 @@ async def _notify_assigned_pro(pro: dict, lead: dict) -> None:
         ]
         body = "".join(f'<p style="margin:0 0 8px 0"><b>{k} :</b> {v}</p>' for k, v in rows)
         html = wrap_html("Nouvelle demande de travaux à prendre en charge",
-                         f"<p>Bonjour,</p><p>Une demande de travaux vous a été assignée :</p>{body}"
+                         f"<p>Olá,</p><p>Une demande de travaux vous a été assignée :</p>{body}"
                          f"<p>Contactez le client pour la prendre en charge.</p>")
         await send_email(pro["email"], "Une demande de travaux vous a été assignée — ConstruPilot", html)
     except Exception:

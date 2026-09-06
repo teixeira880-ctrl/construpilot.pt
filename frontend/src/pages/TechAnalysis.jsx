@@ -44,7 +44,7 @@ export default function TechAnalysis() {
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6" data-testid="tech-analysis-page">
       <div className="flex items-center gap-3 flex-wrap">
         <HardHat className="h-6 w-6 text-primary" />
-        <h1 className="font-display text-2xl font-bold">Analyse technique &amp; Approvisionnement IA</h1>
+        <h1 className="font-display text-2xl font-bold">Análise technique &amp; Approvisionnement IA</h1>
         <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro · Acier · Étanchéité · Toiture · VRD</span>
       </div>
 
@@ -71,17 +71,17 @@ const SupplierManager = ({ suppliers, reload }) => {
   const [editId, setEditId] = useState(null);
 
   const save = async () => {
-    if (!form.name) return toast.error("Nom requis");
+    if (!form.name) return toast.error("Nom obrigatório");
     try {
       const payload = { ...form, categories: form.categories || [], price_list: (form.price_list || []).filter((r) => r.label) };
       if (editId) await api.put(`/pro/suppliers/${editId}`, payload);
       else await api.post("/pro/suppliers", payload);
-      toast.success(editId ? "Fournisseur mis à jour" : "Fournisseur ajouté");
+      toast.success(editId ? "Fornecedor mis à jour" : "Fornecedor ajouté");
       setForm(empty); setEditId(null); reload();
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
   const edit = (s) => { setForm({ ...empty, ...s, price_list: s.price_list || [] }); setEditId(s.supplier_id); };
-  const del = async (id) => { try { await api.delete(`/pro/suppliers/${id}`); reload(); if (editId === id) { setForm(empty); setEditId(null); } } catch { toast.error("Impossible"); } };
+  const del = async (id) => { try { await api.delete(`/pro/suppliers/${id}`); reload(); if (editId === id) { setForm(empty); setEditId(null); } } catch { toast.error("Impossível"); } };
 
   const setPrice = (i, field, val) => {
     const pl = [...(form.price_list || [])];
@@ -94,7 +94,7 @@ const SupplierManager = ({ suppliers, reload }) => {
   return (
     <div className="grid lg:grid-cols-2 gap-5" data-testid="suppliers-tab">
       <div className="surface p-4 space-y-2">
-        <h3 className="font-bold mb-1">{editId ? "Modifier le fournisseur" : "Ajouter un fournisseur"}</h3>
+        <h3 className="font-bold mb-1">{editId ? "Editar le fournisseur" : "Adicionar un fournisseur"}</h3>
         {[["name", "Nom *"], ["agency", "Agence"], ["client_number", "N° client"], ["email", "Email"], ["phone", "Téléphone"], ["delivery_address", "Adresse de livraison"]].map(([k, l]) => (
           <div key={k}><label className="text-xs text-muted-foreground">{l}</label>
             <Input value={form[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className="h-8" data-testid={`supplier-${k}`} /></div>
@@ -105,7 +105,7 @@ const SupplierManager = ({ suppliers, reload }) => {
             <label className="text-xs font-semibold">Catalogue de prix (mots-clés → PU HT)</label>
             <Button size="sm" variant="outline" onClick={addPrice} className="h-7 gap-1 rounded-sm" data-testid="add-price-row"><Plus className="h-3 w-3" />Ligne</Button>
           </div>
-          <p className="text-[11px] text-muted-foreground mb-1">Ex : « tuiles terre cuite » · unité · 0,85 €. Utilisé pour chiffrer les bons de commande.</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Ex : « tuiles terre cuite » · unité · 0,85 €. Utilisé pour chiffrer les bons de encomenda.</p>
           <div className="space-y-1">
             {(form.price_list || []).map((r, i) => (
               <div key={i} className="flex gap-1 items-center" data-testid={`price-row-${i}`}>
@@ -119,21 +119,21 @@ const SupplierManager = ({ suppliers, reload }) => {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button onClick={save} className="rounded-sm gap-2" data-testid="add-supplier-btn"><Plus className="h-4 w-4" />{editId ? "Enregistrer" : "Ajouter"}</Button>
-          {editId && <Button variant="outline" onClick={() => { setForm(empty); setEditId(null); }} className="rounded-sm">Annuler</Button>}
+          <Button onClick={save} className="rounded-sm gap-2" data-testid="add-supplier-btn"><Plus className="h-4 w-4" />{editId ? "Guardar" : "Adicionar"}</Button>
+          {editId && <Button variant="outline" onClick={() => { setForm(empty); setEditId(null); }} className="rounded-sm">Cancelar</Button>}
         </div>
       </div>
 
       <div className="surface p-4">
         <h3 className="font-bold mb-2">Mes fournisseurs ({suppliers.length})</h3>
-        {suppliers.length === 0 && <p className="text-sm text-muted-foreground">Aucun fournisseur enregistré.</p>}
+        {suppliers.length === 0 && <p className="text-sm text-muted-foreground">Nenhum fournisseur enregistré.</p>}
         <div className="space-y-2">
           {suppliers.map((s) => (
             <div key={s.supplier_id} className="flex items-center justify-between rounded-sm border border-border p-2 text-sm" data-testid={`supplier-item-${s.supplier_id}`}>
               <div><div className="font-semibold">{s.name}{s.agency ? ` · ${s.agency}` : ""}</div>
                 <div className="text-xs text-muted-foreground">{[s.client_number, s.email, s.phone].filter(Boolean).join(" · ")}{(s.price_list || []).length ? ` · ${s.price_list.length} prix` : ""}</div></div>
               <div className="flex gap-2">
-                <button onClick={() => edit(s)} data-testid={`edit-supplier-${s.supplier_id}`} className="text-xs text-primary font-semibold">Modifier</button>
+                <button onClick={() => edit(s)} data-testid={`edit-supplier-${s.supplier_id}`} className="text-xs text-primary font-semibold">Editar</button>
                 <button onClick={() => del(s.supplier_id)} data-testid={`del-supplier-${s.supplier_id}`}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" /></button>
               </div>
             </div>

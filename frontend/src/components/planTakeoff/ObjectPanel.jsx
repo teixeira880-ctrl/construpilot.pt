@@ -1,15 +1,15 @@
 /**
- * ObjectPanel — Volet Objets (Vague B, inspiré QuoterPlan).
+ * ObjectPanel — Painel Objetos (Vague B, inspiré QuoterPlan).
  * Liste toutes les mesures de la page courante :
- *  - Pièces (rooms) : m², périmètre, hauteur
- *  - Ouvertures (openings) : type, dimensions
+ *  - Compartimentos (rooms) : m², périmètre, altura
+ *  - Aberturas (openings) : type, dimensions
  *  - Compteurs : label + total markers
  *  - Notes : texte
- *  - Angles : degrés + pente x/12
+ *  - Ângulos : degrés + pente x/12
  *  - Toitures pentées : surface projetée / réelle
  *  - Mesures ad-hoc (measurements) : distance / polyligne
  *
- * Chaque ligne : icône type + label + valeur + bouton édition + bouton supprimer.
+ * Chaque ligne : icône type + label + valeur + bouton edição + bouton supprimer.
  * Clic sur une ligne : centre la vue sur l'objet (via onFocus callback).
  */
 import React, { useState, useMemo, useEffect } from "react";
@@ -20,11 +20,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 const TABS = [
-  { id: "rooms", label: "Pièces", icon: Square },
-  { id: "openings", label: "Ouvertures", icon: DoorOpen },
+  { id: "rooms", label: "Compartimentos", icon: Square },
+  { id: "openings", label: "Aberturas", icon: DoorOpen },
   { id: "counters", label: "Compteurs", icon: Hash },
   { id: "notes", label: "Notes", icon: StickyNote },
-  { id: "angles", label: "Angles", icon: Triangle },
+  { id: "angles", label: "Ângulos", icon: Triangle },
   { id: "pitched", label: "Toitures", icon: MountainSnow },
   { id: "measures", label: "Mesures", icon: Ruler },
 ];
@@ -133,8 +133,8 @@ export default function ObjectPanel({
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background sticky top-0 z-10">
         <div>
-          <p className="font-display font-bold text-sm">Objets ({totalObjects})</p>
-          <p className="text-[10px] text-muted-foreground">Volet Objets — édition inline</p>
+          <p className="font-display font-bold text-sm">Objetos ({totalObjects})</p>
+          <p className="text-[10px] text-muted-foreground">Painel Objetos — edição inline</p>
         </div>
         <Button size="icon" variant="ghost" onClick={onClose} data-testid="object-panel-close" className="h-7 w-7 relative z-20">
           <X className="h-4 w-4" />
@@ -168,7 +168,7 @@ export default function ObjectPanel({
       <div className="flex-1 overflow-y-auto py-1">
         {tab === "rooms" && (
           <>
-            {rooms.length === 0 && <EmptyState label="Aucune pièce" />}
+            {rooms.length === 0 && <EmptyState label="Nenhuma compartimento" />}
             {rooms.map((r) => {
               const attachedPreset = presets.find((p) => p.preset_id === r.preset_id);
               return (
@@ -190,10 +190,10 @@ export default function ObjectPanel({
                     <Row
                       icon={Square}
                       testId={`object-row-room-${r.room_id}`}
-                      primary={r.name || "Pièce"}
+                      primary={r.name || "Compartimento"}
                       secondary={
                         attachedPreset
-                          ? `Modèle : ${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
+                          ? `Modelo : ${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
                           : `${r.perimeter_m || 0} m linéaires · ${r.ceiling_height_m || r.height_m || 2.5} m HSP`
                       }
                       badge={`${r.surface_m2 ?? 0} m²`}
@@ -201,7 +201,7 @@ export default function ObjectPanel({
                       onFocus={() => onFocusObject?.({ kind: "room", data: r })}
                       onExtra={onEstimateRoom ? () => onEstimateRoom(r.room_id) : null}
                       extraIcon={Calculator}
-                      extraLabel="Générer devis pièce"
+                      extraLabel="Gerar devis compartimento"
                       onEdit={onRenameRoom ? () => startEdit(r.room_id, r.name) : null}
                       onDelete={onDeleteRoom ? () => onDeleteRoom(r.room_id) : null}
                     />
@@ -216,7 +216,7 @@ export default function ObjectPanel({
                           data-testid={`room-preset-toggle-${r.room_id}`}
                         >
                           <Layers className="h-3 w-3" />
-                          {attachedPreset ? "Changer modèle" : "Attacher un modèle"}
+                          {attachedPreset ? "Changer modelo" : "Attacher un modelo"}
                         </button>
                         {attachedPreset && (
                           <button
@@ -224,14 +224,14 @@ export default function ObjectPanel({
                             className="text-[10px] text-destructive hover:underline"
                             data-testid={`room-preset-detach-${r.room_id}`}
                           >
-                            Retirer
+                            Remover
                           </button>
                         )}
                         {presetPickerRoomId === r.room_id && (
                           <div className="w-full mt-1 grid gap-1 max-h-40 overflow-y-auto border border-border rounded-sm p-1">
                             {presets.length === 0 && (
                               <p className="text-[10px] text-muted-foreground text-center py-2">
-                                Aucun modèle. Créez-en depuis la toolbar Pièce.
+                                Nenhum modelo. Créez-en desde la toolbar Compartimento.
                               </p>
                             )}
                             {presets.map((p) => (
@@ -266,7 +266,7 @@ export default function ObjectPanel({
 
         {tab === "openings" && (
           <>
-            {counts.openings === 0 && <EmptyState label="Aucune ouverture" />}
+            {counts.openings === 0 && <EmptyState label="Nenhuma ouverture" />}
             {rooms.flatMap((r) => (r.openings || []).map((o, idx) => (
               <Row
                 key={`${r.room_id}-op-${idx}`}
@@ -284,7 +284,7 @@ export default function ObjectPanel({
 
         {tab === "counters" && (
           <>
-            {counts.counters === 0 && <EmptyState label="Aucun compteur" />}
+            {counts.counters === 0 && <EmptyState label="Nenhum compteur" />}
             {(annotations.counters || []).map((c) => (
               <div key={c.id} data-testid={`object-row-counter-${c.id}`}>
                 {editingId === c.id ? (
@@ -318,7 +318,7 @@ export default function ObjectPanel({
 
         {tab === "notes" && (
           <>
-            {counts.notes === 0 && <EmptyState label="Aucune note" />}
+            {counts.notes === 0 && <EmptyState label="Nenhuma note" />}
             {(annotations.notes || []).map((n) => (
               <div key={n.id} data-testid={`object-row-note-${n.id}`}>
                 {editingId === n.id ? (
@@ -351,7 +351,7 @@ export default function ObjectPanel({
 
         {tab === "angles" && (
           <>
-            {counts.angles === 0 && <EmptyState label="Aucun angle mesuré" />}
+            {counts.angles === 0 && <EmptyState label="Nenhum angle mesuré" />}
             {(annotations.angles || []).map((a) => {
               const rise = (Math.tan((a.degrees * Math.PI) / 180) * 12).toFixed(1);
               return (
@@ -359,7 +359,7 @@ export default function ObjectPanel({
                   key={a.id}
                   icon={Triangle}
                   testId={`object-row-angle-${a.id}`}
-                  primary={a.label || `Angle ${a.degrees.toFixed(1)}°`}
+                  primary={a.label || `Ângulo ${a.degrees.toFixed(1)}°`}
                   secondary={`Pente ${rise}/12 (US)`}
                   badge={`${a.degrees.toFixed(1)}°`}
                   badgeColor="#a855f7"
@@ -373,7 +373,7 @@ export default function ObjectPanel({
 
         {tab === "pitched" && (
           <>
-            {counts.pitched === 0 && <EmptyState label="Aucune toiture pentée" />}
+            {counts.pitched === 0 && <EmptyState label="Nenhuma toiture pentée" />}
             {(annotations.pitched_surfaces || []).map((s) => (
               <Row
                 key={s.id}
@@ -392,14 +392,14 @@ export default function ObjectPanel({
 
         {tab === "measures" && (
           <>
-            {measurements.length === 0 && <EmptyState label="Aucune mesure ad-hoc" />}
+            {measurements.length === 0 && <EmptyState label="Nenhuma mesure ad-hoc" />}
             {measurements.length > 0 && onClearMeasures && (
               <div className="px-3 pb-1">
                 <Button size="sm" variant="outline"
                         onClick={onClearMeasures}
                         data-testid="clear-measures-btn"
                         className="w-full rounded-sm gap-2 text-destructive hover:text-destructive">
-                  <Trash2 className="h-3 w-3" /> Tout effacer ({measurements.length})
+                  <Trash2 className="h-3 w-3" /> Tout apagar ({measurements.length})
                 </Button>
               </div>
             )}
@@ -408,7 +408,7 @@ export default function ObjectPanel({
                 <div key={m.measurement_id} className="px-3 py-2 flex items-center gap-2">
                   <Input value={editValue} onChange={(e) => setEditValue(e.target.value)}
                          autoFocus className="h-7 text-xs"
-                         placeholder="ex. murs parpaing, murs en brique…"
+                         placeholder="ex. paredes parpaing, paredes en brique…"
                          onKeyDown={(e) => {
                            if (e.key === "Enter") commitEdit((v) => onRenameMeasure?.(m.measurement_id, v));
                            if (e.key === "Escape") { setEditingId(null); setEditValue(""); }
@@ -422,17 +422,17 @@ export default function ObjectPanel({
                 key={m.measurement_id || idx}
                 icon={Ruler}
                 testId={`object-row-measure-${idx}`}
-                primary={m.label || (m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Surface" : "Périmètre")}
-                secondary={`${m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Surface" : "Périmètre"} · créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("pt-PT")}`}
+                primary={m.label || (m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Superfície" : "Périmètre")}
+                secondary={`${m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Superfície" : "Périmètre"} · créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("pt-PT")}`}
                 badge={m.kind === "polygon" ? `${(m.area_m2 || 0).toFixed(2)} m²` : `${(m.length_m || 0).toFixed(2)} m`}
                 badgeColor="#0d9488"
                 onFocus={() => onFocusObject?.({ kind: "measure", data: m })}
                 onExtra={m.kind === "polygon" && onConvertMeasure ? () => onConvertMeasure(m.measurement_id) : null}
                 extraIcon={Home}
-                extraLabel="Convertir en pièce (murs + estimation)"
+                extraLabel="Convertir en compartimento (paredes + estimation)"
                 onExtra2={m.kind === "polygon" && onDeductMeasure ? () => onDeductMeasure(m.measurement_id) : null}
                 extra2Icon={Scissors}
-                extra2Label="Déduire de la pièce contenante (trémie, escalier…)"
+                extra2Label="Déduire de la compartimento contenante (trémie, escalier…)"
                 onEdit={onRenameMeasure ? () => startEdit(m.measurement_id, m.label || "") : null}
                 onDelete={onDeleteMeasure ? () => onDeleteMeasure(m.measurement_id) : null}
               />

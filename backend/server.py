@@ -224,7 +224,7 @@ async def seed():
         existing = await db.users.find_one({"email": owner_email})
         if not existing:
             await db.users.insert_one({
-                "email": owner_email, "name": "Administrateur", "role": "admin",
+                "email": owner_email, "name": "Administrador", "role": "admin",
                 "plan": "premium", "password_hash": hash_password(owner_pwd),
                 "auth_provider": "password", "picture": None,
                 "user_id": new_user_id(), "must_change_password": True,
@@ -251,7 +251,7 @@ async def seed():
     sa = await db.users.find_one({"email": second_admin_email})
     if not sa:
         await db.users.insert_one({
-            "email": second_admin_email, "name": "Administrateur ConstruPilot",
+            "email": second_admin_email, "name": "Administrador ConstruPilot",
             "role": "admin", "plan": "premium",
             "password_hash": hash_password(second_admin_pwd),
             "auth_provider": "password", "picture": None,

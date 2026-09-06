@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Calculator, ShieldCheck, ReceiptText, Users, FileCheck2, MapPin, ArrowRight, Check,
@@ -31,7 +31,18 @@ const FEATURES = [
 
 export default function LandingPortugal() {
   const { setLang } = useI18n();
+  const heroRef = useRef(null);
   useEffect(() => { setLang("pt"); /* landing sempre em PT-PT */ /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    // React não serializa fiavelmente o atributo `muted` — força via ref para autoplay funcionar
+    // em todos os browsers (Chromium/Safari bloqueiam autoplay não-mute).
+    const v = heroRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.playsInline = true;
+    const p = v.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  }, []);
 
   return (
     <div className="grid gap-16 pb-16" data-testid="landing-portugal">
@@ -55,6 +66,20 @@ export default function LandingPortugal() {
           O ConstruPilot ajuda particulares e profissionais em Portugal a estimar o custo de obras,
           verificar orçamentos, calcular materiais e emitir orçamentos e faturas com IVA e NIF — em minutos.
         </p>
+        <div className="mt-6 rounded-xl overflow-hidden border border-border bg-black/5 aspect-video">
+          <video
+            ref={heroRef}
+            src="/hero-pt.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            className="w-full h-full object-cover"
+            aria-label="Demonstração ConstruPilot"
+            data-testid="pt-hero-video"
+          />
+        </div>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link to="/estimation">
             <Button className="rounded-sm gap-2 h-12 px-6 text-base" data-testid="pt-hero-estimate">
@@ -161,6 +186,28 @@ export default function LandingPortugal() {
         <p className="text-[11px] text-center text-muted-foreground">
           Testemunhos ilustrativos da fase de lançamento em Portugal.
         </p>
+      </section>
+
+      {/* Demonstração vídeo */}
+      <section className="max-w-5xl mx-auto py-16 px-6" data-testid="pt-demo-section">
+        <p className="overline text-center">Demonstração</p>
+        <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold text-center tracking-tight">
+          Ver o ConstruPilot em acção
+        </h2>
+        <p className="mt-3 text-sm text-muted-foreground text-center max-w-2xl mx-auto">
+          Da planta ao orçamento com IVA em poucos minutos. Carregue no vídeo para ver o fluxo completo.
+        </p>
+        <div className="mt-8 rounded-xl overflow-hidden border border-border shadow-lg bg-black/5">
+          <video
+            src="/demo-pt.mp4"
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full"
+            aria-label="Demonstração ConstruPilot Portugal"
+            data-testid="pt-demo-video"
+          />
+        </div>
       </section>
 
       {/* CTA */}
