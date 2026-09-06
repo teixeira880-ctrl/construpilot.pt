@@ -42,14 +42,14 @@ export default function PriceCatalog() {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const save = async () => {
-    if (!form.name.trim() || form.price === "") return toast.error("Nom et prix requis");
+    if (!form.name.trim() || form.price === "") return toast.error("Nome e preço obrigatórios");
     setSaving(true);
     try {
       await api.post("/prices/catalog", {
         name: form.name, price: Number(form.price), unit: form.unit || "u",
         supplier: form.supplier, category: form.category,
       });
-      toast.success("Prix enregistré");
+      toast.success("Preço guardado");
       setForm(EMPTY); load();
     } catch { toast.error("Erreur"); } finally { setSaving(false); }
   };
@@ -69,7 +69,7 @@ export default function PriceCatalog() {
       toast.success(`${data.imported} prix importés${data.skipped ? ` · ${data.skipped} ignorés` : ""}`);
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Import impossible");
+      toast.error(err?.response?.data?.detail || "Importação impossível");
     } finally { setImporting(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
@@ -77,7 +77,7 @@ export default function PriceCatalog() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8" data-testid="price-catalog-page">
-      <SectionTitle overline="Comparateur 100 % fiable" title="Mon catalogue de prix" />
+      <SectionTitle overline="Comparador 100% fiável" title="O meu catálogo de preços" />
       <p className="text-muted-foreground -mt-4 max-w-2xl text-sm">
         Saisissez vos vrais prix fournisseurs (ou importez un fichier de votre négoce). Le comparateur et les devis utiliseront automatiquement ces prix quand le nom du matériau correspond.
       </p>
@@ -97,7 +97,7 @@ export default function PriceCatalog() {
       </div>
 
       <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-6 items-end" data-testid="catalog-form">
-        <div className="md:col-span-2"><Label>Matériau *</Label><Input value={form.name} onChange={set("name")} placeholder="Plaque BA13 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
+        <div className="md:col-span-2"><Label>Material *</Label><Input value={form.name} onChange={set("name")} placeholder="Placa Pladur 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
         <div><Label>Prix (€) *</Label><Input type="number" value={form.price} onChange={set("price")} className="rounded-sm mt-1 num" data-testid="catalog-price" /></div>
         <div><Label>Unité</Label><Input value={form.unit} onChange={set("unit")} placeholder="u / m² / ml" className="rounded-sm mt-1" data-testid="catalog-unit" /></div>
         <div><Label>Fournisseur</Label><Input value={form.supplier} onChange={set("supplier")} placeholder="Point P…" className="rounded-sm mt-1" data-testid="catalog-supplier" /></div>

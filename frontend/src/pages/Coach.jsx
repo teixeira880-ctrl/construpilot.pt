@@ -86,7 +86,7 @@ export default function Coach() {
       }
       if (speak && full && window.speechSynthesis) {
         const u = new SpeechSynthesisUtterance(full.slice(0, 600));
-        u.lang = "fr-FR";
+        u.lang = "pt-PT";
         window.speechSynthesis.speak(u);
       }
     } catch {
@@ -105,7 +105,7 @@ export default function Coach() {
       return;
     }
     const r = new SR();
-    r.lang = "fr-FR";
+    r.lang = "pt-PT";
     r.interimResults = false;
     r.onresult = (e) => {
       const text = e.results[0][0].transcript;

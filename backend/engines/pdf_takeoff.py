@@ -650,7 +650,7 @@ def _story_quote_recap(story: list, quote: dict, S: dict) -> None:
     """Recap : sous-totaux, TVA, total TTC."""
     story.append(Spacer(1, 12))
     story.append(Paragraph("Récapitulatif", S["h2"]))
-    tva_pct = int(round(quote.get("tva_rate", 0.10) * 100))
+    tva_pct = int(round(quote.get("tva_rate", 0.23) * 100))
     tot_rows = [
         ["Sous-total matériaux", _fmt(quote.get("subtotal_material", 0), "€")],
         ["Sous-total main d'œuvre", _fmt(quote.get("subtotal_labour", 0), "€")],
@@ -824,7 +824,7 @@ def _pq_sub_quote(story: list, sq: dict, index: int, S: dict) -> None:
 def _pq_recap(story: list, project: dict, S: dict) -> None:
     story.append(Spacer(1, 8))
     story.append(Paragraph("Récapitulatif projet", S["h2"]))
-    tva_pct = int(round(project.get("tva_rate", 0.10) * 100))
+    tva_pct = int(round(project.get("tva_rate", 0.23) * 100))
     rows = [
         ["Sous-total matériaux", _fmt(project.get("subtotal_material", 0), "€")],
         ["Sous-total main d'œuvre", _fmt(project.get("subtotal_labour", 0), "€")],
@@ -893,7 +893,7 @@ class TvaAttestationInput:
     company_name: str = ""
     company_address: str = ""
     branding: dict | None = None
-    tva_rate: float = 0.10
+    tva_rate: float = 0.23
 
 
 def _tva_header_and_intro(story: list, tva_pct: int, S: dict) -> None:
@@ -977,7 +977,7 @@ def _coalesce_tva_input(data, kw) -> "TvaAttestationInput":
         company_name=kw.get("company_name", ""),
         company_address=kw.get("company_address", ""),
         branding=kw.get("branding"),
-        tva_rate=kw.get("tva_rate", 0.10),
+        tva_rate=kw.get("tva_rate", 0.23),
     )
 
 
@@ -992,7 +992,7 @@ def build_tva_attestation_pdf(
     company_name: str = "",
     company_address: str = "",
     branding: dict | None = None,
-    tva_rate: float = 0.10,
+    tva_rate: float = 0.23,
 ) -> bytes:
     """Attestation simplifiée du client (art. 279-0 bis CGI) : logement > 2 ans.
 

@@ -6,7 +6,7 @@ import { TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
 
 const eur0 = (n) =>
-  (n || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " €";
+  (n || 0).toLocaleString("pt-PT", { maximumFractionDigits: 0 }) + " €";
 
 export const RevenueChart = ({ compact = false }) => {
   const [data, setData] = useState(null);

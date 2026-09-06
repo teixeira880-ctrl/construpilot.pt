@@ -33,9 +33,9 @@ export const ProfileForm = () => {
           image_b64: canvas.toDataURL("image/jpeg", 0.85),
         });
         setUser(data.user);
-        toast.success("Photo de profil mise à jour");
+        toast.success("Foto de perfil actualizada");
       } catch {
-        toast.error("Envoi de la photo impossible");
+        toast.error("Envio da foto impossível");
       }
       URL.revokeObjectURL(img.src);
     };
@@ -47,16 +47,16 @@ export const ProfileForm = () => {
     try {
       const { data } = await api.delete("/auth/profile-photo");
       setUser(data.user);
-      toast.success("Photo supprimée");
+      toast.success("Foto eliminada");
     } catch {
-      toast.error("Suppression impossible");
+      toast.error("Eliminação impossível");
     }
   };
 
   const save = async (e) => {
     e.preventDefault();
     if (emailChanged && !pwd) {
-      return toast.error("Mot de passe actuel requis pour changer l'email");
+      return toast.error("Palavra-passe actual obrigatória para alterar o e-mail");
     }
     setBusy(true);
     try {
@@ -68,10 +68,10 @@ export const ProfileForm = () => {
       const { data } = await api.put("/auth/profile", body);
       setUser(data.user);
       setPwd("");
-      toast.success("Profil mis à jour");
+      toast.success("Perfil actualizado");
     } catch (err) {
       const d = err?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Mise à jour impossible");
+      toast.error(typeof d === "string" ? d : "Actualização impossível");
     } finally {
       setBusy(false);
     }

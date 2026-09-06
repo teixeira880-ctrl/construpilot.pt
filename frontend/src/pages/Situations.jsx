@@ -85,12 +85,12 @@ export default function Situations() {
       const { data } = await api.post("/situations", { marche_id: marcheId, lines, retention_pct: Number(retention) || 0 });
       toast.success(`Situation n°${data.seq} créée — facture ${data.invoice_number}`);
       await refreshMarche(); loadRetentions();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Création impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
     finally { setBusy(false); }
   };
   const del = async (id) => {
     try { await api.delete(`/situations/${id}`); toast.success("Situation supprimée"); refreshMarche(); loadRetentions(); }
-    catch { toast.error("Suppression impossible"); }
+    catch { toast.error("Eliminação impossível"); }
   };
   const downloadSituationPdf = async (s) => {
     try {
@@ -99,7 +99,7 @@ export default function Situations() {
       const a = document.createElement("a");
       a.href = url; a.download = `decompte-situation-${s.seq}.pdf`; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Génération du décompte impossible"); }
+    } catch { toast.error("Geração do auto impossível"); }
   };
   const downloadCertificate = async (s) => {
     try {
@@ -108,14 +108,14 @@ export default function Situations() {
       const a = document.createElement("a");
       a.href = url; a.download = `certificat-paiement-${s.seq}.pdf`; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Génération du certificat impossible"); }
+    } catch { toast.error("Geração do certificado impossível"); }
   };
 
   // ---- Prorata ----
   const saveProrata = async (cfg) => {
     try {
       const { data } = await api.put(`/situations/${marcheId}/prorata`, cfg);
-      setProrata(data); toast.success("Compte prorata enregistré");
+      setProrata(data); toast.success("Conta rateada guardada");
     } catch { toast.error("Erreur"); }
   };
   const addExpense = () => setProrata({ ...prorata, expenses: [...(prorata.expenses || []), { label: "", amount: 0 }] });
@@ -127,7 +127,7 @@ export default function Situations() {
   // ---- Retenues ----
   const setReception = async (mid, date) => {
     if (!date) return;
-    try { await api.post(`/situations/${mid}/reception`, { reception_date: date }); toast.success("Date de réception enregistrée"); loadRetentions(); }
+    try { await api.post(`/situations/${mid}/reception`, { reception_date: date }); toast.success("Data de recepção guardada"); loadRetentions(); }
     catch { toast.error("Erreur"); }
   };
   const releaseRet = async (mid) => {
@@ -139,7 +139,7 @@ export default function Situations() {
     catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
   };
 
-  if (in_org && !can("situations")) return <NoAccess title="Situations non autorisées" />;
+  if (in_org && !can("situations")) return <NoAccess title="Autos de medição não autorizados" />;
   if (!isProBusiness) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="situations-locked">
@@ -159,7 +159,7 @@ export default function Situations() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-6" data-testid="situations-page">
-      <SectionTitle over="Pack Business" title="Situations de travaux">
+      <SectionTitle over="Pack Business" title="Autos de medição">
         Facturez vos marchés à l'avancement, pilotez le cumul, la retenue de garantie et le compte prorata.
       </SectionTitle>
 
@@ -187,7 +187,7 @@ export default function Situations() {
 
         {/* ---------- Nouvelle situation ---------- */}
         <TabsContent value="situation" className="space-y-4 mt-4">
-          {!marcheId ? <Empty text="Choisissez un marché pour créer une situation." /> : (
+          {!marcheId ? <Empty text="Escolha uma empreitada para criar um auto." /> : (
             <>
               <div className="surface rounded-md overflow-hidden" data-testid="situation-lines">
                 <table className="w-full text-sm">
@@ -255,13 +255,13 @@ export default function Situations() {
 
         {/* ---------- Avancement (cumulé) ---------- */}
         <TabsContent value="avancement" className="space-y-4 mt-4">
-          {!summary ? <Empty text="Choisissez un marché pour voir son avancement." /> : (
+          {!summary ? <Empty text="Escolha uma empreitada para ver o avanço." /> : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="avancement-kpis">
                 <Kpi label="Montant marché HT" value={eur(summary.totals.contract_ht)} />
                 <Kpi label="Déjà facturé HT" value={eur(summary.totals.billed_ht)} accent />
-                <Kpi label="Restant à facturer" value={eur(summary.totals.remaining_ht)} />
-                <Kpi label="Retenue détenue" value={eur(summary.totals.retention_held)} />
+                <Kpi label="Restante a facturar" value={eur(summary.totals.remaining_ht)} />
+                <Kpi label="Caução retida" value={eur(summary.totals.retention_held)} />
               </div>
               <div className="surface rounded-md p-5">
                 <div className="flex items-center justify-between text-sm mb-2">
@@ -303,7 +303,7 @@ export default function Situations() {
 
         {/* ---------- Compte prorata ---------- */}
         <TabsContent value="prorata" className="space-y-4 mt-4">
-          {!prorata ? <Empty text="Choisissez un marché pour gérer son compte prorata." /> : (
+          {!prorata ? <Empty text="Escolha uma empreitada para gerir a conta rateada." /> : (
             <>
               <div className="surface rounded-md p-4 flex flex-wrap items-end gap-4">
                 <div className="grid gap-1.5">
@@ -356,7 +356,7 @@ export default function Situations() {
 
         {/* ---------- Retenue de garantie ---------- */}
         <TabsContent value="retenue" className="space-y-3 mt-4" data-testid="retenue-list">
-          {retentions.length === 0 ? <Empty text="Aucune retenue de garantie détenue. Elles apparaissent dès qu'une situation avec retenue est créée." /> : (
+          {retentions.length === 0 ? <Empty text="Nenhuma caução retida. Aparecerão assim que for criado um auto com caução." /> : (
             retentions.map((r) => (
               <div key={r.marche_id} className="surface rounded-md p-4 flex flex-wrap items-center gap-4" data-testid={`retenue-${r.marche_id}`}>
                 <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center"><ShieldCheck className="h-5 w-5 text-primary" /></div>

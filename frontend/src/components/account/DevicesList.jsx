@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 const fmtDate = (iso) => {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" });
   } catch {
     return iso.slice(0, 16);
   }

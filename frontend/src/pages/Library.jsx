@@ -22,7 +22,7 @@ const EMPTY = {
   type: "ouvrage", category: "", designation: "", unit: "m²",
   unit_price_ht: "", vat_rate: 10, notes: "",
 };
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
 export default function Library() {
   const { user } = useAuth();

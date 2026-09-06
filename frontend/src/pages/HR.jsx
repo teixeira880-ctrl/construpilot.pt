@@ -188,7 +188,7 @@ function TimesheetsTab({ t }) {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm">{r.worker_name} · {r.project_name}</p>
             <p className="text-xs text-muted-foreground">
-              {new Date(r.clock_in).toLocaleString("fr-FR")}{r.clock_out ? ` → ${new Date(r.clock_out).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+              {new Date(r.clock_in).toLocaleString("pt-PT")}{r.clock_out ? ` → ${new Date(r.clock_out).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}` : ""}
               {r.gps_in?.lat ? <> · <a className="inline-flex items-center gap-0.5 hover:text-primary" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${r.gps_in.lat},${r.gps_in.lng}`}><MapPin className="h-3 w-3" />{t("hr.gps")}</a></> : null}
             </p>
           </div>

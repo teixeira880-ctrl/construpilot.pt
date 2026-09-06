@@ -6,7 +6,7 @@ import { Loader2, Trash2, FileText, Users, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ConfirmProvider";
 
-const eur = (n) => Math.round(Number(n) || 0).toLocaleString("fr-FR") + " €";
+const eur = (n) => Math.round(Number(n) || 0).toLocaleString("pt-PT") + " €";
 
 export default function DataManagementPanel() {
   const [clients, setClients] = useState([]);
@@ -49,7 +49,7 @@ export default function DataManagementPanel() {
     try {
       await api.delete(`/documents/${q.doc_id}`);
       setQuotes((xs) => xs.filter((x) => x.doc_id !== q.doc_id));
-      toast.success("Devis supprimé");
+      toast.success("Orçamento eliminado");
     } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
   };
 

@@ -286,7 +286,7 @@ export default function ProjectDetail() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Source : connecteur de démonstration (mode {optim.mode}) — frais de livraison et minimums de
-                commande inclus. Vérifié le {new Date(optim.checked_at).toLocaleString("fr-FR")}.
+                commande inclus. Vérifié le {new Date(optim.checked_at).toLocaleString("pt-PT")}.
               </p>
             </div>
           )}

@@ -28,7 +28,7 @@ const DeckDownloadDialog = ({ open, onOpenChange }) => {
     try {
       await api.post("/investors/deck-request", form);
       window.open(DECK_PDF, "_blank", "noopener,noreferrer");
-      toast.success("Merci ! Le pitch deck s'ouvre dans un nouvel onglet.");
+      toast.success("Obrigado! O pitch deck abre num novo separador.");
       onOpenChange(false);
       setForm({ name: "", email: "", fund: "", note: "" });
     } catch {
@@ -156,21 +156,21 @@ export default function Investors() {
       </section>
 
       {/* 01 PROBLÈME */}
-      <Slide n={1} kicker="Le problème" dark
-             title="Chiffrer un chantier reste lent, manuel et source d'erreurs.">
+      <Slide n={1} kicker="O problema" dark
+             title="Orçamentar uma obra continua lento, manual e propenso a erros.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Card icon={FileText} title="Des heures perdues" text="Un métré manuel depuis un plan prend des heures et retarde l'envoi des devis." />
-          <Card icon={Target} title="Marges qui fuient" text="Erreurs de quantités, oublis de postes, prix non à jour : la rentabilité s'érode." />
-          <Card icon={Building2} title="Outils cloisonnés" text="Métré, devis, 3D, facturation et chantier vivent dans des logiciels séparés." />
+          <Card icon={FileText} title="Horas perdidas" text="Uma medição manual a partir de um plano leva horas e atrasa o envio dos orçamentos." />
+          <Card icon={Target} title="Margens que fogem" text="Erros de quantidades, esquecimento de rubricas, preços desactualizados: a rentabilidade cai." />
+          <Card icon={Building2} title="Ferramentas fragmentadas" text="Medições, orçamentos, 3D, facturação e obra vivem em softwares separados." />
         </div>
       </Slide>
 
       {/* 02 SOLUTION */}
-      <Slide n={2} kicker="La solution"
+      <Slide n={2} kicker="A solução"
              title="Une plateforme unique, du plan au devis signé — propulsée par l'IA.">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <Card icon={ScanLine} title="Analyse IA du plan" text="Détection murs, poteaux, poutres, semelles + métré béton & aciers automatiques." />
-          <Card icon={FileText} title="Devis instantané" text="Depuis un plan, une description ou une vidéo. Chiffrage auto via la bibliothèque de prix." />
+          <Card icon={FileText} title="Orçamento instantâneo" text="A partir de um plano, descrição ou vídeo. Orçamentação automática via biblioteca de preços." />
           <Card icon={Cuboid} title="Maquette 3D" text="Visualisation des volumes détectés, export PNG joint au devis client." />
           <Card icon={Bot} title="Assistant IA" text="Correction du plan en langage naturel, marge & prix de vente estimés." />
         </div>
@@ -178,11 +178,11 @@ export default function Investors() {
 
       {/* 03 MARCHÉ */}
       <Slide n={3} kicker="Le marché" dark
-             title="Un secteur immense, encore peu digitalisé.">
+             title="Um sector imenso, ainda pouco digitalizado.">
         <div className="grid sm:grid-cols-3 gap-5">
           <Stat v="+500 Md€" l="marché du BTP en France (par an)" />
           <Stat v="~600 000" l="entreprises du bâtiment en France" />
-          <Stat v="< 30%" l="équipées d'un vrai outil de chiffrage" />
+          <Stat v="< 30%" l="equipadas com uma verdadeira ferramenta de orçamentação" />
         </div>
         <p className="mt-6 text-sm text-muted-foreground max-w-3xl">
           Tendances porteuses 2026 : obligation de facture électronique, pénurie de main-d'œuvre
@@ -191,7 +191,7 @@ export default function Investors() {
       </Slide>
 
       {/* 04 DIFFÉRENCIATION */}
-      <Slide n={4} kicker="Notre avantage"
+      <Slide n={4} kicker="A nossa vantagem"
              title="Le seul outil qui relie IA de plan, métré béton, 3D et devis.">
         <ul className="grid sm:grid-cols-2 gap-4 max-w-3xl">
           {[
@@ -210,22 +210,22 @@ export default function Investors() {
       </Slide>
 
       {/* 05 MODÈLE ÉCONOMIQUE */}
-      <Slide n={5} kicker="Modèle économique" dark
+      <Slide n={5} kicker="Modelo de negócio" dark
              title="SaaS par abonnement, revenus récurrents et scalables.">
         <div className="grid sm:grid-cols-3 gap-5">
           <Card icon={TrendingUp} title="Abonnement SaaS" text="Formules mensuelles par utilisateur (artisan → PME), montée en gamme par modules." />
-          <Card icon={PieChart} title="Options à la valeur" text="Crédits IA, module Entreprise (RBAC/RH/chantier), génération de documents." />
+          <Card icon={PieChart} title="Opções a la carte" text="Créditos de IA, módulo Empresa (RBAC/RH/obra), geração de documentos." />
           <Card icon={Globe2} title="Expansion" text="Marché francophone puis Europe du Sud (déjà multilingue), et B2C particuliers." />
         </div>
       </Slide>
 
       {/* 06 POURQUOI MAINTENANT */}
-      <Slide n={6} kicker="Pourquoi maintenant"
-             title="Le bon produit, au bon moment.">
+      <Slide n={6} kicker="Porquê agora"
+             title="O produto certo, no momento certo.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Card icon={Rocket} title="IA mature" text="Les modèles de vision permettent enfin de lire des plans de façon fiable." />
-          <Card icon={ShieldCheck} title="Réglementation" text="La facture électronique pousse tout le secteur à s'équiper en 2026-2027." />
-          <Card icon={TrendingUp} title="Produit déjà avancé" text="Plateforme complète et fonctionnelle, prête à passer à l'échelle." />
+          <Card icon={Rocket} title="IA madura" text="Os modelos de visão permitem finalmente ler plantas de forma fiável." />
+          <Card icon={ShieldCheck} title="Regulamentação" text="O SAF-T e a e-fatura AT obrigam o sector à digitalização integral." />
+          <Card icon={TrendingUp} title="Produto já avançado" text="Plataforma completa e funcional, pronta a escalar." />
         </div>
       </Slide>
 

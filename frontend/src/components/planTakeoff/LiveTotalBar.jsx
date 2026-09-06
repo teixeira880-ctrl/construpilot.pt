@@ -86,7 +86,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
     // Agrège tous les matériaux et navigue vers /prix pré-loadé
     const allMaterials = [];
     Object.values(materialsByRoom).forEach((list) => list.forEach((m) => allMaterials.push(m)));
-    if (allMaterials.length === 0) return toast.error("Estimez au moins une pièce d'abord");
+    if (allMaterials.length === 0) return toast.error("Estime pelo menos uma divisão primeiro");
     sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
       items: allMaterials,
       source: "plan_total",
@@ -125,7 +125,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
           <span className="text-xs text-muted-foreground">
             {hasEstimates
               ? `Coût total plan (${nEstimated}/${rooms.length} pièces)`
-              : "Estimez toutes les pièces"}
+              : "Estime todas as divisões"}
           </span>
           {hasEstimates && (
             <span className="font-display font-bold text-sm num" data-testid="live-total-value">
@@ -140,7 +140,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
           disabled={computing}
           data-testid="live-total-compute-btn"
           className="h-7 gap-1.5 rounded-full text-xs"
-          title="Recalculer toutes les pièces"
+          title="Recalcular todas as divisões"
         >
           {computing ? (
             <RefreshCw className="h-3 w-3 animate-spin" />
@@ -156,7 +156,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
             onClick={compareBestPrices}
             data-testid="live-total-compare-prices"
             className="h-7 gap-1 rounded-full text-xs text-primary hover:bg-primary/10"
-            title="Voir les meilleurs prix chez tous les fournisseurs"
+            title="Ver os melhores preços nos fornecedores"
           >
             <Trophy className="h-3 w-3" /> Voir vainqueur prix
           </Button>
@@ -171,7 +171,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
             }}
             data-testid="live-total-open-biggest"
             className="h-7 gap-1 rounded-full text-xs"
-            title="Voir la pièce la plus coûteuse"
+            title="Ver a divisão mais cara"
           >
             <ArrowUp className="h-3 w-3" /> Détails
           </Button>

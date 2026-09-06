@@ -46,13 +46,13 @@ export default function QuoteTracking() {
     setAutoRemind(next.enabled); setRemindDelay(next.delay_days); setRemindMax(next.max_reminders);
     try {
       await api.post("/quotes/reminders/settings", next);
-      toast.success("Relances mises à jour");
-    } catch { toast.error("Impossible de modifier le réglage"); }
+      toast.success("Lembretes actualizados");
+    } catch { toast.error("Não foi possível alterar a configuração"); }
   };
   const toggleAutoRemind = (val) => saveRemind({ enabled: val });
 
   const QUOTE_STATUS = {
-    draft: { label: "Brouillon", cls: "border-border text-muted-foreground" },
+    draft: { label: "Rascunho", cls: "border-border text-muted-foreground" },
     sent: { label: "Envoyé", cls: "border-sky-500/60 text-sky-600" },
     signed: { label: "Signé", cls: "border-primary/60 text-primary bg-primary/5" },
     refused: { label: "Refusé", cls: "border-red-500/60 text-red-600" },
@@ -62,7 +62,7 @@ export default function QuoteTracking() {
       await api.patch(`/documents/${doc.doc_id}/status`, { status });
       setQuotes((qs) => qs.map((x) => x.doc_id === doc.doc_id ? { ...x, status } : x));
       toast.success(`Statut : ${QUOTE_STATUS[status]?.label || status}`);
-    } catch { toast.error("Changement de statut impossible"); }
+    } catch { toast.error("Alteração de estado impossível"); }
   };
   const deleteQuote = async (doc) => {
     if (!(await confirm({
@@ -73,25 +73,25 @@ export default function QuoteTracking() {
     try {
       await api.delete(`/documents/${doc.doc_id}`);
       setQuotes((qs) => qs.filter((x) => x.doc_id !== doc.doc_id));
-      toast.success("Devis supprimé");
-    } catch { toast.error("Suppression impossible"); }
+      toast.success("Orçamento eliminado");
+    } catch { toast.error("Eliminação impossível"); }
   };
   const facturer = async (doc) => {
-    if (doc.status !== "signed") { toast.error("Le devis doit être signé avant d'être facturé"); return; }
+    if (doc.status !== "signed") { toast.error("O orçamento tem de estar assinado antes de ser facturado"); return; }
     try {
       const { data } = await api.post(`/documents/${doc.doc_id}/to-invoice`, { mode: "total", pct: 100 });
       toast.success("Facture créée ✅");
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Facturation impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Facturação impossível"); }
   };
 
   const facturerAcompte = async (doc) => {
-    if (doc.status !== "signed") { toast.error("Le devis doit être signé avant de facturer un acompte"); return; }
+    if (doc.status !== "signed") { toast.error("O orçamento tem de estar assinado para facturar um adiantamento"); return; }
     try {
       const { data } = await api.post(`/documents/${doc.doc_id}/deposit-invoice`, { pct: 30 });
       toast.success("Facture d'acompte 30% créée — vérifiez et envoyez ✅");
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Facturation d'acompte impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Facturação do adiantamento impossível"); }
   };
 
   const [billQuote, setBillQuote] = useState(null);
@@ -99,7 +99,7 @@ export default function QuoteTracking() {
   const [sitPct, setSitPct] = useState(50);
   const [sitDeduct, setSitDeduct] = useState(0);
   const openBilling = async (doc) => {
-    if (doc.status !== "signed") { toast.error("Le devis doit être signé"); return; }
+    if (doc.status !== "signed") { toast.error("O orçamento tem de estar assinado"); return; }
     setBillQuote(doc); setRecap(null); setSitPct(50); setSitDeduct(0);
     try { const { data } = await api.get(`/documents/${doc.doc_id}/billing-recap`); setRecap(data); } catch { /* */ }
   };
@@ -108,18 +108,18 @@ export default function QuoteTracking() {
       const { data } = await api.post(`/documents/${billQuote.doc_id}/situation-invoice`, { pct: Number(sitPct), deduct_deposit_pct: Number(sitDeduct) });
       toast.success("Facture de situation créée — vérifiez et envoyez ✅");
       setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Situation impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Auto de medição impossível"); }
   };
   const makeBalance = async () => {
     try {
       const { data } = await api.post(`/documents/${billQuote.doc_id}/balance-invoice`);
       toast.success("Facture de solde créée — vérifiez et envoyez ✅");
       setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Solde impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Saldo final impossível"); }
   };
 
   const retrySend = async (send) => {
-    if (!send.doc_id) { toast.error("Devis introuvable pour la relance"); return; }
+    if (!send.doc_id) { toast.error("Orçamento não encontrado para o lembrete"); return; }
     setRetrying(send.log_id);
     try {
       await api.post(`/documents/${send.doc_id}/send`, {
@@ -128,7 +128,7 @@ export default function QuoteTracking() {
       toast.success("Nouvel envoi lancé ✅");
       await load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally { setRetrying(null); }
   };
   const now = new Date();
@@ -145,7 +145,7 @@ export default function QuoteTracking() {
         (data.sends || []).filter((s) => s.worksite_status === "completed" || s.review_requested)
           .map((s) => s.log_id));
       setCompleted(done);
-    } catch { toast.error("Impossible de charger les devis"); }
+    } catch { toast.error("Não foi possível carregar os orçamentos"); }
     finally { setLoading(false); }
     try {
       const { data } = await api.get("/documents?doc_type=quote");
@@ -161,12 +161,12 @@ export default function QuoteTracking() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "construpilot-clients-devis.csv";
+      a.download = "construpilot-clientes-orcamentos.csv";
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Export CSV téléchargé");
     } catch {
-      toast.error("Export impossible");
+      toast.error("Exportação impossível");
     }
   };
 
@@ -182,7 +182,7 @@ export default function QuoteTracking() {
       URL.revokeObjectURL(url);
       toast.success("Rapport PDF téléchargé");
     } catch {
-      toast.error("Génération impossible");
+      toast.error("Geração impossível");
     }
   };
 
@@ -204,7 +204,7 @@ export default function QuoteTracking() {
         ? `Lien copié — acompte ${pct}% à la signature`
         : "Lien de signature copié (sans acompte)");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Génération impossible");
+      toast.error(e?.response?.data?.detail || "Geração impossível");
     }
   };
 
@@ -245,7 +245,7 @@ export default function QuoteTracking() {
   const opened = sends.filter(s => s.opened && !s.signed);
   const signed = sends.filter(s => s.signed);
 
-  const fmtEur = (n) => (n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 0 }) + " €";
+  const fmtEur = (n) => (n || 0).toLocaleString("pt-PT", { minimumFractionDigits: 0 }) + " €";
   const daysSince = (iso) => {
     const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
     if (d === 0) return "aujourd'hui";
@@ -403,7 +403,7 @@ export default function QuoteTracking() {
                     <p className="text-[11px] text-muted-foreground">{(d.created_at || "").slice(0, 10)}</p>
                   </button>
                   <span className="num text-sm font-bold text-primary shrink-0">
-                    {Math.round(d.total_ttc || (d.totals && d.totals.ttc) || 0).toLocaleString("fr-FR")} €
+                    {Math.round(d.total_ttc || (d.totals && d.totals.ttc) || 0).toLocaleString("pt-PT")} €
                   </span>
                   <Badge variant="outline" className={`rounded-sm shrink-0 ${st.cls}`}
                          data-testid={`quote-status-badge-${d.doc_id}`}>{st.label}</Badge>
@@ -417,19 +417,19 @@ export default function QuoteTracking() {
                   </select>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => facturer(d)}
-                          title={d.status !== "signed" ? "Le devis doit être signé" : "Transformer en facture"}
+                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Transformer en facture"}
                           data-testid={`quote-invoice-${d.doc_id}`}>
                     <Receipt className="h-3.5 w-3.5" /> Facturer
                   </Button>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => facturerAcompte(d)}
-                          title={d.status !== "signed" ? "Le devis doit être signé" : "Facture d'acompte 30%"}
+                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Facture d'acompte 30%"}
                           data-testid={`quote-deposit-${d.doc_id}`}>
                     <Receipt className="h-3.5 w-3.5" /> Acompte 30%
                   </Button>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => openBilling(d)}
-                          title={d.status !== "signed" ? "Le devis doit être signé" : "Décompte, situation, solde"}
+                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Décompte, situation, solde"}
                           data-testid={`quote-billing-${d.doc_id}`}>
                     <Receipt className="h-3.5 w-3.5" /> Décompte / Situation
                   </Button>
@@ -525,7 +525,7 @@ export default function QuoteTracking() {
 
       <div className="flex justify-between items-center">
         <p className="text-xs text-muted-foreground">
-          {sends.length} devis · dernière mise à jour {new Date().toLocaleTimeString("fr-FR")}
+          {sends.length} orçamentos · última actualização {new Date().toLocaleTimeString("pt-PT")}
         </p>
         <Button size="sm" variant="outline" onClick={load} data-testid="quote-tracking-refresh"
                 className="rounded-sm gap-1">

@@ -43,7 +43,7 @@ export default function CampaignsPanel() {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold truncate">{c.subject}</p>
                 <p className="text-xs text-muted-foreground">
-                  {c.created_at ? new Date(c.created_at).toLocaleString("fr-FR") : ""}
+                  {c.created_at ? new Date(c.created_at).toLocaleString("pt-PT") : ""}
                   {c.sent_by ? ` · par ${c.sent_by}` : ""}
                 </p>
               </div>

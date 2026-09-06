@@ -11,7 +11,7 @@ import { toast } from "sonner";
 const conf = (c) => (c >= 0.85 ? { cls: "bg-emerald-500/15 text-emerald-600", lbl: "🟢" }
   : c >= 0.6 ? { cls: "bg-amber-500/15 text-amber-600", lbl: "🟠" }
     : { cls: "bg-red-500/15 text-red-600", lbl: "🔴" });
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function ApproOrder({ items, suppliers, csvName, createOrder, onHighlight }) {
   const [supplierId, setSupplierId] = useState("");

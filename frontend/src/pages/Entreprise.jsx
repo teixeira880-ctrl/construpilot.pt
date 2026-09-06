@@ -264,7 +264,7 @@ export default function Entreprise() {
                     {a.label ? <span className="text-muted-foreground"> · {a.label}</span> : ""}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">{new Date(a.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{new Date(a.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
               </div>
             ))}
           </div>

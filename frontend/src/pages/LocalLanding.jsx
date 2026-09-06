@@ -46,7 +46,7 @@ export default function LocalLanding() {
     <>
       <SEO
         title={`Devis travaux ${c.name} — Estimation rénovation en 30 s`}
-        description={`Estimez vos travaux à ${c.name} en 30 secondes. Prix moyen rénovation ${c.name} : ${c.priceRange} €/m². Devis IA gratuit, ${c.artisans.toLocaleString("fr-FR")} artisans référencés en ${c.region}.`}
+        description={`Estimez vos travaux à ${c.name} en 30 secondes. Prix moyen rénovation ${c.name} : ${c.priceRange} €/m². Devis IA gratuit, ${c.artisans.toLocaleString("pt-PT")} artisans référencés en ${c.region}.`}
         keywords={`devis travaux ${c.name}, prix rénovation ${c.name}, artisan ${c.name}, devis rénovation ${c.department}, coût travaux ${c.name}, ${c.region} BTP`}
         canonical={`/devis-travaux-${c.slug}`}
         image={c.heroImage}
@@ -91,9 +91,9 @@ export default function LocalLanding() {
       {/* Stats */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("fr-FR")} €`}
+          <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("pt-PT")} €`}
                 label="Rénovation standard / m²" />
-          <Stat icon={Users} value={c.artisans.toLocaleString("fr-FR")}
+          <Stat icon={Users} value={c.artisans.toLocaleString("pt-PT")}
                 label={`Artisans en ${c.region}`} />
           <Stat icon={Building2} value={c.surface} label={`Surface ${c.name}`} />
           <Stat icon={Zap} value="30 s" label="Devis chiffré instantané" />
@@ -110,7 +110,7 @@ export default function LocalLanding() {
           <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
             Le marché de la rénovation à <strong>{c.name}</strong> est particulièrement dynamique.
             Le prix moyen d'une rénovation standard s'établit autour de{" "}
-            <strong>{c.priceStandard.toLocaleString("fr-FR")} €/m²</strong>, dans une fourchette de{" "}
+            <strong>{c.priceStandard.toLocaleString("pt-PT")} €/m²</strong>, dans une fourchette de{" "}
             <strong>{c.priceRange} €/m²</strong> selon la gamme (éco / standard / premium). Un chantier
             type dans la région, par exemple <em>{c.typicalProject}</em>, se chiffre en moyenne
             entre <strong>{c.typicalPrice}</strong>.

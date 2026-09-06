@@ -137,7 +137,7 @@ export default function SiteTracking() {
             <div key={r.report_id} className="surface p-4 rounded-md flex justify-between gap-4" data-testid={`report-${r.report_id}`}>
               <div className="flex-1"><p className="font-display font-semibold">{r.title || "Visite"}</p><p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">{r.notes}</p>
                 {r.photos?.length > 0 && <div className="flex gap-2 mt-2 flex-wrap">{r.photos.map((ph, i) => <img key={i} src={FILE + encodeURIComponent(ph)} alt="" className="h-16 w-16 object-cover rounded border border-border" />)}</div>}
-                <p className="text-xs text-muted-foreground mt-2">{new Date(r.created_at).toLocaleDateString("fr-FR")}</p></div>
+                <p className="text-xs text-muted-foreground mt-2">{new Date(r.created_at).toLocaleDateString("pt-PT")}</p></div>
               <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 shrink-0" onClick={() => api.delete(`/site/reports/${r.report_id}`).then(load)} data-testid={`report-del-${r.report_id}`}><Trash2 className="h-4 w-4" /></Button>
             </div>
           ))}

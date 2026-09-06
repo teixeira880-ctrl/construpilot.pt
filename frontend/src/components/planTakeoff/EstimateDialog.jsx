@@ -92,19 +92,19 @@ export function EstimateDialog({
                 <div>
                   <p className="text-[10px] text-muted-foreground">Estimation moyenne</p>
                   <p className="num font-display text-xl font-extrabold text-primary">
-                    {estimateResult?.estimation?.total_avg?.toLocaleString("fr-FR") ?? "—"} €
+                    {estimateResult?.estimation?.total_avg?.toLocaleString("pt-PT") ?? "—"} €
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground">€ / m²</p>
                   <p className="num font-display text-xl font-extrabold">
-                    {estimateResult?.estimation?.price_per_sqm?.toLocaleString("fr-FR") ?? "—"} €
+                    {estimateResult?.estimation?.price_per_sqm?.toLocaleString("pt-PT") ?? "—"} €
                   </p>
                 </div>
               </div>
               <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
-                Fourchette : {estimateResult?.estimation?.total_min?.toLocaleString("fr-FR") ?? "—"} €
-                → {estimateResult?.estimation?.total_max?.toLocaleString("fr-FR") ?? "—"} € · Durée
+                Fourchette : {estimateResult?.estimation?.total_min?.toLocaleString("pt-PT") ?? "—"} €
+                → {estimateResult?.estimation?.total_max?.toLocaleString("pt-PT") ?? "—"} € · Durée
                 estimée : {estimateResult?.estimation?.duration_weeks ?? "—"} semaine(s)
               </p>
             </div>

@@ -107,13 +107,13 @@ export default function Dashboard() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="dash-quick-actions">
         {(isPro ? [
-          { to: "/devis-editeur", icon: FileText, title: "Nouveau devis", desc: "Créez un devis client détaillé en quelques clics", testid: "quick-new-quote" },
-          { to: "/devis-editeur?type=invoice", icon: Receipt, title: "Nouvelle facture", desc: "Éditez une facture conforme (Factur-X)", testid: "quick-new-invoice" },
-          { to: "/factures", icon: TrendingUp, title: "Suivi facturation", desc: "Encaissements, impayés et documents", testid: "quick-invoicing" },
+          { to: "/devis-editeur", icon: FileText, title: "Novo orçamento", desc: "Crie um orçamento detalhado em poucos cliques", testid: "quick-new-quote" },
+          { to: "/devis-editeur?type=invoice", icon: Receipt, title: "Nova factura", desc: "Emita uma factura conforme (SAF-T)", testid: "quick-new-invoice" },
+          { to: "/factures", icon: TrendingUp, title: "Acompanhamento facturação", desc: "Recebimentos, dívidas e documentos", testid: "quick-invoicing" },
         ] : [
-          { to: "/estimation", icon: FileText, title: "Estimer mes travaux", desc: "Obtenez une estimation détaillée en 30 s", testid: "quick-estimate" },
-          { to: "/prix", icon: TrendingUp, title: "Prix des matériaux", desc: "Consultez les prix du marché à jour", testid: "quick-prices" },
-          { to: "/calculateurs", icon: Receipt, title: "Calculateurs", desc: "Surfaces, volumes et quantités en un clin d'œil", testid: "quick-calculators" },
+          { to: "/estimation", icon: FileText, title: "Estimar as minhas obras", desc: "Obtenha uma estimativa detalhada em 30 s", testid: "quick-estimate" },
+          { to: "/prix", icon: TrendingUp, title: "Preços dos materiais", desc: "Consulte os preços de mercado actualizados", testid: "quick-prices" },
+          { to: "/calculateurs", icon: Receipt, title: "Calculadoras", desc: "Superfícies, volumes e quantidades num instante", testid: "quick-calculators" },
         ]).map((a) => (
           <button
             key={a.to}
@@ -328,7 +328,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <Info icon={Euro} label="Budget" value={selectedLead.budget ? eur(selectedLead.budget) : "—"} />
                 <Info icon={MapPin} label="Adresse" value={selectedLead.address || "—"} />
-                <Info icon={CalendarClock} label="Disponibilité" value={selectedLead.availability || selectedLead.delay_days ? (selectedLead.availability || `${selectedLead.delay_days} j`) : "—"} />
+                <Info icon={CalendarClock} label="Disponibilidade" value={selectedLead.availability || selectedLead.delay_days ? (selectedLead.availability || `${selectedLead.delay_days} j`) : "—"} />
                 <Info icon={UserIcon} label="Métier" value={selectedLead.trade || "—"} />
               </div>
               {selectedLead.description && (

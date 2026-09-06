@@ -228,12 +228,12 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
                   )}
                   {stats?.last_open_at && (
                     <Badge variant="outline" className="rounded-sm gap-1 num text-xs">
-                      Dernière : {new Date(stats.last_open_at).toLocaleString("fr-FR")}
+                      Dernière : {new Date(stats.last_open_at).toLocaleString("pt-PT")}
                     </Badge>
                   )}
                   {expiresAt && (
                     <Badge variant="outline" className="rounded-sm gap-1 num text-xs border-amber-500/50 text-amber-500">
-                      <Clock className="h-3 w-3" /> Expire le {new Date(expiresAt).toLocaleDateString("fr-FR")}
+                      <Clock className="h-3 w-3" /> Expire le {new Date(expiresAt).toLocaleDateString("pt-PT")}
                     </Badge>
                   )}
                 </div>

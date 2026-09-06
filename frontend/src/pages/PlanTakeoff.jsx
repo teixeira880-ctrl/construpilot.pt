@@ -321,9 +321,9 @@ export default function PlanTakeoff() {
         page_index: pageIndex, ...annotations,
       });
       setSavedAt(Date.now());
-      toast.success("Plan enregistré");
+      toast.success("Plano guardado");
     } catch {
-      toast.error("Échec de l'enregistrement");
+      toast.error("Falha ao guardar");
     } finally {
       setSaving(false);
     }
@@ -351,7 +351,7 @@ export default function PlanTakeoff() {
       setPageIndex(0);
       if (data.pc_study) setPcDialog(true);
       if (params.get("auto") === "1") setPendingAuto(true);
-    }).catch(() => toast.error("Impossible d'ouvrir ce plan"));
+    }).catch(() => toast.error("Não foi possível abrir este plano"));
   }, []);
 
   const savePlanDefaults = async (next) => {
@@ -360,7 +360,7 @@ export default function PlanTakeoff() {
       await api.patch(`/takeoffs/${plan.plan_id}/defaults`, next);
       setPlanDefaults(next);
       toast.success(`Réglages : mur ${next.ceiling_h_m} m · plancher ${(next.floor_thickness_m * 100).toFixed(0)} cm`);
-    } catch { toast.error("Sauvegarde impossible"); }
+    } catch { toast.error("Não foi possível guardar"); }
   };
 
   const uploadFile = async (file) => {
@@ -382,7 +382,7 @@ export default function PlanTakeoff() {
       const detail = e?.response?.data?.detail;
       const msg = detail
         || (!e?.response ? "Réseau indisponible ou fichier trop lourd — vérifiez votre connexion et réessayez"
-                         : "Import impossible");
+                         : "Importação impossível");
       toast.error(msg);
     } finally { setUploading(false); }
   };
@@ -442,7 +442,7 @@ export default function PlanTakeoff() {
           if (d < bestDist) { bestDist = d; bestRoom = r; }
         }
         if (!bestRoom) {
-          toast.error("Aucune pièce à proximité — tracez d'abord une pièce");
+          toast.error("Nenhuma divisão por perto — desenhe primeiro uma divisão");
           setPoints([]);
           return;
         }
@@ -491,7 +491,7 @@ export default function PlanTakeoff() {
           id: `nt_${Date.now()}`, x: pt[0], y: pt[1], text: trimmed || "Note"
         }],
       });
-      toast.success("Note ajoutée");
+      toast.success("Nota adicionada");
     } else if (tool === TOOLS.ANGLE) {
       const next = [...points, pt];
       if (next.length === 3) {
@@ -524,7 +524,7 @@ export default function PlanTakeoff() {
 
   const applyCalibration = async () => {
     const dist = parseFloat(calibDist.replace(",", "."));
-    if (!(dist > 0)) return toast.error("Distance invalide");
+    if (!(dist > 0)) return toast.error("Distância inválida");
     try {
       await api.post(`/takeoffs/${plan.plan_id}/calibrate`, {
         page_index: pageIndex, p1: points[0], p2: points[1],
@@ -536,14 +536,14 @@ export default function PlanTakeoff() {
       setPoints([]);
       await refreshPlan();
       setTool(TOOLS.SELECT);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Calibration échouée"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Calibração falhou"); }
   };
 
   const submitOpening = async () => {
     if (!openingsDialog) return;
     const w = parseFloat(pendingOpening.width_m);
     const h = parseFloat(pendingOpening.height_m);
-    if (!(w > 0) || !(h > 0)) return toast.error("Dimensions invalides");
+    if (!(w > 0) || !(h > 0)) return toast.error("Dimensões inválidas");
     try {
       await api.post(
         `/takeoffs/${plan.plan_id}/rooms/${openingsDialog.room_id}/openings`,
@@ -561,20 +561,20 @@ export default function PlanTakeoff() {
       setOpeningsDialog(null);
       setPoints([]);
       await refreshPlan();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Ajout impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível adicionar"); }
   };
 
   const deleteOpening = async (room_id, opening_id) => {
     try {
       await api.delete(`/takeoffs/${plan.plan_id}/rooms/${room_id}/openings/${opening_id}`);
-      toast.success("Ouverture supprimée");
+      toast.success("Vão eliminado");
       await refreshPlan();
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   const finishPolyline = async (pts = points) => {
     if (pts.length < 2) return;
-    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    if (!currentCalib) return toast.error("Calibre primeiro o plano");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "polyline", points: pts,
@@ -582,12 +582,12 @@ export default function PlanTakeoff() {
       toast.success(`Longueur : ${data.length_m} m`);
       setPoints([]);
       await refreshPlan();
-    } catch (e) { toast.error("Mesure échouée"); }
+    } catch (e) { toast.error("Medição falhou"); }
   };
 
   const finishPitchSurface = () => {
     if (points.length < 3) return toast.error("Cliquez au moins 3 points");
-    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    if (!currentCalib) return toast.error("Calibre primeiro o plano");
     const ppm = currentCalib.pixels_per_meter;
     // Shoelace formula in pixel space
     let sum = 0;
@@ -620,8 +620,8 @@ export default function PlanTakeoff() {
     try {
       await api.patch(`/takeoffs/${plan.plan_id}/rooms/${roomId}`, { name: newName.trim() });
       await refreshPlan();
-      toast.success("Pièce renommée");
-    } catch { toast.error("Renommage impossible"); }
+      toast.success("Divisão renomeada");
+    } catch { toast.error("Não foi possível renomear"); }
   };
 
   const attachPresetToRoom = async (roomId, presetId) => {
@@ -629,8 +629,8 @@ export default function PlanTakeoff() {
     try {
       await api.patch(`/takeoffs/${plan.plan_id}/rooms/${roomId}`, { preset_id: presetId });
       await refreshPlan();
-      toast.success(presetId ? "Modèle attaché à la pièce" : "Modèle retiré");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Attachement impossible"); }
+      toast.success(presetId ? "Modelo atribuído à divisão" : "Modelo removido");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Atribuição impossível"); }
   };
 
   const deleteRoomFromPanel = async (roomId) => {
@@ -640,7 +640,7 @@ export default function PlanTakeoff() {
       await api.delete(`/takeoffs/${plan.plan_id}/rooms/${roomId}`);
       await refreshPlan();
       toast.success("Pièce supprimée");
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   const deleteMeasureFromPanel = async (measureId) => {
@@ -649,7 +649,7 @@ export default function PlanTakeoff() {
       await api.delete(`/takeoffs/${plan.plan_id}/measurements/${measureId}`);
       await refreshPlan();
       toast.success("Mesure supprimée");
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   const clearMeasures = async () => {
@@ -668,7 +668,7 @@ export default function PlanTakeoff() {
       await api.patch(`/takeoffs/${plan.plan_id}/measurements/${measureId}`, { label });
       await refreshPlan();
       toast.success(label ? `Mesure renommée : ${label}` : "Libellé effacé");
-    } catch { toast.error("Renommage impossible"); }
+    } catch { toast.error("Não foi possível renomear"); }
   };
 
   // Iter68 — surface mesurée → pièce complète (1 clic)
@@ -694,7 +694,7 @@ export default function PlanTakeoff() {
       const { data } = await api.delete(`/takeoffs/${plan.plan_id}/rooms/${roomId}/deductions/${dedId}`);
       toast.success(`Déduction retirée — surface : ${data.surface_m2} m²`);
       await refreshPlan();
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   // Iter68 — export Excel (pièces + mesures)
@@ -798,7 +798,7 @@ export default function PlanTakeoff() {
     try {
       await api.delete(`/emails/templates/${templateId}`);
       setMsgTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   // Iter66 — renvoi 1 clic depuis l'historique des envois
@@ -901,7 +901,7 @@ export default function PlanTakeoff() {
 
   const finishDistance = async (pts = points) => {
     if (pts.length < 2) return;
-    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    if (!currentCalib) return toast.error("Calibre primeiro o plano");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "distance", points: pts.slice(0, 2),
@@ -909,12 +909,12 @@ export default function PlanTakeoff() {
       toast.success(`Distance : ${data.value_m} m`);
       setPoints([]);
       await refreshPlan();
-    } catch { toast.error("Mesure échouée"); }
+    } catch { toast.error("Medição falhou"); }
   };
 
   const finishRoom = (pts = points) => {
     if (pts.length < 3) return toast.error("Une pièce nécessite au moins 3 points");
-    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    if (!currentCalib) return toast.error("Calibre primeiro o plano");
     setPendingRoomName(`Pièce ${String(rooms.length + 1).padStart(2, "0")}`);
     setRoomDialog(true);
   };
@@ -922,7 +922,7 @@ export default function PlanTakeoff() {
   // Iter67 — mesure de surface libre (polygone) en m²
   const finishSurface = async (pts = points) => {
     if (pts.length < 3) return toast.error("Une surface nécessite au moins 3 points");
-    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    if (!currentCalib) return toast.error("Calibre primeiro o plano");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "polygon", points: pts,
@@ -968,7 +968,7 @@ export default function PlanTakeoff() {
       setPoints([]);
       await refreshPlan();
       setTool(TOOLS.SELECT);
-    } catch (e) { toast.error("Sauvegarde impossible"); }
+    } catch (e) { toast.error("Não foi possível guardar"); }
   };
 
   const deleteRoom = async (rid) => {
@@ -1253,7 +1253,7 @@ export default function PlanTakeoff() {
       setBetonPresets((list) => list.filter((p) => p.name !== selectedPreset));
       setSelectedPreset("");
       toast.success("Réglage supprimé");
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   const runCompare = async () => {
@@ -1450,7 +1450,7 @@ export default function PlanTakeoff() {
   const _hasStructure = () => !!(structure && ((structure.walls || []).length || (structure.openings || []).length || (structure.beams || []).length || (structure.floors || []).length || (structure.columns || []).length));
 
   const sendToQuote = async () => {
-    if (!currentCalib) { toast.error("Calibrez d'abord le plan"); return; }
+    if (!currentCalib) { toast.error("Calibre primeiro o plano"); return; }
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     try {
       const body = plan3dSnapshot ? { snapshot_png: plan3dSnapshot } : {};
@@ -1467,7 +1467,7 @@ export default function PlanTakeoff() {
   };
 
   const estimateAndDownloadQuote = async () => {
-    if (!currentCalib) { toast.error("Calibrez d'abord le plan"); return; }
+    if (!currentCalib) { toast.error("Calibre primeiro o plano"); return; }
     if (!_hasStructure()) { toast.error("Analysez d'abord le plan"); return; }
     setQuoteBusy(true);
     try {
@@ -1483,7 +1483,7 @@ export default function PlanTakeoff() {
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       const ttc = data.totals?.ttc || 0;
-      toast.success(`Devis estimé téléchargé — ${ttc.toLocaleString("fr-FR")} € TTC · ${data.priced_lines || 0} poste(s) chiffré(s)`, { duration: 6000 });
+      toast.success(`Devis estimé téléchargé — ${ttc.toLocaleString("pt-PT")} € TTC · ${data.priced_lines || 0} poste(s) chiffré(s)`, { duration: 6000 });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Estimation impossible");
     } finally { setQuoteBusy(false); }
@@ -1704,7 +1704,7 @@ export default function PlanTakeoff() {
   };
 
   const autoFillRoom = async (pt) => {
-    if (!currentCalib) return toast.error("Calibrez d'abord le plan");
+    if (!currentCalib) return toast.error("Calibre primeiro o plano");
     setCvBusy(true);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/room-autofill`, {
@@ -1742,7 +1742,7 @@ export default function PlanTakeoff() {
     if (!materials) return;
     const q = [];
     if (materials.floor) q.push(`${materials.floor.material} ${materials.floor.quantity_m2}m²`);
-    if (materials.placo) q.push(`plaques BA13`);
+    if (materials.placo) q.push(`placas de Pladur`);
     if (materials.paint) q.push(`peinture`);
     nav(`/prix?q=${encodeURIComponent(q.join(" "))}`);
   };
@@ -1943,7 +1943,7 @@ export default function PlanTakeoff() {
         if (quoteIncludeTva) extras.push("attestation TVA");
         if (quoteAttachVideo && latestVideo) extras.push("tour vidéo 3D");
         const extra = extras.length ? " + " + extras.join(" + ") + " joint(s)" : "";
-        toast.success(`Devis envoyé à ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("fr-FR")} € TTC)`);
+        toast.success(`Devis envoyé à ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("pt-PT")} € TTC)`);
         setQuoteDialog(false);
         setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
         setQuoteSubject(""); setQuoteIntro(""); setQuoteClientAddress("");
@@ -1966,7 +1966,7 @@ export default function PlanTakeoff() {
       setEstimateResult(data);
       // Si rénovation → coche automatiquement TVA
       if (data.is_renovation) setQuoteIncludeTva(true);
-      toast.success(`Estimation générée : ${data.surface_m2} m² · ${data.estimation.total_avg?.toLocaleString("fr-FR")} €`);
+      toast.success(`Estimation générée : ${data.surface_m2} m² · ${data.estimation.total_avg?.toLocaleString("pt-PT")} €`);
       return data;
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Estimation impossible");
@@ -2166,7 +2166,7 @@ export default function PlanTakeoff() {
       await loadTemplates();
       toast.success("Modèle supprimé");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Suppression impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível eliminar");
     }
   };
 
@@ -2482,7 +2482,7 @@ export default function PlanTakeoff() {
                       setPlan(data);
                       setPageIndex(0);
                     } catch {
-                      toast.error("Impossible d'ouvrir ce plan");
+                      toast.error("Não foi possível abrir este plano");
                     }
                   }}
                   data-testid={`recent-plan-${p.plan_id}`}
@@ -2499,7 +2499,7 @@ export default function PlanTakeoff() {
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {p.page_count || 1} page{p.page_count > 1 ? "s" : ""}
                     {p.created_at && (
-                      <span> · {new Date(p.created_at).toLocaleDateString("fr-FR")}</span>
+                      <span> · {new Date(p.created_at).toLocaleDateString("pt-PT")}</span>
                     )}
                   </p>
                 </button>
@@ -2682,7 +2682,7 @@ export default function PlanTakeoff() {
             <div className="rounded-sm bg-primary/10 border border-primary/30 p-3" data-testid="recap-estimation">
               <p className="text-[11px] text-muted-foreground">Estimation</p>
               <p className="num text-xl font-extrabold text-primary">
-                {(analysisRecap.estimation_globale_eur || analysisRecap.estimation_beton_eur || 0).toLocaleString("fr-FR")} €
+                {(analysisRecap.estimation_globale_eur || analysisRecap.estimation_beton_eur || 0).toLocaleString("pt-PT")} €
               </p>
               <p className="text-[10px] text-muted-foreground">{analysisRecap.estimation_globale_eur ? "rénovation (moy.)" : "gros œuvre béton"}</p>
             </div>
@@ -3672,7 +3672,7 @@ export default function PlanTakeoff() {
                       <>
                         <span className="text-muted-foreground font-semibold">Coût matière (béton + aciers)</span>
                         <span className="num text-right font-semibold text-emerald-700" data-testid="descriptif-cout-matiere">
-                          {Math.round((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg).toLocaleString("fr-FR")} €
+                          {Math.round((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg).toLocaleString("pt-PT")} €
                         </span>
                       </>
                     )}
@@ -3680,7 +3680,7 @@ export default function PlanTakeoff() {
                       <>
                         <span className="text-muted-foreground font-semibold">Prix de vente estimé{marginPct > 0 ? ` (marge ${marginPct}%)` : ""}</span>
                         <span className="num text-right font-bold text-primary" data-testid="descriptif-prix-vente">
-                          {Math.round((((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg) + (descriptif.beton_total_m3 || 0) * laborPriceM3) * (1 + marginPct / 100)).toLocaleString("fr-FR")} €
+                          {Math.round((((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg) + (descriptif.beton_total_m3 || 0) * laborPriceM3) * (1 + marginPct / 100)).toLocaleString("pt-PT")} €
                         </span>
                       </>
                     )}
@@ -4000,7 +4000,7 @@ export default function PlanTakeoff() {
                     [`Surface`, `${materials.paint.surface_m2} m²`],
                     [`${materials.paint.coats} couches, marge ${materials.paint.margin_pct}%`, `${materials.paint.liters_recommended} L`],
                   ]} />}
-                  {materials.placo && <MatCard label="Placo BA13" lines={[
+                  {materials.placo && <MatCard label="Pladur" lines={[
                     [`Surface`, `${materials.placo.surface_m2} m²`],
                     [`+${materials.placo.waste_pct}% pertes`, `${materials.placo.plates} plaques`],
                   ]} />}
@@ -4162,8 +4162,8 @@ export default function PlanTakeoff() {
                               <span className="truncate">✉ {s.to_email}</span>
                               <span className="flex items-center gap-1.5 shrink-0">
                                 <span className="num">
-                                  {new Date(s.sent_at).toLocaleDateString("fr-FR")}{" "}
-                                  {new Date(s.sent_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                                  {new Date(s.sent_at).toLocaleDateString("pt-PT")}{" "}
+                                  {new Date(s.sent_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                                 </span>
                                 <button onClick={() => resendReport(s)} disabled={sendingEcarts}
                                         className="text-primary hover:text-orange-600 disabled:opacity-40 transition"
@@ -4433,7 +4433,7 @@ export default function PlanTakeoff() {
                             )}
                             <p className="num text-muted-foreground text-[10px]">
                               {s.label && <span className="capitalize">{s.action.replace(/_/g, " ")} · </span>}
-                              {new Date(s.created_at).toLocaleString("fr-FR")} · {s.rooms?.length || 0} pièces
+                              {new Date(s.created_at).toLocaleString("pt-PT")} · {s.rooms?.length || 0} pièces
                             </p>
                             {diff.summary && (
                               <p className="text-[10px] mt-1 text-primary" data-testid={`history-diff-${s.snapshot_id}`}>
@@ -4720,7 +4720,7 @@ export default function PlanTakeoff() {
                     <td className="px-2 py-1">Coût matière</td>
                     {compareData.map((c) => (
                       <td key={c.name} className="px-2 py-1 num text-right text-emerald-700">
-                        {Math.round((c.d?.beton_total_m3 || 0) * (c.beton_price_m3 || betonPriceM3) + (c.d?.acier_total_kg || 0) * (c.acier_price_kg || acierPriceKg)).toLocaleString("fr-FR")} €
+                        {Math.round((c.d?.beton_total_m3 || 0) * (c.beton_price_m3 || betonPriceM3) + (c.d?.acier_total_kg || 0) * (c.acier_price_kg || acierPriceKg)).toLocaleString("pt-PT")} €
                       </td>
                     ))}
                   </tr>
@@ -4732,7 +4732,7 @@ export default function PlanTakeoff() {
                       const bp = c.beton_price_m3 || betonPriceM3, ap = c.acier_price_kg || acierPriceKg;
                       const lp = c.labor_price_m3 || laborPriceM3, mg = c.margin_pct || marginPct;
                       const pv = (((c.d?.beton_total_m3 || 0) * bp + (c.d?.acier_total_kg || 0) * ap) + (c.d?.beton_total_m3 || 0) * lp) * (1 + mg / 100);
-                      return <td key={c.name} className="px-2 py-1 num text-right text-primary">{Math.round(pv).toLocaleString("fr-FR")} €</td>;
+                      return <td key={c.name} className="px-2 py-1 num text-right text-primary">{Math.round(pv).toLocaleString("pt-PT")} €</td>;
                     })}
                   </tr>
                 )}

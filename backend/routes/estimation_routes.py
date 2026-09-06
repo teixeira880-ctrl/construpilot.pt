@@ -20,7 +20,7 @@ class EstimateIn(BaseModel):
     project_type: str = "renovation_complete"
     surface: float = 100
     finish_level: str = "standard"
-    country: str = "FR"
+    country: str = "PT"
     region: str | None = None
     city: str | None = None
     building_type: str = "maison"

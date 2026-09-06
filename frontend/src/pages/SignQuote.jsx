@@ -5,7 +5,7 @@ import { CheckCircle2, PenLine, RotateCcw, Download, CreditCard, Loader2 } from 
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 
 export default function SignQuote() {
   const { token } = useParams();
@@ -152,7 +152,7 @@ export default function SignQuote() {
           <div className="bg-primary text-primary-foreground rounded-sm p-6 text-center">
             <p className="text-xs uppercase tracking-widest opacity-90">Total TTC</p>
             <p className="num text-4xl font-extrabold mt-1" data-testid="sign-total">
-              {Number(data.total_ttc || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €
+              {Number(data.total_ttc || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2 })} €
             </p>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function SignQuote() {
               <CheckCircle2 className="h-14 w-14 mx-auto text-primary" />
               <p className="font-display text-xl font-bold">Merci — votre devis est signé.</p>
               <p className="text-xs text-muted-foreground">
-                Signé le {new Date(data.signed_at).toLocaleString("fr-FR")}
+                Signé le {new Date(data.signed_at).toLocaleString("pt-PT")}
               </p>
               <a href={`${API}/quotes/public/sign/${token}/pdf`} target="_blank" rel="noopener noreferrer">
                 <button className="rounded-sm bg-primary text-primary-foreground px-6 py-3
@@ -179,7 +179,7 @@ export default function SignQuote() {
                 <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-600" />
                 <p className="font-display text-lg font-bold">Acompte réglé — merci !</p>
                 <p className="text-sm text-muted-foreground">
-                  {eur(data.deposit.paid_amount)} reçu{data.deposit.paid_at ? ` le ${new Date(data.deposit.paid_at).toLocaleDateString("fr-FR")}` : ""}. Votre chantier peut démarrer.
+                  {eur(data.deposit.paid_amount)} reçu{data.deposit.paid_at ? ` le ${new Date(data.deposit.paid_at).toLocaleDateString("pt-PT")}` : ""}. Votre chantier peut démarrer.
                 </p>
               </div>
             ) : data.deposit?.enabled ? (

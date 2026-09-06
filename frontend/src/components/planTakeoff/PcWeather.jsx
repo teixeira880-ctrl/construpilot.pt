@@ -14,7 +14,7 @@ const wIcon = (code) => {
   if (code >= 1) return CloudSun;
   return Sun;
 };
-const fmt = (d) => d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
+const fmt = (d) => d.toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "2-digit" });
 
 export default function PcWeather({ planning, start }) {
   const [city, setCity] = useState(() => localStorage.getItem("construpilot_site_city") || "");

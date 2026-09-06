@@ -1,10 +1,10 @@
-"""Assistant DIY : guides étape par étape + matériaux calculés."""
+"""Assistente DIY: guias passo a passo + materiais calculados."""
 from engines import calculators
 from engines.catalog import DIFFICULTY
 
 TASKS = [
     {
-        "key": "plafond_placo", "name": "Plafond en plaques de plâtre", "difficulty": "intermediate",
+        "key": "plafond_placo", "name": "Tecto em placas de gesso (Pladur)", "difficulty": "intermediate",
         "calculator": "drywall", "calc_defaults": {"structure": "plafond"},
         "duration": "1,5 h / m² à deux", "lot": "placo",
         "safety": ["Travail en hauteur : utiliser un échafaudage roulant stable, jamais un escabeau instable.",
@@ -43,7 +43,7 @@ TASKS = [
         ],
     },
     {
-        "key": "peinture_murs", "name": "Peindre murs et plafond", "difficulty": "easy",
+        "key": "peinture_murs", "name": "Pintar paredes e tecto", "difficulty": "easy",
         "calculator": "paint", "calc_defaults": {}, "duration": "0,3 h / m²", "lot": "peinture",
         "safety": ["Aérer la pièce pendant et après application.", "Couper l'électricité avant de déposer les plaques."],
         "steps": [
@@ -71,7 +71,7 @@ TASKS = [
         ],
     },
     {
-        "key": "carrelage_sol", "name": "Poser du carrelage au sol", "difficulty": "intermediate",
+        "key": "carrelage_sol", "name": "Assentar azulejos no chão", "difficulty": "intermediate",
         "calculator": "tile", "calc_defaults": {}, "duration": "0,85 h / m²", "lot": "carrelage",
         "safety": ["Genouillères et lunettes lors de la découpe.", "Découpe à eau : rallonge sur prise différentielle."],
         "steps": [
@@ -96,7 +96,7 @@ TASKS = [
         ],
     },
     {
-        "key": "isolation_combles", "name": "Isoler des combles", "difficulty": "easy",
+        "key": "isolation_combles", "name": "Isolar um sótão", "difficulty": "easy",
         "calculator": "insulation", "calc_defaults": {}, "duration": "0,4 h / m²", "lot": "isolation",
         "safety": ["Masque FFP2, gants et manches longues obligatoires.",
                    "Ne jamais recouvrir un spot non IP adapté ni un conduit de fumée."],
@@ -117,7 +117,7 @@ TASKS = [
         ],
     },
     {
-        "key": "parquet_clipsable", "name": "Poser un parquet clipsable", "difficulty": "easy",
+        "key": "parquet_clipsable", "name": "Colocar soalho flutuante", "difficulty": "easy",
         "calculator": None, "calc_defaults": {}, "duration": "0,45 h / m²", "lot": "parquet",
         "safety": ["Découpe : lunettes de protection."],
         "steps": [
@@ -135,7 +135,7 @@ TASKS = [
         ],
     },
     {
-        "key": "salle_de_bain_complete", "name": "Rénover une salle de bain", "difficulty": "hard",
+        "key": "salle_de_bain_complete", "name": "Renovar uma casa de banho", "difficulty": "hard",
         "calculator": None, "calc_defaults": {}, "duration": "6 h / m²", "lot": "salle_de_bain",
         "safety": ["Électricité en salle d'eau : volumes de sécurité NF C 15-100, liaison équipotentielle obligatoire.",
                    "Plomberie encastrée : essai de mise en pression avant fermeture."],
@@ -161,7 +161,7 @@ TASKS = [
         ],
     },
     {
-        "key": "cloison_placo", "name": "Monter une cloison en placo", "difficulty": "intermediate",
+        "key": "cloison_placo", "name": "Montar um tabique em Pladur", "difficulty": "intermediate",
         "calculator": "drywall", "calc_defaults": {"structure": "cloison"}, "duration": "0,55 h / m²", "lot": "placo",
         "safety": ["Vérifier l'absence de gaine ou canalisation avant perçage du sol et du plafond."],
         "steps": [
@@ -182,7 +182,7 @@ TASKS = [
         ],
     },
     {
-        "key": "tableau_electrique", "name": "Remplacer un tableau électrique", "difficulty": "pro",
+        "key": "tableau_electrique", "name": "Substituir um quadro eléctrico", "difficulty": "pro",
         "calculator": None, "calc_defaults": {}, "duration": "8 à 16 h", "lot": "electricite",
         "safety": ["DANGER MORTEL : intervention sur tableau électrique réservée à un électricien qualifié.",
                    "Consignation obligatoire, vérification d'absence de tension, conformité NF C 15-100 et attestation Consuel."],

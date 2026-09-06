@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Upload, FileUp, Loader2, CheckCircle2, XCircle, FileText, Trash2, ArrowLeft } from "lucide-react";
 
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const STATUS_LABELS = { draft: "Brouillon", sent: "Envoyé", signed: "Accepté", refused: "Refusé", paid: "Payé" };
 const lineTtc = (l) => (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0) * (1 + (Number(l.vat_rate) || 0) / 100);
 const itemTtc = (it) => (it.lines || []).reduce((s, l) => s + lineTtc(l), 0);

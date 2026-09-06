@@ -40,7 +40,7 @@ class DocLine(BaseModel):
     unit: str = "u"
     qty: float = 1
     unit_price_ht: float = 0
-    vat_rate: float = 10
+    vat_rate: float = 23
     category: str = ""
 
 

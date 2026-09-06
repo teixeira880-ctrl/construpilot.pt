@@ -18,10 +18,10 @@ const DAY = 24 * 60 * 60 * 1000;
 function fmtCell(key, val) {
   if (val == null || val === "") return "—";
   if (key.includes("created_at") || key.includes("granted_at") || key.includes("last_seen") || key === "created_at") {
-    try { return new Date(val).toLocaleDateString("fr-FR"); } catch { return String(val); }
+    try { return new Date(val).toLocaleDateString("pt-PT"); } catch { return String(val); }
   }
   if (key.includes("value_eur") || key.includes("amount_eur")) {
-    return (Number(val) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+    return (Number(val) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
   }
   return String(val);
 }

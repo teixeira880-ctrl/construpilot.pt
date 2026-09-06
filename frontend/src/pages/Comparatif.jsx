@@ -8,28 +8,28 @@ import { SectionTitle } from "@/components/Bits";
 const COLS = ["ConstruPilot", "Costructor", "Obat", "Tolteck", "Graneet", "Batigest", "OptimBTP", "ProGBat"];
 
 const ROWS = [
-  { label: "Prix d'entrée", values: ["Gratuit → 39€", "Gratuit → 12,50€", "32€/mois", "25€/mois", "Sur devis", "Sur devis", "Sur devis", "29€/mois"] },
-  { label: "Version gratuite illimitée", values: [true, true, false, false, false, false, false, false] },
+  { label: "Preço de entrada", values: ["Gratuit → 39€", "Gratuit → 12,50€", "32€/mois", "25€/mois", "Sur devis", "Sur devis", "Sur devis", "29€/mois"] },
+  { label: "Versão gratuita ilimitada", values: [true, true, false, false, false, false, false, false] },
   { label: "IA (extraction matériaux, coaching)", values: [true, "~", false, false, false, false, false, false] },
   { label: "Rendu 3D depuis un plan 2D", values: [true, false, false, false, false, false, false, false] },
-  { label: "Estimation par photo", values: [true, false, false, false, false, false, false, false] },
+  { label: "Estimativa por foto", values: [true, false, false, false, false, false, false, false] },
   { label: "Multi-langue (7 langues)", values: [true, false, false, false, false, false, false, false] },
   { label: "Calculateurs métier (placo, carrelage…)", values: [true, "~", "~", false, false, false, false, "~"] },
-  { label: "Comparateur de prix fournisseurs", values: [true, true, false, false, false, false, false, "~"] },
+  { label: "Comparador de preços fornecedores", values: [true, true, false, false, false, false, false, "~"] },
   { label: "Suivi de chantier (réserves, CR, photos)", values: [true, "~", true, false, true, true, true, true] },
   { label: "Module RH / pointage GPS", values: [true, false, true, false, false, false, true, true] },
   { label: "Devis & facturation", values: [true, true, true, true, true, true, true, true] },
-  { label: "Signature électronique des devis", values: [true, "~", true, "~", true, true, "~", true] },
+  { label: "Assinatura electrónica de orçamentos", values: [true, "~", true, "~", true, true, "~", true] },
   { label: "Facture électronique Factur-X (2026)", values: ["~", true, "~", "~", true, true, "~", true] },
-  { label: "Facturation à l'avancement (situations)", values: [false, false, true, false, true, true, true, true] },
+  { label: "Facturação por autos de medição", values: [false, false, true, false, true, true, true, true] },
   { label: "Marketing & captation de leads intégrés", values: [true, false, false, false, false, false, false, false] },
 ];
 
 const REASONS = [
   { icon: Cuboid, title: "Rendu 3D unique", text: "Générez une visualisation 3D depuis un simple plan 2D. Aucun autre logiciel BTP grand public ne le propose." },
-  { icon: Sparkles, title: "IA native de bout en bout", text: "Extraction des matériaux, coaching chantier et analyse de devis par IA — bien au-delà d'un simple générateur." },
-  { icon: Globe2, title: "Multi-langue (7 langues)", text: "Le seul outil pensé pour l'international : Belgique, Suisse, Luxembourg et au-delà, quand les autres restent franco-français." },
-  { icon: Megaphone, title: "Acquisition intégrée", text: "Landing double-audience Pro/Particulier, captation de leads et tableau de bord Ads. Vos concurrents s'arrêtent au métier, pas vous." },
+  { icon: Sparkles, title: "IA nativa de ponta a ponta", text: "Extracção de materiais, coaching de obra e análise de orçamentos por IA — muito além de um simples gerador." },
+  { icon: Globe2, title: "Multi-idioma (7 línguas)", text: "A única ferramenta pensada para internacional: Portugal, Espanha, Brasil e mais, quando os outros ficam restritos ao seu mercado." },
+  { icon: Megaphone, title: "Aquisição integrada", text: "Landing dupla Profissional/Particular, captação de leads e painel Ads. Os seus concorrentes param no negócio, você não." },
 ];
 
 const Cell = ({ v, highlight }) => {
@@ -145,7 +145,7 @@ export default function Comparatif() {
       </div>
 
       <div className="mt-16">
-        <SectionTitle over="Pourquoi nous choisir" title="4 raisons qui font la différence">
+        <SectionTitle over="Porquê escolher-nos" title="4 razões que fazem a diferença">
           Là où les autres logiciels s'arrêtent au devis et à la facture, ConstruPilot ajoute l'innovation
           et l'acquisition — sans sacrifier les fondamentaux métier.
         </SectionTitle>

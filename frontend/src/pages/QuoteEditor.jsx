@@ -26,7 +26,7 @@ const VAT_RATES_PT = [0, 6, 13, 23];
 const STATUSES = [
   ["draft", "crm.st_e_draft"], ["sent", "crm.st_e_sent"], ["signed", "crm.st_e_signed"], ["refused", "crm.st_e_refused"],
 ];
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const blankLine = (vat = 10) => ({
   designation: "", description: "", unit: "u", qty: 1, unit_price_ht: 0, vat_rate: vat, category: "", _saveToLib: true,
 });
@@ -797,7 +797,7 @@ export default function QuoteEditor() {
                   <option value="">{t("crm.ed_none")}</option>
                   {doneRenders.map((r) => (
                     <option key={r.render_id} value={r.render_id}>
-                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Rendu") + " · " + new Date(r.created_at).toLocaleDateString("fr-FR")}
+                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Rendu") + " · " + new Date(r.created_at).toLocaleDateString("pt-PT")}
                     </option>
                   ))}
                 </select>

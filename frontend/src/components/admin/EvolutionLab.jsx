@@ -256,7 +256,7 @@ export default function EvolutionLab() {
         {[
           { icon: Users, label: "Utilisateurs virtuels", value: dash.personas + " personas" },
           { icon: Boxes, label: "Types de projets", value: dash.project_types },
-          { icon: Activity, label: "Tests exécutés (total)", value: (dash.tests_total || 0).toLocaleString("fr-FR") },
+          { icon: Activity, label: "Tests exécutés (total)", value: (dash.tests_total || 0).toLocaleString("pt-PT") },
           { icon: TrendingUp, label: "Taux de réussite global", value: pct(dash.global_pass_rate) },
         ].map((k, i) => (
           <div key={i} className="surface p-4" data-testid={`evo-kpi-${i}`}>
@@ -346,7 +346,7 @@ export default function EvolutionLab() {
           <div className="space-y-1">
             {reports.items.slice(0, 10).map((r, i) => (
               <div key={i} className="flex justify-between items-center text-xs border-t border-border/60 py-1.5" data-testid={`evo-report-${i}`}>
-                <span className="text-muted-foreground">Gen #{r.generation} · {new Date(r.created_at).toLocaleDateString("fr-FR")} · {r.size} tests</span>
+                <span className="text-muted-foreground">Gen #{r.generation} · {new Date(r.created_at).toLocaleDateString("pt-PT")} · {r.size} tests</span>
                 <span>Fitness <b className="text-primary num">{r.fitness_score}</b> · {Math.round((r.pass_rate || 0) * 100)}%{r.ai_calls ? ` · IA ${r.ai_passed}/${r.ai_calls}` : ""}</span>
               </div>
             ))}

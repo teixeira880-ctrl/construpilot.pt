@@ -216,7 +216,7 @@ export function QuoteDialog({
                         <div className="min-w-0">
                           <p className="font-bold truncate">{s.client_name || s.client_email}</p>
                           <p className="num text-muted-foreground">
-                            {new Date(s.created_at).toLocaleDateString("fr-FR")} · {s.total_ttc?.toLocaleString("fr-FR")} € TTC
+                            {new Date(s.created_at).toLocaleDateString("pt-PT")} · {s.total_ttc?.toLocaleString("pt-PT")} € TTC
                           </p>
                         </div>
                         <div className="flex gap-1 shrink-0">

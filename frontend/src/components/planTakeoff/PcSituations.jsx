@@ -74,7 +74,7 @@ export const PcSituations = ({ planId }) => {
                     <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 hover:bg-emerald-500/15"
                            data-testid={`pc-situation-${s.sit_no}-status`}>
                       <CheckCircle2 className="h-3 w-3" />
-                      Payée le {new Date(s.paid_at).toLocaleDateString("fr-FR")}
+                      Payée le {new Date(s.paid_at).toLocaleDateString("pt-PT")}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-amber-600 border-amber-500/40"
