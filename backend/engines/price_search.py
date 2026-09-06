@@ -38,26 +38,24 @@ DEPARTMENT_COEFF = [
 
 
 SUPPLIERS = [
-    {"key": "leroymerlin", "name": "Leroy Merlin", "domain": "leroymerlin.fr", "shipping": 29.9,
-     "free_from": 300, "min_order": 0, "delivery_days": 3, "rating": 4.2, "stores": 140},
-    {"key": "castorama", "name": "Castorama", "domain": "castorama.fr", "shipping": 24.9,
-     "free_from": 250, "min_order": 0, "delivery_days": 4, "rating": 4.0, "stores": 100},
-    {"key": "bricodepot", "name": "Brico Dépôt", "domain": "bricodepot.fr", "shipping": 39.0,
-     "free_from": 500, "min_order": 0, "delivery_days": 5, "rating": 3.8, "stores": 120},
-    {"key": "pointp", "name": "Point.P", "domain": "pointp.fr", "shipping": 45.0,
-     "free_from": 800, "min_order": 100, "delivery_days": 4, "rating": 4.1, "stores": 900},
-    {"key": "gedimat", "name": "Gedimat", "domain": "gedimat.fr", "shipping": 42.0,
-     "free_from": 700, "min_order": 80, "delivery_days": 5, "rating": 4.0, "stores": 450},
-    {"key": "bigmat", "name": "BigMat", "domain": "bigmat.fr", "shipping": 44.0,
-     "free_from": 700, "min_order": 80, "delivery_days": 6, "rating": 3.9, "stores": 200},
-    {"key": "lapeyre", "name": "Lapeyre", "domain": "lapeyre.fr", "shipping": 34.9,
-     "free_from": 400, "min_order": 0, "delivery_days": 7, "rating": 3.7, "stores": 120},
-    {"key": "manomano", "name": "ManoMano", "domain": "manomano.fr", "shipping": 19.9,
-     "free_from": 200, "min_order": 0, "delivery_days": 4, "rating": 4.3, "stores": 0},
-    {"key": "bricoman", "name": "Bricoman", "domain": "bricoman.fr", "shipping": 35.0,
-     "free_from": 600, "min_order": 0, "delivery_days": 4, "rating": 4.0, "stores": 60},
-    {"key": "amazon", "name": "Amazon", "domain": "amazon.fr", "shipping": 0.0,
-     "free_from": 25, "min_order": 0, "delivery_days": 2, "rating": 4.4, "stores": 0},
+    {"key": "leroymerlin", "name": "Leroy Merlin", "domain": "leroymerlin.pt", "shipping": 24.9,
+     "free_from": 300, "min_order": 0, "delivery_days": 3, "rating": 4.2, "stores": 12,
+     "country": "PT", "type": "retail"},
+    {"key": "aki", "name": "AKI", "domain": "aki.pt", "shipping": 19.9,
+     "free_from": 250, "min_order": 0, "delivery_days": 3, "rating": 4.1, "stores": 40,
+     "country": "PT", "type": "retail"},
+    {"key": "maxmat", "name": "Maxmat", "domain": "maxmat.pt", "shipping": 29.9,
+     "free_from": 400, "min_order": 0, "delivery_days": 4, "rating": 4.0, "stores": 30,
+     "country": "PT", "type": "retail"},
+    {"key": "bricomarche", "name": "Bricomarché PT", "domain": "bricomarche.pt", "shipping": 24.9,
+     "free_from": 300, "min_order": 0, "delivery_days": 4, "rating": 4.0, "stores": 33,
+     "country": "PT", "type": "retail"},
+    {"key": "bricodepot", "name": "BricoDepot PT", "domain": "bricodepot.pt", "shipping": 35.0,
+     "free_from": 500, "min_order": 0, "delivery_days": 5, "rating": 3.9, "stores": 8,
+     "country": "PT", "type": "pro"},
+    {"key": "casavieira", "name": "Casa Vieira", "domain": "casavieira.pt", "shipping": 45.0,
+     "free_from": 700, "min_order": 80, "delivery_days": 5, "rating": 4.1, "stores": 15,
+     "country": "PT", "type": "pro"},
 ]
 SUPPLIERS_BY_KEY = {s["key"]: s for s in SUPPLIERS}
 
@@ -180,9 +178,9 @@ async def tavily_search(query: str, limit: int = 10) -> list[dict]:
     if not key:
         return []
     base_payload = {
-        "query": f"{query} prix € France",
+        "query": f"{query} preço € Portugal",
         "search_depth": "basic", "topic": "general", "max_results": min(20, limit * 2),
-        "country": "france",
+        "country": "portugal",
     }
     domains = [s["domain"] for s in SUPPLIERS]
 
