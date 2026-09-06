@@ -236,11 +236,14 @@ function AppRouter() {
       <Route path="/mentions-legales" element={<Shell><MentionsLegales /></Shell>} />
       <Route path="/confidentialite" element={<Shell><Confidentialite /></Shell>} />
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />
-      {/* Redirect externo — webmail PTISP (utilizador tem info@/contacto@/geral@ hospedados no PTISP) */}
-      <Route path="/webmail" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
-      <Route path="/mail" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
-      <Route path="/roundcube" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
-      <Route path="/rainloop" element={<ExternalRedirect to="https://webmail.construpilot.pt" />} />
+      {/* PTISP webmail — usando URL genérico .ptisp.com porque o subdomínio do cliente
+          (webmail.construpilot.pt) usa cert SSL partilhado que dispara avisos de antivírus
+          (ex.: Kaspersky). Utilizador pode pedir cert Let's Encrypt para
+          webmail.construpilot.pt via painel PTISP. */}
+      <Route path="/webmail" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
+      <Route path="/mail" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
+      <Route path="/roundcube" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
+      <Route path="/rainloop" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
       {/* Aliases directos para a caixa de correio interna (config SMTP saída) → abrem o modal em /empresa */}
       <Route path="/caixa-correio" element={<Navigate to="/empresa?open=mailbox" replace />} />
       <Route path="/caixa-de-correio" element={<Navigate to="/empresa?open=mailbox" replace />} />
