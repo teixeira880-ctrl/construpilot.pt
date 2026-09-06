@@ -1,0 +1,55 @@
+{
+  "summary": "Validated T1 (Resend honest failure) and T2 (SoroBlog PT-PT translation). Both PASS.",
+  "t1_resend_honest_failure": {
+    "endpoint": "POST /api/auth/forgot-password",
+    "payload": {"email": "info@construpilot.pt"},
+    "http_status": 200,
+    "response_body": {"ok": true},
+    "backend_log_error": "2026-09-06 02:41:36,362 - engines.emailer - ERROR - Email send failed: The construpilot.local domain is not verified. Please, add and verify your domain on https://resend.com/domains",
+    "conclusion": "Anti-user-enum behaviour OK (HTTP 200 ok:true) + Resend really called and rejects for unverified domain. This is the intended behaviour. To fix in production: verify a real sending domain at https://resend.com/domains and update SENDER_EMAIL env accordingly (currently no-reply@construpilot.local)."
+  },
+  "t2_soroblog_pt": {
+    "landing_section": {
+      "header": "O blogue ConstruPilot (rendered uppercase via CSS overline class) — OK",
+      "subtitle": "Conselhos, medições e actualidades da construção — OK",
+      "cta_button": "Ver todos os artigos — OK",
+      "no_french_strings": "Le blog / Voir tous les articles / Lire l'article NOT present — OK",
+      "cards": [
+        "Custo de uma ampliação de casa em 2026: preço por m² e orçamento completo (Orçamento, 6 min)",
+        "Como orçamentar uma obra em 5 minutos com o ConstruPilot (Método, 5 min)",
+        "Custo de uma remodelação em 2026: preço por m² por distrito e por lote (Remodelação, 7 min)"
+      ],
+      "card_link_label": "Ler o artigo — OK (all 3 cards)",
+      "portugal_context": "Excerpt of card 3 mentions Lisboa, Porto, Braga, Algarve — OK. No 'France' / 'française' strings in section.",
+      "categories_rendered": "ORÇAMENTO / MÉTODO / REMODELAÇÃO (uppercase via CSS)"
+    },
+    "blog_page": {
+      "url": "/blog",
+      "first_3_articles_pt": "All 3 PT titles present at top of listing — OK",
+      "remaining_articles_fr": "Confirmed still FR (5+ articles: carrelage, peinture, béton, permis, RE2020…) — accepted per request"
+    }
+  },
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing navbar / cookie banner / footer legal text", "issues": ["Global site chrome is still in French (Estimateur, Calculateurs, Prix matériaux, Découvrir, Connexion, Commencer, cookie banner 'Nous utilisons des cookies…') even when PT flag is toggled. Only SoroBlog section content was translated. Out of scope for this test but worth flagging for full PT-PT rollout."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "To actually deliver password-reset emails: verify a real domain on https://resend.com/domains and set SENDER_EMAIL to a mailbox on that domain (current no-reply@construpilot.local will always fail).",
+    "Optional next step: extend PT translation to navbar, cookie banner, and remaining 9 FR blog articles for a fully localized PT experience."
+  ],
+  "critical_code_review_comments": [
+    "engines/emailer.py logs ERROR and re-raises — good. Ensure the caller in routes/auth.py forgot-password swallows the exception to keep the ok:true anti-enum response (confirmed by HTTP 200 despite the raised exception).",
+    "SENDER_EMAIL currently hardcoded/env-set to unverified domain construpilot.local — will silently break all outbound emails (welcome, quotes, invoices) not just password reset."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "T1+T2 validated against preview URL. Resend integration wired correctly, only blocker is unverified sender domain. SoroBlog PT translation is complete for landing section + first 3 articles in /blog listing."
+}
