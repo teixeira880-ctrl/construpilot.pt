@@ -125,6 +125,8 @@ app.add_middleware(
     # SEC-002 : allowlist explicite — jamais '*' avec credentials
     allow_origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",")
                    if o.strip() and o.strip() != "*"],
+    # Autorise également tous les sous-domaines Emergent (preview + production).
+    allow_origin_regex=r"^https://[a-zA-Z0-9-]+\.(preview\.)?emergentagent\.com$",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -293,7 +295,8 @@ async def seed():
             await db.users.update_one({"email": third_admin_email}, {"$set": upd})
             logger.info("Compte admin tertiaire mis à jour : %s", third_admin_email)
     # Nettoie tout verrou anti-brute-force résiduel pour ce compte (identifier = "{ip}:{email}").
-    await db.login_attempts.delete_many({"identifier": {"$regex": f":{third_admin_email}$"}})
+    # Note : suppression désactivée au démarrage pour respecter la politique de déploiement.
+    # Les entrées obsolètes sont purgées via l'index TTL sur login_attempts (voir bloc plus bas).
 
     # Migration one-shot : rendus 3D embarqués → collection plan_renders_3d
     # (les images base64 dans plans_takeoff dépassaient la limite BSON 16 Mo).

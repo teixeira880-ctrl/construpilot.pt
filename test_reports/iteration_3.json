@@ -1,0 +1,28 @@
+{
+  "summary": "PT-PT shared-layout wave — 2 cosmetic follow-ups from iteration_2 verified. (1) i18n PT nav.blog is now 'Blogue' (I18nContext.jsx L291). (2) Duplicate <LangToggle /> removed from header — only <MarketToggle /> (🇵🇹 PT | 🇫🇷 FR) is rendered, both when anonymous and when logged in (Nav.jsx L15/179/197, LangToggle no longer imported). Verified via Playwright at /prix with localStorage.construpilot_lang='pt': (a) anonymous: 2 aria-pressed MarketToggle buttons (PT pressed=true, FR pressed=false), 1×🇵🇹 + 1×🇫🇷 in header, nav-link-blog renders 'Blogue'. (b) logged in as info@construpilot.pt: same — 2 aria-pressed buttons, 1 flag each, 'Blogue' visible. Footer PT-PT intact ('Estime. Compare. Construa.', Investidores, Menções legais/Política de privacidade/Termos e Condições, © 2026 …Todos os direitos reservados). Cookie banner PT-PT intact ('Utilizamos cookies…', Recusar, Aceitar tudo, 'política de privacidade'). Chat 'Precisa de ajuda?'. Result: 28/28 acceptance checks pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/prix results panel (PriceHistory / AlertBox)", "issues": [
+        "Out of shared-layout scope but noticed: 'Historique insuffisant pour tracer la courbe. Créez une alerte prix pour commencer le suivi quotidien.' and 'à vérifier' still render in FR on PT context. Not part of this wave (Nav/Footer/Cookie/Chat/MarketToggle) — flag for a future PT-PT sweep on price feature."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_c2_wave.py", "/app/test_reports/pytest/c2_wave_iter2.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Nav.jsx cleanup is clean: LangToggle no longer imported (line 15 imports only { MarketToggle, useI18n }), and the two header render slots (auth + anon, L179/L197) both use <MarketToggle /> as the single canonical language/market picker.",
+    "I18nContext.jsx still 1597 lines with 7 dictionaries inline — recommend splitting per-language files under context/i18n/{lang}.js for maintainability (carry-over from iter_2).",
+    "Follow-up: run a PT-PT sweep on price/alerte components — several FR strings still leak inside /prix data widgets (histogram empty state, 'à vérifier' stock status)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not retested (backend untouched this iter)", "frontend": "100% (28/28 PT-PT acceptance checks)"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020. (PT admin, premium) — used for logged-in header check.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Shared-layout PT-PT wave is CLOSED (28/28). Regression baseline: /app/backend/tests/test_c2_wave.py (18 tests, incl. timezone assertion). For frontend PT tests on preview host, always set localStorage.construpilot_lang='pt' before navigation because detectLang() only auto-picks 'pt' when hostname endsWith('.pt'). Next natural wave: PT-PT translations inside feature components (start with /prix PriceHistory + StockBadge, then /devis, /factures, /rh).",
+  "rca of the issue": "N/A — both cosmetic fixes from iter_2 landed correctly: I18nContext.jsx L291 pt-dict 'nav.blog':'Blogue' and Nav.jsx dropped the second language picker (LangToggle) so header now has a single canonical MarketToggle."
+}

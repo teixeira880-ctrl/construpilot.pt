@@ -1,0 +1,36 @@
+{
+  "summary": "PT-PT shared-layout wave validated. Backend: all 18 pytest tests pass, incl. NEW assertion that /api/auth/me returns timezone='Europe/Lisbon' alongside country='PT' + language='pt'. Frontend (Nav/Footer/CookieBanner/ChatWidget/MarketToggle) tested at /prix with lang=pt: 27/28 acceptance checks OK. Footer fully PT-PT ('Estime. Compare. Construa.', info@construpilot.pt, Investidores, disclaimer PT, legal links 'Menções legais/Política de privacidade/Termos e Condições', copyright 'Todos os direitos reservados'). Cookie banner PT-PT ('Utilizamos cookies…', 'Recusar', 'Aceitar tudo', link 'política de privacidade'). Chat widget 'Precisa de ajuda?'. Nav PT (Estimador/Calculadoras/Preços de materiais/Descobrir + CTAs 'Começar' / 'Iniciar sessão'). MarketToggle correctly ordered PT-first then FR (2 buttons, aria-pressed=true on PT when lang=pt). Zero FR strings leak on PT context (no 'Nous utilisons', 'Refuser', 'Tout accepter', 'Estimateur', 'Connexion', 'Commencer', 'Besoin d'aide', 'Investisseurs', 'info@construpilot.fr').",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Header (Nav.jsx)", "issues": [
+        "PT translation of nav.blog is still 'Blog' — review request explicitly asks 'Blogue'. All 7 languages currently render 'Blog' (EN/FR/ES/PT/IT/DE) except AR. Single-string change in /app/frontend/src/context/I18nContext.jsx line 291.",
+        "Header renders BOTH <MarketToggle /> AND <LangToggle /> side-by-side (Nav.jsx lines 179-180 and 198-199). Result on screen: '🇵🇹 PT | 🇫🇷 FR' pill immediately followed by a second 'PT ▾' dropdown = visual duplication. If MarketToggle is now the canonical picker, remove the extra <LangToggle /> from Nav header (keep it elsewhere if needed for the 7-language fallback)."
+      ]},
+      {"screen": "I18n detectLang() default", "issues": [
+        "Anonymous visitors on preview domain (construpilot-recon.preview.emergentagent.com) default to FR because detectLang() only returns 'pt' when hostname endsWith('.pt'). On the true construpilot.pt domain this is correct; on preview/staging the cookie banner is FR for anonymous. Not blocking, but note this when marketing/QA reviews on preview URLs."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_c2_wave.py", "/app/test_reports/pytest/c2_wave_iter2.xml"],
+  "action_items": [
+    "Change PT translation nav.blog: 'Blog' -> 'Blogue' in /app/frontend/src/context/I18nContext.jsx line 291.",
+    "Remove duplicate <LangToggle /> next to <MarketToggle /> in Nav.jsx (lines 180 and 199) OR gate one of them behind a feature flag — currently 3 language pickers show simultaneously."
+  ],
+  "critical_code_review_comments": [
+    "Auth /me now exposes country+language+timezone — clean. Timezone default logic (Europe/Lisbon for PT else Europe/Paris) is sensible.",
+    "MarketToggle: hard-coded 2-market list is fine for now, but consider deriving from a config so adding ES/IT markets doesn't require a code diff.",
+    "Nav.jsx renders both MarketToggle and LangToggle — pick one canonical UX for the header to avoid user confusion (see design_issues).",
+    "I18nContext.jsx is 1597 lines and holds 7 dictionaries inline — recommend splitting per-language files under context/i18n/{lang}.js to lower merge conflicts and enable code-splitting."
+  ],
+  "updated_files": ["/app/backend/tests/test_c2_wave.py"],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "96% (27/28 PT-PT acceptance checks)"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020. (PT admin, premium) and admin@construpilot.io / VJAiUOI90Ss2brVH — both valid.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "This wave (shared-layout PT-PT) is essentially closed. Two cosmetic follow-ups remain (nav.blog='Blogue' + drop duplicate LangToggle in header). Regression baseline is /app/backend/tests/test_c2_wave.py (now 18 tests incl. timezone). To reproduce frontend PT-PT test, set localStorage.construpilot_lang='pt' before navigating on the preview host (host is not .pt so anonymous defaults to FR by design).",
+  "rca of the issue": "Previous iteration_1 flagged shared layout still rendering FR because (a) global Footer strings were hardcoded FR in Nav.jsx, (b) MarketToggle listed FR before PT and both were rendered, (c) CookieConsent and ChatWidget already used t() but PT dictionary was missing keys. This wave: Nav.jsx Footer now t()-driven with 'Investidores' + PT-PT legals, MarketToggle reordered PT-first, PT i18n dictionary got the missing cookie/help keys, and /api/auth/me now returns country/language/timezone so any client-side auto-language logic can react. Verified via pytest + playwright on /prix. Residual gaps are cosmetic (Blog vs Blogue, duplicate LangToggle)."
+}

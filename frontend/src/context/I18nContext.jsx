@@ -288,7 +288,7 @@ const TRANSLATIONS = {
     "nav.coach": "Coach IA",
     "nav.marketplace": "Encontrar um profissional",
     "nav.docs": "API e Programadores",
-    "nav.blog": "Blog",
+    "nav.blog": "Blogue",
     "nav.pricing": "Preços",
     "nav.team": "Equipa",
     "nav.tracking": "Acompanhar orçamentos",
@@ -1269,43 +1269,43 @@ const NAV_TRANSLATIONS = {
         "nav.studies": "Études PC", "nav.account": "Mon compte",
         "nav.pro_space": "Espace Pro", "nav.discover": "Découvrir", "nav.company": "Espace Entreprise",
         "nav.invoices": "Factures", "nav.situations": "Situations de travaux", "nav.site": "Suivi de chantier",
-        "nav.catalog": "Catalogue prix", "nav.compare": "Comparatif", "nav.newquote": "Nouveau devis" },
+        "nav.catalog": "Catalogue prix", "nav.compare": "Comparatif", "nav.newquote": "Nouveau devis", "nav.investors": "Investisseurs" },
   en: { "nav.more": "More", "nav.start": "Get started", "nav.login": "Sign in", "nav.admin": "Admin",
         "nav.reviews": "Client reviews", "nav.clients": "Clients", "nav.library": "Library",
         "nav.studies": "Permit studies", "nav.account": "My account",
         "nav.pro_space": "Pro space", "nav.discover": "Discover", "nav.company": "Company space",
         "nav.invoices": "Invoices", "nav.situations": "Progress billing", "nav.site": "Site tracking",
-        "nav.catalog": "Price catalogue", "nav.compare": "Comparison" },
+        "nav.catalog": "Price catalogue", "nav.compare": "Comparison", "nav.investors": "Investors" },
   es: { "nav.more": "Más", "nav.start": "Empezar", "nav.login": "Iniciar sesión", "nav.admin": "Admin",
         "nav.reviews": "Opiniones", "nav.clients": "Clientes", "nav.library": "Biblioteca",
         "nav.studies": "Estudios de licencia", "nav.account": "Mi cuenta",
         "nav.pro_space": "Espacio pro", "nav.discover": "Descubrir", "nav.company": "Espacio empresa",
         "nav.invoices": "Facturas", "nav.situations": "Certificaciones de obra", "nav.site": "Seguimiento de obra",
-        "nav.catalog": "Catálogo de precios", "nav.compare": "Comparativa" },
-  pt: { "nav.more": "Mais", "nav.start": "Começar", "nav.login": "Entrar", "nav.admin": "Admin",
+        "nav.catalog": "Catálogo de precios", "nav.compare": "Comparativa", "nav.investors": "Inversores" },
+  pt: { "nav.more": "Mais", "nav.start": "Começar", "nav.login": "Iniciar sessão", "nav.admin": "Admin",
         "nav.reviews": "Avaliações", "nav.clients": "Clientes", "nav.library": "Biblioteca",
         "nav.studies": "Estudos de licença", "nav.account": "A minha conta",
         "nav.pro_space": "Espaço pro", "nav.discover": "Descobrir", "nav.company": "Espaço empresa",
         "nav.invoices": "Faturas", "nav.situations": "Autos de medição", "nav.site": "Acompanhamento de obra",
-        "nav.catalog": "Catálogo de preços", "nav.compare": "Comparativo", "nav.newquote": "Novo orçamento" },
+        "nav.catalog": "Catálogo de preços", "nav.compare": "Comparativo", "nav.newquote": "Novo orçamento", "nav.investors": "Investidores" },
   it: { "nav.more": "Altro", "nav.start": "Inizia", "nav.login": "Accedi", "nav.admin": "Admin",
         "nav.reviews": "Recensioni", "nav.clients": "Clienti", "nav.library": "Libreria",
         "nav.studies": "Studi permessi", "nav.account": "Il mio account",
         "nav.pro_space": "Area pro", "nav.discover": "Scopri", "nav.company": "Area azienda",
         "nav.invoices": "Fatture", "nav.situations": "Stati avanzamento lavori", "nav.site": "Monitoraggio cantiere",
-        "nav.catalog": "Catalogo prezzi", "nav.compare": "Confronto" },
+        "nav.catalog": "Catalogo prezzi", "nav.compare": "Confronto", "nav.investors": "Investitori" },
   de: { "nav.more": "Mehr", "nav.start": "Loslegen", "nav.login": "Anmelden", "nav.admin": "Admin",
         "nav.reviews": "Kundenbewertungen", "nav.clients": "Kunden", "nav.library": "Bibliothek",
         "nav.studies": "Genehmigungsstudien", "nav.account": "Mein Konto",
         "nav.pro_space": "Pro-Bereich", "nav.discover": "Entdecken", "nav.company": "Unternehmensbereich",
         "nav.invoices": "Rechnungen", "nav.situations": "Abschlagsrechnungen", "nav.site": "Baustellenverfolgung",
-        "nav.catalog": "Preiskatalog", "nav.compare": "Vergleich" },
+        "nav.catalog": "Preiskatalog", "nav.compare": "Vergleich", "nav.investors": "Investoren" },
   ar: { "nav.more": "المزيد", "nav.start": "ابدأ", "nav.login": "تسجيل الدخول", "nav.admin": "المشرف",
         "nav.reviews": "آراء العملاء", "nav.clients": "العملاء", "nav.library": "المكتبة",
         "nav.studies": "دراسات الرخص", "nav.account": "حسابي",
         "nav.pro_space": "مساحة المحترفين", "nav.discover": "اكتشف", "nav.company": "مساحة الشركة",
         "nav.invoices": "الفواتير", "nav.situations": "مستخلصات الأعمال", "nav.site": "متابعة الورشة",
-        "nav.catalog": "كتالوج الأسعار", "nav.compare": "مقارنة" },
+        "nav.catalog": "كتالوج الأسعار", "nav.compare": "مقارنة", "nav.investors": "المستثمرون" },
 };
 
 for (const l of Object.keys(NAV_TRANSLATIONS)) {
@@ -1569,10 +1569,10 @@ export function LangToggle() {
 export function MarketToggle() {
   const { lang, setLang } = useI18n();
   const MARKETS = [
-    { code: "fr", flag: "🇫🇷", label: "FR" },
     { code: "pt", flag: "🇵🇹", label: "PT" },
+    { code: "fr", flag: "🇫🇷", label: "FR" },
   ];
-  const active = lang === "pt" ? "pt" : "fr";
+  const active = lang === "fr" ? "fr" : "pt";
   return (
     <div className="inline-flex items-center rounded-full border border-border overflow-hidden" data-testid="market-toggle">
       {MARKETS.map((m) => (

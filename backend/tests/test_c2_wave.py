@@ -72,6 +72,8 @@ class TestAuth:
         assert "language" in user, f"language field missing. keys={list(user.keys())}"
         assert user["country"] == "PT", f"country={user['country']}"
         assert user["language"] == "pt", f"language={user['language']}"
+        assert "timezone" in user, f"timezone missing. keys={list(user.keys())}"
+        assert user["timezone"] == "Europe/Lisbon", f"timezone={user['timezone']}"
 
 
 # --- Estimation ---

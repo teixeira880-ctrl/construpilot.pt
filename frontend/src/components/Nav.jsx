@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { LangToggle, MarketToggle, useI18n } from "@/context/I18nContext";
+import { MarketToggle, useI18n } from "@/context/I18nContext";
 import { usePermissions } from "@/context/PermissionContext";
 
 // Nav v2 — menus groupés + relief (fin du débordement header)
@@ -57,7 +57,7 @@ const NAV_DISCOVER = [
 
 const ACCOUNT_LINKS = [
   { to: "/tarifs", label: "Tarifs & abonnement", key: "nav.pricing", icon: Sparkles },
-  { to: "/investisseurs", label: "Investisseurs", key: "nav.investors", icon: Handshake },
+  { to: "/investisseurs", label: "Investidores", key: "nav.investors", icon: Handshake },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
   { to: "/compte", label: "Mon compte", key: "nav.account", icon: KeyRound },
@@ -177,7 +177,6 @@ export const Nav = () => {
           {user ? (
             <>
               <MarketToggle />
-              <LangToggle />
               <NotificationsBell />
               <Link to="/compte" data-testid="nav-account-link" className="hidden 2xl:flex items-center gap-2 text-sm text-muted-foreground max-w-[170px] hover:text-primary transition-colors">
                 {user.picture && (
@@ -196,7 +195,6 @@ export const Nav = () => {
           ) : (
             <>
               <MarketToggle />
-              <LangToggle />
               <Link to="/login" data-testid="nav-signin-btn">
                 <Button variant="outline" size="sm" className="rounded-sm gap-2 hidden sm:inline-flex">
                   <LogIn className="h-4 w-4" /> {t("nav.login")}
@@ -252,16 +250,16 @@ export const Footer = () => (
       <p className="font-display font-bold tracking-tight">
         Constru<span className="text-primary">Pilot</span>
         <span className="ml-3 text-sm font-sans font-normal text-muted-foreground">
-          Estimez. Comparez. Construisez.
+          Estime. Compare. Construa.
         </span>
       </p>
       <div className="flex flex-col md:items-end gap-1">
         <a
-          href="mailto:info@construpilot.fr"
+          href="mailto:info@construpilot.pt"
           className="text-xs text-primary hover:underline"
           data-testid="footer-contact-email"
         >
-          info@construpilot.fr
+          info@construpilot.pt
         </a>
         <div className="flex items-center gap-3">
           <Link
@@ -272,14 +270,14 @@ export const Footer = () => (
             🇵🇹 Portugal
           </Link>
           <Link
-            to="/investisseurs"
+            to="/investidores"
             className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
             data-testid="footer-investors-link"
           >
-            Investisseurs
+            Investidores
           </Link>
           <span className="text-[11px] text-muted-foreground">
-            Estimations indicatives — ne constituent pas un devis contractuel.
+            Estimativas indicativas — não constituem orçamento contratual.
           </span>
         </div>
       </div>
@@ -287,12 +285,12 @@ export const Footer = () => (
     <div className="border-t border-border">
       <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-4 text-center" data-testid="footer-legal">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-2 text-[11px]">
-          <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Mentions légales</a>
-          <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Politique de confidentialité</a>
-          <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">CGU / CGV</a>
+          <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Menções legais</a>
+          <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Política de privacidade</a>
+          <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">Termos e Condições</a>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          © {new Date().getFullYear()} ConstruPilot — Tous droits réservés · Brevet n° FR261104
+          © {new Date().getFullYear()} ConstruPilot — Todos os direitos reservados · Patente n.º FR261104
         </p>
       </div>
     </div>
