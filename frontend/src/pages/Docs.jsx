@@ -22,7 +22,7 @@ const CURL_EST = `curl -X POST https://pilot-build-demo.preview.emergentagent.co
 const CURL_PRICES = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/prices \\
   -H "X-API-Key: ckp_live_..." \\
   -H "Content-Type: application/json" \\
-  -d '{"query":"carrelage 60x60","limit":10}'`;
+  -d '{"query":"azulejos 60x60","limit":10}'`;
 
 const CURL_CALC = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/calculators \\
   -H "X-API-Key: ckp_live_..." \\
