@@ -1,0 +1,24 @@
+{
+  "summary": "Retest PT landing after fixes for iter_16 critical bugs. All 11 targeted validations PASS. Master and intro videos now render in DOM with correct <source> src=/hero-pt.mp4 and /demo-pt.mp4, master video has portrait-friendly class max-h-[540px] w-auto object-contain, FAQ a1 shows '1 400' (no more '1 100'), FAQ q4/a4 mention 'IVA a 6%' + 'Verba 2.27' + 'CIVA', FAQ a5 lists Leroy Merlin/AKI/Maxmat/Bricomarché/Sotinco/Weber, audience cards show 'Profissionais da construção' and 'Escolas técnicas', sound toggle aria-labels are PT ('Ativar o som'/'Cortar o som'), /fr redirects to /, MarketToggle absent from nav.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Hero trust badge (PT)", "issues": ["Trust subtitle still uses 'Artesãos e arquitetos equipados' — non-blocking but inconsistent with new PT terminology ('Profissionais da construção'). Consider updating landing.hero.trust_subtitle in pt block for consistency."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "landing.hero.trust_subtitle in pt still says 'Artesãos e arquitetos equipados' — inconsistent with the new PT audience naming ('Profissionais da construção'). Not blocking but should be aligned.",
+    "STEPS constant in LandingPortugal.jsx (lines 55-62) is defined but never rendered — dead code."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All PT landing iter_17 fixes verified via Playwright against public preview URL. Videos, FAQ text (VAT 6%/Verba 2.27/PT retailers), audience labels, aria-labels, /fr redirect, and absence of MarketToggle all confirmed. Only leftover PT terminology inconsistency: landing.hero.trust_subtitle still mentions 'Artesãos'.",
+  "rca of the issue": "N/A — retest passed."
+}

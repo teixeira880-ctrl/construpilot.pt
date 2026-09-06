@@ -10,7 +10,6 @@ import { ConfirmProvider } from "@/components/ConfirmProvider";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import HelpChatbot from "@/components/HelpChatbot";
-import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
 import LandingPortugal from "@/pages/LandingPortugal";
 import Investors from "@/pages/Investors";
@@ -160,7 +159,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<LandingPortugal />} />
-      <Route path="/fr" element={<Landing />} />
+      <Route path="/fr" element={<Navigate to="/" replace />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
       <Route path="/investidores" element={<Investors />} />
