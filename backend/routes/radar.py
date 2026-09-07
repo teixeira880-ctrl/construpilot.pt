@@ -603,8 +603,11 @@ async def postal_send(token: str, body: PostalSendIn, user=Depends(current_user)
                                    recipient=recipient, mode=body.mode, filename=f"courrier-{token}")
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Envoi postal refusé : {str(e)[:200]}")
+    envoi = res.get("envoi_id")
+    if isinstance(envoi, list):
+        envoi = envoi[0] if envoi else None
     doc = {"postal_id": "post_" + secrets.token_hex(5), "token": token, "user_id": user["user_id"],
-           "opp_id": rec["opp_id"], "envoi_id": res.get("envoi_id"), "mode": body.mode,
+           "opp_id": rec["opp_id"], "envoi_id": envoi, "mode": body.mode,
            "price": res.get("price"), "recipient": recipient, "status": "submitted",
            "created_at": datetime.now(timezone.utc).isoformat()}
     await db.radar_postal.insert_one(dict(doc))
