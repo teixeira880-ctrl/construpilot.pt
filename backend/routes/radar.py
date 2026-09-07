@@ -593,6 +593,8 @@ async def postal_send(token: str, body: PostalSendIn, user=Depends(current_user)
     opp = _build(pm, p["base"], p["metiers"])
     public_url = f"{_frontend_url()}/prospection/{token}"
     branding, u = await _pro_branding_and_user(user["user_id"])
+    if not (branding.get("address") and branding.get("postal_code") and branding.get("city")):
+        raise HTTPException(400, "Renseignez l'adresse de votre entreprise (Mon compte → Marque) : elle sert d'expéditeur.")
     pdf = _build_prospection_pdf(branding=branding, opp=opp, public_url=public_url,
                                  qr_png=_qr_png_bytes(public_url), custom_message=rec.get("message", ""))
     recipient = body.recipient.model_dump()
