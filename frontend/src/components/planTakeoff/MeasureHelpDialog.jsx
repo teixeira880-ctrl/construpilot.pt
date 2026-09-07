@@ -40,104 +40,104 @@ export function MeasureHelpDialog({ trigger }) {
         {trigger || (
           <Button variant="outline" size="sm" data-testid="measure-help-btn"
                   className="rounded-sm gap-2 border-primary/40 text-primary hover:bg-primary/10">
-            <HelpCircle className="h-4 w-4" /> Guide : du plan au devis
+            <HelpCircle className="h-4 w-4" /> Guia: do plano ao orçamento
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="rounded-sm max-w-2xl max-h-[88vh] overflow-y-auto" data-testid="measure-help-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Ruler className="h-5 w-5 text-primary" /> Guide complet : du plan au devis
+            <Ruler className="h-5 w-5 text-primary" /> Guia completo: do plano ao orçamento
           </DialogTitle>
           <DialogDescription>
-            Suivez ces étapes dans l'ordre pour transformer un plan ou un Permis de Construire (PC)
-            en devis chiffré et envoyé. La règle d'or : <b className="text-foreground">on calibre toujours avant de mesurer.</b>
+            Segue estes passos por ordem para transformar um plano ou uma Licença de Construção (LC)
+            num orçamento com preços e enviado. A regra de ouro: <b className="text-foreground">calibrar sempre antes de medir.</b>
           </DialogDescription>
         </DialogHeader>
 
         <div className="mt-2">
-          <Step n={1} icon={Upload} title="Importer votre plan ou votre Permis de Construire (PC)">
+          <Step n={1} icon={Upload} title="Importar a planta ou a Licença de Construção (LC)">
             <ul className="list-disc pl-5 space-y-0.5">
-              <li>Cliquez sur <b>« Importer mon plan »</b> (ou glissez-déposez le fichier dans la zone).</li>
-              <li>Importez le <b>plan du projet</b> ou directement les plans de votre <b>Permis de Construire (PC)</b>.</li>
-              <li>Formats acceptés : <b>PDF, DXF, JPG, PNG, WEBP</b> — jusqu'à <b>20 Mo</b>.</li>
-              <li>Plan d'architecte, plan scanné ou même photo au smartphone : tout fonctionne.</li>
-              <li>Le document s'affiche ; s'il a plusieurs pages (fréquent pour un PC), utilisez les flèches pour changer de page.</li>
+              <li>Clica em <b>«Importar planta»</b> (ou arrasta o ficheiro para a zona).</li>
+              <li>Importa a <b>planta do projeto</b> ou diretamente as plantas da tua <b>Licença de Construção (LC)</b>.</li>
+              <li>Formatos aceites: <b>PDF, DXF, JPG, PNG, WEBP</b> — até <b>20 MB</b>.</li>
+              <li>Planta de arquiteto, planta digitalizada ou até foto de telemóvel: tudo funciona.</li>
+              <li>O documento aparece; se tiver várias páginas (frequente numa LC), usa as setas para mudar de página.</li>
             </ul>
           </Step>
 
-          <Step n={2} icon={Ruler} title="Calibrer l'échelle (indispensable, en premier)">
-            <p>Sans échelle, l'app ne connaît pas la taille réelle du plan. Les outils Distance, Surface, Pièce… restent <b>grisés</b> tant que ce n'est pas fait.</p>
+          <Step n={2} icon={Ruler} title="Calibrar a escala (indispensável, em primeiro lugar)">
+            <p>Sem escala, a app não conhece o tamanho real da planta. As ferramentas Distância, Área, Compartimento… ficam <b>cinzentas</b> até isso estar feito.</p>
             <ul className="list-disc pl-5 space-y-0.5">
-              <li>Cliquez sur l'outil <b>« Calibrer »</b> (icône règle).</li>
-              <li>Cliquez <b>2 points</b> sur une distance <b>connue</b> (ex. une cote écrite « 4,25 m », un mur coté).</li>
-              <li>Saisissez la <b>distance réelle en mètres</b> puis validez.</li>
-              <li>✅ L'échelle est enregistrée et tous les outils se débloquent.</li>
+              <li>Clica na ferramenta <b>«Calibrar»</b> (ícone régua).</li>
+              <li>Clica <b>2 pontos</b> numa distância <b>conhecida</b> (ex: uma cota escrita «4,25 m», uma parede cotada).</li>
+              <li>Insere a <b>distância real em metros</b> e confirma.</li>
+              <li>✅ A escala fica guardada e todas as ferramentas ficam disponíveis.</li>
             </ul>
             <p className="flex items-start gap-1.5 text-primary">
               <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
-              Astuce : le bouton <b>« Calibrer par les cotes »</b> laisse l'IA détecter l'échelle automatiquement à partir des cotes écrites sur le plan.
+              Dica: o botão <b>«Calibrar pelas cotas»</b> deixa a IA detetar a escala automaticamente a partir das cotas escritas na planta.
             </p>
           </Step>
 
-          <Step n={3} icon={Move} title="Mesurer (manuel) — distance, surface, pièce">
+          <Step n={3} icon={Move} title="Medir (manual) — distância, área, compartimento">
             <ul className="list-disc pl-5 space-y-0.5">
-              <li><b><Move className="h-3.5 w-3.5 inline text-primary" /> Distance</b> : cliquez le point de départ puis d'arrivée → <b>double-clic</b> pour valider (longueur en m).</li>
-              <li><b><Hexagon className="h-3.5 w-3.5 inline text-primary" /> Surface</b> : cliquez chaque coin de la zone → <b>double-clic</b> pour fermer (m² + périmètre).</li>
-              <li><b><Square className="h-3.5 w-3.5 inline text-primary" /> Pièce</b> : dessinez les coins d'une pièce → surface au sol + murs.</li>
-              <li><b><Wand2 className="h-3.5 w-3.5 inline text-primary" /> Auto-pièce</b> : cliquez une fois <b>à l'intérieur</b> d'une pièce fermée → détection auto des contours.</li>
+              <li><b><Move className="h-3.5 w-3.5 inline text-primary" /> Distância</b>: clica o ponto de partida e depois o de chegada → <b>duplo-clique</b> para validar (comprimento em m).</li>
+              <li><b><Hexagon className="h-3.5 w-3.5 inline text-primary" /> Área</b>: clica em cada canto da zona → <b>duplo-clique</b> para fechar (m² + perímetro).</li>
+              <li><b><Square className="h-3.5 w-3.5 inline text-primary" /> Compartimento</b>: desenha os cantos de um compartimento → área de pavimento + paredes.</li>
+              <li><b><Wand2 className="h-3.5 w-3.5 inline text-primary" /> Auto-compartimento</b>: clica uma vez <b>dentro</b> de um compartimento fechado → deteção automática dos contornos.</li>
             </ul>
           </Step>
 
-          <Step n={4} icon={Bot} title="Ou laisser l'IA analyser le plan (automatique)">
+          <Step n={4} icon={Bot} title="Ou deixa a IA analisar a planta (automático)">
             <ul className="list-disc pl-5 space-y-0.5">
-              <li>Une fois le plan <b>calibré</b>, cliquez sur <b>« Analyser le plan »</b>.</li>
-              <li>L'IA détecte automatiquement : <b>planchers, murs (ml + m²), ouvertures, poutres/poteaux</b> et propose un <b>descriptif chiffré</b> (gros œuvre / béton).</li>
-              <li>Vous pouvez ensuite ajuster les prix (béton €/m³, aciers €/kg, main d'œuvre, marge %).</li>
+              <li>Depois de a planta estar <b>calibrada</b>, clica em <b>«Analisar a planta»</b>.</li>
+              <li>A IA deteta automaticamente: <b>lajes, paredes (ml + m²), vãos, vigas/pilares</b> e propõe uma <b>descrição orçamentada</b> (estrutura / betão).</li>
+              <li>Podes depois ajustar os preços (betão €/m³, aço €/kg, mão de obra, margem %).</li>
             </ul>
           </Step>
 
-          <Step n={5} icon={FileDown} title="Générer le devis">
+          <Step n={5} icon={FileDown} title="Gerar o orçamento">
             <ul className="list-disc pl-5 space-y-0.5">
-              <li><b>« Estimer le devis (PDF) »</b> : génère directement le chiffrage en PDF.</li>
-              <li><b>« Ouvrir dans l'éditeur »</b> : bascule les quantités dans l'éditeur de devis pour tout ajuster ligne par ligne.</li>
+              <li><b>«Estimar o orçamento (PDF)»</b>: gera diretamente o cálculo em PDF.</li>
+              <li><b>«Abrir no editor»</b>: transfere as quantidades para o editor de orçamento para ajustar tudo linha a linha.</li>
             </ul>
           </Step>
 
-          <Step n={6} icon={Send} title="Finaliser et envoyer le devis">
+          <Step n={6} icon={Send} title="Finalizar e enviar o orçamento">
             <ul className="list-disc pl-5 space-y-0.5">
-              <li>Dans <b>l'éditeur de devis</b> : ajustez les lignes, quantités, prix unitaires et la TVA (5,5 % / 10 % / 20 %).</li>
-              <li>Choisissez le <b>client</b>, puis cliquez sur <b>« Envoyer devis »</b>.</li>
-              <li>Le <b>message e-mail</b> et le <b>numéro de devis</b> se remplissent automatiquement ; pour les taux réduits (5,5 % / 10 %), <b>l'attestation de TVA est jointe automatiquement</b>.</li>
-              <li>Le devis part avec votre <b>logo et vos coordonnées</b>, et se retrouve dans <b>« Suivi des devis »</b>.</li>
+              <li>No <b>editor de orçamento</b>: ajusta as linhas, quantidades, preços unitários e o IVA (6 % / 13 % / 23 %).</li>
+              <li>Escolhe o <b>cliente</b> e clica em <b>«Enviar orçamento»</b>.</li>
+              <li>A <b>mensagem de email</b> e o <b>número do orçamento</b> preenchem-se automaticamente.</li>
+              <li>O orçamento segue com o teu <b>logótipo e contactos</b> e fica em <b>«Acompanhamento de orçamentos»</b>.</li>
             </ul>
           </Step>
 
           <div className="rounded-sm border border-border bg-muted/40 p-4 mt-1 space-y-2">
-            <p className="font-semibold flex items-center gap-2"><MousePointerClick className="h-4 w-4 text-primary" /> Les gestes essentiels</p>
+            <p className="font-semibold flex items-center gap-2"><MousePointerClick className="h-4 w-4 text-primary" /> Os gestos essenciais</p>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li><b>Double-clic</b> = terminer la mesure en cours.</li>
-              <li><Key>Échap</Key> = annuler la mesure en cours (rien n'est enregistré).</li>
-              <li><b>« Annuler tout »</b> = efface les points de la mesure en cours.</li>
-              <li>Molette ou boutons <Key>+</Key>/<Key>−</Key> = zoom ; cliquer-glisser = déplacer le plan.</li>
-              <li><MousePointer2 className="h-3.5 w-3.5 inline" /> Outil <b>« Sélection »</b> = revenir en mode normal pour cliquer/déplacer les éléments.</li>
+              <li><b>Duplo-clique</b> = terminar a medição em curso.</li>
+              <li><Key>Esc</Key> = cancelar a medição em curso (nada é guardado).</li>
+              <li><b>«Cancelar tudo»</b> = apaga os pontos da medição em curso.</li>
+              <li>Roda do rato ou botões <Key>+</Key>/<Key>−</Key> = zoom; clicar e arrastar = deslocar a planta.</li>
+              <li><MousePointer2 className="h-3.5 w-3.5 inline" /> Ferramenta <b>«Seleção»</b> = voltar ao modo normal para clicar/arrastar elementos.</li>
             </ul>
           </div>
 
           <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-4 mt-3 space-y-1.5">
-            <p className="font-semibold flex items-center gap-2 text-amber-700"><Lightbulb className="h-4 w-4" /> Conseils pour être précis</p>
+            <p className="font-semibold flex items-center gap-2 text-amber-700"><Lightbulb className="h-4 w-4" /> Conselhos para ser preciso</p>
             <ul className="text-sm text-amber-800 space-y-1 list-disc pl-5">
-              <li><b>Zoomez</b> avant de cliquer sur les coins : plus c'est zoomé, plus c'est précis.</li>
-              <li>Pour calibrer, choisissez la <b>plus grande cote possible</b> (une longue référence réduit l'erreur).</li>
-              <li><b>Chaque page a sa propre échelle</b> : si vous changez de page/plan, recalibrez.</li>
-              <li>Dans le panneau de droite, vous pouvez <b>renommer</b>, <b>convertir en pièce</b>, <b>déduire</b> (trémie, ouverture) ou <b>supprimer</b> une mesure.</li>
+              <li><b>Faz zoom</b> antes de clicar nos cantos: quanto mais zoom, mais preciso.</li>
+              <li>Para calibrar, escolhe a <b>maior cota possível</b> (uma referência longa reduz o erro).</li>
+              <li><b>Cada página tem a sua própria escala</b>: se mudares de página/planta, recalibra.</li>
+              <li>No painel da direita, podes <b>renomear</b>, <b>converter em compartimento</b>, <b>deduzir</b> (poço, abertura) ou <b>eliminar</b> uma medição.</li>
             </ul>
           </div>
         </div>
 
         <div className="flex justify-end pt-2">
           <Button onClick={() => setOpen(false)} className="rounded-sm gap-2 bg-primary" data-testid="measure-help-close">
-            <CornerDownLeft className="h-4 w-4" /> J'ai compris, commencer
+            <CornerDownLeft className="h-4 w-4" /> Percebi, começar
           </Button>
         </div>
       </DialogContent>

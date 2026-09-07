@@ -199,8 +199,8 @@ export default function QuoteEditor() {
   const knownLots = useMemo(() => {
     const s = new Set();
     lines.forEach((l) => { const c = (l.category || "").trim(); if (c) s.add(c); });
-    ["Gros œuvre", "Toiture", "Plomberie", "Électricité", "Peinture", "Menuiserie",
-     "Carrelage", "Isolation", "Sol", "Placo", "VRD"].forEach((c) => s.add(c));
+    ["Estrutura", "Cobertura", "Canalização", "Eletricidade", "Pintura", "Caixilharia",
+     "Revestimento cerâmico", "Isolamento", "Pavimento", "Gesso cartonado", "Infraestruturas"].forEach((c) => s.add(c));
     return [...s];
   }, [lines]);
 

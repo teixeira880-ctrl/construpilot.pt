@@ -122,8 +122,8 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
     t = study.get("totals", {})
     lb = study.get("levels_breakdown") or []
     if lb:
-        story.append(Paragraph("Quantités par niveau — pour phaser vos commandes", S["h2"]))
-        rows = [["Niveau", "Béton", "Aciers", "Briques", "Murs", "Total HT"]]
+        story.append(Paragraph("Quantidades por piso — para planear as encomendas", S["h2"]))
+        rows = [["Piso", "Betão", "Aço", "Tijolos", "Paredes", "Total sem IVA"]]
         for l in lb:
             rows.append([l["name"], _fmt(l["beton_m3"], "m³"), _fmt(l["acier_kg"], "kg", 0),
                          _fmt(l["briques_u"], "u", 0) if l["briques_u"] else "—",
@@ -135,15 +135,15 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
                              ("FONTSIZE", (0, 0), (-1, -1), 8),
                              ("ALIGN", (1, 1), (-1, -1), "RIGHT")]))
 
-    story.append(Paragraph("Récapitulatif", S["h2"]))
+    story.append(Paragraph("Resumo", S["h2"]))
     story.append(_table([
-        ["Béton total", _fmt(t.get("beton_m3"), "m³"),
-         "Aciers total", _fmt(t.get("acier_kg"), "kg", 0)],
-        ["Briques isobrique", _fmt(t.get("briques_u"), "u", 0),
-         "Semelles filantes", _fmt(t.get("semelles_ml"), "ml")],
-        ["Total HT", _fmt(t.get("ht"), "€"),
-         f"TVA {round(float(t.get('tva_rate') or 0.2) * 100)} %", _fmt(t.get("tva"), "€")],
-        ["TOTAL TTC", _fmt(t.get("ttc"), "€"), "", ""],
+        ["Betão total", _fmt(t.get("beton_m3"), "m³"),
+         "Aço total", _fmt(t.get("acier_kg"), "kg", 0)],
+        ["Tijolos isobrique", _fmt(t.get("briques_u"), "u", 0),
+         "Sapatas contínuas", _fmt(t.get("semelles_ml"), "ml")],
+        ["Total sem IVA", _fmt(t.get("ht"), "€"),
+         f"IVA {round(float(t.get('tva_rate') or 0.2) * 100)} %", _fmt(t.get("tva"), "€")],
+        ["TOTAL COM IVA", _fmt(t.get("ttc"), "€"), "", ""],
     ], [45 * mm, 42 * mm, 45 * mm, 42 * mm],
         [("BACKGROUND", (0, 0), (-1, -1), LIGHT_GREY),
          ("FONTSIZE", (0, 0), (-1, -1), 9),
@@ -151,28 +151,28 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
          ("FONTNAME", (0, 3), (1, 3), "Helvetica-Bold")]))
 
     if study.get("warnings"):
-        story.append(Paragraph("Avertissements IA", S["h2"]))
+        story.append(Paragraph("Alertas IA", S["h2"]))
         for w in study["warnings"][:8]:
             story.append(Paragraph(f"• {w}", S["muted"]))
 
     pl = study.get("planning")
     if pl and pl.get("phases"):
-        story.append(Paragraph("Planning de chantier — gros œuvre", S["h2"]))
+        story.append(Paragraph("Planeamento da obra — estrutura", S["h2"]))
         sched = schedule_with_dates(pl, start_date) if start_date else None
         if sched:
             story.append(Paragraph(
-                f"Démarrage prévu le <b>{_fr_long(sched[0]['work_start'])}</b> — "
-                f"fin de chantier estimée le <b>{_fr_long(sched[-1]['cure_end'])}</b> "
-                "(plein = jours ouvrés, translucide = séchage béton).", S["body"]))
+                f"Início previsto a <b>{_fr_long(sched[0]['work_start'])}</b> — "
+                f"fim da obra estimado a <b>{_fr_long(sched[-1]['cure_end'])}</b> "
+                "(cheio = dias úteis, translúcido = cura do betão).", S["body"]))
             story.append(Spacer(1, 3))
             story.append(_gantt_drawing(sched))
             story.append(Spacer(1, 4))
-        rows = [["Phase", "Jours ouvrés", "Séchage", "Début", "Fin"]]
+        rows = [["Fase", "Dias úteis", "Cura", "Início", "Fim"]]
         for i_ph, ph in enumerate(pl["phases"]):
-            deb = _fr_long(sched[i_ph]["work_start"]) if sched else f"J{ph['start_day']}"
-            fin = _fr_long(sched[i_ph]["cure_end"]) if sched else f"J{ph['end_day']}"
+            deb = _fr_long(sched[i_ph]["work_start"]) if sched else f"D{ph['start_day']}"
+            fin = _fr_long(sched[i_ph]["cure_end"]) if sched else f"D{ph['end_day']}"
             rows.append([Paragraph(ph["name"], S["body"]), str(ph["work_days"]),
-                         f"+{ph['cure_days']} j" if ph["cure_days"] else "—",
+                         f"+{ph['cure_days']} d" if ph["cure_days"] else "—",
                          deb, fin])
         story.append(_table(rows, [86 * mm, 20 * mm, 18 * mm, 25 * mm, 25 * mm],
                             [("BACKGROUND", (0, 0), (-1, 0), DARK),
@@ -181,9 +181,9 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
                              ("ALIGN", (1, 1), (-1, -1), "CENTER")]))
         story.append(Spacer(1, 3))
         story.append(Paragraph(
-            f"Équipe de {pl['crew_size']} compagnons — {pl['total_work_days']} jours ouvrés "
-            f"de travail + {pl['total_cure_days']} jours de séchage béton, "
-            f"soit ≈ {pl['total_days']} jours ({pl['total_weeks']} semaines) de chantier.",
+            f"Equipa de {pl['crew_size']} trabalhadores — {pl['total_work_days']} dias úteis "
+            f"de trabalho + {pl['total_cure_days']} dias de cura do betão, "
+            f"ou seja ≈ {pl['total_days']} dias ({pl['total_weeks']} semanas) de obra.",
             S["muted"]))
     _story_footer(story, S)
     doc.build(story)
@@ -244,10 +244,10 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None,
     t = study.get("totals", {})
     lb = study.get("levels_breakdown") or []
     if lb:
-        doc.add_heading("Quantités par niveau — pour phaser vos commandes", level=1)
+        doc.add_heading("Quantidades por piso — para planear as encomendas", level=1)
         tbl = doc.add_table(rows=1 + len(lb), cols=6)
         tbl.style = "Light Grid Accent 1"
-        for c, v in enumerate(["Niveau", "Béton m³", "Aciers kg", "Briques", "Murs m²", "Total HT €"]):
+        for c, v in enumerate(["Piso", "Betão m³", "Aço kg", "Tijolos", "Paredes m²", "Total sem IVA €"]):
             tbl.rows[0].cells[c].text = v
         for r, l in enumerate(lb, start=1):
             cells = tbl.rows[r].cells
@@ -258,46 +258,46 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None,
             cells[4].text = _fmt(l["murs_m2"]) if l["murs_m2"] else "—"
             cells[5].text = _fmt(l["ht"])
 
-    doc.add_heading("Récapitulatif", level=1)
+    doc.add_heading("Resumo", level=1)
     recap = doc.add_table(rows=4, cols=2)
     recap.style = "Light Grid Accent 1"
-    data = [("Béton total", _fmt(t.get("beton_m3"), "m³")),
-            ("Aciers total", _fmt(t.get("acier_kg"), "kg", 0)),
-            (f"Total HT / TVA {round(float(t.get('tva_rate') or 0.2) * 100)} %",
+    data = [("Betão total", _fmt(t.get("beton_m3"), "m³")),
+            ("Aço total", _fmt(t.get("acier_kg"), "kg", 0)),
+            (f"Total sem IVA / IVA {round(float(t.get('tva_rate') or 0.2) * 100)} %",
              f"{_fmt(t.get('ht'), '€')} / {_fmt(t.get('tva'), '€')}"),
-            ("TOTAL TTC", _fmt(t.get("ttc"), "€"))]
+            ("TOTAL COM IVA", _fmt(t.get("ttc"), "€"))]
     for r_idx, (k, v) in enumerate(data):
         recap.rows[r_idx].cells[0].text = k
         recap.rows[r_idx].cells[1].text = v
 
     if study.get("warnings"):
-        doc.add_heading("Avertissements IA", level=1)
+        doc.add_heading("Alertas IA", level=1)
         for w in study["warnings"][:8]:
             doc.add_paragraph(w, style="List Bullet")
 
     pl = study.get("planning")
     if pl and pl.get("phases"):
-        doc.add_heading("Planning de chantier — gros œuvre", level=1)
+        doc.add_heading("Planeamento da obra — estrutura", level=1)
         sched = schedule_with_dates(pl, start_date) if start_date else None
         if sched:
             doc.add_paragraph(
-                f"Démarrage prévu le {_fr_long(sched[0]['work_start'])} — "
-                f"fin de chantier estimée le {_fr_long(sched[-1]['cure_end'])}.")
+                f"Início previsto a {_fr_long(sched[0]['work_start'])} — "
+                f"fim da obra estimado a {_fr_long(sched[-1]['cure_end'])}.")
         tbl = doc.add_table(rows=1 + len(pl["phases"]), cols=5)
         tbl.style = "Light Grid Accent 1"
-        for c, v in enumerate(["Phase", "Jours ouvrés", "Séchage", "Début", "Fin"]):
+        for c, v in enumerate(["Fase", "Dias úteis", "Cura", "Início", "Fim"]):
             tbl.rows[0].cells[c].text = v
         for r, ph in enumerate(pl["phases"], start=1):
             cells = tbl.rows[r].cells
             cells[0].text = ph["name"]
             cells[1].text = str(ph["work_days"])
-            cells[2].text = f"+{ph['cure_days']} j" if ph["cure_days"] else "—"
-            cells[3].text = _fr_long(sched[r - 1]["work_start"]) if sched else f"J{ph['start_day']}"
-            cells[4].text = _fr_long(sched[r - 1]["cure_end"]) if sched else f"J{ph['end_day']}"
+            cells[2].text = f"+{ph['cure_days']} d" if ph["cure_days"] else "—"
+            cells[3].text = _fr_long(sched[r - 1]["work_start"]) if sched else f"D{ph['start_day']}"
+            cells[4].text = _fr_long(sched[r - 1]["cure_end"]) if sched else f"D{ph['end_day']}"
         doc.add_paragraph(
-            f"Équipe de {pl['crew_size']} compagnons — {pl['total_work_days']} jours ouvrés "
-            f"+ {pl['total_cure_days']} jours de séchage béton, soit ≈ {pl['total_days']} "
-            f"jours ({pl['total_weeks']} semaines) de chantier.")
+            f"Equipa de {pl['crew_size']} trabalhadores — {pl['total_work_days']} dias úteis "
+            f"+ {pl['total_cure_days']} dias de cura do betão, ou seja ≈ {pl['total_days']} "
+            f"dias ({pl['total_weeks']} semanas) de obra.")
 
     buf = BytesIO()
     doc.save(buf)
@@ -316,23 +316,23 @@ def build_purchase_order_pdf(plan: dict, level_name: str, items: list[dict],
     S = _styles()
     story: list = []
     _story_header_branding(story, branding, S)
-    story.append(Paragraph("BON DE COMMANDE MATÉRIAUX", S["kicker"]))
+    story.append(Paragraph("NOTA DE ENCOMENDA — MATERIAIS", S["kicker"]))
     story.append(Paragraph(order_ref, S["h1"]))
     story.append(Paragraph(
-        f"Date : {date.today().strftime('%d/%m/%Y')} · "
-        f"Chantier : {plan.get('filename') or 'permis de construire'} · "
-        f"Phase : <b>{level_name}</b>", S["muted"]))
+        f"Data: {date.today().strftime('%d/%m/%Y')} · "
+        f"Obra: {plan.get('filename') or 'licença de construção'} · "
+        f"Fase: <b>{level_name}</b>", S["muted"]))
     if supplier_name:
         story.append(Spacer(1, 4))
-        story.append(Paragraph(f"À l'attention de : <b>{supplier_name}</b>", S["body"]))
+        story.append(Paragraph(f"À atenção de: <b>{supplier_name}</b>", S["body"]))
     story.append(Spacer(1, 6))
 
-    rows = [["Désignation", "U", "Qté commandée*", "PU indicatif", "Total indicatif"]]
+    rows = [["Designação", "Un", "Qtd encomendada*", "PU indicativo", "Total indicativo"]]
     for it in items:
         rows.append([Paragraph(it["designation"], S["body"]), it["unit"],
                      _fmt(it["qty"]), _fmt(it["pu_mat"], "€"), _fmt(it["total"], "€")])
     total = round(sum(it["total"] for it in items), 2)
-    rows.append(["", "", "", "TOTAL HT indicatif", _fmt(total, "€")])
+    rows.append(["", "", "", "TOTAL sem IVA indicativo", _fmt(total, "€")])
     story.append(_table(rows, [78 * mm, 12 * mm, 28 * mm, 28 * mm, 28 * mm],
                         [("BACKGROUND", (0, 0), (-1, 0), DARK),
                          ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -344,11 +344,11 @@ def build_purchase_order_pdf(plan: dict, level_name: str, items: list[dict],
                         repeat_rows=1))
     story.append(Spacer(1, 4))
     story.append(Paragraph(
-        "* Quantités incluant +5 % de chutes/pertes, arrondies au conditionnement "
-        "supérieur. Prix indicatifs issus de notre étude — merci de confirmer vos "
-        "tarifs, disponibilités et délais de livraison.", S["muted"]))
+        "* Quantidades a incluir +5 % de desperdícios/perdas, arredondadas à embalagem "
+        "superior. Preços indicativos resultantes do nosso estudo — solicita-se confirmação "
+        "de tarifas, disponibilidade e prazos de entrega.", S["muted"]))
     if notes:
-        story.append(Paragraph("Notes", S["h2"]))
+        story.append(Paragraph("Notas", S["h2"]))
         story.append(Paragraph(notes.replace("\n", "<br/>"), S["body"]))
     _story_footer(story, S)
     doc.build(story)
@@ -363,17 +363,17 @@ def build_deposit_invoice_pdf(plan: dict, branding: dict | None, inv: dict) -> b
     S = _styles()
     story: list = []
     _story_header_branding(story, branding, S)
-    story.append(Paragraph("FACTURE D'ACOMPTE — ACQUITTÉE", S["kicker"]))
+    story.append(Paragraph("FATURA DE ADIANTAMENTO — PAGA", S["kicker"]))
     story.append(Paragraph(inv["invoice_no"], S["h1"]))
     paid_date = _fr_long(inv["paid_at"]) if inv.get("paid_at") else ""
     story.append(Paragraph(
-        f"Date : {paid_date} · Chantier : {plan.get('filename') or 'permis de construire'}",
+        f"Data: {paid_date} · Obra: {plan.get('filename') or 'licença de construção'}",
         S["muted"]))
     client = inv.get("client_name") or ""
     if client or inv.get("client_email"):
         story.append(Spacer(1, 4))
         story.append(Paragraph(
-            f"Client : <b>{client or inv.get('client_email')}</b>"
+            f"Cliente: <b>{client or inv.get('client_email')}</b>"
             + (f" · {inv['client_email']}" if client and inv.get("client_email") else ""),
             S["body"]))
     story.append(Spacer(1, 6))
@@ -382,11 +382,11 @@ def build_deposit_invoice_pdf(plan: dict, branding: dict | None, inv: dict) -> b
     ht = round(amount / 1.2, 2)
     tva = round(amount - ht, 2)
     total_ttc = float(inv.get("total_ttc") or 0)
-    rows = [["Désignation", "Montant HT", "TVA 20 %", "Montant TTC"],
-            [Paragraph(f"Acompte {inv.get('pct', 0):g} % sur l'étude gros œuvre — "
-                       f"marché de {_fmt(total_ttc, '€')} TTC", S["body"]),
+    rows = [["Designação", "Valor sem IVA", "IVA 23 %", "Valor com IVA"],
+            [Paragraph(f"Adiantamento {inv.get('pct', 0):g} % sobre o estudo de estrutura — "
+                       f"contrato de {_fmt(total_ttc, '€')} com IVA", S["body"]),
              _fmt(ht, "€"), _fmt(tva, "€"), _fmt(amount, "€")],
-            ["", "", "TOTAL ACQUITTÉ", _fmt(amount, "€")]]
+            ["", "", "TOTAL PAGO", _fmt(amount, "€")]]
     story.append(_table(rows, [88 * mm, 30 * mm, 30 * mm, 30 * mm],
                         [("BACKGROUND", (0, 0), (-1, 0), DARK),
                          ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -396,14 +396,14 @@ def build_deposit_invoice_pdf(plan: dict, branding: dict | None, inv: dict) -> b
                          ("TEXTCOLOR", (3, 2), (3, 2), ORANGE)]))
     story.append(Spacer(1, 5))
     story.append(Paragraph(
-        f"Facture acquittée — règlement reçu par carte bancaire le {paid_date} "
-        f"(réf. paiement {str(inv.get('session_id') or '')[:28]}).", S["body"]))
+        f"Fatura paga — pagamento recebido por cartão bancário em {paid_date} "
+        f"(ref. pagamento {str(inv.get('session_id') or '')[:28]}).", S["body"]))
     if total_ttc:
         story.append(Paragraph(
-            f"Reste à facturer sur le marché : <b>{_fmt(round(total_ttc - amount, 2), '€')} "
-            "TTC</b> (situations de travaux à venir).", S["muted"]))
+            f"Falta faturar sobre o contrato: <b>{_fmt(round(total_ttc - amount, 2), '€')} "
+            "com IVA</b> (situações de trabalhos futuros).", S["muted"]))
     story.append(Paragraph(
-        "TVA acquittée sur les encaissements. Document généré par ConstruPilot.", S["muted"]))
+        "IVA liquidado sobre os recebimentos. Documento gerado pelo ConstruPilot.", S["muted"]))
     _story_footer(story, S)
     doc.build(story)
     return buf.getvalue()
@@ -419,19 +419,19 @@ def build_situation_invoice_pdf(plan: dict, branding: dict | None, inv: dict) ->
     S = _styles()
     story: list = []
     _story_header_branding(story, branding, S)
-    kind = "FACTURE DE SOLDE" if inv.get("is_final") else "FACTURE DE SITUATION"
-    status = "ACQUITTÉE" if inv.get("paid") else "À RÉGLER"
+    kind = "FATURA FINAL" if inv.get("is_final") else "FATURA DE SITUAÇÃO"
+    status = "PAGA" if inv.get("paid") else "A LIQUIDAR"
     story.append(Paragraph(f"{kind} — {status}", S["kicker"]))
     story.append(Paragraph(inv["invoice_no"], S["h1"]))
     day = _fr_long(inv["created_at"]) if inv.get("created_at") else date.today().strftime("%d/%m/%Y")
     story.append(Paragraph(
-        f"Date : {day} · Chantier : {plan.get('filename') or 'permis de construire'}",
+        f"Data: {day} · Obra: {plan.get('filename') or 'licença de construção'}",
         S["muted"]))
     client = inv.get("client_name") or ""
     if client or inv.get("client_email"):
         story.append(Spacer(1, 4))
         story.append(Paragraph(
-            f"Client : <b>{client or inv.get('client_email')}</b>"
+            f"Cliente: <b>{client or inv.get('client_email')}</b>"
             + (f" · {inv['client_email']}" if client and inv.get("client_email") else ""),
             S["body"]))
     story.append(Spacer(1, 6))
@@ -441,15 +441,15 @@ def build_situation_invoice_pdf(plan: dict, branding: dict | None, inv: dict) ->
     tva = round(amount - ht, 2)
     total_ttc = float(inv.get("total_ttc") or 0)
     if inv.get("is_final"):
-        desig = "Solde du marché — travaux gros œuvre achevés"
+        desig = "Saldo do contrato — trabalhos de estrutura concluídos"
     else:
-        desig = (f"Situation n° {inv.get('sit_no')} — avancement cumulé "
-                 f"{inv.get('pct_cumul', 0):g} % du marché")
+        desig = (f"Situação n.º {inv.get('sit_no')} — avanço acumulado "
+                 f"{inv.get('pct_cumul', 0):g} % do contrato")
     if inv.get("note"):
         desig += f" · {inv['note']}"
-    rows = [["Désignation", "Montant HT", "TVA 20 %", "Montant TTC"],
+    rows = [["Designação", "Valor sem IVA", "IVA 23 %", "Valor com IVA"],
             [Paragraph(desig, S["body"]), _fmt(ht, "€"), _fmt(tva, "€"), _fmt(amount, "€")],
-            ["", "", "TOTAL " + ("ACQUITTÉ" if inv.get("paid") else "À RÉGLER"),
+            ["", "", "TOTAL " + ("PAGO" if inv.get("paid") else "A LIQUIDAR"),
              _fmt(amount, "€")]]
     story.append(_table(rows, [88 * mm, 30 * mm, 30 * mm, 30 * mm],
                         [("BACKGROUND", (0, 0), (-1, 0), DARK),

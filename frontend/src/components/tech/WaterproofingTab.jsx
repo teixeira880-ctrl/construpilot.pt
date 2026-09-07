@@ -79,7 +79,7 @@ export default function WaterproofingTab({ plans, suppliers }) {
             )}
             <div className="flex flex-wrap items-end gap-3">
               <div><label className="text-xs text-muted-foreground">Surface (m²)</label><Input type="number" value={surface} onChange={(e) => setSurface(parseFloat(e.target.value) || 0)} className="h-8 w-28" data-testid="wp-surface" /></div>
-              <div><label className="text-xs text-muted-foreground">Périmètre (m)</label><Input type="number" value={perimeter} onChange={(e) => setPerimeter(parseFloat(e.target.value) || 0)} className="h-8 w-28" data-testid="wp-perimeter" /></div>
+              <div><label className="text-xs text-muted-foreground">Perímetro (m)</label><Input type="number" value={perimeter} onChange={(e) => setPerimeter(parseFloat(e.target.value) || 0)} className="h-8 w-28" data-testid="wp-perimeter" /></div>
               <div><label className="text-xs text-muted-foreground">Hauteur relevé (m)</label><Input type="number" value={releve} onChange={(e) => setReleve(parseFloat(e.target.value) || 0)} className="h-8 w-28" data-testid="wp-releve" /></div>
               <div><label className="text-xs text-muted-foreground">Système</label>
                 <select value={system} onChange={(e) => setSystem(e.target.value)} className="mt-1 h-8 rounded-sm border border-border bg-background px-2 text-sm" data-testid="wp-system">

@@ -34,38 +34,38 @@ export function MultiPlanDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-sm max-w-lg" data-testid="multi-quote-dialog">
         <DialogHeader>
-          <DialogTitle>Devis projet multi-plans</DialogTitle>
+          <DialogTitle>Orçamento projeto multi-plantas</DialogTitle>
           <DialogDescription>
-            Combinez plusieurs plans (gros œuvre, étages maison, extensions…) en un seul devis.
-            TVA appliquée par ligne : 20 % gros œuvre, 10 % maison, 0 % sous-traitance.
+            Combina várias plantas (estrutura, pisos casa, extensões…) num único orçamento.
+            IVA aplicado por linha: 23 % estrutura, 6 % casa, 0 % subcontratação.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1">
-            <Label className="text-xs">Nom du projet (optionnel)</Label>
+            <Label className="text-xs">Nome do projeto (opcional)</Label>
             <Input value={multiProjectName} onChange={(e) => setMultiProjectName(e.target.value)}
-                   placeholder="Ex : Résidence Les Tilleuls — RDC + R+1"
+                   placeholder="Ex: Residência As Tílias — Piso 0 + Piso 1"
                    maxLength={160}
                    data-testid="multi-project-name" className="rounded-sm h-10" />
           </div>
           <div>
-            <p className="overline mb-2">Plans à inclure ({multiSelected.length} sélectionné{multiSelected.length > 1 ? "s" : ""})</p>
+            <p className="overline mb-2">Plantas a incluir ({multiSelected.length} selecionada{multiSelected.length > 1 ? "s" : ""})</p>
             {allPlans.length > 6 && (
               <Input value={query} onChange={(e) => setQuery(e.target.value)}
-                     placeholder="Rechercher un plan…" data-testid="multi-plans-search"
+                     placeholder="Procurar uma planta…" data-testid="multi-plans-search"
                      className="rounded-sm h-9 mb-2 text-sm" />
             )}
             <div className="grid gap-1 max-h-72 overflow-y-auto border border-border rounded-sm p-2"
                  data-testid="multi-plans-list">
               {allPlans.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
-                  Aucun plan disponible. Uploadez au moins 2 plans depuis la page /plan.
+                  Nenhuma planta disponível. Envia pelo menos 2 plantas na página /plan.
                 </p>
               ) : visiblePlans.map((p) => {
                 const on = multiSelected.includes(p.plan_id);
                 const sub = subcontractSel.includes(p.plan_id);
                 const isGros = !!p.structural_metre;
-                const kindLbl = isGros ? "🏢 Gros œuvre" : (p.rooms?.length ? "🏠 Maison" : "Plan");
+                const kindLbl = isGros ? "🏢 Estrutura" : (p.rooms?.length ? "🏠 Casa" : "Planta");
                 const linkedCount = (p.ferraillage_plan_ids || []).length;
                 return (
                   <div key={p.plan_id}
@@ -79,11 +79,11 @@ export function MultiPlanDialog({
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold truncate">
                           {p.filename || p.plan_id}
-                          {p.plan_id === plan?.plan_id && <span className="text-primary ml-1 text-[10px]">(en cours)</span>}
+                          {p.plan_id === plan?.plan_id && <span className="text-primary ml-1 text-[10px]">(atual)</span>}
                         </p>
                         <p className="text-[10px] text-muted-foreground num">
-                          {kindLbl} · {p.rooms?.length || 0} pièces · {(p.rooms?.reduce((s, r) => s + (r.surface_m2 || 0), 0) || 0).toFixed(1)} m²
-                          {linkedCount > 0 && <span className="text-primary ml-1">· {linkedCount} ferraillage lié{linkedCount > 1 ? "s" : ""}</span>}
+                          {kindLbl} · {p.rooms?.length || 0} compartimentos · {(p.rooms?.reduce((s, r) => s + (r.surface_m2 || 0), 0) || 0).toFixed(1)} m²
+                          {linkedCount > 0 && <span className="text-primary ml-1">· {linkedCount} armadura{linkedCount > 1 ? "s" : ""} ligada{linkedCount > 1 ? "s" : ""}</span>}
                         </p>
                       </div>
                     </label>
@@ -94,14 +94,14 @@ export function MultiPlanDialog({
                                  onChange={(e) => toggleSub(p.plan_id, e.target.checked)}
                                  data-testid={`multi-subcontract-${p.plan_id}`}
                                  className="accent-primary h-3.5 w-3.5" />
-                          Sous-traitance (TVA 0 %)
+                          Subcontratação (IVA 0 %)
                         </label>
                         {isGros && (
                           <button type="button"
                                   onClick={() => setLinkOpenFor(linkOpenFor === p.plan_id ? null : p.plan_id)}
                                   data-testid={`multi-link-ferraillage-${p.plan_id}`}
                                   className="flex items-center gap-1 text-[11px] text-primary hover:underline">
-                            <Link2 className="h-3 w-3" /> Rattacher ferraillage
+                            <Link2 className="h-3 w-3" /> Ligar armadura
                           </button>
                         )}
                       </div>
@@ -110,7 +110,7 @@ export function MultiPlanDialog({
                       <div className="mx-2 mb-2 ml-8 border border-primary/30 rounded-sm p-2 grid gap-1 bg-secondary/40"
                            data-testid={`ferraillage-picker-${p.plan_id}`}>
                         <p className="text-[10px] text-muted-foreground mb-1">
-                          Cochez les plans de ferraillage à chiffrer avec ce coffrage :
+                          Marca as plantas de armadura a orçamentar com esta cofragem:
                         </p>
                         {allPlans.filter((q) => q.plan_id !== p.plan_id).map((q) => {
                           const linked = (p.ferraillage_plan_ids || []).includes(q.plan_id);

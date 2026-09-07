@@ -256,7 +256,7 @@ export default function PriceSearch() {
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Produto</TableHead>
                   <TableHead className="text-right">Preço</TableHead>
-                  <TableHead className="text-right">Portes</TableHead>
+                  <TableHead className="text-right">Portas</TableHead>
                   <TableHead>Stock</TableHead>
                   <TableHead className="text-right">Preço total</TableHead>
                   <TableHead className="text-right">Prazo</TableHead>

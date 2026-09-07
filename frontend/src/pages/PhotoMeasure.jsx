@@ -100,7 +100,7 @@ export default function PhotoMeasure() {
       }
       return;
     }
-    if (!mmPerPx) { toast.error("Calibrez d'abord avec la feuille A4"); return; }
+    if (!mmPerPx) { toast.error("Calibra primeiro com a folha A4"); return; }
     if (mode === "distance") {
       const next = [...pending, p];
       if (next.length === 2) {
@@ -202,7 +202,7 @@ export default function PhotoMeasure() {
                 </button>
                 {mode === "area" && (
                   <Button size="sm" className="ml-1" onClick={closePolygon} data-testid="pm-close-polygon">
-                    Terminer la surface
+                    Terminar a área
                   </Button>
                 )}
               </>
@@ -306,7 +306,7 @@ export default function PhotoMeasure() {
             <ol className="text-left text-sm text-muted-foreground space-y-2 max-w-xs list-decimal list-inside">
               <li>Placez une feuille <b>A4</b> sur le mur ou le sol à mesurer.</li>
               <li>Prenez la photo <b>bien en face</b>, sans angle, feuille entièrement visible.</li>
-              <li>Calibrez l'échelle en cliquant les 2 coins d'un bord de la feuille.</li>
+              <li>Calibra a escala clicando nos 2 cantos de uma extremidade da folha.</li>
               <li>Mesurez ensuite distances et surfaces.</li>
             </ol>
           </div>

@@ -628,54 +628,54 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     struct_lines = []
     if walls_ml or wall_area:
         struct_lines += [
-            _line("Voiles / murs béton — béton C25/30",
+            _line("Paredes resistentes / muros de betão — betão C25/30",
                   wall_detail, "m³", wall_m3, P["beton_voile"]),
-            _line("Coffrage voiles (2 faces)", f"{wall_face} m² × 2 faces", "m²", wall_cof, P["coffrage_voile"]),
-            _line("Aciers voiles", f"{REBAR['voile']} kg/m³", "kg", wall_ac, P["acier_voile"]),
+            _line("Cofragem paredes (2 faces)", f"{wall_face} m² × 2 faces", "m²", wall_cof, P["coffrage_voile"]),
+            _line("Aço paredes", f"{REBAR['voile']} kg/m³", "kg", wall_ac, P["acier_voile"]),
         ]
     if beams_ml or beam_area:
         struct_lines += [
-            _line("Poutres béton — béton C25/30", beam_detail, "m³", beam_m3, P["beton_poutre"]),
-            _line("Coffrage poutres", f"{beams_ml} ml", "m²", beam_cof, P["coffrage_poutre"]),
-            _line("Aciers poutres", f"{REBAR['poutre']} kg/m³", "kg", beam_ac, P["acier_poutre"]),
+            _line("Vigas de betão — betão C25/30", beam_detail, "m³", beam_m3, P["beton_poutre"]),
+            _line("Cofragem vigas", f"{beams_ml} ml", "m²", beam_cof, P["coffrage_poutre"]),
+            _line("Aço vigas", f"{REBAR['poutre']} kg/m³", "kg", beam_ac, P["acier_poutre"]),
         ]
     if cols:
         struct_lines += [
-            _line("Poteaux béton — béton C25/30", col_detail, "m³", col_m3, P["beton_poteau"]),
-            _line("Aciers poteaux", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
+            _line("Pilares de betão — betão C25/30", col_detail, "m³", col_m3, P["beton_poteau"]),
+            _line("Aço pilares", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
         ]
     if slab_m2:
         struct_lines += [
-            _line("Dalle / plancher béton", f"{slab_m2} m² ({slab_source}) × ép. {ts} m", "m³", slab_m3, P["beton_dalle"]),
-            _line("Coffrage + étaiement dalle", f"{slab_m2} m²", "m²", slab_m2, P["coffrage_dalle"]),
-            _line("Aciers dalle", f"{REBAR['dalle']} kg/m³", "kg", slab_ac, P["acier_dalle"]),
+            _line("Laje / pavimento de betão", f"{slab_m2} m² ({slab_source}) × esp. {ts} m", "m³", slab_m3, P["beton_dalle"]),
+            _line("Cofragem + escoramento laje", f"{slab_m2} m²", "m²", slab_m2, P["coffrage_dalle"]),
+            _line("Aço laje", f"{REBAR['dalle']} kg/m³", "kg", slab_ac, P["acier_dalle"]),
         ]
     if esc_area or esc_count:
         struct_lines += [
-            _line("Escaliers béton — paillasses & marches",
-                  f"{esc_count} escalier(s) · emprise {round(esc_area,1)} m² × ép. éq. {esc_eq_thk} m", "m³", esc_m3, P["beton_escalier"]),
-            _line("Coffrage escaliers", f"{round(esc_area,1)} m² d'emprise", "m²", esc_cof, P["coffrage_escalier"]),
-            _line("Aciers escaliers", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
+            _line("Escadas de betão — lajes inclinadas e degraus",
+                  f"{esc_count} escada(s) · área {round(esc_area,1)} m² × esp. eq. {esc_eq_thk} m", "m³", esc_m3, P["beton_escalier"]),
+            _line("Cofragem escadas", f"{round(esc_area,1)} m² de área", "m²", esc_cof, P["coffrage_escalier"]),
+            _line("Aço escadas", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
         ]
     if lint_ml:
-        struct_lines.append(_line("Linteaux béton armé", f"{lint_ml} ml", "ml", lint_ml, P["linteau_ml"]))
+        struct_lines.append(_line("Lintéis em betão armado", f"{lint_ml} ml", "ml", lint_ml, P["linteau_ml"]))
     if struct_lines:
-        lots.append({"lot": "Structure béton (métré plan)", "lines": struct_lines})
+        lots.append({"lot": "Estrutura betão (medição da planta)", "lines": struct_lines})
 
     div = []
     if resa:
-        div.append(_line("Réservations (traçage + coffrage)",
-                         f"{resa} réservations relevées sur plan", "u", resa, P["reservation_u"]))
+        div.append(_line("Aberturas (marcação + cofragem)",
+                         f"{resa} aberturas identificadas na planta", "u", resa, P["reservation_u"]))
     if huiss:
-        div.append(_line("Huisseries — pré-cadres / réservations de baies",
-                         f"{op.get('portes',0)} portes + {op.get('fenetres',0)} fenêtres", "u", huiss, P["huisserie_u"]))
+        div.append(_line("Caixilharia — pré-aros / aberturas de vãos",
+                         f"{op.get('portes',0)} portas + {op.get('fenetres',0)} janelas", "u", huiss, P["huisserie_u"]))
     if div:
-        lots.append({"lot": "Réservations & huisseries", "lines": div})
+        lots.append({"lot": "Aberturas e caixilharia", "lines": div})
 
-    lots.append({"lot": "Installation & sécurité", "lines": [
-        _line("Installation de chantier — base vie, clôture, benne", "forfait", "forfait", 1, P["installation_chantier"]),
-        _line("Échafaudage périphérique — location, montage & démontage", "forfait", "forfait", 1, P["echafaudage"]),
-        _line("Protection collective & sécurité — garde-corps, filets, PPSPS", "forfait", "forfait", 1, P["protection_securite"]),
+    lots.append({"lot": "Estaleiro e segurança", "lines": [
+        _line("Instalação de estaleiro — base de vida, vedação, contentor", "avança", "avança", 1, P["installation_chantier"]),
+        _line("Andaimes perimetrais — aluguer, montagem e desmontagem", "avança", "avança", 1, P["echafaudage"]),
+        _line("Proteção coletiva e segurança — guarda-corpos, redes, PSS", "avança", "avança", 1, P["protection_securite"]),
     ]})
 
     all_lines = [ln for l in lots for ln in l["lines"]]

@@ -155,7 +155,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                     <Select value={it.doc_type || "quote"} onValueChange={(v) => setItem(i, { doc_type: v })}>
                       <SelectTrigger className="h-8 rounded-sm text-xs" data-testid={`import-preview-type-${i}`}><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="quote">Devis</SelectItem>
+                        <SelectItem value="quote">Orçamento</SelectItem>
                         <SelectItem value="invoice">Facture</SelectItem>
                         <SelectItem value="credit_note">Avoir</SelectItem>
                       </SelectContent>

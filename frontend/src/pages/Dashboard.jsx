@@ -156,7 +156,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <i className="fa-solid fa-helmet-safety text-primary" />
               <span className="font-display font-bold text-lg">Analyse technique &amp; Approvisionnement IA</span>
-              <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Nouveau</span>
+              <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Novo</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">Importez vos plans de ferraillage → bordereau acier IA (ml, kg, tonnage) → quantités commandables → bons de commande fournisseurs.</p>
           </div>

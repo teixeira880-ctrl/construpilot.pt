@@ -886,61 +886,61 @@ def _beton_line_items(d: dict, plancher: dict | None = None) -> list[dict]:
     lines = []
     _default_pu = {"bn": 38.0, "reservations": 45.0, "huisseries": 90.0}
 
-    def add(desig, qty, unit, elem=None, cat="Gros œuvre — béton"):
+    def add(desig, qty, unit, elem=None, cat="Estrutura — betão"):
         if qty and qty > 0:
             ln = {"designation": desig, "unit": unit, "qty": round(qty, 2),
                   "unit_price_ht": _default_pu.get(elem, 0), "vat_rate": 20, "category": cat}
             if elem:
                 ln["elem"] = elem
             lines.append(ln)
-    add(f"Béton — semelles / fondations ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³", elem="semelles")
-    add(f"Béton de propreté (sous semelles, ép. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
-    add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³", elem="poteaux")
-    add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³", elem="poutres")
+    add(f"Betão — sapatas / fundações ({d.get('semelles', 0)} un)", d.get("beton_semelles_m3"), "m³", elem="semelles")
+    add(f"Betão de limpeza (sob sapatas, esp. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
+    add(f"Betão — pilares ({d.get('poteaux', 0)} un)", d.get("beton_poteaux_m3"), "m³", elem="poteaux")
+    add(f"Betão — vigas / lintéis ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³", elem="poutres")
     if plancher:
-        # Plancher chiffré au m² (prix all-in : béton + aciers + main d'œuvre du plancher)
+        # Laje orçamentada ao m² (preço all-in: betão + aço + mão de obra da laje)
         cm = round((d.get("beton_dalle_ep_m") or 0.20) * 100)
-        add(f"Plancher béton — {plancher.get('label', 'dalle pleine BA')} ({d.get('planchers_m2', 0)} m² · ép. {cm} cm)",
+        add(f"Laje betão — {plancher.get('label', 'laje maciça BA')} ({d.get('planchers_m2', 0)} m² · esp. {cm} cm)",
             d.get("planchers_m2"), "m²", elem="dalles")
     else:
-        add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
-    add(f"Béton — voiles / murs porteurs ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³", elem="voiles")
-    add(f"Bandes noyées / poutres noyées ({d.get('bandes_noyees_ml', 0)} ml)", d.get("bandes_noyees_ml"), "ml", elem="bn")
-    add(f"Réservations (traçage + coffrage) — {d.get('reservations', 0)} u", d.get("reservations"), "u", elem="reservations")
-    add(f"Huisseries — pré-cadres / réservations de baies ({d.get('huisseries', 0)} u)", d.get("huisseries"), "u", elem="huisseries")
+        add(f"Betão — lajes / pavimentos ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
+    add(f"Betão — paredes resistentes / muros ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³", elem="voiles")
+    add(f"Vigas embutidas / faixas embebidas ({d.get('bandes_noyees_ml', 0)} ml)", d.get("bandes_noyees_ml"), "ml", elem="bn")
+    add(f"Aberturas (marcação + cofragem) — {d.get('reservations', 0)} un", d.get("reservations"), "u", elem="reservations")
+    add(f"Caixilharia — pré-aros / aberturas de vãos ({d.get('huisseries', 0)} un)", d.get("huisseries"), "u", elem="huisseries")
     _ar = d.get("acier_ratios") or {}
     _ratio_moy = (round(sum(_ar.values()) / len(_ar)) if _ar else 100)
     _acier_kg = d.get("acier_total_kg")
     if plancher:
-        # Les aciers du plancher sont inclus dans le prix au m² → on les retire de la ligne aciers
+        # O aço da laje está incluído no preço ao m² → retiramos da linha de aço
         _acier_kg = round((_acier_kg or 0) - (d.get("acier_dalles_kg") or 0), 2)
-    add(f"Aciers HA (ferraillage — env. {_ratio_moy} kg/m³)", _acier_kg, "kg")
+    add(f"Aço nervurado (armadura — aprox. {_ratio_moy} kg/m³)", _acier_kg, "kg")
     return lines
 
 
 def _descriptif_line_items(d: dict) -> list[dict]:
     lines = []
 
-    def add(desig, qty, unit, cat="Depuis analyse plan"):
+    def add(desig, qty, unit, cat="A partir da análise da planta"):
         if qty and qty > 0:
             lines.append({"designation": desig, "unit": unit, "qty": round(qty, 2),
                           "unit_price_ht": 0, "vat_rate": 10, "category": cat})
-    add("Plancher / sol (surface au sol)", d.get("planchers_m2"), "m²")
-    add("Murs porteurs (maçonnerie)", d.get("murs_porteurs_ml"), "ml")
-    add("Cloisons", d.get("cloisons_ml"), "ml")
-    add(f"Murs — enduit/peinture (h={d.get('wall_height_m')} m)", d.get("murs_surface_m2"), "m²")
-    add("Fournitures et pose — Portes", d.get("portes"), "u")
-    add("Fournitures et pose — Fenêtres", d.get("fenetres"), "u")
-    add("Fournitures et pose — Baies vitrées", d.get("baies"), "u")
-    add("Poutres / linteaux", d.get("poutres_ml"), "ml")
-    add("Poteaux béton", d.get("poteaux"), "u")
-    add("Bandes noyées / poutres noyées", d.get("bandes_noyees_ml"), "ml")
-    add("Réservations (traçage + coffrage)", d.get("reservations"), "u")
-    add("Semelles / fondations", d.get("semelles"), "u")
-    add("Béton coulé (poteaux + poutres + dalles + voiles + semelles)", d.get("beton_total_m3"), "m³")
+    add("Pavimento / solo (área de pavimento)", d.get("planchers_m2"), "m²")
+    add("Paredes resistentes (alvenaria)", d.get("murs_porteurs_ml"), "ml")
+    add("Divisórias", d.get("cloisons_ml"), "ml")
+    add(f"Paredes — reboco/pintura (h={d.get('wall_height_m')} m)", d.get("murs_surface_m2"), "m²")
+    add("Fornecimento e assentamento — Portas", d.get("portes"), "u")
+    add("Fornecimento e assentamento — Janelas", d.get("fenetres"), "u")
+    add("Fornecimento e assentamento — Janelas de sacada", d.get("baies"), "u")
+    add("Vigas / lintéis", d.get("poutres_ml"), "ml")
+    add("Pilares de betão", d.get("poteaux"), "u")
+    add("Vigas embutidas / faixas embebidas", d.get("bandes_noyees_ml"), "ml")
+    add("Aberturas (marcação + cofragem)", d.get("reservations"), "u")
+    add("Sapatas / fundações", d.get("semelles"), "u")
+    add("Betão vazado (pilares + vigas + lajes + paredes + sapatas)", d.get("beton_total_m3"), "m³")
     _ar = d.get("acier_ratios") or {}
     _ratio_moy = (round(sum(_ar.values()) / len(_ar)) if _ar else 100)
-    add(f"Aciers HA (fer à béton armé — env. {_ratio_moy} kg/m³)", d.get("acier_total_kg"), "kg")
+    add(f"Aço nervurado (varões p/ betão armado — aprox. {_ratio_moy} kg/m³)", d.get("acier_total_kg"), "kg")
     return lines
 
 
@@ -1396,22 +1396,22 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     if beton_price_m3 and beton_price_m3 > 0:
         for ln in lines:
             desig = (ln.get("designation") or "").lower()
-            is_beton = ("béton coulé" in desig) or (desig.startswith("béton") and "main d'œuvre" not in desig)
+            is_beton = ("betão vazado" in desig) or (desig.startswith("betão") and "mão de obra" not in desig)
             if is_beton and not ln.get("unit_price_ht"):
                 pe = beton_price_by_elem.get(ln.get("elem"))
                 ln["unit_price_ht"] = round(float(pe if (pe and pe > 0) else beton_price_m3), 2)
                 priced += 1
-    # Main d'œuvre béton (au m³) — hors dalles si plancher chiffré au m² (main d'œuvre incluse dans le prix/m²)
+    # Mão de obra betão (ao m³) — sem lajes se a laje for orçamentada ao m² (mão de obra incluída no preço/m²)
     beton_total = descriptif.get("beton_total_m3") or 0
     if plancher_opt:
         beton_total = round(beton_total - (descriptif.get("beton_dalles_m3") or 0), 2)
     if labor_price_m3 and labor_price_m3 > 0 and beton_total > 0:
-        lines.append({"designation": "Main d'œuvre béton (coffrage, coulage, ferraillage)",
+        lines.append({"designation": "Mão de obra betão (cofragem, betonagem, armadura)",
                       "unit": "m³", "qty": round(beton_total, 2),
                       "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 20,
-                      "category": "Depuis analyse plan"})
+                      "category": "A partir da análise da planta"})
         priced += 1
-    # Marge commerciale par poste (béton / aciers / main d'œuvre) — repli sur la marge globale
+    # Margem comercial por rubrica (betão / aço / mão de obra) — fallback para a margem global
     m_beton = margin_beton if margin_beton is not None else margin_pct
     m_acier = margin_acier if margin_acier is not None else margin_pct
     m_labor = margin_labor if margin_labor is not None else margin_pct

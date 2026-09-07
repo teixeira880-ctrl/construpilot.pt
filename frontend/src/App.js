@@ -55,7 +55,7 @@ import TechAnalysis from "@/pages/TechAnalysis";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
-import LocalLanding from "@/pages/LocalLanding";
+// LocalLanding (rotas /devis-travaux-:city) removida — era SEO local FR.
 import Referrals from "@/pages/Referrals";
 import ReviewCollect from "@/pages/ReviewCollect";
 import MyReviews from "@/pages/MyReviews";
@@ -76,7 +76,7 @@ import RenderShare from "@/pages/RenderShare";
 import Comparatif from "@/pages/Comparatif";
 import Situations from "@/pages/Situations";
 import Entreprise from "@/pages/Entreprise";
-import { CITY_LIST } from "@/lib/cities";
+// CITY_LIST removida com as rotas SEO locais FR (100% PT-PT).
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -183,11 +183,8 @@ function AppRouter() {
       <Route path="/comparatif" element={<Shell><Comparatif /></Shell>} />
       <Route path="/blog" element={<Shell><Blog /></Shell>} />
       <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />
-      <Route path="/devis-travaux-:city" element={<Shell><LocalLanding /></Shell>} />
-      {CITY_LIST.map((c) => (
-        <Route key={c.slug} path={`/devis-travaux-${c.slug}`}
-               element={<Shell><LocalLanding /></Shell>} />
-      ))}
+      {/* Rotas SEO locais FR removidas (100% PT-PT) — mantidas como redirect para /. */}
+      <Route path="/devis-travaux-:city" element={<Navigate to="/" replace />} />
       <Route path="/parrainage" element={<Protected><Shell><Referrals /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
       <Route path="/equipe" element={<ProRoute><Shell><Team /></Shell></ProRoute>} />

@@ -1002,7 +1002,7 @@ function InboxPanel() {
       </div>
 
       <div className="surface p-4 flex gap-2 items-center flex-wrap">
-        <span className="text-xs text-muted-foreground mr-2">Fenêtre :</span>
+        <span className="text-xs text-muted-foreground mr-2">Janela:</span>
         {[24, 168, 720].map((h) => (
           <Button
             key={h}
@@ -1284,7 +1284,7 @@ function ClientErrorsPanel() {
         </div>
       </div>
       <div className="surface p-4 flex gap-2 items-center">
-        <span className="text-xs text-muted-foreground mr-2">Fenêtre :</span>
+        <span className="text-xs text-muted-foreground mr-2">Janela:</span>
         {[1, 24, 168, 720].map((h) => (
           <Button
             key={h}

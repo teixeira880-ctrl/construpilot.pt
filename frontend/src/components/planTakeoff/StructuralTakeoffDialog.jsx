@@ -96,19 +96,19 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
 
         {!metre ? (
           <p className="text-sm text-muted-foreground py-6">
-            Aucun métré par calques pour ce plan. Importez un DWG/DXF de coffrage avec calques nommés
-            (Murs, Poutres, Poteaux, Dalle, réservations…).
+            Sem medição por camadas para esta planta. Importa um DWG/DXF de cofragem com camadas nomeadas
+            (Paredes, Vigas, Pilares, Laje, aberturas…).
           </p>
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-              {[["Murs béton", `${M.walls_ml} ml`], ["Cloisons (hors béton)", `${M.partitions_ml ?? 0} ml`],
-                ["Poutres", `${M.beams_ml} ml`],
-                ["Poteaux", M.columns_count], ["Linteaux", `${M.linteaux_ml} ml`],
-                ["Planchers (emprise)", `${M.footprint_m2 ?? M.slab_area_m2 ?? 0} m²`],
-                ["Escaliers", M.escaliers_count ?? 0],
-                ["Portes", op.portes], ["Fenêtres", op.fenetres],
-                ["Réservations", res.count]].map(([k, v]) => (
+              {[["Paredes betão", `${M.walls_ml} ml`], ["Divisórias (sem betão)", `${M.partitions_ml ?? 0} ml`],
+                ["Vigas", `${M.beams_ml} ml`],
+                ["Pilares", M.columns_count], ["Lintéis", `${M.linteaux_ml} ml`],
+                ["Lajes (área)", `${M.footprint_m2 ?? M.slab_area_m2 ?? 0} m²`],
+                ["Escadas", M.escaliers_count ?? 0],
+                ["Portas", op.portes], ["Janelas", op.fenetres],
+                ["Aberturas", res.count]].map(([k, v]) => (
                 <div key={k} className="rounded-sm border p-2" data-testid={`metre-${k}`}>
                   <div className="text-xs text-muted-foreground">{k}</div>
                   <div className="font-semibold">{v}</div>
@@ -117,8 +117,8 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
             </div>
             {res.by_type && Object.keys(res.by_type).length > 0 && (
               <div className="text-xs text-muted-foreground">
-                Réservations par type : {Object.entries(res.by_type).map(([k, v]) => `${k} (${v})`).join(" · ")}
-                {(M.ngf_levels || []).length > 0 && <> — NGF : {(M.ngf_levels || []).join(" / ")}</>}
+                Aberturas por tipo: {Object.entries(res.by_type).map(([k, v]) => `${k} (${v})`).join(" · ")}
+                {(M.ngf_levels || []).length > 0 && <> — NGF: {(M.ngf_levels || []).join(" / ")}</>}
               </div>
             )}
 
@@ -128,7 +128,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                      checked={params.partitions_as_concrete}
                      onChange={(e) => setParams((p) => ({ ...p, partitions_as_concrete: e.target.checked }))} />
               <span>
-                Gros œuvre immeuble — tous les murs sont en béton (compter les cloisons comme voiles)
+                Estrutura de imóvel — todas as paredes são em betão (contar as divisórias como paredes resistentes)
                 {(M.partitions_ml ?? 0) > 0 && (
                   <span className="text-muted-foreground"> · {M.partitions_ml} ml de murs concernés</span>
                 )}

@@ -73,20 +73,20 @@ export default function SteelTab({ plans, suppliers }) {
           <label className="text-xs text-muted-foreground">Plan à analyser</label>
           <select value={planId} onChange={(e) => setPlanId(e.target.value)} data-testid="plan-select"
             className="w-full mt-1 rounded-sm border border-border bg-background px-3 py-2 text-sm">
-            <option value="">— Choisir un plan —</option>
+            <option value="">— Escolher uma planta —</option>
             {plans.map((p) => <option key={p.plan_id} value={p.plan_id}>{p.filename || p.plan_id}</option>)}
           </select>
         </div>
         <Button onClick={analyze} disabled={busy || !planId} className="gap-2 rounded-sm" data-testid="analyze-rebar-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Analyse IA…" : "Analyser le ferraillage"}
+          {busy ? "Análise IA…" : "Analisar armadura"}
         </Button>
       </div>
 
       {ana && (ana.lines || []).length === 0 && (
         <div className="surface p-4 text-sm text-muted-foreground" data-testid="steel-empty-analysis">
-          Aucun ferraillage détecté sur ce plan. Choisissez un plan de structure/armatures, ou ajoutez des lignes manuellement.
-          <Button size="sm" variant="outline" onClick={addLine} className="ml-2 h-7 gap-1 rounded-sm"><Plus className="h-3.5 w-3.5" />Ajouter une ligne</Button>
+          Nenhuma armadura detetada nesta planta. Escolhe uma planta de estrutura/armaduras, ou adiciona linhas manualmente.
+          <Button size="sm" variant="outline" onClick={addLine} className="ml-2 h-7 gap-1 rounded-sm"><Plus className="h-3.5 w-3.5" />Adicionar linha</Button>
         </div>
       )}
 

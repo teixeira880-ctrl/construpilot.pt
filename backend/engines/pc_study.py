@@ -72,21 +72,21 @@ CREW_SIZE = 3
 HOURLY_RATE_EUR = 35.0  # coût horaire MO — convertit les PU MO en heures
 
 PLANNING_PHASES = [
-    ("Installation de chantier — base vie, clôture, engins, échafaudage",
-     ["Installation de chantier", "Engins", "Échafaudage", "Protection collective"], 0),
-    ("Terrassement — décapage, fouilles en rigole, remblais", ["Terrassement complet"], 0),
-    ("Fondations — béton de propreté + semelles filantes 60×30 + aciers",
-     ["propreté", "Semelles filantes", "Aciers semelles", "Mise en œuvre fondations"], 7),
-    ("Dallage RDC ép. 15 cm + treillis",
-     ["Dallage RDC", "Treillis", "Coffrage de rives"], 7),
-    ("Élévations — murs brique isobrique + chaînages + linteaux",
-     ["brique isobrique", "Chaînages", "Linteaux"], 2),
-    ("Plancher d'étage — poutrelles-hourdis + table de compression",
-     ["Plancher d'étage"], 7),
-    ("Escalier béton armé", ["Escalier béton", "Aciers escalier"], 7),
-    ("Charpente traditionnelle", ["Charpente traditionnelle"], 0),
-    ("Couverture tuiles", ["Couverture tuiles"], 0),
-    ("Menuiseries extérieures — pose des fenêtres", ["Menuiseries extérieures"], 0),
+    ("Instalação de estaleiro — base de vida, vedação, equipamentos, andaimes",
+     ["Instalação de estaleiro", "Equipamentos", "Andaimes", "Proteção coletiva"], 0),
+    ("Movimento de terras — decapagem, valas, aterros", ["Movimento de terras completo"], 0),
+    ("Fundações — betão de limpeza + sapatas contínuas 60×30 + aço",
+     ["limpeza", "Sapatas contínuas", "Aço sapatas", "Execução de fundações"], 7),
+    ("Laje térrea esp. 15 cm + rede electrossoldada",
+     ["Laje térrea", "electrossoldada", "Cofragem de bordos"], 7),
+    ("Elevação — paredes tijolo isobrique + cintas + lintéis",
+     ["isobrique", "Cintas", "Lintéis"], 2),
+    ("Laje de piso — vigotas-abobadilhas + capa de compressão",
+     ["Laje de piso"], 7),
+    ("Escada em betão armado", ["Escada betão", "Escada em betão", "Aço escada"], 7),
+    ("Estrutura tradicional", ["Estrutura tradicional"], 0),
+    ("Cobertura em telha", ["Cobertura em telha"], 0),
+    ("Caixilharia exterior — assentamento das janelas", ["Caixilharia exterior"], 0),
 ]
 
 
@@ -320,41 +320,41 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
     n_up = lv - 1 if i["upper_floors_area_m2"] > 0 else 0
 
     terrassement = [
-        _line("Terrassement complet — décapage, fouilles en rigole, évacuation & remblais",
-              f"emprise {i['ground_floor_area_m2']} m² — {L_sem} ml de fouilles 60 × 60 "
-              "sous murs porteurs (forfait)", "forfait", 1, "terrassement_complet", P),
+        _line("Movimento de terras completo — decapagem, valas, evacuação e aterros",
+              f"área {i['ground_floor_area_m2']} m² — {L_sem} ml de valas 60 × 60 "
+              "sob paredes resistentes (vg)", "vg", 1, "terrassement_complet", P),
     ]
 
     fondations = [
-        _line("Béton de propreté ép. 5 cm",
-              "C16/20 — largeur 60 cm en fond de fouille", "m³",
+        _line("Betão de limpeza esp. 5 cm",
+              "C16/20 — largura 60 cm no fundo da vala", "m³",
               L_sem * 0.6 * 0.05, "beton_proprete", P),
-        _line("Semelles filantes BA 60 × 30 cm",
-              f"C25/30 — {L_sem} ml sous tous murs porteurs", "m³",
+        _line("Sapatas contínuas BA 60 × 30 cm",
+              f"C25/30 — {L_sem} ml sob todas as paredes resistentes", "m³",
               L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle", P),
-        _line("Aciers semelles — 3+3 HA10 filants + cadres HA6",
+        _line("Aço sapatas — 3+3 HA10 contínuos + estribos HA6",
               f"{R['acier_semelle_kg_ml']} kg/ml × {L_sem} ml", "kg",
               L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
-        _line("Mise en œuvre fondations — implantation, coffrage, réglage & coulage",
-              "forfait main d'œuvre + consommables", "forfait", 1, "fondations_moe", P),
+        _line("Execução de fundações — implantação, cofragem, nivelamento e betonagem",
+              "vg mão de obra + consumíveis", "vg", 1, "fondations_moe", P),
     ]
 
     ground = i["ground_floor_area_m2"]
     planchers = [
-        _line(f"Dallage RDC — dalle BA ép. {int(R['slab_thickness_m'] * 100)} cm",
+        _line(f"Laje térrea — laje BA esp. {int(R['slab_thickness_m'] * 100)} cm",
               f"C25/30 — {ground} m²", "m³",
               ground * R["slab_thickness_m"], "beton_dalle", P),
-        _line("Treillis soudé ST25C + chapeaux",
+        _line("Rede electrossoldada ST25C + reforços",
               f"{R['acier_dalle_kg_m2']} kg/m² × {ground} m²", "kg",
               ground * R["acier_dalle_kg_m2"], "treillis_dalle", P),
-        _line("Coffrage de rives de dalle", "périmètre dalle RDC", "ml", per, "coffrage_rive", P),
+        _line("Cofragem de bordos de laje", "perímetro laje piso 0", "ml", per, "coffrage_rive", P),
     ]
     if n_up:
         planchers.append(
-            _line("Plancher d'étage complet — poutrelles-hourdis + table de compression",
-                  f"{i['upper_floors_area_m2']} m² — étaiement compris "
-                  f"({n_up} niveau(x), forfait/niveau)",
-                  "forfait", n_up, "plancher_etage", P))
+            _line("Laje de piso completa — vigotas-abobadilhas + capa de compressão",
+                  f"{i['upper_floors_area_m2']} m² — escoramento incluído "
+                  f"({n_up} piso(s), vg/piso)",
+                  "vg", n_up, "plancher_etage", P))
 
     wall_gross = round((per + ref) * h * lv, 2)
     wall_net = round(max(0.0, wall_gross - i["openings_area_m2"]), 2)
@@ -365,19 +365,19 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
     ch_beton = (ch_h + ch_v) * 0.2 * 0.2
     lint_ml = round(i["openings_count"] * (i["avg_opening_width_m"] + 0.40), 2)
     murs = [
-        _line(f"Murs en brique isobrique ép. {int(R['wall_thickness_m'] * 100)} cm",
-              f"{bricks} briques (≈ {R['bricks_per_m2']} u/m²) — pose joint mince — "
-              f"{wall_gross} m² bruts − {i['openings_area_m2']} m² d'ouvertures",
+        _line(f"Paredes em tijolo isobrique esp. {int(R['wall_thickness_m'] * 100)} cm",
+              f"{bricks} tijolos (≈ {R['bricks_per_m2']} un/m²) — assentamento com junta fina — "
+              f"{wall_gross} m² brutos − {i['openings_area_m2']} m² de vãos",
               "m²", wall_net, "mur_isobrique", P),
-        _line("Chaînages horizontaux + raidisseurs verticaux BA 20 × 20",
-              f"{ch_h} ml CH + {ch_v} ml CV ({n_raid} raidisseurs/niveau)", "m³",
+        _line("Cintas horizontais + travamentos verticais BA 20 × 20",
+              f"{ch_h} ml cintas + {ch_v} ml travamentos ({n_raid} travamentos/piso)", "m³",
               ch_beton, "chainage_beton", P),
-        _line("Aciers chaînages — 4 HA10 + cadres HA6",
+        _line("Aço cintas — 4 HA10 + estribos HA6",
               f"{R['acier_chainage_kg_ml']} kg/ml × {round(ch_h + ch_v, 1)} ml", "kg",
               (ch_h + ch_v) * R["acier_chainage_kg_ml"], "acier_chainage", P),
-        _line("Linteaux BA sur ouvertures",
-              f"{i['openings_count']} ouvertures (larg. moy. {i['avg_opening_width_m']} m "
-              "+ 2 × 20 cm d'appuis)", "ml", lint_ml, "linteau", P),
+        _line("Lintéis BA sobre vãos",
+              f"{i['openings_count']} vãos (larg. média {i['avg_opening_width_m']} m "
+              "+ 2 × 20 cm de apoios)", "ml", lint_ml, "linteau", P),
     ]
 
     escalier = []
@@ -385,49 +385,49 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
     if i["stairs_count"] > 0:
         vol_esc = round(i["stairs_count"] * _stair_volume(h, stairs_steps), 2)
         escalier = [
-            _line("Escalier béton armé coulé en place",
-                  f"{i['stairs_count']} volée(s) — paillasse 15 cm + marches 17 × 28, larg. 1,00 m",
+            _line("Escada em betão armado betonada no local",
+                  f"{i['stairs_count']} lanço(s) — laje inclinada 15 cm + degraus 17 × 28, larg. 1,00 m",
                   "m³", vol_esc, "escalier_beton", P),
-            _line("Aciers escalier",
+            _line("Aço escada",
                   f"{R['acier_escalier_kg_m3']} kg/m³ × {vol_esc} m³", "kg",
                   vol_esc * R["acier_escalier_kg_m3"], "acier_escalier", P),
         ]
 
     toiture = [
-        _line("Charpente traditionnelle — bois massif assemblé",
-              f"toiture sur emprise {i['ground_floor_area_m2']} m² (forfait)",
-              "forfait", 1, "charpente_trad", P),
-        _line("Couverture tuiles — tuiles, écran sous-toiture, liteaux & faîtage",
-              "fourniture + pose (forfait)", "forfait", 1, "couverture_tuiles", P),
+        _line("Estrutura tradicional — madeira maciça montada",
+              f"cobertura sobre área {i['ground_floor_area_m2']} m² (vg)",
+              "vg", 1, "charpente_trad", P),
+        _line("Cobertura em telha — telhas, sub-telha, ripas e cumeeira",
+              "fornecimento + assentamento (vg)", "vg", 1, "couverture_tuiles", P),
     ]
 
     menuiseries = [
-        _line("Menuiseries extérieures — fenêtres & portes-fenêtres posées",
-              f"{i['openings_count']} ouvertures (≈ {i['openings_area_m2']} m² "
-              "de tableaux, forfait)", "forfait", 1, "menuiseries_ext", P),
+        _line("Caixilharia exterior — janelas e portas-janela assentes",
+              f"{i['openings_count']} vãos (≈ {i['openings_area_m2']} m² "
+              "de vãos, vg)", "vg", 1, "menuiseries_ext", P),
     ]
 
     chantier = [
-        _line("Installation de chantier — base vie, clôture, benne gravats",
-              "forfait durée du chantier", "forfait", 1, "installation_chantier", P),
-        _line("Engins & machines — grue/manuscopique, bétonnière, outillage",
-              "location durée du gros œuvre (forfait)", "forfait", 1, "engins_levage", P),
-        _line("Échafaudage périphérique — location, montage & démontage",
-              f"périmètre {per} m (forfait)", "forfait", 1, "echafaudage", P),
-        _line("Protection collective & sécurité — garde-corps périphériques, filets, "
-              "signalisation & PPSPS", "forfait durée du chantier", "forfait", 1,
+        _line("Instalação de estaleiro — base de vida, vedação, contentor de entulho",
+              "vg duração da obra", "vg", 1, "installation_chantier", P),
+        _line("Equipamentos e máquinas — grua/manipulador telescópico, betoneira, ferramentas",
+              "aluguer durante a estrutura (vg)", "vg", 1, "engins_levage", P),
+        _line("Andaimes perimetrais — aluguer, montagem e desmontagem",
+              f"perímetro {per} m (vg)", "vg", 1, "echafaudage", P),
+        _line("Proteção coletiva e segurança — guarda-corpos perimetrais, redes, "
+              "sinalização e PSS", "vg duração da obra", "vg", 1,
               "protection_securite", P),
     ]
 
     lots = [l for l in [
-        {"lot": "Installation de chantier & engins", "lines": chantier},
-        {"lot": "Terrassement", "lines": terrassement},
-        {"lot": "Fondations", "lines": fondations},
-        {"lot": "Planchers / Dalles", "lines": planchers},
-        {"lot": "Élévations — murs brique isobrique 20 cm", "lines": murs},
-        {"lot": "Escalier béton", "lines": escalier},
-        {"lot": "Charpente & Couverture", "lines": toiture},
-        {"lot": "Menuiseries extérieures", "lines": menuiseries},
+        {"lot": "Instalação de estaleiro e equipamentos", "lines": chantier},
+        {"lot": "Movimento de terras", "lines": terrassement},
+        {"lot": "Fundações", "lines": fondations},
+        {"lot": "Lajes / Pavimentos", "lines": planchers},
+        {"lot": "Elevação — paredes tijolo isobrique 20 cm", "lines": murs},
+        {"lot": "Escada de betão", "lines": escalier},
+        {"lot": "Estrutura e Cobertura", "lines": toiture},
+        {"lot": "Caixilharia exterior", "lines": menuiseries},
     ] if l["lines"]]
 
     all_lines = [ln for l in lots for ln in l["lines"]]
@@ -462,105 +462,105 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
                 "briques_u": briques, "murs_m2": murs_m2,
                 "ht": round(sum(ln["total"] for ln in lines), 2)}
 
-    out = [summarize("Chantier, terrassement & fondations", [
-        _line("Installation de chantier — base vie, clôture, benne",
-              "forfait", "forfait", 1, "installation_chantier", P),
-        _line("Engins & machines — grue/manuscopique, bétonnière, outillage",
-              "forfait", "forfait", 1, "engins_levage", P),
-        _line("Échafaudage périphérique — location & montage",
-              "forfait", "forfait", 1, "echafaudage", P),
-        _line("Protection collective & sécurité — garde-corps, filets, signalisation & PPSPS",
-              "forfait", "forfait", 1, "protection_securite", P),
-        _line("Terrassement complet — décapage, fouilles, évacuation & remblais",
-              f"{L_sem} ml de fouilles 60 × 60", "forfait", 1, "terrassement_complet", P),
-        _line("Béton de propreté ép. 5 cm", "C16/20", "m³",
+    out = [summarize("Estaleiro, movimento de terras e fundações", [
+        _line("Instalação de estaleiro — base de vida, vedação, contentor",
+              "vg", "vg", 1, "installation_chantier", P),
+        _line("Equipamentos e máquinas — grua/manipulador telescópico, betoneira, ferramentas",
+              "vg", "vg", 1, "engins_levage", P),
+        _line("Andaimes perimetrais — aluguer e montagem",
+              "vg", "vg", 1, "echafaudage", P),
+        _line("Proteção coletiva e segurança — guarda-corpos, redes, sinalização e PSS",
+              "vg", "vg", 1, "protection_securite", P),
+        _line("Movimento de terras completo — decapagem, valas, evacuação e aterros",
+              f"{L_sem} ml de valas 60 × 60", "vg", 1, "terrassement_complet", P),
+        _line("Betão de limpeza esp. 5 cm", "C16/20", "m³",
               L_sem * 0.6 * 0.05, "beton_proprete", P),
-        _line("Semelles filantes BA 60 × 30 cm", f"{L_sem} ml", "m³",
+        _line("Sapatas contínuas BA 60 × 30 cm", f"{L_sem} ml", "m³",
               L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle", P),
-        _line("Aciers semelles (3+3 HA10 + cadres HA6)", f"{R['acier_semelle_kg_ml']} kg/ml",
+        _line("Aço sapatas (3+3 HA10 + estribos HA6)", f"{R['acier_semelle_kg_ml']} kg/ml",
               "kg", L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
-        _line("Mise en œuvre fondations — implantation, coffrage, coulage",
-              "forfait", "forfait", 1, "fondations_moe", P),
+        _line("Execução de fundações — implantação, cofragem, betonagem",
+              "vg", "vg", 1, "fondations_moe", P),
     ], 0, 0.0)]
 
     for k in range(lv):
-        name = "RDC" if k == 0 else f"R+{k}"
+        name = "Piso 0" if k == 0 else f"Piso {k}"
         wall_net = round(max(0.0, (per + ref) * h - open_per_lvl), 2)
         briques = math.ceil(wall_net * R["bricks_per_m2"])
         ch_ml = round((per + ref) + n_raid * h, 2)
         if k == 0:
             ground = i["ground_floor_area_m2"]
             lines = [
-                _line(f"Dallage RDC — dalle BA ép. {int(R['slab_thickness_m'] * 100)} cm",
+                _line(f"Laje térrea — laje BA esp. {int(R['slab_thickness_m'] * 100)} cm",
                       f"{ground} m²", "m³", ground * R["slab_thickness_m"],
                       "beton_dalle", P),
-                _line("Treillis soudé ST25C + chapeaux", f"{R['acier_dalle_kg_m2']} kg/m²",
+                _line("Rede electrossoldada ST25C + reforços", f"{R['acier_dalle_kg_m2']} kg/m²",
                       "kg", ground * R["acier_dalle_kg_m2"], "treillis_dalle", P),
-                _line("Coffrage de rives de dalle", "périmètre RDC", "ml",
+                _line("Cofragem de bordos de laje", "perímetro piso 0", "ml",
                       per, "coffrage_rive", P),
             ]
         elif i["upper_floors_area_m2"] > 0:
             lines = [
-                _line("Plancher d'étage complet — poutrelles-hourdis + table de compression",
+                _line("Laje de piso completa — vigotas-abobadilhas + capa de compressão",
                       f"≈ {round(i['upper_floors_area_m2'] / max(1, lv - 1), 2)} m² "
-                      "— étaiement compris (forfait)", "forfait", 1, "plancher_etage", P),
+                      "— escoramento incluído (vg)", "vg", 1, "plancher_etage", P),
             ]
         else:
             lines = []
         lines += [
-            _line(f"Murs brique isobrique ép. {int(R['wall_thickness_m'] * 100)} cm",
-                  f"{briques} briques", "m²", wall_net, "mur_isobrique", P),
-            _line("Chaînages CH + CV (BA 20 × 20)", f"{ch_ml} ml", "m³",
+            _line(f"Paredes tijolo isobrique esp. {int(R['wall_thickness_m'] * 100)} cm",
+                  f"{briques} tijolos", "m²", wall_net, "mur_isobrique", P),
+            _line("Cintas + travamentos verticais (BA 20 × 20)", f"{ch_ml} ml", "m³",
                   ch_ml * 0.2 * 0.2, "chainage_beton", P),
-            _line("Aciers chaînages (4 HA10 + cadres HA6)",
+            _line("Aço cintas (4 HA10 + estribos HA6)",
                   f"{R['acier_chainage_kg_ml']} kg/ml", "kg",
                   ch_ml * R["acier_chainage_kg_ml"], "acier_chainage", P),
         ]
         n_open_lvl = base_open + (1 if k < extra_open else 0)
         if n_open_lvl > 0:
             lines.append(
-                _line("Linteaux BA sur ouvertures", f"{n_open_lvl} ouvertures", "ml",
+                _line("Lintéis BA sobre vãos", f"{n_open_lvl} vãos", "ml",
                       n_open_lvl * (i["avg_opening_width_m"] + 0.40), "linteau", P))
         if stairs_left > 0 and k < lv - 1:
             vol = _stair_volume(h, stairs_steps)
             lines += [
-                _line(f"Escalier béton {name} → R+{k + 1}", "paillasse 15 + marches 17×28",
+                _line(f"Escada betão {name} → Piso {k + 1}", "laje inclinada 15 + degraus 17×28",
                       "m³", vol, "escalier_beton", P),
-                _line("Aciers escalier", f"{R['acier_escalier_kg_m3']} kg/m³", "kg",
+                _line("Aço escada", f"{R['acier_escalier_kg_m3']} kg/m³", "kg",
                       vol * R["acier_escalier_kg_m3"], "acier_escalier", P),
             ]
             stairs_left -= 1
         out.append(summarize(name, lines, briques, wall_net))
 
-    out.append(summarize("Charpente, couverture & menuiseries", [
-        _line("Charpente traditionnelle — bois massif assemblé", "forfait",
-              "forfait", 1, "charpente_trad", P),
-        _line("Couverture tuiles — tuiles, écran, liteaux & faîtage", "forfait",
-              "forfait", 1, "couverture_tuiles", P),
-        _line("Menuiseries extérieures — fenêtres & portes-fenêtres posées",
-              f"{i['openings_count']} ouvertures", "forfait", 1, "menuiseries_ext", P),
+    out.append(summarize("Estrutura, cobertura e caixilharia", [
+        _line("Estrutura tradicional — madeira maciça montada", "vg",
+              "vg", 1, "charpente_trad", P),
+        _line("Cobertura em telha — telhas, sub-telha, ripas e cumeeira", "vg",
+              "vg", 1, "couverture_tuiles", P),
+        _line("Caixilharia exterior — janelas e portas-janela assentes",
+              f"{i['openings_count']} vãos", "vg", 1, "menuiseries_ext", P),
     ], 0, 0.0))
     return out
 
 
-# ---- Bon de commande fournisseur (par niveau) -----------------------------
+# ---- Nota de encomenda a fornecedor (por piso) -----------------------------
 ORDER_ITEMS = {
-    "beton_proprete": ("Béton de propreté C16/20", "m³"),
-    "beton_semelle": ("Béton prêt à l'emploi C25/30 — semelles", "m³"),
-    "beton_dalle": ("Béton prêt à l'emploi C25/30 — dalle / plancher", "m³"),
-    "chainage_beton": ("Béton C25/30 — chaînages & raidisseurs", "m³"),
-    "escalier_beton": ("Béton C25/30 — escalier", "m³"),
-    "acier_semelle": ("Aciers HA façonnés — semelles (3+3 HA10 + cadres HA6)", "kg"),
-    "acier_chainage": ("Aciers HA façonnés — chaînages (4 HA10 + cadres HA6)", "kg"),
-    "acier_escalier": ("Aciers HA façonnés — escalier", "kg"),
-    "treillis_dalle": ("Treillis soudé ST25C (panneaux)", "kg"),
-    "mur_isobrique": ("Briques isobrique ép. 20 cm", "u"),
-    "linteau": ("Linteaux / coffrage BA 20 × 20", "ml"),
-    "coffrage_rive": ("Planches de coffrage de rives", "ml"),
-    "plancher_etage": ("Plancher poutrelles-hourdis — étage (fourniture complète)", "forfait"),
-    "charpente_trad": ("Charpente traditionnelle (fourniture bois)", "forfait"),
-    "couverture_tuiles": ("Tuiles + écran sous-toiture + liteaux (fourniture)", "forfait"),
-    "menuiseries_ext": ("Menuiseries extérieures — fenêtres (fourniture)", "forfait"),
+    "beton_proprete": ("Betão de limpeza C16/20", "m³"),
+    "beton_semelle": ("Betão pronto C25/30 — sapatas", "m³"),
+    "beton_dalle": ("Betão pronto C25/30 — laje / pavimento", "m³"),
+    "chainage_beton": ("Betão C25/30 — cintas e travamentos", "m³"),
+    "escalier_beton": ("Betão C25/30 — escada", "m³"),
+    "acier_semelle": ("Aço HA moldado — sapatas (3+3 HA10 + estribos HA6)", "kg"),
+    "acier_chainage": ("Aço HA moldado — cintas (4 HA10 + estribos HA6)", "kg"),
+    "acier_escalier": ("Aço HA moldado — escada", "kg"),
+    "treillis_dalle": ("Rede electrossoldada ST25C (painéis)", "kg"),
+    "mur_isobrique": ("Tijolos isobrique esp. 20 cm", "u"),
+    "linteau": ("Lintéis / cofragem BA 20 × 20", "ml"),
+    "coffrage_rive": ("Tábuas de cofragem de bordos", "ml"),
+    "plancher_etage": ("Laje vigotas-abobadilhas — piso (fornecimento completo)", "vg"),
+    "charpente_trad": ("Estrutura tradicional (fornecimento de madeira)", "vg"),
+    "couverture_tuiles": ("Telhas + sub-telha + ripas (fornecimento)", "vg"),
+    "menuiseries_ext": ("Caixilharia exterior — janelas (fornecimento)", "vg"),
 }
 WASTE_FACTOR = 1.05  # +5 % de chutes / pertes
 

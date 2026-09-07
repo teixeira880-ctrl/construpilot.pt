@@ -466,7 +466,7 @@ export default function PlanTakeoff() {
         const nb = list.length;
         const newC = {
           id: `cnt_${Date.now()}`,
-          label: `Compteur ${nb + 1}`,
+          label: `Contador ${nb + 1}`,
           color: COUNTER_COLORS[nb % COUNTER_COLORS.length],
           unit: "u",
           markers: [],
@@ -555,7 +555,7 @@ export default function PlanTakeoff() {
         }
       );
       toast.success(
-        `${pendingOpening.kind === "porte" ? "Porte" : pendingOpening.kind === "baie" ? "Baie" : "Fenêtre"} `
+        `${pendingOpening.kind === "porte" ? "Porta" : pendingOpening.kind === "baie" ? "Vão de sacada" : "Janela"} `
         + `${w}×${h} m ajoutée à ${openingsDialog.room_name}`
       );
       setOpeningsDialog(null);
@@ -982,7 +982,7 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     const roomCount = rooms.length;
     if (!window.confirm(
-      `Tout apagar sur cette page ?\n\n${roomCount} compartimento(s), les annotations (compteurs, notes, angles, toitures) et les paredes detetados seront supprimés. Cette action est irréversible.`
+      `Apagar tudo nesta página?\n\n${roomCount} compartimento(s), as anotações (contadores, notas, ângulos, coberturas) e as paredes detetadas serão removidas. Esta ação é irreversível.`
     )) return;
     try {
       // Supprime toutes les compartimentos de la page côté serveur
@@ -1687,7 +1687,7 @@ export default function PlanTakeoff() {
     next.openings = [...(next.openings || []), item];
     setSelectedStruct({ type: "opening", id: item.opening_id });
     persistStructure(next).then(() => loadDescriptif());
-    toast.info(`${kind === "porte" ? "Porte" : "Fenêtre"} ajoutée — glissez ses extremidades pour la placer`);
+    toast.info(`${kind === "porte" ? "Porta" : "Janela"} adicionada — arrasta as extremidades para a colocar`);
   };
 
   const addStructFooting = () => {
@@ -2380,7 +2380,7 @@ export default function PlanTakeoff() {
           </h1>
           <p className="text-sm text-muted-foreground mt-3 max-w-2xl">
             PDF de arquitecto, plano digitalizado, foto de telemóvel: o ConstruPilot calibra a escala,
-            extrait les mesures et bascule le tout dans l'estimation ou la recherche de prix.
+            extrai as medidas e transfere tudo para a estimativa ou a pesquisa de preços.
           </p>
           <div className="mt-4">
             <MeasureHelpDialog />
@@ -2543,7 +2543,7 @@ export default function PlanTakeoff() {
           <Button variant="outline" onClick={clearAllMeasures} data-testid="plan-clear-all-btn"
                   title="Apagar todos os compartimentos, anotações e paredes desta página antes de começar um novo orçamento"
                   className="rounded-sm gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-white">
-            <Eraser className="h-4 w-4" /> Tout apagar
+            <Eraser className="h-4 w-4" /> Apagar tudo
           </Button>
           <Button variant="outline" onClick={duplicatePlan} data-testid="plan-duplicate-btn" className="rounded-sm gap-2"
                   title="Criar uma cópia deste plano (compartimentos, aberturas, calibrações)">
@@ -2553,7 +2553,7 @@ export default function PlanTakeoff() {
                title="Tipo de plano para a análise IA">
             {[
               { v: "auto", label: "Auto" },
-              { v: "gros_oeuvre", label: "🏢 Gros œuvre" },
+              { v: "gros_oeuvre", label: "🏢 Estrutura" },
               { v: "maison", label: "🏠 Maison" },
             ].map((o) => (
               <button key={o.v} onClick={() => setPlanKindChoice(o.v)}
@@ -2689,7 +2689,7 @@ export default function PlanTakeoff() {
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
             <Button size="sm" onClick={sendToQuote} className="rounded-sm gap-2" data-testid="recap-to-quote">
-              <ArrowRight className="h-3.5 w-3.5" /> Gerar le devis
+              <ArrowRight className="h-3.5 w-3.5" /> Gerar orçamento
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setRightTab("rooms"); }} className="rounded-sm gap-2" data-testid="recap-see-rooms">
               Ver les compartimentos
@@ -2754,7 +2754,7 @@ export default function PlanTakeoff() {
           </div>
         )}
         <p className="text-[10px] text-muted-foreground w-full">
-          Ces valeurs s'appliquent aux nouvelles compartimentos créées ou importées via l'IA (peuvent être ajustées par compartimento).
+          Estes valores aplicam-se aos novos compartimentos criados ou importados pela IA (podem ser ajustados por compartimento).
         </p>
       </div>
 
@@ -2825,16 +2825,16 @@ export default function PlanTakeoff() {
             <ToolButton icon={MousePointer2} label="Sélection" testId="tool-select" active={tool === TOOLS.SELECT} onClick={() => { setTool(TOOLS.SELECT); setPoints([]); }} />
             <ToolButton icon={Ruler} label="Calibrer" testId="tool-calibrate" active={tool === TOOLS.CALIB} onClick={() => { setTool(TOOLS.CALIB); setPoints([]); }} />
             <ToolButton icon={Move} label="Distance" testId="tool-distance" active={tool === TOOLS.DIST} onClick={() => { setTool(TOOLS.DIST); setPoints([]); }} disabled={!currentCalib} />
-            <ToolButton icon={Layers} label="Périmètre" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={Layers} label="Perímetro" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Hexagon} label="Superfície" testId="tool-surface" active={tool === TOOLS.SURFACE} onClick={() => { setTool(TOOLS.SURFACE); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Square} label="Compartimento" testId="tool-room" active={tool === TOOLS.ROOM} onClick={() => { setTool(TOOLS.ROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Wand2} label="Auto-compartimento" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={DoorOpen} label="Ouverture" testId="tool-opening" active={tool === TOOLS.OPENING} onClick={() => { setTool(TOOLS.OPENING); setPoints([]); }} disabled={!currentCalib || rooms.length === 0} />
             {/* Iter 57 — QuoterPlan-like tools */}
-            <ToolButton icon={Hash} label="Compteur" testId="tool-counter" active={tool === TOOLS.COUNTER} onClick={() => { setTool(TOOLS.COUNTER); setPoints([]); }} />
+            <ToolButton icon={Hash} label="Contador" testId="tool-counter" active={tool === TOOLS.COUNTER} onClick={() => { setTool(TOOLS.COUNTER); setPoints([]); }} />
             <ToolButton icon={StickyNote} label="Note" testId="tool-note" active={tool === TOOLS.NOTE} onClick={() => { setTool(TOOLS.NOTE); setPoints([]); }} />
             <ToolButton icon={Triangle} label="Ângulo" testId="tool-angle" active={tool === TOOLS.ANGLE} onClick={() => { setTool(TOOLS.ANGLE); setPoints([]); }} />
-            <ToolButton icon={MountainSnow} label="Pente toit" testId="tool-pitch" active={tool === TOOLS.PITCH} onClick={() => { setTool(TOOLS.PITCH); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={MountainSnow} label="Inclinação cobertura" testId="tool-pitch" active={tool === TOOLS.PITCH} onClick={() => { setTool(TOOLS.PITCH); setPoints([]); }} disabled={!currentCalib} />
             <div className="flex-1" />
             {rooms.some((r) => r.page_index === pageIndex && r.surface_delta_pct != null) && (
               <Button size="sm" variant={showDeltas ? "default" : "outline"}
@@ -2859,8 +2859,8 @@ export default function PlanTakeoff() {
                 </Button>
               </>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setPoints(points.slice(0, -1))} disabled={!points.length} className="rounded-sm gap-1" title="Cancelar le dernier point placé">
-              <Undo2 className="h-3 w-3" /> Cancelar le dernier point
+            <Button size="sm" variant="ghost" onClick={() => setPoints(points.slice(0, -1))} disabled={!points.length} className="rounded-sm gap-1" title="Cancelar o último ponto colocado">
+              <Undo2 className="h-3 w-3" /> Cancelar último ponto
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.max(0.15, z / 1.2))} className="rounded-sm">
               <ZoomOut className="h-3 w-3" />
@@ -2904,7 +2904,7 @@ export default function PlanTakeoff() {
                   className={`inline-flex items-center gap-1 text-xs px-2 h-8 rounded-sm ${saving ? "text-amber-500" : "text-emerald-600"}`}
                   title="Vos mesures et modifications sont enregistrées automatiquement">
               <span className={`h-1.5 w-1.5 rounded-full ${saving ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-              {saving ? "Enregistrement…" : savedAt ? "Enregistré ✓" : "Auto-save actif"}
+              {saving ? "A guardar…" : savedAt ? "Guardado ✓" : "Guardar automático ativo"}
             </span>
             <Button size="sm" variant="outline" onClick={manualSave} disabled={saving}
                     data-testid="plan-save-btn" className="rounded-sm gap-1 h-8"
@@ -3100,7 +3100,7 @@ export default function PlanTakeoff() {
                 </>
               ) : (
                 <p className="text-[10px] text-muted-foreground">
-                  Calibrez la page pour comparer la mesure à la valeur écrite.
+                  Calibra a página para comparar a medida com o valor escrito.
                 </p>
               )}
               {coteDetail.location && (
@@ -3176,7 +3176,7 @@ export default function PlanTakeoff() {
             onOpenEstimate={generateRoomEstimate}
           />
 
-          {/* ACTIVE TOOL BAR — Voltar + Cancelar le dernier point (tous les outils de mesure) */}
+          {/* ACTIVE TOOL BAR — Voltar + Cancelar último ponto (todas as ferramentas de medição) */}
           {tool !== TOOLS.SELECT && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2"
                  data-testid="active-tool-bar">
@@ -3187,7 +3187,7 @@ export default function PlanTakeoff() {
               <Button size="sm" variant="outline" onClick={() => setPoints(points.slice(0, -1))}
                       disabled={!points.length} data-testid="tool-undo-point"
                       className="rounded-sm gap-1 h-8">
-                <Undo2 className="h-3 w-3" /> Cancelar le dernier point
+                <Undo2 className="h-3 w-3" /> Cancelar último ponto
               </Button>
               <Button size="sm" variant="secondary" onClick={() => { setTool(TOOLS.SELECT); setPoints([]); }}
                       data-testid="tool-back-select" className="rounded-sm gap-1 h-8">
@@ -3288,7 +3288,7 @@ export default function PlanTakeoff() {
               <Button
                 size="sm" variant="outline" onClick={() => {
                   const nb = annotations.counters.length;
-                  const label = window.prompt(`Nom du compteur ${nb + 1} (ex: Prises, Spots, Radiateurs) :`, `Compteur ${nb + 1}`);
+                  const label = window.prompt(`Nome do contador ${nb + 1} (ex: Tomadas, Focos, Radiadores):`, `Contador ${nb + 1}`);
                   if (!label) return;
                   const newC = {
                     id: `cnt_${Date.now()}`,
@@ -3345,9 +3345,9 @@ export default function PlanTakeoff() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  ["porteur",  "text-red-500 border-red-500/40 bg-red-500/5",   "Porteur"],
-                  ["cloison",  "text-primary border-primary/40 bg-primary/5",   "Cloison"],
-                  ["doublage", "text-blue-500 border-blue-500/40 bg-blue-500/5", "Doublage"],
+                  ["porteur",  "text-red-500 border-red-500/40 bg-red-500/5",   "Resistente"],
+                  ["cloison",  "text-primary border-primary/40 bg-primary/5",   "Divisória"],
+                  ["doublage", "text-blue-500 border-blue-500/40 bg-blue-500/5", "Forro"],
                 ].map(([key, cls, label]) => {
                   const t = wallsSummary.totals[key] || { count: 0, ml: 0 };
                   return (
@@ -3360,10 +3360,10 @@ export default function PlanTakeoff() {
                   );
                 })}
               </div>
-              {/* Distinction matériau porteur detetada par l'IA (brique / parpaing / béton) */}
+              {/* Distinção material resistente detetada pela IA (tijolo / bloco / betão) */}
               {plan?.ai_analysis?.wall_types && (
                 <div className="mt-2 flex flex-wrap gap-1.5 items-center" data-testid="walls-material-hint">
-                  <span className="text-[10px] text-muted-foreground">Matériau des paredes porteurs (IA) :</span>
+                  <span className="text-[10px] text-muted-foreground">Material das paredes resistentes (IA):</span>
                   {plan.ai_analysis.wall_types.hatching_present &&
                    plan.ai_analysis.wall_types.hatching_present !== "nenhum" ? (
                     <Badge variant="outline" className="rounded-sm text-[10px] capitalize border-red-500/40 text-red-500">
@@ -3371,37 +3371,37 @@ export default function PlanTakeoff() {
                     </Badge>
                   ) : (
                     <span className="text-[10px] text-muted-foreground italic">
-                      non detetado — lancez « Ler o plano (IA) »
+                      não detetado — executa «Ler a planta (IA)»
                     </span>
                   )}
                   {plan.ai_analysis.wall_types.load_bearing_visible && (
-                    <Badge variant="outline" className="rounded-sm text-[10px] border-red-500/40 text-red-500">porteurs visibles</Badge>
+                    <Badge variant="outline" className="rounded-sm text-[10px] border-red-500/40 text-red-500">resistentes visíveis</Badge>
                   )}
                   {plan.ai_analysis.wall_types.partition_visible && (
-                    <Badge variant="outline" className="rounded-sm text-[10px] border-primary/40 text-primary">cloisons visibles</Badge>
+                    <Badge variant="outline" className="rounded-sm text-[10px] border-primary/40 text-primary">divisórias visíveis</Badge>
                   )}
                 </div>
               )}
             </div>
           )}
 
-          {/* STRUCTURE IA — edição paredes / ouvertures */}
+          {/* STRUCTURE IA — edição paredes / aberturas */}
           {structure && (structure.walls?.length > 0 || structure.openings?.length > 0 || structure.beams?.length > 0 || structure.floors?.length > 0 || structure.columns?.length > 0) && (
             <div className="mt-3 border border-red-500/30 rounded-sm p-3 bg-red-500/5" data-testid="structure-card">
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <p className="overline flex items-center gap-2">
-                  <Sparkles className="h-3 w-3 text-red-500" /> Structure IA
+                  <Sparkles className="h-3 w-3 text-red-500" /> Estrutura IA
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] text-muted-foreground">
                     <span className="text-red-500 font-bold">■</span> paredes ·
-                    <span className="text-yellow-500 font-bold"> ■</span> fenêtres ·
-                    <span className="text-purple-500 font-bold"> ■</span> portes
+                    <span className="text-yellow-500 font-bold"> ■</span> janelas ·
+                    <span className="text-purple-500 font-bold"> ■</span> portas
                   </span>
                   <Button size="sm" variant={showStructure ? "default" : "outline"}
                           onClick={() => setShowStructure((v) => !v)}
                           data-testid="toggle-structure-overlay" className="rounded-sm gap-1 h-7 text-xs">
-                    <Layers className="h-3 w-3" /> {showStructure ? "Masquer" : "Afficher"}
+                    <Layers className="h-3 w-3" /> {showStructure ? "Ocultar" : "Mostrar"}
                   </Button>
                 </div>
               </div>
@@ -3411,15 +3411,15 @@ export default function PlanTakeoff() {
                   <p className="num text-lg font-extrabold">{structure.walls?.length || 0}</p>
                 </div>
                 <div className="border border-yellow-500/40 rounded-sm p-2 text-yellow-600" data-testid="structure-opening-count">
-                  <p className="text-[10px] uppercase font-bold tracking-wider">Ouvert.</p>
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Abert.</p>
                   <p className="num text-lg font-extrabold">{structure.openings?.length || 0}</p>
                 </div>
                 <div className="border border-purple-800/40 rounded-sm p-2 text-purple-800" data-testid="structure-beam-count">
-                  <p className="text-[10px] uppercase font-bold tracking-wider">Poutres</p>
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Vigas</p>
                   <p className="num text-lg font-extrabold">{structure.beams?.length || 0}</p>
                 </div>
                 <div className="border border-purple-600/40 rounded-sm p-2 text-purple-600" data-testid="structure-column-count">
-                  <p className="text-[10px] uppercase font-bold tracking-wider">Poteaux</p>
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Pilares</p>
                   <p className="num text-lg font-extrabold">{structure.columns?.length || 0}</p>
                 </div>
               </div>
@@ -3535,7 +3535,7 @@ export default function PlanTakeoff() {
                   <details className="mb-1.5" data-testid="acier-ratios">
                     <summary className="text-[10px] font-semibold cursor-pointer text-orange-600">Ratios aços (kg/m³) — ajustables</summary>
                     <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] text-muted-foreground">
-                      {[["semelles", "Semelles"], ["poteaux", "Poteaux"], ["poutres", "Poutres"], ["dalles", "Dalles"], ["voiles", "Voiles"]].map(([k, lbl]) => (
+                      {[["semelles", "Sapatas"], ["poteaux", "Pilares"], ["poutres", "Vigas"], ["dalles", "Lajes"], ["voiles", "Paredes"]].map(([k, lbl]) => (
                         <label key={k} className="flex flex-col gap-0.5">{lbl}
                           <input type="number" step="5" min="0" max="400" value={acierRatios[k]}
                                  onChange={(e) => setAcierRatios((r) => ({ ...r, [k]: parseFloat(e.target.value) || 0 }))}
@@ -3606,7 +3606,7 @@ export default function PlanTakeoff() {
                   <details className="mb-1.5" data-testid="beton-prices-poste">
                     <summary className="text-[10px] font-semibold cursor-pointer text-sky-600">Prix béton par poste (€/m³) — optionnel</summary>
                     <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] text-muted-foreground">
-                      {[["semelles", "Semelles"], ["proprete", "Propreté"], ["poteaux", "Poteaux"], ["poutres", "Poutres"], ["voiles", "Voiles"]].map(([k, lbl]) => (
+                      {[["semelles", "Sapatas"], ["proprete", "Limpeza"], ["poteaux", "Pilares"], ["poutres", "Vigas"], ["voiles", "Paredes"]].map(([k, lbl]) => (
                         <label key={k} className="flex flex-col gap-0.5">{lbl}
                           <input type="number" step="5" min="0" max="500" value={betonPrices[k]}
                                  onChange={(e) => setBetonPrices((r) => ({ ...r, [k]: parseFloat(e.target.value) || 0 }))}
@@ -3649,28 +3649,28 @@ export default function PlanTakeoff() {
                         <span className="text-[9px] px-1 rounded-sm bg-emerald-500/15 text-emerald-600 font-bold" data-testid="planchers-auto-badge">AUTO IA</span>
                       )}
                     </span><span className="num text-right">{descritivo.planchers_m2} m²</span>
-                    <span className="text-muted-foreground">Paredes porteurs</span><span className="num text-right">{descritivo.murs_porteurs_ml} ml</span>
-                    <span className="text-muted-foreground">Cloisons</span><span className="num text-right">{descritivo.cloisons_ml} ml</span>
-                    <span className="text-muted-foreground">Paredes (surface)</span><span className="num text-right">{descritivo.murs_surface_m2} m²</span>
-                    <span className="text-muted-foreground">Portes / Fenêtres / Baies</span><span className="num text-right">{descritivo.portes} / {descritivo.fenetres} / {descritivo.baies}</span>
-                    <span className="text-muted-foreground">Poutres</span><span className="num text-right">{descritivo.poutres_ml} ml</span>
-                    <span className="text-muted-foreground">Poteaux</span><span className="num text-right">{descritivo.poteaux || 0} u</span>
-                    <span className="text-muted-foreground">Semelles</span><span className="num text-right">{descritivo.semelles || 0} u</span>
+                    <span className="text-muted-foreground">Paredes resistentes</span><span className="num text-right">{descritivo.murs_porteurs_ml} ml</span>
+                    <span className="text-muted-foreground">Divisórias</span><span className="num text-right">{descritivo.cloisons_ml} ml</span>
+                    <span className="text-muted-foreground">Paredes (área)</span><span className="num text-right">{descritivo.murs_surface_m2} m²</span>
+                    <span className="text-muted-foreground">Portas / Janelas / Vãos de sacada</span><span className="num text-right">{descritivo.portes} / {descritivo.fenetres} / {descritivo.baies}</span>
+                    <span className="text-muted-foreground">Vigas</span><span className="num text-right">{descritivo.poutres_ml} ml</span>
+                    <span className="text-muted-foreground">Pilares</span><span className="num text-right">{descritivo.poteaux || 0} u</span>
+                    <span className="text-muted-foreground">Sapatas</span><span className="num text-right">{descritivo.semelles || 0} u</span>
                     {descritivo.beton_total_m3 > 0 && (
                       <>
-                        <span className="text-muted-foreground font-semibold">Béton total</span>
+                        <span className="text-muted-foreground font-semibold">Betão total</span>
                         <span className="num text-right font-semibold" data-testid="descritivo-beton">{descritivo.beton_total_m3} m³</span>
                       </>
                     )}
                     {descritivo.acier_total_kg > 0 && (
                       <>
-                        <span className="text-muted-foreground font-semibold">Aços (ferraillage)</span>
+                        <span className="text-muted-foreground font-semibold">Aço (armadura)</span>
                         <span className="num text-right font-semibold text-orange-600" data-testid="descritivo-acier">{descritivo.acier_total_kg} kg</span>
                       </>
                     )}
                     {(betonPriceM3 > 0 || acierPriceKg > 0) && descritivo.beton_total_m3 > 0 && (
                       <>
-                        <span className="text-muted-foreground font-semibold">Coût matière (béton + aços)</span>
+                        <span className="text-muted-foreground font-semibold">Custo de material (betão + aço)</span>
                         <span className="num text-right font-semibold text-emerald-700" data-testid="descritivo-cout-matiere">
                           {Math.round((descritivo.beton_total_m3 || 0) * betonPriceM3 + (descritivo.acier_total_kg || 0) * acierPriceKg).toLocaleString("pt-PT")} €
                         </span>
@@ -3678,7 +3678,7 @@ export default function PlanTakeoff() {
                     )}
                     {(betonPriceM3 > 0 || acierPriceKg > 0 || laborPriceM3 > 0) && descritivo.beton_total_m3 > 0 && (
                       <>
-                        <span className="text-muted-foreground font-semibold">Prix de vente estimé{marginPct > 0 ? ` (marge ${marginPct}%)` : ""}</span>
+                        <span className="text-muted-foreground font-semibold">Preço de venda estimado{marginPct > 0 ? ` (margem ${marginPct}%)` : ""}</span>
                         <span className="num text-right font-bold text-primary" data-testid="descritivo-prix-vente">
                           {Math.round((((descritivo.beton_total_m3 || 0) * betonPriceM3 + (descritivo.acier_total_kg || 0) * acierPriceKg) + (descritivo.beton_total_m3 || 0) * laborPriceM3) * (1 + marginPct / 100)).toLocaleString("pt-PT")} €
                         </span>
@@ -3687,22 +3687,22 @@ export default function PlanTakeoff() {
                   </div>
                   {descritivo.beton_total_m3 > 0 && (
                     <details className="mt-2" open data-testid="detail-par-poste">
-                      <summary className="text-[11px] font-semibold cursor-pointer text-primary">Détail par poste (béton + aços)</summary>
+                      <summary className="text-[11px] font-semibold cursor-pointer text-primary">Detalhe por rubrica (betão + aço)</summary>
                       <div className="mt-1 border border-border rounded-sm overflow-hidden">
                         <table className="w-full text-[10px]">
                           <thead className="bg-muted/60"><tr>
-                            <th className="text-left px-1.5 py-1">Poste</th>
-                            <th className="text-right px-1.5 py-1">Béton</th>
-                            <th className="text-right px-1.5 py-1">Aços</th>
+                            <th className="text-left px-1.5 py-1">Rubrica</th>
+                            <th className="text-right px-1.5 py-1">Betão</th>
+                            <th className="text-right px-1.5 py-1">Aço</th>
                           </tr></thead>
                           <tbody>
                             {[
-                              { k: "semelles", label: `Semelles (${descritivo.semelles || 0} u)`, b: descritivo.beton_semelles_m3, a: descritivo.acier_semelles_kg },
-                              { k: "proprete", label: "Béton de propreté (ép. 5 cm)", b: descritivo.beton_proprete_m3, a: 0 },
-                              { k: "poteaux", label: `Poteaux (${descritivo.poteaux || 0} u)`, b: descritivo.beton_poteaux_m3, a: descritivo.acier_poteaux_kg },
-                              { k: "poutres", label: `Poutres (${descritivo.poutres_ml || 0} ml)`, b: descritivo.beton_poutres_m3, a: descritivo.acier_poutres_kg },
-                              { k: "dalles", label: `Dalles / planchers (${descritivo.planchers_m2 || 0} m²)`, b: descritivo.beton_dalles_m3, a: descritivo.acier_dalles_kg },
-                              { k: "voiles", label: `Voiles / paredes porteurs (${descritivo.murs_porteurs_ml || 0} ml)`, b: descritivo.beton_voiles_m3, a: descritivo.acier_voiles_kg },
+                              { k: "semelles", label: `Sapatas (${descritivo.semelles || 0} u)`, b: descritivo.beton_semelles_m3, a: descritivo.acier_semelles_kg },
+                              { k: "proprete", label: "Betão de limpeza (esp. 5 cm)", b: descritivo.beton_proprete_m3, a: 0 },
+                              { k: "poteaux", label: `Pilares (${descritivo.poteaux || 0} u)`, b: descritivo.beton_poteaux_m3, a: descritivo.acier_poteaux_kg },
+                              { k: "poutres", label: `Vigas (${descritivo.poutres_ml || 0} ml)`, b: descritivo.beton_poutres_m3, a: descritivo.acier_poutres_kg },
+                              { k: "dalles", label: `Lajes / pavimentos (${descritivo.planchers_m2 || 0} m²)`, b: descritivo.beton_dalles_m3, a: descritivo.acier_dalles_kg },
+                              { k: "voiles", label: `Paredes betão / resistentes (${descritivo.murs_porteurs_ml || 0} ml)`, b: descritivo.beton_voiles_m3, a: descritivo.acier_voiles_kg },
                             ].filter((r) => (r.b || 0) > 0).map((r) => (
                               <tr key={r.k} className="border-t border-border" data-testid={`poste-row-${r.k}`}>
                                 <td className="px-1.5 py-0.5">{r.label}</td>
@@ -3766,7 +3766,7 @@ export default function PlanTakeoff() {
                     <FileDown className="h-4 w-4" /> {quoteBusy ? "Estimativa en cours…" : "Estimar o orçamento (PDF)"}
                   </Button>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Gros œuvre / béton uniquement — paredes, poteaux, poutres, planchers, semelles + aços (surface = planchers) · béton {betonPriceM3} €/m³ · aços {acierPriceKg} €/kg · main d'œuvre {laborPriceM3} €/m³ · marge {marginPct}%
+                    Estrutura / betão apenas — paredes, pilares, vigas, lajes, sapatas + aço (área = lajes) · betão {betonPriceM3} €/m³ · aço {acierPriceKg} €/kg · mão de obra {laborPriceM3} €/m³ · margem {marginPct}%
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" variant="outline" onClick={sendToQuote} data-testid="structure-to-quote"
@@ -3795,20 +3795,20 @@ export default function PlanTakeoff() {
                 </div>
               )}
               <p className="text-[10px] text-muted-foreground mb-2">
-                Clique un parede/ouverture pour le sélectionner, puis glissez ses extremidades (points blancs) pour l'ajuster.
+                Clica numa parede/abertura para a selecionar e depois arrasta as extremidades (pontos brancos) para a ajustar.
               </p>
               {selectedStruct && (
                 <div className="flex items-center gap-2 flex-wrap mb-2 p-2 rounded-sm bg-background border border-border" data-testid="structure-selected-actions">
                   <Badge variant="outline" className="rounded-sm text-[10px]">
-                    {selectedStruct.type === "wall" ? "Parede sélectionné"
-                      : selectedStruct.type === "beam" ? "Viga sélectionnée"
-                      : selectedStruct.type === "column" ? "Pilar sélectionné"
-                      : selectedStruct.type === "footing" ? "Sapata sélectionnée" : "Ouverture sélectionnée"}
+                    {selectedStruct.type === "wall" ? "Parede selecionada"
+                      : selectedStruct.type === "beam" ? "Viga selecionada"
+                      : selectedStruct.type === "column" ? "Pilar selecionado"
+                      : selectedStruct.type === "footing" ? "Sapata selecionada" : "Abertura selecionada"}
                   </Badge>
                   {(selectedStruct.type === "wall" || selectedStruct.type === "opening") && (
                     <Button size="sm" variant="outline" onClick={toggleStructType}
                             data-testid="structure-toggle-type" className="rounded-sm h-7 text-xs gap-1">
-                      {selectedStruct.type === "wall" ? "Porteur ↔ Cloison" : "Porte ↔ Fenêtre ↔ Baie"}
+                      {selectedStruct.type === "wall" ? "Resistente ↔ Divisória" : "Porta ↔ Janela ↔ Vão de sacada"}
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={deleteStructItem}
@@ -3824,11 +3824,11 @@ export default function PlanTakeoff() {
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => addStructOpening("fenetre")}
                         data-testid="structure-add-window" className="rounded-sm h-7 text-xs gap-1 text-yellow-600 border-yellow-500/40">
-                  <Plus className="h-3 w-3" /> Fenêtre
+                  <Plus className="h-3 w-3" /> Janela
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => addStructOpening("porte")}
                         data-testid="structure-add-door" className="rounded-sm h-7 text-xs gap-1 text-purple-600 border-purple-500/40">
-                  <Plus className="h-3 w-3" /> Porte
+                  <Plus className="h-3 w-3" /> Porta
                 </Button>
                 <Button size="sm" variant="outline" onClick={addStructBeam}
                         data-testid="structure-add-beam" className="rounded-sm h-7 text-xs gap-1 text-purple-800 border-purple-800/40">
@@ -3862,7 +3862,7 @@ export default function PlanTakeoff() {
             <TabsContent value="rooms" className="mt-3 grid gap-3">
               {rooms.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Calibrez le plan puis utilisez l'outil <b>Compartimento</b> pour tracer un contour.
+                  Calibra a planta e depois usa a ferramenta <b>Compartimento</b> para desenhar um contorno.
                 </p>
               )}
               {rooms.map((r) => (
@@ -3907,7 +3907,7 @@ export default function PlanTakeoff() {
                   )}
                   <div className="grid grid-cols-2 gap-2 mt-2 text-xs num">
                     <span>Superfície</span><span className="text-right font-bold">{r.surface_m2} m²</span>
-                    <span>Périmètre</span><span className="text-right">{r.perimeter_m} m</span>
+                    <span>Perímetro</span><span className="text-right">{r.perimeter_m} m</span>
                     <span>Paredes bruts</span><span className="text-right">{r.wall_area_gross_m2} m²</span>
                     <span>Aberturas</span><span className="text-right text-destructive">-{r.openings_area_m2 || 0} m²</span>
                     <span>Paredes nets</span><span className="text-right font-bold">{r.wall_area_net_m2} m²</span>
@@ -3947,7 +3947,7 @@ export default function PlanTakeoff() {
                   <div className="flex justify-between"><span>Sol total</span><b>{takeoff.totals.floor_m2} m²</b></div>
                   <div className="flex justify-between"><span>Plafonds</span><b>{takeoff.totals.ceiling_m2} m²</b></div>
                   <div className="flex justify-between"><span>Paredes nets</span><b>{takeoff.totals.walls_net_m2} m²</b></div>
-                  <div className="flex justify-between"><span>Périmètre</span><b>{takeoff.totals.perimeter_m} m</b></div>
+                  <div className="flex justify-between"><span>Perímetro</span><b>{takeoff.totals.perimeter_m} m</b></div>
 
                   {takeoff.levels?.length > 1 && (
                     <div className="mt-3" data-testid="takeoff-by-level">
@@ -4005,7 +4005,7 @@ export default function PlanTakeoff() {
                     [`+${materials.placo.waste_pct}% pertes`, `${materials.placo.plates} plaques`],
                   ]} />}
                   {materials.skirting && <MatCard label="Plinthes" lines={[
-                    [`Périmètre - portes`, `${materials.skirting.net_m} m`],
+                    [`Perímetro - portas`, `${materials.skirting.net_m} m`],
                     [`+ pertes`, `${materials.skirting.quantity_m} m`],
                   ]} />}
                 </div>
@@ -4219,7 +4219,7 @@ export default function PlanTakeoff() {
                           <b className="num">{plan.ai_analysis.totals_gros_oeuvre.facade_walls_area_net_m2} m²</b></div>
                       )}
                       {plan.ai_analysis.totals_gros_oeuvre.interior_walls_area_m2 != null && (
-                        <div className="flex justify-between"><span>Cloisons intérieures</span>
+                        <div className="flex justify-between"><span>Divisórias interiores</span>
                           <b className="num">{plan.ai_analysis.totals_gros_oeuvre.interior_walls_area_m2} m²</b></div>
                       )}
                       {plan.ai_analysis.totals_gros_oeuvre.openings_area_m2 != null && (
@@ -4290,7 +4290,7 @@ export default function PlanTakeoff() {
                     </div>
                   )}
 
-                  {/* --- OUVERTURES DÉTAIL --- */}
+                  {/* --- DETALHE ABERTURAS --- */}
                   {plan.ai_analysis.openings?.details?.length > 0 && (
                     <div className="border border-border p-2 rounded-sm">
                       <p className="overline mb-2">Aberturas détaillées ({plan.ai_analysis.openings.details.length})</p>
@@ -4570,7 +4570,7 @@ export default function PlanTakeoff() {
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid grid-cols-3 gap-2">
-              {[["porte", "Porte"], ["fenetre", "Fenêtre"], ["baie", "Baie"]].map(([k, l]) => (
+              {[["porte", "Porta"], ["fenetre", "Janela"], ["baie", "Vão de sacada"]].map(([k, l]) => (
                 <Button
                   key={k}
                   variant={pendingOpening.kind === k ? "default" : "outline"}
@@ -4618,7 +4618,7 @@ export default function PlanTakeoff() {
               <Input
                 value={pendingOpening.label}
                 onChange={(e) => setPendingOpening((o) => ({ ...o, label: e.target.value }))}
-                placeholder="Porte d'entrée sud"
+                placeholder="Porta de entrada sul"
                 className="rounded-sm h-10"
                 data-testid="opening-label"
               />
@@ -4703,13 +4703,13 @@ export default function PlanTakeoff() {
           {!compareBusy && compareData && (
             <table className="w-full text-xs" data-testid="beton-compare-table">
               <thead className="bg-muted/60"><tr>
-                <th className="text-left px-2 py-1">Poste</th>
+                <th className="text-left px-2 py-1">Rubrica</th>
                 {compareData.map((c) => <th key={c.name} className="text-right px-2 py-1">{c.name}</th>)}
               </tr></thead>
               <tbody>
-                {[["Béton total", "beton_total_m3", "m³"], ["Aços", "acier_total_kg", "kg"],
-                  ["Poteaux (béton)", "beton_poteaux_m3", "m³"], ["Poutres (béton)", "beton_poutres_m3", "m³"],
-                  ["Dalles (béton)", "beton_dalles_m3", "m³"], ["Voiles (béton)", "beton_voiles_m3", "m³"]].map(([lbl, k, u]) => (
+                {[["Betão total", "beton_total_m3", "m³"], ["Aço", "acier_total_kg", "kg"],
+                  ["Pilares (betão)", "beton_poteaux_m3", "m³"], ["Vigas (betão)", "beton_poutres_m3", "m³"],
+                  ["Lajes (betão)", "beton_dalles_m3", "m³"], ["Paredes (betão)", "beton_voiles_m3", "m³"]].map(([lbl, k, u]) => (
                   <tr key={k} className="border-t border-border">
                     <td className="px-2 py-1 text-muted-foreground">{lbl}</td>
                     {compareData.map((c) => <td key={c.name} className="px-2 py-1 num text-right">{c.d?.[k] ?? 0} {u}</td>)}
@@ -4717,7 +4717,7 @@ export default function PlanTakeoff() {
                 ))}
                 {(betonPriceM3 > 0 || acierPriceKg > 0) && (
                   <tr className="border-t border-border font-semibold">
-                    <td className="px-2 py-1">Coût matière</td>
+                    <td className="px-2 py-1">Custo de material</td>
                     {compareData.map((c) => (
                       <td key={c.name} className="px-2 py-1 num text-right text-emerald-700">
                         {Math.round((c.d?.beton_total_m3 || 0) * (c.beton_price_m3 || betonPriceM3) + (c.d?.acier_total_kg || 0) * (c.acier_price_kg || acierPriceKg)).toLocaleString("pt-PT")} €

@@ -1,0 +1,63 @@
+{
+  "summary": "Wave C4 PT-PT sweep — frontend validation on preview URL (info@construpilot.pt). Validated Evolution Lab (admin), /plan landing, /devis-editeur categories, mobile tab bar, legal pages, Welcome onboarding. 5 of 6 scoped areas are 100% PT-PT. Two residual FR strings remain on /plan LANDING hero (not the takeoff editor toolbar, which requires an existing plan to be validated).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PlanTakeoff.jsx (landing hero)", "issue": "Hero description mixes PT+FR: 'o ConstruPilot calibra a escala, extrait les mesures et bascule le tout dans l\u2019estimation ou la recherche de prix.' Should be fully PT-PT (e.g. 'extrai as medidas e transfere tudo para a estimativa ou a pesquisa de pre\u00e7os.')", "selector": "/app/frontend/src/pages/PlanTakeoff.jsx:2383", "priority": "HIGH"},
+      {"component": "MeasureHelpDialog.jsx", "issue": "Button label still FR: 'Guide : du plan au devis' \u2014 should be PT (e.g. 'Guia: do plano ao or\u00e7amento').", "selector": "/app/frontend/src/components/planTakeoff/MeasureHelpDialog.jsx:43", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "validation_results": {
+    "evolution_lab_admin": {
+      "status": "PASS",
+      "found_pt_labels": ["Laborat\u00f3rio de Evolu\u00e7\u00e3o IA ConstruPilot", "Simula\u00e7\u00e3o de utilizadores virtuais + testes cont\u00ednuos dos motores (sandbox, sem deploy autom\u00e1tico).", "Ativar testes", "N\u00edvel de dificuldade (1\u21926)", "Tamanho do lote", "Modo evolu\u00e7\u00e3o m\u00e1xima", "\u00d74 volume, dificuldade \u22654", "Testes IA/vis\u00e3o", "Lan\u00e7ar lote de testes", "Relat\u00f3rio noturno por email", "Email destinat\u00e1rio do relat\u00f3rio", "Enviar relat\u00f3rio agora"],
+      "fr_terms_found": []
+    },
+    "plan_landing": {
+      "status": "FAIL",
+      "fr_terms_found": ["extrait", "bascule", "les mesures", "recherche de prix", "Guide : du plan au devis"],
+      "note": "Two residual FR strings on the /plan landing (hero paragraph + MeasureHelpDialog trigger button). Plan takeoff editor (toolbar labels 'Per\u00edmetro/Contador/Inclina\u00e7\u00e3o cobertura/Estrutura IA/ABERT./VIGAS/PILARES') could NOT be validated because no existing plan was available to open and uploading a plan is out of scope for this UI-only validation run."
+    },
+    "quote_editor_categories": {
+      "status": "PASS",
+      "datalist_options": ["Estrutura", "Cobertura", "Canaliza\u00e7\u00e3o", "Eletricidade", "Pintura", "Caixilharia", "Revestimento cer\u00e2mico", "Isolamento", "Pavimento", "Gesso cartonado", "Infraestruturas"],
+      "fr_terms_found": []
+    },
+    "mobile_tab_bar": {
+      "status": "PASS",
+      "labels": ["In\u00edcio", "Or\u00e7amentos", "Novo", "C\u00e1lculos", "Conta"],
+      "fr_terms_found": []
+    },
+    "legal_pages": {
+      "status": "PASS",
+      "titles_found": ["Pol\u00edtica de privacidade (/confidentialite)", "Informa\u00e7\u00f5es legais (/mentions-legales)", "Termos gerais (/cgv)"],
+      "cookie_banner": "Utilizamos cookies necess\u00e1rios ao funcionamento do site... (PT)",
+      "fr_terms_found": []
+    },
+    "welcome": {
+      "status": "PASS",
+      "buttons": ["Seguinte", "Anterior (after clicking Seguinte)", "Ignorar", "Estimar a minha obra"],
+      "step1_title": "1. Estima o custo da tua obra",
+      "fr_terms_found": []
+    }
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Translate PlanTakeoff.jsx line 2383 hero paragraph: replace 'extrait les mesures et bascule le tout dans l\u2019estimation ou la recherche de prix.' with PT-PT (e.g. 'extrai as medidas e transfere tudo para a estimativa ou a pesquisa de pre\u00e7os.').",
+    "Translate MeasureHelpDialog.jsx line 43 button label 'Guide : du plan au devis' to 'Guia: do plano ao or\u00e7amento'.",
+    "Optional: seed a plan on info@construpilot.pt so the next testing agent can validate the takeoff editor toolbar labels (Per\u00edmetro/Contador/Inclina\u00e7\u00e3o/ABERT./VIGAS/PILARES/Estrutura IA/Gerar or\u00e7amento/Apagar tudo)."
+  ],
+  "critical_code_review_comments": [
+    "PlanTakeoff.jsx is very large (2400+ lines). Splitting into smaller modules and moving user-visible strings into a shared i18n resource would prevent regressions like the residual FR fragment at line 2383.",
+    "MeasureHelpDialog.jsx uses inline hardcoded strings; consolidate onboarding/help copy in a single i18n dictionary."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "~92% (5/6 areas fully PT-PT; 2 FR strings remain on /plan landing)"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020.",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Only 2 FR strings remain user-visible: PlanTakeoff.jsx:2383 (hero paragraph fragment 'extrait les mesures et bascule le tout dans l\u2019estimation ou la recherche de prix.') and MeasureHelpDialog.jsx:43 (button 'Guide : du plan au devis'). Everything else (Evolution Lab, quote categories datalist, mobile tab bar, legal pages, Welcome) is 100% PT-PT. Plan takeoff editor toolbar (Per\u00edmetro/Contador/etc.) not validated because no existing plan on the info@construpilot.pt account \u2014 needs a seeded plan or upload to verify."
+}

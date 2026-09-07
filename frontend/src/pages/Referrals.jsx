@@ -34,7 +34,7 @@ export default function Referrals() {
 
   const shareEmail = () => {
     if (!data?.share_url) return;
-    const body = `Bonjour,\n\nJe pense que ConstruPilot pourrait vous intéresser — c'est un assistant IA pour chiffrer des travaux et générer des devis en 30 secondes.\n\nEssayez avec mon lien de parrainage :\n${data.share_url}\n\nÀ bientôt.`;
+    const body = `Olá,\n\nAcho que o ConstruPilot pode interessar-te — é um assistente IA para orçamentar obras e gerar orçamentos em 30 segundos.\n\nExperimenta com o meu link de convite:\n${data.share_url}\n\nAté breve.`;
     window.location.href = `mailto:?subject=${encodeURIComponent("Découvrez ConstruPilot")}&body=${encodeURIComponent(body)}`;
   };
 

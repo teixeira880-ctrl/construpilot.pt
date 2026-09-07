@@ -165,7 +165,7 @@ export default function LandingParticuliers() {
                 <div className="h-12 w-12 rounded-xl bg-primary/10 grid place-items-center mb-4">
                   <s.icon className="h-6 w-6 text-primary" />
                 </div>
-                <div className="text-xs font-bold text-primary mb-1">Étape {i + 1}</div>
+                <div className="text-xs font-bold text-primary mb-1">Passo {i + 1}</div>
                 <h3 className="font-display text-lg font-bold">{s.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{s.text}</p>
               </motion.div>

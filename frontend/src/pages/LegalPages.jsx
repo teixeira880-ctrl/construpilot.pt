@@ -1,16 +1,16 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const CONTACT_EMAIL = "contact@construpilot.fr";
+const CONTACT_EMAIL = "contact@construpilot.pt";
 const EDITOR = "ConstruPilot";
 
 const LegalLayout = ({ title, updated, testid, children }) => (
   <div className="max-w-3xl mx-auto px-6 py-14" data-testid={testid}>
     <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors mb-6">
-      <ArrowLeft className="h-4 w-4" /> Retour à l'accueil
+      <ArrowLeft className="h-4 w-4" /> Voltar ao início
     </Link>
     <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground">{title}</h1>
-    <p className="text-xs text-muted-foreground mt-2">Dernière mise à jour : {updated}</p>
+    <p className="text-xs text-muted-foreground mt-2">Última atualização: {updated}</p>
     <div className="prose prose-sm dark:prose-invert max-w-none mt-8 space-y-6 text-[15px] leading-relaxed text-foreground/90 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-8 [&_h2]:mb-2 [&_a]:text-primary">
       {children}
     </div>
@@ -18,149 +18,149 @@ const LegalLayout = ({ title, updated, testid, children }) => (
 );
 
 export const MentionsLegales = () => (
-  <LegalLayout title="Mentions légales" updated="Juin 2026" testid="page-mentions-legales">
-    <h2>1. Éditeur du site</h2>
+  <LegalLayout title="Informações legais" updated="Junho 2026" testid="page-mentions-legales">
+    <h2>1. Editor do site</h2>
     <p>
-      Le site et l'application <strong>{EDITOR}</strong> sont édités par {EDITOR}.<br />
-      Forme juridique : [À COMPLÉTER — ex. SAS/EI]<br />
-      Siège social : [À COMPLÉTER — adresse]<br />
-      SIRET : [À COMPLÉTER] · TVA intracommunautaire : [À COMPLÉTER]<br />
-      Directeur de la publication : [À COMPLÉTER — nom]<br />
-      Contact : <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+      O site e a aplicação <strong>{EDITOR}</strong> são editados por {EDITOR}.<br />
+      Forma jurídica: [A COMPLETAR — ex. Lda./ENI]<br />
+      Sede: [A COMPLETAR — morada]<br />
+      NIPC: [A COMPLETAR] · NIF: [A COMPLETAR]<br />
+      Diretor da publicação: [A COMPLETAR — nome]<br />
+      Contacto: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
     </p>
 
-    <h2>2. Hébergement</h2>
+    <h2>2. Alojamento</h2>
     <p>
-      L'application est hébergée par Emergent (infrastructure cloud). Les données sont stockées
-      sur des serveurs situés dans l'Union européenne. Pour toute question relative à
-      l'hébergement, contactez-nous à <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+      A aplicação é alojada por Emergent (infraestrutura na nuvem). Os dados são armazenados
+      em servidores localizados na União Europeia. Para qualquer questão relativa ao
+      alojamento, contacta-nos em <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
     </p>
 
-    <h2>3. Propriété intellectuelle</h2>
+    <h2>3. Propriedade intelectual</h2>
     <p>
-      L'ensemble des contenus, marques, logos, textes, interfaces et technologies présents sur
-      {" "}{EDITOR} sont protégés par le droit de la propriété intellectuelle. Technologie protégée
-      par le brevet n° FR261104. Toute reproduction ou représentation, totale ou partielle, sans
-      autorisation écrite est interdite.
+      Todos os conteúdos, marcas, logótipos, textos, interfaces e tecnologias presentes em
+      {" "}{EDITOR} estão protegidos pelo direito da propriedade intelectual. Tecnologia protegida
+      pela patente n.º FR261104. Qualquer reprodução ou representação, total ou parcial, sem
+      autorização escrita, é proibida.
     </p>
 
-    <h2>4. Responsabilité</h2>
+    <h2>4. Responsabilidade</h2>
     <p>
-      Les estimations, chiffrages et analyses fournis par {EDITOR} sont donnés à titre indicatif et
-      ne constituent pas un engagement contractuel. L'utilisateur reste seul responsable de
-      l'usage qu'il fait des résultats produits.
+      As estimativas, orçamentos e análises fornecidos pelo {EDITOR} têm caráter indicativo e
+      não constituem qualquer compromisso contratual. O utilizador é o único responsável pelo
+      uso que faz dos resultados produzidos.
     </p>
 
-    <h2>5. Liens et contact</h2>
+    <h2>5. Ligações e contacto</h2>
     <p>
-      Voir aussi notre <Link to="/confidentialite">Politique de confidentialité</Link> et nos{" "}
-      <Link to="/cgv">Conditions générales</Link>. Pour toute réclamation :{" "}
+      Ver também a nossa <Link to="/confidentialite">Política de privacidade</Link> e os nossos{" "}
+      <Link to="/cgv">Termos gerais</Link>. Para qualquer reclamação:{" "}
       <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
     </p>
   </LegalLayout>
 );
 
 export const Confidentialite = () => (
-  <LegalLayout title="Politique de confidentialité" updated="Juin 2026" testid="page-confidentialite">
+  <LegalLayout title="Política de privacidade" updated="Junho 2026" testid="page-confidentialite">
     <p>
-      {EDITOR} accorde une grande importance à la protection de vos données personnelles,
-      conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi
-      « Informatique et Libertés ».
+      O {EDITOR} atribui grande importância à proteção dos teus dados pessoais,
+      em conformidade com o Regulamento Geral sobre a Proteção de Dados (RGPD) e a lei
+      portuguesa da proteção de dados (Lei n.º 58/2019).
     </p>
 
-    <h2>1. Responsable du traitement</h2>
-    <p>{EDITOR} — contact : <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p>
+    <h2>1. Responsável pelo tratamento</h2>
+    <p>{EDITOR} — contacto: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p>
 
-    <h2>2. Données collectées</h2>
+    <h2>2. Dados recolhidos</h2>
     <p>
-      Nous collectons : identité et coordonnées (nom, e-mail), données de compte et
-      d'authentification, contenus que vous créez (devis, chantiers, photos, documents),
-      informations d'entreprise (SIRET, TVA, logo) et données techniques (logs, appareil).
+      Recolhemos: identidade e contactos (nome, email), dados de conta e
+      autenticação, conteúdos criados (orçamentos, obras, fotos, documentos),
+      informações da empresa (NIPC, NIF, logótipo) e dados técnicos (logs, dispositivo).
     </p>
 
-    <h2>3. Finalités</h2>
+    <h2>3. Finalidades</h2>
     <p>
-      Fourniture du service (estimation, devis, factures, chantiers), gestion du compte et de
-      l'abonnement, facturation, support, amélioration du service et sécurité. Les paiements sont
-      traités par Stripe ; les e-mails par notre prestataire d'envoi.
+      Fornecimento do serviço (estimativa, orçamentos, faturas, obras), gestão da conta e da
+      subscrição, faturação, suporte, melhoria do serviço e segurança. Os pagamentos são
+      processados pela Stripe; os emails pelo nosso prestador de envio.
     </p>
 
-    <h2>4. Base légale et durée</h2>
+    <h2>4. Base legal e prazo</h2>
     <p>
-      Exécution du contrat, obligations légales (facturation), et intérêt légitime. Les données
-      sont conservées le temps de la relation contractuelle puis archivées selon les durées
-      légales applicables.
+      Execução do contrato, obrigações legais (faturação) e interesse legítimo. Os dados
+      são conservados durante a relação contratual e depois arquivados de acordo com os
+      prazos legais aplicáveis.
     </p>
 
-    <h2>5. Partage</h2>
+    <h2>5. Partilha</h2>
     <p>
-      Vos données ne sont jamais vendues. Elles peuvent être transmises à nos sous-traitants
-      techniques (hébergement, paiement Stripe, envoi d'e-mails) strictement pour le
-      fonctionnement du service.
+      Os teus dados nunca são vendidos. Podem ser transmitidos aos nossos subcontratantes
+      técnicos (alojamento, pagamento Stripe, envio de emails) exclusivamente para o
+      funcionamento do serviço.
     </p>
 
-    <h2>6. Vos droits</h2>
+    <h2>6. Os teus direitos</h2>
     <p>
-      Vous disposez d'un droit d'accès, de rectification, d'effacement, de portabilité, de
-      limitation et d'opposition. Exercez-les à{" "}
-      <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Vous pouvez saisir la CNIL en cas de
-      litige (www.cnil.fr).
+      Tens o direito de acesso, retificação, eliminação, portabilidade,
+      limitação e oposição. Exerce-os em{" "}
+      <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Podes apresentar reclamação à CNPD em caso de
+      litígio (www.cnpd.pt).
     </p>
 
     <h2>7. Cookies</h2>
     <p>
-      Nous utilisons des cookies strictement nécessaires au fonctionnement (session,
-      authentification) et, le cas échéant, des cookies de mesure d'audience. Vous pouvez gérer vos
-      préférences depuis votre navigateur.
+      Utilizamos cookies estritamente necessários ao funcionamento (sessão,
+      autenticação) e, quando aplicável, cookies de medição de audiência. Podes gerir as tuas
+      preferências a partir do teu browser.
     </p>
   </LegalLayout>
 );
 
 export const CGV = () => (
-  <LegalLayout title="Conditions générales d'utilisation et de vente" updated="Juin 2026" testid="page-cgv">
-    <h2>1. Objet</h2>
+  <LegalLayout title="Termos gerais de utilização e venda" updated="Junho 2026" testid="page-cgv">
+    <h2>1. Objeto</h2>
     <p>
-      Les présentes conditions régissent l'accès et l'utilisation de l'application {EDITOR}, ainsi
-      que les abonnements payants proposés.
+      Os presentes termos regem o acesso e a utilização da aplicação {EDITOR}, bem como
+      as subscrições pagas propostas.
     </p>
 
-    <h2>2. Compte</h2>
+    <h2>2. Conta</h2>
     <p>
-      L'utilisateur s'engage à fournir des informations exactes et à préserver la confidentialité
-      de ses identifiants. Chaque compte est personnel.
+      O utilizador compromete-se a fornecer informações exatas e a preservar a confidencialidade
+      das suas credenciais. Cada conta é pessoal.
     </p>
 
-    <h2>3. Abonnements et prix</h2>
+    <h2>3. Subscrições e preços</h2>
     <p>
-      {EDITOR} propose des fonctionnalités gratuites et des abonnements payants (Particulier et
-      Professionnel). Les prix sont indiqués en euros, TTC le cas échéant. Le paiement s'effectue
-      par carte via Stripe. L'abonnement est renouvelé automatiquement et résiliable à tout moment ;
-      la résiliation prend effet à la fin de la période en cours.
+      O {EDITOR} disponibiliza funcionalidades gratuitas e subscrições pagas (Particular e
+      Profissional). Os preços são indicados em euros, com IVA quando aplicável. O pagamento é feito
+      por cartão via Stripe. A subscrição é renovada automaticamente e cancelável a qualquer momento;
+      o cancelamento produz efeitos no fim do período em curso.
     </p>
 
-    <h2>4. Droit de rétractation</h2>
+    <h2>4. Direito de livre resolução</h2>
     <p>
-      Pour les consommateurs, le droit de rétractation de 14 jours s'applique sauf renoncement
-      exprès en cas d'accès immédiat au service numérique. Contact :{" "}
+      Para consumidores, aplica-se o direito de livre resolução de 14 dias, salvo renúncia
+      expressa em caso de acesso imediato ao serviço digital. Contacto:{" "}
       <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
     </p>
 
-    <h2>5. Disponibilité et limitation de responsabilité</h2>
+    <h2>5. Disponibilidade e limitação de responsabilidade</h2>
     <p>
-      {EDITOR} met tout en œuvre pour assurer la disponibilité du service sans pouvoir la garantir
-      de façon ininterrompue. Les estimations et chiffrages sont fournis à titre indicatif.
+      O {EDITOR} envida todos os esforços para garantir a disponibilidade do serviço, sem poder assegurar
+      um funcionamento ininterrupto. As estimativas e orçamentos têm caráter indicativo.
     </p>
 
-    <h2>6. Données personnelles</h2>
+    <h2>6. Dados pessoais</h2>
     <p>
-      Le traitement des données est décrit dans notre{" "}
-      <Link to="/confidentialite">Politique de confidentialité</Link>.
+      O tratamento de dados encontra-se descrito na nossa{" "}
+      <Link to="/confidentialite">Política de privacidade</Link>.
     </p>
 
-    <h2>7. Droit applicable</h2>
+    <h2>7. Direito aplicável</h2>
     <p>
-      Les présentes conditions sont soumises au droit français. En cas de litige, une solution
-      amiable sera recherchée avant toute action judiciaire.
+      Os presentes termos estão sujeitos ao direito português. Em caso de litígio, será procurada
+      uma solução amigável antes de qualquer ação judicial.
     </p>
   </LegalLayout>
 );

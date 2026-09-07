@@ -14,11 +14,11 @@ import { PcSituations } from "@/components/planTakeoff/PcSituations";
 import { api, eur, num } from "@/lib/api";
 
 const RULES_LABELS = [
-  "Semelles filantes 60 × 30 cm (périmètre + refends porteurs)",
-  "Dalle / plancher ép. 15 cm",
-  "Murs brique isobrique ép. 20 cm",
-  "Escalier béton armé",
-  "Aciers : semelles 15 kg/ml (3+3 HA10 + cadres HA6) · dalle 14 kg/m² (ST25C) · escalier 100 kg/m³",
+  "Sapatas contínuas 60 × 30 cm (perímetro + paredes resistentes)",
+  "Laje / pavimento esp. 15 cm",
+  "Paredes tijolo isobrique esp. 20 cm",
+  "Escada em betão armado",
+  "Aço: sapatas 15 kg/ml (3+3 HA10 + estribos HA6) · laje 14 kg/m² (ST25C) · escada 100 kg/m³",
 ];
 
 export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDownload, onDownloadXlsx, planId, onSent, onCompareSuppliers, sentReports = [], ordersReports = [], onRecompute }) {
@@ -115,9 +115,9 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                   ["Niveaux", study.inputs?.levels, study.input_sources?.levels],
                   ["Surface", `${num(study.inputs?.surface_m2, 1)} m²`, study.input_sources?.surface_m2],
                   ["Hauteur murs", `${num(study.inputs?.wall_height_m, 2)} m`, study.input_sources?.wall_height_m],
-                  ["Périmètre", `${num(study.inputs?.perimeter_m, 1)} m`, study.input_sources?.perimeter_m],
+                  ["Perímetro", `${num(study.inputs?.perimeter_m, 1)} m`, study.input_sources?.perimeter_m],
                   ["Refends", `${num(study.inputs?.refends_m, 1)} m`, study.input_sources?.refends_m],
-                  ["Ouvertures", `${study.inputs?.openings_count} u · ${num(study.inputs?.openings_area_m2, 1)} m²`, ""],
+                  ["Aberturas", `${study.inputs?.openings_count} un · ${num(study.inputs?.openings_area_m2, 1)} m²`, ""],
                   ["Escaliers", study.inputs?.stairs_count, ""],
                 ].map(([k, v, s]) => (
                   <div key={k} className="rounded-sm border border-border p-2">

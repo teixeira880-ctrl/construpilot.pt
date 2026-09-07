@@ -3,7 +3,7 @@
  * Liste toutes les mesures de la page courante :
  *  - Compartimentos (rooms) : m², périmètre, altura
  *  - Aberturas (openings) : type, dimensions
- *  - Compteurs : label + total markers
+ *  - Contadores : label + total markers
  *  - Notes : texte
  *  - Ângulos : degrés + pente x/12
  *  - Toitures pentées : surface projetée / réelle
@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 const TABS = [
   { id: "rooms", label: "Compartimentos", icon: Square },
   { id: "openings", label: "Aberturas", icon: DoorOpen },
-  { id: "counters", label: "Compteurs", icon: Hash },
+  { id: "counters", label: "Contadores", icon: Hash },
   { id: "notes", label: "Notes", icon: StickyNote },
   { id: "angles", label: "Ângulos", icon: Triangle },
   { id: "pitched", label: "Toitures", icon: MountainSnow },
@@ -399,7 +399,7 @@ export default function ObjectPanel({
                         onClick={onClearMeasures}
                         data-testid="clear-measures-btn"
                         className="w-full rounded-sm gap-2 text-destructive hover:text-destructive">
-                  <Trash2 className="h-3 w-3" /> Tout apagar ({measurements.length})
+                  <Trash2 className="h-3 w-3" /> Apagar tudo ({measurements.length})
                 </Button>
               </div>
             )}
@@ -422,8 +422,8 @@ export default function ObjectPanel({
                 key={m.measurement_id || idx}
                 icon={Ruler}
                 testId={`object-row-measure-${idx}`}
-                primary={m.label || (m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Superfície" : "Périmètre")}
-                secondary={`${m.kind === "distance" ? "Distance" : m.kind === "polygon" ? "Superfície" : "Périmètre"} · créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("pt-PT")}`}
+                primary={m.label || (m.kind === "distance" ? "Distância" : m.kind === "polygon" ? "Superfície" : "Perímetro")}
+                secondary={`${m.kind === "distance" ? "Distância" : m.kind === "polygon" ? "Superfície" : "Perímetro"} · criada ${new Date(m.created_at || Date.now()).toLocaleTimeString("pt-PT")}`}
                 badge={m.kind === "polygon" ? `${(m.area_m2 || 0).toFixed(2)} m²` : `${(m.length_m || 0).toFixed(2)} m`}
                 badgeColor="#0d9488"
                 onFocus={() => onFocusObject?.({ kind: "measure", data: m })}

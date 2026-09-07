@@ -36,7 +36,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
         to: form.to,
         message: form.message,
       });
-      toast.success(`Devis envoyé à ${form.to}`);
+      toast.success(`Orçamento enviado a ${form.to}`);
       setOpen(false);
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Envoi impossible");

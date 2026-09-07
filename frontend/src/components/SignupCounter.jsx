@@ -11,7 +11,7 @@ export const SignupCounter = () => {
     const id = setInterval(fetchCount, 15000);
     return () => { alive = false; clearInterval(id); };
   }, []);
-  return null; // Compteur masqué (pas de mention du nombre d'inscrits)
+  return null; // Contador oculto (sem menção ao número de inscritos)
   // eslint-disable-next-line no-unreachable
   if (count === null) return null;
   return (

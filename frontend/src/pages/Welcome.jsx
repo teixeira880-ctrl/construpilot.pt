@@ -7,26 +7,26 @@ import { useAuth } from "@/context/AuthContext";
 const STEPS = [
   {
     icon: Rocket,
-    title: "Bienvenue sur ConstruPilot 🎉",
-    text: "Votre compte est actif — et 100% gratuit pendant la phase de lancement. Que vous soyez particulier ou professionnel, voici comment démarrer en quelques étapes.",
+    title: "Bem-vindo(a) ao ConstruPilot 🎉",
+    text: "A tua conta está ativa — e 100% gratuita durante a fase de lançamento. Sejas particular ou profissional, veja como começar em poucos passos.",
   },
   {
     icon: Hammer,
-    title: "1. Estimez le coût de vos travaux",
-    text: "Particulier ou pro : décrivez votre projet en langage naturel (« rénover une maison de 90 m² ») et obtenez une estimation détaillée, poste par poste, instantanément.",
-    cta: { label: "Estimer mes travaux", to: "/estimation" },
+    title: "1. Estima o custo da tua obra",
+    text: "Particular ou profissional: descreve o teu projeto em linguagem natural («renovar uma casa de 90 m²») e obtém uma estimativa detalhada, rubrica a rubrica, ao instante.",
+    cta: { label: "Estimar a minha obra", to: "/estimation" },
   },
   {
     icon: Ruler,
-    title: "2. Mesurez un plan et chiffrez",
-    text: "Importez un plan (PDF, photo ou DWG), laissez l'IA détecter les pièces et les surfaces, puis obtenez le métré automatiquement.",
-    cta: { label: "Mesurer un plan", to: "/plan" },
+    title: "2. Mede uma planta e orçamenta",
+    text: "Importa uma planta (PDF, foto ou DWG), deixa a IA detetar os compartimentos e as áreas, e obtém a medição automaticamente.",
+    cta: { label: "Medir uma planta", to: "/plan" },
   },
   {
     icon: FileText,
-    title: "3. Créez et envoyez un devis pro",
-    text: "Pour les professionnels : générez un devis à votre charte, ajoutez un client, appliquez vos prix et envoyez-le par email — le tout depuis un seul endroit.",
-    cta: { label: "Créer un devis", to: "/devis-editeur" },
+    title: "3. Cria e envia um orçamento profissional",
+    text: "Para profissionais: gera um orçamento com a tua imagem, adiciona um cliente, aplica os teus preços e envia por email — tudo num único sítio.",
+    cta: { label: "Criar um orçamento", to: "/devis-editeur" },
   },
 ];
 
@@ -58,7 +58,7 @@ export default function Welcome() {
         </div>
 
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight" data-testid="welcome-title">
-          {step === 0 && user?.name ? `Bienvenue, ${user.name.split(" ")[0]} 🎉` : s.title}
+          {step === 0 && user?.name ? `Bem-vindo(a), ${user.name.split(" ")[0]} 🎉` : s.title}
         </h1>
         <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{s.text}</p>
 
@@ -74,18 +74,18 @@ export default function Welcome() {
             onClick={() => (step === 0 ? nav("/dashboard") : setStep((v) => v - 1))}
             className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
             data-testid="welcome-back">
-            {step === 0 ? "Passer" : (<><ArrowLeft className="h-3 w-3" /> Précédent</>)}
+            {step === 0 ? "Ignorar" : (<><ArrowLeft className="h-3 w-3" /> Anterior</>)}
           </button>
 
           {last ? (
             <Button className="rounded-lg gap-2 hover:bg-orange-600 hover:text-white"
                     onClick={() => nav("/dashboard")} data-testid="welcome-finish">
-              <CheckCircle2 className="h-4 w-4" /> Aller au tableau de bord
+              <CheckCircle2 className="h-4 w-4" /> Ir para o painel
             </Button>
           ) : (
             <Button className="rounded-lg gap-2 hover:bg-orange-600 hover:text-white"
                     onClick={() => setStep((v) => v + 1)} data-testid="welcome-next">
-              Suivant <ArrowRight className="h-4 w-4" />
+              Seguinte <ArrowRight className="h-4 w-4" />
             </Button>
           )}
         </div>

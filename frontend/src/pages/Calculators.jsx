@@ -511,7 +511,7 @@ export default function Calculators() {
                data-testid="calc-share-sms">
               <Button variant="outline" className="w-full rounded-sm gap-2"><MessageSquare className="h-4 w-4" /> SMS</Button>
             </a>
-            <a href={`mailto:?subject=${encodeURIComponent("Votre fiche de calcul — ConstruPilot")}&body=${encodeURIComponent(`Bonjour,\n\nVoici votre fiche de calcul détaillée : ${shareUrl}\n\nCordialement.`)}`}
+            <a href={`mailto:?subject=${encodeURIComponent("A sua ficha de cálculo — ConstruPilot")}&body=${encodeURIComponent(`Olá,\n\nSegue a sua ficha de cálculo detalhada: ${shareUrl}\n\nCumprimentos.`)}`}
                data-testid="calc-share-email">
               <Button variant="outline" className="w-full rounded-sm gap-2"><Mail className="h-4 w-4" /> E-mail</Button>
             </a>

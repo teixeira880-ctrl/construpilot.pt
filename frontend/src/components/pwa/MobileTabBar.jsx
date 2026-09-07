@@ -6,11 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 const HIDDEN_PREFIXES = ["/pointage", "/sign/", "/e/", "/etude/", "/avis/", "/fiche/", "/login", "/inscription"];
 
 const TABS = [
-  { to: "/dashboard", label: "Accueil", icon: LayoutDashboard },
-  { to: "/devis", label: "Devis", icon: FileText },
-  { to: "/devis-editeur", label: "Nouveau", icon: Plus, primary: true },
-  { to: "/calculateurs", label: "Calculs", icon: Calculator },
-  { to: "/compte", label: "Compte", icon: User },
+  { to: "/dashboard", label: "Início", icon: LayoutDashboard },
+  { to: "/devis", label: "Orçamentos", icon: FileText },
+  { to: "/devis-editeur", label: "Novo", icon: Plus, primary: true },
+  { to: "/calculateurs", label: "Cálculos", icon: Calculator },
+  { to: "/compte", label: "Conta", icon: User },
 ];
 
 export const MobileTabBar = () => {
