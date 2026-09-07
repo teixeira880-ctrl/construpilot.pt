@@ -1,0 +1,29 @@
+{
+  "summary": "Tested OnboardingTour.jsx PT-PT translation and behavior end-to-end via Playwright on the preview URL. All 5 review-request scenarios PASSED. Tour appears automatically on /dashboard for info@construpilot.pt with cleared localStorage and construpilot_lang='pt'. All 4 steps render 100% PT-PT (Passo, Seguinte, Concluir, Saltar o tour, Comparador de preços, antes/depois, profissional qualificado, casa de banho). Zero FR strings detected (searched: Étape, Suivant, Terminer, Passer, Bienvenue, profitez, pendant, Écrivez, Comparateur, avant/après, salle de bain, qualifié, Rénover). X-close (data-testid='onboarding-skip') removes overlay from DOM (count=0), sets localStorage.onboarding_skipped='1' and construpilot_onboarded_v1 to ISO date '2026-09-07T00:27:55.187Z'. Header link (/prix) is clickable after close and navigates to /precos. Tour does NOT reappear after page.reload() or re-navigation to /dashboard. Step navigation: 3 clicks on 'Seguinte' reach 'PASSO 4 / 4' and the primary button correctly shows 'Concluir'.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/dashboard (out of scope for this review)", "issues": ["Dashboard onboarding checklist card 'Prise en main — 0/3' and items 'Estimez vos travaux / Mesurez un plan / Créez un devis' plus CTA buttons 'Estimer / Mesurer / Créer' are still in FR even with construpilot_lang='pt'. Also 'Push bloqué' badge is FR. Not part of OnboardingTour.jsx but visible on same page after tour closes."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "OnboardingTour.jsx PT-PT migration is complete and working correctly — no action needed.",
+    "OUT-OF-SCOPE observation for main agent: the Dashboard 'Prise en main' checklist card and 'Push bloqué' label are still hardcoded in FR; consider adding i18n keys and PT translations."
+  ],
+  "critical_code_review_comments": [
+    "OnboardingTour.jsx header comment (lines 9-12) is still in FR ('Tour produit 4 étapes...'); cosmetic only, does not affect UI.",
+    "close() writes both KEY and SKIP_KEY on every close (X, Skip link, Concluir, goTo) — correct and idempotent.",
+    "useEffect guard order in mount is correct (onboarding_completed → SKIP_KEY → legacy KEY) and prevents re-open after reload."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (frontend-only)", "frontend": "100%" },
+  "test_credentials": "info@construpilot.pt / Ruquinha2020. (user does NOT have onboarding_completed=true on backend — the tour did appear after clearing localStorage).",
+  "seed_data_creation": "None. Used existing test user info@construpilot.pt with cleared localStorage + construpilot_lang='pt'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "OnboardingTour PT-PT migration verified in iteration_19. Reproduction: (1) goto /, localStorage.clear() + setItem('construpilot_lang','pt'), (2) login as info@construpilot.pt, (3) tour auto-opens on /dashboard after ~700ms. If tour does NOT appear, check backend user.onboarding_completed flag — it must be false/undefined for this user. Data-testids in use: onboarding-overlay, onboarding-tour, onboarding-skip, onboarding-next, onboarding-goto, onboarding-channel.",
+  "rca of the issue": "No bug present. All requirements met."
+}
