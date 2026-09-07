@@ -208,9 +208,10 @@ function AppRouter() {
       <Route path="/fiche/:shareId" element={<SharedCalc />} />
       <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
-      <Route path="/etudes-pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
+      <Route path="/estudos-lc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
+      <Route path="/etudes-pc" element={<Navigate to="/estudos-lc" replace />} />
       <Route path="/compte" element={<Protected><Shell><Account /></Shell></Protected>} />
-      <Route path="/pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
+      <Route path="/pc" element={<Navigate to="/estudos-lc" replace />} />
       <Route path="/plan" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
       <Route path="/mesure-photo" element={<ProRoute><Shell><PhotoMeasure /></Shell></ProRoute>} />
       <Route path="/pro-verifie/:userId" element={<Shell><ProVerified /></Shell>} />

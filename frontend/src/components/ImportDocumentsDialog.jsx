@@ -108,7 +108,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
         {phase === "idle" && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground whitespace-nowrap">Statut à appliquer</label>
+              <label className="text-sm text-muted-foreground whitespace-nowrap">Estado a aplicar</label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="rounded-sm h-9" data-testid="import-docs-status"><SelectValue /></SelectTrigger>
                 <SelectContent>

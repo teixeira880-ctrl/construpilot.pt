@@ -48,7 +48,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
       const { data } = await api.post(`/takeoffs/${planId}/pc-study/send`, {
         to_email: email.trim(), message, start_date: startDate || null,
       });
-      toast.success(`Étude PC envoyée à ${data.sent_to}`);
+      toast.success(`Estudo LC enviado a ${data.sent_to}`);
       onSent?.();
       onClose();
     } catch (e) {

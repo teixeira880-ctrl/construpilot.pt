@@ -2586,7 +2586,7 @@ export default function PlanTakeoff() {
             <Sheet className="h-4 w-4" /> Excel
           </Button>
           <Button variant="outline" onClick={() => setPcDialog(true)} data-testid="plan-pc-study-btn"
-                  title="Estudo Permis de construire (PC) — béton, aços, chiffrage réglementaire"
+                  title="Estudo Licença de Construção (LC) — betão, aço, orçamentação regulamentar"
                   className="rounded-sm gap-2 border-emerald-500/60 text-emerald-600 hover:bg-emerald-500 hover:text-white">
             <FileSearch className="h-4 w-4" /> Estudo PC
           </Button>

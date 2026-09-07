@@ -87,7 +87,7 @@ export default function MyReviews() {
           <p className="font-display font-bold">Aucun avis pour l'instant</p>
           <p className="text-sm text-muted-foreground">
             Dans <b>Suivi Devis</b>, marquez un devis signé comme
-            <b> « Chantier terminé »</b> pour envoyer automatiquement une demande d'avis
+            <b> «Obra concluída»</b> para enviar automaticamente um pedido de avaliação
             à votre client.
           </p>
         </div>

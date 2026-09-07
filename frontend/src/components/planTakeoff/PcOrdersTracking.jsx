@@ -46,7 +46,7 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
             <th className="p-1.5">Phase</th>
             <th className="p-1.5 text-right">Indicatif HT</th>
             <th className="p-1.5 text-right">Devis reçu €</th>
-            <th className="p-1.5">Statut</th>
+            <th className="p-1.5">Estado</th>
             <th className="p-1.5"></th>
           </tr>
         </thead>

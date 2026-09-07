@@ -12,7 +12,7 @@ import {
 import { api, API } from "@/lib/api";
 import { compressImage } from "@/lib/imageCompress";
 
-const KIND_LABEL = { before: "Avant", after: "Après", progress: "Chantier" };
+const KIND_LABEL = { before: "Antes", after: "Depois", progress: "Obra em curso" };
 const KIND_STYLE = {
   before: "border-slate-500/40 text-slate-600 dark:text-slate-300",
   after: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
@@ -217,7 +217,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
               <SelectContent>
                 <SelectItem value="before">Avant</SelectItem>
                 <SelectItem value="after">Après</SelectItem>
-                <SelectItem value="progress">Chantier (en cours)</SelectItem>
+                <SelectItem value="progress">Obra em curso</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -1284,7 +1284,7 @@ const NAV_TRANSLATIONS = {
         "nav.catalog": "Catálogo de precios", "nav.compare": "Comparativa", "nav.investors": "Inversores" },
   pt: { "nav.more": "Mais", "nav.start": "Começar", "nav.login": "Iniciar sessão", "nav.admin": "Admin",
         "nav.reviews": "Avaliações", "nav.clients": "Clientes", "nav.library": "Biblioteca",
-        "nav.studies": "Estudos de licença", "nav.account": "A minha conta",
+        "nav.studies": "Estudos LC", "nav.account": "A minha conta",
         "nav.pro_space": "Espaço pro", "nav.discover": "Descobrir", "nav.company": "Espaço empresa",
         "nav.invoices": "Faturas", "nav.situations": "Autos de medição", "nav.site": "Acompanhamento de obra",
         "nav.catalog": "Catálogo de preços", "nav.compare": "Comparativo", "nav.newquote": "Novo orçamento", "nav.investors": "Investidores" },

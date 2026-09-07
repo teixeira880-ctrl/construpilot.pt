@@ -119,7 +119,7 @@ export default function ApiKeys() {
           <TableHeader><TableRow>
             <TableHead>Nom</TableHead><TableHead>Préfixe</TableHead>
             <TableHead>Plan</TableHead><TableHead>Quota / mois</TableHead>
-            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Estado</TableHead><TableHead className="text-right">Ações</TableHead>
           </TableRow></TableHeader>
           <TableBody data-testid="api-keys-list">
             {keys.map((k) => (

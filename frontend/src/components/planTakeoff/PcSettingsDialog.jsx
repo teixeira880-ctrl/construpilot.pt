@@ -161,7 +161,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={weeklyReport} onChange={(e) => setWeeklyReport(e.target.checked)}
                    data-testid="pc-settings-weekly-checkbox" className="accent-primary" />
-            Relatório hebdo par email (chaque lundi)
+            Relatório semanal por email (todas as segundas-feiras)
           </label>
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={teamShare} onChange={(e) => setTeamShare(e.target.checked)}

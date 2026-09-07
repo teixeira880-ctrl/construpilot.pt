@@ -39,7 +39,7 @@ const NAV_PRO = [
   { to: "/mon-catalogue", label: "Catálogo de preços", key: "nav.catalog", icon: Tag, perm: "catalogue" },
   { to: "/bibliotheque", label: "Biblioteca", key: "nav.library", icon: Library },
   { to: "/equipe", label: "Equipa", key: "nav.team", icon: Users },
-  { to: "/etudes-pc", label: "Estudos LNEC", key: "nav.studies", icon: FileSearch, hint: "Licenciamento de obra" },
+  { to: "/estudos-lc", label: "Estudos LC", key: "nav.studies", icon: FileSearch, hint: "Licenciamento de obra" },
 ];
 
 const NAV_DISCOVER = [

@@ -177,7 +177,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="estimation" className="rounded-sm" data-testid="pd-tab-estimation">Estimation</TabsTrigger>
           <TabsTrigger value="materials" className="rounded-sm" data-testid="pd-tab-materials">Matériaux & panier</TabsTrigger>
           <TabsTrigger value="photos" className="rounded-sm" data-testid="pd-tab-photos">Photos avant/après</TabsTrigger>
-          <TabsTrigger value="timeline" className="rounded-sm" data-testid="pd-tab-timeline">Chantier timeline</TabsTrigger>
+          <TabsTrigger value="timeline" className="rounded-sm" data-testid="pd-tab-timeline">Cronologia da obra</TabsTrigger>
           <TabsTrigger value="advice" className="rounded-sm" data-testid="pd-tab-advice">Conseils IA</TabsTrigger>
         </TabsList>
 
