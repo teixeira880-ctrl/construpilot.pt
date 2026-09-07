@@ -2104,6 +2104,8 @@ class RoomEstimateIn(BaseModel):
     windows: int = 1
     masonry_material: str = "parpaing"   # "parpaing" | "brique"
     masonry_bond: str | None = None      # parpaing: "mortier" | brique: "colle" | "mousse"
+    masonry_block: str | None = None     # clé de préréglage bloc (config admin)
+    masonry_render: bool = False         # inclure l'enduit de façade
 
 
 def _room_dimensions_for_estimator(room: dict, override_height: float | None) -> tuple[float, float, float]:
@@ -2188,7 +2190,12 @@ async def estimate_room(plan_id: str, room_id: str, body: RoomEstimateIn,
     if "masonry" in trades:
         # Murs porteurs/cloisons maçonnées : surface = périmètre × hauteur, hors ouvertures
         wall_area = max(0.0, perimeter * height - body.doors * 2.0 - body.windows * 1.5)
-        r = C.masonry(area=wall_area, material=body.masonry_material, bond=body.masonry_bond)
+        from routes.estimation_routes import get_masonry_config, masonry_kwargs_from_config
+        mk = masonry_kwargs_from_config(
+            await get_masonry_config(), area=wall_area, material=body.masonry_material,
+            bond=body.masonry_bond, block_key=body.masonry_block,
+            include_render=body.masonry_render)
+        r = C.masonry(**mk)
         out["trades"]["masonry"] = r
         out["total_budget"] += r.get("estimated_budget") or 0
 

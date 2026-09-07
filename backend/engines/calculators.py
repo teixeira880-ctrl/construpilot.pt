@@ -89,22 +89,31 @@ class MasonryParams:
     sand_m3_per_m2: float = 0.03       # sable (mortier traditionnel)
     glue_kg_per_m2: float = 5.0        # mortier-colle joint mince (brique)
     foam_m2_per_can: float = 8.0       # 1 mousse PU couvre ~8 m²
+    # Bloc choisi (préréglage fournisseur)
+    block_label: str | None = None
+    block_search: str | None = None
+    block_price: float | None = None
+    # Enduit de façade
+    include_render: bool = False
+    render_kg_per_m2: float = 25.0     # corps d'enduit
+    gobetis_kg_per_m2: float = 5.0     # gobetis d'accroche
 
 
 def masonry(*args, **kwargs) -> dict:
-    """Mur en parpaing ou brique + liants (sable/ciment, mortier-colle ou mousse PU)."""
+    """Mur en parpaing ou brique + liants (sable/ciment, mortier-colle ou mousse PU),
+    avec option enduit de façade (gobetis + corps d'enduit)."""
     p = args[0] if args and isinstance(args[0], MasonryParams) else MasonryParams(*args, **kwargs)
     area = max(0.0, float(p.area))
     is_brique = (p.material or "").lower().startswith("briq")
     bond = (p.bond or ("colle" if is_brique else "mortier")).lower()
     net_blocks = _ceil(area * p.blocks_per_m2 * (1 + p.loss_pct / 100))
 
-    block_name = "Brique" if is_brique else "Parpaing creux 20x20x50"
-    block_search = "brique de mur" if is_brique else "parpaing creux 20x20x50"
-    block_price = 0.85 if is_brique else 1.20
+    block_name = p.block_label or ("Brique" if is_brique else "Parpaing creux 20x20x50")
+    block_search = p.block_search or ("brique de mur" if is_brique else "parpaing creux 20x20x50")
+    block_price = p.block_price if p.block_price is not None else (0.85 if is_brique else 1.20)
     results = [
         {"label": "Surface de mur", "value": round(area, 2), "unit": "m²"},
-        {"label": block_name + "s", "value": net_blocks, "unit": "u"},
+        {"label": block_name, "value": net_blocks, "unit": "u"},
     ]
     materials = [
         {"name": block_name, "quantity": net_blocks, "unit": "u", "search": block_search},
@@ -134,9 +143,21 @@ def masonry(*args, **kwargs) -> dict:
                           "search": "sable a maconner big bag"})
         budget += cement_bags * 6.0 + sand_m3 * 40.0
 
+    if p.include_render:
+        gobetis_bags = _ceil((area * p.gobetis_kg_per_m2) / 25)
+        render_bags = _ceil((area * p.render_kg_per_m2) / 25)
+        results.append({"label": "Gobetis d'accroche", "value": gobetis_bags, "unit": "sac 25 kg"})
+        results.append({"label": "Enduit de façade", "value": render_bags, "unit": "sac 25 kg"})
+        materials.append({"name": "Gobetis d'accrochage 25 kg", "quantity": gobetis_bags,
+                          "unit": "sac", "search": "gobetis accrochage 25 kg"})
+        materials.append({"name": "Enduit de façade (corps d'enduit) 25 kg", "quantity": render_bags,
+                          "unit": "sac", "search": "enduit facade monocouche 25 kg"})
+        budget += gobetis_bags * 10.0 + render_bags * 12.0
+
     return {
         "inputs": {"area": area, "material": "brique" if is_brique else "parpaing",
-                   "bond": bond, "blocks_per_m2": p.blocks_per_m2, "loss_pct": p.loss_pct},
+                   "bond": bond, "blocks_per_m2": p.blocks_per_m2, "loss_pct": p.loss_pct,
+                   "include_render": bool(p.include_render)},
         "results": results,
         "materials": materials,
         "estimated_budget": round(budget, 2),

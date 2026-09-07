@@ -1,0 +1,34 @@
+{
+  "summary": "Iter 126 – Tested admin-configurable masonry ratios/blocks, block-size choice, and facade render option. Backend: 13/13 pytest tests passed covering GET/PUT/RESET auth (anon 401, non-admin 403, admin 200), default shape (7 ratio keys + 4 blocks), persistence, POST /materials with lot.block + include_render (parpaing_15 → 420 u, ciment 8 sacs @ratio 7, sable 1.2 m³, gobetis 8, enduit facade 40; @ratio 9 → ciment 11), brique + mousse → 5 cartouches, and room-estimate /takeoffs/{plan}/rooms/{room}/estimate honouring masonry_block/masonry_render + admin ratio change. Frontend: Admin /admin → Maçonnerie tab fully functional (7 ratio inputs, 4 default block rows, save persists on reload, add-block + delete-block work, reset restores cement to 7). RoomEstimateDialog UI (masonry-control) could not be exercised because the demo user's visible plans all show 0 pièces and the seeded plan_6017c355084d is not opened by the /plan route via query param — marked as not-testable in UI per spec (backend equivalent already covered end-to-end). Config reset restored at end.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin Maçonnerie tab", "issues": ["Minor: React 'unique key prop' warning fired from Admin.jsx render (list without key). Not blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter126_masonry_admin_config.py",
+    "/app/test_reports/pytest/iter126.xml"
+  ],
+  "action_items": [
+    "(Optional) Fix React 'unique key prop' warning in /app/frontend/src/pages/Admin.jsx (fires on Maçonnerie tab render).",
+    "(Optional) Consider supporting ?plan_id= query param on /plan route so external test flows / deep links can open a specific plan – would enable RoomEstimateDialog UI test."
+  ],
+  "critical_code_review_comments": [
+    "estimation_routes.py PUT /masonry-config accepts raw dict without Pydantic model – valid but loses input validation (invalid extra fields silently dropped, which is fine here).",
+    "get_masonry_config replaces the full default block list only when v['blocks'] is non-empty; setting blocks:[] via admin is silently ignored (default kept). Not tested as a failure but worth documenting.",
+    "MasonryConfigPanel row key uses `b.key || i` – if user adds two blocks without setting key, React may warn (matches observed warning)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter126_masonry_admin_config.py"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% of admin flow; RoomEstimateDialog UI not-testable (no plan+room reachable)"},
+  "test_credentials": "admin@construpilot.fr/Construpilot2026! + pro@ + demo@ (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None. Admin masonry-config reset after each ratio-mutating test and at teardown; defaults confirmed restored (cement=7, 4 blocks).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "test_iter126_masonry_admin_config.py must run WITHOUT xdist (or with fresh sessions per user) because the login endpoint sets an httpOnly session_token cookie that overrides the Bearer header on a shared requests.Session. The file already uses the raw requests module (no Session) to avoid cookie leakage. Same pattern to reuse for any auth-role-mixing tests.",
+  "rca of the issue": "N/A – no bugs found."
+}

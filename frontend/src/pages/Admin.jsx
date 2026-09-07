@@ -18,6 +18,7 @@ import AdminDrillDialog from "@/components/AdminDrillDialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import CampaignsPanel from "@/components/admin/CampaignsPanel";
 import RadarSitadelPanel from "@/components/admin/RadarSitadelPanel";
+import MasonryConfigPanel from "@/components/admin/MasonryConfigPanel";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
 import AdminSharedLibraryTab from "@/components/AdminSharedLibraryTab";
@@ -172,6 +173,7 @@ export default function Admin() {
           <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicité</TabsTrigger>
           <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campagnes e-mail</TabsTrigger>
           <TabsTrigger value="radar" className="rounded-sm" data-testid="admin-tab-radar">Radar / SITADEL</TabsTrigger>
+          <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Maçonnerie</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
           <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">{t("admin.t_account")}</TabsTrigger>
@@ -202,6 +204,10 @@ export default function Admin() {
 
         <TabsContent value="radar" className="mt-6">
           <RadarSitadelPanel />
+        </TabsContent>
+
+        <TabsContent value="masonry" className="mt-6">
+          <MasonryConfigPanel />
         </TabsContent>
 
         <TabsContent value="proskyc" className="mt-6">

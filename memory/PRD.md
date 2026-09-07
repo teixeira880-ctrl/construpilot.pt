@@ -10,6 +10,13 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 07/09/2026 (suite) — Maçonnerie configurable par l'admin + dimension de bloc + enduit de façade** [testé testing_agent iteration_126 : backend 13/13 / admin UI 100% ; dialog devis pièce vérifié par screenshot e2e] :
+> - **Config admin en base** (`db.app_settings` key `masonry_config`) : `GET /api/estimation/masonry-config` (public, fusion défauts + surcharge DB), `PUT` (admin) ratios `loss_pct, cement_kg_per_m2, sand_m3_per_m2, glue_kg_per_m2, foam_m2_per_can, gobetis_kg_per_m2, render_kg_per_m2` + liste `blocks[{key,label,material,blocks_per_m2,price,search}]` (défauts : parpaing_20, parpaing_15, brique_creuse_20, brique_rouge 48/m²), `POST …/reset` (admin). Helpers `get_masonry_config()` / `masonry_kwargs_from_config()` dans `estimation_routes.py`, réutilisés par le panier (`POST /estimation/materials` → `lot.block`, `lot.include_render`) et par le devis pièce (`RoomEstimateIn.masonry_block / masonry_render`, `plans_analysis.py`).
+> - **Enduit de façade** dans `calculators.masonry(include_render=True)` : gobetis d'accroche (5 kg/m², sacs 25 kg) + corps d'enduit (25 kg/m², sacs 25 kg), budget inclus.
+> - **UI** : onglet `/admin` → « Maçonnerie » (`components/admin/MasonryConfigPanel.jsx`, testids `admin-masonry-*`) : 7 ratios éditables, table de blocs (ajout/suppression/prix/recherche fournisseur), Enregistrer / Défauts. `RoomEstimateDialog.jsx` : select **Dimension du bloc** (`masonry-block`, filtré par matériau), case **Enduit de façade** (`masonry-render`), hint des ratios dynamique (`masonry-ratios-hint`).
+> - Tests : `/app/backend/tests/test_iter126_masonry_admin_config.py`. Backlog : exposer le choix bloc/enduit aussi dans le panier SmartProject (les lots passent déjà `block`/`include_render` côté API).
+
+
 > **Session 07/09/2026 — Liants de maçonnerie (parpaing/brique) + accessoires carrelage** [testé testing_agent iteration_125 : backend 100% / frontend 100%] :
 > - **Nouveau calculateur `engines/calculators.py::masonry(area, material, bond)`** : Parpaing (bloc 20×20×50 ~10/m² +5% pertes) au **mortier traditionnel** → Ciment ~7 kg/m² (sacs 35 kg) + Sable ~0,03 m³/m². Brique au choix : **mortier-colle joint mince** ~5 kg/m² (sacs 25 kg) **ou mousse PU** ~1 cartouche/8 m².
 > - **Carrelage complété** : `tile()` ajoute désormais **natte de désolidarisation** (m²) + **baguettes de finition (profilés)** (en plus de colle/joint/croisillons/primaire déjà présents).

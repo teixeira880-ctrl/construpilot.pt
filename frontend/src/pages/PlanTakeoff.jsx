@@ -872,6 +872,8 @@ export default function PlanTakeoff() {
         payload.trades = ["paint", "floor_tile", "drywall", "insulation", "plinths", "masonry"];
         payload.masonry_material = opts.masonryMaterial || "parpaing";
         payload.masonry_bond = opts.masonryBond || null;
+        payload.masonry_block = opts.masonryBlock || null;
+        payload.masonry_render = !!opts.masonryRender;
       }
       const { data } = await api.post(
         `/takeoffs/${plan.plan_id}/rooms/${roomId}/estimate`,

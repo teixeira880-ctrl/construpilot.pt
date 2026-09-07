@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from core.db import db
-from core.security import optional_user
+from core.security import optional_user, admin_user
 from engines import estimation, ai, pdf
 from engines.catalog import (PROJECT_TYPES, LOTS, FINISH_LEVELS, REGIONS, DIFFICULTY,
                             CONDITION_COEF)
@@ -222,11 +222,99 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
     return {"ok": True, "to": body.to}
 
 
+# ========= Config maçonnerie (ratios + blocs) — éditable par l'admin =========
+
+MASONRY_CONFIG_DEFAULT = {
+    "ratios": {
+        "loss_pct": 5.0,
+        "cement_kg_per_m2": 7.0,
+        "sand_m3_per_m2": 0.03,
+        "glue_kg_per_m2": 5.0,
+        "foam_m2_per_can": 8.0,
+        "render_kg_per_m2": 25.0,
+        "gobetis_kg_per_m2": 5.0,
+    },
+    "blocks": [
+        {"key": "parpaing_20", "label": "Parpaing creux 20×20×50", "material": "parpaing",
+         "blocks_per_m2": 10, "price": 1.20, "search": "parpaing creux 20x20x50"},
+        {"key": "parpaing_15", "label": "Parpaing creux 15×20×50", "material": "parpaing",
+         "blocks_per_m2": 10, "price": 1.00, "search": "parpaing creux 15x20x50"},
+        {"key": "brique_creuse_20", "label": "Brique creuse 20×20×50", "material": "brique",
+         "blocks_per_m2": 10, "price": 0.90, "search": "brique creuse 20x20x50"},
+        {"key": "brique_rouge", "label": "Brique rouge 22×10,5×6", "material": "brique",
+         "blocks_per_m2": 48, "price": 0.60, "search": "brique rouge pleine"},
+    ],
+}
+
+_RATIO_KEYS = ("loss_pct", "cement_kg_per_m2", "sand_m3_per_m2", "glue_kg_per_m2",
+               "foam_m2_per_can", "render_kg_per_m2", "gobetis_kg_per_m2")
+
+
+async def get_masonry_config() -> dict:
+    cfg = {"ratios": dict(MASONRY_CONFIG_DEFAULT["ratios"]),
+           "blocks": [dict(b) for b in MASONRY_CONFIG_DEFAULT["blocks"]]}
+    doc = await db.app_settings.find_one({"key": "masonry_config"}, {"_id": 0, "value": 1})
+    v = (doc or {}).get("value") or {}
+    if isinstance(v.get("ratios"), dict):
+        cfg["ratios"].update({k: float(v["ratios"][k]) for k in v["ratios"] if k in _RATIO_KEYS})
+    if isinstance(v.get("blocks"), list) and v["blocks"]:
+        cfg["blocks"] = v["blocks"]
+    return cfg
+
+
+def masonry_kwargs_from_config(cfg: dict, *, area: float, material: str,
+                               bond: str | None = None, block_key: str | None = None,
+                               include_render: bool = False) -> dict:
+    """Construit les kwargs pour calculators.masonry depuis la config admin."""
+    ratios = cfg["ratios"]
+    is_brique = str(material or "").lower().startswith("briq")
+    block = None
+    if block_key:
+        block = next((b for b in cfg["blocks"] if b.get("key") == block_key), None)
+    if not block:
+        want = "brique" if is_brique else "parpaing"
+        block = next((b for b in cfg["blocks"] if b.get("material") == want), None)
+    kwargs = {"area": area, "material": (block["material"] if block else material),
+              "bond": bond, "include_render": include_render}
+    kwargs.update({k: ratios[k] for k in _RATIO_KEYS})
+    if block:
+        kwargs.update({"blocks_per_m2": block.get("blocks_per_m2", 10),
+                       "block_label": block.get("label"),
+                       "block_search": block.get("search"),
+                       "block_price": block.get("price")})
+    return kwargs
+
+
+@router.get("/masonry-config")
+async def read_masonry_config(_=Depends(optional_user)) -> dict:
+    return await get_masonry_config()
+
+
+@router.put("/masonry-config")
+async def update_masonry_config(body: dict, _=Depends(admin_user)) -> dict:
+    value = {}
+    if isinstance(body.get("ratios"), dict):
+        value["ratios"] = {k: float(body["ratios"][k]) for k in body["ratios"] if k in _RATIO_KEYS}
+    if isinstance(body.get("blocks"), list):
+        value["blocks"] = body["blocks"]
+    await db.app_settings.update_one({"key": "masonry_config"},
+                                     {"$set": {"key": "masonry_config", "value": value}},
+                                     upsert=True)
+    return await get_masonry_config()
+
+
+@router.post("/masonry-config/reset")
+async def reset_masonry_config(_=Depends(admin_user)) -> dict:
+    await db.app_settings.delete_one({"key": "masonry_config"})
+    return await get_masonry_config()
+
+
 @router.post("/materials")
 async def materials_list(body: MaterialsIn) -> dict:
     """Panier de chantier intelligent : liste d'achats depuis les lots estimés."""
     from engines import calculators
     items = []
+    masonry_cfg = None
     for lot in body.lots:
         key, qty = lot.get("key"), float(lot.get("quantity") or 0)
         if qty <= 0:
@@ -268,8 +356,12 @@ async def materials_list(body: MaterialsIn) -> dict:
                           "search": "parquet stratifie clipsable"})
         elif key in ("maconnerie", "parpaing", "brique", "mur_parpaing", "mur_brique"):
             material = "brique" if "brique" in key else lot.get("material", "parpaing")
-            bond = lot.get("bond")  # parpaing: mortier | brique: colle|mousse
-            items += calculators.masonry(qty, material=material, bond=bond)["materials"]
+            if masonry_cfg is None:
+                masonry_cfg = await get_masonry_config()
+            mk = masonry_kwargs_from_config(
+                masonry_cfg, area=qty, material=material, bond=lot.get("bond"),
+                block_key=lot.get("block"), include_render=bool(lot.get("include_render")))
+            items += calculators.masonry(**mk)["materials"]
         elif key == "menuiseries":
             items.append({"name": "Fenêtre PVC double vitrage", "quantity": round(qty), "unit": "u",
                           "search": "fenetre pvc double vitrage"})
