@@ -12,53 +12,53 @@ export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = tru
   const items = isPro ? [
     {
       done: projectDone,
-      title: "Estimez vos travaux",
-      desc: "Décrivez un projet et obtenez une estimation détaillée en 30 s.",
+      title: "Estime a tua obra",
+      desc: "Descreve um projeto e obtém uma estimativa detalhada em 30 s.",
       to: "/estimation",
-      cta: "Estimer",
+      cta: "Estimar",
     },
     {
       done: planDone,
-      title: "Mesurez un plan",
-      desc: "Importez un plan et laissez l'IA calculer les surfaces.",
+      title: "Mede uma planta",
+      desc: "Importa uma planta e deixa a IA calcular as áreas.",
       to: "/plan",
-      cta: "Mesurer",
+      cta: "Medir",
     },
     {
       done: quoteDone,
-      title: "Créez un devis",
-      desc: "Transformez votre estimation en devis prêt à envoyer.",
+      title: "Cria um orçamento",
+      desc: "Transforma a tua estimativa num orçamento pronto a enviar.",
       to: "/devis-editeur",
-      cta: "Créer",
+      cta: "Criar",
     },
   ] : [
     {
       done: projectDone,
-      title: "Estimez vos travaux",
-      desc: "Décrivez votre projet et obtenez une estimation détaillée en 30 s.",
+      title: "Estime a tua obra",
+      desc: "Descreve o teu projeto e obtém uma estimativa detalhada em 30 s.",
       to: "/estimation",
-      cta: "Estimer",
+      cta: "Estimar",
     },
     {
       done: false,
-      title: "Comparez les prix matériaux",
-      desc: "Consultez les prix du marché pour budgéter vos travaux.",
+      title: "Compara os preços dos materiais",
+      desc: "Consulta os preços de mercado para orçamentar a tua obra.",
       to: "/prix",
-      cta: "Voir les prix",
+      cta: "Ver os preços",
     },
     {
       done: false,
-      title: "Utilisez les calculateurs",
-      desc: "Surfaces, volumes et quantités en quelques secondes.",
+      title: "Usa as calculadoras",
+      desc: "Áreas, volumes e quantidades em segundos.",
       to: "/calculateurs",
-      cta: "Calculer",
+      cta: "Calcular",
     },
   ];
 
   const doneCount = items.filter((i) => i.done).length;
   const allDone = doneCount === items.length;
 
-  // Masquée si tout est fait, ou si l'utilisateur l'a fermée
+  // Escondida se tudo estiver feito, ou se o utilizador a fechou
   if (allDone || dismissed) return null;
 
   const close = () => {
@@ -74,17 +74,17 @@ export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = tru
             <Rocket className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-bold">Prise en main — {doneCount}/{items.length}</h3>
-            <p className="text-xs text-muted-foreground">Quelques étapes pour tirer le meilleur de ConstruPilot.</p>
+            <h3 className="font-bold">Começar — {doneCount}/{items.length}</h3>
+            <p className="text-xs text-muted-foreground">Alguns passos para tirar o melhor partido do ConstruPilot.</p>
           </div>
         </div>
         <button onClick={close} data-testid="checklist-dismiss"
-                className="text-muted-foreground hover:text-foreground" title="Masquer">
+                className="text-muted-foreground hover:text-foreground" title="Ocultar">
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* barre de progression */}
+      {/* barra de progresso */}
       <div className="mt-4 h-1.5 w-full rounded-full bg-border overflow-hidden">
         <div className="h-full bg-primary transition-all duration-500"
              style={{ width: `${(doneCount / items.length) * 100}%` }} />

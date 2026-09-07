@@ -1,0 +1,41 @@
+{
+  "summary": "Frontend-only validation for PT-PT translations of StarterChecklist card and PushToggle button on /dashboard. Logged in as info@construpilot.pt after clearing localStorage and forcing construpilot_lang=pt and removing construpilot_checklist_dismissed. Both components render 100% PT-PT with no FR strings.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "validation_results": {
+    "starter_checklist": {
+      "rendered": true,
+      "title": "Começar — 0/3",
+      "subtitle": "Alguns passos para tirar o melhor partido do ConstruPilot.",
+      "items_pt_ok": ["Estime a tua obra", "Mede uma planta", "Cria um orçamento"],
+      "ctas_pt_ok": ["Estimar", "Medir", "Criar"],
+      "fr_strings_in_checklist": []
+    },
+    "push_toggle": {
+      "rendered": true,
+      "label": "Notificações bloqueadas",
+      "label_is_pt": true,
+      "fr_strings_in_button": []
+    },
+    "fr_strings_elsewhere_on_page": ["Importez"],
+    "note_on_fr_elsewhere": "The string 'Importez' was detected somewhere else on the dashboard page (outside the StarterChecklist and PushToggle). It is out of scope for this iteration but flagged for main agent awareness — likely in a plan/import section or another card. Not a blocker for the requested translation task."
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: investigate residual FR string 'Importez' present elsewhere on /dashboard (outside StarterChecklist/PushToggle) and translate to PT-PT if applicable."
+  ],
+  "critical_code_review_comments": [
+    "StarterChecklist and PushToggle use inline PT-PT strings (no i18n keys) — acceptable for the scoped fix, but consider consolidating into an i18n resource file for maintainability."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "StarterChecklist + PushToggle PT-PT validated on iteration_20. Residual 'Importez' detected elsewhere on /dashboard (not in the two scoped components). If a next iteration targets full-dashboard PT audit, inspect all cards/panels for lingering FR (e.g., Importez, Créer, Voir, etc.)."
+}
