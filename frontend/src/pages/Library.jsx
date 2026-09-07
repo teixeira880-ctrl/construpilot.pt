@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Plus, Search, Pencil, Trash2, Library as LibIcon, Loader2, RotateCcw, Package, Hammer,
+  Plus, Search, Pencil, Trash2, Library as LibIcon, Loader2, RotateCcw, Package, Hammer, FileUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +15,13 @@ import { SectionTitle } from "@/components/Bits";
 import SharedLibraryPanel from "@/components/SharedLibraryPanel";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import LibraryImportDialog from "@/components/library/LibraryImportDialog";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
 const VAT_RATES = [10, 20, 5.5];
 const EMPTY = {
   type: "ouvrage", category: "", designation: "", unit: "m²",
-  unit_price_ht: "", vat_rate: 10, notes: "",
+  unit_price_ht: "", cost_price_ht: "", vat_rate: 10, notes: "",
 };
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
@@ -35,6 +36,7 @@ export default function Library() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = async (search = q, type = typeFilter) => {
     setLoading(true);
@@ -56,7 +58,7 @@ export default function Library() {
   const openNew = () => { setEditing(null); setForm(EMPTY); setOpen(true); };
   const openEdit = (it) => {
     setEditing(it.item_id);
-    setForm({ ...EMPTY, ...it, unit_price_ht: String(it.unit_price_ht ?? "") });
+    setForm({ ...EMPTY, ...it, unit_price_ht: String(it.unit_price_ht ?? ""), cost_price_ht: String(it.cost_price_ht || "") });
     setOpen(true);
   };
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -68,6 +70,7 @@ export default function Library() {
       const payload = {
         type: form.type, category: form.category, designation: form.designation,
         unit: form.unit, unit_price_ht: parseFloat(form.unit_price_ht) || 0,
+        cost_price_ht: parseFloat(form.cost_price_ht) || 0,
         vat_rate: parseFloat(form.vat_rate) || 10, notes: form.notes,
       };
       if (editing) await api.put(`/library/${editing}`, payload);
@@ -100,7 +103,11 @@ export default function Library() {
           Vos ouvrages et matériaux avec vos prix. Réutilisez-les dans vos devis en un clic —
           chaque nouvel élément saisi est enregistré ici automatiquement.
         </SectionTitle>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setImportOpen(true)} className="rounded-sm gap-2 border-primary/40 text-primary"
+                  data-testid="library-import-btn">
+            <FileUp className="h-4 w-4" /> Reprendre mes anciens devis
+          </Button>
           <Button variant="outline" onClick={resetCatalogue} className="rounded-sm gap-2"
                   data-testid="library-reset-btn">
             <RotateCcw className="h-4 w-4" /> Catalogue de départ
@@ -112,6 +119,7 @@ export default function Library() {
       </div>
 
       <SharedLibraryPanel />
+      <LibraryImportDialog open={importOpen} onClose={() => setImportOpen(false)} onDone={() => load()} />
 
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[240px] max-w-md">
@@ -222,6 +230,12 @@ export default function Library() {
               <Input type="number" step="0.01" min="0" value={form.unit_price_ht}
                      onChange={set("unit_price_ht")} className="rounded-sm mt-1 num"
                      data-testid="library-price" placeholder="0,00" />
+            </div>
+            <div>
+              <Label>Coût de revient HT (€) — MO + fournitures</Label>
+              <Input type="number" step="0.01" min="0" value={form.cost_price_ht}
+                     onChange={set("cost_price_ht")} className="rounded-sm mt-1 num"
+                     data-testid="library-cost" placeholder="optionnel · sert au calcul de marge" />
             </div>
             <div>
               <Label>TVA</Label>

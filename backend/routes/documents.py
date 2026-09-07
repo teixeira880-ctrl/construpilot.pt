@@ -40,6 +40,7 @@ class DocLine(BaseModel):
     unit: str = "u"
     qty: float = 1
     unit_price_ht: float = 0
+    cost_price_ht: float = 0
     vat_rate: float = 10
     category: str = ""
 
@@ -57,18 +58,28 @@ class DocIn(BaseModel):
 
 def _compute_totals(lines: list[dict], deposit_pct: float = 0.0) -> dict:
     ht = 0.0
+    cost = 0.0
+    has_cost = False
     tva_map: dict[float, float] = {}
     for ln in lines:
         line_ht = round((ln.get("qty") or 0) * (ln.get("unit_price_ht") or 0), 2)
         ht += line_ht
+        c = float(ln.get("cost_price_ht") or 0)
+        if c > 0:
+            has_cost = True
+            cost += round((ln.get("qty") or 0) * c, 2)
         rate = float(ln.get("vat_rate") or 0)
         tva_map[rate] = round(tva_map.get(rate, 0) + line_ht * rate / 100, 2)
     ht = round(ht, 2)
     tva = round(sum(tva_map.values()), 2)
     ttc = round(ht + tva, 2)
     deposit = round(ttc * (deposit_pct or 0) / 100, 2)
+    margin = round(ht - cost, 2) if has_cost else None
     return {
         "ht": ht,
+        "cost_ht": round(cost, 2) if has_cost else None,
+        "margin_ht": margin,
+        "margin_pct": (round(margin / ht * 100, 1) if has_cost and ht > 0 else None),
         "tva_breakdown": {str(k): v for k, v in sorted(tva_map.items())},
         "tva": tva, "ttc": ttc,
         "deposit_pct": deposit_pct or 0, "deposit_amount": deposit,

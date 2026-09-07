@@ -1,0 +1,34 @@
+{
+  "summary": "Iter 127 – Tested Hopla-parity features. Backend: 9/9 pytest tests PASSED covering (a) documents totals margin (cost_ht/margin_ht/margin_pct correctly computed for the exact spec payload → ht 500, cost_ht 450, margin_ht 50, margin_pct 10.0; null when no cost; PUT recomputes; line cost persisted), (b) library POST cost_price_ht persistence + import-pdf/preview + confirm (created then re-confirm updates), (c) video-transcribe accepts audio WAV without 500, (e) radar postal READ-ONLY status (configured=true, modes normal/suivi/lrar), price normal returns positive TTC (~2.26€), prospection/{token}/postal returns sends:[] for a real created campaign token — POST postal was NEVER called. Frontend: LOGIN pro@ OK via /login (spec mentioned /connexion which doesn't exist — /login is the actual route). QuoteEditor /devis-editeur end-to-end verified: badge0='marge 33 %', badge1='À perte', editor-margin-total='50,00 € · 10.0 %', editor-loss-alert='1 ouvrage chiffré à perte', editor-lot-margin-Peinture='marge 33 %', editor-lot-margin-Carrelage='1 à perte · marge -25 %', cost_price_ht persisted after save+reload (20 / 50). /metre landing: all testids present (landing-metre, metre-testimonial, metre-steps, metre-step-1/2/3, metre-quote, metre-pricing with '19', metre-faq with exactly 7 accordion items, faq-0 opens on click), CTA links to /inscription?signup=1&plan=pro (satisfies /inscription requirement). SmartProject voice-note-btn present, labelled 'Dicter mon chantier', click does not crash. Library /bibliotheque: library-import-btn opens dialog with library-import-dialog + dropzone + input + analyse. Radar: 10 opportunity cards, generate letter → radar-campaign-postal visible → postal-dialog opened with all fields (postal-cp, postal-ville, postal-mode select, postal-price shows 'Tarif indicatif (1 page, France) 2.26 € TTC'), postal-send-btn present but NEVER clicked, dialog closed with Escape.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter127_hopla_features.py",
+    "/app/test_reports/pytest/iter127.xml"
+  ],
+  "action_items": [
+    "(Doc-only) Review request said login route /connexion — actual route is /login (defined in App.js line 156). Not a bug, just doc alignment.",
+    "(Verified via code, not UI) Estimator voice-note-btn is only rendered inside {step === 1 && ...} of the wizard (Estimator.jsx L267). Because the wizard starts at step 0, playwright loading /estimation directly does NOT see the button unless the user first clicks 'Suivant'. Code presence confirmed; not a bug."
+  ],
+  "critical_code_review_comments": [
+    "documents.py _compute_totals: margin_pct rounded to 1 decimal is inconsistent with cost_ht/margin_ht rounded to 2 decimals — acceptable but worth aligning if edge cases (e.g. 33.3333) matter.",
+    "library.py library_import_preview: silently drops lines whose designation < 3 chars or unit_price_ht ≤ 0 without reporting them back in the response — a UI 'X lignes ignorées' hint might help debugging AI extraction failures.",
+    "library.py auto_save_from_lines + library_import_confirm both use regex ^{designation}$ (case-insensitive) to dedupe existing items. Minor: no accent-insensitive match — 'Depose' vs 'Dépose' would create duplicates.",
+    "radar.py postal endpoints correctly guard on _postal_enabled(); GET price does a real HTTP call to Merci Facteur on every request — no cache. Consider ttl caching (mode → price) to avoid API abuse.",
+    "QuoteEditor.jsx L1094: lot-margin colour scheme correct but marginPct===null when no cost on any line in the lot is silently hidden — could confuse users mixing costed/uncosted lots. Tested case OK."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter127_hopla_features.py"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% of testable flows (Estimator step-1 voice button verified via code review only)"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "One quote 'TEST_iter127_ui' created via UI and left in DB (linked to persistence test); library import test items created with category='TEST_import_iter127' were deleted at end of pytest run; radar prospection reused an existing opportunity (no additional data created beyond the campaign token created via POST prospection which was pre-existing behaviour).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Login route is /login (NOT /connexion). Estimator wizard voice-note-btn is on step 1 of the wizard (must click 'Suivant' from step 0 first, or fill address/type). Radar prospection: 10 opportunities exist for pro@ user, radar-generate-letter takes ~15-20s (Claude AI). NEVER call POST /api/radar/prospection/{token}/postal (real billed). Backend test file uses -o addopts='' to bypass pytest.ini's xdist config; running with xdist causes login cookie contention across workers.",
+  "rca of the issue": "N/A — no bugs found. Only doc mismatch: review request wrote /connexion but actual route is /login."
+}

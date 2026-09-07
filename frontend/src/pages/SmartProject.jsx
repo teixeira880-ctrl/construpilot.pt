@@ -5,6 +5,7 @@ import { Sparkles, HelpCircle, AlertTriangle, Save, Wrench, ShoppingCart, Refres
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import VoiceNoteButton from "@/components/VoiceNoteButton";
 import { api, eur } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
 import { LeadDialog } from "@/components/LeadDialog";
@@ -99,6 +100,8 @@ export default function SmartProject() {
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {loading ? "Analyse en cours…" : "Analyser mon projet"}
             </Button>
+            <VoiceNoteButton label="Dicter mon chantier"
+              onText={(txt) => setDescription((d) => (d?.trim() ? `${d.trim()}\n${txt}` : txt))} />
             <div className="inline-flex items-center gap-2 rounded-sm border border-border px-3 py-1.5 bg-background">
               <span className="text-xs text-muted-foreground">Hauteur sous plafond</span>
               <Input

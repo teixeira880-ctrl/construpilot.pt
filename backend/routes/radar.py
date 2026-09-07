@@ -531,6 +531,106 @@ async def download_prospection_letter(token: str, user=Depends(current_user)):
                     headers={"Content-Disposition": f'inline; filename="courrier-{token}.pdf"'})
 
 
+# ========= Envoi postal (Merci Facteur) =========
+
+class PostalRecipient(BaseModel):
+    nom: str
+    societe: str = ""
+    adresse1: str
+    adresse2: str = ""
+    cp: str
+    ville: str
+    pays: str = "france"
+
+
+class PostalSendIn(BaseModel):
+    recipient: PostalRecipient
+    mode: Literal["normal", "suivi", "lrar"] = "normal"
+
+
+def _sender_from_branding(b: dict, fallback_name: str) -> dict:
+    return {"nom": (b.get("company_name") or fallback_name or "Entreprise")[:38], "societe": "",
+            "adresse1": (b.get("address") or "Adresse non renseignée")[:38], "adresse2": "",
+            "cp": str(b.get("postal_code") or "00000")[:10], "ville": (b.get("city") or "—")[:38],
+            "pays": "france"}
+
+
+@router.get("/postal/status")
+async def postal_status(_=Depends(current_user)):
+    from engines import mercifacteur as mf
+    return {"configured": mf.configured(), "modes": list(mf.MODES)}
+
+
+@router.get("/postal/price")
+async def postal_price(mode: Literal["normal", "suivi", "lrar"] = "normal", _=Depends(current_user)):
+    from engines import mercifacteur as mf
+    if not mf.configured():
+        raise HTTPException(503, "Envoi postal non configuré")
+    try:
+        res = await mf.postage_price(mode=mode, pages=1)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Tarif indisponible : {str(e)[:120]}")
+    aff = ((res.get("affranchissement") or {}).get("FRANCE") or {}).get("amount") or 0
+    content_ttc = (res.get("content") or {}).get("totalContentTtc") or 0
+    return {"mode": mode, "postage": float(aff), "content_ttc": float(content_ttc),
+            "total_ttc": round(float(aff) + float(content_ttc), 2)}
+
+
+@router.post("/prospection/{token}/postal")
+async def postal_send(token: str, body: PostalSendIn, user=Depends(current_user)):
+    """Poste physiquement le courrier de prospection via Merci Facteur (facturé au compte)."""
+    from engines import mercifacteur as mf
+    if not mf.configured():
+        raise HTTPException(503, "Envoi postal non configuré")
+    rec = await db.radar_prospections.find_one({"token": token, "user_id": user["user_id"]}, {"_id": 0})
+    if not rec:
+        raise HTTPException(404, "Campagne introuvable")
+    permits = await _get_permits()
+    pm = next((x for x in permits if x["id"] == rec["opp_id"]), None)
+    if not pm:
+        raise HTTPException(404, "Opportunité introuvable")
+    p = await _profile(user)
+    opp = _build(pm, p["base"], p["metiers"])
+    public_url = f"{_frontend_url()}/prospection/{token}"
+    branding, u = await _pro_branding_and_user(user["user_id"])
+    pdf = _build_prospection_pdf(branding=branding, opp=opp, public_url=public_url,
+                                 qr_png=_qr_png_bytes(public_url), custom_message=rec.get("message", ""))
+    recipient = body.recipient.model_dump()
+    try:
+        res = await mf.send_letter(pdf, sender=_sender_from_branding(branding, u.get("name", "")),
+                                   recipient=recipient, mode=body.mode, filename=f"courrier-{token}")
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Envoi postal refusé : {str(e)[:200]}")
+    doc = {"postal_id": "post_" + secrets.token_hex(5), "token": token, "user_id": user["user_id"],
+           "opp_id": rec["opp_id"], "envoi_id": res.get("envoi_id"), "mode": body.mode,
+           "price": res.get("price"), "recipient": recipient, "status": "submitted",
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.radar_postal.insert_one(dict(doc))
+    await db.radar_prospections.update_one({"token": token}, {"$inc": {"postal_count": 1}})
+    return doc
+
+
+@router.get("/prospection/{token}/postal")
+async def postal_list(token: str, refresh: bool = False, user=Depends(current_user)):
+    from engines import mercifacteur as mf
+    sends = await db.radar_postal.find({"token": token, "user_id": user["user_id"]},
+                                       {"_id": 0}).sort("created_at", -1).to_list(50)
+    if refresh and mf.configured():
+        for s in sends:
+            if not s.get("envoi_id"):
+                continue
+            try:
+                tr = await mf.tracking(int(s["envoi_id"]))
+                upd = {"tracking": tr, "status": (tr.get("statutPrintEnvoi") or tr.get("lastState")
+                                                   or s.get("status") or "submitted")}
+                s.update(upd)
+                await db.radar_postal.update_one({"postal_id": s["postal_id"]}, {"$set": upd})
+            except Exception:  # noqa: BLE001
+                continue
+    return {"sends": sends}
+
+
+
 @router.get("/public/prospection/{token}")
 async def public_prospection(token: str, request: Request, _=Depends(optional_user)):
     """Landing publique (sans auth) : présente l'entreprise + l'opportunité au prospect."""
@@ -784,6 +884,7 @@ async def _row_to_permit(row: dict, idx: int):
     return {
         "id": pid, "num": num or pid, "type": typ, "nature": nature,
         "commune": commune or "—", "cp": cp or "", "dep": dep or "",
+        "adresse": adresse or "",
         "lat": round(coords[0], 6), "lon": round(coords[1], 6),
         "batiment": batiment,
         "surf_created": _to_int(_pick(row, "surf_created", "surface", "surface_taxable", "surface_creee")),

@@ -3,8 +3,9 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   Radar, MapPin, Star, Flame, TrendingUp, Building2, X, Loader2,
-  Settings, Mail, Copy, Download, Check, Crosshair, BarChart3, Eye, Users, Sparkles,
+  Settings, Mail, Copy, Download, Check, Crosshair, BarChart3, Eye, Users, Sparkles, Truck,
 } from "lucide-react";
+import PostalSendDialog from "@/components/radar/PostalSendDialog";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,7 @@ export default function RadarChantiers() {
   const [draftBase, setDraftBase] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [campaign, setCampaign] = useState(null);
+  const [postalOpen, setPostalOpen] = useState(false);
   const [genLoading, setGenLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [letterMsg, setLetterMsg] = useState("");
@@ -393,7 +395,11 @@ export default function RadarChantiers() {
                     <Download className="h-3.5 w-3.5" /> Télécharger le courrier
                   </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">Imprimez et postez le courrier. Le prospect qui scanne le QR ou ouvre le lien peut demander une estimation — sa demande arrive dans « Mes demandes ».</p>
+                <Button size="sm" variant="outline" className="rounded-sm gap-1 w-full mt-2 border-primary/40 text-primary" onClick={() => setPostalOpen(true)} data-testid="radar-campaign-postal">
+                  <Truck className="h-3.5 w-3.5" /> Envoyer par la poste (Merci Facteur)
+                </Button>
+                <PostalSendDialog open={postalOpen} onClose={() => setPostalOpen(false)} campaign={campaign} opp={sel} />
+                <p className="text-[10px] text-muted-foreground mt-2">Imprimez et postez le courrier, ou laissez Merci Facteur le faire. Le prospect qui scanne le QR ou ouvre le lien peut demander une estimation — sa demande arrive dans « Mes demandes ».</p>
               </div>
             )}
 

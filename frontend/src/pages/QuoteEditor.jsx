@@ -28,8 +28,13 @@ const STATUSES = [
 ];
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const blankLine = (vat = 10) => ({
-  designation: "", description: "", unit: "u", qty: 1, unit_price_ht: 0, vat_rate: vat, category: "", _saveToLib: true,
+  designation: "", description: "", unit: "u", qty: 1, unit_price_ht: 0, cost_price_ht: 0, vat_rate: vat, category: "", _saveToLib: true,
 });
+const lineMargin = (l) => {
+  const pv = Number(l.unit_price_ht) || 0, c = Number(l.cost_price_ht) || 0;
+  if (c <= 0) return null;
+  return { pct: pv > 0 ? ((pv - c) / pv) * 100 : -100, loss: pv < c };
+};
 
 export default function QuoteEditor() {
   const { docId: paramDocId } = useParams();
@@ -172,17 +177,22 @@ export default function QuoteEditor() {
   }, [user, paramDocId]);
 
   const totals = useMemo(() => {
-    let ht = 0; const tva = {};
+    let ht = 0; let cost = 0; let hasCost = false; const tva = {};
     lines.forEach((l) => {
-      const lh = (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0);
+      const q = Number(l.qty) || 0;
+      const lh = q * (Number(l.unit_price_ht) || 0);
       ht += lh;
+      const c = Number(l.cost_price_ht) || 0;
+      if (c > 0) { hasCost = true; cost += q * c; }
       const r = Number(l.vat_rate) || 0;
       tva[r] = (tva[r] || 0) + lh * r / 100;
     });
     const tvaTotal = Object.values(tva).reduce((a, b) => a + b, 0);
     const ttc = ht + tvaTotal;
     const dep = ttc * (Number(depositPct) || 0) / 100;
-    return { ht, tva, tvaTotal, ttc, dep, remaining: ttc - dep };
+    const margin = hasCost ? ht - cost : null;
+    return { ht, tva, tvaTotal, ttc, dep, remaining: ttc - dep, cost, margin,
+             marginPct: hasCost && ht > 0 ? (margin / ht) * 100 : null };
   }, [lines, depositPct]);
 
   const lotSubtotals = useMemo(() => {
@@ -190,11 +200,20 @@ export default function QuoteEditor() {
     for (const l of lines) {
       const cat = (l.category || "").trim();
       if (!cat) continue;
-      const lh = (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0);
-      map.set(cat, (map.get(cat) || 0) + lh);
+      const q = Number(l.qty) || 0;
+      const lh = q * (Number(l.unit_price_ht) || 0);
+      const c = Number(l.cost_price_ht) || 0;
+      const cur = map.get(cat) || { ht: 0, cost: 0, hasCost: false, loss: 0 };
+      cur.ht += lh;
+      if (c > 0) { cur.hasCost = true; cur.cost += q * c; if (c > (Number(l.unit_price_ht) || 0)) cur.loss += 1; }
+      map.set(cat, cur);
     }
-    return [...map.entries()].map(([cat, ht]) => ({ cat, ht }));
+    return [...map.entries()].map(([cat, v]) => ({
+      cat, ht: v.ht, cost: v.cost, loss: v.loss,
+      marginPct: v.hasCost && v.ht > 0 ? ((v.ht - v.cost) / v.ht) * 100 : null,
+    }));
   }, [lines]);
+  const lossLines = useMemo(() => lines.filter((l) => lineMargin(l)?.loss).length, [lines]);
 
   const knownLots = useMemo(() => {
     const s = new Set();
@@ -233,7 +252,7 @@ export default function QuoteEditor() {
   const addFromLib = (it) => {
     setLines((ls) => [...ls, {
       designation: it.designation, unit: it.unit, qty: 1,
-      unit_price_ht: it.unit_price_ht, vat_rate: it.vat_rate, category: it.category, _saveToLib: false,
+      unit_price_ht: it.unit_price_ht, cost_price_ht: it.cost_price_ht || 0, vat_rate: it.vat_rate, category: it.category, _saveToLib: false,
     }]);
     setPickerOpen(false);
     toast.success(t("crm.line_added"));
@@ -244,7 +263,7 @@ export default function QuoteEditor() {
     deposit_pct: Number(depositPct) || 0, status,
     lines: lines.filter((l) => l.designation.trim()).map((l) => ({
       designation: l.designation, description: l.description || "", unit: l.unit, qty: Number(l.qty) || 0,
-      unit_price_ht: Number(l.unit_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
+      unit_price_ht: Number(l.unit_price_ht) || 0, cost_price_ht: Number(l.cost_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
       category: l.category || "",
     })),
   });
@@ -257,7 +276,7 @@ export default function QuoteEditor() {
       try {
         await api.post("/library", {
           type: "ouvrage", category: l.category || "Devis", designation: l.designation,
-          unit: l.unit, unit_price_ht: Number(l.unit_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
+          unit: l.unit, unit_price_ht: Number(l.unit_price_ht) || 0, cost_price_ht: Number(l.cost_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
         });
       } catch { /* ignore */ }
     }
@@ -1012,11 +1031,22 @@ export default function QuoteEditor() {
                    rows={2}
                    className="rounded-sm text-sm w-full bg-background border border-input px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary" data-testid={`editor-line-desc-${i}`} />
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Layers className="h-3.5 w-3.5 text-muted-foreground" />
                 <Input list="qe-lots" value={l.category || ""} onChange={(e) => setLine(i, "category", e.target.value)}
                        placeholder={t("crm.ed_lot_ph")} className="rounded-sm h-7 text-xs w-44"
                        data-testid={`editor-line-lot-${i}`} />
+                <span className="text-[11px] text-muted-foreground ml-2">Coût de revient HT</span>
+                <Input type="number" step="0.01" min="0" value={l.cost_price_ht ?? 0}
+                       onChange={(e) => setLine(i, "cost_price_ht", e.target.value)}
+                       className="rounded-sm h-7 text-xs w-24 num text-right" placeholder="MO + fournitures"
+                       data-testid={`editor-line-cost-${i}`} />
+                {(() => { const m = lineMargin(l); return m ? (
+                  <Badge variant="outline" data-testid={`editor-line-margin-${i}`}
+                         className={`rounded-sm text-[10px] num h-6 ${m.loss ? "border-red-500 text-red-500 bg-red-500/10" : m.pct < 15 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}>
+                    {m.loss ? <><AlertTriangle className="h-3 w-3 mr-1" /> À perte</> : `marge ${m.pct.toFixed(0)} %`}
+                  </Badge>
+                ) : null; })()}
               </div>
               <Button size="sm" variant="outline" disabled={aiLineBusy === i || !l.designation.trim()}
                       onClick={() => suggestDescription(i)} data-testid={`editor-line-ai-${i}`}
@@ -1055,12 +1085,32 @@ export default function QuoteEditor() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5" /> {t("crm.ed_lot_subtotals")}
               </p>
-              {lotSubtotals.map(({ cat, ht }) => (
-                <div key={cat} className="flex justify-between text-xs py-0.5" data-testid={`editor-lot-subtotal-${cat}`}>
+              {lotSubtotals.map(({ cat, ht, marginPct, loss }) => (
+                <div key={cat} className="flex justify-between items-center text-xs py-0.5 gap-2" data-testid={`editor-lot-subtotal-${cat}`}>
                   <span className="text-muted-foreground truncate">{cat}</span>
-                  <span className="num font-semibold">{eur(ht)}</span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    {marginPct != null && (
+                      <span data-testid={`editor-lot-margin-${cat}`}
+                            className={`num text-[10px] px-1.5 rounded-sm ${loss > 0 || marginPct < 0 ? "bg-red-500/10 text-red-500" : marginPct < 15 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+                        {loss > 0 ? `${loss} à perte · ` : ""}marge {marginPct.toFixed(0)} %
+                      </span>
+                    )}
+                    <span className="num font-semibold">{eur(ht)}</span>
+                  </span>
                 </div>
               ))}
+            </div>
+          )}
+          {totals.margin != null && (
+            <div className={`rounded-sm px-3 py-2 mb-1 text-xs ${lossLines > 0 ? "bg-red-500/10 border border-red-500/40" : "bg-emerald-500/10 border border-emerald-500/30"}`} data-testid="editor-margin-block">
+              <div className="flex justify-between"><span className="text-muted-foreground">Coût de revient</span><span className="num">{eur(totals.cost)}</span></div>
+              <div className="flex justify-between font-bold"><span>Marge prévisionnelle</span>
+                <span className="num" data-testid="editor-margin-total">{eur(totals.margin)} · {totals.marginPct.toFixed(1)} %</span></div>
+              {lossLines > 0 && (
+                <p className="flex items-center gap-1 text-red-500 mt-1" data-testid="editor-loss-alert">
+                  <AlertTriangle className="h-3.5 w-3.5" /> {lossLines} ouvrage{lossLines > 1 ? "s" : ""} chiffré{lossLines > 1 ? "s" : ""} à perte
+                </p>
+              )}
             </div>
           )}
           <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t("crm.total_ht")}</span><span className="num font-bold">{eur(totals.ht)}</span></div>

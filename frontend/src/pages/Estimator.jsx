@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceNoteButton from "@/components/VoiceNoteButton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -261,7 +262,10 @@ export default function Estimator() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>{t("est.description")}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("est.description")}</Label>
+                    <VoiceNoteButton size="sm" className="h-7 text-xs" onText={(txt) => set("description", form.description?.trim() ? `${form.description.trim()}\n${txt}` : txt)} />
+                  </div>
                   <Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} data-testid="input-description" className="rounded-sm" />
                 </div>
               </>

@@ -10,7 +10,7 @@ import re
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from core.db import db
@@ -81,6 +81,7 @@ class LibraryItemIn(BaseModel):
     designation: str = ""
     unit: str = "u"
     unit_price_ht: float = Field(default=0.0, ge=0)
+    cost_price_ht: float = Field(default=0.0, ge=0)
     vat_rate: float = Field(default=10.0, ge=0, le=100)
     notes: str = ""
 
@@ -93,6 +94,7 @@ def _clean(body: LibraryItemIn) -> dict:
         "designation": (body.designation or "").strip()[:200],
         "unit": (body.unit or "u").strip()[:12],
         "unit_price_ht": round(float(body.unit_price_ht or 0), 2),
+        "cost_price_ht": round(float(body.cost_price_ht or 0), 2),
         "vat_rate": float(body.vat_rate if body.vat_rate is not None else 10.0),
         "notes": (body.notes or "").strip()[:500],
     }
@@ -208,6 +210,8 @@ async def auto_save_from_lines(user_id: str, lines: list[dict]) -> int:
             "vat_rate": float(ln.get("vat_rate") or 10),
             "updated_at": _now(),
         }
+        if float(ln.get("cost_price_ht") or 0) > 0:
+            set_fields["cost_price_ht"] = round(float(ln["cost_price_ht"]), 2)
         desc = (ln.get("description") or ln.get("notes") or "").strip()
         if desc:
             set_fields["notes"] = desc[:500]
@@ -226,3 +230,81 @@ async def auto_save_from_lines(user_id: str, lines: list[dict]) -> int:
             })
         saved += 1
     return saved
+
+
+
+# ========= Reprise d'anciens devis (PDF Tolteck, Obat, Excel→PDF…) → bibliothèque =========
+
+@router.post("/import-pdf/preview")
+async def library_import_preview(files: list[UploadFile] = File(...),
+                                 user=Depends(current_user)) -> dict:
+    """Étape 1 : extrait les ouvrages + prix de vos anciens devis (IA), sans rien créer."""
+    from routes.documents import _extract_pdf_item
+    if not files:
+        raise HTTPException(400, "Aucun fichier fourni")
+    existing = await db.library_items.find(
+        {"user_id": user["user_id"]}, {"_id": 0, "designation": 1, "unit_price_ht": 1}).to_list(5000)
+    known = {(e.get("designation") or "").strip().lower(): e.get("unit_price_ht") for e in existing}
+    items: list[dict] = []
+    for f in files[:20]:
+        name = f.filename or "document.pdf"
+        try:
+            doc = await _extract_pdf_item(f)
+        except Exception as e:  # noqa: BLE001
+            items.append({"file": name, "ok": False, "error": str(e)[:200], "lines": []})
+            continue
+        lines = []
+        for l in doc.get("lines") or []:
+            desig = (l.get("designation") or "").strip()
+            if len(desig) < 3 or float(l.get("unit_price_ht") or 0) <= 0:
+                continue
+            lines.append({
+                "designation": desig[:200], "unit": l.get("unit") or "u",
+                "unit_price_ht": round(float(l["unit_price_ht"]), 2),
+                "vat_rate": float(l.get("vat_rate") or 10),
+                "category": (doc.get("title") or "Repris de mes devis")[:80],
+                "existing_price": known.get(desig.lower()),
+            })
+        items.append({"file": name, "ok": True, "number": doc.get("number") or "",
+                      "issue_date": doc.get("issue_date") or "", "lines": lines})
+    return {"ok": True, "items": items,
+            "line_count": sum(len(i["lines"]) for i in items)}
+
+
+class LibraryImportIn(BaseModel):
+    lines: list[dict]
+    category: str = ""
+
+
+@router.post("/import-pdf/confirm")
+async def library_import_confirm(body: LibraryImportIn, user=Depends(current_user)) -> dict:
+    """Étape 2 : crée / met à jour les ouvrages sélectionnés à VOS prix."""
+    created = updated = 0
+    cat_override = (body.category or "").strip()[:80]
+    for l in (body.lines or [])[:500]:
+        desig = (l.get("designation") or "").strip()
+        pu = float(l.get("unit_price_ht") or 0)
+        if len(desig) < 3 or pu <= 0:
+            continue
+        fields = {
+            "designation": desig[:200], "type": "ouvrage",
+            "category": cat_override or (l.get("category") or "Repris de mes devis")[:80],
+            "unit": (l.get("unit") or "u")[:12], "unit_price_ht": round(pu, 2),
+            "vat_rate": float(l.get("vat_rate") or 10), "updated_at": _now(),
+        }
+        if float(l.get("cost_price_ht") or 0) > 0:
+            fields["cost_price_ht"] = round(float(l["cost_price_ht"]), 2)
+        existing = await db.library_items.find_one(
+            {"user_id": user["user_id"],
+             "designation": {"$regex": f"^{re.escape(desig)}$", "$options": "i"}},
+            {"_id": 0, "item_id": 1})
+        if existing:
+            await db.library_items.update_one({"user_id": user["user_id"], "item_id": existing["item_id"]},
+                                              {"$set": fields})
+            updated += 1
+        else:
+            await db.library_items.insert_one({
+                "item_id": "lib_" + secrets.token_hex(6), "user_id": user["user_id"],
+                "source": "import_devis", "notes": "", "created_at": _now(), **fields})
+            created += 1
+    return {"ok": True, "created": created, "updated": updated}

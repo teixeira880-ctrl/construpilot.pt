@@ -12,6 +12,7 @@ import { Nav, Footer } from "@/components/Nav";
 import HelpChatbot from "@/components/HelpChatbot";
 import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
+import LandingMetre from "@/pages/LandingMetre";
 import LandingPortugal from "@/pages/LandingPortugal";
 import RadarChantiers from "@/pages/RadarChantiers";
 import Investors from "@/pages/Investors";
@@ -147,6 +148,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
+      <Route path="/metre" element={<LandingMetre />} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
       <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
       <Route path="/investisseurs" element={<Investors />} />
