@@ -27,6 +27,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     shared_library as shared_library_routes,
                     param_library as param_library_routes,
                     autoseo as autoseo_routes,
+                    babylovegrowth as blg_routes,
                     dpgf as dpgf_routes,
                     company_library as company_library_routes,
                     suppliers as suppliers_routes,
@@ -104,6 +105,7 @@ api_router.include_router(company_routes.router)
 from routes import investors as investors_routes
 api_router.include_router(investors_routes.router)
 api_router.include_router(autoseo_routes.router)
+api_router.include_router(blg_routes.router)
 api_router.include_router(dpgf_routes.router)
 api_router.include_router(company_library_routes.router)
 api_router.include_router(suppliers_routes.router)
@@ -437,6 +439,10 @@ async def seed():
     # Relance des demandes assignées sans réponse depuis > 24 h (pro + admin)
     scheduler.add_job(leads.run_assignment_reminders,
                       "interval", hours=6, id="lead_assignment_reminders",
+                      max_instances=1, coalesce=True)
+    # Blog SEO : nouveaux articles BabyLoveGrowth toutes les 2 h
+    scheduler.add_job(blg_routes.run_scheduled_sync,
+                      "interval", hours=2, id="babylovegrowth_sync",
                       max_instances=1, coalesce=True)
     # Résumé mensuel des surcoûts/économies fournisseurs — le 1er de chaque mois à 07:00 UTC
     scheduler.add_job(einvoicing_routes.run_monthly_overspend_reports,

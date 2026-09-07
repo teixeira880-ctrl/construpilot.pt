@@ -1,0 +1,93 @@
+import { useEffect, useState } from "react";
+import { Loader2, RefreshCw, Newspaper, Trash2, ExternalLink, Copy, Check } from "lucide-react";
+import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+
+export default function SeoBlogPanel() {
+  const [st, setSt] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const load = () => api.get("/admin/babylovegrowth/status").then(({ data }) => setSt(data)).catch(() => setSt({ error: true }));
+  useEffect(() => { load(); }, []);
+
+  const sync = async (force = false) => {
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/admin/babylovegrowth/sync?force=${force}`, {}, { timeout: 300000 });
+      toast.success(`${data.created} article(s) publié(s) · ${data.skipped} déjà présents${data.errors ? ` · ${data.errors} erreur(s)` : ""}`);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Synchronisation impossible");
+    } finally { setBusy(false); }
+  };
+
+  const del = async (slug) => {
+    if (!window.confirm(`Retirer « ${slug} » du blog ?`)) return;
+    await api.delete(`/admin/babylovegrowth/articles/${slug}`);
+    toast.success("Article retiré"); load();
+  };
+
+  const copy = () => { navigator.clipboard?.writeText(st.webhook_url); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+
+  if (!st) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>;
+
+  return (
+    <div className="space-y-6" data-testid="admin-seo-blog-panel">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="font-display font-bold text-lg flex items-center gap-2"><Newspaper className="h-5 w-5 text-primary" /> SEO & Blog — BabyLoveGrowth</h3>
+          <p className="text-sm text-muted-foreground">Les articles générés par BabyLoveGrowth sont publiés automatiquement sur <b>/blog</b> (synchro toutes les 2 h + webhook temps réel).</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => sync(true)} disabled={busy} data-testid="admin-blg-resync">
+            Tout resynchroniser
+          </Button>
+          <Button size="sm" className="rounded-sm gap-2" onClick={() => sync(false)} disabled={busy} data-testid="admin-blg-sync">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Synchroniser maintenant
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Connexion API</p>
+          <p className="font-bold mt-1" data-testid="admin-blg-configured">{st.configured ? <span className="text-emerald-500">Clé configurée</span> : <span className="text-red-500">Clé manquante</span>}</p></div>
+        <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Articles publiés</p>
+          <p className="font-bold text-2xl num mt-1" data-testid="admin-blg-count">{st.count}</p></div>
+        <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Dernière synchro</p>
+          <p className="text-sm mt-1" data-testid="admin-blg-last-sync">{st.last_sync?.at ? new Date(st.last_sync.at).toLocaleString("fr-FR") : "jamais"}</p>
+          {st.last_sync && <p className="text-[11px] text-muted-foreground">+{st.last_sync.created} · {st.last_sync.skipped} existants · {st.last_sync.errors} erreurs</p>}</div>
+      </div>
+
+      <div className="surface p-4 rounded-md text-xs space-y-2">
+        <p className="overline text-[10px]">Webhook temps réel (optionnel)</p>
+        <p className="text-muted-foreground">Dans BabyLoveGrowth → Settings → Integrations → Webhook, collez cette URL et le secret (Authorization: Bearer) présent dans <code>BABYLOVEGROWTH_WEBHOOK_SECRET</code>.</p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 truncate bg-secondary/40 px-2 py-1 rounded" data-testid="admin-blg-webhook-url">{st.webhook_url}</code>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copy} data-testid="admin-blg-copy-webhook">{copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}</Button>
+        </div>
+      </div>
+
+      <div className="surface p-4 rounded-md">
+        <p className="overline text-[10px] mb-2">Derniers articles</p>
+        {!st.recent?.length && <p className="text-sm text-muted-foreground">Aucun article encore synchronisé.</p>}
+        <ul className="divide-y divide-border/50">
+          {(st.recent || []).map((a) => (
+            <li key={a.slug} className="flex items-center gap-3 py-2 text-sm" data-testid={`admin-blg-article-${a.slug}`}>
+              {a.hero_image_url && <img src={a.hero_image_url} alt="" className="h-10 w-16 object-cover rounded-sm shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{a.title}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{a.seed_keyword} · {a.published_at ? new Date(a.published_at).toLocaleDateString("fr-FR") : ""}</p>
+              </div>
+              <Badge variant="outline" className="rounded-sm text-[10px] uppercase">{a.language_code}</Badge>
+              <a href={`/blog/${a.slug}`} target="_blank" rel="noreferrer" className="text-primary" data-testid={`admin-blg-open-${a.slug}`}><ExternalLink className="h-4 w-4" /></a>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => del(a.slug)} data-testid={`admin-blg-delete-${a.slug}`}><Trash2 className="h-4 w-4" /></Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}

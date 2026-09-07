@@ -171,11 +171,14 @@ async def get_autoseo_article(slug: str):
 
 
 @router.get("/blog/media/{article_id}/{kind}")
-async def autoseo_media(article_id: int, kind: str):
+async def autoseo_media(article_id: str, kind: str):
     if kind not in ("hero", "infographic"):
         raise HTTPException(status_code=404, detail="Unknown media kind")
     field = "hero_image_storage" if kind == "hero" else "infographic_image_storage"
-    doc = await db.autoseo_articles.find_one({"autoseo_id": article_id}, {"_id": 0, field: 1})
+    ids: list = [article_id]
+    if article_id.isdigit():
+        ids.append(int(article_id))
+    doc = await db.autoseo_articles.find_one({"autoseo_id": {"$in": ids}}, {"_id": 0, field: 1})
     path = doc and doc.get(field)
     if not path:
         raise HTTPException(status_code=404, detail="Media not found")

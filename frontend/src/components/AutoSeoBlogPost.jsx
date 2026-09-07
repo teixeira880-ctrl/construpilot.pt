@@ -32,12 +32,13 @@ export default function AutoSeoBlogPost({ slug }) {
   const a = state.article;
   const published = a.published_at || a.created_at;
 
+  const heroAbs = a.hero_image_url?.startsWith("/") ? `https://construpilot.fr${a.hero_image_url}` : a.hero_image_url;
   const jsonLd = [{
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     "headline": a.title,
     "description": a.meta_description,
-    "image": a.hero_image_url || undefined,
+    "image": heroAbs || undefined,
     "datePublished": a.published_at,
     "dateModified": a.updated_at || a.published_at,
     "inLanguage": a.language_code,
@@ -80,7 +81,7 @@ export default function AutoSeoBlogPost({ slug }) {
         description={a.meta_description}
         keywords={a.meta_keywords || (Array.isArray(a.keywords) ? a.keywords.join(", ") : "")}
         canonical={`/blog/${a.slug}`}
-        image={a.hero_image_url}
+        image={heroAbs}
         type="article"
         jsonLd={jsonLd}
       />
