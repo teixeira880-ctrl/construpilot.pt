@@ -863,13 +863,19 @@ export default function PlanTakeoff() {
   };
 
   // Vague C — Génération devis pièce (calculators.py)
-  const generateRoomEstimate = async (roomId) => {
+  const generateRoomEstimate = async (roomId, opts = {}) => {
     if (!plan?.plan_id) return;
     setEstimateLoading(true);
     try {
+      const payload = {};
+      if (opts.includeMasonry) {
+        payload.trades = ["paint", "floor_tile", "drywall", "insulation", "plinths", "masonry"];
+        payload.masonry_material = opts.masonryMaterial || "parpaing";
+        payload.masonry_bond = opts.masonryBond || null;
+      }
       const { data } = await api.post(
         `/takeoffs/${plan.plan_id}/rooms/${roomId}/estimate`,
-        {}
+        payload
       );
       setRoomEstimate(data);
       toast.success(`Devis pièce généré : ${data.total_budget?.toFixed(2)} €`);
@@ -3148,6 +3154,11 @@ export default function PlanTakeoff() {
             open={roomEstimate !== null}
             estimate={roomEstimate}
             planId={plan?.plan_id}
+            busy={estimateLoading}
+            onRecompute={(opts) => {
+              const rid = roomEstimate?.room?.room_id;
+              if (rid) generateRoomEstimate(rid, opts);
+            }}
             onClose={() => setRoomEstimate(null)}
             onAddToQuote={(est) => {
               // Injecte tous les matériaux des métiers dans le batch PriceSearch

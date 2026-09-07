@@ -266,6 +266,10 @@ async def materials_list(body: MaterialsIn) -> dict:
         elif key == "parquet":
             items.append({"name": "Parquet stratifié", "quantity": round(qty * 1.07, 2), "unit": "m²",
                           "search": "parquet stratifie clipsable"})
+        elif key in ("maconnerie", "parpaing", "brique", "mur_parpaing", "mur_brique"):
+            material = "brique" if "brique" in key else lot.get("material", "parpaing")
+            bond = lot.get("bond")  # parpaing: mortier | brique: colle|mousse
+            items += calculators.masonry(qty, material=material, bond=bond)["materials"]
         elif key == "menuiseries":
             items.append({"name": "Fenêtre PVC double vitrage", "quantity": round(qty), "unit": "u",
                           "search": "fenetre pvc double vitrage"})

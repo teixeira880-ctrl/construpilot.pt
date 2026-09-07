@@ -2102,6 +2102,8 @@ class RoomEstimateIn(BaseModel):
     override_height_m: float | None = None
     doors: int = 1
     windows: int = 1
+    masonry_material: str = "parpaing"   # "parpaing" | "brique"
+    masonry_bond: str | None = None      # parpaing: "mortier" | brique: "colle" | "mousse"
 
 
 def _room_dimensions_for_estimator(room: dict, override_height: float | None) -> tuple[float, float, float]:
@@ -2181,6 +2183,13 @@ async def estimate_room(plan_id: str, room_id: str, body: RoomEstimateIn,
     if "insulation" in trades:
         r = C.insulation(area=surface, material="laine_de_verre", thickness_mm=100)
         out["trades"]["insulation"] = r
+        out["total_budget"] += r.get("estimated_budget") or 0
+
+    if "masonry" in trades:
+        # Murs porteurs/cloisons maçonnées : surface = périmètre × hauteur, hors ouvertures
+        wall_area = max(0.0, perimeter * height - body.doors * 2.0 - body.windows * 1.5)
+        r = C.masonry(area=wall_area, material=body.masonry_material, bond=body.masonry_bond)
+        out["trades"]["masonry"] = r
         out["total_budget"] += r.get("estimated_budget") or 0
 
     if "plinths" in trades:

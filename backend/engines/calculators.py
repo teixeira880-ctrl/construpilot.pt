@@ -75,6 +75,74 @@ def paint(*args, **kwargs) -> dict:
     }
 
 
+# =============== MASONRY (parpaing / brique) ===============
+
+@dataclass
+class MasonryParams:
+    area: float                        # surface de mur (m²)
+    material: str = "parpaing"         # "parpaing" | "brique"
+    bond: str | None = None            # parpaing: "mortier" | brique: "colle" | "mousse"
+    blocks_per_m2: float = 10.0        # bloc/brique 20x20x50 ≈ 10/m²
+    loss_pct: float = 5.0
+    # Ratios liants (par m² de mur)
+    cement_kg_per_m2: float = 7.0      # ciment (mortier traditionnel)
+    sand_m3_per_m2: float = 0.03       # sable (mortier traditionnel)
+    glue_kg_per_m2: float = 5.0        # mortier-colle joint mince (brique)
+    foam_m2_per_can: float = 8.0       # 1 mousse PU couvre ~8 m²
+
+
+def masonry(*args, **kwargs) -> dict:
+    """Mur en parpaing ou brique + liants (sable/ciment, mortier-colle ou mousse PU)."""
+    p = args[0] if args and isinstance(args[0], MasonryParams) else MasonryParams(*args, **kwargs)
+    area = max(0.0, float(p.area))
+    is_brique = (p.material or "").lower().startswith("briq")
+    bond = (p.bond or ("colle" if is_brique else "mortier")).lower()
+    net_blocks = _ceil(area * p.blocks_per_m2 * (1 + p.loss_pct / 100))
+
+    block_name = "Brique" if is_brique else "Parpaing creux 20x20x50"
+    block_search = "brique de mur" if is_brique else "parpaing creux 20x20x50"
+    block_price = 0.85 if is_brique else 1.20
+    results = [
+        {"label": "Surface de mur", "value": round(area, 2), "unit": "m²"},
+        {"label": block_name + "s", "value": net_blocks, "unit": "u"},
+    ]
+    materials = [
+        {"name": block_name, "quantity": net_blocks, "unit": "u", "search": block_search},
+    ]
+    budget = net_blocks * block_price
+
+    if bond == "mousse":
+        cans = _ceil(area / p.foam_m2_per_can)
+        results.append({"label": "Mousse PU de collage", "value": cans, "unit": "cartouche"})
+        materials.append({"name": "Mousse polyuréthane de collage", "quantity": cans,
+                          "unit": "cartouche", "search": "mousse pu collage blocs briques"})
+        budget += cans * 7.0
+    elif bond == "colle":
+        glue_bags = _ceil((area * p.glue_kg_per_m2) / 25)
+        results.append({"label": "Mortier-colle (joint mince)", "value": glue_bags, "unit": "sac 25 kg"})
+        materials.append({"name": "Mortier-colle joint mince 25 kg", "quantity": glue_bags,
+                          "unit": "sac", "search": "mortier colle joint mince maconnerie 25kg"})
+        budget += glue_bags * 15.0
+    else:  # mortier traditionnel : sable + ciment
+        cement_bags = _ceil((area * p.cement_kg_per_m2) / 35)
+        sand_m3 = round(area * p.sand_m3_per_m2, 2)
+        results.append({"label": "Ciment", "value": cement_bags, "unit": "sac 35 kg"})
+        results.append({"label": "Sable", "value": sand_m3, "unit": "m³"})
+        materials.append({"name": "Ciment 35 kg", "quantity": cement_bags, "unit": "sac",
+                          "search": "ciment 35 kg"})
+        materials.append({"name": "Sable (mortier)", "quantity": sand_m3, "unit": "m³",
+                          "search": "sable a maconner big bag"})
+        budget += cement_bags * 6.0 + sand_m3 * 40.0
+
+    return {
+        "inputs": {"area": area, "material": "brique" if is_brique else "parpaing",
+                   "bond": bond, "blocks_per_m2": p.blocks_per_m2, "loss_pct": p.loss_pct},
+        "results": results,
+        "materials": materials,
+        "estimated_budget": round(budget, 2),
+    }
+
+
 # =============== TILE ===============
 
 @dataclass
@@ -125,6 +193,11 @@ def tile(*args, **kwargs) -> dict:
              "search": f"croisillon carrelage {int(p.joint)}mm"},
             {"name": "Primaire d'accrochage", "quantity": _ceil(p.area / 30),
              "unit": "bidon", "search": "primaire accrochage carrelage"},
+            {"name": "Natte de désolidarisation", "quantity": round(net_area, 2),
+             "unit": "m²", "search": "natte desolidarisation carrelage"},
+            {"name": "Baguettes de finition (profilés)",
+             "quantity": _ceil((p.area ** 0.5) * 2 / 2.5), "unit": "u",
+             "search": "baguette finition carrelage 2.5m"},
         ],
         "estimated_budget": round(net_area * p.price_per_sqm + glue_bags * 14
                                    + joint_bags * 12, 2),

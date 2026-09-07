@@ -1,0 +1,30 @@
+{
+  "summary": "Feature 'Liants maçonnerie' (parpaing/brique + accessoires carrelage) validée E2E backend + frontend. Backend pytest 7/7 PASS (/app/backend/tests/test_iter125_masonry_binders.py): (A) POST /api/estimation/materials avec lots parpaing 30m² -> items incluent 'Parpaing creux 20x20x50', 'Ciment 35 kg', 'Sable (mortier)'. (B) brique 15m² bond=mousse -> 'Brique' + 'Mousse polyuréthane de collage' (cartouches). (C) brique bond=colle -> 'Mortier-colle joint mince 25 kg'. (D) carrelage 25m² -> 'Natte de désolidarisation' + 'Baguettes de finition (profilés)' présents. (E) POST /api/takeoffs/plan_6017c355084d/rooms/room_1bbae916/estimate avec trades=['floor_tile','masonry'] & masonry_material='parpaing' -> trades.masonry.materials contient parpaing/ciment/sable. (F) masonry_material='brique' masonry_bond='mousse' -> materials contient brique + mousse. (G) trades=['floor_tile'] (défaut) -> floor_tile.materials contient natte + baguettes. Frontend Playwright (demo@construpilot.fr / Demo2026!): /plan?open=plan_6017c355084d -> ObjectPanel montre room_1bbae916 (Salon 4x3x2.5m). Clic sur bouton 'estimer la pièce' (object-row-room-room_1bbae916-extra) -> RoomEstimateDialog s'ouvre avec bloc 'masonry-control' en haut. Défaut (sans masonry) total 1108.37€, blocs Peinture+Carrelage+Cloisons+... visibles; le bloc Carrelage montre bien 'Natte de désolidarisation 12.96 m²' + 'Baguettes de finition (profilés) 3 u'. Sélection material=parpaing puis clic 'Inclure la maçonnerie' -> bloc estimate-trade-masonry apparaît avec Parpaing 331u / Ciment 7 sacs 35kg / Sable 0.94 m³ (476.80€, total mis à jour). Puis material=brique -> select 'masonry-bond' apparaît avec options Mortier-colle / Mousse polyuréthane; sélection 'mousse' + 'Recalculer la maçonnerie' -> Maçonnerie 309.35€, matériaux 'Brique 331u' + 'Mousse polyuréthane de collage 4 cartouche', total 1417.72€. Toutes assertions PASS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "RoomEstimateDialog", "issues": ["Après inclusion masonry, le bloc estimate-trade-masonry apparaît en fin de liste (après Carrelage/Cloisons) — l'utilisateur peut ne pas le voir sans scroller. Le total se met bien à jour mais un feedback visuel (scroll-to-block ou toast) serait bénéfique. Non bloquant."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter125_masonry_binders.py",
+    "/app/test_reports/pytest/iter125_masonry.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "engines/calculators.py masonry(): les constantes cement_kg_per_m2/sand_m3_per_m2/glue_kg_per_m2/foam_can_per_m2 sont hardcodées comme dataclass defaults — envisager de les rendre configurables via config catalog (settings admin) pour ajuster selon fournisseur.",
+    "routes/estimation_routes.py L269: la clé 'maconnerie' générique force material='parpaing' via lot.get('material','parpaing'); documenter dans l'API que 'maconnerie' est un alias parpaing par défaut (ou fail-fast si material non spécifié).",
+    "RoomEstimateDialog: state initial du bond en brique = 'colle' mais l'utilisateur voit 'colle' pré-sélectionné sans savoir que c'est mortier-colle joint mince; ok grâce au libellé option mais penser à ajouter tooltip.",
+    "PlanTakeoff.jsx > 3100 lignes — dépasse fortement la limite recommandée 700; refactor déjà noté itérations précédentes toujours pending."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter125_masonry_binders.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "demo@construpilot.fr / Demo2026! (utilisé); pro@construpilot.fr / Pro2026! (non utilisé)",
+  "seed_data_creation": "Aucune donnée créée. Devis pièce généré côté demo pour room_1bbae916 (Salon 12 m² sol, périmètre 14 m) — appels /estimate uniquement, pas de persistence, pas de cleanup nécessaire.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Feature liants maçonnerie OK backend+UI. Fichier réutilisable: /app/backend/tests/test_iter125_masonry_binders.py. Sur le plan demo plan_6017c355084d room_1bbae916 (Salon), la maçonnerie parpaing coûte ~476.80€ (31.5 m² mur) et brique+mousse ~309.35€. Les accessoires carrelage (natte+baguettes) sont maintenant inclus par défaut dans tile() — présent aussi dans /materials?lots=carrelage sans opt-in. Bond par défaut: parpaing='mortier', brique='colle' (côté backend calculators.py) ; côté frontend RoomEstimateDialog initialise bond='colle' si brique.",
+  "rca of the issue": "N/A — no bugs identified."
+}

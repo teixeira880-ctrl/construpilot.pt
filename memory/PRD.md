@@ -10,6 +10,14 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 07/09/2026 — Liants de maçonnerie (parpaing/brique) + accessoires carrelage** [testé testing_agent iteration_125 : backend 100% / frontend 100%] :
+> - **Nouveau calculateur `engines/calculators.py::masonry(area, material, bond)`** : Parpaing (bloc 20×20×50 ~10/m² +5% pertes) au **mortier traditionnel** → Ciment ~7 kg/m² (sacs 35 kg) + Sable ~0,03 m³/m². Brique au choix : **mortier-colle joint mince** ~5 kg/m² (sacs 25 kg) **ou mousse PU** ~1 cartouche/8 m².
+> - **Carrelage complété** : `tile()` ajoute désormais **natte de désolidarisation** (m²) + **baguettes de finition (profilés)** (en plus de colle/joint/croisillons/primaire déjà présents).
+> - **Branchements** : (1) Panier d'achats `POST /api/estimation/materials` → keys `parpaing|brique|maconnerie|mur_parpaing|mur_brique` (bond via `lot.bond`). (2) Estimation par pièce `POST /api/takeoffs/{plan}/rooms/{room}/estimate` → trade `masonry` (`RoomEstimateIn.masonry_material/masonry_bond`, wall_area = périmètre×hauteur − ouvertures).
+> - **UI** : `RoomEstimateDialog.jsx` — bloc « Maçonnerie » (`masonry-control`) avec select matériau (parpaing/brique) + liant (colle/mousse si brique) + bouton « Inclure/Recalculer la maçonnerie » ; le métier `estimate-trade-masonry` s'affiche (icône Blocks) avec scroll auto. `PlanTakeoff.generateRoomEstimate(roomId, opts)` envoie les trades + params.
+> - Ratios en dur (dataclass `MasonryParams`) — backlog P2 : rendre configurables via catalogue admin.
+>
+
 > **Session 06/09/2026 (suite 2) — Radar : Assistant IA + Admin SITADEL + Rate-limit partagé** [testé testing_agent iteration_124 : backend 100% / frontend 100%] :
 > - **Assistant IA de rédaction** : `POST /radar/opportunities/{id}/prospection/ai` (body `{tone, length}`, validés par `Literal`) → génère le corps du courrier via **Claude `claude-sonnet-4-6`** (réutilise `engines.ai._complete`, clé Emergent), `asyncio.wait_for(timeout=30)` → 504 si trop long. UI dans le drawer `/radar` : selects `radar-ai-tone` (formel/chaleureux/direct/commercial) + `radar-ai-length` (court/moyen/long) + bouton `radar-ai-write` → remplit le `Textarea`. Texte débute par « Bonjour, », sans en-tête/signature (ajoutés par le PDF).
 > - **Écran admin SITADEL** : nouvel onglet `/admin` → « Radar / SITADEL » (`components/admin/RadarSitadelPanel.jsx`) : statut source (db vs mock), upload CSV en 1 clic (`admin-radar-import`), case « remplacer », bouton « Vider (repasser en démo) ». S'appuie sur les endpoints admin existants.
