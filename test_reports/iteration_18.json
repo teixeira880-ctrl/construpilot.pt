@@ -1,0 +1,36 @@
+{
+  "summary": "Frontend-only regression of the 2 production bugs (SEO tab title FR->PT and Nav overflow/PT translation). Bug 1 (title) is FULLY FIXED. Bug 2 is PARTIALLY fixed: all labels are PT-PT (no FR strings visible in nav), padding/gap classes are applied correctly, and Descobrir button visibility follows Tailwind xl breakpoint. Two follow-up issues found: (a) i18n runtime translations do not match the fallback labels declared in Nav.jsx (spec expected labels differ from what user sees), (b) nav still visually truncates in the 1366-1440 viewport band.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Nav (Descobrir pill)", "issue": "In viewports 1366px and 1440px, the 'Descobrir' pill is truncated to 'Descobri' / 'D' respectively because the nav uses overflow-hidden and lacks horizontal space between logo and account cluster. Visible only fully at >=1500px or hidden at <1280px. The original bug 'Descol' truncation persists in mid-range widths.", "selector": "[data-testid=\"nav-more-btn\"]", "priority": "MEDIUM"},
+      {"component": "Nav (Espaço pro / Descobrir dropdown items)", "issue": "i18n runtime labels (loaded via t(l.key, l.label)) diverge from the PT-PT fallback labels described in the bugfix spec. Rendered vs expected: 'Espaço empresa' vs 'Espaço Empresa'; 'Acompanhar orçamentos' vs 'Orçamentos'; 'Estudos de licença' vs 'Estudos LNEC'; 'RH — Obra' vs 'RH — Registo de horas'; 'Medir' vs 'Medir 2D'; 'Análise de foto' vs 'Análise por foto'; 'Encontrar um profissional' vs 'Encontrar profissional'; 'API e Programadores' vs 'API & Programadores'; 'Preços de materiais' vs 'Preços'. All rendered strings are PT-PT (no FR), but they differ from the code-declared fallback labels. Root cause: i18n JSON (pt-PT) overrides Nav.jsx fallback strings. If the spec labels are the source of truth, update the pt-PT i18n JSON.", "selector": "[data-testid=\"nav-pro-menu\"], [data-testid=\"nav-more-menu\"]", "priority": "MEDIUM"},
+      {"component": "Dashboard onboarding tour", "issue": "OnboardingTour modal on /dashboard contains full French copy: 'Prise en main — 0/3', 'Estimez vos travaux', 'Décrivez un projet et obtenez une estimation détaillée en 30 s', 'Mesurez un plan', 'Créez un devis', 'Transformez votre estimation en devis prêt à envoyer'. Not in scope of the current bugfix but visible to any PT user hitting /dashboard for the first time. Also the modal has z-[100] and intercepts pointer events, blocking nav clicks (Playwright had to remove it).", "selector": "[data-testid=\"onboarding-overlay\"]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Header (auth, viewport 1280)", "issues": ["Nav fits cleanly with all pills + Espaço pro + Descobrir + Admin/theme/notif/logout. gap-2 + px-2.5 applied correctly."]},
+      {"screen": "Header (auth, viewport 1366-1440)", "issues": ["Descobrir label truncates (shows 'Descobri' / 'D'). overflow-hidden on <nav> hides the excess. Recommend either raising the xl breakpoint, shortening 'Descobrir' to an icon-only button in this range, or bumping max-w-[1500px] container down when Descobrir visible."]},
+      {"screen": "Header (auth, viewport 1920)", "issues": ["Clean, all labels visible."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Decide source of truth for PT-PT nav labels: either update /app/frontend/src/i18n/*.json (pt-PT) to match the fallback labels declared in Nav.jsx (per bugfix spec) OR update Nav.jsx spec/tests to the current i18n strings. Currently mismatched but both are PT.",
+    "Fix nav truncation at 1366-1440 (Descobrir pill clipped to 'D'). Options: (a) change 'hidden xl:inline-flex' to 'hidden 2xl:inline-flex' (2xl=1536) so mid range shows only Espaço pro; (b) show icon-only in mid range; (c) shrink logo/account cluster.",
+    "Translate the OnboardingTour component (currently 100% French) to PT-PT. It appears over /dashboard on first login and intercepts pointer events."
+  ],
+  "critical_code_review_comments": [
+    "Nav.jsx uses t(l.key, l.label) — fallback labels only apply when the i18n key is missing. So changing labels in Nav.jsx has no effect on users whose i18n key exists. The real fix for Bug 2's PT translation belongs in the pt-PT i18n resource file.",
+    "OnboardingTour modal (z-[100], data-testid onboarding-overlay) blocks all header interactions until dismissed. Consider adding a skip flag in localStorage after first dismissal and ensure it does not overlap the sticky header.",
+    "Header container is overflow-hidden which silently truncates instead of collapsing to icon-only in mid viewports — should have graceful degradation."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "70%"},
+  "test_credentials": "info@construpilot.pt / Ruquinha2020. (admin PT)",
+  "seed_data_creation": "none",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Bug 1 (tab title PT) — CONFIRMED fixed both in HTML SSR and runtime Helmet. Bug 2 partially fixed: labels are PT, gap-2 + px-2.5 applied, xl:inline-flex works (hidden at <=1279, visible at >=1280). Remaining: (1) i18n pt-PT resource overrides Nav.jsx fallbacks so several spec labels do not match rendered strings (still PT, just different wording); (2) Descobrir pill truncates in 1366-1440 range; (3) OnboardingTour is entirely FR and blocks header (out of stated scope but bleeds into UX). To reproduce nav truncation quickly: login as admin, set viewport 1440x900, /dashboard, look at 'Descobrir' pill — shows 'D'.",
+  "rca of the issue": "Bug 2 residual: header uses overflow-hidden with max-w-[1500px] and 'hidden xl:inline-flex' on Descobrir. Tailwind xl=1280. Between 1280-1499 the nav width is not enough for all pills + Espaço pro + Descobrir + right-side account cluster, so overflow-hidden clips 'Descobrir' text. Bug 2 (label translation): Nav.jsx uses t(key, fallbackLabel) — the pt-PT i18n JSON provides its own translations that override the new PT fallbacks written into Nav.jsx L19-62, so users see i18n values (e.g., 'Espaço empresa', 'Medir', 'API e Programadores') and not the fallback values ('Espaço Empresa', 'Medir 2D', 'API & Programadores')."
+}

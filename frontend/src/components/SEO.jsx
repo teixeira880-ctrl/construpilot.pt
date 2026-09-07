@@ -18,11 +18,11 @@ export function SEO({
   noindex = false,
   jsonLd,
 }) {
-  const base = "https://construpilot.fr";
+  const base = "https://construpilot.pt";
   const url = canonical ? `${base}${canonical}` : base;
   const fullTitle = title
     ? `${title} · ConstruPilot`
-    : "ConstruPilot — Devis Travaux IA, Estimation Rénovation & Comparateur Prix";
+    : "ConstruPilot — Orçamentos de Obras com IA | Portugal";
   const ogImg = image || `${base}/og-cover.jpg`;
 
   return (

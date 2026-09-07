@@ -18,45 +18,45 @@ import { usePermissions } from "@/context/PermissionContext";
 // Nav v2 — menus groupés + relief (fin du débordement header)
 const NAV_MAIN = [
   { to: "/dashboard", label: "Painel", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
-  { to: "/devis-editeur", label: "Novo devis", key: "nav.newquote", icon: FileText, auth: true, pro: true },
-  { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
-  { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
-  { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
-  { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
+  { to: "/devis-editeur", label: "Novo orçamento", key: "nav.newquote", icon: FileText, auth: true, pro: true },
+  { to: "/estimation", label: "Estimador", key: "nav.estimator", icon: Hammer },
+  { to: "/calculateurs", label: "Calculadoras", key: "nav.calculators", icon: Calculator },
+  { to: "/prix", label: "Preços", key: "nav.prices", icon: Search },
+  { to: "/blog", label: "Blogue", key: "nav.blog", icon: FileSearch },
 ];
 
 const NAV_PRO = [
   { to: "/entreprise", label: "Espaço Empresa", key: "nav.company", icon: Building2, perm: "entreprise" },
-  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, perm: "devis" },
+  { to: "/devis", label: "Orçamentos", key: "nav.tracking", icon: LineChart, perm: "devis" },
   { to: "/factures", label: "Faturas", key: "nav.invoices", icon: FileText, perm: "factures" },
-  { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations" },
-  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
-  { to: "/rendu-ia", label: "Render IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
-  { to: "/appro", label: "Análise technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Novo" },
-  { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
+  { to: "/situations", label: "Autos de medição", key: "nav.situations", icon: Layers, perm: "situations" },
+  { to: "/suivi-chantier", label: "Acompanhamento de obra", key: "nav.site", icon: HardHat, perm: "chantier" },
+  { to: "/rendu-ia", label: "Render IA (antes/depois)", key: "nav.render", icon: Wand2, auth: true, pro: true },
+  { to: "/appro", label: "Análise técnica & Aprovisionamento IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Novo" },
+  { to: "/rh", label: "RH — Registo de horas", key: "hr.nav", icon: Users, perm: "rh" },
   { to: "/clients", label: "Clientes", key: "nav.clients", icon: Contact },
-  { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox },
-  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
-  { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
+  { to: "/mes-demandes", label: "Os meus pedidos", key: "nav.myleads", icon: Inbox },
+  { to: "/mon-catalogue", label: "Catálogo de preços", key: "nav.catalog", icon: Tag, perm: "catalogue" },
+  { to: "/bibliotheque", label: "Biblioteca", key: "nav.library", icon: Library },
   { to: "/equipe", label: "Equipa", key: "nav.team", icon: Users },
-  { to: "/etudes-pc", label: "Estudos PC", key: "nav.studies", icon: FileSearch, hint: "Permis de construire" },
+  { to: "/etudes-pc", label: "Estudos LNEC", key: "nav.studies", icon: FileSearch, hint: "Licenciamento de obra" },
 ];
 
 const NAV_DISCOVER = [
-  { to: "/fonctionnalites", label: "Fonctionnalités", key: "nav.features", icon: Sparkles },
+  { to: "/fonctionnalites", label: "Funcionalidades", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
-  { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
-  { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
-  { to: "/photo", label: "Análise photo", key: "nav.photo", icon: Camera },
-  { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
-  { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
-  { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
-  { to: "/marketplace", label: "Trouver un pro", key: "nav.marketplace", icon: Wrench },
-  { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch },
+  { to: "/plan", label: "Medir 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
+  { to: "/mesure-photo", label: "Medir por foto", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
+  { to: "/photo", label: "Análise por foto", key: "nav.photo", icon: Camera },
+  { to: "/scanner-devis", label: "Scanner de orçamentos", key: "nav.scanner", icon: FileSearch },
+  { to: "/diy", label: "Faço eu mesmo", key: "nav.diy", icon: Wrench },
+  { to: "/comparatif", label: "Comparativo", key: "nav.compare", icon: Tag },
+  { to: "/marketplace", label: "Encontrar profissional", key: "nav.marketplace", icon: Wrench },
+  { to: "/docs", label: "API & Programadores", key: "nav.docs", icon: FileSearch },
 ];
 
 const ACCOUNT_LINKS = [
-  { to: "/tarifs", label: "Tarifs & abonnement", key: "nav.pricing", icon: Sparkles },
+  { to: "/tarifs", label: "Preços & subscrição", key: "nav.pricing", icon: Sparkles },
   { to: "/investisseurs", label: "Investidores", key: "nav.investors", icon: Handshake },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
@@ -82,7 +82,7 @@ export const Nav = () => {
   };
 
   const pill = (active) =>
-    `px-3 py-2 rounded-lg text-sm inline-flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 ${
+    `px-2.5 py-2 rounded-lg text-sm inline-flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 ${
       active
         ? "bg-primary text-primary-foreground shadow-md shadow-primary/30 font-semibold"
         : "text-muted-foreground hover:text-primary hover:bg-secondary/70 hover:-translate-y-0.5"}`;
@@ -93,7 +93,7 @@ export const Nav = () => {
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
-      <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-4">
+      <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-2">
         <Link to="/" className="flex items-center gap-2 shrink-0 group" data-testid="nav-logo">
           <img src="/construpilot-icon.png" alt="ConstruPilot" className="h-9 w-9 rounded-xl object-cover shadow-md shadow-primary/30 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-3" />
           <span className="font-display font-extrabold tracking-tight text-lg">
@@ -132,8 +132,8 @@ export const Nav = () => {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button data-testid="nav-more-btn" className={pill(groupActive(NAV_DISCOVER))}>
-                <Sparkles className="h-4 w-4" /> {t("nav.discover", "Découvrir")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              <button data-testid="nav-more-btn" className={`${pill(groupActive(NAV_DISCOVER))} hidden 2xl:inline-flex`}>
+                <Sparkles className="h-4 w-4" /> {t("nav.discover", "Descobrir")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-more-menu">
