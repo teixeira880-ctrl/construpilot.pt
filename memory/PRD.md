@@ -10,6 +10,13 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 08/09/2026 (quater) — OCR CCTP, marge cible, boutons admin upsell, relance J+10 promo** [vérifiés curl + screenshots e2e] :
+> - **OCR CCTP scannés** : `ai.ocr_pages_to_text(images)` (vision, lots de 4 pages) ; `POST /documents/cctp/extract` bascule en OCR si < 200 caractères de texte (`_pdf_render_images` 16 pages max), réponse `ocr: true`. Testé sur un PDF image-only : 3 ouvrages extraits avec quantités.
+> - **Marge cible** : `users.target_margin_pct` (PrefsIn + `_public()`), UI `editor-target-margin` dans QuoteEditor : saisie du coût → PU = coût / (1 − m) si la ligne n'a pas de prix ; bouton « Appliquer aux lignes sans prix » ; persistée via `PUT /users/me/preferences`.
+> - **Admin → Campagnes e-mail** : bloc `admin-upsell-panel` (aperçu Pro / Particulier J+3 et J+10, « Envoyer maintenant » J+3 / J+10) → `POST /admin/campaigns/upsell/preview?audience=&step=` et `/run?step=j3|j10`.
+> - **Relance J+10** : `engines/upsell.py::run_upsell_j10_emails` (cron 10:20 UTC) — comptes gratuits ayant reçu le J+3, pas de plan payant, 1 seul envoi (`upsell_j10_sent_at`). Code promo Stripe hebdo `RELANCE20-<yymmdd>` (coupon `construpilot_relance_20` −20 % × 3 mois, PromotionCode `promotion={type:coupon}` — le param `coupon` seul est refusé par l'API 2026, `expires_at` +7 j, `first_time_transaction`), mis en cache dans `app_settings.upsell_promo`. Email avec code + lien `/tarifs?promo=CODE` → bannière `pricing-promo-banner` (Checkout a `allow_promotion_codes`).
+
+
 > **Session 08/09/2026 (ter) — Tarifs Pro 149/249 + email d'incitation automatique** : catalogue `monetization_catalog.py` + migration `server.py::seed` → Pro 149 €/mois (1 570 €/an), Pro Business 249 €/mois (2 490 €/an) ; Stripe resynchronisé (anciens Prices archivés). `/metre` affiche 149 € (Business 249 €). **Upsell J+3** : `engines/upsell.py::run_upsell_emails` (cron 10:00 UTC) — comptes gratuits créés depuis ≥ 3 j, pas de plan payant, opt-out respecté, 1 seul envoi (`users.upsell_email_sent_at`), template Pro (149 €) ou Premium (19 €) selon `account_type`, journalisé dans `email_campaigns` (type `auto_upsell_j3`). Admin : `POST /admin/campaigns/upsell/run` (déclenche), `POST /admin/campaigns/upsell/preview?audience=pro|particulier` (aperçu envoyé à l'admin — testé, 2 emails reçus sur teixeira8880@gmail.com). Backend : `target_margin_pct` ajouté à `PrefsIn` + `_public()` (UI marge cible encore à faire). Reste : OCR CCTP scannés, UI marge cible.
 
 

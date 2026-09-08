@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Loader2, Mail, Users, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { Loader2, Mail, Users, CheckCircle2, XCircle, RefreshCw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function CampaignsPanel() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -15,8 +17,59 @@ export default function CampaignsPanel() {
   };
   useEffect(() => { load(); }, []);
 
+  const preview = async (audience, step) => {
+    setBusy(`p-${audience}-${step}`);
+    try {
+      const { data } = await api.post(`/admin/campaigns/upsell/preview?audience=${audience}&step=${step}`);
+      toast.success(`Aperçu envoyé à ${data.to}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi de l'aperçu impossible"); }
+    finally { setBusy(""); }
+  };
+  const runNow = async (step) => {
+    if (!window.confirm(step === "j10" ? "Envoyer la relance J+10 (code promo) à tous les comptes gratuits éligibles maintenant ?" : "Envoyer l'email d'incitation J+3 à tous les comptes gratuits éligibles maintenant ?")) return;
+    setBusy(`r-${step}`);
+    try {
+      const { data } = await api.post(`/admin/campaigns/upsell/run?step=${step}`);
+      toast.success(`${data.sent} envoyé(s) · ${data.failed} échec(s) · ${data.candidates} éligible(s)${data.code ? ` · code ${data.code}` : ""}`);
+      load();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    finally { setBusy(""); }
+  };
+
+  const Btn = ({ id, onClick, children, variant = "outline" }) => (
+    <Button variant={variant} size="sm" className="rounded-sm gap-2" onClick={onClick} disabled={!!busy} data-testid={`admin-upsell-${id}`}>
+      {busy === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {children}
+    </Button>
+  );
+
   return (
     <div className="space-y-4" data-testid="admin-campaigns-panel">
+      <div className="surface rounded-md p-5 space-y-3" data-testid="admin-upsell-panel">
+        <div>
+          <h3 className="font-display font-bold text-lg">Emails d'incitation automatiques</h3>
+          <p className="text-sm text-muted-foreground">J+3 après inscription : Premium (19 €) pour les particuliers, Pro (149 €) pour les artisans — 10:00 UTC. J+10 : relance avec code promo -20 % pendant 3 mois, valable 7 jours — 10:20 UTC. Un seul envoi par compte, opt-out respecté.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4 text-xs">
+          <div className="space-y-2">
+            <p className="overline text-[10px]">J+3 — Incitation</p>
+            <div className="flex flex-wrap gap-2">
+              <Btn id="p-pro-j3" onClick={() => preview("pro", "j3")}>Aperçu email Pro</Btn>
+              <Btn id="p-particulier-j3" onClick={() => preview("particulier", "j3")}>Aperçu email Particulier</Btn>
+              <Btn id="r-j3" variant="default" onClick={() => runNow("j3")}>Envoyer maintenant</Btn>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="overline text-[10px]">J+10 — Relance code promo</p>
+            <div className="flex flex-wrap gap-2">
+              <Btn id="p-pro-j10" onClick={() => preview("pro", "j10")}>Aperçu Pro (promo)</Btn>
+              <Btn id="p-particulier-j10" onClick={() => preview("particulier", "j10")}>Aperçu Particulier (promo)</Btn>
+              <Btn id="r-j10" variant="default" onClick={() => runNow("j10")}>Envoyer maintenant</Btn>
+            </div>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Les aperçus sont envoyés à votre adresse admin. Les envois réels sont journalisés ci-dessous (types auto_upsell_j3 / auto_upsell_j10).</p>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-display font-bold text-lg">Historique des campagnes e-mail</h3>

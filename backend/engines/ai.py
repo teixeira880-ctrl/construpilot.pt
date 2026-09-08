@@ -1,4 +1,5 @@
 """Couche IA modulaire (GPT-5.5 via Emergent LLM key)."""
+import logging
 import os
 import json
 import uuid
@@ -449,6 +450,25 @@ async def suggest_line_description(designation: str, context: str = "") -> str:
         "sans prix ni quantité. Réponds en texte simple, UNE prestation par ligne, "
         "commençant par « - », sans titre ni introduction.")
     return await _complete(system, prompt, feature="quote_describe")
+
+
+async def ocr_pages_to_text(images: list[str], batch: int = 4) -> str:
+    """OCR de pages scannées (PNG base64) via le modèle vision → texte brut, dans l'ordre."""
+    system = (BRAND + " Tu es un moteur OCR spécialisé documents techniques du bâtiment (CCTP, DPGF, devis). "
+              "Tu transcris fidèlement le texte des pages, sans résumer ni interpréter.")
+    parts: list[str] = []
+    for i in range(0, len(images), batch):
+        chunk = images[i:i + batch]
+        prompt = (f"Transcris intégralement le texte de ces {len(chunk)} page(s) scannée(s), dans l'ordre. "
+                  "Conserve la numérotation des articles, les titres de lots, les quantités et unités, "
+                  "les marques et normes. Sépare chaque page par une ligne '--- page ---'. "
+                  "Réponds uniquement avec le texte transcrit.")
+        try:
+            parts.append((await _complete(system, prompt, images=chunk, feature="cctp_ocr")).strip())
+        except Exception as e:  # noqa: BLE001
+            logging.getLogger(__name__).warning(f"OCR batch {i} failed: {e}")
+    return "\n".join(parts).strip()
+
 
 
 async def cctp_lines_from_text(text: str, lot_filter: str = "") -> tuple[list[dict], str, list[dict]]:

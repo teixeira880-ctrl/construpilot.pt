@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send, X,
-  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, FileText, Eye, Layers, Paperclip,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, FileText, Eye, Layers, Paperclip, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -243,7 +243,31 @@ export default function QuoteEditor() {
     return [...s];
   }, [lines]);
 
-  const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
+  const [targetMargin, setTargetMargin] = useState(() => Number(user?.target_margin_pct) || 0);
+  const priceFromCost = (cost, m) => (m > 0 && m < 100 && cost > 0 ? Math.round((cost / (1 - m / 100)) * 100) / 100 : null);
+  const saveTargetMargin = async (v) => {
+    const m = Math.min(90, Math.max(0, Number(v) || 0));
+    setTargetMargin(m);
+    try { await api.put("/users/me/preferences", { target_margin_pct: m }); } catch { /* silencieux */ }
+  };
+  const applyTargetMargin = () => {
+    if (!targetMargin) { toast.error("Définissez d'abord une marge cible"); return; }
+    const n = lines.filter((l) => (Number(l.cost_price_ht) || 0) > 0 && !(Number(l.unit_price_ht) > 0)).length;
+    setLines((ls) => ls.map((l) => {
+      const c = Number(l.cost_price_ht) || 0;
+      return c > 0 && !(Number(l.unit_price_ht) > 0) ? { ...l, unit_price_ht: priceFromCost(c, targetMargin) } : l;
+    }));
+    toast.success(`${n} prix de vente calculé(s) avec ${targetMargin} % de marge`);
+  };
+  const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => {
+    if (idx !== i) return l;
+    const nl = { ...l, [k]: v };
+    if (k === "cost_price_ht" && targetMargin > 0 && !(Number(l.unit_price_ht) > 0)) {
+      const p = priceFromCost(Number(v) || 0, targetMargin);
+      if (p) nl.unit_price_ht = p;
+    }
+    return nl;
+  }));
   const setAllVat = (rate) => {
     setLines((ls) => ls.map((l) => ({ ...l, vat_rate: rate })));
     toast.success(t("crm.t_vat_applied").replace("{r}", rate));
@@ -1007,6 +1031,18 @@ export default function QuoteEditor() {
               <Plus className="h-3.5 w-3.5" /> {t("crm.add_line")}
             </Button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap rounded-sm border border-border/60 bg-secondary/30 px-3 py-2 text-xs" data-testid="editor-target-margin">
+          <TrendingUp className="h-3.5 w-3.5 text-primary" />
+          <span className="font-medium">Marge cible</span>
+          <Input type="number" min="0" max="90" step="1" value={targetMargin || ""} placeholder="ex. 30"
+                 onChange={(e) => setTargetMargin(Number(e.target.value) || 0)} onBlur={(e) => saveTargetMargin(e.target.value)}
+                 className="rounded-sm h-7 w-20 num text-right" data-testid="editor-target-margin-input" />
+          <span className="text-muted-foreground">% — le prix de vente se calcule automatiquement depuis le coût de revient quand une ligne n'a pas de prix.</span>
+          <Button size="sm" variant="ghost" className="h-7 rounded-sm gap-1 text-primary ml-auto" onClick={applyTargetMargin} data-testid="editor-apply-target-margin">
+            <TrendingUp className="h-3.5 w-3.5" /> Appliquer aux lignes sans prix
+          </Button>
         </div>
 
         {isPT && (

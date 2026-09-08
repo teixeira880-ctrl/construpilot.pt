@@ -1097,15 +1097,23 @@ async def cctp_extract(file: UploadFile = File(...), lot: str = "", user=Depends
     if len(raw) > 40 * 1024 * 1024:
         raise HTTPException(413, "PDF trop volumineux (40 Mo max)")
     text = await asyncio.to_thread(_pdf_extract_text_long, raw)
+    ocr_used = False
     if len(text) < 200:
-        raise HTTPException(422, "CCTP illisible : le PDF ne contient pas de texte exploitable "
-                                 "(scan sans OCR). Exportez-le en PDF texte ou utilisez la DPGF.")
+        from engines.ai import ocr_pages_to_text
+        images = await asyncio.to_thread(_pdf_render_images, raw, 16)
+        if not images:
+            raise HTTPException(422, "CCTP illisible : impossible de lire ou de rastériser ce PDF.")
+        text = await ocr_pages_to_text(images)
+        ocr_used = True
+        if len(text) < 200:
+            raise HTTPException(422, "CCTP illisible : l'OCR n'a pas pu extraire de texte exploitable "
+                                     "(scan trop flou ou trop clair). Réessayez avec un scan plus net.")
     lines, title, prescriptions = await cctp_lines_from_text(text, lot_filter=lot.strip())
     if not lines:
         raise HTTPException(422, "Aucun ouvrage identifié dans ce CCTP.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
     return {"title": title, "lines": lines, "priced_lines": priced,
-            "prescriptions": prescriptions, "chars": len(text),
+            "prescriptions": prescriptions, "chars": len(text), "ocr": ocr_used,
             "imposed_count": sum(1 for l in lines if l.get("imposed_materials"))}
 
 

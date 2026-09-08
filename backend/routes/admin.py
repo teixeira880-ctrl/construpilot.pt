@@ -300,22 +300,28 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
 
 
 @router.post("/campaigns/upsell/run")
-async def run_upsell_now(admin=Depends(admin_user)):
-    """Déclenche immédiatement l'email d'incitation J+3 (normalement 10:00 UTC chaque jour)."""
-    from engines.upsell import run_upsell_emails
-    return await run_upsell_emails()
+async def run_upsell_now(step: str = "j3", admin=Depends(admin_user)):
+    """Déclenche immédiatement l'email d'incitation J+3 ou la relance J+10 (cron 10:00 / 10:20 UTC)."""
+    from engines.upsell import run_upsell_emails, run_upsell_j10_emails
+    return await (run_upsell_j10_emails() if step == "j10" else run_upsell_emails())
 
 
 @router.post("/campaigns/upsell/preview")
-async def preview_upsell(audience: str = "pro", admin=Depends(admin_user)):
-    """Envoie l'email d'incitation (Pro ou Particulier) à l'admin connecté pour vérification."""
+async def preview_upsell(audience: str = "pro", step: str = "j3", admin=Depends(admin_user)):
+    """Envoie l'email d'incitation (Pro ou Particulier, J+3 ou J+10) à l'admin connecté pour vérification."""
     from engines.emailer import send_email, wrap_html
-    from engines.upsell import _template
+    from engines.upsell import _template, _template_j10, _weekly_promo_code
     from routes.emails import build_unsubscribe_url
     fake = {"name": admin.get("name") or "", "account_type": "pro" if audience == "pro" else "particulier",
             "role": "pro" if audience == "pro" else "user"}
-    subject, body, cta = _template(fake)
-    html = wrap_html(subject, body, cta_url=f"{os.getenv('FRONTEND_URL', '')}/tarifs", cta_label=cta,
+    if step == "j10":
+        code, exp = await _weekly_promo_code()
+        subject, body, cta = _template_j10(fake, code, exp)
+        cta_url = f"{os.getenv('FRONTEND_URL', '')}/tarifs?promo={code}"
+    else:
+        subject, body, cta = _template(fake)
+        cta_url = f"{os.getenv('FRONTEND_URL', '')}/tarifs"
+    html = wrap_html(subject, body, cta_url=cta_url, cta_label=cta,
                      unsubscribe_url=build_unsubscribe_url(admin["user_id"]))
     await send_email(admin["email"], f"[APERÇU] {subject}", html)
     return {"ok": True, "to": admin["email"], "subject": subject}

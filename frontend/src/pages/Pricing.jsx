@@ -102,6 +102,7 @@ export default function Pricing() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const promo = useMemo(() => new URLSearchParams(window.location.search).get("promo")?.trim().slice(0, 40) || "", []);
   const [plans, setPlans] = useState([]);
   const [flags, setFlags] = useState({});
   const [audience, setAudience] = useState("particulier");
@@ -146,6 +147,12 @@ export default function Pricing() {
       <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
         {t("pricing.subtitle")}
       </SectionTitle>
+      {promo && (
+        <div className="surface border-primary/40 rounded-md p-4 text-center max-w-xl mx-auto -mt-4" data-testid="pricing-promo-banner">
+          <p className="text-sm">Votre code promo <b className="num tracking-wider text-primary">{promo}</b> est prêt.</p>
+          <p className="text-xs text-muted-foreground mt-1">Saisissez-le dans le champ « Code promotionnel » au moment du paiement pour appliquer la réduction.</p>
+        </div>
+      )}
 
       <Tabs value={audience} onValueChange={setAudience}>
         <TabsList className="rounded-sm mx-auto">
