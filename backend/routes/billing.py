@@ -51,6 +51,14 @@ async def checkout(body: CheckoutIn, user=Depends(current_user)):
     try:
         result = await monetization.create_checkout(user, plan, body.origin_url, body.promo_code)
     except Exception as e:
+        if body.promo_code and "promotion code" in str(e).lower():
+            logger.warning(f"Promo {body.promo_code} non applicable ({str(e)[:120]}) — checkout sans remise")
+            try:
+                result = await monetization.create_checkout(user, plan, body.origin_url, None)
+                result["promo_rejected"] = True
+                return result
+            except Exception as e2:  # noqa: BLE001
+                e = e2
         logger.exception("Checkout error")
         raise HTTPException(status_code=502, detail=f"Stripe indisponible: {e}")
     return result

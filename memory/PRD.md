@@ -10,6 +10,13 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 08/09/2026 (quinquies) — Suivi conversion, promo auto, marge par lot, CCTP multi-lots** [vérifiés curl + e2e] :
+> - **Suivi conversion** : `engines/upsell.py::conversion_stats` → `GET /admin/campaigns/upsell/stats?weeks=` (par semaine ISO : J+3/J+10 envoyés, abonnements payants souscrits après l'envoi via `entitlements.granted_at`, taux). Tableau `admin-upsell-stats` dans Admin → Campagnes.
+> - **Promo auto-appliqué** : Pricing lit `?promo=` (persisté en sessionStorage) → `POST /billing/checkout {promo_code}` → `discounts=[{promotion_code}]` (déjà supporté par `_resolve_promo_discount`). Si Stripe refuse (client déjà abonné : `first_time_transaction`), `billing.checkout` relance sans remise et renvoie `promo_rejected: true` (toast info). Vérifié : nouveau client → discount appliqué.
+> - **Marge par lot** : `users.target_margins_by_lot {lot: %}` (PrefsIn + `_public`), UI « Par lot » dans la barre marge cible (`editor-lot-margins`, inputs `editor-lot-margin-input-<lot>`, ajout par Entrée) ; `marginFor(category)` priorise le lot puis la marge globale (saisie du lot ou du coût recalcule le PU si vide).
+> - **CCTP multi-lots** : si l'extraction renvoie > 1 lot, dialog `cctp-lots-dialog` (cases par lot avec nb de lignes, Tout/Aucun, `cctp-lots-confirm`) → import des lots cochés uniquement.
+
+
 > **Session 08/09/2026 (quater) — OCR CCTP, marge cible, boutons admin upsell, relance J+10 promo** [vérifiés curl + screenshots e2e] :
 > - **OCR CCTP scannés** : `ai.ocr_pages_to_text(images)` (vision, lots de 4 pages) ; `POST /documents/cctp/extract` bascule en OCR si < 200 caractères de texte (`_pdf_render_images` 16 pages max), réponse `ocr: true`. Testé sur un PDF image-only : 3 ouvrages extraits avec quantités.
 > - **Marge cible** : `users.target_margin_pct` (PrefsIn + `_public()`), UI `editor-target-margin` dans QuoteEditor : saisie du coût → PU = coût / (1 − m) si la ligne n'a pas de prix ; bouton « Appliquer aux lignes sans prix » ; persistée via `PUT /users/me/preferences`.

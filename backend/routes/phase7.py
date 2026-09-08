@@ -100,15 +100,20 @@ class PrefsIn(BaseModel):
     weekly_digest: bool | None = None
     push_price_alerts: bool | None = None
     target_margin_pct: float | None = Field(default=None, ge=0, le=90)
+    target_margins_by_lot: dict[str, float] | None = None
 
 
 @router.put("/users/me/preferences")
 async def update_prefs(body: PrefsIn, user=Depends(current_user)):
     upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "target_margins_by_lot" in upd:
+        upd["target_margins_by_lot"] = {str(k).strip()[:80]: min(90.0, max(0.0, float(v)))
+                                        for k, v in upd["target_margins_by_lot"].items() if str(k).strip()}
     if upd:
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
     fresh = await db.users.find_one({"user_id": user["user_id"]},
-                                    {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1, "target_margin_pct": 1})
+                                    {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1, "target_margin_pct": 1,
+                                     "target_margins_by_lot": 1})
     return fresh or {}
 
 

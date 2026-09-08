@@ -299,6 +299,12 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
     return {"ok": True, "sent": sent, "failed": len(emails) - sent, "total": len(emails)}
 
 
+@router.get("/campaigns/upsell/stats")
+async def upsell_stats(weeks: int = 12, admin=Depends(admin_user)):
+    from engines.upsell import conversion_stats
+    return await conversion_stats(weeks=min(52, max(1, weeks)))
+
+
 @router.post("/campaigns/upsell/run")
 async def run_upsell_now(step: str = "j3", admin=Depends(admin_user)):
     """Déclenche immédiatement l'email d'incitation J+3 ou la relance J+10 (cron 10:00 / 10:20 UTC)."""

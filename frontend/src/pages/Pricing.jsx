@@ -102,7 +102,11 @@ export default function Pricing() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
-  const promo = useMemo(() => new URLSearchParams(window.location.search).get("promo")?.trim().slice(0, 40) || "", []);
+  const promo = useMemo(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("promo")?.trim().slice(0, 40) || "";
+    if (fromUrl) sessionStorage.setItem("cp_promo", fromUrl);
+    return fromUrl || sessionStorage.getItem("cp_promo") || "";
+  }, []);
   const [plans, setPlans] = useState([]);
   const [flags, setFlags] = useState({});
   const [audience, setAudience] = useState("particulier");
@@ -128,7 +132,9 @@ export default function Pricing() {
       const { data } = await api.post("/billing/checkout", {
         plan_id: plan.plan_id,
         origin_url: window.location.origin,
+        promo_code: promo || undefined,
       });
+      if (data.promo_rejected) toast.info("Code promo réservé aux premiers abonnements — paiement au tarif normal.");
       window.location.href = data.url;
     } catch (err) {
       toast.error(err?.response?.data?.detail || t("pricing.checkout_fail"));
@@ -149,8 +155,8 @@ export default function Pricing() {
       </SectionTitle>
       {promo && (
         <div className="surface border-primary/40 rounded-md p-4 text-center max-w-xl mx-auto -mt-4" data-testid="pricing-promo-banner">
-          <p className="text-sm">Votre code promo <b className="num tracking-wider text-primary">{promo}</b> est prêt.</p>
-          <p className="text-xs text-muted-foreground mt-1">Saisissez-le dans le champ « Code promotionnel » au moment du paiement pour appliquer la réduction.</p>
+          <p className="text-sm">Votre code promo <b className="num tracking-wider text-primary">{promo}</b> sera appliqué automatiquement au paiement.</p>
+          <p className="text-xs text-muted-foreground mt-1">Choisissez votre plan ci-dessous : la réduction apparaît directement sur la page de paiement sécurisée.</p>
         </div>
       )}
 

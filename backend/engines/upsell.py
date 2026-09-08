@@ -190,3 +190,59 @@ async def run_upsell_j10_emails(days_after_signup: int = 10, limit: int = 200) -
         "sent": sent, "failed": failed, "sent_by": "system", "created_at": res["at"]})
     logger.info(f"Upsell J+10: {res}")
     return res
+
+
+# ========= Suivi conversion (par semaine ISO) =========
+
+def _week(iso: str | None) -> str | None:
+    try:
+        d = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        y, w, _ = d.isocalendar()
+        return f"{y}-S{w:02d}"
+    except Exception:  # noqa: BLE001
+        return None
+
+
+async def conversion_stats(weeks: int = 12) -> dict:
+    """Pour chaque semaine d'envoi : emails J+3 / J+10 envoyés et abonnements payants souscrits ensuite."""
+    users = await db.users.find(
+        {"$or": [{"upsell_email_sent_at": {"$exists": True}}, {"upsell_j10_sent_at": {"$exists": True}}]},
+        {"_id": 0, "user_id": 1, "upsell_email_sent_at": 1, "upsell_j10_sent_at": 1, "active_plan_id": 1}
+    ).to_list(20000)
+    ids = [u["user_id"] for u in users]
+    ents = await db.entitlements.find(
+        {"user_id": {"$in": ids}, "status": "active", "plan_id": {"$in": list(PAID_PLANS)}},
+        {"_id": 0, "user_id": 1, "granted_at": 1, "plan_id": 1}).to_list(20000)
+    paid_at = {}
+    for e in ents:
+        g = e.get("granted_at") or ""
+        if e["user_id"] not in paid_at or g < paid_at[e["user_id"]]:
+            paid_at[e["user_id"]] = g
+    rows: dict[str, dict] = {}
+    tot = {"j3_sent": 0, "j10_sent": 0, "conv_j3": 0, "conv_j10": 0}
+
+    def row(w):
+        return rows.setdefault(w, {"week": w, "j3_sent": 0, "j10_sent": 0, "conv_j3": 0, "conv_j10": 0})
+
+    for u in users:
+        j3, j10 = u.get("upsell_email_sent_at"), u.get("upsell_j10_sent_at")
+        pay = paid_at.get(u["user_id"])
+        if j3 and j3 not in ("skipped", "failed") and _week(j3):
+            row(_week(j3))["j3_sent"] += 1
+            tot["j3_sent"] += 1
+        if j10 and j10 != "failed" and _week(j10):
+            row(_week(j10))["j10_sent"] += 1
+            tot["j10_sent"] += 1
+        if not pay:
+            continue
+        if j10 and j10 != "failed" and pay >= j10:
+            row(_week(j10))["conv_j10"] += 1
+            tot["conv_j10"] += 1
+        elif j3 and j3 not in ("skipped", "failed") and pay >= j3:
+            row(_week(j3))["conv_j3"] += 1
+            tot["conv_j3"] += 1
+    out = sorted(rows.values(), key=lambda r: r["week"], reverse=True)[:weeks]
+    for r in out + [tot]:
+        r["rate_j3"] = round(r["conv_j3"] / r["j3_sent"] * 100, 1) if r["j3_sent"] else None
+        r["rate_j10"] = round(r["conv_j10"] / r["j10_sent"] * 100, 1) if r["j10_sent"] else None
+    return {"weeks": out, "total": tot}

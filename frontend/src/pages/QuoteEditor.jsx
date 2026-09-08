@@ -70,6 +70,7 @@ export default function QuoteEditor() {
   const [planBusy, setPlanBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
   const [cctpBusy, setCctpBusy] = useState(false);
+  const [cctpPreview, setCctpPreview] = useState(null);
   const importCctp = async (file) => {
     if (!file) return;
     setCctpBusy(true);
@@ -77,17 +78,25 @@ export default function QuoteEditor() {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/documents/cctp/extract", fd, { timeout: 300000 });
-      const newLines = (data.lines || []).map((l) => ({ ...blankLine(defVat), ...l, _saveToLib: false }));
-      setLines((ls) => [...ls.filter((l) => l.designation?.trim() || Number(l.unit_price_ht) > 0), ...newLines]);
-      if (!title && data.title) setTitle(data.title);
-      if (data.prescriptions?.length) {
-        const presc = data.prescriptions.map((p) => `• ${p.theme ? p.theme + " : " : ""}${p.text}`).join("\n");
-        setNotes((n) => (n?.trim() ? `${n.trim()}\n\nPrescriptions CCTP :\n${presc}` : `Prescriptions CCTP :\n${presc}`));
-      }
-      toast.success(`${newLines.length} ouvrage(s) lus dans le CCTP · ${data.imposed_count} avec matériaux imposés · ${data.priced_lines} chiffré(s) via votre bibliothèque`);
+      const lots = [...new Set((data.lines || []).map((l) => (l.category || "").trim() || "Autres"))];
+      if (lots.length <= 1) { applyCctp(data, new Set(lots)); return; }
+      setCctpPreview({ data, lots, selected: new Set(lots) });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Lecture du CCTP impossible");
     } finally { setCctpBusy(false); }
+  };
+  const applyCctp = (data, selected) => {
+    const keep = (data.lines || []).filter((l) => selected.has((l.category || "").trim() || "Autres"));
+    const newLines = keep.map((l) => ({ ...blankLine(defVat), ...l, _saveToLib: false }));
+    setLines((ls) => [...ls.filter((l) => l.designation?.trim() || Number(l.unit_price_ht) > 0), ...newLines]);
+    if (!title && data.title) setTitle(data.title);
+    if (data.prescriptions?.length) {
+      const presc = data.prescriptions.map((p) => `• ${p.theme ? p.theme + " : " : ""}${p.text}`).join("\n");
+      setNotes((n) => (n?.trim() ? `${n.trim()}\n\nPrescriptions CCTP :\n${presc}` : `Prescriptions CCTP :\n${presc}`));
+    }
+    const imposed = keep.filter((l) => l.imposed_materials?.length).length;
+    toast.success(`${newLines.length} ouvrage(s) importés du CCTP${data.ocr ? " (OCR)" : ""} · ${imposed} avec matériaux imposés · ${selected.size} lot(s)`);
+    setCctpPreview(null);
   };
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoPreviews, setPhotoPreviews] = useState([]);
@@ -244,6 +253,16 @@ export default function QuoteEditor() {
   }, [lines]);
 
   const [targetMargin, setTargetMargin] = useState(() => Number(user?.target_margin_pct) || 0);
+  const [lotMargins, setLotMargins] = useState(() => user?.target_margins_by_lot || {});
+  const [showLotMargins, setShowLotMargins] = useState(false);
+  const marginFor = (category) => {
+    const k = Object.keys(lotMargins).find((c) => c.trim().toLowerCase() === (category || "").trim().toLowerCase());
+    return k != null && Number(lotMargins[k]) > 0 ? Number(lotMargins[k]) : targetMargin;
+  };
+  const saveLotMargins = async (next) => {
+    setLotMargins(next);
+    try { await api.put("/users/me/preferences", { target_margins_by_lot: next }); } catch { /* silencieux */ }
+  };
   const priceFromCost = (cost, m) => (m > 0 && m < 100 && cost > 0 ? Math.round((cost / (1 - m / 100)) * 100) / 100 : null);
   const saveTargetMargin = async (v) => {
     const m = Math.min(90, Math.max(0, Number(v) || 0));
@@ -251,19 +270,20 @@ export default function QuoteEditor() {
     try { await api.put("/users/me/preferences", { target_margin_pct: m }); } catch { /* silencieux */ }
   };
   const applyTargetMargin = () => {
-    if (!targetMargin) { toast.error("Définissez d'abord une marge cible"); return; }
-    const n = lines.filter((l) => (Number(l.cost_price_ht) || 0) > 0 && !(Number(l.unit_price_ht) > 0)).length;
+    const targets = lines.filter((l) => (Number(l.cost_price_ht) || 0) > 0 && !(Number(l.unit_price_ht) > 0) && marginFor(l.category) > 0);
+    if (!targets.length) { toast.error(targetMargin || Object.keys(lotMargins).length ? "Aucune ligne avec coût et sans prix" : "Définissez d'abord une marge cible"); return; }
     setLines((ls) => ls.map((l) => {
-      const c = Number(l.cost_price_ht) || 0;
-      return c > 0 && !(Number(l.unit_price_ht) > 0) ? { ...l, unit_price_ht: priceFromCost(c, targetMargin) } : l;
+      const c = Number(l.cost_price_ht) || 0, m = marginFor(l.category);
+      return c > 0 && !(Number(l.unit_price_ht) > 0) && m > 0 ? { ...l, unit_price_ht: priceFromCost(c, m) } : l;
     }));
-    toast.success(`${n} prix de vente calculé(s) avec ${targetMargin} % de marge`);
+    toast.success(`${targets.length} prix de vente calculé(s) (marge cible globale ou par lot)`);
   };
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => {
     if (idx !== i) return l;
     const nl = { ...l, [k]: v };
-    if (k === "cost_price_ht" && targetMargin > 0 && !(Number(l.unit_price_ht) > 0)) {
-      const p = priceFromCost(Number(v) || 0, targetMargin);
+    const m = marginFor(k === "category" ? v : l.category);
+    if (k === "cost_price_ht" && m > 0 && !(Number(l.unit_price_ht) > 0)) {
+      const p = priceFromCost(Number(v) || 0, m);
       if (p) nl.unit_price_ht = p;
     }
     return nl;
@@ -1040,9 +1060,32 @@ export default function QuoteEditor() {
                  onChange={(e) => setTargetMargin(Number(e.target.value) || 0)} onBlur={(e) => saveTargetMargin(e.target.value)}
                  className="rounded-sm h-7 w-20 num text-right" data-testid="editor-target-margin-input" />
           <span className="text-muted-foreground">% — le prix de vente se calcule automatiquement depuis le coût de revient quand une ligne n'a pas de prix.</span>
-          <Button size="sm" variant="ghost" className="h-7 rounded-sm gap-1 text-primary ml-auto" onClick={applyTargetMargin} data-testid="editor-apply-target-margin">
+          <Button size="sm" variant="ghost" className="h-7 rounded-sm gap-1 ml-auto" onClick={() => setShowLotMargins((s) => !s)} data-testid="editor-lot-margins-toggle">
+            <Layers className="h-3.5 w-3.5" /> Par lot {Object.keys(lotMargins).length ? `(${Object.keys(lotMargins).length})` : ""}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 rounded-sm gap-1 text-primary" onClick={applyTargetMargin} data-testid="editor-apply-target-margin">
             <TrendingUp className="h-3.5 w-3.5" /> Appliquer aux lignes sans prix
           </Button>
+          {showLotMargins && (
+            <div className="w-full grid sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-2 border-t border-border/50" data-testid="editor-lot-margins">
+              {[...new Set([...Object.keys(lotMargins), ...lotSubtotals.map((s) => s.cat)])].map((cat) => (
+                <label key={cat} className="flex items-center gap-2">
+                  <span className="flex-1 truncate">{cat}</span>
+                  <Input type="number" min="0" max="90" step="1" value={lotMargins[cat] ?? ""} placeholder={`${targetMargin || "—"}`}
+                         onChange={(e) => setLotMargins((m) => ({ ...m, [cat]: e.target.value }))}
+                         onBlur={(e) => { const v = Number(e.target.value); const next = { ...lotMargins }; if (v > 0) next[cat] = v; else delete next[cat]; saveLotMargins(next); }}
+                         className="rounded-sm h-7 w-20 num text-right" data-testid={`editor-lot-margin-input-${cat}`} />
+                  <span className="text-muted-foreground">%</span>
+                </label>
+              ))}
+              <label className="flex items-center gap-2">
+                <Input list="qe-lots" placeholder="Ajouter un lot…" className="rounded-sm h-7 flex-1"
+                       onKeyDown={(e) => { if (e.key === "Enter" && e.currentTarget.value.trim()) { const c = e.currentTarget.value.trim(); setLotMargins((m) => ({ ...m, [c]: m[c] ?? (targetMargin || 30) })); e.currentTarget.value = ""; } }}
+                       data-testid="editor-lot-margin-add" />
+              </label>
+              <p className="text-[10px] text-muted-foreground sm:col-span-2 lg:col-span-3">Laissez vide pour utiliser la marge globale. Le lot d'une ligne se déduit du champ « Lot ».</p>
+            </div>
+          )}
         </div>
 
         {isPT && (
@@ -1130,6 +1173,42 @@ export default function QuoteEditor() {
         {lines.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">{t("crm.no_lines")}</p>
         )}
+        <Dialog open={!!cctpPreview} onOpenChange={(o) => !o && setCctpPreview(null)}>
+          <DialogContent className="max-w-lg" data-testid="cctp-lots-dialog">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Ce CCTP couvre plusieurs lots</DialogTitle>
+              <DialogDescription>Cochez uniquement les lots que vous chiffrez. Les autres ne seront pas importés dans le devis.</DialogDescription>
+            </DialogHeader>
+            {cctpPreview && (
+              <>
+                <div className="space-y-1 max-h-[50vh] overflow-y-auto">
+                  {cctpPreview.lots.map((lot) => {
+                    const n = cctpPreview.data.lines.filter((l) => ((l.category || "").trim() || "Autres") === lot).length;
+                    const on = cctpPreview.selected.has(lot);
+                    return (
+                      <label key={lot} className={`flex items-center gap-3 rounded-sm border px-3 py-2 text-sm cursor-pointer ${on ? "border-primary/50 bg-primary/5" : "border-border opacity-70"}`} data-testid={`cctp-lot-${lot}`}>
+                        <input type="checkbox" checked={on} className="h-4 w-4 accent-emerald-600"
+                               onChange={(e) => setCctpPreview((p) => { const s = new Set(p.selected); e.target.checked ? s.add(lot) : s.delete(lot); return { ...p, selected: s }; })} />
+                        <span className="flex-1 truncate">{lot}</span>
+                        <Badge variant="outline" className="rounded-sm text-[10px] num">{n} ligne{n > 1 ? "s" : ""}</Badge>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  <div className="flex gap-2 text-xs">
+                    <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set(p.lots) }))}>Tout</button>
+                    <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set() }))}>Aucun</button>
+                  </div>
+                  <Button onClick={() => applyCctp(cctpPreview.data, cctpPreview.selected)} disabled={!cctpPreview.selected.size} className="rounded-sm gap-2" data-testid="cctp-lots-confirm">
+                    <Plus className="h-4 w-4" /> Importer {cctpPreview.selected.size} lot{cctpPreview.selected.size > 1 ? "s" : ""}
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <datalist id="qe-lots">
           {knownLots.map((c) => <option key={c} value={c} />)}
         </datalist>

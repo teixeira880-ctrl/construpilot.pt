@@ -4,6 +4,42 @@ import { Loader2, Mail, Users, CheckCircle2, XCircle, RefreshCw, Send } from "lu
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+function UpsellStats() {
+  const [st, setSt] = useState(null);
+  useEffect(() => { api.get("/admin/campaigns/upsell/stats").then(({ data }) => setSt(data)).catch(() => setSt({ weeks: [], total: null })); }, []);
+  if (!st) return null;
+  const pct = (v) => (v == null ? "—" : `${v} %`);
+  return (
+    <div className="border-t border-border/50 pt-3" data-testid="admin-upsell-stats">
+      <p className="overline text-[10px] mb-2">Conversion en abonnements payants — par semaine d'envoi</p>
+      {st.total && (
+        <p className="text-xs mb-2" data-testid="admin-upsell-stats-total">
+          Total : J+3 <b className="num">{st.total.j3_sent}</b> envoyés → <b className="num text-emerald-600">{st.total.conv_j3}</b> abonnements ({pct(st.total.rate_j3)}) ·
+          J+10 <b className="num">{st.total.j10_sent}</b> envoyés → <b className="num text-emerald-600">{st.total.conv_j10}</b> abonnements ({pct(st.total.rate_j10)})
+        </p>
+      )}
+      {st.weeks.length === 0 ? <p className="text-xs text-muted-foreground">Aucun envoi automatique pour le moment.</p> : (
+        <table className="w-full text-xs">
+          <thead><tr className="text-left text-muted-foreground border-b border-border">
+            <th className="py-1 pr-3 font-medium">Semaine</th><th className="py-1 pr-3 font-medium text-right">J+3 envoyés</th><th className="py-1 pr-3 font-medium text-right">→ payants</th>
+            <th className="py-1 pr-3 font-medium text-right">J+10 envoyés</th><th className="py-1 pr-3 font-medium text-right">→ payants</th></tr></thead>
+          <tbody>
+            {st.weeks.map((w) => (
+              <tr key={w.week} className="border-b border-border/40" data-testid={`admin-upsell-week-${w.week}`}>
+                <td className="py-1 pr-3 num">{w.week}</td>
+                <td className="py-1 pr-3 text-right num">{w.j3_sent}</td>
+                <td className="py-1 pr-3 text-right num text-emerald-600">{w.conv_j3} <span className="text-muted-foreground">({pct(w.rate_j3)})</span></td>
+                <td className="py-1 pr-3 text-right num">{w.j10_sent}</td>
+                <td className="py-1 pr-3 text-right num text-emerald-600">{w.conv_j10} <span className="text-muted-foreground">({pct(w.rate_j10)})</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export default function CampaignsPanel() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +104,7 @@ export default function CampaignsPanel() {
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">Les aperçus sont envoyés à votre adresse admin. Les envois réels sont journalisés ci-dessous (types auto_upsell_j3 / auto_upsell_j10).</p>
+        <UpsellStats />
       </div>
 
       <div className="flex items-center justify-between">
