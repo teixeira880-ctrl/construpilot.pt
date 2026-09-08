@@ -236,20 +236,23 @@ def _translate_path(obj, keys: list[str]):
         _translate_path(obj[k], rest)
 
 
-async def main():
-    # Carregar .env se presente (execução standalone)
-    try:
-        from pathlib import Path
-        from dotenv import load_dotenv
-        env_path = Path(__file__).resolve().parents[1] / ".env"
-        if env_path.exists():
-            load_dotenv(env_path)
-    except Exception:
-        pass
-    mongo_url = os.environ["MONGO_URL"]
-    db_name = os.environ.get("DB_NAME") or "construpilot"
-    client = AsyncIOMotorClient(mongo_url)
-    db = client[db_name]
+async def run(db=None) -> dict:
+    """Executa a migração PT-PT. Se `db` é passado (uso HTTP), reutiliza a conexão do backend;
+    senão abre uma conexão nova (uso CLI)."""
+    client = None
+    if db is None:
+        try:
+            from pathlib import Path
+            from dotenv import load_dotenv
+            env_path = Path(__file__).resolve().parents[1] / ".env"
+            if env_path.exists():
+                load_dotenv(env_path)
+        except Exception:
+            pass
+        mongo_url = os.environ["MONGO_URL"]
+        db_name = os.environ.get("DB_NAME") or "construpilot"
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[db_name]
 
     plan = [
         ("catalog_items",  ["name", "label", "description", "category"]),
@@ -265,16 +268,28 @@ async def main():
                             "levels_breakdown.name"]),
         ("default_materials", ["name"]),
     ]
-    print(f"[migrate_pt_pt_labels] DB={db_name} — glossary={len(GLOSSARY)} entries")
+    result: dict = {"glossary_entries": len(GLOSSARY), "collections": {}}
     for coll_name, fields in plan:
         try:
             stats = await _update_collection(db, coll_name, fields)
-            print(f"  · {coll_name:20s}  scanned={stats['scanned']:6d}  updated={stats['updated']:6d}")
+            result["collections"][coll_name] = stats
         except Exception as e:
-            print(f"  ! {coll_name}: {e}")
-    client.close()
+            result["collections"][coll_name] = {"error": f"{type(e).__name__}: {e}"}
+    if client is not None:
+        client.close()
+    return result
+
+
+async def _main_cli() -> None:
+    r = await run()
+    print(f"[migrate_pt_pt_labels] glossary={r['glossary_entries']} entries")
+    for name, stats in r["collections"].items():
+        if "error" in stats:
+            print(f"  ! {name}: {stats['error']}")
+        else:
+            print(f"  · {name:20s}  scanned={stats['scanned']:6d}  updated={stats['updated']:6d}")
     print("[migrate_pt_pt_labels] done.")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(_main_cli())

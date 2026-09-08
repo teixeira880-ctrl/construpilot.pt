@@ -866,3 +866,30 @@ async def demo_lock(user=Depends(current_user)) -> dict:
                               {"$set": {"invoicing_addon": False, "demo_mode": False}})
     from engines.monetization import user_tier
     return {"ok": True, "tier": await user_tier(user["user_id"])}
+
+
+
+# ---- Migrações one-shot PT-PT ------------------------------------------------
+@router.post("/migrations/run")
+async def run_migrations(admin=Depends(admin_user)) -> dict:
+    """Executa as migrações one-shot PT-PT (Wave C4) contra a base atual.
+
+    - `pt_labels`: traduz strings FR → PT em `catalog_items`, `library_items`,
+      `quotes.lots`, `plans_takeoff`, `plans`, `pc_studies`, `default_materials`.
+    - `backfill_lang`: define `lang='pt'` em todos os users sem esse campo.
+
+    Idempotente: reexecutar é seguro (contadores mostram 0 updates depois do 1º run).
+    Só admin.
+    """
+    results: dict = {"pt_labels": None, "backfill_lang": None}
+    try:
+        from scripts.migrate_pt_pt_labels import run as _run_labels
+        results["pt_labels"] = await _run_labels(db=db)
+    except Exception as e:  # noqa: BLE001
+        results["pt_labels"] = {"error": f"{type(e).__name__}: {e}"}
+    try:
+        from scripts.backfill_user_lang_pt import run as _run_backfill
+        results["backfill_lang"] = await _run_backfill(db=db)
+    except Exception as e:  # noqa: BLE001
+        results["backfill_lang"] = {"error": f"{type(e).__name__}: {e}"}
+    return {"ok": True, "run_by": admin.get("email"), "results": results}
