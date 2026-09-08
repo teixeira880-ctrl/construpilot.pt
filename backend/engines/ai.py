@@ -451,6 +451,64 @@ async def suggest_line_description(designation: str, context: str = "") -> str:
     return await _complete(system, prompt, feature="quote_describe")
 
 
+async def cctp_lines_from_text(text: str, lot_filter: str = "") -> tuple[list[dict], str, list[dict]]:
+    """Lit un CCTP (texte) et en extrait les ouvrages imposés + prescriptions (marques, normes, DTU).
+
+    Retourne (lines, title, prescriptions). Prix à 0 (chiffrés ensuite via la bibliothèque).
+    """
+    system = (BRAND + " Tu es économiste de la construction : tu lis un CCTP (Cahier des Clauses Techniques "
+              "Particulières) et tu en extrais les ouvrages à chiffrer, avec les matériaux, marques, normes et "
+              "DTU imposés, pour préparer le devis d'une entreprise.")
+    scope = f"\nNe traite QUE le lot : « {lot_filter} »." if lot_filter else ""
+    prompt = (
+        "Voici le texte d'un CCTP (extrait). Identifie chaque ouvrage / prestation que l'entreprise doit "
+        "chiffrer et les prescriptions techniques imposées." + scope +
+        "\n\nCCTP :\n« " + (text or "").strip()[:60000] + " »\n\n"
+        "Retourne UNIQUEMENT ce JSON :\n"
+        '{ "title": "titre court (opération / lot)", '
+        '"lines": [ { "category": "nom du lot CCTP (ex. LOT 03 - PLÂTRERIE)", '
+        '"article": "n° d\'article CCTP si présent (ex. 3.2.1)", '
+        '"designation": "libellé court de l\'ouvrage", '
+        '"description": "prescriptions imposées : matériaux, marque/référence ou équivalent, épaisseurs, '
+        'classement, normes/DTU, mise en œuvre (2 à 5 lignes séparées par des retours à la ligne)", '
+        '"unit": "u|m²|ml|m³|forfait|ens|kg|h", "qty": nombre ou null si non indiqué, '
+        '"imposed_materials": ["matériau ou marque imposé", "..."] } ], '
+        '"prescriptions": [ { "theme": "ex. Normes / Sécurité / Réception", "text": "prescription générale" } ] }\n'
+        "Respecte la numérotation et l'ordre du CCTP. Regroupe par lot. N'invente pas de prix. "
+        "Jusqu'à 60 lignes, en français."
+    )
+    data = _json(await _complete(system, prompt, feature="cctp_read"), {"lines": []})
+    units = ("u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L")
+    lines: list[dict] = []
+    for l in (data.get("lines") or [])[:60]:
+        try:
+            desig = str(l.get("designation") or "").strip()[:160]
+            if not desig:
+                continue
+            art = str(l.get("article") or "").strip()[:20]
+            desc = str(l.get("description") or "").strip()[:900]
+            mats = [str(m).strip()[:80] for m in (l.get("imposed_materials") or []) if str(m).strip()][:8]
+            if mats:
+                desc = (desc + "\nImposé : " + " · ".join(mats)).strip()
+            unit = str(l.get("unit") or "u").strip()
+            qty = l.get("qty")
+            lines.append({
+                "designation": (f"{art} — " if art else "") + desig,
+                "description": desc, "unit": unit if unit in units else "u",
+                "qty": float(qty) if isinstance(qty, (int, float)) and qty > 0 else 1.0,
+                "qty_from_cctp": isinstance(qty, (int, float)) and qty > 0,
+                "unit_price_ht": 0, "vat_rate": 10,
+                "category": str(l.get("category") or "").strip()[:80],
+                "imposed_materials": mats,
+            })
+        except Exception:  # noqa: BLE001
+            continue
+    prescriptions = [{"theme": str(p.get("theme") or "")[:60], "text": str(p.get("text") or "")[:500]}
+                     for p in (data.get("prescriptions") or [])[:20] if p.get("text")]
+    return lines, str(data.get("title") or "").strip()[:120], prescriptions
+
+
+
 async def quote_lines_from_text(transcript: str, images: list[str] | None = None) -> tuple[list[dict], str]:
     """Transforme une description orale (transcription) + photos optionnelles en lignes de devis BTP.
 

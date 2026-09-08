@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send, X,
-  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, Eye, Layers, Paperclip,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, FileText, Eye, Layers, Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,26 @@ export default function QuoteEditor() {
   const [aiLineBusy, setAiLineBusy] = useState(null);
   const [planBusy, setPlanBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
+  const [cctpBusy, setCctpBusy] = useState(false);
+  const importCctp = async (file) => {
+    if (!file) return;
+    setCctpBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/documents/cctp/extract", fd, { timeout: 300000 });
+      const newLines = (data.lines || []).map((l) => ({ ...blankLine(defVat), ...l, _saveToLib: false }));
+      setLines((ls) => [...ls.filter((l) => l.designation?.trim() || Number(l.unit_price_ht) > 0), ...newLines]);
+      if (!title && data.title) setTitle(data.title);
+      if (data.prescriptions?.length) {
+        const presc = data.prescriptions.map((p) => `• ${p.theme ? p.theme + " : " : ""}${p.text}`).join("\n");
+        setNotes((n) => (n?.trim() ? `${n.trim()}\n\nPrescriptions CCTP :\n${presc}` : `Prescriptions CCTP :\n${presc}`));
+      }
+      toast.success(`${newLines.length} ouvrage(s) lus dans le CCTP · ${data.imposed_count} avec matériaux imposés · ${data.priced_lines} chiffré(s) via votre bibliothèque`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Lecture du CCTP impossible");
+    } finally { setCctpBusy(false); }
+  };
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoPreviews, setPhotoPreviews] = useState([]);
 
@@ -507,16 +527,18 @@ export default function QuoteEditor() {
     } finally { setTranscriptBusy(false); }
   };
 
-  const downloadPdf = async () => {
+  const downloadPdf = async (internal = false) => {
     const d = docId ? { doc_id: docId } : await save();
     if (!d) return;
+    if (internal && docId) await save();
     try {
-      const res = await api.get(`/documents/${d.doc_id}/pdf?lang=${lang}`, { responseType: "blob" });
+      const path = internal ? `/documents/${d.doc_id}/pdf-internal` : `/documents/${d.doc_id}/pdf?lang=${lang}`;
+      const res = await api.get(path, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis.pdf`; a.click();
+      a.href = url; a.download = internal ? `devis-INTERNE.pdf` : `devis.pdf`; a.click();
       URL.revokeObjectURL(url);
-      toast.success(t("crm.pdf_ok"));
+      toast.success(internal ? "Version interne (coûts & marges) téléchargée" : t("crm.pdf_ok"));
     } catch { toast.error(t("crm.pdf_fail")); }
   };
 
@@ -693,6 +715,14 @@ export default function QuoteEditor() {
                   disabled={photoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-photo-cam-btn">
             {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} {t("crm.ed_photo_to_quote")}
           </Button>
+          <input type="file" accept="application/pdf" className="hidden" id="qe-cctp-input"
+                 onChange={(e) => { importCctp(e.target.files?.[0]); e.target.value = ""; }}
+                 data-testid="editor-cctp-input" />
+          <Button variant="outline" onClick={() => document.getElementById("qe-cctp-input").click()}
+                  disabled={cctpBusy} className="rounded-sm gap-2 text-primary border-primary/40"
+                  title="Lire un CCTP : ouvrages et matériaux imposés ajoutés au devis" data-testid="editor-cctp-btn">
+            {cctpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {cctpBusy ? "Lecture du CCTP…" : "Lire un CCTP"}
+          </Button>
           <input type="file" accept="video/*" className="hidden" id="qe-video-input"
                  onChange={(e) => { reviewVideo(e.target.files?.[0]); e.target.value = ""; }}
                  data-testid="editor-video-input" />
@@ -715,8 +745,12 @@ export default function QuoteEditor() {
                   disabled={videoBusy} className="rounded-sm gap-2 text-primary border-primary/40" data-testid="editor-audio-record-btn">
             {videoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />} {t("crm.ed_dictate")}
           </Button>
-          <Button variant="outline" onClick={downloadPdf} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
+          <Button variant="outline" onClick={() => downloadPdf(false)} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
             <Download className="h-4 w-4" /> {t("crm.pdf")}
+          </Button>
+          <Button variant="outline" onClick={() => downloadPdf(true)} className="rounded-sm gap-2 border-amber-500/50 text-amber-600"
+                  title="PDF avec coûts de revient et marges par lot — réservé à l'entreprise" data-testid="editor-pdf-internal-btn">
+            <Download className="h-4 w-4" /> PDF interne (marges)
           </Button>
           <Button onClick={save} disabled={saving} variant="outline" className="rounded-sm gap-2" data-testid="editor-save-btn">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("crm.save")}

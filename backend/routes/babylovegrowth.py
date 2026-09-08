@@ -79,9 +79,15 @@ async def _upsert(article: dict, event: str) -> str:
         "status": "published", "published_at": created, "created_at": created,
         "updated_at": _now(), "received_at": _now(),
     }
-    await db.autoseo_articles.update_one({"autoseo_id": aid},
-                                         {"$set": doc, "$setOnInsert": {"first_received_at": _now()}},
-                                         upsert=True)
+    res = await db.autoseo_articles.update_one({"autoseo_id": aid},
+                                               {"$set": doc, "$setOnInsert": {"first_received_at": _now()}},
+                                               upsert=True)
+    if res.upserted_id is not None:
+        try:
+            from routes.newsletter import notify_new_article
+            await notify_new_article(doc)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Newsletter notify failed for {slug}: {e}")
     return slug
 
 

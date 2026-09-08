@@ -1085,6 +1085,41 @@ async def document_from_video(file: UploadFile = File(...), client_id: str | Non
     return doc
 
 
+@router.post("/cctp/extract")
+async def cctp_extract(file: UploadFile = File(...), lot: str = "", user=Depends(current_user)) -> dict:
+    """Lit un CCTP (PDF texte ou scanné) → ouvrages imposés + prescriptions, chiffrés via la bibliothèque.
+
+    Ne crée pas de document : les lignes sont renvoyées pour être ajoutées au devis en cours.
+    """
+    from engines.ai import cctp_lines_from_text
+    from routes.plans_analysis import _apply_library_prices
+    raw = await file.read()
+    if len(raw) > 40 * 1024 * 1024:
+        raise HTTPException(413, "PDF trop volumineux (40 Mo max)")
+    text = await asyncio.to_thread(_pdf_extract_text_long, raw)
+    if len(text) < 200:
+        raise HTTPException(422, "CCTP illisible : le PDF ne contient pas de texte exploitable "
+                                 "(scan sans OCR). Exportez-le en PDF texte ou utilisez la DPGF.")
+    lines, title, prescriptions = await cctp_lines_from_text(text, lot_filter=lot.strip())
+    if not lines:
+        raise HTTPException(422, "Aucun ouvrage identifié dans ce CCTP.")
+    lines, priced = await _apply_library_prices(user["user_id"], lines)
+    return {"title": title, "lines": lines, "priced_lines": priced,
+            "prescriptions": prescriptions, "chars": len(text),
+            "imposed_count": sum(1 for l in lines if l.get("imposed_materials"))}
+
+
+def _pdf_extract_text_long(data: bytes, max_pages: int = 120) -> str:
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        return "\n".join((p.extract_text() or "") for p in reader.pages[:max_pages]).strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+
 @router.get("")
 async def list_documents(doc_type: str = "", client_id: str = "", status: str = "",
                          user=Depends(current_user)) -> dict:
@@ -1242,6 +1277,20 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
     fname = f"{doc.get('number') or doc['doc_id']}.pdf"
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+@router.get("/{doc_id}/pdf-internal")
+async def document_pdf_internal(doc_id: str, user=Depends(current_user)):
+    """Version interne (coûts de revient + marges par lot) — réservée au pro, jamais envoyée au client."""
+    from engines.pdf_internal import build_internal_quote_pdf
+    from routes.plans_common import _resolve_branding
+    doc = await _get_owned(doc_id, user)
+    branding = await _resolve_branding(user["user_id"])
+    pdf_bytes = build_internal_quote_pdf(doc, branding=branding)
+    fname = f"{doc.get('number') or doc['doc_id']}-INTERNE.pdf"
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
 
 
 class DocAttachmentIn(BaseModel):

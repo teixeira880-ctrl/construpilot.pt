@@ -7,10 +7,14 @@ import { toast } from "sonner";
 
 export default function SeoBlogPanel() {
   const [st, setSt] = useState(null);
+  const [nl, setNl] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const load = () => api.get("/admin/babylovegrowth/status").then(({ data }) => setSt(data)).catch(() => setSt({ error: true }));
+  const load = () => {
+    api.get("/admin/babylovegrowth/status").then(({ data }) => setSt(data)).catch(() => setSt({ error: true }));
+    api.get("/newsletter/admin/stats").then(({ data }) => setNl(data)).catch(() => {});
+  };
   useEffect(() => { load(); }, []);
 
   const sync = async (force = false) => {
@@ -51,11 +55,14 @@ export default function SeoBlogPanel() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-4 gap-3">
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Connexion API</p>
           <p className="font-bold mt-1" data-testid="admin-blg-configured">{st.configured ? <span className="text-emerald-500">Clé configurée</span> : <span className="text-red-500">Clé manquante</span>}</p></div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Articles publiés</p>
           <p className="font-bold text-2xl num mt-1" data-testid="admin-blg-count">{st.count}</p></div>
+        <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Abonnés newsletter</p>
+          <p className="font-bold text-2xl num mt-1" data-testid="admin-newsletter-active">{nl ? nl.active : "…"}</p>
+          {nl?.recent_sends?.[0] && <p className="text-[11px] text-muted-foreground truncate">Dernier envoi : {nl.recent_sends[0].title} ({nl.recent_sends[0].sent})</p>}</div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Dernière synchro</p>
           <p className="text-sm mt-1" data-testid="admin-blg-last-sync">{st.last_sync?.at ? new Date(st.last_sync.at).toLocaleString("fr-FR") : "jamais"}</p>
           {st.last_sync && <p className="text-[11px] text-muted-foreground">+{st.last_sync.created} · {st.last_sync.skipped} existants · {st.last_sync.errors} erreurs</p>}</div>

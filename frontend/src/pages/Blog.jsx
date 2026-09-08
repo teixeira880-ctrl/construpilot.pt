@@ -6,6 +6,7 @@ import { BLOG_ARTICLES } from "@/lib/blogArticles";
 import { BLOG_ARTICLES_PT } from "@/lib/blogPortugal";
 import { useI18n } from "@/context/I18nContext";
 import { api } from "@/lib/api";
+import NewsletterForm from "@/components/NewsletterForm";
 
 const dynToCard = (a) => ({
   slug: a.slug, title: a.title, excerpt: a.excerpt || a.meta_description || "",
@@ -103,6 +104,7 @@ export default function Blog() {
             </Link>
           ))}
         </div>
+        <div className="mt-12 max-w-2xl"><NewsletterForm source="blog-list" /></div>
       </section>
     </>
   );

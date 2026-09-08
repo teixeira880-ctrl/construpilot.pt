@@ -10,6 +10,13 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 08/09/2026 (bis) — PDF interne, lecture CCTP, newsletter, diag emails** [iteration_128 backend 26/26 + UI vérifiée par screenshots e2e] :
+> - **Emails en échec (prod)** : diag → preview OK (Resend valide, 4 domaines vérifiés, devis test envoyé). Les échecs en base = anciens tests @example.com. Cause probable côté construpilot.fr : environnement déployé avec anciennes variables → **redéployer** pour prendre `.env` (RESEND_API_KEY, MERCIFACTEUR_*, BABYLOVEGROWTH_*). deployment_agent : OK (warn CORS spécifique — laissé, prod listée).
+> - **PDF interne devis** : `engines/pdf_internal.py::build_internal_quote_pdf` (A4 paysage, colonnes coût unit./coût total/marge €/marge %, lignes à perte en rouge, sous-totaux par lot, synthèse, tableau marge par lot, pied « NE PAS TRANSMETTRE AU CLIENT »). Route `GET /api/documents/{id}/pdf-internal`. Bouton `editor-pdf-internal-btn` dans QuoteEditor.
+> - **Lecture CCTP** : `ai.cctp_lines_from_text` (Claude, jusqu'à 60 lignes : article, lot, désignation, prescriptions/matériaux imposés « Imposé : … », qty si indiquée) + `POST /api/documents/cctp/extract` (PDF texte ≤120 pages, 422 si scan sans texte) chiffré via bibliothèque. QuoteEditor : bouton `editor-cctp-btn` / input `editor-cctp-input` → lignes ajoutées, titre et notes (« Prescriptions CCTP ») remplis.
+> - **Newsletter blog** : `routes/newsletter.py` — `POST /newsletter/subscribe` (rate limit 10/10 min/IP via `rate_limits` TTL, email de bienvenue Resend), `GET /newsletter/unsubscribe?token=`, `GET /newsletter/admin/stats`. `notify_new_article()` appelé à l'insertion d'un nouvel article BLG (webhook ou sync) → email à tous les abonnés de la langue (collection `newsletter_sends`, 1 envoi/article). UI `components/NewsletterForm.jsx` sous chaque article (dynamique + statique) et en bas de /blog ; compteur abonnés dans Admin → SEO / Blog.
+
+
 > **Session 08/09/2026 — Sitemap dynamique + articles liés (SEO blog)** : `frontend/public/sitemap.xml` devient un **sitemap index** → `/sitemap-pages.xml` (ancien sitemap statique renommé) + `/api/blog/sitemap.xml` (nouvelle route `autoseo.py::blog_sitemap`, tous les articles `autoseo_articles` publiés avec lastmod + image sitemap, cache 1 h). `AutoSeoBlogPost.jsx` : bloc **« À lire aussi »** (3 articles de même langue triés par mots-clés communs, `blog-related`) + maillage interne vers /estimation, /calculateurs, /prix, /metre (`blog-internal-links`). Vérifié e2e avec 2 articles test (supprimés ensuite).
 
 

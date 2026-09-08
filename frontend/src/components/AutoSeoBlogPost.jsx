@@ -4,6 +4,7 @@ import { Calendar, ArrowLeft, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import NewsletterForm from "@/components/NewsletterForm";
 
 // Rendu d'un article publié via le webhook AutoSEO (contenu dynamique en base).
 export default function AutoSeoBlogPost({ slug }) {
@@ -156,6 +157,8 @@ export default function AutoSeoBlogPost({ slug }) {
             <Link key={to} to={to} className="px-3 py-1.5 rounded-full border border-border hover:border-primary hover:text-primary transition-colors">{l}</Link>
           ))}
         </nav>
+
+        <div className="mt-8"><NewsletterForm source={`article:${a.slug}`} /></div>
 
         {related.length > 0 && (
           <section className="mt-12" data-testid="blog-related">

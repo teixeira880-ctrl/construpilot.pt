@@ -7,6 +7,7 @@ import { ARTICLE_BODIES } from "@/lib/blogBodies";
 import { BLOG_ARTICLES_PT, getArticlePT, ARTICLE_BODIES_PT } from "@/lib/blogPortugal";
 import { useI18n } from "@/context/I18nContext";
 import AutoSeoBlogPost from "@/components/AutoSeoBlogPost";
+import NewsletterForm from "@/components/NewsletterForm";
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -139,6 +140,7 @@ export default function BlogPost() {
             </Link>
           )}
         </nav>
+        <div className="mt-10"><NewsletterForm source={`article:${slug}`} /></div>
       </article>
     </>
   );
