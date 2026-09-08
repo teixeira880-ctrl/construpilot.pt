@@ -365,12 +365,12 @@ async def seed():
         exists = await db.plans.find_one({"plan_id": plan["plan_id"]})
         if not exists:
             await db.plans.insert_one(plan)
-    # Migration prix (17/06/2026) : Premium 19€/190€ · Pro 299€/3150€ · Pro Business 350€/3500€
+    # Migration prix (08/09/2026) : Premium 19€/190€ · Pro 149€/1570€ · Pro Business 249€/2490€
     # + Project Pass 19,90€ → 50€ (accès Plan 2D + 3 rendus 3D offerts)
     PRICE_MIGRATION = {
         "premium_monthly": 1900, "premium_yearly": 19000,
-        "pro_monthly": 29900, "pro_yearly": 315000,
-        "pro_business_monthly": 35000, "pro_business_yearly": 350000,
+        "pro_monthly": 14900, "pro_yearly": 157000,
+        "pro_business_monthly": 24900, "pro_business_yearly": 249000,
         "project_pass": 5000,
     }
     for plan_id, cents in PRICE_MIGRATION.items():

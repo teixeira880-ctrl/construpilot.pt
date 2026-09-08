@@ -196,7 +196,8 @@ export default function LandingMetre() {
             <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-primary/15 blur-2xl" />
             <p className="overline text-primary">Le métré IA, avec Pro</p>
             <h3 className="font-display text-2xl font-bold mt-1">Pour chiffrer aussi ce qu'on vous envoie : un plan, une DPGF, une note vocale.</h3>
-            <p className="mt-4"><span className="num text-4xl font-extrabold">dès 19 €</span> <span className="text-sm text-muted-foreground">HT / mois · sans engagement</span></p>
+            <p className="mt-4"><span className="num text-4xl font-extrabold">149 €</span> <span className="text-sm text-muted-foreground">HT / mois · sans engagement · 7 jours d'essai</span></p>
+            <p className="text-xs text-muted-foreground">Pro Business (équipes, multi-utilisateurs) : 249 € HT / mois</p>
             <ul className="text-sm space-y-2 mt-5">
               {["Devis et factures illimités (acompte, situations, solde, Factur-X)", "Métré IA : le plan devient des surfaces et des ouvrages", "Photos, vidéos, notes vocales et cotes de vos plans lus par l'IA", "DPGF reçue lue et chiffrée à vos prix", "Marge prévisionnelle lot par lot + alerte « à perte »", "Reprise de votre bibliothèque depuis vos anciens devis PDF", "Chantiers, clients, relances, signature en ligne"].map((f) => (
                 <li key={f} className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> {f}</li>
