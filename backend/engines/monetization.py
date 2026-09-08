@@ -411,7 +411,7 @@ async def _send_pro_welcome(user_id: str, plan: dict, payment_rec: dict, user: d
             customer_name=user.get("name") or "", plan_name=plan.get("name") or "Pro",
             amount_ttc=amount, dashboard_url=f"{origin.rstrip('/')}/dashboard")
         await send_email_with_pdf(
-            user["email"], f"Bienvenue en Pro · {plan.get('name') or 'ConstruPilot'}",
+            user["email"], f"Bem-vindo(a) ao Pro · {plan.get('name') or 'ConstruPilot'}",
             html, pdf, filename=f"{rno}.pdf")
         await db.entitlements.update_one(
             {"user_id": user_id, "plan_id": plan["plan_id"]},

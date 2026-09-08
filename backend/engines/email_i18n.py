@@ -144,14 +144,16 @@ EMAILS: dict[str, dict[str, str]] = {
 
 
 def norm_lang(lang: str | None) -> str:
-    lang = (lang or "fr").lower()[:2]
-    return lang if lang in SUPPORTED else "fr"
+    lang = (lang or "pt").lower()[:2]
+    return lang if lang in SUPPORTED else "pt"
 
 
 def T(lang: str | None, key: str, **kw) -> str:
-    """Traduit une clé email dans la langue donnée, fallback FR."""
+    """Traduz uma chave de email na língua indicada; fallback PT (padrão do produto) e depois a própria chave."""
     lg = norm_lang(lang)
-    template = EMAILS.get(lg, {}).get(key) or EMAILS["fr"].get(key, key)
+    template = (EMAILS.get(lg, {}).get(key)
+                or EMAILS["pt"].get(key)
+                or EMAILS["fr"].get(key, key))
     try:
         return template.format(**kw) if kw else template
     except Exception:

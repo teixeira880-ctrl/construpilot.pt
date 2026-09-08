@@ -611,8 +611,12 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
         from engines.emailer import send_email
         try:
             await send_email(email, subject, html)
-        except Exception:
-            pass
+        except Exception as e:
+            # Não bloqueia a resposta (anti-enumeração), mas regista para diagnóstico.
+            import logging
+            logging.getLogger("auth.forgot_password").error(
+                f"forgot-password Resend failed for {email}: {type(e).__name__}: {e}"
+            )
     asyncio.create_task(_send())
     return {"ok": True}
 
@@ -660,21 +664,24 @@ async def _register_device(user: dict, request: Request) -> None:
         return
     html = (
         f"<p>Olá {user.get('name') or ''},</p>"
-        f"<p>Une connexion à votre compte <b>administrateur ConstruPilot</b> vient d'avoir lieu "
-        f"depuis un nouvel appareil :</p>"
-        f"<ul><li><b>Adresse IP</b> : {ip}</li>"
-        f"<li><b>Appareil / navigateur</b> : {ua}</li>"
-        f"<li><b>Date</b> : {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}</li></ul>"
-        f"<p style='font-size:12px;color:#666'>Si c'était bien vous, aucune action n'est requise. "
-        f"Sinon, changez immédiatement votre mot de passe depuis la page Mon compte.</p>"
+        f"<p>Foi detetada uma sessão iniciada na tua conta <b>administrador ConstruPilot</b> "
+        f"a partir de um novo dispositivo:</p>"
+        f"<ul><li><b>Endereço IP</b>: {ip}</li>"
+        f"<li><b>Dispositivo / browser</b>: {ua}</li>"
+        f"<li><b>Data</b>: {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}</li></ul>"
+        f"<p style='font-size:12px;color:#666'>Se foste tu, não é necessária qualquer ação. "
+        f"Caso contrário, altera imediatamente a palavra-passe a partir da página A minha conta.</p>"
     )
 
     async def _send():
         from engines.emailer import send_email
         try:
-            await send_email(user["email"], "Nouvelle connexion admin — ConstruPilot", html)
-        except Exception:
-            pass
+            await send_email(user["email"], "Novo início de sessão admin — ConstruPilot", html)
+        except Exception as e:
+            import logging
+            logging.getLogger("auth.admin_login_alert").error(
+                f"admin login alert email failed for {user.get('email')}: {type(e).__name__}: {e}"
+            )
     asyncio.create_task(_send())
 
 
