@@ -3771,7 +3771,7 @@ export default function PlanTakeoff() {
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" variant="outline" onClick={sendToQuote} data-testid="structure-to-quote"
                             className="rounded-sm h-7 text-xs gap-1 flex-1">
-                      <ArrowRight className="h-3 w-3" /> Ouvrir dans l'editor
+                      <ArrowRight className="h-3 w-3" /> Abrir no editor
                     </Button>
                     <Button size="sm" variant="outline" onClick={exportAnnotatedPdf} data-testid="structure-export-pdf"
                             className="rounded-sm h-7 text-xs gap-1">

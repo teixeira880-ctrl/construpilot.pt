@@ -299,7 +299,7 @@ export default function QuoteTracking() {
             <a href={`/sign/${send.signature_token}`} target="_blank" rel="noopener noreferrer"
                data-testid={`open-sign-${send.log_id}`}
                className="text-[10px] text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-              <ExternalLink className="h-3 w-3" /> Ouvrir
+              <ExternalLink className="h-3 w-3" /> Abrir
             </a>
           )}
         </div>

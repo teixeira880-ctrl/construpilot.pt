@@ -268,13 +268,13 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
           <TabsContent value="wa" className="mt-3">
             <Button onClick={sendWhatsApp} data-testid="whatsapp-send-btn"
                     className="w-full rounded-sm gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-              <MessageCircle className="h-4 w-4" /> Ouvrir WhatsApp
+              <MessageCircle className="h-4 w-4" /> Abrir WhatsApp
             </Button>
           </TabsContent>
           <TabsContent value="sms" className="mt-3 grid gap-2">
             <Button onClick={sendSmsNative} data-testid="sms-native-btn"
                     variant="outline" className="w-full rounded-sm gap-2">
-              <Smartphone className="h-4 w-4" /> Ouvrir l'app SMS du téléphone
+              <Smartphone className="h-4 w-4" /> Abrir a app de SMS do telemóvel
             </Button>
             <Button onClick={sendSmsTwilio} disabled={!smsCfg.twilio_enabled || busy}
                     data-testid="sms-twilio-btn"

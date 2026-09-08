@@ -187,7 +187,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
       });
     });
 
-    // ===== Volumes structurels détectés (métré béton) =====
+    // ===== Volumes estruturais detetados (medição betão) =====
     // Voiles/murs (rouge), planchers (vert), poteaux (violet), poutres (gris foncé), semelles (jaune)
     if (structure) {
       const seg = (a, b) => {
@@ -325,7 +325,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
       <div className="rounded-sm border border-border bg-secondary/30 p-6 text-center text-sm text-muted-foreground" data-testid="interactive3d-fallback">
         <Move3d className="h-6 w-6 mx-auto mb-2 opacity-60" />
         La vue 3D n'est pas disponible sur cet appareil ou ce navigateur (WebGL indisponible).
-        <div className="mt-1 text-xs">Le métré et les résultats restent accessibles normalement.</div>
+        <div className="mt-1 text-xs">A medição e os resultados permanecem acessíveis normalmente.</div>
       </div>
     );
   }

@@ -227,7 +227,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                   <Button size="sm" variant="ghost" className="gap-1 shrink-0"
                           onClick={() => { setOpen(false); nav(`/devis-editeur/${r.doc_id}`); }}
                           data-testid={`import-docs-open-${i}`}>
-                    <FileText className="h-3.5 w-3.5" /> Ouvrir
+                    <FileText className="h-3.5 w-3.5" /> Abrir
                   </Button>
                 )}
               </div>

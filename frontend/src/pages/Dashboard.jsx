@@ -160,7 +160,7 @@ export default function Dashboard() {
             </div>
             <p className="text-sm text-muted-foreground mt-1">Importa as tuas plantas de armaduras → mapa de aço IA (ml, kg, tonelagem) → quantidades encomendáveis → notas de encomenda a fornecedores.</p>
           </div>
-          <span className="text-primary font-bold shrink-0">Ouvrir →</span>
+          <span className="text-primary font-bold shrink-0">Abrir →</span>
         </div>
       </a>
 

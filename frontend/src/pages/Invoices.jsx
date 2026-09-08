@@ -229,7 +229,7 @@ export default function Invoices() {
           <p className="text-xs text-muted-foreground mt-0.5">Receba, aceite ou rejeite as faturas dos seus fornecedores através de uma plataforma autorizada.</p>
         </div>
         <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
-          Ouvrir <ArrowRight className="h-4 w-4" />
+          Abrir <ArrowRight className="h-4 w-4" />
         </span>
       </button>
 
