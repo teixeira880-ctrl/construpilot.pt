@@ -93,7 +93,7 @@ export function OuvrageComposeDialog({ onAdd, planVariables }) {
             </div>
             <div className="max-h-96 overflow-y-auto divide-y divide-border/60">
               {loading ? <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div>
-                : ouvrages.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">Aucun ouvrage.</p>
+                : ouvrages.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">Sem trabalhos.</p>
                 : ouvrages.map((o) => (
                   <div key={o.base_code} className="flex items-center justify-between py-2 gap-3">
                     <div className="min-w-0">

@@ -44,7 +44,7 @@ export const DpgfImport = () => {
         <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro Business</span>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Importez le fichier Excel de l'architecte (DPGF, BPU, DQE). ConstruPilot détecte les colonnes et
+        Importa o ficheiro Excel do arquiteto (mapa de trabalhos e quantidades). O ConstruPilot deteta as colunas e
         <span className="text-foreground"> remplit automatiquement les prix unitaires</span> (estimation IA), puis calcule les totaux.
       </p>
 
@@ -57,7 +57,7 @@ export const DpgfImport = () => {
         </Button>
         {res && (
           <Button variant="outline" onClick={download} className="gap-2 rounded-sm" data-testid="dpgf-download-btn">
-            <Download className="h-4 w-4" /> Télécharger l'Excel rempli
+            <Download className="h-4 w-4" /> Descarregar Excel preenchido
           </Button>
         )}
       </div>

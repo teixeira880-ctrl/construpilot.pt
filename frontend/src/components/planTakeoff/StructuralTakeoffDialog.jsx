@@ -45,7 +45,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
         col_w_m: d.col_size_m ?? p.col_w_m,
         col_h_m: d.col_size_m ?? p.col_h_m,
       }));
-    }).catch(() => toast.error("Métré indisponible"));
+    }).catch(() => toast.error("Medição indisponível"));
   }, [open, planId]);
 
   const buildBody = () => {
@@ -90,7 +90,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
       <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto" data-testid="structural-takeoff-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Ruler className="h-5 w-5 text-primary" /> Métré structure (DWG/DXF)
+            <Ruler className="h-5 w-5 text-primary" /> Medição estrutura (DWG/DXF)
           </DialogTitle>
         </DialogHeader>
 

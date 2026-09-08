@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { Bell, BellOff, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useI18n } from "@/context/I18nContext";
 
 /** Botão compacto de ativação das notificações push (página Dashboard).
  *  - Esconde automaticamente o botão se o browser não suportar Push.
@@ -9,6 +10,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 export default function PushToggle({ variant = "outline", size = "sm" }) {
   const { supported, permission, subscribed, busy, subscribe, unsubscribe } =
     usePushNotifications();
+  const { t } = useI18n();
 
   if (!supported) return null;
 
@@ -16,21 +18,21 @@ export default function PushToggle({ variant = "outline", size = "sm" }) {
     try {
       if (subscribed) {
         await unsubscribe();
-        toast.success("Notificações push desativadas");
+        toast.success(t("push.toast_off"));
       } else {
         await subscribe();
-        toast.success("Notificações push ativadas");
+        toast.success(t("push.toast_on"));
       }
     } catch (err) {
-      toast.error(err?.message || "Falha na ativação");
+      toast.error(err?.message || t("push.toast_error"));
     }
   };
 
   const label = subscribed
-    ? "Notificações ativadas"
+    ? t("push.enabled")
     : permission === "denied"
-    ? "Notificações bloqueadas"
-    : "Ativar notificações";
+    ? t("push.blocked")
+    : t("push.enable");
 
   const Icon = subscribed ? BellRing : permission === "denied" ? BellOff : Bell;
 

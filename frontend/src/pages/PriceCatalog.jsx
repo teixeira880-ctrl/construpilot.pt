@@ -125,7 +125,7 @@ export default function PriceCatalog() {
       {rows.length === 0 ? (
         <div className="surface p-10 text-center rounded-md" data-testid="catalog-empty">
           <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">Aucun prix pour l'instant. Ajoutez-en un ou importez votre fichier de tarifs.</p>
+          <p className="text-muted-foreground">Sem preços de momento. Adiciona um ou importa o teu ficheiro de tarifas.</p>
           <p className="text-xs text-muted-foreground mt-2">Colonnes acceptées : nom, prix, unité, fournisseur, catégorie.</p>
         </div>
       ) : (

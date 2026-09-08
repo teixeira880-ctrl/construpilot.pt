@@ -51,7 +51,7 @@ export default function AdminSharedLibraryTab() {
   };
 
   const clearAll = async () => {
-    if (!window.confirm("Supprimer TOUTE la bibliothèque partagée ?")) return;
+    if (!window.confirm("Apagar TODA a biblioteca partilhada?")) return;
     await api.delete("/admin/shared-library");
     toast.success("Bibliothèque partagée vidée");
     await load();
@@ -74,7 +74,7 @@ export default function AdminSharedLibraryTab() {
             <Library className="h-5 w-5 text-primary" /> Bibliothèque partagée (Pro Business)
           </h3>
           <p className="text-sm text-muted-foreground max-w-2xl mt-1">
-            Importez une bibliothèque d'ouvrages (CSV ou Excel) avec prix <b>bas / médian / haut</b>.
+            Importa uma biblioteca de trabalhos (CSV ou Excel) com preços <b>baixo / mediano / alto</b>.
             Elle est accessible automatiquement par toutes les entreprises <b>Pro Business</b>, et
             l'IA l'utilise pour chiffrer les devis selon la gamme de prix choisie.
             <br />L'import <b>remplace entièrement</b> la bibliothèque existante.
@@ -122,7 +122,7 @@ export default function AdminSharedLibraryTab() {
         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)}
                onKeyDown={(e) => e.key === "Enter" && load(q)}
-               placeholder="Rechercher un ouvrage / catégorie…" className="rounded-sm pl-9"
+               placeholder="Procurar trabalho / categoria…" className="rounded-sm pl-9"
                data-testid="shared-lib-search" />
       </div>
 
@@ -145,7 +145,7 @@ export default function AdminSharedLibraryTab() {
                 <Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
             ) : items.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                Aucun ouvrage. Importez un fichier pour commencer.</TableCell></TableRow>
+                Sem trabalhos. Importa um ficheiro para começar.</TableCell></TableRow>
             ) : items.map((it) => (
               <TableRow key={it.item_id}>
                 <TableCell className="text-xs text-muted-foreground">{it.category}</TableCell>

@@ -59,7 +59,7 @@ export const PriceLibrary = () => {
         <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro Business</span>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Importez <span className="text-foreground">votre propre bordereau de prix</span> (Excel ou PDF). ConstruPilot l'utilise
+        Importa <span className="text-foreground">o teu próprio livro de preços</span> (Excel ou PDF). O ConstruPilot usa-o
         <span className="text-foreground"> en priorité</span> pour chiffrer vos DPGF — l'IA ne complète que les lignes non trouvées.
       </p>
 
@@ -79,7 +79,7 @@ export const PriceLibrary = () => {
 
       {!loading && items.length === 0 && (
         <p className="mt-4 text-sm text-muted-foreground inline-flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4" /> Aucun prix pour l'instant. Importez votre premier bordereau.
+          <FileSpreadsheet className="h-4 w-4" /> Sem preços de momento. Importa o teu primeiro livro de preços.
         </p>
       )}
 

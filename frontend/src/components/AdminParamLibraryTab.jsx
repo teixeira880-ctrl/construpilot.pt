@@ -169,7 +169,7 @@ export default function AdminParamLibraryTab() {
         <div className="relative max-w-sm">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load(q)}
-                 placeholder="Rechercher un ouvrage / famille / métier…" className="rounded-sm pl-9" data-testid="param-search" />
+                 placeholder="Procurar trabalho / família / profissão…" className="rounded-sm pl-9" data-testid="param-search" />
         </div>
         <div className="border border-border rounded-sm overflow-hidden max-h-[420px] overflow-y-auto">
           <Table data-testid="param-ouvrages-table">
@@ -179,7 +179,7 @@ export default function AdminParamLibraryTab() {
             </TableRow></TableHeader>
             <TableBody>
               {busy ? <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
-                : ouvrages.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucun ouvrage. Importez le fichier.</TableCell></TableRow>
+                : ouvrages.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Sem trabalhos. Importa o ficheiro.</TableCell></TableRow>
                 : ouvrages.map((o) => (
                   <TableRow key={o.base_code} className="cursor-pointer" onClick={() => openDetail(o.base_code)}>
                     <TableCell className="text-xs font-mono">{o.base_code}</TableCell>
@@ -199,7 +199,7 @@ export default function AdminParamLibraryTab() {
         <div className="border border-border rounded-sm p-4 space-y-3" data-testid="param-rates">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> Taux horaires 2026 (€/h HT)</h4>
-            <Button size="sm" onClick={saveRates} className="rounded-sm gap-1 h-8" data-testid="param-rates-save"><Save className="h-3.5 w-3.5" /> Enregistrer</Button>
+            <Button size="sm" onClick={saveRates} className="rounded-sm gap-1 h-8" data-testid="param-rates-save"><Save className="h-3.5 w-3.5" /> Guardar</Button>
           </div>
           <div className="max-h-64 overflow-y-auto space-y-1">
             {rates.map((r, i) => (
@@ -218,7 +218,7 @@ export default function AdminParamLibraryTab() {
         <div className="border border-border rounded-sm p-4 space-y-3" data-testid="param-coefs">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Coefficients régionaux</h4>
-            <Button size="sm" onClick={saveCoefs} className="rounded-sm gap-1 h-8" data-testid="param-coefs-save"><Save className="h-3.5 w-3.5" /> Enregistrer</Button>
+            <Button size="sm" onClick={saveCoefs} className="rounded-sm gap-1 h-8" data-testid="param-coefs-save"><Save className="h-3.5 w-3.5" /> Guardar</Button>
           </div>
           <div className="space-y-1">
             {coefs.map((c, i) => (
@@ -255,7 +255,7 @@ export default function AdminParamLibraryTab() {
         <div className="relative max-w-xs">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={matQ} onChange={async (e) => { setMatQ(e.target.value); const { data } = await api.get("/admin/param-library/materials", { params: { q: e.target.value } }); setMaterials(data.materials || []); }}
-                 placeholder="Rechercher un matériau…" className="rounded-sm pl-9" data-testid="param-mat-search" />
+                 placeholder="Procurar material…" className="rounded-sm pl-9" data-testid="param-mat-search" />
         </div>
         <div className="max-h-72 overflow-y-auto grid sm:grid-cols-2 gap-2">
           {materials.map((m, i) => (

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Circle, X, Rocket, ArrowRight } from "lucide-react";
+import { useI18n } from "@/context/I18nContext";
 
 const DISMISS_KEY = "construpilot_checklist_dismissed";
 
 export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = true }) {
+  const { t } = useI18n();
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(DISMISS_KEY) === "1"
   );
@@ -12,46 +14,46 @@ export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = tru
   const items = isPro ? [
     {
       done: projectDone,
-      title: "Estime a tua obra",
-      desc: "Descreve um projeto e obtém uma estimativa detalhada em 30 s.",
+      title: t("dash.checklist.estimate.title"),
+      desc: t("dash.checklist.estimate.desc_pro"),
       to: "/estimation",
-      cta: "Estimar",
+      cta: t("dash.checklist.estimate.cta"),
     },
     {
       done: planDone,
-      title: "Mede uma planta",
-      desc: "Importa uma planta e deixa a IA calcular as áreas.",
+      title: t("dash.checklist.plan.title"),
+      desc: t("dash.checklist.plan.desc"),
       to: "/plan",
-      cta: "Medir",
+      cta: t("dash.checklist.plan.cta"),
     },
     {
       done: quoteDone,
-      title: "Cria um orçamento",
-      desc: "Transforma a tua estimativa num orçamento pronto a enviar.",
+      title: t("dash.checklist.quote.title"),
+      desc: t("dash.checklist.quote.desc"),
       to: "/devis-editeur",
-      cta: "Criar",
+      cta: t("dash.checklist.quote.cta"),
     },
   ] : [
     {
       done: projectDone,
-      title: "Estime a tua obra",
-      desc: "Descreve o teu projeto e obtém uma estimativa detalhada em 30 s.",
+      title: t("dash.checklist.estimate.title"),
+      desc: t("dash.checklist.estimate.desc_free"),
       to: "/estimation",
-      cta: "Estimar",
+      cta: t("dash.checklist.estimate.cta"),
     },
     {
       done: false,
-      title: "Compara os preços dos materiais",
-      desc: "Consulta os preços de mercado para orçamentar a tua obra.",
+      title: t("dash.checklist.prices.title"),
+      desc: t("dash.checklist.prices.desc"),
       to: "/prix",
-      cta: "Ver os preços",
+      cta: t("dash.checklist.prices.cta"),
     },
     {
       done: false,
-      title: "Usa as calculadoras",
-      desc: "Áreas, volumes e quantidades em segundos.",
+      title: t("dash.checklist.calc.title"),
+      desc: t("dash.checklist.calc.desc"),
       to: "/calculateurs",
-      cta: "Calcular",
+      cta: t("dash.checklist.calc.cta"),
     },
   ];
 
@@ -74,12 +76,12 @@ export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = tru
             <Rocket className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-bold">Começar — {doneCount}/{items.length}</h3>
-            <p className="text-xs text-muted-foreground">Alguns passos para tirar o melhor partido do ConstruPilot.</p>
+            <h3 className="font-bold">{t("dash.checklist.title")} — {doneCount}/{items.length}</h3>
+            <p className="text-xs text-muted-foreground">{t("dash.checklist.subtitle")}</p>
           </div>
         </div>
         <button onClick={close} data-testid="checklist-dismiss"
-                className="text-muted-foreground hover:text-foreground" title="Ocultar">
+                className="text-muted-foreground hover:text-foreground" title={t("dash.checklist.hide")}>
           <X className="h-4 w-4" />
         </button>
       </div>

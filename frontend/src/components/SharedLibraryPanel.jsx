@@ -101,7 +101,7 @@ export default function SharedLibraryPanel() {
           <div className="relative max-w-sm">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)}
-                   placeholder="Rechercher un ouvrage…" className="rounded-sm pl-9"
+                   placeholder="Procurar trabalho…" className="rounded-sm pl-9"
                    data-testid="shared-lib-panel-search" />
           </div>
           {loading ? (
@@ -109,7 +109,7 @@ export default function SharedLibraryPanel() {
           ) : (
             <div className="max-h-80 overflow-y-auto divide-y divide-border/60">
               {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Aucun ouvrage.</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">Sem trabalhos.</p>
               ) : items.map((it) => (
                 <div key={it.item_id} className="flex items-center justify-between py-2 gap-3">
                   <div className="min-w-0">

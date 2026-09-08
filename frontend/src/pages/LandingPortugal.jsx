@@ -24,7 +24,7 @@ import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 
 const EXAMPLE =
-  "Je veux rénover une maison de 150 m², refaire les paredes, plafonds, électricité, plomberie, deux salles de bain et remplacer les fenêtres.";
+  "Quero renovar uma casa de 150 m², refazer paredes, tetos, eletricidade, canalização, duas casas de banho e substituir as janelas.";
 
 // Data for Interactive3D hero demo — plan de maison réaliste (5 compartimentos + ouvertures)
 const HERO_ROOMS = [
@@ -183,7 +183,7 @@ export default function LandingPortugal() {
       navigate(hero.dest);
       return;
     }
-    // Conta obrigatório avant d'envoyer la demande : on garde la demande et on redirige vers l'inscription
+    // Conta obrigatória antes de enviar o pedido: guarda o pedido e redireciona para o registo
     sessionStorage.setItem("construpilot_pending_lead", JSON.stringify(leadPayload));
     navigate(`/inscription?email=${encodeURIComponent(mail)}&signup=1`);
   };
@@ -432,7 +432,7 @@ export default function LandingPortugal() {
                 <span className="text-primary italic">{t("landing.video.title_b", "lit vos plans")}</span>
               </h2>
               <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
-                {t("landing.video.subtitle", "Importez un plan (PDF ou DWG), calibrez l'échelle en 2 clics, puis laissez l'IA détecter les compartimentos, paredes, poteaux, poutres et calculer le medição et l'estimation — automatiquement.")}
+                {t("landing.video.subtitle", "Importa uma planta (PDF ou DWG), calibra a escala em 2 cliques e deixa a IA detetar os compartimentos, paredes, pilares, vigas e calcular a medição e a estimativa — automaticamente.")}
               </p>
               <ul className="mt-8 space-y-3">
                 {[
@@ -621,7 +621,7 @@ export default function LandingPortugal() {
               </h2>
               <p className="mt-6 text-base text-muted-foreground leading-relaxed">
                 {t("landing.cmp.desc_1", "ConstruPilot compare en temps réel le coût matériel pur et le coût avec main-d'œuvre. Évaluez le temps nécessaire, la complexité et les risques. ")}
-                <strong className="text-foreground">{t("landing.cmp.desc_strong", "Le système vous alerte automatiquement")}</strong>{t("landing.cmp.desc_2", " quand un professionnel qualifié est indispensável (structure, électricité, amiante).")}
+                <strong className="text-foreground">{t("landing.cmp.desc_strong", "O sistema alerta-te automaticamente")}</strong>{t("landing.cmp.desc_2", " quando um profissional qualificado é indispensável (estrutura, eletricidade, amianto).")}
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link to="/diy">
@@ -657,7 +657,7 @@ export default function LandingPortugal() {
               <div className="sm:col-span-2 p-5 border border-border rounded-2xl bg-background/50 flex items-start gap-4">
                 <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">{t("landing.cmp.ai_label", "Análise IA (SDB 8 m²) :")}</strong> {t("landing.cmp.ai_text", "Peinture et finitions réalisables par un débutant. Plomberie et tableau électrique à confier à un professionnel RGE.")}
+                  <strong className="text-foreground">{t("landing.cmp.ai_label", "Análise IA (CB 8 m²):")}</strong> {t("landing.cmp.ai_text", "Pintura e acabamentos executáveis por um principiante. Canalização e quadro elétrico devem ser confiados a um profissional certificado.")}
                 </p>
               </div>
             </div>

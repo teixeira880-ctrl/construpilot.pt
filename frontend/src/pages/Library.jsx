@@ -117,7 +117,7 @@ export default function Library() {
         <div className="relative flex-1 min-w-[240px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)}
-                 placeholder="Rechercher un ouvrage, un matériau, une catégorie…"
+                 placeholder="Procurar um trabalho, um material, uma categoria…"
                  className="pl-9 rounded-sm" data-testid="library-search-input" />
         </div>
         <div className="flex gap-1 border border-border rounded-sm p-0.5" data-testid="library-type-filter">
