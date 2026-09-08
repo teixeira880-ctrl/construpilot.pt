@@ -32,7 +32,7 @@ export default function PriceCatalog() {
     const coef = depts.find((d) => d.code === code)?.coefficient ?? 1;
     localStorage.setItem("construpilot_dept_code", code);
     localStorage.setItem("construpilot_dept_coef", String(coef));
-    toast.success(`Coefficient régional appliqué : ×${coef}`);
+    toast.success(`Coeficiente regional aplicado: ×${coef}`);
   };
 
   const downloadTemplate = () => {
@@ -51,7 +51,7 @@ export default function PriceCatalog() {
       });
       toast.success("Preço guardado");
       setForm(EMPTY); load();
-    } catch { toast.error("Erreur"); } finally { setSaving(false); }
+    } catch { toast.error("Erro"); } finally { setSaving(false); }
   };
 
   const del = async (id) => {
@@ -66,7 +66,7 @@ export default function PriceCatalog() {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/prices/catalog/import", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`${data.imported} prix importés${data.skipped ? ` · ${data.skipped} ignorés` : ""}`);
+      toast.success(`${data.imported} preços importados${data.skipped ? ` · ${data.skipped} ignorados` : ""}`);
       load();
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Importação impossível");
@@ -85,39 +85,39 @@ export default function PriceCatalog() {
       <div className="surface p-5 rounded-md flex flex-wrap items-center gap-4" data-testid="dept-coef">
         <div className="flex items-center gap-2 text-sm">
           <MapPin className="h-4 w-4 text-primary" />
-          <span className="text-muted-foreground">Région / département :</span>
+          <span className="text-muted-foreground">Região / distrito:</span>
         </div>
         <select value={deptCode} onChange={(e) => onDept(e.target.value)} data-testid="dept-select"
           className="rounded-sm border border-border bg-background px-3 py-2 text-sm min-w-[280px]">
           {depts.map((d) => <option key={d.code} value={d.code}>{d.name} (×{d.coefficient})</option>)}
         </select>
         <span className="text-sm">
-          Coefficient appliqué aux estimations : <b className="text-primary num">×{currentCoef}</b>
+          Coeficiente aplicado às estimativas: <b className="text-primary num">×{currentCoef}</b>
         </span>
       </div>
 
       <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-6 items-end" data-testid="catalog-form">
         <div className="md:col-span-2"><Label>Material *</Label><Input value={form.name} onChange={set("name")} placeholder="Placa Pladur 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
-        <div><Label>Prix (€) *</Label><Input type="number" value={form.price} onChange={set("price")} className="rounded-sm mt-1 num" data-testid="catalog-price" /></div>
-        <div><Label>Unité</Label><Input value={form.unit} onChange={set("unit")} placeholder="u / m² / ml" className="rounded-sm mt-1" data-testid="catalog-unit" /></div>
-        <div><Label>Fournisseur</Label><Input value={form.supplier} onChange={set("supplier")} placeholder="Point P…" className="rounded-sm mt-1" data-testid="catalog-supplier" /></div>
+        <div><Label>Preço (€) *</Label><Input type="number" value={form.price} onChange={set("price")} className="rounded-sm mt-1 num" data-testid="catalog-price" /></div>
+        <div><Label>Unidade</Label><Input value={form.unit} onChange={set("unit")} placeholder="u / m² / ml" className="rounded-sm mt-1" data-testid="catalog-unit" /></div>
+        <div><Label>Fornecedor</Label><Input value={form.supplier} onChange={set("supplier")} placeholder="Leroy Merlin…" className="rounded-sm mt-1" data-testid="catalog-supplier" /></div>
         <Button onClick={save} disabled={saving} className="rounded-sm gap-2" data-testid="catalog-save">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Ajouter
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
         </Button>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher…" className="rounded-sm pl-9" data-testid="catalog-search" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar…" className="rounded-sm pl-9" data-testid="catalog-search" />
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={onFile} className="hidden" data-testid="catalog-file-input" />
           <Button variant="ghost" className="rounded-sm gap-2 text-muted-foreground" onClick={downloadTemplate} data-testid="catalog-template-btn">
-            <Download className="h-4 w-4" /> Modèle Excel
+            <Download className="h-4 w-4" /> Modelo Excel
           </Button>
           <Button variant="outline" className="rounded-sm gap-2" disabled={importing} onClick={() => fileRef.current?.click()} data-testid="catalog-import-btn">
-            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importer CSV / Excel
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importar CSV / Excel
           </Button>
         </div>
       </div>
@@ -133,11 +133,11 @@ export default function PriceCatalog() {
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                <TableHead>Matériau</TableHead>
+                <TableHead>Material</TableHead>
                 <TableHead>Categoria</TableHead>
-                <TableHead>Fournisseur</TableHead>
-                <TableHead className="text-right">Prix</TableHead>
-                <TableHead className="text-right">Unité</TableHead>
+                <TableHead>Fornecedor</TableHead>
+                <TableHead className="text-right">Preço</TableHead>
+                <TableHead className="text-right">Unidade</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>

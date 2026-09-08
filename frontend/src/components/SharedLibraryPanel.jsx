@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 
 const LEVELS = [
-  { key: "bas", label: "Bas", desc: "gamme éco" },
-  { key: "moyen", label: "Moyen", desc: "standard" },
-  { key: "haut", label: "Haut", desc: "premium" },
+  { key: "bas", label: "Baixo", desc: "gama económica" },
+  { key: "moyen", label: "Médio", desc: "standard" },
+  { key: "haut", label: "Alto", desc: "premium" },
 ];
 const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { maximumFractionDigits: 0 }) + " €";
 
@@ -47,8 +47,8 @@ export default function SharedLibraryPanel() {
     setLevel(lvl);
     try {
       await api.put("/shared-library/level", { level: lvl });
-      toast.success(`Gamme de prix : ${lvl}`);
-    } catch { toast.error("Impossible d'enregistrer la gamme"); }
+      toast.success(`Gama de preços: ${lvl}`);
+    } catch { toast.error("Não foi possível guardar a gama"); }
   };
 
   const priceForLevel = (it) =>
@@ -59,7 +59,7 @@ export default function SharedLibraryPanel() {
       <div className="rounded-sm border border-border bg-muted/30 p-4 flex items-center gap-3" data-testid="shared-lib-locked">
         <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
         <p className="text-sm text-muted-foreground">
-          La <b>bibliothèque partagée ConstruPilot</b> (ouvrages avec prix bas/médian/haut) est réservée au plan <b>Pro Business</b>.
+          A <b>biblioteca partilhada ConstruPilot</b> (trabalhos com preços baixo/médio/alto) é reservada ao plano <b>Pro Business</b>.
         </p>
       </div>
     );
@@ -71,13 +71,13 @@ export default function SharedLibraryPanel() {
         <div className="flex items-center gap-2">
           <Library className="h-5 w-5 text-primary" />
           <div>
-            <p className="font-semibold text-[15px]">Bibliothèque partagée ConstruPilot</p>
-            <p className="text-xs text-muted-foreground">{total} ouvrages · prix indicatifs utilisés par l'IA</p>
+            <p className="font-semibold text-[15px]">Biblioteca partilhada ConstruPilot</p>
+            <p className="text-xs text-muted-foreground">{total} trabalhos · preços indicativos usados pela IA</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground mr-1">Ma gamme :</span>
+            <span className="text-xs text-muted-foreground mr-1">A minha gama:</span>
             {LEVELS.map((l) => (
               <button key={l.key} onClick={() => changeLevel(l.key)}
                       data-testid={`shared-lib-level-${l.key}`}
@@ -91,7 +91,7 @@ export default function SharedLibraryPanel() {
           <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)}
                   className="rounded-sm gap-1" data-testid="shared-lib-toggle">
             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            {open ? "Masquer" : "Consulter"}
+            {open ? "Ocultar" : "Consultar"}
           </Button>
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function SharedLibraryPanel() {
             </div>
           )}
           {total > items.length && (
-            <p className="text-xs text-muted-foreground">Affichage de {items.length} / {total}. Affinez avec la recherche.</p>
+            <p className="text-xs text-muted-foreground">A mostrar {items.length} / {total}. Refine com a pesquisa.</p>
           )}
         </div>
       )}

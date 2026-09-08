@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 
-// Bibliothèque de prix propre à l'entreprise (Excel/PDF) — utilisée en priorité pour chiffrer les DPGF.
+// Biblioteca de preços própria da empresa (Excel/PDF) — usada com prioridade para orçamentar os DPGF.
 export const PriceLibrary = () => {
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -28,10 +28,10 @@ export const PriceLibrary = () => {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/pro/price-library/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`${data.imported} prix importés — ${data.total} au total dans votre bibliothèque`);
+      toast.success(`${data.imported} preços importados — ${data.total} no total na sua biblioteca`);
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import impossible (.xlsx ou .pdf attendu)");
+      toast.error(e?.response?.data?.detail || "Importação impossível (esperado .xlsx ou .pdf)");
     } finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
@@ -39,16 +39,16 @@ export const PriceLibrary = () => {
     try {
       await api.delete(`/pro/price-library/${id}`);
       setItems((prev) => prev.filter((x) => x.item_id !== id));
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   const clearAll = async () => {
-    if (!window.confirm("Vider toute la bibliothèque de prix ?")) return;
+    if (!window.confirm("Esvaziar toda a biblioteca de preços?")) return;
     try {
       await api.delete("/pro/price-library");
       setItems([]);
-      toast.success("Bibliothèque vidée");
-    } catch { toast.error("Action impossible"); }
+      toast.success("Biblioteca esvaziada");
+    } catch { toast.error("Ação impossível"); }
   };
 
   return (
@@ -60,7 +60,7 @@ export const PriceLibrary = () => {
       </div>
       <p className="text-sm text-muted-foreground mb-4">
         Importa <span className="text-foreground">o teu próprio livro de preços</span> (Excel ou PDF). O ConstruPilot usa-o
-        <span className="text-foreground"> en priorité</span> pour chiffrer vos DPGF — l'IA ne complète que les lignes non trouvées.
+        <span className="text-foreground"> com prioridade</span> para orçamentar os seus DPGF — a IA só completa as linhas não encontradas.
       </p>
 
       <input ref={fileRef} type="file" accept=".xlsx,.pdf" hidden data-testid="library-file-input"
@@ -68,11 +68,11 @@ export const PriceLibrary = () => {
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => fileRef.current?.click()} disabled={busy} className="gap-2 rounded-sm" data-testid="library-upload-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {busy ? "Analyse en cours…" : "Importer Excel / PDF"}
+          {busy ? "A analisar…" : "Importar Excel / PDF"}
         </Button>
         {items.length > 0 && (
           <Button variant="outline" onClick={clearAll} className="gap-2 rounded-sm text-destructive" data-testid="library-clear-btn">
-            <Trash2 className="h-4 w-4" /> Tout vider
+            <Trash2 className="h-4 w-4" /> Esvaziar tudo
           </Button>
         )}
       </div>
@@ -85,14 +85,14 @@ export const PriceLibrary = () => {
 
       {items.length > 0 && (
         <div className="mt-4" data-testid="library-list">
-          <div className="text-sm mb-2">Prix enregistrés : <b>{items.length}</b></div>
+          <div className="text-sm mb-2">Preços guardados: <b>{items.length}</b></div>
           <div className="max-h-72 overflow-auto rounded-sm border border-border">
             <table className="w-full text-xs">
               <thead className="bg-secondary/40 sticky top-0">
                 <tr>
-                  <th className="text-left p-2">Désignation</th>
-                  <th className="p-2">Unité</th>
-                  <th className="p-2 text-right">PU HT</th>
+                  <th className="text-left p-2">Designação</th>
+                  <th className="p-2">Unidade</th>
+                  <th className="p-2 text-right">PU s/IVA</th>
                   <th className="p-2"></th>
                 </tr>
               </thead>
