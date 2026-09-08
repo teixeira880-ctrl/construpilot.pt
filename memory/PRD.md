@@ -10,6 +10,9 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 08/09/2026 (sexies) — CCTP mémoire des lots** : `users.cctp_lots_kept / cctp_lots_skipped` (listes normalisées, PrefsIn + `_public`). QuoteEditor : `normLot()` (minuscules, sans accents, sans « LOT 03 »), matching par mots ≥ 4 lettres ; `preselectLot()` décoche les lots déjà ignorés (sauf s'ils ont aussi été gardés) ; `learnLots()` met à jour les listes à chaque confirmation multi-lots (`PUT /users/me/preferences`). Dialog affiche `cctp-lots-remembered` quand une présélection a été appliquée. Vérifié e2e (2e import : Peinture décochée automatiquement).
+
+
 > **Session 08/09/2026 (quinquies) — Suivi conversion, promo auto, marge par lot, CCTP multi-lots** [vérifiés curl + e2e] :
 > - **Suivi conversion** : `engines/upsell.py::conversion_stats` → `GET /admin/campaigns/upsell/stats?weeks=` (par semaine ISO : J+3/J+10 envoyés, abonnements payants souscrits après l'envoi via `entitlements.granted_at`, taux). Tableau `admin-upsell-stats` dans Admin → Campagnes.
 > - **Promo auto-appliqué** : Pricing lit `?promo=` (persisté en sessionStorage) → `POST /billing/checkout {promo_code}` → `discounts=[{promotion_code}]` (déjà supporté par `_resolve_promo_discount`). Si Stripe refuse (client déjà abonné : `first_time_transaction`), `billing.checkout` relance sans remise et renvoie `promo_rejected: true` (toast info). Vérifié : nouveau client → discount appliqué.

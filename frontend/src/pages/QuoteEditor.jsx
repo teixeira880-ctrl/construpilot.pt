@@ -71,6 +71,23 @@ export default function QuoteEditor() {
   const [videoBusy, setVideoBusy] = useState(false);
   const [cctpBusy, setCctpBusy] = useState(false);
   const [cctpPreview, setCctpPreview] = useState(null);
+  const lotPrefs = useRef({ kept: user?.cctp_lots_kept || [], skipped: user?.cctp_lots_skipped || [] });
+  const normLot = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\blot\s*n?°?\s*\d+[a-z]?\b/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  const lotWords = (s) => normLot(s).split(" ").filter((w) => w.length >= 4);
+  const lotMatches = (lot, list) => list.some((k) => { const kw = lotWords(k); const lw = lotWords(lot); return kw.length && lw.length && kw.some((w) => lw.includes(w)); });
+  const preselectLot = (lot) => {
+    const kept = lotMatches(lot, lotPrefs.current.kept), skipped = lotMatches(lot, lotPrefs.current.skipped);
+    if (kept && !skipped) return true;
+    if (skipped && !kept) return false;
+    return true;
+  };
+  const learnLots = async (lots, selected) => {
+    const kept = new Set(lotPrefs.current.kept), skipped = new Set(lotPrefs.current.skipped);
+    lots.forEach((lot) => { const n = normLot(lot); if (!n) return; if (selected.has(lot)) { kept.add(n); skipped.delete(n); } else { skipped.add(n); kept.delete(n); } });
+    lotPrefs.current = { kept: [...kept], skipped: [...skipped] };
+    try { await api.put("/users/me/preferences", { cctp_lots_kept: [...kept], cctp_lots_skipped: [...skipped] }); } catch { /* silencieux */ }
+  };
   const importCctp = async (file) => {
     if (!file) return;
     setCctpBusy(true);
@@ -80,12 +97,15 @@ export default function QuoteEditor() {
       const { data } = await api.post("/documents/cctp/extract", fd, { timeout: 300000 });
       const lots = [...new Set((data.lines || []).map((l) => (l.category || "").trim() || "Autres"))];
       if (lots.length <= 1) { applyCctp(data, new Set(lots)); return; }
-      setCctpPreview({ data, lots, selected: new Set(lots) });
+      const selected = new Set(lots.filter(preselectLot));
+      const remembered = lots.length - selected.size;
+      setCctpPreview({ data, lots, selected: selected.size ? selected : new Set(lots), remembered });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Lecture du CCTP impossible");
     } finally { setCctpBusy(false); }
   };
-  const applyCctp = (data, selected) => {
+  const applyCctp = (data, selected, lots = null) => {
+    if (lots && lots.length > 1) learnLots(lots, selected);
     const keep = (data.lines || []).filter((l) => selected.has((l.category || "").trim() || "Autres"));
     const newLines = keep.map((l) => ({ ...blankLine(defVat), ...l, _saveToLib: false }));
     setLines((ls) => [...ls.filter((l) => l.designation?.trim() || Number(l.unit_price_ht) > 0), ...newLines]);
@@ -1177,7 +1197,9 @@ export default function QuoteEditor() {
           <DialogContent className="max-w-lg" data-testid="cctp-lots-dialog">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Ce CCTP couvre plusieurs lots</DialogTitle>
-              <DialogDescription>Cochez uniquement les lots que vous chiffrez. Les autres ne seront pas importés dans le devis.</DialogDescription>
+              <DialogDescription>Cochez uniquement les lots que vous chiffrez. Les autres ne seront pas importés dans le devis.
+                {cctpPreview?.remembered > 0 && <span className="block mt-1 text-primary" data-testid="cctp-lots-remembered">Présélection basée sur vos imports précédents ({cctpPreview.remembered} lot{cctpPreview.remembered > 1 ? "s" : ""} décoché{cctpPreview.remembered > 1 ? "s" : ""} automatiquement).</span>}
+              </DialogDescription>
             </DialogHeader>
             {cctpPreview && (
               <>
@@ -1200,7 +1222,7 @@ export default function QuoteEditor() {
                     <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set(p.lots) }))}>Tout</button>
                     <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set() }))}>Aucun</button>
                   </div>
-                  <Button onClick={() => applyCctp(cctpPreview.data, cctpPreview.selected)} disabled={!cctpPreview.selected.size} className="rounded-sm gap-2" data-testid="cctp-lots-confirm">
+                  <Button onClick={() => applyCctp(cctpPreview.data, cctpPreview.selected, cctpPreview.lots)} disabled={!cctpPreview.selected.size} className="rounded-sm gap-2" data-testid="cctp-lots-confirm">
                     <Plus className="h-4 w-4" /> Importer {cctpPreview.selected.size} lot{cctpPreview.selected.size > 1 ? "s" : ""}
                   </Button>
                 </div>
