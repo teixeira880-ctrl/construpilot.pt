@@ -82,7 +82,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, onClose, on
                     </ul>
                   </div>
                   <div>
-                    <p className="overline text-[10px] mb-2">Matériaux</p>
+                    <p className="overline text-[10px] mb-2">Materiais</p>
                     <ul className="text-xs space-y-1">
                       {(r.materials || []).map((m, i) => (
                         <li key={i} className="flex justify-between border-b border-border/40 py-0.5">

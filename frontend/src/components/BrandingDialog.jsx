@@ -17,7 +17,7 @@ const CERTS = [
 ];
 
 /** Dialog de configuration du branding pro (logo + société + contact + certifications)
- *  utilisé dans les PDF Métré / Devis / Factures. */
+ *  usado nos PDF Medição / Orçamento / Faturas. */
 export function BrandingDialog({ trigger }) {
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");

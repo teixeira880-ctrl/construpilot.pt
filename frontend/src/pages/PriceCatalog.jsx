@@ -79,7 +79,7 @@ export default function PriceCatalog() {
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8" data-testid="price-catalog-page">
       <SectionTitle overline="Comparador 100% fiável" title="O meu catálogo de preços" />
       <p className="text-muted-foreground -mt-4 max-w-2xl text-sm">
-        Saisissez vos vrais prix fournisseurs (ou importez un fichier de votre négoce). Le comparateur et les devis utiliseront automatiquement ces prix quand le nom du matériau correspond.
+        Introduz os teus preços reais de fornecedores (ou importa um ficheiro do teu distribuidor). O comparador e os orçamentos usam automaticamente estes preços quando o nome do material coincidir.
       </p>
 
       <div className="surface p-5 rounded-md flex flex-wrap items-center gap-4" data-testid="dept-coef">
@@ -126,7 +126,7 @@ export default function PriceCatalog() {
         <div className="surface p-10 text-center rounded-md" data-testid="catalog-empty">
           <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
           <p className="text-muted-foreground">Sem preços de momento. Adiciona um ou importa o teu ficheiro de tarifas.</p>
-          <p className="text-xs text-muted-foreground mt-2">Colonnes acceptées : nom, prix, unité, fournisseur, catégorie.</p>
+          <p className="text-xs text-muted-foreground mt-2">Colunas aceites: nome, preço, unidade, fornecedor, categoria.</p>
         </div>
       ) : (
         <div className="surface rounded-md overflow-x-auto" data-testid="catalog-table">
@@ -134,7 +134,7 @@ export default function PriceCatalog() {
             <TableHeader>
               <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                 <TableHead>Matériau</TableHead>
-                <TableHead>Catégorie</TableHead>
+                <TableHead>Categoria</TableHead>
                 <TableHead>Fournisseur</TableHead>
                 <TableHead className="text-right">Prix</TableHead>
                 <TableHead className="text-right">Unité</TableHead>

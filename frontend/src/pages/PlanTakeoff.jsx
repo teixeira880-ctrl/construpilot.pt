@@ -2636,7 +2636,7 @@ export default function PlanTakeoff() {
           {pendingOuvrages > 0 && (
             <Button variant="outline" onClick={() => nav("/devis-editeur")}
                     className="rounded-sm gap-2 border-primary text-primary" data-testid="plan-create-quote-ouvrages">
-              <ArrowRight className="h-4 w-4" /> Criar un devis ({pendingOuvrages})
+              <ArrowRight className="h-4 w-4" /> Criar um orçamento ({pendingOuvrages})
             </Button>
           )}
           <Button onClick={runAI} disabled={aiBusy} data-testid="plan-ai-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
@@ -3852,7 +3852,7 @@ export default function PlanTakeoff() {
           <Tabs value={rightTab} onValueChange={setRightTab}>
             <TabsList className="w-full rounded-sm">
               <TabsTrigger value="rooms" className="flex-1 rounded-sm" data-testid="tab-rooms">Compartimentos</TabsTrigger>
-              <TabsTrigger value="materials" className="flex-1 rounded-sm" data-testid="tab-materials">Matériaux</TabsTrigger>
+              <TabsTrigger value="materials" className="flex-1 rounded-sm" data-testid="tab-materials">Materiais</TabsTrigger>
               <TabsTrigger value="ai" className="flex-1 rounded-sm" data-testid="tab-ai">IA</TabsTrigger>
               <TabsTrigger value="history" className="flex-1 rounded-sm" data-testid="tab-history" onClick={loadHistory}>
                 <History className="h-3 w-3" />

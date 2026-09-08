@@ -63,6 +63,8 @@ export function NotificationsBell() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon"
                 data-testid="notif-bell-btn"
+                aria-label="Abrir notificações"
+                title="Notificações"
                 className="relative rounded-sm h-9 w-9">
           <Bell className="h-4 w-4" />
           {unread > 0 && (
@@ -78,18 +80,18 @@ export function NotificationsBell() {
       <DropdownMenuContent align="end" className="w-80 rounded-sm p-0"
                             data-testid="notif-dropdown">
         <div className="flex items-center justify-between border-b border-border p-3">
-          <p className="font-display font-bold text-sm">Notifications</p>
+          <p className="font-display font-bold text-sm">Notificações</p>
           {unread > 0 && (
             <button onClick={markAll} className="text-[10px] text-primary hover:underline"
                     data-testid="notif-mark-all">
-              Tout marquer lu
+              Marcar todas como lidas
             </button>
           )}
         </div>
         <div className="max-h-96 overflow-y-auto" data-testid="notif-list">
           {items.length === 0 ? (
             <p className="text-xs text-muted-foreground p-6 text-center">
-              Aucune notification pour l'instant.
+              Sem notificações de momento.
             </p>
           ) : items.map(n => (
             <button key={n.notif_id}
@@ -112,7 +114,7 @@ export function NotificationsBell() {
             <Link to="/devis" onClick={() => setOpen(false)}
                   data-testid="notif-see-all"
                   className="block text-center text-[11px] text-primary hover:underline py-1">
-              Voir tous les devis envoyés →
+              Ver todos os orçamentos enviados →
             </Link>
           </div>
         )}

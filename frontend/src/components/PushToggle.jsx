@@ -44,6 +44,8 @@ export default function PushToggle({ variant = "outline", size = "sm" }) {
       size={size}
       data-testid="push-toggle-btn"
       data-subscribed={subscribed ? "1" : "0"}
+      aria-label={label}
+      title={label}
       className="rounded-sm gap-2"
     >
       <Icon className="h-4 w-4" /> {label}

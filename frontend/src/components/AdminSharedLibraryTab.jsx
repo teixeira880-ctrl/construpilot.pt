@@ -130,7 +130,7 @@ export default function AdminSharedLibraryTab() {
         <Table data-testid="shared-lib-table">
           <TableHeader>
             <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-              <TableHead>Catégorie</TableHead>
+              <TableHead>Categoria</TableHead>
               <TableHead>Désignation</TableHead>
               <TableHead>Unité</TableHead>
               <TableHead className="text-right">Bas €</TableHead>

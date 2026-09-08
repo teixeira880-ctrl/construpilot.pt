@@ -121,7 +121,7 @@ export default function Library() {
                  className="pl-9 rounded-sm" data-testid="library-search-input" />
         </div>
         <div className="flex gap-1 border border-border rounded-sm p-0.5" data-testid="library-type-filter">
-          {[["", "Tous"], ["ouvrage", "Ouvrages"], ["materiau", "Matériaux"]].map(([v, lbl]) => (
+          {[["", "Todos"], ["ouvrage", "Trabalhos"], ["materiau", "Materiais"]].map(([v, lbl]) => (
             <button key={v} onClick={() => setTypeFilter(v)}
                     data-testid={`library-filter-${v || "all"}`}
                     className={`px-3 py-1.5 text-xs rounded-sm transition ${typeFilter === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -145,7 +145,7 @@ export default function Library() {
         <div className="surface divide-y divide-border" data-testid="library-list">
           <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
             <span className="col-span-5">Désignation</span>
-            <span className="col-span-2">Catégorie</span>
+            <span className="col-span-2">Categoria</span>
             <span className="col-span-1 text-center">Unité</span>
             <span className="col-span-2 text-right">PU HT</span>
             <span className="col-span-1 text-center">TVA</span>
@@ -197,7 +197,7 @@ export default function Library() {
               </select>
             </div>
             <div>
-              <Label>Catégorie</Label>
+              <Label>Categoria</Label>
               <Input value={form.category} onChange={set("category")} list="lib-cats"
                      className="rounded-sm mt-1" data-testid="library-category" placeholder="Ex : Électricité" />
               <datalist id="lib-cats">

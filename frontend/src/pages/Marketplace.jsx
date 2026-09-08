@@ -165,7 +165,7 @@ export default function Marketplace() {
             <p className="overline">Votre demande — score qualité</p>
           </div>
           <p className="num font-display text-4xl font-extrabold mt-2">{preview.score}/100</p>
-          <p className="text-sm text-muted-foreground mt-1">Évaluation : {preview.rating} · Catégorie : {preview.tier}</p>
+          <p className="text-sm text-muted-foreground mt-1">Avaliação: {preview.rating} · Categoria: {preview.tier}</p>
           <p className="text-xs text-muted-foreground mt-3">
             Les professionnels reçoivent une notification lorsque leur zone/métier correspond à votre projet.
           </p>

@@ -88,7 +88,7 @@ export function OuvrageComposeDialog({ onAdd, planVariables }) {
             </div>
             <div className="relative">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un ouvrage…"
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Procurar trabalho…"
                      className="rounded-sm pl-9" data-testid="ouvrage-search" />
             </div>
             <div className="max-h-96 overflow-y-auto divide-y divide-border/60">

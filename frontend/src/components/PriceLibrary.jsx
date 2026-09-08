@@ -55,7 +55,7 @@ export const PriceLibrary = () => {
     <div className="surface p-6" data-testid="price-library">
       <div className="flex items-center gap-2 mb-1">
         <BookMarked className="h-5 w-5 text-primary" />
-        <h3 className="font-display font-bold text-lg">Ma bibliothèque de prix</h3>
+        <h3 className="font-display font-bold text-lg">A minha biblioteca de preços</h3>
         <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro Business</span>
       </div>
       <p className="text-sm text-muted-foreground mb-4">

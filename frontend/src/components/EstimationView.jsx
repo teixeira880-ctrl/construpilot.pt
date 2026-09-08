@@ -43,7 +43,7 @@ export const EstimationView = ({ est, projectId }) => {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
-        <Stat label="Matériaux" value={eur(b.materials)} testId="stat-materials" />
+        <Stat label="Materiais" value={eur(b.materials)} testId="stat-materials" />
         <Stat label="Main-d'œuvre" value={eur(b.labour)} testId="stat-labour" />
         <Stat label="Location matériel" value={eur(b.equipment_rental)} testId="stat-equipment" />
         <Stat label="Déchets / évacuation" value={eur(b.waste_disposal)} testId="stat-waste" />
@@ -79,7 +79,7 @@ export const EstimationView = ({ est, projectId }) => {
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Lot</TableHead>
                   <TableHead className="text-right">Quantité</TableHead>
-                  <TableHead className="text-right">Matériaux</TableHead>
+                  <TableHead className="text-right">Materiais</TableHead>
                   <TableHead className="text-right">Main-d'œuvre</TableHead>
                   <TableHead className="text-right">Prix / unité</TableHead>
                   <TableHead className="text-right">Total</TableHead>

@@ -199,12 +199,12 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
 
                 {estimate.by_category && estimate.by_category.length > 0 && (
                   <div data-testid="category-recap">
-                    <div className="text-sm font-semibold mb-1">Récapitulatif par catégorie</div>
+                    <div className="text-sm font-semibold mb-1">Resumo por categoria</div>
                     <div className="rounded-sm border border-border overflow-hidden">
                       <table className="w-full text-xs">
                         <thead className="bg-secondary/40">
                           <tr>
-                            <th className="text-left p-2">Catégorie</th>
+                            <th className="text-left p-2">Categoria</th>
                             <th className="p-2 text-right">Béton (m³)</th>
                             <th className="p-2 text-right">Coffrage (m²)</th>
                             <th className="p-2 text-right">Aciers (kg)</th>

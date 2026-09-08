@@ -73,7 +73,7 @@ export default function ProKycPanel() {
       {loading ? (
         <p className="text-sm text-muted-foreground py-6 text-center">Chargement…</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-6 text-center" data-testid="kyc-empty">Aucun compte dans cette catégorie.</p>
+        <p className="text-sm text-muted-foreground py-6 text-center" data-testid="kyc-empty">Sem contas nesta categoria.</p>
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
