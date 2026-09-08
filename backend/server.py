@@ -412,6 +412,10 @@ async def seed():
     scheduler.add_job(alerting.check_all_alerts,
                       CronTrigger(hour=8, minute=0),
                       id="daily_price_alerts", max_instances=1, coalesce=True)
+    # Email d'incitation Premium / Pro : J+3 après inscription, comptes gratuits, 1 seule fois (10:00 UTC)
+    from engines.upsell import run_upsell_emails
+    scheduler.add_job(run_upsell_emails, CronTrigger(hour=10, minute=0),
+                      id="upsell_j3_emails", max_instances=1, coalesce=True)
     # Rappel Auto Devis (toutes les 6 h) : envoie un rappel aux clients qui ont ouvert
     # mais pas signé leur devis depuis > 5 j.
     scheduler.add_job(plans_routes._run_reminders,
