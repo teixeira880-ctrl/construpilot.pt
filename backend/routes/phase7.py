@@ -99,6 +99,7 @@ async def send_digests_now(admin=Depends(admin_user)) -> dict:
 class PrefsIn(BaseModel):
     weekly_digest: bool | None = None
     push_price_alerts: bool | None = None
+    target_margin_pct: float | None = Field(default=None, ge=0, le=90)
 
 
 @router.put("/users/me/preferences")
@@ -107,7 +108,7 @@ async def update_prefs(body: PrefsIn, user=Depends(current_user)):
     if upd:
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
     fresh = await db.users.find_one({"user_id": user["user_id"]},
-                                    {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1})
+                                    {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1, "target_margin_pct": 1})
     return fresh or {}
 
 

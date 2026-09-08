@@ -51,7 +51,7 @@ def _public(u: dict) -> dict:
                                   "phone", "auth_provider", "must_change_password",
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
                                   "lang", "created_at", "account_type", "kyc_status",
-                                  "siret")}
+                                  "siret", "target_margin_pct")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
     return out
