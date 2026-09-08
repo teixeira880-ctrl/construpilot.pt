@@ -8,6 +8,7 @@ from reportlab.lib.colors import HexColor, white, black
 from reportlab.lib.pagesizes import landscape
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 
 # 16:9 slide — 297 mm × 167 mm
 PAGE_W, PAGE_H = 297 * mm, 167 * mm
@@ -16,8 +17,35 @@ DARK      = HexColor("#0f172a")   # slate-900
 MUTED     = HexColor("#64748b")   # slate-500
 LIGHT_BG  = HexColor("#f8fafc")   # slate-50
 ACCENT    = HexColor("#f97316")   # laranja de destaque
+BORDER    = HexColor("#1e293b")   # slate-800 para borda de screenshots
 
 OUT = Path("/app/frontend/public/pitch-deck.pdf")
+SHOTS = Path("/app/backend/scripts/pitch_screenshots")
+
+
+def _drop_shadow_image(c, img_path, x, y, w, h, caption=None):
+    """Desenha imagem com moldura escura fina + legenda opcional por baixo."""
+    # sombra suave (retângulo escuro deslocado)
+    c.setFillColor(HexColor("#020617"))
+    c.rect(x + 1.2 * mm, y - 1.2 * mm, w, h, fill=1, stroke=0)
+    # borda
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.6)
+    c.rect(x, y, w, h, fill=0, stroke=1)
+    # imagem
+    try:
+        img = ImageReader(str(img_path))
+        c.drawImage(img, x + 0.4, y + 0.4, w - 0.8, h - 0.8,
+                    preserveAspectRatio=True, anchor='c', mask='auto')
+    except Exception as e:
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 9)
+        c.drawString(x + 4, y + h / 2, f"[imagem em falta: {img_path.name}]")
+    # legenda
+    if caption:
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica-Oblique", 8)
+        c.drawString(x, y - 5 * mm, caption)
 
 
 def _footer(c, page_no, total):
@@ -131,20 +159,26 @@ def slide_2_problema(c):
 
 def slide_3_solucao(c):
     _top_band(c, "A solução", "Plataforma all-in-one")
-    _bullets(c, 20 * mm, PAGE_H - 45 * mm, [
-        "Medição automática de plantas 2D/3D por IA (DWG, DXF, PDF, JPG)",
-        "Estimativa instantânea de betão, aço, vãos e mão de obra",
-        "Biblioteca partilhada de trabalhos e materiais com preços de mercado",
-        "Orçamento pronto a enviar em minutos, com assinatura eletrónica",
-        "CRM integrado: clientes, obras, faturas e cobrança automática",
-    ], size=13, line_h=9)
-    # Faixa CTA
+    # Bullets à esquerda (coluna estreita)
+    _bullets(c, 15 * mm, PAGE_H - 45 * mm, [
+        "Medição automática de plantas 2D/3D por IA",
+        "Estimativa instantânea de betão, aço, vãos",
+        "Biblioteca partilhada de trabalhos PT",
+        "Orçamento pronto em minutos + assinatura",
+        "CRM: clientes, obras, faturas, cobrança",
+    ], size=11, line_h=8)
+    # Screenshot grande à direita (landing 3D)
+    _drop_shadow_image(
+        c, SHOTS / "01-landing.png",
+        x=135 * mm, y=30 * mm, w=145 * mm, h=95 * mm,
+        caption="Landing pública — visualizador 3D em tempo real"
+    )
+    # Faixa CTA no fundo (encolhida)
     c.setFillColor(PRIMARY)
-    c.rect(20 * mm, 18 * mm, PAGE_W - 40 * mm, 20 * mm, fill=1, stroke=0)
+    c.rect(15 * mm, 12 * mm, 110 * mm, 14 * mm, fill=1, stroke=0)
     c.setFillColor(white)
-    c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(PAGE_W / 2, 27 * mm,
-                        "4–8 horas   →   menos de 15 minutos por orçamento")
+    c.setFont("Helvetica-Bold", 11)
+    c.drawCentredString(70 * mm, 17 * mm, "4–8 h  →  <15 min por orçamento")
 
 
 def slide_4_mercado(c):
@@ -166,62 +200,56 @@ def slide_4_mercado(c):
 
 
 def slide_5_produto(c):
-    _top_band(c, "Produto", "5 pilares que substituem 5 ferramentas")
-    # 2 colunas de features
-    features_left = [
-        ("Medição 2D/3D com IA", "DWG · DXF · PDF · foto — deteção automática"),
-        ("Estimação inteligente", "Betão, aço, vãos, mão de obra em segundos"),
-        ("Biblioteca de preços", "Trabalhos e materiais partilhados PT"),
-    ]
-    features_right = [
-        ("CRM + assinatura", "Clientes, propostas, tracking, assinatura eletrónica"),
-        ("Faturação automática", "Situações de trabalho, sinais, faturas finais"),
-        ("Painel LC", "Licenças de construção e planeamento integrado"),
-    ]
-    for i, (title, desc) in enumerate(features_left):
-        y = PAGE_H - 55 * mm - i * 32 * mm
-        c.setFillColor(PRIMARY)
-        c.rect(20 * mm, y, 4, 22 * mm, fill=1, stroke=0)
-        c.setFillColor(DARK)
-        c.setFont("Helvetica-Bold", 13)
-        c.drawString(28 * mm, y + 15 * mm, title)
-        c.setFillColor(MUTED)
-        c.setFont("Helvetica", 10)
-        c.drawString(28 * mm, y + 6 * mm, desc)
-    for i, (title, desc) in enumerate(features_right):
-        y = PAGE_H - 55 * mm - i * 32 * mm
-        c.setFillColor(PRIMARY)
-        c.rect(150 * mm, y, 4, 22 * mm, fill=1, stroke=0)
-        c.setFillColor(DARK)
-        c.setFont("Helvetica-Bold", 13)
-        c.drawString(158 * mm, y + 15 * mm, title)
-        c.setFillColor(MUTED)
-        c.setFont("Helvetica", 10)
-        c.drawString(158 * mm, y + 6 * mm, desc)
+    _top_band(c, "Produto", "Painel + Biblioteca no mesmo fluxo")
+    # 2 screenshots lado a lado
+    _drop_shadow_image(
+        c, SHOTS / "02-dashboard.png",
+        x=15 * mm, y=35 * mm, w=130 * mm, h=85 * mm,
+        caption="Painel do utilizador — checklist e KPIs"
+    )
+    _drop_shadow_image(
+        c, SHOTS / "03-price-library.png",
+        x=152 * mm, y=35 * mm, w=130 * mm, h=85 * mm,
+        caption="Biblioteca partilhada — trabalhos e materiais PT"
+    )
+    # Legendas curtas por baixo
+    c.setFillColor(DARK)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(15 * mm, 24 * mm, "5 pilares num só produto:")
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica", 9)
+    c.drawString(15 * mm, 18 * mm,
+                 "Medição IA · Estimação · Biblioteca de preços · CRM + assinatura · Faturação SAF-T")
 
 
 def slide_6_tracao(c):
     _top_band(c, "Tração e diferencial", "Já em produção")
-    _bullets(c, 20 * mm, PAGE_H - 45 * mm, [
-        "Plataforma operacional em construpilot.pt — SaaS multi-tenant",
-        "Localização 100% PT-PT — único fornecedor especializado em Portugal",
-        "Integrações produtivas: CloudConvert (planos), Tavily (pesquisa), Resend (emails)",
-        "Domínio verificado + SPF/DKIM + emails transacionais operacionais",
-        "Motor de IA proprietário para deteção de estrutura em plantas",
-    ], size=13, line_h=9)
-    # Caixa "vs concorrência"
+    # Bullets à esquerda
+    _bullets(c, 15 * mm, PAGE_H - 45 * mm, [
+        "Plataforma operacional — SaaS multi-tenant PT",
+        "Localização 100% PT-PT — única no mercado",
+        "Integrações produtivas: CloudConvert · Tavily · Resend",
+        "Domínio verificado + emails transacionais ativos",
+        "Motor IA proprietário de leitura de plantas",
+    ], size=11, line_h=8)
+    # Screenshot do estimador à direita
+    _drop_shadow_image(
+        c, SHOTS / "04-estimation.png",
+        x=150 * mm, y=25 * mm, w=132 * mm, h=100 * mm,
+        caption="Estimador em produção — 3 passos, resultado em segundos"
+    )
+    # Caixa diferencial compacta em baixo
     c.setFillColor(LIGHT_BG)
-    c.rect(20 * mm, 18 * mm, PAGE_W - 40 * mm, 32 * mm, fill=1, stroke=0)
+    c.rect(15 * mm, 12 * mm, 130 * mm, 24 * mm, fill=1, stroke=0)
     c.setStrokeColor(PRIMARY)
-    c.rect(20 * mm, 18 * mm, PAGE_W - 40 * mm, 32 * mm, fill=0, stroke=1)
+    c.rect(15 * mm, 12 * mm, 130 * mm, 24 * mm, fill=0, stroke=1)
     c.setFillColor(PRIMARY)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(25 * mm, 42 * mm, "Diferencial vs Bloco 6, PrimaverA, softwares FR:")
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(19 * mm, 30 * mm, "DIFERENCIAL")
     c.setFillColor(DARK)
-    c.setFont("Helvetica", 10)
-    c.drawString(25 * mm, 34 * mm, "· Único com medição 2D + estimação IA + CRM num único fluxo")
-    c.drawString(25 * mm, 27 * mm, "· Preços de mercado PT integrados (não é template ES/FR adaptado)")
-    c.drawString(25 * mm, 20 * mm, "· UX moderno, mobile-first, sem instalação — SaaS puro")
+    c.setFont("Helvetica", 8.5)
+    c.drawString(19 * mm, 23 * mm, "· Medição 2D + estimação IA + CRM num único fluxo")
+    c.drawString(19 * mm, 17 * mm, "· Preços PT integrados · UX mobile-first, SaaS puro")
 
 
 def slide_7_modelo(c):
