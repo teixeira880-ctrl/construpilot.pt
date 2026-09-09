@@ -273,7 +273,7 @@ async def login(body: LoginIn, request: Request, response: Response) -> dict:
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
         await _record_failed_login(identifier)
-        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+        raise HTTPException(status_code=401, detail="Email ou palavra-passe incorretos")
     await db.login_attempts.delete_one({"identifier": identifier})
     if user.get("role") == "admin" and user.get("two_fa_enabled"):
         return await _start_2fa(user)
@@ -624,7 +624,7 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
 @router.post("/reset-password")
 async def reset_password(body: ResetIn) -> dict:
     if len(body.new_password) < 8:
-        raise HTTPException(status_code=400, detail="Nouveau mot de passe : 8 caractères minimum")
+        raise HTTPException(status_code=400, detail="Nova palavra-passe: mínimo 8 caracteres")
     th = hashlib.sha256(body.token.encode()).hexdigest()
     rec = await db.password_reset_tokens.find_one({"token_hash": th, "used": False})
     if not rec:
