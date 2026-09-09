@@ -37,8 +37,8 @@ export function ParamLibraryPromo() {
             </div>
             <h2 className="mt-6 text-4xl sm:text-5xl font-black leading-[1.05] tracking-tight">
               {pt
-                ? <>Uma biblioteca de <span className="text-primary">218&nbsp;trabalhos compostos</span>, orçamentados ao real.</>
-                : <>Une bibliothèque de <span className="text-primary">218&nbsp;ouvrages composés</span>, chiffrés au réel.</>}
+                ? <>Uma biblioteca de <span className="text-primary">322&nbsp;trabalhos compostos</span>, orçamentados ao real.</>
+                : <>Une bibliothèque de <span className="text-primary">322&nbsp;ouvrages composés</span>, chiffrés au réel.</>}
             </h2>
             <p className="mt-6 text-lg text-white/70 max-w-xl leading-relaxed">
               {pt
@@ -47,8 +47,8 @@ export function ParamLibraryPromo() {
             </p>
             <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3">
               {(pt
-                ? ["1 127 linhas de receitas", "13 especialidades", "Custos horários 2026", "IVA 6 / 13 / 23 %"]
-                : ["1 127 lignes de recettes", "13 corps de métier", "Taux horaires 2026", "TVA 5,5 / 10 / 20 %"]
+                ? ["7 021 linhas de composição", "43 especialidades", "Custos horários 2026", "IVA 6 / 13 / 23 %"]
+                : ["7 021 lignes de composition", "43 corps de métier", "Taux horaires 2026", "TVA 5,5 / 10 / 20 %"]
               ).map((t) => (
                 <div key={t} className="flex items-center gap-2 text-sm text-white/80">
                   <CheckCircle2 className="h-4 w-4 text-primary" /> {t}

@@ -884,7 +884,7 @@ async def run_migrations(admin=Depends(admin_user)) -> dict:
     Idempotente: reexecutar é seguro (contadores mostram 0 updates depois do 1º run).
     Só admin.
     """
-    results: dict = {"pt_labels": None, "backfill_lang": None, "piscinas_seed": None}
+    results: dict = {"pt_labels": None, "backfill_lang": None, "piscinas_seed": None, "biblioteca_pt_2026": None}
     try:
         from scripts.migrate_pt_pt_labels import run as _run_labels
         results["pt_labels"] = await _run_labels(db=db)
@@ -900,4 +900,9 @@ async def run_migrations(admin=Depends(admin_user)) -> dict:
         results["piscinas_seed"] = await _run_piscinas(db=db)
     except Exception as e:  # noqa: BLE001
         results["piscinas_seed"] = {"error": f"{type(e).__name__}: {e}"}
+    try:
+        from scripts.import_biblioteca_pt_2026 import run as _run_biblioteca
+        results["biblioteca_pt_2026"] = await _run_biblioteca(db=db)
+    except Exception as e:  # noqa: BLE001
+        results["biblioteca_pt_2026"] = {"error": f"{type(e).__name__}: {e}"}
     return {"ok": True, "run_by": admin.get("email"), "results": results}
