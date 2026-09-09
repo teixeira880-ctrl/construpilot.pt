@@ -85,7 +85,7 @@ export default function LandingPortugal() {
                  controls playsInline preload="metadata" data-testid="pt-demo-video-player" />
         </div>
         <a href="/docs/ConstruPilot_Demo_Completa_PT_16x9.mp4" target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline" data-testid="pt-demo-video-full">
-          Ver a demonstração completa (4 min 36) →
+          Ver a demonstração completa (5 min) →
         </a>
       </section>
 
