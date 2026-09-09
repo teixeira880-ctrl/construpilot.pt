@@ -69,12 +69,33 @@ SEGMENTS = [
 ]
 
 
+FONT_BOLD = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+FONT_REG = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+
+
 def _tts_bytes_sync(text: str) -> bytes:
     from gtts import gTTS
     import io
     buf = io.BytesIO()
     gTTS(text=text, lang="pt", tld="pt", slow=False).write_to_fp(buf)
     return buf.getvalue()
+
+
+def _tts_bytes_elevenlabs(text: str) -> bytes:
+    """ElevenLabs PT-PT nativo (voice Josh, modelo multilingual v2)."""
+    from elevenlabs.client import ElevenLabs
+    from elevenlabs import VoiceSettings
+    client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
+    stream = client.text_to_speech.convert(
+        voice_id="TxGEqnHWrfWFTfGW9XjX",           # Josh
+        model_id="eleven_multilingual_v2",
+        output_format="mp3_44100_128",
+        text=text,
+        voice_settings=VoiceSettings(
+            stability=0.5, similarity_boost=0.75, style=0.3, use_speaker_boost=True,
+        ),
+    )
+    return b"".join(chunk for chunk in stream if chunk)
 
 
 async def _tts_bytes_openai(text: str) -> bytes:
@@ -88,18 +109,22 @@ async def _tts_bytes_openai(text: str) -> bytes:
 
 async def build_narration() -> tuple[list[Path], str]:
     files: list[Path] = []
-    use_openai = True
-    tts_used = "openai_onyx"
+    provider = "elevenlabs_josh"
     for name, dur, text in SEGMENTS:
         mp3 = AUD / f"{name}.mp3"
         data: bytes | None = None
-        if use_openai:
+        if provider == "elevenlabs_josh":
+            try:
+                data = _tts_bytes_elevenlabs(text)
+            except Exception as e:
+                print(f"  [tts] ElevenLabs falhou ({type(e).__name__}) — fallback OpenAI onyx. {str(e)[:100]}")
+                provider = "openai_onyx (fallback)"
+        if data is None and "openai" in provider:
             try:
                 data = await _tts_bytes_openai(text)
             except Exception as e:
                 print(f"  [tts] OpenAI falhou ({type(e).__name__}) — fallback gTTS. {str(e)[:80]}")
-                use_openai = False
-                tts_used = "gtts_pt (fallback)"
+                provider = "gtts_pt (fallback)"
         if data is None:
             data = _tts_bytes_sync(text)
         mp3.write_bytes(data)
@@ -111,7 +136,7 @@ async def build_narration() -> tuple[list[Path], str]:
             str(padded)
         ], check=True, capture_output=True)
         files.append(padded)
-    return files, tts_used
+    return files, provider
 
 
 # --------------------------------------------------------------------------
@@ -224,11 +249,25 @@ def compose(narration_files: list[Path], video_files: list[Path], bg_music: Path
         "-c:a", "libmp3lame", "-b:a", "192k", str(mixed)
     ], check=True, capture_output=True)
 
-    # concat vídeos webm (transcode para mp4 30fps 1920x1080)
-    # 1 - normalizar cada webm para mp4 1080p30
+    # concat vídeos webm (transcode para mp4 30fps 1920x1080) + intro/outro
     norm_dir = TMP / "norm"
     norm_dir.mkdir(exist_ok=True)
     norm_files = []
+    # ---- INTRO 2s ----
+    intro = TMP / "intro.mp4"
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", "color=c=0x0f172a:s=1920x1080:d=2:r=30",
+        "-vf",
+        f"drawtext=text='ConstruPilot':fontcolor=0x10b981:fontsize=140:"
+        f"x=(w-text_w)/2:y=(h-text_h)/2:fontfile={FONT_BOLD}:"
+        f"alpha='if(lt(t,0.5),t*2,1)'",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-pix_fmt", "yuv420p", "-t", "2", "-an", str(intro),
+    ], check=True, capture_output=True)
+    norm_files.append(intro)
+
+    # ---- Screencasts normalizados ----
     for i, v in enumerate(video_files):
         out = norm_dir / f"clip_{i:02d}.mp4"
         subprocess.run([
@@ -236,9 +275,29 @@ def compose(narration_files: list[Path], video_files: list[Path], bg_music: Path
             "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,"
                    "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=30",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
-            "-an", str(out)
+            "-pix_fmt", "yuv420p", "-an", str(out)
         ], check=True, capture_output=True)
         norm_files.append(out)
+
+    # ---- OUTRO 3s ----
+    outro = TMP / "outro.mp4"
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", "color=c=0x0f172a:s=1920x1080:d=3:r=30",
+        "-vf",
+        (f"drawtext=text='ConstruPilot':fontcolor=0x10b981:fontsize=120:"
+         f"x=(w-text_w)/2:y=(h-text_h)/2-140:fontfile={FONT_BOLD}:"
+         f"alpha='if(lt(t,0.5),t*2,1)',"
+         f"drawtext=text='Da planta ao orcamento em minutos':fontcolor=white:fontsize=48:"
+         f"x=(w-text_w)/2:y=(h-text_h)/2+20:fontfile={FONT_REG}:"
+         f"alpha='if(lt(t,1),0,if(lt(t,1.5),(t-1)*2,1))',"
+         f"drawtext=text='construpilot.pt':fontcolor=0x10b981:fontsize=42:"
+         f"x=(w-text_w)/2:y=(h-text_h)/2+110:fontfile={FONT_BOLD}:"
+         f"alpha='if(lt(t,1.5),0,if(lt(t,2),(t-1.5)*2,1))'"),
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-pix_fmt", "yuv420p", "-t", "3", "-an", str(outro),
+    ], check=True, capture_output=True)
+    norm_files.append(outro)
 
     clips_txt = TMP / "clips.txt"
     clips_txt.write_text("\n".join(f"file '{p}'" for p in norm_files))
@@ -248,12 +307,24 @@ def compose(narration_files: list[Path], video_files: list[Path], bg_music: Path
         "-c", "copy", str(silent)
     ], check=True, capture_output=True)
 
-    # combinar vídeo + áudio final (limita ao total_dur)
+    # combinar vídeo + áudio final (intro 2s antes → shift áudio; outro 3s no fim → audio termina antes)
+    # estratégia simples: prepend 2s de silêncio à mixed antes de merge
+    mixed_shift = TMP / "mixed_shift.mp3"
     subprocess.run([
-        "ffmpeg", "-y", "-i", str(silent), "-i", str(mixed),
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-t", "2", "-i", "anullsrc=r=44100:cl=stereo",
+        "-i", str(mixed),
+        "-filter_complex", "[0:a][1:a]concat=n=2:v=0:a=1[out]",
+        "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k",
+        str(mixed_shift)
+    ], check=True, capture_output=True)
+
+    final_dur = 2 + total_dur + 3
+    subprocess.run([
+        "ffmpeg", "-y", "-i", str(silent), "-i", str(mixed_shift),
         "-c:v", "libx264", "-preset", "fast", "-crf", "23",
         "-c:a", "aac", "-b:a", "192k",
-        "-t", str(total_dur),
+        "-t", str(final_dur),
         "-movflags", "+faststart",
         str(OUT)
     ], check=True, capture_output=True)
