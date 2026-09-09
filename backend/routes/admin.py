@@ -872,16 +872,19 @@ async def demo_lock(user=Depends(current_user)) -> dict:
 # ---- Migrações one-shot PT-PT ------------------------------------------------
 @router.post("/migrations/run")
 async def run_migrations(admin=Depends(admin_user)) -> dict:
-    """Executa as migrações one-shot PT-PT (Wave C4) contra a base atual.
+    """Executa as migrações one-shot PT-PT (Wave C4/C5) contra a base atual.
 
     - `pt_labels`: traduz strings FR → PT em `catalog_items`, `library_items`,
       `quotes.lots`, `plans_takeoff`, `plans`, `pc_studies`, `default_materials`.
     - `backfill_lang`: define `lang='pt'` em todos os users sem esse campo.
+    - `piscinas_seed`: insere/atualiza os 27 items canónicos da categoria «Piscinas»
+      em cada utilizador cujo starter catalogue já foi semeado (idempotente por
+      `(user_id, designation, category)`).
 
     Idempotente: reexecutar é seguro (contadores mostram 0 updates depois do 1º run).
     Só admin.
     """
-    results: dict = {"pt_labels": None, "backfill_lang": None}
+    results: dict = {"pt_labels": None, "backfill_lang": None, "piscinas_seed": None}
     try:
         from scripts.migrate_pt_pt_labels import run as _run_labels
         results["pt_labels"] = await _run_labels(db=db)
@@ -892,4 +895,9 @@ async def run_migrations(admin=Depends(admin_user)) -> dict:
         results["backfill_lang"] = await _run_backfill(db=db)
     except Exception as e:  # noqa: BLE001
         results["backfill_lang"] = {"error": f"{type(e).__name__}: {e}"}
+    try:
+        from scripts.seed_library_piscinas import run as _run_piscinas
+        results["piscinas_seed"] = await _run_piscinas(db=db)
+    except Exception as e:  # noqa: BLE001
+        results["piscinas_seed"] = {"error": f"{type(e).__name__}: {e}"}
     return {"ok": True, "run_by": admin.get("email"), "results": results}
