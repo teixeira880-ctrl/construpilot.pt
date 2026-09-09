@@ -17,7 +17,7 @@ const PARTICULIER = [
   { icon: FileText, title: "Scanner de devis", desc: "Importe um orçamento em PDF: a IA explica-o e verifica os montantes." },
   { icon: Ruler, title: "Calculateurs", desc: "Superfícies, volumes, quantités (peinture, carrelage, béton…)." },
   { icon: Search, title: "Pesquisa de preços", desc: "Ordens de grandeza de preços de materiais e serviços." },
-  { icon: MessageSquare, title: "Coach IA travaux", desc: "Um assistente que responde às suas dúvidas de obra, em português." },
+  { icon: MessageSquare, title: "Coach IA obras", desc: "Um assistente que responde às suas dúvidas de obra, em português." },
   { icon: CalendarRange, title: "Planeamento das fases", desc: "Visualize a ordem das etapas da sua obra." },
   { icon: ShieldCheck, title: "Sécurité d'abord", desc: "Gás, eletricidade, paredes estruturais: a app encaminha sempre para um profissional." },
 ];
