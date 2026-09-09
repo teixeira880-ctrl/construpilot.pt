@@ -81,6 +81,9 @@ LOTS = [
     {"key": "renovation_energetique", "name": "Rénovation énergétique", "unit": "m²", "mat_eco": 85, "mat_std": 135,
      "mat_premium": 220, "labour": 75, "hours": 1.2, "difficulty": "pro", "diy_possible": False,
      "tools": ["Audit énergétique", "Caméra thermique"]},
+    {"key": "piscine", "name": "Piscine (bassin, structure, étanchéité, filtration)", "unit": "m²", "mat_eco": 520,
+     "mat_std": 780, "mat_premium": 1250, "labour": 420, "hours": 6.5, "difficulty": "pro", "diy_possible": False,
+     "tools": ["Pelle mécanique", "Bétonnière / toupie", "Niveau laser", "Kit filtration"]},
     {"key": "dechets", "name": "Déchets / évacuation", "unit": "m²", "mat_eco": 4, "mat_std": 6, "mat_premium": 8,
      "labour": 4, "hours": 0.1, "difficulty": "easy", "diy_possible": True,
      "tools": ["Big bag", "Remorque", "Benne"]},
@@ -117,6 +120,7 @@ DEFAULT_LOT_FACTORS = {
     "renovation_energetique": 1.00,
     "dechets": 1.00,        # m² : évacuation ≈ surface
     "ventilation": 1.00,
+    "piscine": 1.00,        # m² de bassin
 }
 
 # Modèles de projet : lot -> facteur de quantité par m² de surface du projet
@@ -205,6 +209,18 @@ PROJECT_TYPES = [
      "lots": {"extension": 1.0, "fondations": 0.3, "toiture": 1.0, "dechets": 0.6}},
     {"key": "renovation_energetique", "name": "Rénovation énergétique", "image": "project_card_exterior",
      "lots": {"renovation_energetique": 1.0, "isolation": 1.6, "menuiseries": 0.08, "chauffage": 1.0}},
+    # ---- Piscines (surface = m² de bassin) ----
+    {"key": "piscine_beton", "name": "Piscine enterrée béton (bassin + équipements + plage)",
+     "image": "project_card_exterior", "pool": True,
+     "lots": {"terrassement": 1.8, "piscine": 1.0, "plomberie": 0.6, "electricite": 0.4,
+              "terrasse": 1.0, "vrd": 0.3, "dechets": 1.5}},
+    {"key": "piscine_coque", "name": "Piscine coque polyester posée (+ équipements + plage)",
+     "image": "project_card_exterior", "pool": True,
+     "lots": {"terrassement": 1.6, "piscine": 0.8, "plomberie": 0.5, "electricite": 0.3,
+              "terrasse": 0.8, "dechets": 1.2}},
+    {"key": "piscine_renovation", "name": "Rénovation piscine (étanchéité, margelles, filtration)",
+     "image": "project_card_exterior", "pool": True,
+     "lots": {"piscine": 0.35, "plomberie": 0.3, "electricite": 0.15, "dechets": 0.3}},
 ]
 
 PROJECT_TYPES_BY_KEY = {p["key"]: p for p in PROJECT_TYPES}
@@ -279,4 +295,4 @@ EXECUTION_ORDER = ["demolition", "terrassement", "fondations", "vrd", "maconneri
                    "electricite", "plomberie", "chauffage", "climatisation", "ventilation",
                    "isolation", "placo",
                    "carrelage", "parquet", "peinture", "cuisine", "salle_de_bain", "facade",
-                   "terrasse", "renovation_energetique", "dechets"]
+                   "terrasse", "piscine", "renovation_energetique", "dechets"]

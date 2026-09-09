@@ -56,6 +56,7 @@ import ProVerified from "@/pages/ProVerified";
 import ProUpsell from "@/pages/ProUpsell";
 import VerifyEmail from "@/pages/VerifyEmail";
 import TechAnalysis from "@/pages/TechAnalysis";
+import Profitability from "@/pages/Profitability";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
@@ -162,6 +163,7 @@ function AppRouter() {
       <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
       <Route path="/mon-catalogue" element={<ProRoute><Shell><PriceCatalog /></Shell></ProRoute>} />
       <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
+      <Route path="/rentabilite" element={<ProRoute><Shell><Profitability /></Shell></ProRoute>} />
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="/rendu-ia" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
       <Route path="/mes-demandes" element={<ProRoute><Shell><MyLeads /></Shell></ProRoute>} />

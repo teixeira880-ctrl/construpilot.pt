@@ -1119,7 +1119,9 @@ async def cctp_extract(file: UploadFile = File(...), lot: str = "", user=Depends
         if len(text) < 200:
             raise HTTPException(422, "CCTP illisible : l'OCR n'a pas pu extraire de texte exploitable "
                                      "(scan trop flou ou trop clair). Réessayez avec un scan plus net.")
-    lines, title, prescriptions = await cctp_lines_from_text(text, lot_filter=lot.strip())
+    from routes.plans_analysis import library_hints_for_user
+    lines, title, prescriptions = await cctp_lines_from_text(
+        text, lot_filter=lot.strip(), library_hints=await library_hints_for_user(user["user_id"]))
     if not lines:
         raise HTTPException(422, "Aucun ouvrage identifié dans ce CCTP.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)

@@ -164,6 +164,20 @@ export default function Dashboard() {
         </div>
       </a>
 
+      <a href="/rentabilite" data-testid="profitability-link" className="block surface p-6 border-2 border-emerald-500/30 hover:border-emerald-500 transition-colors">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <i className="fa-solid fa-chart-line text-emerald-600" />
+              <span className="font-display font-bold text-lg">Rapport de rentabilité</span>
+              <span className="text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full">Nouveau</span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">Marge réelle par chantier terminé et par mois : prix vendu vs coût devis vs achats réels (dépenses, bons de commande).</p>
+          </div>
+          <span className="text-emerald-700 font-bold shrink-0">Ouvrir →</span>
+        </div>
+      </a>
+
       <PriceLibrary />
 
       <DpgfImport />

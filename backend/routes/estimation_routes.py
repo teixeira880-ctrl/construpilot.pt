@@ -86,7 +86,27 @@ async def compute(body: EstimateIn, user=Depends(optional_user)):
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)
     est["safety_alerts"] = estimation.safety_check("", [l["key"] for l in est["lots"]])
     _price_for_audience(est, user)
+    await _attach_pool_items(est, body, user)
     return est
+
+
+async def _attach_pool_items(est: dict, body: EstimateIn, user) -> None:
+    """Projets piscine : propose le bordereau d'ouvrages de la bibliothèque ConstruPilot."""
+    from engines.catalog import PROJECT_TYPES_BY_KEY
+    from engines.pool import pool_lines
+    from routes.shared_library import get_shared_items_for_level
+    if not (PROJECT_TYPES_BY_KEY.get(body.project_type) or {}).get("pool"):
+        return
+    level = {"eco": "bas", "standard": "moyen", "premium": "haut"}.get(body.finish_level, "moyen")
+    lang = "pt" if (body.country or "FR").upper() == "PT" else "fr"
+    items = await get_shared_items_for_level(level, lang=lang)
+    data = pool_lines(body.project_type, body.surface, items)
+    if est.get("pricing_audience") == "particulier":
+        for l in data["lines"]:
+            l["unit_price_ht"] = round(l["unit_price_ht"] * estimation.PARTICULIER_MARKUP, 2)
+            l["total_ht"] = round(l["qty"] * l["unit_price_ht"], 2)
+        data["total_ht"] = round(sum(l["total_ht"] for l in data["lines"]), 2)
+    est["pool_items"] = data
 
 
 @router.post("/analyse")

@@ -471,7 +471,8 @@ async def ocr_pages_to_text(images: list[str], batch: int = 4) -> str:
 
 
 
-async def cctp_lines_from_text(text: str, lot_filter: str = "") -> tuple[list[dict], str, list[dict]]:
+async def cctp_lines_from_text(text: str, lot_filter: str = "",
+                               library_hints: list[str] | None = None) -> tuple[list[dict], str, list[dict]]:
     """Lit un CCTP (texte) et en extrait les ouvrages imposés + prescriptions (marques, normes, DTU).
 
     Retourne (lines, title, prescriptions). Prix à 0 (chiffrés ensuite via la bibliothèque).
@@ -480,9 +481,15 @@ async def cctp_lines_from_text(text: str, lot_filter: str = "") -> tuple[list[di
               "Particulières) et tu en extrais les ouvrages à chiffrer, avec les matériaux, marques, normes et "
               "DTU imposés, pour préparer le devis d'une entreprise.")
     scope = f"\nNe traite QUE le lot : « {lot_filter} »." if lot_filter else ""
+    lib_hint = ""
+    if library_hints:
+        lib_hint = ("\n\nBIBLIOTHÈQUE DE PRIX DE L'ENTREPRISE (désignation (unité)) : quand un ouvrage du CCTP "
+                    "correspond à un ouvrage de cette liste, reprends EXACTEMENT sa désignation et son unité dans "
+                    "« designation »/« unit » (les prescriptions du CCTP restent dans « description »). Sinon, "
+                    "garde le libellé du CCTP.\n" + " ; ".join(library_hints[:450]))
     prompt = (
         "Voici le texte d'un CCTP (extrait). Identifie chaque ouvrage / prestation que l'entreprise doit "
-        "chiffrer et les prescriptions techniques imposées." + scope +
+        "chiffrer et les prescriptions techniques imposées." + scope + lib_hint +
         "\n\nCCTP :\n« " + (text or "").strip()[:60000] + " »\n\n"
         "Retourne UNIQUEMENT ce JSON :\n"
         '{ "title": "titre court (opération / lot)", '

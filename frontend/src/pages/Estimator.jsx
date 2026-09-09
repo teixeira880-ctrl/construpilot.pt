@@ -19,6 +19,7 @@ import { WhatsAppShare } from "@/components/WhatsAppShare";
 import { SoftPaywall } from "@/components/SoftPaywall";
 import { SavingsCard } from "@/components/SavingsCard";
 import { SupplierOptimization } from "@/components/SupplierOptimization";
+import { PoolItemsCard } from "@/components/PoolItemsCard";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
@@ -364,6 +365,9 @@ export default function Estimator() {
             </div>
           )}
           <EstimationView est={est} />
+          {est.pool_items && (
+            <PoolItemsCard pool={est.pool_items} isPro={est.pricing_audience === "pro"} title={name} />
+          )}
 
           <div className="grid gap-4">
             <Button variant="outline" onClick={findSupplierPrices} disabled={busyOptim}
