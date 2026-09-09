@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Download, Save, BookOpen, Loader2, Search, ArrowLeft, User, Sparkles, Ruler, Video, Send, X,
-  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, FileText, Eye, Layers, Paperclip, TrendingUp,
+  Images, Camera, Square, Clock, FileVideo, AlertTriangle, Mic, Music, FileText, Eye, Layers, Paperclip, TrendingUp, Library,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -273,6 +273,11 @@ export default function QuoteEditor() {
   }, [lines]);
 
   const [targetMargin, setTargetMargin] = useState(() => Number(user?.target_margin_pct) || 0);
+  const [libraryMode, setLibraryMode] = useState(() => user?.price_library_mode || "shared_first");
+  const saveLibraryMode = async (m) => {
+    setLibraryMode(m);
+    try { await api.put("/users/me/preferences", { price_library_mode: m }); toast.success(isPT ? "Preferência guardada" : "Préférence enregistrée"); } catch { toast.error(isPT ? "Erro ao guardar" : "Enregistrement impossible"); }
+  };
   const [lotMargins, setLotMargins] = useState(() => user?.target_margins_by_lot || {});
   const [showLotMargins, setShowLotMargins] = useState(false);
   const marginFor = (category) => {
@@ -1078,6 +1083,18 @@ export default function QuoteEditor() {
               <Plus className="h-3.5 w-3.5" /> {t("crm.add_line")}
             </Button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap rounded-sm border border-border/60 bg-secondary/30 px-3 py-2 text-xs" data-testid="editor-library-mode">
+          <Library className="h-3.5 w-3.5 text-primary" />
+          <span className="font-medium">{isPT ? "Preços automáticos" : "Prix automatiques"}</span>
+          <select value={libraryMode} onChange={(e) => saveLibraryMode(e.target.value)}
+                  className="h-7 rounded-sm border border-input bg-background px-2 text-xs" data-testid="editor-library-mode-select">
+            <option value="shared_first">{isPT ? "Biblioteca ConstruPilot (padrão) + biblioteca da empresa" : "Bibliothèque ConstruPilot (défaut) + bibliothèque entreprise"}</option>
+            <option value="company_first">{isPT ? "Biblioteca da empresa em primeiro, ConstruPilot em complemento" : "Bibliothèque entreprise d'abord, ConstruPilot en complément"}</option>
+            <option value="company_only">{isPT ? "Apenas a biblioteca da empresa" : "Bibliothèque entreprise uniquement"}</option>
+          </select>
+          <span className="text-muted-foreground">{isPT ? "— usado para orçamentos por voz, foto, vídeo, planta e CCTP." : "— utilisé pour les devis par dictée, photo, vidéo, plan et CCTP."}</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap rounded-sm border border-border/60 bg-secondary/30 px-3 py-2 text-xs" data-testid="editor-target-margin">

@@ -3,6 +3,7 @@ import os
 import json
 import secrets
 import logging
+from typing import Literal
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -103,6 +104,7 @@ class PrefsIn(BaseModel):
     target_margins_by_lot: dict[str, float] | None = None
     cctp_lots_kept: list[str] | None = None
     cctp_lots_skipped: list[str] | None = None
+    price_library_mode: Literal["shared_first", "company_first", "company_only"] | None = None
 
 
 @router.put("/users/me/preferences")
@@ -118,7 +120,8 @@ async def update_prefs(body: PrefsIn, user=Depends(current_user)):
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
     fresh = await db.users.find_one({"user_id": user["user_id"]},
                                     {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1, "target_margin_pct": 1,
-                                     "target_margins_by_lot": 1, "cctp_lots_kept": 1, "cctp_lots_skipped": 1})
+                                     "target_margins_by_lot": 1, "cctp_lots_kept": 1, "cctp_lots_skipped": 1,
+                                     "price_library_mode": 1})
     return fresh or {}
 
 

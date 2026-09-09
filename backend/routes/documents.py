@@ -978,8 +978,17 @@ async def document_from_plans(body: FromPlansIn, user=Depends(current_user)) -> 
             "line_count": len(all_lines), "included": included}
 
 
-async def _transcribe_video_bytes(raw: bytes) -> str:
-    """Extrait l'audio d'une vidéo (ffmpeg) et le transcrit en français (Whisper)."""
+_WHISPER_PROMPT_FR = ("Devis de travaux BTP : dépose, démolition, placo, cloison, doublage, enduit, ragréage, "
+                      "carrelage, faïence, parquet, peinture, plomberie, douche à l'italienne, meuble vasque, WC suspendu, "
+                      "électricité, tableau électrique, prises, domotique KNX, VMC, isolation, menuiseries, toiture, "
+                      "maçonnerie, parpaing, dalle béton, terrassement, mètres carrés, mètres linéaires, forfait.")
+_WHISPER_PROMPT_PT = ("Orçamento de obras : demolição, pladur, divisórias, reboco, azulejo, mosaico, pavimento, pintura, "
+                      "canalização, base de duche, móvel de lavatório, eletricidade, quadro elétrico, tomadas, domótica, "
+                      "isolamento, caixilharia, cobertura, alvenaria, betão, metros quadrados, metros lineares.")
+
+
+async def _transcribe_video_bytes(raw: bytes, lang: str = "fr") -> str:
+    """Extrait l'audio d'une vidéo (ffmpeg) et le transcrit (Whisper, vocabulaire BTP)."""
     import os
     import shutil
     import subprocess
@@ -1005,8 +1014,9 @@ async def _transcribe_video_bytes(raw: bytes) -> str:
         from emergentintegrations.llm.openai import OpenAISpeechToText
         stt = OpenAISpeechToText(api_key=os.environ["EMERGENT_LLM_KEY"])
         with open(audio, "rb") as af:
-            resp = await stt.transcribe(file=af, model="whisper-1",
-                                        response_format="text", language="fr")
+            resp = await stt.transcribe(file=af, model="whisper-1", response_format="text",
+                                        language="pt" if lang == "pt" else "fr",
+                                        prompt=_WHISPER_PROMPT_PT if lang == "pt" else _WHISPER_PROMPT_FR)
         transcript = resp if isinstance(resp, str) else (getattr(resp, "text", "") or "")
     except HTTPException:
         raise
@@ -1024,10 +1034,11 @@ async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
                                source: str = "video", images: list[str] | None = None) -> dict:
     """Génère un devis (lignes IA chiffrées via la bibliothèque) à partir d'un texte + photos."""
     from engines.ai import quote_lines_from_text
-    from routes.plans_analysis import _apply_library_prices
+    from routes.plans_analysis import _apply_library_prices, library_hints_for_user
     if not (text or "").strip():
         raise HTTPException(400, "Description vide")
-    lines, title = await quote_lines_from_text(text, images=images or None)
+    hints = await library_hints_for_user(user["user_id"])
+    lines, title = await quote_lines_from_text(text, images=images or None, library_hints=hints)
     if not lines:
         raise HTTPException(422, "L'IA n'a pas pu générer de lignes de devis à partir de la description.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
@@ -1054,7 +1065,7 @@ async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
 async def video_transcribe(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
     """Transcrit une vidéo en texte (à relire/corriger avant génération du devis)."""
     raw = await file.read()
-    transcript = await _transcribe_video_bytes(raw)
+    transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "fr")
     return {"transcript": transcript}
 
 
@@ -1079,7 +1090,7 @@ async def document_from_video(file: UploadFile = File(...), client_id: str | Non
                               user=Depends(current_user)) -> dict:
     """Crée un devis directement à partir d'une vidéo (transcription + lignes IA chiffrées)."""
     raw = await file.read()
-    transcript = await _transcribe_video_bytes(raw)
+    transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "fr")
     doc = await _quote_doc_from_text(user, transcript, client_id, source="video")
     doc["transcript"] = transcript
     return doc

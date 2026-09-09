@@ -529,7 +529,8 @@ async def cctp_lines_from_text(text: str, lot_filter: str = "") -> tuple[list[di
 
 
 
-async def quote_lines_from_text(transcript: str, images: list[str] | None = None) -> tuple[list[dict], str]:
+async def quote_lines_from_text(transcript: str, images: list[str] | None = None,
+                                library_hints: list[str] | None = None) -> tuple[list[dict], str]:
     """Transforme une description orale (transcription) + photos optionnelles en lignes de devis BTP.
 
     Retourne (lines, title). Les prix restent à 0 (chiffrés ensuite via la bibliothèque).
@@ -539,24 +540,31 @@ async def quote_lines_from_text(transcript: str, images: list[str] | None = None
     photo_hint = ("\n\nDes PHOTOS du chantier sont jointes : sers-t'en pour préciser les prestations "
                   "(état existant, matériaux, surfaces visibles, contraintes) et affiner les quantités."
                   if images else "")
+    lib_hint = ""
+    if library_hints:
+        lib_hint = ("\n\nBIBLIOTHÈQUE DE PRIX DISPONIBLE (désignation (unité)) : reprends EXACTEMENT ces désignations "
+                    "et unités chaque fois qu'un ouvrage correspond à la prestation décrite (décompose une prestation "
+                    "globale en ouvrages de la bibliothèque avec des quantités cohérentes, ex. surfaces en m², points "
+                    "électriques à l'unité). Ne crée une désignation libre que si aucun ouvrage ne convient.\n"
+                    + " ; ".join(library_hints[:450]))
     prompt = (
         "À partir de cette description de chantier (transcription vocale d'un artisan)"
         + (" et des photos jointes" if images else "")
         + ", génère les lignes de devis.\n"
         f"Description : « {(transcript or '').strip()[:4000]} »"
-        + photo_hint
+        + photo_hint + lib_hint
         + "\n\nRetourne UNIQUEMENT ce JSON :\n"
         '{ "title": "titre court du devis", '
         '"lines": [ { "designation": "libellé court de la prestation", '
         '"description": "détail des prestations incluses (2 à 4 lignes séparées par des retours à la ligne)", '
         '"unit": "u|m²|ml|m³|forfait|ens|h|j", "qty": nombre, "vat_rate": 10 } ] }\n'
         "Estime des quantités plausibles si elles ne sont pas données. N'invente pas de prix. "
-        "3 à 12 lignes maximum, en français."
+        + ("3 à 20 lignes maximum" if library_hints else "3 à 12 lignes maximum") + ", en français."
     )
     data = _json(await _complete(system, prompt, images=images, feature="quote_from_text"), {"lines": []})
     units = ("u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L")
     lines: list[dict] = []
-    for l in (data.get("lines") or [])[:12]:
+    for l in (data.get("lines") or [])[:20]:
         try:
             lines.append({
                 "designation": str(l.get("designation") or "").strip()[:160],

@@ -4,6 +4,7 @@ Refactor iter53 : extrait de `routes/plans.py`.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import secrets
@@ -804,68 +805,185 @@ def _unit_family(unit: str) -> str:
         return "area"
     if u in ("ml", "m", "mètre", "metre", "ml."):
         return "length"
-    if u in ("u", "unité", "unite", "pièce", "piece", "pc", "ens", "ensemble"):
+    if u in ("u", "unité", "unite", "pièce", "piece", "pc", "ens", "ensemble", "forfait", "ft", "global", "pt"):
         return "count"
-    if u in ("forfait", "ft", "global"):
-        return "forfait"
     return u or "?"
+
+
+_GENERIC = {"complet", "complete", "existant", "existante", "general", "generale", "ensemble", "maison",
+            "logement", "interieur", "interieure", "exterieur", "exterieure", "type", "compris", "toute", "tout"}
+
+
+def _build_index(items: list[dict]) -> dict:
+    """Index pondéré (IDF) : les mots très fréquents dans la bibliothèque pèsent moins."""
+    import math
+    docs = [(_norm_tokens(it.get("designation", "")) - _GENERIC, it) for it in items]
+    df: dict[str, int] = {}
+    for toks, _ in docs:
+        for t in toks:
+            df[t] = df.get(t, 0) + 1
+    n = max(1, len(docs))
+    w = {t: 1.0 + math.log(n / c) for t, c in df.items()}
+    return {"docs": docs, "w": w, "default_w": 1.0 + math.log(n)}
+
+
+def _score(line_toks: set, it_toks: set, idx: dict) -> float:
+    import math
+    if not line_toks or not it_toks:
+        return 0.0
+    w = idx["w"]; dw = idx["default_w"]
+    inter = sum(w.get(t, dw) for t in line_toks & it_toks)
+    if not inter:
+        return 0.0
+    return inter / math.sqrt(sum(w.get(t, dw) for t in line_toks) * sum(w.get(t, dw) for t in it_toks))
+
+
+def _candidates(line: dict, idx: dict, same_unit: bool = True, k: int = 6) -> list[tuple[float, dict]]:
+    toks = _norm_tokens(line.get("designation", "")) - _GENERIC
+    fam = _unit_family(line.get("unit"))
+    out = []
+    for it_toks, it in idx["docs"]:
+        if not it.get("unit_price_ht"):
+            continue
+        if same_unit and _unit_family(it.get("unit")) != fam:
+            continue
+        sc = _score(toks, it_toks, idx)
+        if sc > 0.15:
+            out.append((sc, it))
+    out.sort(key=lambda x: -x[0])
+    return out[:k]
+
+
+def _apply(ln: dict, it: dict, source: str) -> None:
+    ln["unit_price_ht"] = it["unit_price_ht"]
+    if it.get("vat_rate") is not None:
+        ln["vat_rate"] = it["vat_rate"]
+    if it.get("cost_price_ht"):
+        ln["cost_price_ht"] = round(float(it["cost_price_ht"]), 2)
+    ln["price_source"] = source
+    ln["price_match"] = it.get("designation", "")
+
+
+async def _ai_pick(pending: list[tuple[dict, list[tuple[float, dict]]]]) -> dict[int, int]:
+    """Demande à l'IA de choisir, pour chaque ligne, l'ouvrage de bibliothèque équivalent (ou aucun)."""
+    from engines.ai import _complete, _json
+    payload = []
+    for i, (ln, cands) in enumerate(pending):
+        payload.append({"i": i, "ligne": ln.get("designation"), "unite": ln.get("unit"),
+                        "candidats": [{"c": j, "designation": it["designation"], "unite": it.get("unit")}
+                                      for j, (_, it) in enumerate(cands)]})
+    system = ("Tu es un économiste de la construction. Pour chaque ligne de devis, choisis l'ouvrage de la "
+              "bibliothèque de prix qui correspond à la MÊME prestation (même nature de travaux et unité compatible). "
+              "Si aucun candidat n'est équivalent, réponds -1. Ne choisis jamais un ouvrage d'un autre corps d'état.")
+    prompt = ("Lignes et candidats :\n" + json.dumps(payload, ensure_ascii=False)
+              + '\n\nRetourne UNIQUEMENT ce JSON : {"choix": [{"i": 0, "c": 2}, ...]} (c = -1 si aucun).')
+    data = _json(await _complete(system, prompt, feature="library_match"), {"choix": []})
+    out = {}
+    for ch in data.get("choix") or []:
+        try:
+            i, c = int(ch.get("i")), int(ch.get("c"))
+        except Exception:
+            continue
+        if 0 <= i < len(pending) and 0 <= c < len(pending[i][1]):
+            out[i] = c
+    return out
+
+
+async def library_hints_for_user(user_id: str) -> list[str]:
+    """Désignations « designation (unité) » des bibliothèques actives, pour guider la génération IA."""
+    from routes.shared_library import get_shared_items_for_level, resolve_price_level
+    u = await db.users.find_one({"user_id": user_id},
+                                {"_id": 0, "price_library_mode": 1, "lang": 1, "brand_country": 1}) or {}
+    mode = u.get("price_library_mode") or "shared_first"
+    is_pt = (u.get("lang") == "pt") or (str(u.get("brand_country") or "").upper() == "PT")
+    company = await db.library_items.find({"user_id": user_id}, {"_id": 0, "designation": 1, "unit": 1}).to_list(400)
+    shared: list[dict] = []
+    if mode != "company_only":
+        try:
+            shared = await get_shared_items_for_level(await resolve_price_level(user_id), lang="pt" if is_pt else "fr")
+        except Exception:  # noqa: BLE001
+            shared = []
+    ordered = (company + shared) if mode == "company_first" else (shared + company)
+    seen, out = set(), []
+    for it in ordered:
+        d = (it.get("designation") or "").strip()
+        if d and d.lower() not in seen:
+            seen.add(d.lower())
+            out.append(f"{d} ({it.get('unit') or 'u'})")
+    return out[:450]
 
 
 async def _apply_library_prices(user_id: str, lines: list[dict],
                                 level_override: str | None = None) -> tuple[list[dict], int]:
-    """Pré-remplit unit_price_ht/vat depuis la bibliothèque PERSO (prioritaire),
-    puis, pour les entreprises Pro Business, complète depuis la bibliothèque
-    PARTAGÉE au niveau de prix choisi (bas/moyen/haut).
-    Match par mots-clés + MÊME famille d'unité pour éviter les prix aberrants."""
-    items = await db.library_items.find(
-        {"user_id": user_id}, {"_id": 0, "designation": 1, "unit": 1,
-                               "unit_price_ht": 1, "vat_rate": 1}).to_list(5000)
-    idx = [(_norm_tokens(it.get("designation", "")), it) for it in items]
+    """Chiffre les lignes depuis les bibliothèques de prix.
 
-    def _match(line, index):
-        toks = _norm_tokens(line.get("designation", ""))
-        fam = _unit_family(line.get("unit"))
-        best, best_overlap = None, 0
-        for it_toks, it in index:
-            if _unit_family(it.get("unit")) != fam:
-                continue
-            overlap = len(toks & it_toks)
-            if overlap > best_overlap:
-                best, best_overlap = it, overlap
-        return best if (best and best_overlap >= 1 and best.get("unit_price_ht")) else None
+    Ordre selon `users.price_library_mode` : `shared_first` (défaut : bibliothèque ConstruPilot puis
+    bibliothèque entreprise), `company_first`, `company_only`. Matching pondéré (IDF) + même famille
+    d'unité ; les lignes restantes sont arbitrées par l'IA parmi les meilleurs candidats.
+    """
+    from routes.shared_library import get_shared_items_for_level, resolve_price_level
+    u = await db.users.find_one({"user_id": user_id},
+                                {"_id": 0, "price_library_mode": 1, "lang": 1, "brand_country": 1}) or {}
+    mode = u.get("price_library_mode") or "shared_first"
+    is_pt = (u.get("lang") == "pt") or (str(u.get("brand_country") or "").upper() == "PT")
+
+    company = await db.library_items.find(
+        {"user_id": user_id}, {"_id": 0, "designation": 1, "unit": 1, "unit_price_ht": 1,
+                               "vat_rate": 1, "cost_price_ht": 1}).to_list(5000)
+    shared: list[dict] = []
+    level = None
+    if mode != "company_only":
+        try:
+            level = await resolve_price_level(user_id, level_override)
+            shared = await get_shared_items_for_level(level, lang="pt" if is_pt else "fr")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Bibliothèque partagée indisponible (%s): %s", user_id, e)
+
+    sources = [("bibliotheque", _build_index(company)), (f"bibliotheque_partagee_{level}", _build_index(shared))]
+    if mode == "shared_first":
+        sources.reverse()
+    sources = [(name, idx) for name, idx in sources if idx["docs"]]
 
     matched = 0
+    for name, idx in sources:
+        for ln in lines:
+            if ln.get("price_source") or ln.get("unit_price_ht"):
+                continue
+            cands = _candidates(ln, idx)
+            if cands and cands[0][0] >= 0.6:
+                _apply(ln, cands[0][1], name)
+                matched += 1
+
+    pending = []
     for ln in lines:
-        best = _match(ln, idx) if idx else None
-        if best:
-            ln["unit_price_ht"] = best["unit_price_ht"]
-            ln["vat_rate"] = best.get("vat_rate", ln.get("vat_rate", 10))
-            ln["price_source"] = "bibliotheque"
-            matched += 1
-
-    # Fallback bibliothèque partagée (Pro Business uniquement)
-    unpriced = [ln for ln in lines if not ln.get("price_source")]
-    if unpriced:
+        if ln.get("price_source") or ln.get("unit_price_ht"):
+            continue
+        merged = []
+        for name, idx in sources:
+            merged += [(sc, it, name) for sc, it in _candidates(ln, idx, same_unit=True, k=5)]
+            if _unit_family(ln.get("unit")) == "count" and float(ln.get("qty") or 1) == 1:
+                merged += [(sc, it, name) for sc, it in _candidates(ln, idx, same_unit=False, k=3)]
+        seen, cands = set(), []
+        for sc, it, name in sorted(merged, key=lambda x: -x[0]):
+            key = (it.get("designation"), it.get("unit"))
+            if key not in seen:
+                seen.add(key)
+                cands.append((sc, {**it, "_src": name}))
+        if cands:
+            pending.append((ln, cands[:6]))
+    if pending:
         try:
-            from engines.monetization import user_tier
-            from routes.shared_library import get_shared_items_for_level, resolve_price_level
-            u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "role": 1})
-            is_pb = (u or {}).get("role") == "admin" or (await user_tier(user_id)) == "pro_business"
-            if is_pb:
-                level = await resolve_price_level(user_id, level_override)
-                shared = await get_shared_items_for_level(level)
-                sidx = [(_norm_tokens(it.get("designation", "")), it) for it in shared]
-                for ln in unpriced:
-                    best = _match(ln, sidx)
-                    if best:
-                        ln["unit_price_ht"] = best["unit_price_ht"]
-                        if best.get("vat_rate") is not None:
-                            ln["vat_rate"] = best["vat_rate"]
-                        ln["price_source"] = f"bibliotheque_partagee_{level}"
-                        matched += 1
+            picks = await _ai_pick(pending)
         except Exception as e:  # noqa: BLE001
-            logger.warning("Bibliothèque partagée non appliquée (%s): %s", user_id, e)
-
+            logger.warning("Arbitrage IA bibliothèque indisponible: %s", e)
+            picks = {}
+        for i, c in picks.items():
+            ln, cands = pending[i]
+            it = cands[c][1]
+            _apply(ln, it, it["_src"])
+            if _unit_family(it.get("unit")) != _unit_family(ln.get("unit")):
+                ln["unit"] = it.get("unit") or ln.get("unit")
+            matched += 1
     return lines, matched
 
 

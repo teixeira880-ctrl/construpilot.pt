@@ -208,17 +208,27 @@ async def list_shared(q: str = "", category: str = "", limit: int = 500,
 
 # ------------------------- Usage IA -------------------------
 
-async def get_shared_items_for_level(level: str) -> list[dict]:
-    """Retourne [{designation, unit, unit_price_ht, vat_rate}] au niveau demandé."""
+async def get_shared_items_for_level(level: str, lang: str | None = None) -> list[dict]:
+    """Retourne [{designation, unit, unit_price_ht, vat_rate, cost_price_ht}] au niveau demandé.
+
+    `lang="pt"` → entrées PT uniquement (repli FR si aucune) ; `lang="fr"` → hors PT."""
     field = _LEVEL_FIELD.get(level, "price_mid")
-    docs = await db.shared_library_items.find(
-        {}, {"_id": 0, "designation": 1, "unit": 1, "vat_rate": 1, field: 1}).to_list(20000)
+    suffix = {"price_low": "low", "price_mid": "mid", "price_high": "high"}[field]
+    pt_q = {"$or": [{"lang": "pt"}, {"country": "PT"}]}
+    fr_q = {"$nor": [{"lang": "pt"}, {"country": "PT"}]}
+    query = pt_q if lang == "pt" else (fr_q if lang == "fr" else {})
+    proj = {"_id": 0, "designation": 1, "unit": 1, "vat_rate": 1, field: 1,
+            f"mat_{suffix}": 1, f"labor_{suffix}": 1, "cost_price_ht": 1}
+    docs = await db.shared_library_items.find(query, proj).to_list(20000)
+    if not docs and lang == "pt":
+        docs = await db.shared_library_items.find(fr_q, proj).to_list(20000)
     out = []
     for d in docs:
         price = d.get(field)
         if price:
+            cost = d.get("cost_price_ht") or ((d.get(f"mat_{suffix}") or 0) + (d.get(f"labor_{suffix}") or 0)) or None
             out.append({"designation": d.get("designation", ""), "unit": d.get("unit", "u"),
-                        "unit_price_ht": price, "vat_rate": d.get("vat_rate")})
+                        "unit_price_ht": price, "vat_rate": d.get("vat_rate"), "cost_price_ht": cost})
     return out
 
 
