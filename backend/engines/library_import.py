@@ -219,3 +219,75 @@ CSV_TEMPLATE = (
     "# Variante detaillee acceptee : remplacez Prix_* par "
     "Materiaux_bas;Materiaux_moyen;Materiaux_haut;MO_bas;MO_moyen;MO_haut\n"
 )
+
+
+# ========= Format « ConstruPilot FR – Bibliothèque de prix » (gammes Économique/Standard/Premium) =========
+
+def _f(v):
+    try:
+        return round(float(str(v).replace(",", ".").replace("€", "").strip()), 2)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _hdr_idx(headers: list) -> dict:
+    return {str(h).strip().lower(): i for i, h in enumerate(headers) if h is not None}
+
+
+def parse_constructpilot_gammes(content: bytes) -> list[dict]:
+    """Lit BIBLIOTHEQUE_PRIX (3 gammes → bas/moyen/haut) + PISCINES_CONSTRUCTION. Retourne des items shared_library."""
+    import io
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    items: dict[tuple, dict] = {}
+    if "BIBLIOTHEQUE_PRIX" in wb.sheetnames:
+        rows = list(wb["BIBLIOTHEQUE_PRIX"].iter_rows(values_only=True))
+        h = _hdr_idx(rows[0])
+        gi = lambda r, k: r[h[k]] if k in h and h[k] < len(r) else None  # noqa: E731
+        for r in rows[1:]:
+            desig = str(gi(r, "désignation ouvrage") or "").strip()
+            if not desig:
+                continue
+            cat = str(gi(r, "lot / famille") or "Autre").strip()
+            unit = str(gi(r, "unité") or "u").strip()
+            key = (cat.lower(), desig.lower(), unit.lower())
+            it = items.setdefault(key, {
+                "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 10.0,
+                "code": str(gi(r, "code") or "")[:24].rsplit("-", 1)[0], "lang": "fr", "country": "FR",
+                "source": str(gi(r, "source") or "")[:120] or None, "ref_date": str(gi(r, "date prix") or "")[:40] or None,
+                "hours_mid": None})
+            gamme = str(gi(r, "gamme") or "").lower()
+            lvl = "low" if "conom" in gamme else "high" if "premium" in gamme else "mid"
+            it[f"price_{lvl}"] = _f(gi(r, "prix médian référence")) or _f(gi(r, "prix calculé"))
+            it[f"mat_{lvl}"] = _f(gi(r, "matériaux"))
+            it[f"labor_{lvl}"] = _f(gi(r, "main-d'œuvre"))
+            if lvl == "mid":
+                it["hours_mid"] = _f(gi(r, "heures mo"))
+    if "PISCINES_CONSTRUCTION" in wb.sheetnames:
+        rows = list(wb["PISCINES_CONSTRUCTION"].iter_rows(values_only=True))
+        h = _hdr_idx(rows[0])
+        gi = lambda r, k: r[h[k]] if k in h and h[k] < len(r) else None  # noqa: E731
+        for r in rows[1:]:
+            desig = str(gi(r, "désignation") or "").strip()
+            if not desig:
+                continue
+            cat = str(gi(r, "catégorie") or "Piscines").strip()
+            unit = str(gi(r, "unité") or "u").strip()
+            key = (cat.lower(), desig.lower(), unit.lower())
+            mid = _f(gi(r, "prix moyen"))
+            items[key] = {
+                "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 10.0,
+                "code": str(gi(r, "code") or "")[:24], "lang": "fr", "country": "FR",
+                "price_low": _f(gi(r, "prix bas")) or mid, "price_mid": mid, "price_high": _f(gi(r, "prix haut")) or mid,
+                "mat_mid": _f(gi(r, "matériaux")), "labor_mid": _f(gi(r, "main-d'œuvre")),
+                "source": "ConstruPilot FR 2026 – Piscines", "ref_date": "2026-09"}
+    out = []
+    for it in items.values():
+        mid = it.get("price_mid") or it.get("price_low") or it.get("price_high")
+        if not mid:
+            continue
+        it["price_mid"] = mid
+        it["price_low"] = it.get("price_low") or round(mid * 0.85, 2)
+        it["price_high"] = it.get("price_high") or round(mid * 1.2, 2)
+        out.append(it)
+    return out

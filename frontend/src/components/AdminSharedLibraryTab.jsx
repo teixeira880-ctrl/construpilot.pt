@@ -32,18 +32,21 @@ export default function AdminSharedLibraryTab() {
 
   useEffect(() => { load(); }, []);
 
+  const modeRef = useRef("replace");
   const onImport = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const merge = modeRef.current === "merge";
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post("/admin/shared-library/import", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const { data } = await api.post(`/admin/shared-library/import${merge ? "?merge=true" : ""}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
       });
-      toast.success(`${data.imported} ouvrages importés (colonnes: ${data.columns_detected.length})`);
+      if (merge) toast.success(`Fusion FR : ${data.added} ouvrage(s) ajouté(s), ${data.kept_existing} conservés, ${data.skipped_duplicates} déjà présents · total ${data.total}`);
+      else toast.success(`${data.imported} ouvrages importés (colonnes: ${data.columns_detected.length})`);
       await load(q);
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Import impossible");
@@ -101,10 +104,15 @@ export default function AdminSharedLibraryTab() {
       <div className="flex flex-wrap gap-2">
         <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xlsm" className="hidden"
                onChange={onImport} data-testid="shared-lib-file-input" />
-        <Button onClick={() => fileRef.current?.click()} disabled={uploading}
+        <Button onClick={() => { modeRef.current = "replace"; fileRef.current?.click(); }} disabled={uploading}
                 className="rounded-sm gap-2 bg-primary" data-testid="shared-lib-import-btn">
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           Importer (remplacer) CSV / Excel
+        </Button>
+        <Button variant="outline" onClick={() => { modeRef.current = "merge"; fileRef.current?.click(); }} disabled={uploading}
+                className="rounded-sm gap-2 border-primary/40 text-primary" title="Conserve l'existant, ajoute seulement les ouvrages absents (FR uniquement, la bibliothèque PT n'est pas touchée)"
+                data-testid="shared-lib-merge-btn">
+          <Upload className="h-4 w-4" /> Fusionner (ajouter les manquants, FR)
         </Button>
         <Button variant="outline" onClick={downloadTemplate} className="rounded-sm gap-2"
                 data-testid="shared-lib-template-btn">

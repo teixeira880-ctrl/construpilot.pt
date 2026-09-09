@@ -10,6 +10,9 @@
 > = code envoyé à la boîte IONOS non consultée → ajout d'un bouton Admin « Désactiver 2FA »
 > (`admin.py` UserIn + `Admin.jsx`). En attente/Support Emergent : Google Login sur domaine perso.
 
+> **Session 09/09/2026 — Bibliothèque FR : fusion Excel « ConstruPilot_FR_Bibliotheque_Complete_Piscines_2026 »** : parser `engines/library_import.py::parse_constructpilot_gammes` (feuille BIBLIOTHEQUE_PRIX : 3 gammes Économique/Standard/Premium → price_low/mid/high + mat/labor par niveau + heures MO ; feuille PISCINES_CONSTRUCTION) → 322 items. Mode **merge** : `POST /admin/shared-library/import?merge=true` (`_merge_import`) — conserve tout l'existant, ajoute seulement les ouvrages absents (clé désignation normalisée + unité), tag `lang: fr / country: FR`, **n'écrit jamais sur les entrées PT** (`$nor lang pt / country PT`), idempotent (2e passage : 0 ajout). Bouton Admin → Bibliothèque partagée « Fusionner (ajouter les manquants, FR) » (`shared-lib-merge-btn`). `GET /shared-library/public-count` → compteur dynamique sur la page d'accueil (`library-count`, « 322 ouvrages chiffrés, prix bas, médian et haut ») ; PT inchangé. Prix utilisés par devis/métré via `get_shared_items_for_level` (vérifié : « Installation et repli de chantier » = 1 500 €). ⚠️ En prod : après redéploiement, l'admin doit relancer la fusion avec le fichier Excel (la base preview ≠ prod).
+
+
 > **Session 08/09/2026 (sexies) — CCTP mémoire des lots** : `users.cctp_lots_kept / cctp_lots_skipped` (listes normalisées, PrefsIn + `_public`). QuoteEditor : `normLot()` (minuscules, sans accents, sans « LOT 03 »), matching par mots ≥ 4 lettres ; `preselectLot()` décoche les lots déjà ignorés (sauf s'ils ont aussi été gardés) ; `learnLots()` met à jour les listes à chaque confirmation multi-lots (`PUT /users/me/preferences`). Dialog affiche `cctp-lots-remembered` quand une présélection a été appliquée. Vérifié e2e (2e import : Peinture décochée automatiquement).
 
 

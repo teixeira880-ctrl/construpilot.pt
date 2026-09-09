@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { api } from "@/lib/api";
 import { Boxes, Layers, MapPin, PlugZap, CheckCircle2 } from "lucide-react";
 import { useI18n } from "@/context/I18nContext";
 
@@ -23,6 +25,11 @@ const FEATURES_PT = [
 export function ParamLibraryPromo() {
   const { lang } = useI18n();
   const pt = lang === "pt";
+  const [libCount, setLibCount] = useState(0);
+  useEffect(() => {
+    if (pt) return;
+    api.get("/shared-library/public-count").then(({ data }) => setLibCount(Number(data.count_fr) || 0)).catch(() => {});
+  }, [pt]);
   const FEATURES = pt ? FEATURES_PT : FEATURES_FR;
   return (
     <section className="relative overflow-hidden border-y border-border bg-[#0A0D14] text-white"
@@ -38,7 +45,7 @@ export function ParamLibraryPromo() {
             <h2 className="mt-6 text-4xl sm:text-5xl font-black leading-[1.05] tracking-tight">
               {pt
                 ? <>Uma biblioteca de <span className="text-primary">191&nbsp;trabalhos compostos</span>, orçamentados ao real.</>
-                : <>Une bibliothèque de <span className="text-primary">191&nbsp;ouvrages composés</span>, chiffrés au réel.</>}
+                : <>Une bibliothèque de <span className="text-primary" data-testid="library-count">{libCount ? `${libCount.toLocaleString("fr-FR")}\u00a0ouvrages chiffrés` : "191\u00a0ouvrages composés"}</span>, {libCount ? "prix bas, médian et haut, France 2026." : "chiffrés au réel."}</>}
             </h2>
             <p className="mt-6 text-lg text-white/70 max-w-xl leading-relaxed">
               {pt

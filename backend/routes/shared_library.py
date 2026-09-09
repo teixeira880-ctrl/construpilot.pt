@@ -30,6 +30,14 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _norm(s: str) -> str:
+    import re
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (s or "").replace("œ", "oe"))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", s.lower())).strip()
+
+
 async def _is_pro_business(user: dict) -> bool:
     if (user or {}).get("role") == "admin":
         return True
@@ -44,11 +52,56 @@ async def download_template() -> str:
     return CSV_TEMPLATE
 
 
+async def _merge_import(content: bytes, filename: str) -> dict:
+    """Fusion FR : conserve tout l'existant, ajoute uniquement les ouvrages absents (clé désignation+unité).
+
+    Ne touche jamais aux entrées marquées lang/country PT. Les ajouts sont tagués lang=fr / country=FR.
+    """
+    from engines.library_import import parse_constructpilot_gammes
+    try:
+        rows = parse_constructpilot_gammes(content)
+    except Exception:  # noqa: BLE001
+        rows = []
+    if not rows:
+        try:
+            rows = [dict(r, lang="fr", country="FR") for r in parse_shared_library(content, filename)["rows"]]
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    if not rows:
+        raise HTTPException(400, "Aucun ouvrage valide détecté dans le fichier.")
+    existing = await db.shared_library_items.find(
+        {"$nor": [{"lang": "pt"}, {"country": "PT"}]}, {"_id": 0, "designation": 1, "unit": 1}).to_list(50000)
+    seen = {(_norm(e.get("designation", "")), (e.get("unit") or "").strip().lower()) for e in existing}
+    now = _now()
+    docs = []
+    for r in rows:
+        key = (_norm(r["designation"]), (r.get("unit") or "").strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        docs.append({"item_id": "shl_" + secrets.token_hex(6), **r, "created_at": now, "updated_at": now})
+    sample = [{k: v for k, v in d.items()} for d in docs[:5]]
+    if docs:
+        await db.shared_library_items.insert_many(docs)
+    total = await db.shared_library_items.count_documents({})
+    total_fr = await db.shared_library_items.count_documents({"$nor": [{"lang": "pt"}, {"country": "PT"}]})
+    await db.app_settings.update_one(
+        {"key": "shared_library_meta"},
+        {"$set": {"key": "shared_library_meta", "count": total, "count_fr": total_fr,
+                  "imported_at": now, "last_file": filename, "last_mode": "merge"}}, upsert=True)
+    return {"ok": True, "mode": "merge", "in_file": len(rows), "added": len(docs),
+            "kept_existing": len(existing), "skipped_duplicates": len(rows) - len(docs),
+            "total": total, "total_fr": total_fr, "sample": sample}
+
+
+
 @admin_router.post("/import")
-async def import_library(file: UploadFile = File(...), replace: bool = True) -> dict:
+async def import_library(file: UploadFile = File(...), replace: bool = True, merge: bool = False) -> dict:
     content = await file.read()
     if len(content) > 15 * 1024 * 1024:
         raise HTTPException(400, "Fichier trop volumineux (max 15 Mo).")
+    if merge:
+        return await _merge_import(content, file.filename or "")
     try:
         parsed = parse_shared_library(content, file.filename or "")
     except ValueError as e:
@@ -113,6 +166,14 @@ async def set_price_level(body: LevelIn, user=Depends(current_user)) -> dict:
     await db.users.update_one({"user_id": user["user_id"]},
                               {"$set": {"price_level": body.level}})
     return {"level": body.level}
+
+
+@router.get("/public-count")
+async def public_count() -> dict:
+    """Compteur public (page d'accueil) : nb d'ouvrages FR de la bibliothèque partagée."""
+    fr = await db.shared_library_items.count_documents({"$nor": [{"lang": "pt"}, {"country": "PT"}]})
+    return {"count_fr": fr, "count_total": await db.shared_library_items.count_documents({})}
+
 
 
 @router.get("")
