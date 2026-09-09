@@ -3,7 +3,7 @@ import {
   Calculator, Sparkles, Camera, FileText, Search, MessageSquare, ShieldCheck,
   Ruler, Home as HomeIcon, HardHat, Layers, Building2, Droplets, Waves,
   Truck, PenTool, FileSignature, CreditCard, CalendarRange, Users, Boxes,
-  Cuboid, ArrowRight, CheckCircle2, Smartphone, Download,
+  Cuboid, ArrowRight, CheckCircle2, Smartphone, Download, PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Nav, Footer } from "@/components/Nav";
@@ -103,6 +103,19 @@ export default function Features() {
               <a key={tid} href={href} download data-testid={tid}
                  className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
                 <FileText className="h-4 w-4 text-primary shrink-0" />{label}
+              </a>
+            ))}
+          </div>
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="features-videos">
+            {[
+              ["Vidéo démo courte 16:9 (2 min 30)", "/docs/ConstruPilot_Demo_Courte_16x9.mp4", "features-video-short-169"],
+              ["Vidéo démo courte 9:16 (réels)", "/docs/ConstruPilot_Demo_Courte_9x16.mp4", "features-video-short-916"],
+              ["Vidéo démo complète 16:9 (4 min 40)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
+              ["Vidéo démo complète 9:16", "/docs/ConstruPilot_Demo_Complete_9x16.mp4", "features-video-full-916"],
+            ].map(([label, href, tid]) => (
+              <a key={tid} href={href} target="_blank" rel="noreferrer" data-testid={tid}
+                 className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
+                <PlayCircle className="h-4 w-4 text-primary shrink-0" />{label}
               </a>
             ))}
           </div>
