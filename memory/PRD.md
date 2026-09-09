@@ -1,5 +1,7 @@
 # ConstruPilot — PRD
 
+> **Session 09/09/2026 (ter) — Brochure & catalogue « toutes les fonctions » (PDF + PPTX, FR)** : générateurs `backend/scripts/features_docs/` (`content.py` = inventaire unique par offre Particuliers / Project Pass / Premium / Pro / Pro Business + modules transversaux Radar & prospection, Blog/SEO/newsletter, acquisition, options/API, administration + comparatif ; `build_pdf.py` reportlab Liberation Sans + FreeSans pour ✓ ; `build_pptx.py` python-pptx 16:9). Sorties dans `frontend/public/docs/` : `ConstruPilot_Brochure_Fonctionnalites.pdf` (14 p.) / `.pptx` (19 slides), `ConstruPilot_Catalogue_Complet.pdf` (13 p.) / `.pptx` (23 slides). Liens de téléchargement sur `/fonctionnalites` (`features-downloads`, `features-dl-*`). Regénérer : `cd backend/scripts/features_docs && python build_pdf.py && python build_pptx.py`. Reste (validé par l'utilisateur, à faire ensuite) : Piscines dans l'estimateur, historique des prix bibliothèque, rapport rentabilité (sources : bons de commande `material_orders` + saisie manuelle de dépenses + coût de revient devis).
+
 > **Rebranding 12/02/2026** : l'app était initialement nommée « CMRENOV Travaux AI ». Elle est renommée **ConstruPilot** — tagline : *Estimez. Comparez. Construisez.*
 
 > **État prod 16/06/2026** : incidents production résolus — (1) connexion impossible = domaine `www`

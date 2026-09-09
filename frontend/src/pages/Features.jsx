@@ -3,7 +3,7 @@ import {
   Calculator, Sparkles, Camera, FileText, Search, MessageSquare, ShieldCheck,
   Ruler, Home as HomeIcon, HardHat, Layers, Building2, Droplets, Waves,
   Truck, PenTool, FileSignature, CreditCard, CalendarRange, Users, Boxes,
-  Cuboid, ArrowRight, CheckCircle2, Smartphone,
+  Cuboid, ArrowRight, CheckCircle2, Smartphone, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Nav, Footer } from "@/components/Nav";
@@ -86,6 +86,26 @@ export default function Features() {
         <p className="text-sm text-muted-foreground mb-6">Métré exact depuis vos plans, approvisionnement chantier et devis professionnels.</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="features-pro">
           {PRO.map((f, i) => <Card key={i} {...f} tid={`feature-pro-${i}`} />)}
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 py-10" data-testid="features-downloads">
+        <div className="surface p-6 rounded-xl">
+          <h2 className="font-display text-xl font-bold flex items-center gap-2"><Download className="h-5 w-5 text-primary" /> Toutes les fonctionnalités en PDF et PowerPoint</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Brochure commerciale (1 offre par page) et catalogue exhaustif — Particuliers, Premium, Pro, Pro Business, Blog & SEO, Radar Chantiers, API. En français.</p>
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              ["Brochure (PDF)", "/docs/ConstruPilot_Brochure_Fonctionnalites.pdf", "features-dl-brochure-pdf"],
+              ["Brochure (PowerPoint)", "/docs/ConstruPilot_Brochure_Fonctionnalites.pptx", "features-dl-brochure-pptx"],
+              ["Catalogue complet (PDF)", "/docs/ConstruPilot_Catalogue_Complet.pdf", "features-dl-catalogue-pdf"],
+              ["Catalogue complet (PowerPoint)", "/docs/ConstruPilot_Catalogue_Complet.pptx", "features-dl-catalogue-pptx"],
+            ].map(([label, href, tid]) => (
+              <a key={tid} href={href} download data-testid={tid}
+                 className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
+                <FileText className="h-4 w-4 text-primary shrink-0" />{label}
+              </a>
+            ))}
+          </div>
         </div>
       </section>
 
