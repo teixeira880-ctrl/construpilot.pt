@@ -967,19 +967,25 @@ async def document_from_plans(body: FromPlansIn, user=Depends(current_user)) -> 
             "line_count": len(all_lines), "included": included}
 
 
-async def _transcribe_video_bytes(raw: bytes) -> str:
-    """Extrait l'audio d'une vidéo (ffmpeg) et le transcrit en français (Whisper)."""
+async def _transcribe_video_bytes(raw: bytes, language: str = "pt") -> str:
+    """Extrai o áudio de um vídeo (ffmpeg) e transcreve na língua do utilizador (Whisper).
+
+    O parâmetro `language` segue os códigos ISO-639-1 usados pelo Whisper (`pt`, `fr`, `es`, `en`…).
+    Por defeito assume `pt` (português) para acompanhar a orientação PT-PT da plataforma.
+    """
     import os
     import shutil
     import subprocess
     import tempfile
     if not raw:
-        raise HTTPException(400, "Vidéo vide")
+        raise HTTPException(400, "Vídeo vazio")
     if len(raw) > 80 * 1024 * 1024:
-        raise HTTPException(413, "Vidéo trop volumineuse (>80 Mo). Filmez une séquence plus courte.")
+        raise HTTPException(413, "Vídeo demasiado grande (>80 MB). Filme uma sequência mais curta.")
     tmpdir = tempfile.mkdtemp(prefix="cp_vid_")
     src = os.path.join(tmpdir, "input")
     audio = os.path.join(tmpdir, "audio.mp3")
+    # normalizar código de idioma (ISO-639-1, 2 letras)
+    lang_code = (language or "pt").strip().lower()[:2] or "pt"
     try:
         with open(src, "wb") as f:
             f.write(raw)
@@ -988,24 +994,24 @@ async def _transcribe_video_bytes(raw: bytes) -> str:
             capture_output=True, timeout=120)
         if proc.returncode != 0 or not os.path.exists(audio):
             logging.getLogger("documents").warning("ffmpeg failed: %s", proc.stderr[-500:])
-            raise HTTPException(422, "Impossible d'extraire l'audio de la vidéo.")
+            raise HTTPException(422, "Não foi possível extrair o áudio do vídeo.")
         if os.path.getsize(audio) > 25 * 1024 * 1024:
-            raise HTTPException(413, "Audio trop long (>25 Mo). Filmez une séquence plus courte.")
+            raise HTTPException(413, "Áudio demasiado longo (>25 MB). Filme uma sequência mais curta.")
         from emergentintegrations.llm.openai import OpenAISpeechToText
         stt = OpenAISpeechToText(api_key=os.environ["EMERGENT_LLM_KEY"])
         with open(audio, "rb") as af:
             resp = await stt.transcribe(file=af, model="whisper-1",
-                                        response_format="text", language="fr")
+                                        response_format="text", language=lang_code)
         transcript = resp if isinstance(resp, str) else (getattr(resp, "text", "") or "")
     except HTTPException:
         raise
     except Exception as e:
         logging.getLogger("documents").exception("video transcription failed")
-        raise HTTPException(502, f"Transcription indisponible : {type(e).__name__}")
+        raise HTTPException(502, f"Transcrição indisponível: {type(e).__name__}")
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
     if not transcript.strip():
-        raise HTTPException(422, "Aucune parole détectée dans la vidéo.")
+        raise HTTPException(422, "Nenhum discurso detetado no vídeo.")
     return transcript.strip()
 
 
@@ -1041,9 +1047,9 @@ async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
 
 @router.post("/video-transcribe")
 async def video_transcribe(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
-    """Transcrit une vidéo en texte (à relire/corriger avant génération du devis)."""
+    """Transcreve um vídeo em texto (para reler/corrigir antes da geração do orçamento)."""
     raw = await file.read()
-    transcript = await _transcribe_video_bytes(raw)
+    transcript = await _transcribe_video_bytes(raw, language=(user.get("lang") or "pt"))
     return {"transcript": transcript}
 
 
@@ -1066,9 +1072,9 @@ async def document_from_text(body: FromTextIn, user=Depends(current_user)) -> di
 @router.post("/from-video")
 async def document_from_video(file: UploadFile = File(...), client_id: str | None = None,
                               user=Depends(current_user)) -> dict:
-    """Crée un devis directement à partir d'une vidéo (transcription + lignes IA chiffrées)."""
+    """Cria um orçamento diretamente a partir de um vídeo (transcrição + linhas IA orçamentadas)."""
     raw = await file.read()
-    transcript = await _transcribe_video_bytes(raw)
+    transcript = await _transcribe_video_bytes(raw, language=(user.get("lang") or "pt"))
     doc = await _quote_doc_from_text(user, transcript, client_id, source="video")
     doc["transcript"] = transcript
     return doc
