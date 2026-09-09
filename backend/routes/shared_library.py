@@ -52,7 +52,7 @@ async def download_template() -> str:
     return CSV_TEMPLATE
 
 
-async def _merge_import(content: bytes, filename: str) -> dict:
+async def _merge_import(content: bytes, filename: str, update_prices: bool = False) -> dict:
     """Fusion FR : conserve tout l'existant, ajoute uniquement les ouvrages absents (clé désignation+unité).
 
     Ne touche jamais aux entrées marquées lang/country PT. Les ajouts sont tagués lang=fr / country=FR.
@@ -70,13 +70,23 @@ async def _merge_import(content: bytes, filename: str) -> dict:
     if not rows:
         raise HTTPException(400, "Aucun ouvrage valide détecté dans le fichier.")
     existing = await db.shared_library_items.find(
-        {"$nor": [{"lang": "pt"}, {"country": "PT"}]}, {"_id": 0, "designation": 1, "unit": 1}).to_list(50000)
-    seen = {(_norm(e.get("designation", "")), (e.get("unit") or "").strip().lower()) for e in existing}
+        {"$nor": [{"lang": "pt"}, {"country": "PT"}]}, {"_id": 0, "designation": 1, "unit": 1, "item_id": 1}).to_list(50000)
+    by_key = {(_norm(e.get("designation", "")), (e.get("unit") or "").strip().lower()): e.get("item_id") for e in existing}
+    seen = set(by_key)
     now = _now()
     docs = []
+    updated = 0
+    PRICE_FIELDS = ("price_low", "price_mid", "price_high", "mat_low", "mat_mid", "mat_high",
+                    "labor_low", "labor_mid", "labor_high", "hours_mid", "source", "ref_date", "code")
     for r in rows:
         key = (_norm(r["designation"]), (r.get("unit") or "").strip().lower())
         if key in seen:
+            if update_prices and by_key.get(key):
+                upd = {k: r[k] for k in PRICE_FIELDS if r.get(k) is not None}
+                if upd:
+                    upd["updated_at"] = now
+                    await db.shared_library_items.update_one({"item_id": by_key[key]}, {"$set": upd})
+                    updated += 1
             continue
         seen.add(key)
         docs.append({"item_id": "shl_" + secrets.token_hex(6), **r, "created_at": now, "updated_at": now})
@@ -89,19 +99,20 @@ async def _merge_import(content: bytes, filename: str) -> dict:
         {"key": "shared_library_meta"},
         {"$set": {"key": "shared_library_meta", "count": total, "count_fr": total_fr,
                   "imported_at": now, "last_file": filename, "last_mode": "merge"}}, upsert=True)
-    return {"ok": True, "mode": "merge", "in_file": len(rows), "added": len(docs),
-            "kept_existing": len(existing), "skipped_duplicates": len(rows) - len(docs),
+    return {"ok": True, "mode": "merge+prices" if update_prices else "merge", "in_file": len(rows), "added": len(docs),
+            "updated_prices": updated, "kept_existing": len(existing), "skipped_duplicates": len(rows) - len(docs),
             "total": total, "total_fr": total_fr, "sample": sample}
 
 
 
 @admin_router.post("/import")
-async def import_library(file: UploadFile = File(...), replace: bool = True, merge: bool = False) -> dict:
+async def import_library(file: UploadFile = File(...), replace: bool = True, merge: bool = False,
+                         update_prices: bool = False) -> dict:
     content = await file.read()
     if len(content) > 15 * 1024 * 1024:
         raise HTTPException(400, "Fichier trop volumineux (max 15 Mo).")
     if merge:
-        return await _merge_import(content, file.filename or "")
+        return await _merge_import(content, file.filename or "", update_prices=update_prices)
     try:
         parsed = parse_shared_library(content, file.filename or "")
     except ValueError as e:
@@ -217,3 +228,38 @@ async def resolve_price_level(user_id: str, override: str | None = None) -> str:
     u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "price_level": 1})
     lvl = (u or {}).get("price_level")
     return lvl if lvl in LEVELS else "moyen"
+
+
+@admin_router.get("/export.xlsx")
+async def export_library_xlsx():
+    """Export FR au format 3 gammes (identique au fichier d'import ConstruPilot_FR_Bibliotheque)."""
+    import io
+    from fastapi.responses import StreamingResponse
+    from openpyxl import Workbook
+    items = await db.shared_library_items.find(
+        {"$nor": [{"lang": "pt"}, {"country": "PT"}]}, {"_id": 0}).sort([("category", 1), ("designation", 1)]).to_list(50000)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BIBLIOTHEQUE_PRIX"
+    ws.append(["Code", "Lot / Famille", "Désignation ouvrage", "Gamme", "Unité", "Mode de prix", "Prix bas",
+               "Prix médian référence", "Prix haut", "Matériaux", "Main-d'œuvre", "Matériel / engins",
+               "Coefficient entreprise", "Prix calculé", "Heures MO", "Zone de référence", "Date prix",
+               "Base fiscale", "Source", "URL source", "Observations"])
+    gammes = (("Économique", "low", "ECO"), ("Standard", "mid", "STD"), ("Premium", "high", "PRE"))
+    for i, it in enumerate(items, start=1):
+        code = it.get("code") or f"CP-{i:04d}"
+        for label, lvl, suf in gammes:
+            p = it.get(f"price_{lvl}") or it.get("price_mid")
+            ws.append([f"{code}-{suf}", it.get("category"), it.get("designation"), label, it.get("unit"),
+                       "Prix médian", it.get("price_low"), p, it.get("price_high"),
+                       it.get(f"mat_{lvl}") or it.get("mat_mid"), it.get(f"labor_{lvl}") or it.get("labor_mid"),
+                       None, 1.0, p, it.get("hours_mid") if lvl == "mid" else None, "France",
+                       it.get("ref_date") or "", "HT", it.get("source") or "ConstruPilot", "", ""])
+    ws2 = wb.create_sheet("README")
+    ws2.append(["Export bibliothèque FR ConstruPilot — 3 lignes par ouvrage (Économique/Standard/Premium)."])
+    ws2.append(["Modifiez les prix puis réimportez via Admin → Bibliothèque partagée → « Fusionner + actualiser les prix »."])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": 'attachment; filename="ConstruPilot_FR_Bibliotheque_export.xlsx"'})

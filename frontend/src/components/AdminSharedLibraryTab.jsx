@@ -37,15 +37,16 @@ export default function AdminSharedLibraryTab() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const merge = modeRef.current === "merge";
+    const merge = modeRef.current === "merge" || modeRef.current === "merge_prices";
+    const updPrices = modeRef.current === "merge_prices";
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post(`/admin/shared-library/import${merge ? "?merge=true" : ""}`, fd, {
+      const { data } = await api.post(`/admin/shared-library/import${merge ? `?merge=true${updPrices ? "&update_prices=true" : ""}` : ""}`, fd, {
         headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
       });
-      if (merge) toast.success(`Fusion FR : ${data.added} ouvrage(s) ajouté(s), ${data.kept_existing} conservés, ${data.skipped_duplicates} déjà présents · total ${data.total}`);
+      if (merge) toast.success(`Fusion FR : ${data.added} ajouté(s)${updPrices ? `, ${data.updated_prices} prix actualisés` : ""}, ${data.kept_existing} conservés · total ${data.total}`);
       else toast.success(`${data.imported} ouvrages importés (colonnes: ${data.columns_detected.length})`);
       await load(q);
     } catch (err) {
@@ -113,6 +114,20 @@ export default function AdminSharedLibraryTab() {
                 className="rounded-sm gap-2 border-primary/40 text-primary" title="Conserve l'existant, ajoute seulement les ouvrages absents (FR uniquement, la bibliothèque PT n'est pas touchée)"
                 data-testid="shared-lib-merge-btn">
           <Upload className="h-4 w-4" /> Fusionner (ajouter les manquants, FR)
+        </Button>
+        <Button variant="outline" onClick={() => { modeRef.current = "merge_prices"; fileRef.current?.click(); }} disabled={uploading}
+                className="rounded-sm gap-2 border-amber-500/50 text-amber-600" title="Ajoute les manquants ET actualise les prix des ouvrages FR déjà présents (les ouvrages absents du fichier sont conservés, PT intacte)"
+                data-testid="shared-lib-merge-prices-btn">
+          <Upload className="h-4 w-4" /> Fusionner + actualiser les prix
+        </Button>
+        <Button variant="outline" onClick={async () => {
+                  try {
+                    const res = await api.get("/admin/shared-library/export.xlsx", { responseType: "blob" });
+                    const url = URL.createObjectURL(res.data); const a = document.createElement("a");
+                    a.href = url; a.download = "ConstruPilot_FR_Bibliotheque_export.xlsx"; a.click(); URL.revokeObjectURL(url);
+                  } catch { toast.error("Export impossible"); }
+                }} className="rounded-sm gap-2" data-testid="shared-lib-export-btn">
+          <Download className="h-4 w-4" /> Exporter la bibliothèque FR (Excel)
         </Button>
         <Button variant="outline" onClick={downloadTemplate} className="rounded-sm gap-2"
                 data-testid="shared-lib-template-btn">

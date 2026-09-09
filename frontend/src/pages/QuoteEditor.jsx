@@ -667,6 +667,13 @@ export default function QuoteEditor() {
   };
 
   const openSend = async () => {
+    const targetPct = targetMargin || 0;
+    if (totals.marginPct != null && targetPct > 0 && totals.marginPct < targetPct) {
+      const ok = window.confirm(`⚠️ Marge faible : ${totals.marginPct.toFixed(1)} % sur ce devis, sous votre cible de ${targetPct} %${lossLines ? ` (${lossLines} ouvrage${lossLines > 1 ? "s" : ""} à perte)` : ""}.\n\nEnvoyer quand même ?`);
+      if (!ok) return;
+    } else if (lossLines > 0 && !window.confirm(`⚠️ ${lossLines} ouvrage${lossLines > 1 ? "s" : ""} chiffré${lossLines > 1 ? "s" : ""} à perte dans ce devis.\n\nEnvoyer quand même ?`)) {
+      return;
+    }
     const c = clients.find((x) => x.client_id === clientId);
     const nm = [c?.first_name, c?.last_name].filter(Boolean).join(" ") || c?.company || c?.name || "";
     setSendEmail(c?.email || "");
