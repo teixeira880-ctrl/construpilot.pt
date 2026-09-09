@@ -108,9 +108,9 @@ export default function Features() {
           </div>
           <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="features-videos">
             {[
-              ["Vidéo démo courte 16:9 (2 min 30)", "/docs/ConstruPilot_Demo_Courte_16x9.mp4", "features-video-short-169"],
+              ["Vidéo démo courte 16:9 (2 min)", "/docs/ConstruPilot_Demo_Courte_16x9.mp4", "features-video-short-169"],
               ["Vidéo démo courte 9:16 (réels)", "/docs/ConstruPilot_Demo_Courte_9x16.mp4", "features-video-short-916"],
-              ["Vidéo démo complète 16:9 (4 min 40)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
+              ["Vidéo démo complète 16:9 (4 min)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
               ["Vidéo démo complète 9:16", "/docs/ConstruPilot_Demo_Complete_9x16.mp4", "features-video-full-916"],
               ["Vídeo demo curta PT 16:9", "/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4", "features-video-pt-short-169"],
               ["Vídeo demo curta PT 9:16", "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4", "features-video-pt-short-916"],

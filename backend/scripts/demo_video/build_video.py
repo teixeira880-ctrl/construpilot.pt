@@ -132,13 +132,14 @@ def duration(path):
     return float(out)
 
 
-ELEVEN_VOICE_PT = os.environ.get("DEMO_VOICE_PT_ID", "ejarTsrf33xoVlH9hMuy")  # Luis — European Portuguese (natif)
+ELEVEN_VOICES = {"pt": os.environ.get("DEMO_VOICE_PT_ID", "ejarTsrf33xoVlH9hMuy"),   # Luis — European Portuguese
+                 "fr": os.environ.get("DEMO_VOICE_FR_ID", "aQROLel5sQbj1vuIVi6B")}   # Nicolas — Narrator (parisien)
 
 
 def tts_elevenlabs(text: str) -> bytes:
     from elevenlabs import ElevenLabs, VoiceSettings
     client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
-    gen = client.text_to_speech.convert(text=text, voice_id=ELEVEN_VOICE_PT, model_id="eleven_multilingual_v2",
+    gen = client.text_to_speech.convert(text=text, voice_id=ELEVEN_VOICES[LANG], model_id="eleven_multilingual_v2",
                                         output_format="mp3_44100_128",
                                         voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.8, style=0.2, use_speaker_boost=True))
     return b"".join(gen)
@@ -152,8 +153,8 @@ async def tts_all(scenes):
         path = f"{WORK}/tts_{LANG}/{slug}.mp3"
         if os.path.exists(path):
             continue
-        if LANG == "pt":
-            data = tts_elevenlabs(text)  # voix native portugaise (ElevenLabs)
+        if os.environ.get("ELEVENLABS_API_KEY"):
+            data = tts_elevenlabs(text)  # voix natives ElevenLabs (FR / PT)
         else:
             audio = await tts.generate_speech(text=text, model="tts-1", voice=VOICE, response_format="mp3", speed=1.0)
             data = audio if isinstance(audio, (bytes, bytearray)) else getattr(audio, "content", None)

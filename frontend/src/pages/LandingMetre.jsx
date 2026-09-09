@@ -104,7 +104,7 @@ export default function LandingMetre() {
               <video className="h-full w-full object-cover" src="/docs/ConstruPilot_Demo_Courte_16x9.mp4"
                      autoPlay muted loop controls playsInline preload="metadata" data-testid="metre-video-player" />
             </div>
-            <figcaption className="mt-3 text-xs text-muted-foreground text-center">Démonstration en 2 min 30 : estimation, plan → métré, devis, signature, approvisionnement, Radar, rentabilité.</figcaption>
+            <figcaption className="mt-3 text-xs text-muted-foreground text-center">Démonstration en 2 min : estimation, plan → métré, devis, signature, approvisionnement, Radar, rentabilité.</figcaption>
           </motion.figure>
         </div>
       </section>
