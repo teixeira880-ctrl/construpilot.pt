@@ -97,7 +97,7 @@ export const ProfileForm = () => {
                  onChange={onPhoto} data-testid="profile-photo-input" />
           <Button type="button" variant="outline" size="sm" className="rounded-sm gap-2"
                   onClick={() => fileRef.current?.click()} data-testid="profile-photo-upload-btn">
-            <Camera className="h-3.5 w-3.5" /> {user?.picture ? "Changer la photo" : "Ajouter une photo"}
+            <Camera className="h-3.5 w-3.5" /> {user?.picture ? "Alterar foto" : "Adicionar foto"}
           </Button>
           {user?.picture && (
             <Button type="button" variant="ghost" size="sm" className="rounded-sm gap-2 text-muted-foreground"
@@ -143,7 +143,7 @@ export const ProfileForm = () => {
       )}
       <Button type="submit" disabled={busy} className="rounded-sm w-full gap-2"
               data-testid="profile-save-btn">
-        <Save className="h-4 w-4" /> {busy ? "…" : "Enregistrer mes informations"}
+        <Save className="h-4 w-4" /> {busy ? "…" : "Guardar as minhas informações"}
       </Button>
     </form>
   );

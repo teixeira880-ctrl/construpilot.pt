@@ -121,7 +121,7 @@ export default function Coach() {
 
   return (
     <div className="grid gap-8">
-      <SEO title="Coach IA travaux" description="Posez vos questions travaux, rénovation, matériaux, TVA, permis à l'IA ConstruPilot. Réponse chiffrée en 30 secondes, à la voix ou au clavier. Gratuit." keywords="coach travaux, chatbot BTP, IA rénovation, aide artisan, questions travaux" canonical="/coach" />
+      <SEO title="Coach IA obras" description="Ponha as suas questões sobre obras, renovação, materiais, IVA e licenças à IA do ConstruPilot. Resposta orçamentada em 30 segundos, por voz ou teclado. Gratuito." keywords="coach obras, chatbot construção, IA renovação, ajuda profissional, questões obras" canonical="/coach" />
       <SectionTitle as="h1" over={t("coach.over")} title={t("coach.title")}>
         {t("coach.subtitle")}
       </SectionTitle>

@@ -1,0 +1,88 @@
+=== Auditoria i18n ===
+
+--- / (https://construpilot-recon.preview.emergentagent.com/) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /blog (https://construpilot-recon.preview.emergentagent.com/blog) ---
+Title: Blog · ConstruPilot
+Hits: 0
+
+--- /comparativo (https://construpilot-recon.preview.emergentagent.com/comparativo) ---
+Title: Página não encontrada (404) · ConstruPilot
+Hits: 0
+
+--- /cgv (https://construpilot-recon.preview.emergentagent.com/cgv) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /confidentialite (https://construpilot-recon.preview.emergentagent.com/confidentialite) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /dashboard (https://construpilot-recon.preview.emergentagent.com/dashboard) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /biblioteca (https://construpilot-recon.preview.emergentagent.com/biblioteca) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /calculadoras (https://construpilot-recon.preview.emergentagent.com/calculadoras) ---
+Title: Calculadoras de materiais de construção · ConstruPilot
+Hits: 0
+
+--- /photo (https://construpilot-recon.preview.emergentagent.com/photo) ---
+Title: Análise foto de obra por IA · ConstruPilot
+Hits: 0
+
+--- /plan-takeoff (https://construpilot-recon.preview.emergentagent.com/plan-takeoff) ---
+Title: Página não encontrada (404) · ConstruPilot
+Hits: 0
+
+--- /clients (https://construpilot-recon.preview.emergentagent.com/clients) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /orcamentos (https://construpilot-recon.preview.emergentagent.com/orcamentos) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /faturas (https://construpilot-recon.preview.emergentagent.com/faturas) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /definicoes (https://construpilot-recon.preview.emergentagent.com/definicoes) ---
+Title: Página não encontrada (404) · ConstruPilot
+Hits: 0
+
+--- /conta (https://construpilot-recon.preview.emergentagent.com/conta) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 4
+  · Ajouter une photo
+  · Enregistrer
+  · Enregistrer mes informations
+  · Nouveau mot de passe (8 caractères min.)
+
+--- /admin (https://construpilot-recon.preview.emergentagent.com/admin) ---
+Title: ConstruPilot — Orçamentos de Obras com IA | Portugal
+Hits: 0
+
+--- /coach (https://construpilot-recon.preview.emergentagent.com/coach) ---
+Title: Coach IA travaux · ConstruPilot
+Hits: 0
+
+--- /estimador (https://construpilot-recon.preview.emergentagent.com/estimador) ---
+Title: Página não encontrada (404) · ConstruPilot
+Hits: 0
+
+--- /precos-materiais (https://construpilot-recon.preview.emergentagent.com/precos-materiais) ---
+Title: Página não encontrada (404) · ConstruPilot
+Hits: 0
+
+
+=== TOTAL: 4 hits · 4 strings únicas ===
+  ! Ajouter une photo
+  ! Enregistrer
+  ! Enregistrer mes informations
+  ! Nouveau mot de passe (8 caractères min.)

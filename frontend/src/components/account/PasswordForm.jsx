@@ -58,7 +58,7 @@ export const PasswordForm = () => {
       )}
       <div className="grid gap-1.5">
         <Label htmlFor="new-pw" className="text-xs">
-          {hasPassword ? "Nouveau mot de passe" : "Mot de passe"} (8 caractères min.)
+          {hasPassword ? "Nova palavra-passe" : "Palavra-passe"} (mínimo 8 caracteres)
         </Label>
         <Input id="new-pw" type="password" value={next} required minLength={8}
                onChange={(e) => setNext(e.target.value)}

@@ -54,23 +54,23 @@ export default function ResetPassword() {
         {token ? (
           <form onSubmit={doReset} className="surface p-6 space-y-4" data-testid="reset-form">
             <h1 className="font-display text-2xl font-bold flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-primary" /> Nouveau mot de passe
+              <KeyRound className="h-5 w-5 text-primary" /> Nova palavra-passe
             </h1>
             <div className="grid gap-1.5">
-              <Label htmlFor="rp-pwd" className="text-xs">Nouveau mot de passe (8 caractères min.)</Label>
+              <Label htmlFor="rp-pwd" className="text-xs">Nova palavra-passe (mínimo 8 caracteres)</Label>
               <Input id="rp-pwd" type="password" value={pwd} required minLength={8}
                      onChange={(e) => setPwd(e.target.value)}
                      data-testid="reset-new-password-input" className="rounded-sm h-11" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="rp-conf" className="text-xs">Confirmer</Label>
+              <Label htmlFor="rp-conf" className="text-xs">Confirmar</Label>
               <Input id="rp-conf" type="password" value={confirm} required
                      onChange={(e) => setConfirm(e.target.value)}
                      data-testid="reset-confirm-password-input" className="rounded-sm h-11" />
             </div>
             <Button type="submit" disabled={busy} className="rounded-sm w-full h-11 gap-2"
                     data-testid="reset-submit-btn">
-              <ShieldCheck className="h-4 w-4" /> {busy ? "…" : "Réinitialiser mon mot de passe"}
+              <ShieldCheck className="h-4 w-4" /> {busy ? "…" : "Redefinir a minha palavra-passe"}
             </Button>
             <p className="text-[10px] text-muted-foreground">
               Toutes vos sessions seront déconnectées par sécurité.

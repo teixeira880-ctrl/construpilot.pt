@@ -98,7 +98,7 @@ export default function SteelTab({ plans, suppliers }) {
               <h3 className="font-bold">Bordereau acier</h3>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={addLine} className="gap-1 rounded-sm"><Plus className="h-3.5 w-3.5" />Ligne</Button>
-                <Button size="sm" onClick={save} className="rounded-sm" data-testid="save-bordereau">Enregistrer</Button>
+                <Button size="sm" onClick={save} className="rounded-sm" data-testid="save-bordereau">Guardar</Button>
               </div>
             </div>
             {ana.scale_confidence != null && (
