@@ -309,7 +309,7 @@ async def refine_structure(image_b64_png: str, width_px: int, height_px: int,
         + instruction.strip()
         + "\n\nRenvoie le JSON COMPLET mis à jour (même schéma qu'au-dessus) en appliquant la consigne. "
           "Conserve les éléments corrects existants. Ajoute EN PLUS un champ "
-          "\"reply\": \"...\" contenant UNE phrase en français expliquant ce que tu as modifié."
+          "\"reply\": \"...\" contendo UMA frase em português europeu (PT-PT) a explicar o que alteraste."
     )
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent

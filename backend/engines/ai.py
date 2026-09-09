@@ -108,13 +108,17 @@ async def check_ai_budget() -> None:
         pass
 
 BRAND = (
-    "Tu es ConstruPilot, l'expert travaux de l'plateforme ConstruPilot. "
-    "Tu réponds toujours en français, de façon professionnelle, concrète et chiffrée. "
-    "Tu n'encourages jamais un particulier à intervenir sur le gaz, un tableau électrique, "
-    "un mur porteur, la structure, l'amiante, une toiture dangereuse ou l'étanchéité structurelle : "
-    "dans ces cas tu recommandes explicitement un professionnel. "
-    "Les prix et quantités définitifs viennent du moteur de calcul ConstruPilot, pas de toi : "
-    "tu peux donner des ordres de grandeur mais tu invites à utiliser l'estimateur."
+    "És o ConstruPilot, o especialista de obras da plataforma ConstruPilot. "
+    "Respondes SEMPRE em português europeu (PT-PT), de forma profissional, concreta e quantificada. "
+    "Usa terminologia técnica de construção portuguesa: pladur (não placoplâtre), betonilha (não chape), "
+    "sanita (não cuvette), lavatório (não lavabo), torneira/misturadora (não robinet), azulejo/ladrilho (não carrelage), "
+    "laje (não dalle), divisória (não cloison), vaivém (não va-et-vient), estore (não volet), cilindro/termoacumulador, "
+    "roupeiro (não placard), quadro elétrico (não tableau électrique), tomada, interruptor, luminária, argamassa, "
+    "reboco, cofragem, armadura, sótão, telhado, cobertura, caleira, rufo. "
+    "Nunca encorajes um particular a intervir em gás, quadro elétrico, parede-mestra, estrutura, "
+    "amianto, coberturas perigosas ou impermeabilização estrutural: nesses casos recomenda explicitamente um profissional. "
+    "Os preços e quantidades definitivos vêm do motor de cálculo ConstruPilot, não de ti: "
+    "podes dar ordens de grandeza, mas convida a usar o estimador."
 )
 
 
@@ -209,19 +213,19 @@ TARIFS / COMPTE : voir la page Tarifs. Essai avec comptes démo disponibles sur 
 async def help_assistant(history: list[dict], message: str, session_id: str,
                          page: str | None = None, provider: str | None = None,
                          model: str | None = None) -> str:
-    """Chatbot d'aide (Claude Opus 4.8) : répond aux questions sur ConstruPilot."""
-    system = (BRAND + "\n\nTu es l'assistant d'aide de ConstruPilot. Tu réponds UNIQUEMENT à "
-              "propos de ConstruPilot (ses fonctionnalités, comment les utiliser, quelle offre "
-              "choisir). Sois concis, clair et chaleureux. Si on te demande une chose hors sujet, "
-              "ramène poliment vers ConstruPilot. Base-toi sur ces informations :\n" + HELP_KB)
+    """Chatbot de ajuda (Claude Opus 4.8): responde a perguntas sobre o ConstruPilot."""
+    system = (BRAND + "\n\nÉs o assistente de ajuda do ConstruPilot. Respondes APENAS "
+              "sobre o ConstruPilot (as suas funcionalidades, como as usar, que plano "
+              "escolher). Sê conciso, claro e cordial. Se te perguntarem algo fora do tema, "
+              "reencaminha educadamente para o ConstruPilot. Baseia-te nestas informações:\n" + HELP_KB)
     page_ctx = _PAGE_HELP.get((page or "").rstrip("/"), None)
     if page_ctx:
-        system += (f"\n\nCONTEXTE : l'utilisateur est actuellement sur la page « {page_ctx} » "
-                   f"(URL {page}). Adapte ton aide à cette page en priorité, propose l'action "
-                   f"la plus utile ici, mais réponds aussi à sa question précise.")
-    convo = "\n".join(f"{'Utilisateur' if m.get('role') == 'user' else 'Assistant'}: {m.get('content','')}"
+        system += (f"\n\nCONTEXTO: o utilizador está atualmente na página «{page_ctx}» "
+                   f"(URL {page}). Adapta a tua ajuda a esta página com prioridade, propõe a ação "
+                   f"mais útil aqui, mas responde também à pergunta concreta.")
+    convo = "\n".join(f"{'Utilizador' if m.get('role') == 'user' else 'Assistente'}: {m.get('content','')}"
                       for m in (history or [])[-8:])
-    prompt = (f"Conversation:\n{convo}\n\nNouveau message: {message}" if convo else message)
+    prompt = (f"Conversa:\n{convo}\n\nNova mensagem: {message}" if convo else message)
     prov, mdl = provider or HELP_PROVIDER, model or HELP_MODEL
     await _log_usage("help_chat", prov, mdl)
     chat = _chat(system, session_id, prov, mdl)
@@ -415,7 +419,7 @@ async def plan_command(rooms: list[dict], walls: list[dict], command: str) -> di
         '{\n'
         '  "action": "rename_room|delete_room|set_room_surface|set_room_height|reclassify_wall|add_note|none",\n'
         '  "params": { ... },\n'
-        '  "summary": "phrase courte en français décrivant ce qui va être fait",\n'
+        '  "summary": "frase curta em português europeu (PT-PT) a descrever o que vai ser feito",\n'
         '  "confidence": 0.0\n'
         '}\n'
         "Règles : résous les noms de pièce vers leur room_id EXACT de la liste. "
@@ -473,7 +477,7 @@ async def quote_lines_from_text(transcript: str, images: list[str] | None = None
         '"description": "détail des prestations incluses (2 à 4 lignes séparées par des retours à la ligne)", '
         '"unit": "u|m²|ml|m³|forfait|ens|h|j", "qty": nombre, "vat_rate": 10 } ] }\n'
         "Estime des quantités plausibles si elles ne sont pas données. N'invente pas de prix. "
-        "3 à 12 lignes maximum, en français."
+        "3 a 12 linhas no máximo, em português europeu (PT-PT)."
     )
     data = _json(await _complete(system, prompt, images=images, feature="quote_from_text"), {"lines": []})
     units = ("u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L")
@@ -562,28 +566,29 @@ def _analysis_prompt(description: str) -> str:
     types = ", ".join(f"{p['key']}" for p in PROJECT_TYPES)
     lots = ", ".join(l["key"] for l in LOTS)
     finishes = ", ".join(f["key"] for f in FINISH_LEVELS)
-    return f"""Analyse cette description de projet de travaux et retourne ce JSON :
+    return f"""Analisa esta descrição de projeto de obras em português europeu (PT-PT) e devolve APENAS este JSON.
+Terminologia obrigatória PT-PT: paredes, pavimento, teto, sótão, laje, pladur, betonilha, sanita, lavatório, torneira, azulejo, divisória, vaivém, estore, roupeiro, quadro elétrico. Nunca uses termos franceses (chape, cloison, placard, etc.).
 {{
- "project_type": "un de: {types}",
- "surface": nombre en m² (estime si absent),
- "ceiling_height_m": nombre en mètres (hauteur sous plafond ; si mentionnée dans la description utilise-la, sinon 2.5 par défaut pour une maison moderne, 2.7 pour un pavillon années 70+, 3.0 pour Haussmannien),
+ "project_type": "um de: {types}",
+ "surface": número em m² (estima se ausente),
+ "ceiling_height_m": número em metros (pé-direito; se mencionado na descrição usa-o, senão 2.5 por defeito para casa moderna, 2.7 para moradia anos 70+, 3.0 para edifício antigo Pombalino/Haussmann),
  "levels": [
-    // Détail par étage SEULEMENT si le bâtiment a plusieurs niveaux avec HSP différentes
-    // (ex : maison ancienne RDC 2.60m + R+1 2.30m + combles 1.80m).
-    // Sinon renvoyer une liste vide ou omettre.
-    {{"label": "RDC" | "R+1" | "R-1" | "combles" | "sous-sol", "surface_m2": nombre, "ceiling_height_m": nombre}}
+    // Detalhe por piso APENAS se o edifício tem vários níveis com pé-direito diferente
+    // (ex.: casa antiga R/C 2.60m + 1º piso 2.30m + sótão 1.80m).
+    // Caso contrário devolve lista vazia ou omite.
+    {{"label": "R/C" | "1º piso" | "cave" | "sótão" | "sub-cave", "surface_m2": número, "ceiling_height_m": número}}
  ],
- "building_type": "maison|appartement|commerce",
- "finish_level": "un de: {finishes}",
- "condition": "neuf|bon|moyen|vetuste|a_renover_totalement",
- "lots": ["clés parmi: {lots}"],
- "summary": "résumé du projet en 2 phrases",
- "questions": ["3 à 5 questions courtes et indispensables pour affiner le chiffrage"],
- "risks": ["risques ou points de vigilance identifiés"],
- "diy_advice": "ce que l'utilisateur peut faire lui-même et ce qu'il doit confier à un pro"
+ "building_type": "moradia|apartamento|comércio",
+ "finish_level": "um de: {finishes}",
+ "condition": "novo|bom|médio|degradado|a_renovar_totalmente",
+ "lots": ["chaves de entre: {lots}"],
+ "summary": "resumo do projeto em 2 frases, em PT-PT",
+ "questions": ["3 a 5 perguntas curtas e indispensáveis, em PT-PT, para afinar o orçamento"],
+ "risks": ["riscos ou pontos de atenção identificados, em PT-PT"],
+ "diy_advice": "o que o utilizador pode fazer sozinho e o que deve entregar a um profissional, em PT-PT"
 }}
 
-Description : {description}"""
+Descrição: {description}"""
 
 
 def _clean_levels(levels: list) -> list[dict]:
@@ -634,29 +639,31 @@ async def analyse_description(description: str) -> dict:
 
 
 async def analyse_photo(image_b64: str, note: str = "") -> dict:
-    system = BRAND + "\nTu analyses une photo de pièce et retournes UNIQUEMENT du JSON valide."
-    prompt = f"""Analyse cette photo de pièce/chantier. Les mesures sont approximatives et doivent être confirmées.
-Retourne ce JSON :
+    system = BRAND + "\nAnalisas uma foto de uma divisão e devolves APENAS JSON válido, em português europeu."
+    prompt = f"""Analisa esta foto de divisão/obra em português europeu (PT-PT).
+Terminologia obrigatória PT-PT: paredes, pavimento, teto, janelas, portas, sanitários, pladur, betonilha, sanita, lavatório, torneira, azulejo, laje, divisória, vaivém, estore, roupeiro, quadro elétrico, tomada, interruptor.
+As medidas são aproximadas e devem ser confirmadas.
+Devolve este JSON (as CHAVES ficam em inglês/EN por compatibilidade técnica, mas os VALORES em texto livre têm de estar em PT-PT):
 {{
- "room_type": "type de pièce identifié",
- "estimated_dimensions": {{"length_m": nombre, "width_m": nombre, "height_m": nombre, "floor_area_m2": nombre}},
- "elements": {{"walls": "état", "floor": "état", "ceiling": "état", "windows": nombre, "doors": nombre, "sanitary": "description"}},
- "general_condition": "neuf|bon|moyen|vetuste|a_renover_totalement",
- "recommended_works": [{{"lot": "clé du lot", "name": "nom", "reason": "pourquoi"}}],
- "risks": ["risques visibles"],
+ "room_type": "tipo de divisão identificada em PT-PT (ex.: cozinha, casa de banho, sala, quarto, hall)",
+ "estimated_dimensions": {{"length_m": número, "width_m": número, "height_m": número, "floor_area_m2": número}},
+ "elements": {{"walls": "estado das paredes em PT-PT", "floor": "estado do pavimento em PT-PT", "ceiling": "estado do teto em PT-PT", "windows": número, "doors": número, "sanitary": "descrição dos sanitários em PT-PT"}},
+ "general_condition": "novo|bom|médio|degradado|a_renovar_totalmente",
+ "recommended_works": [{{"lot": "chave técnica do lote", "name": "nome do trabalho em PT-PT", "reason": "porquê em PT-PT"}}],
+ "risks": ["riscos visíveis em PT-PT"],
  "confidence": "low|medium|high",
- "notes": "commentaire professionnel"
+ "notes": "comentário profissional em PT-PT"
 }}
-Précision utilisateur : {note or 'aucune'}"""
+Precisão do utilizador: {note or 'nenhuma'}"""
     raw = await _complete(system, prompt, images=[image_b64], feature="photo_analyse")
     data = _json(raw, {})
-    data.setdefault("room_type", "Pièce")
+    data.setdefault("room_type", "Divisão")
     data.setdefault("estimated_dimensions", {"length_m": 3, "width_m": 3, "height_m": 2.5, "floor_area_m2": 9})
     data.setdefault("recommended_works", [])
     data.setdefault("risks", [])
     data.setdefault("confidence", "low")
-    data["disclaimer"] = ("Les dimensions issues de l'analyse photo sont approximatives. "
-                          "Confirmez-les avant tout calcul définitif.")
+    data["disclaimer"] = ("As dimensões obtidas por análise de foto são aproximadas. "
+                         "Confirme-as antes de qualquer cálculo definitivo.")
     return data
 
 

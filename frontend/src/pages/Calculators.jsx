@@ -29,7 +29,7 @@ const COMPARE_CONFIG = {
     ],
     label: (v) => `${v.plate_length}×${v.plate_width} cm`,
     metric: { title: "Placas necessárias", match: /plaque/i },
-    caption: "Ossature, vis et enduit inclus. Le format le moins cher est surligné.",
+    caption: "Estrutura, parafusos e massa incluídos. O formato mais barato está destacado.",
   },
   tile: {
     variants: [
@@ -40,8 +40,8 @@ const COMPARE_CONFIG = {
       { tile_length: 90, tile_width: 90 },
     ],
     label: (v) => `${v.tile_length}×${v.tile_width} cm`,
-    metric: { title: "Carreaux", match: /carreau/i },
-    caption: "Pertes de pose incluses selon le type de pose sélectionné. Le format le moins cher est surligné.",
+    metric: { title: "Azulejos", match: /carreau|azulejo/i },
+    caption: "Perdas de assentamento incluídas conforme o tipo selecionado. O formato mais barato está destacado.",
   },
 };
 
@@ -304,7 +304,11 @@ export default function Calculators() {
                 <Select value={String(params[f.name] ?? "")} onValueChange={(v) => setParams({ ...params, [f.name]: v })}>
                   <SelectTrigger className="rounded-sm h-11" data-testid={`calc-field-${f.name}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {f.options.map((o) => <SelectItem key={o} value={o}>{o.replace(/_/g, " ")}</SelectItem>)}
+                    {f.options.map((o) => (
+                      <SelectItem key={o} value={o}>
+                        {f.option_labels?.[o] || o.replace(/_/g, " ")}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               ) : f.type === "boolean" ? (
@@ -322,20 +326,20 @@ export default function Calculators() {
             </div>
           ))}
           <Button onClick={run} disabled={busy} data-testid="calculate-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Calculator className="h-4 w-4" /> Calculer
+            <Calculator className="h-4 w-4" /> Calcular
           </Button>
         </div>
 
         <div className="lg:col-span-2 grid gap-6">
           {!result && (
             <div className="surface p-12 text-center text-sm text-muted-foreground" data-testid="calculator-empty">
-              Renseignez les dimensions puis lancez le calcul.
+              Preencha as dimensões e lance o cálculo.
             </div>
           )}
           {result && (
             <>
               <div className="surface p-6" data-testid="calculator-results">
-                <p className="overline">Résultats</p>
+                <p className="overline">Resultados</p>
                 <div className="mt-5 grid sm:grid-cols-2 gap-3">
                   {result.results.map((r, i) => (
                     <div key={i} className="p-4 border border-border rounded-sm">
@@ -345,7 +349,7 @@ export default function Calculators() {
                   ))}
                 </div>
                 <p className="num mt-6 text-sm">
-                  Budget matériaux estimé : <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
+                  Orçamento de materiais estimado: <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
@@ -353,26 +357,26 @@ export default function Calculators() {
                     <button onClick={() => navigate("/tarifs")} data-testid="calc-premium-banner"
                       className="w-full mb-1 flex items-center gap-2 text-sm bg-primary/10 border border-primary/30 text-primary rounded-sm px-4 py-2.5 hover:bg-primary/15 transition-colors">
                       <Lock className="h-4 w-4" />
-                      <span>Export PDF, devis et partage sont <b>Premium</b> — débloquez-les.</span>
-                      <span className="ml-auto font-semibold underline">Passer Premium →</span>
+                      <span>Exportação PDF, orçamento e partilha são <b>Premium</b> — desbloqueie-os.</span>
+                      <span className="ml-auto font-semibold underline">Passar a Premium →</span>
                     </button>
                   )}
                   <Button onClick={exportPdf} disabled={busyPdf} variant="outline" className="rounded-sm gap-2" data-testid="calc-export-pdf-btn">
                     {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : (!isPremium ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />)}
-                    {optim ? "Exporter PDF (avec prix)" : "Exporter en PDF"}
+                    {optim ? "Exportar PDF (com preços)" : "Exportar em PDF"}
                   </Button>
                   <Button onClick={addToQuote} disabled={addingQuote} className="rounded-sm gap-2" data-testid="calc-add-quote-btn">
-                    {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Ajouter au devis
+                    {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Adicionar ao orçamento
                   </Button>
                   <Button onClick={addToSelection} variant="outline" className="rounded-sm gap-2" data-testid="calc-add-selection-btn">
-                    <ListPlus className="h-4 w-4" /> Ajouter à la sélection
+                    <ListPlus className="h-4 w-4" /> Adicionar à seleção
                   </Button>
                   <Button onClick={shareSheet} disabled={sharing} variant="outline" className="rounded-sm gap-2" data-testid="calc-share-btn">
-                    {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Partager la fiche
+                    {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Partilhar ficha
                   </Button>
                   {COMPARE_CONFIG[active.key] && (
                     <Button onClick={compareFormats} disabled={busy} variant="outline" className="rounded-sm gap-2" data-testid="calc-compare-btn">
-                      <Columns3 className="h-4 w-4" /> Comparer les formats
+                      <Columns3 className="h-4 w-4" /> Comparar formatos
                     </Button>
                   )}
                 </div>
@@ -381,15 +385,15 @@ export default function Calculators() {
               {compare && (
                 <div className="surface overflow-x-auto" data-testid="calc-compare-table">
                   <div className="px-6 pt-5">
-                    <p className="overline">Comparaison des formats</p>
+                    <p className="overline">Comparação de formatos</p>
                     <p className="text-xs text-muted-foreground mt-1">{compare.cfg.caption}</p>
                   </div>
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                        <TableHead>Format</TableHead>
+                        <TableHead>Formato</TableHead>
                         <TableHead className="text-right">{compare.cfg.metric.title}</TableHead>
-                        <TableHead className="text-right">Budget estimé</TableHead>
+                        <TableHead className="text-right">Orçamento estimado</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -398,7 +402,7 @@ export default function Calculators() {
                         const isBest = (c.budget || Infinity) === best;
                         return (
                           <TableRow key={i} className={isBest ? "bg-primary/10" : "even:bg-muted/30"}>
-                            <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ le moins cher</span>}</TableCell>
+                            <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ mais barato</span>}</TableCell>
                             <TableCell className="num text-right">{num(c.metric, 0)}</TableCell>
                             <TableCell className="num text-right font-semibold text-primary">{eur(c.budget)}</TableCell>
                           </TableRow>
@@ -413,9 +417,9 @@ export default function Calculators() {
                 <Table data-testid="calculator-materials">
                   <TableHeader>
                     <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                      <TableHead>Matériau à acheter</TableHead>
-                      <TableHead className="text-right">Quantité</TableHead>
-                      <TableHead>Unité</TableHead>
+                      <TableHead>Material a comprar</TableHead>
+                      <TableHead className="text-right">Quantidade</TableHead>
+                      <TableHead>Unidade</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -431,22 +435,22 @@ export default function Calculators() {
               </div>
 
               <Button variant="outline" onClick={findPrices} disabled={busy} data-testid="find-prices-btn" className="rounded-sm gap-2 w-fit">
-                <Search className="h-4 w-4" /> Trouver les meilleurs prix pour cette liste
+                <Search className="h-4 w-4" /> Encontrar os melhores preços para esta lista
               </Button>
 
               {optim && (
                 <div className="grid gap-4" data-testid="calculator-optimization">
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div className="surface p-6">
-                      <p className="overline text-muted-foreground">Tout chez {optim.best_single?.supplier}</p>
+                      <p className="overline text-muted-foreground">Tudo em {optim.best_single?.supplier}</p>
                       <p className="num mt-3 text-xl font-bold">{eur(optim.best_single?.total)}</p>
                     </div>
                     <div className="surface p-6 border-primary">
-                      <p className="overline">Multi-fournisseurs</p>
+                      <p className="overline">Multi-fornecedores</p>
                       <p className="num mt-3 text-xl font-bold text-primary">{eur(optim.multi_supplier.total)}</p>
                     </div>
                     <div className="surface p-6">
-                      <p className="overline text-muted-foreground">Économie</p>
+                      <p className="overline text-muted-foreground">Poupança</p>
                       <p className="num mt-3 text-xl font-bold text-emerald-500">{eur(optim.savings)}</p>
                     </div>
                   </div>
@@ -454,9 +458,9 @@ export default function Calculators() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                          <TableHead>Produit</TableHead>
-                          <TableHead className="text-right">Qté</TableHead>
-                          <TableHead>Fournisseur</TableHead>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-right">Qtd.</TableHead>
+                          <TableHead>Fornecedor</TableHead>
                           <TableHead className="text-right">PU</TableHead>
                           <TableHead className="text-right">Total</TableHead>
                         </TableRow>
@@ -475,8 +479,8 @@ export default function Calculators() {
                     </Table>
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <ShoppingCart className="h-3 w-3" /> Mode {optim.mode} — prix de démonstration, branchez les
-                    API fournisseurs pour des prix réels.
+                    <ShoppingCart className="h-3 w-3" /> Modo {optim.mode} — preços de demonstração, ligue as
+                    APIs de fornecedores para obter preços reais.
                   </p>
                 </div>
               )}
@@ -488,26 +492,26 @@ export default function Calculators() {
       <Dialog open={!!shareUrl} onOpenChange={(o) => !o && setShareUrl(null)}>
         <DialogContent className="max-w-md" data-testid="calc-share-dialog">
           <DialogHeader>
-            <DialogTitle>Partager la fiche de calcul</DialogTitle>
-            <DialogDescription>Envoyez ce lien à votre client par SMS ou e-mail. Il pourra consulter la fiche sans compte.</DialogDescription>
+            <DialogTitle>Partilhar ficha de cálculo</DialogTitle>
+            <DialogDescription>Envie este link ao seu cliente por SMS ou e-mail. Poderá consultar a ficha sem conta.</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
             <Input readOnly value={shareUrl || ""} className="rounded-sm num text-xs" data-testid="calc-share-url" />
             <Button variant="outline" className="rounded-sm gap-1 shrink-0" data-testid="calc-share-copy"
-              onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Lien copié"); }}>
-              <Copy className="h-4 w-4" /> Copier
+              onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Link copiado"); }}>
+              <Copy className="h-4 w-4" /> Copiar
             </Button>
           </div>
           {shareUrl && (
             <div className="flex flex-col items-center gap-2 py-2" data-testid="calc-share-qr">
               <img src={`${process.env.REACT_APP_BACKEND_URL}/api/qr?data=${encodeURIComponent(shareUrl)}`}
-                   alt="QR code de la fiche" width="150" height="150"
+                   alt="Código QR da ficha" width="150" height="150"
                    className="rounded-md bg-white p-2 border border-border" />
-              <p className="text-xs text-muted-foreground">Scannez pour ouvrir la fiche sur le chantier</p>
+              <p className="text-xs text-muted-foreground">Aponte para abrir a ficha em obra</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 mt-1">
-            <a href={`sms:?&body=${encodeURIComponent(`Votre fiche de calcul ConstruPilot : ${shareUrl}`)}`}
+            <a href={`sms:?&body=${encodeURIComponent(`A sua ficha de cálculo ConstruPilot: ${shareUrl}`)}`}
                data-testid="calc-share-sms">
               <Button variant="outline" className="w-full rounded-sm gap-2"><MessageSquare className="h-4 w-4" /> SMS</Button>
             </a>

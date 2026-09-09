@@ -69,7 +69,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, onClose, on
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="overline text-[10px] mb-2">Résultats</p>
+                    <p className="overline text-[10px] mb-2">Resultados</p>
                     <ul className="text-xs space-y-1">
                       {(r.results || []).map((row, i) => (
                         <li key={i} className="flex justify-between border-b border-border/40 py-0.5">
@@ -115,7 +115,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, onClose, on
                 data-testid="room-estimate-add-to-quote"
                 className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
               >
-                <Calculator className="h-4 w-4" /> Ajouter au devis
+                <Calculator className="h-4 w-4" /> Adicionar ao orçamento
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={onClose} className="rounded-sm">

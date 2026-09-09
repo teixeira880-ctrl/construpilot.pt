@@ -23,7 +23,7 @@ export default function PhotoAnalyse() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!/image\/(jpeg|png|webp|jpg)/.test(file.type)) {
-      toast.error("Formats acceptés : JPEG, PNG, WEBP");
+      toast.error("Formatos aceites: JPEG, PNG, WEBP");
       return;
     }
     const reader = new FileReader();
@@ -70,27 +70,27 @@ export default function PhotoAnalyse() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Analyse photo chantier IA" description="Prenez une photo de votre pièce : l'IA ConstruPilot identifie l'état, les travaux nécessaires et chiffre la rénovation en 30 secondes. Gratuit." keywords="analyse photo travaux, estimation par photo, IA rénovation photo, chantier photo estimation" canonical="/photo" />
+      <SEO title="Análise foto de obra por IA" description="Fotografe a sua divisão: a IA ConstruPilot identifica o estado, os trabalhos necessários e orça a renovação em 30 segundos. Gratuito." keywords="análise foto obras, estimativa por foto, IA renovação foto, obra foto estimativa" canonical="/photo" />
       <SectionTitle as="h1" over="Estimativa por IA a partir de fotografias" title="Fotografe, a IA identifica os trabalhos">
-        Murs, sols, plafonds, ouvertures, sanitaires, état général : l'IA propose les travaux probables.
-        Les mesures sont approximatives — confirmez-les avant tout calcul définitif.
+        Paredes, pavimentos, tetos, vãos, sanitários, estado geral: a IA propõe os trabalhos prováveis.
+        As medidas são aproximadas — confirme-as antes de qualquer cálculo definitivo.
       </SectionTitle>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="surface p-6 grid gap-5">
           <div className="grid gap-2">
-            <Label>Photo de la pièce</Label>
+            <Label>Foto da divisão</Label>
             <label
               htmlFor="photo-input"
               className="border border-dashed border-border rounded-sm p-8 text-center cursor-pointer hover:border-primary transition-colors"
               data-testid="photo-dropzone"
             >
               {preview ? (
-                <img src={preview} alt="Aperçu" className="max-h-64 mx-auto rounded-sm object-contain" />
+                <img src={preview} alt="Pré-visualização" className="max-h-64 mx-auto rounded-sm object-contain" />
               ) : (
                 <>
                   <Upload className="h-7 w-7 mx-auto text-muted-foreground" />
-                  <p className="mt-3 text-sm text-muted-foreground">Cliquez pour importer ou prendre une photo</p>
+                  <p className="mt-3 text-sm text-muted-foreground">Clique para importar ou tirar uma foto</p>
                   <p className="text-xs text-muted-foreground mt-1">JPEG, PNG ou WEBP</p>
                 </>
               )}
@@ -98,22 +98,22 @@ export default function PhotoAnalyse() {
             <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={onFile} className="hidden" data-testid="photo-input" />
           </div>
           <div className="grid gap-2">
-            <Label>Précision (optionnel)</Label>
-            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex : la pièce mesure environ 8 m²" data-testid="photo-note-input" className="rounded-sm" />
+            <Label>Precisão (opcional)</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: a divisão mede cerca de 8 m²" data-testid="photo-note-input" className="rounded-sm" />
           </div>
           <Button onClick={analyse} disabled={busy || !b64} data-testid="analyse-photo-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Sparkles className="h-4 w-4" /> {busy ? "Analyse en cours…" : "Analyser la photo"}
+            <Sparkles className="h-4 w-4" /> {busy ? "A analisar…" : "Analisar foto"}
           </Button>
         </div>
 
         {result && (
           <div className="surface p-6 grid gap-5" data-testid="photo-analysis-result">
             <div>
-              <p className="overline">Pièce identifiée</p>
+              <p className="overline">Divisão identificada</p>
               <p className="mt-2 font-display text-xl font-semibold">{result.analysis.room_type}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge variant="outline" className="rounded-sm">État : {result.analysis.general_condition}</Badge>
-                <Badge variant="outline" className="rounded-sm">Confiance : {result.analysis.confidence}</Badge>
+                <Badge variant="outline" className="rounded-sm">Estado: {result.analysis.general_condition}</Badge>
+                <Badge variant="outline" className="rounded-sm">Confiança: {result.analysis.confidence}</Badge>
                 <Badge variant="outline" className="rounded-sm num">
                   ≈ {num(result.analysis.estimated_dimensions?.floor_area_m2, 1)} m²
                 </Badge>
@@ -132,7 +132,7 @@ export default function PhotoAnalyse() {
             )}
 
             <div>
-              <p className="overline">Travaux recommandés</p>
+              <p className="overline">Trabalhos recomendados</p>
               <ul className="mt-3 grid gap-2 text-sm" data-testid="recommended-works">
                 {(result.analysis.recommended_works || []).map((w, i) => (
                   <li key={i}>
@@ -145,7 +145,7 @@ export default function PhotoAnalyse() {
 
             {result.analysis.risks?.length > 0 && (
               <div className="p-4 rounded-sm border border-amber-500/40 bg-amber-500/5">
-                <p className="overline text-amber-500 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Risques visibles</p>
+                <p className="overline text-amber-500 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Riscos visíveis</p>
                 <ul className="mt-2 text-sm text-muted-foreground grid gap-1">
                   {result.analysis.risks.map((r, i) => <li key={i}>• {r}</li>)}
                 </ul>
@@ -158,19 +158,19 @@ export default function PhotoAnalyse() {
             </Alert>
 
             <div>
-              <p className="overline">Confirmez les dimensions</p>
+              <p className="overline">Confirme as dimensões</p>
               <div className="mt-3 grid grid-cols-3 gap-3">
                 {["length_m", "width_m", "height_m"].map((k) => (
                   <Input
                     key={k} type="number" step="any" value={dims[k]}
                     onChange={(e) => setDims({ ...dims, [k]: e.target.value })}
-                    placeholder={k === "length_m" ? "Longueur" : k === "width_m" ? "Largeur" : "Hauteur"}
+                    placeholder={k === "length_m" ? "Comprimento" : k === "width_m" ? "Largura" : "Altura"}
                     data-testid={`dim-${k}`} className="rounded-sm num"
                   />
                 ))}
               </div>
               <Button onClick={recompute} disabled={busy} variant="outline" data-testid="confirm-dims-btn" className="mt-4 rounded-sm w-full">
-                Recalculer avec ces dimensions
+                Recalcular com estas dimensões
               </Button>
             </div>
           </div>

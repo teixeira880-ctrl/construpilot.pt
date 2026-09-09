@@ -261,13 +261,13 @@ export default function PhotoMeasure() {
             </svg>
           </div>
 
-          {/* Résultats */}
+          {/* Resultados */}
           {measures.length > 0 && (
             <div className="space-y-1" data-testid="pm-results">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">Résultats</p>
+                <p className="text-sm font-semibold">Resultados</p>
                 <Button size="sm" className="gap-2" onClick={sendToQuote} data-testid="pm-to-quote-btn">
-                  <FileText className="h-4 w-4" /> Ajouter au devis
+                  <FileText className="h-4 w-4" /> Adicionar ao orçamento
                 </Button>
               </div>
               {measures.map((m, i) => (
