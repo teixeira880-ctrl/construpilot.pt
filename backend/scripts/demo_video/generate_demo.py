@@ -9,10 +9,12 @@ Pipeline:
 Saída: /app/frontend/public/construpilot-demo.mp4
 """
 from __future__ import annotations
+import os
 import asyncio
 import subprocess
 from pathlib import Path
-from gtts import gTTS
+from dotenv import load_dotenv
+load_dotenv("/app/backend/.env")
 from playwright.async_api import async_playwright
 
 BASE = "https://construpilot-recon.preview.emergentagent.com"
@@ -67,12 +69,40 @@ SEGMENTS = [
 ]
 
 
-def build_narration() -> list[Path]:
+def _tts_bytes_sync(text: str) -> bytes:
+    from gtts import gTTS
+    import io
+    buf = io.BytesIO()
+    gTTS(text=text, lang="pt", tld="pt", slow=False).write_to_fp(buf)
+    return buf.getvalue()
+
+
+async def _tts_bytes_openai(text: str) -> bytes:
+    from emergentintegrations.llm.openai import OpenAITextToSpeech
+    tts = OpenAITextToSpeech(api_key=os.environ["EMERGENT_LLM_KEY"])
+    return await tts.generate_speech(
+        text=text, model="tts-1-hd", voice="onyx",
+        response_format="mp3", speed=1.05,
+    )
+
+
+async def build_narration() -> tuple[list[Path], str]:
     files: list[Path] = []
+    use_openai = True
+    tts_used = "openai_onyx"
     for name, dur, text in SEGMENTS:
         mp3 = AUD / f"{name}.mp3"
-        gTTS(text=text, lang="pt", tld="pt", slow=False).save(str(mp3))
-        # padding para bater a duração exata do segmento
+        data: bytes | None = None
+        if use_openai:
+            try:
+                data = await _tts_bytes_openai(text)
+            except Exception as e:
+                print(f"  [tts] OpenAI falhou ({type(e).__name__}) — fallback gTTS. {str(e)[:80]}")
+                use_openai = False
+                tts_used = "gtts_pt (fallback)"
+        if data is None:
+            data = _tts_bytes_sync(text)
+        mp3.write_bytes(data)
         padded = AUD / f"{name}_pad.mp3"
         subprocess.run([
             "ffmpeg", "-y", "-i", str(mp3),
@@ -81,23 +111,23 @@ def build_narration() -> list[Path]:
             str(padded)
         ], check=True, capture_output=True)
         files.append(padded)
-    return files
+    return files, tts_used
 
 
 # --------------------------------------------------------------------------
 # 2) Screencasts (uma sessão Playwright, navegando pelos 9 flows)
 # --------------------------------------------------------------------------
 FLOWS = [
-    # (path, dwell_seconds, [(sel_to_click_optional, wait_ms), ...])
-    ("/",                       23, []),
-    ("/login",                  20, []),   # login submete via código Python
-    ("/photo",                  18, []),
-    ("/biblioteca",             18, []),
-    ("/calculadoras",           18, []),
-    ("/plan-takeoff",           20, []),
-    ("/orcamentos",             20, []),
-    ("/dashboard",              18, []),
-    ("/coach",                  18, []),
+    # (path, dwell_seconds)
+    ("/",             23),
+    ("/login",        20),
+    ("/photo",        18),
+    ("/biblioteca",   18),
+    ("/calculadoras", 18),
+    ("/planta",       20),   # antes: /plan-takeoff (404) → corrigido
+    ("/orcamentos",   20),
+    ("/dashboard",    18),
+    ("/coach",        18),
 ]
 
 
@@ -129,7 +159,7 @@ async def capture_screencasts() -> list[Path]:
             pass
 
         # navegar pelos flows (na MESMA página → gera 1 único vídeo do context)
-        for path, dwell, _ in FLOWS:
+        for path, dwell in FLOWS:
             try:
                 await page.goto(BASE + path, wait_until="networkidle", timeout=20000)
             except Exception:
@@ -231,11 +261,11 @@ def compose(narration_files: list[Path], video_files: list[Path], bg_music: Path
 
 # --------------------------------------------------------------------------
 async def main() -> None:
-    total = sum(dur for _, dur, _ in SEGMENTS)  # 198s
+    total = sum(dur for _, dur, _ in SEGMENTS)
     print(f"→ Duração alvo: {total}s")
-    print("→ Narração PT-PT (gTTS)…")
-    nar_files = build_narration()
-    print(f"  {len(nar_files)} segmentos gerados")
+    print("→ Narração PT-PT…")
+    nar_files, tts_used = await build_narration()
+    print(f"  {len(nar_files)} segmentos gerados · TTS: {tts_used}")
     print("→ Trilha ambient (ffmpeg sines)…")
     bg = build_bg_music(total)
     print("→ Screencasts Playwright…")
@@ -246,7 +276,7 @@ async def main() -> None:
     print("→ Compositing final ffmpeg…")
     compose(nar_files, vids, bg, total)
     size = OUT.stat().st_size
-    print(f"✓ OK: {OUT} ({size/1024/1024:.2f} MB)")
+    print(f"✓ OK: {OUT} ({size/1024/1024:.2f} MB) · TTS={tts_used}")
 
 
 if __name__ == "__main__":
