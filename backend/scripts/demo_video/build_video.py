@@ -64,9 +64,62 @@ FULL = [
      "Estimez, comparez, construisez. Rendez-vous sur construpilot point fr pour créer votre compte gratuitement."),
 ]
 
+FULL_PT = [
+    ("landing", "ConstruPilot — Estime. Compare. Constrói.",
+     "Bem-vindo ao ConstruPilot, a plataforma tudo-em-um da construção. Estimativa de obras por inteligência artificial, leitura de plantas, orçamentos, faturas, aprovisionamento e prospeção: uma única aplicação para particulares e profissionais."),
+    ("estimation_form", "Estimador de obras",
+     "Tudo começa no estimador. Escolha o tipo de projeto — remodelação, construção, ampliação ou piscina — a área, o distrito e o estado do imóvel."),
+    ("estimation_result", "Orçamento em 30 segundos",
+     "Em trinta segundos obtém um intervalo de preços, o detalhe por especialidade, a repartição entre materiais e mão de obra, a duração da obra e o planeamento das fases, em três gamas: económica, standard e premium."),
+    ("piscine_result", "Piscinas: mapa de trabalhos automático",
+     "Para uma piscina, o ConstruPilot propõe automaticamente os trabalhos da sua biblioteca: escavação, laje de fundo, blocos de cofragem, liner, bordaduras, filtração e casa das máquinas, dimensionados a partir da área do tanque. Os profissionais criam o orçamento com um clique."),
+    ("smart_project", "Smart Project — descreva, a IA orça",
+     "Com o Smart Project, descreva simplesmente a sua obra, por escrito ou por voz. A inteligência artificial identifica as especialidades, os materiais e o orçamento."),
+    ("calculateurs", "Calculadoras de materiais",
+     "As calculadoras de materiais dão as quantidades exatas: pintura, azulejo, betão, blocos, argamassa ou reboco, com a lista de compras correspondente."),
+    ("prix", "Biblioteca de preços: 322 trabalhos",
+     "A biblioteca ConstruPilot reúne mais de trezentos trabalhos orçamentados, com preço baixo, mediano e alto, atualizados a partir dos referenciais do mercado."),
+    ("photo", "Análise de fotografia por IA",
+     "Envie a fotografia de uma divisão ou de uma patologia: a inteligência artificial identifica os trabalhos a prever e os pontos de atenção."),
+    ("devis_editeur", "Editor de orçamentos profissional",
+     "Para os profissionais, o editor de orçamentos é o coração da aplicação. As linhas são orçamentadas automaticamente a partir da biblioteca ConstruPilot ou da biblioteca da sua empresa. Dite a obra, filme-a, importe um caderno de encargos ou uma planta: o orçamento constrói-se sozinho."),
+    ("bibliotheque", "A biblioteca da sua empresa",
+     "Cada empresa tem a sua própria biblioteca de preços, alimentada a partir de Excel, de antigos orçamentos em PDF ou diretamente do editor, com o custo de cada trabalho."),
+    ("devis_suivi", "Acompanhamento e assinatura online",
+     "O acompanhamento dos orçamentos indica os envios, as aberturas e as assinaturas. Os seus clientes assinam online e podem pagar um sinal por cartão no momento da assinatura."),
+    ("factures", "Faturas, autos de medição, fatura eletrónica",
+     "Transforme o orçamento em fatura de sinal, em auto de medição ou em fatura final, com o resumo geral e a faturação eletrónica."),
+    ("clients", "CRM de clientes e projetos",
+     "O CRM centraliza os seus clientes, os seus projetos, orçamentos e faturas, bem como os pedidos recebidos de particulares."),
+    ("plan", "Leitura de plantas DWG, DXF e PDF",
+     "Importe uma planta em DWG, DXF, PDF ou fotografia. O ConstruPilot reproduz-a fielmente, deteta as divisões, paredes, pilares e vigas, calcula as medições de betão e gera o orçamento correspondente."),
+    ("etudes_pc", "Estudo de licenciamento",
+     "O estudo de licenciamento estima a estrutura piso a piso, produz o cronograma de Gantt, compara fornecedores e prepara as notas de encomenda."),
+    ("appro", "Aprovisionamento e fornecedores",
+     "O módulo de aprovisionamento lê as plantas de armaduras, impermeabilização, cobertura e redes para produzir mapas de quantidades encomendáveis, exportáveis e enviados aos seus fornecedores."),
+    ("radar", "Radar de Obras: prospeção",
+     "O Radar de Obras mostra as licenças de construção à volta da sua empresa. Gere uma carta de prospeção com código QR, redigida pela IA, e envie-a pelo correio diretamente a partir da aplicação. As respostas chegam ao seu CRM."),
+    ("rentabilite", "Relatório de rentabilidade",
+     "O relatório de rentabilidade compara, obra a obra e mês a mês, o preço vendido, o custo previsto no orçamento e as compras reais, para conhecer a sua margem real."),
+    ("suivi_chantier", "Acompanhamento de obra e equipas",
+     "Com o Pro Business, acompanhe o avanço das obras com fotografias e custos reais, gira as suas equipas, os recursos humanos e o registo de ponto dos trabalhadores no telemóvel."),
+    ("rendu_ia", "Renderizações 3D por IA",
+     "Transforme uma planta numa renderização fotorrealista, num vídeo 3D ou numa maquete interativa para partilhar com os seus clientes."),
+    ("blog", "Blog, SEO e newsletter",
+     "O blog ConstruPilot publica automaticamente artigos de conselhos sobre obras, em francês e em português, com uma newsletter para os seus leitores."),
+    ("tarifs", "Planos: grátis, Premium, Pro, Pro Business",
+     "O ConstruPilot é gratuito para particulares, dezanove euros por mês no Premium, cento e quarenta e nove euros para profissionais e duzentos e quarenta e nove euros para empresas, com sete dias de teste."),
+    ("fonctionnalites", "construpilot.pt",
+     "Estime, compare, construa. Visite construpilot ponto pt e crie a sua conta gratuitamente."),
+]
+
 SHORT_KEYS = ["landing", "estimation_result", "smart_project", "devis_editeur", "plan", "devis_suivi",
               "factures", "appro", "radar", "rentabilite", "fonctionnalites"]
 SHORT = [s for s in FULL if s[0] in SHORT_KEYS]
+SHORT_PT = [s for s in FULL_PT if s[0] in SHORT_KEYS]
+LANG = "fr"
+TXT = {"fr": ("Toutes les fonctionnalités en images — démonstration", "Estimez. Comparez. Construisez. — Essai gratuit 7 jours", "Démonstration complète", "Démonstration", "construpilot.fr"),
+       "pt": ("Todas as funcionalidades em imagens — demonstração", "Estime. Compare. Construa. — 7 dias grátis", "Demonstração completa", "Demonstração", "construpilot.pt")}
 
 
 def sh(cmd):
@@ -82,9 +135,9 @@ def duration(path):
 async def tts_all(scenes):
     from emergentintegrations.llm.openai import OpenAITextToSpeech
     tts = OpenAITextToSpeech(api_key=os.environ["EMERGENT_LLM_KEY"])
-    os.makedirs(f"{WORK}/tts", exist_ok=True)
+    os.makedirs(f"{WORK}/tts_{LANG}", exist_ok=True)
     for slug, _, text in scenes:
-        path = f"{WORK}/tts/{slug}.mp3"
+        path = f"{WORK}/tts_{LANG}/{slug}.mp3"
         if os.path.exists(path):
             continue
         audio = await tts.generate_speech(text=text, model="tts-1", voice=VOICE, response_format="mp3", speed=1.0)
@@ -151,12 +204,13 @@ def build(scenes, name, portrait=False):
     os.makedirs(d, exist_ok=True)
     parts, total = [], 0.0
     intro_img, outro_img = f"{d}/intro.png", f"{d}/outro.png"
-    card(intro_img, "ConstruPilot", "Toutes les fonctionnalités en images — démonstration", size)
-    card(outro_img, "construpilot.fr", "Estimez. Comparez. Construisez. — Essai gratuit 7 jours", size)
+    t_intro, t_outro, t_full, t_short, site = TXT[LANG]
+    card(intro_img, "ConstruPilot", t_intro, size)
+    card(outro_img, site, t_outro, size)
     silence = f"{WORK}/silence.mp3"
     if not os.path.exists(silence):
         sh(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", "2.2", "-q:a", "9", silence])
-    total += clip(intro_img, silence, "Démonstration complète" if len(scenes) > 12 else "Démonstration", f"{d}/00_intro.mp4", size)
+    total += clip(intro_img, silence, t_full if len(scenes) > 12 else t_short, f"{d}/00_intro.mp4", size)
     parts.append(f"{d}/00_intro.mp4")
     for i, (slug, title, _) in enumerate(scenes, 1):
         src = f"{SHOTS}/{slug}.png"
@@ -165,9 +219,9 @@ def build(scenes, name, portrait=False):
             frame_portrait(src, src2)
             src = src2
         out = f"{d}/{i:02d}_{slug}.mp4"
-        total += clip(src, f"{WORK}/tts/{slug}.mp3", title, out, size)
+        total += clip(src, f"{WORK}/tts_{LANG}/{slug}.mp3", title, out, size)
         parts.append(out)
-    total += clip(outro_img, silence, "construpilot.fr", f"{d}/99_outro.mp4", size)
+    total += clip(outro_img, silence, site, f"{d}/99_outro.mp4", size)
     parts.append(f"{d}/99_outro.mp4")
     lst = f"{d}/list.txt"
     open(lst, "w").write("".join(f"file '{p}'\n" for p in parts))
@@ -179,6 +233,13 @@ def build(scenes, name, portrait=False):
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
+    if which == "pt":
+        LANG = "pt"
+        asyncio.run(tts_all(FULL_PT))
+        build(SHORT_PT, "ConstruPilot_Demo_Curta_PT")
+        build(SHORT_PT, "ConstruPilot_Demo_Curta_PT", portrait=True)
+        build(FULL_PT, "ConstruPilot_Demo_Completa_PT")
+        sys.exit(0)
     asyncio.run(tts_all(FULL))
     if which in ("all", "short"):
         build(SHORT, "ConstruPilot_Demo_Courte")

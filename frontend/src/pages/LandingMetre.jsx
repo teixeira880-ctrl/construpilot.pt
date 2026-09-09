@@ -98,7 +98,20 @@ export default function LandingMetre() {
           </motion.div>
 
           <motion.figure initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}
-                         className="surface rounded-2xl p-6 border border-border/60 shadow-2xl relative" data-testid="metre-testimonial">
+                         className="relative" data-testid="metre-hero-video">
+            <div className="absolute -inset-4 bg-primary/15 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
+            <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video">
+              <video className="h-full w-full object-cover" src="/docs/ConstruPilot_Demo_Courte_16x9.mp4"
+                     autoPlay muted loop controls playsInline preload="metadata" data-testid="metre-video-player" />
+            </div>
+            <figcaption className="mt-3 text-xs text-muted-foreground text-center">Démonstration en 2 min 30 : estimation, plan → métré, devis, signature, approvisionnement, Radar, rentabilité.</figcaption>
+          </motion.figure>
+        </div>
+      </section>
+
+      <section className="bg-secondary/30 border-y border-border/60">
+        <div className="mx-auto max-w-6xl px-5 lg:px-8 py-12">
+          <figure className="surface rounded-2xl p-6 border border-border/60 shadow-2xl relative max-w-2xl mx-auto" data-testid="metre-testimonial">
             <Quote className="h-8 w-8 text-primary/40 absolute -top-3 -left-3 rotate-180" />
             <h2 className="font-display text-base md:text-lg font-bold">Comment Fabrice a retrouvé <span className="text-primary">jusqu'à 5 heures par semaine</span>.</h2>
             <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
@@ -110,7 +123,7 @@ export default function LandingMetre() {
               <div><p className="text-sm font-bold">Fabrice B.</p><p className="text-xs text-muted-foreground">Entreprise générale · Rénovation intérieure · 11 salariés</p></div>
             </div>
             <p className="text-[10px] text-muted-foreground mt-3">Témoignage illustratif</p>
-          </motion.figure>
+          </figure>
         </div>
       </section>
 

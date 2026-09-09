@@ -146,7 +146,7 @@ export default function Landing() {
     if (!v.muted) v.play().catch(() => {});
   };
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   useEffect(() => {
     api.get("/estimation/catalog").then(({ data }) => setTypes(data.project_types)).catch(() => {});
@@ -391,12 +391,13 @@ export default function Landing() {
               <video
                 ref={masterVideoRef}
                 className="h-full w-full object-cover"
-                src="/master.mp4"
+                src={lang === "pt" ? "/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4" : "/docs/ConstruPilot_Demo_Courte_16x9.mp4"}
                 autoPlay
                 muted
                 loop
                 controls
                 playsInline
+                preload="metadata"
                 data-testid="master-video-player"
               />
               <button
@@ -468,8 +469,8 @@ export default function Landing() {
                   <video
                     ref={videoRef}
                     className="h-full w-full object-cover"
-                    src="/demo-plans.mp4"
-                    poster="/demo-plans-poster.jpg"
+                    src={lang === "pt" ? "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4" : "/docs/ConstruPilot_Demo_Courte_9x16.mp4"}
+                    poster="/docs/demo-poster-9x16.jpg"
                     autoPlay
                     muted
                     loop

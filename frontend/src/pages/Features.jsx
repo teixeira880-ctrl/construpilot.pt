@@ -112,6 +112,9 @@ export default function Features() {
               ["Vidéo démo courte 9:16 (réels)", "/docs/ConstruPilot_Demo_Courte_9x16.mp4", "features-video-short-916"],
               ["Vidéo démo complète 16:9 (4 min 40)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
               ["Vidéo démo complète 9:16", "/docs/ConstruPilot_Demo_Complete_9x16.mp4", "features-video-full-916"],
+              ["Vídeo demo curta PT 16:9", "/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4", "features-video-pt-short-169"],
+              ["Vídeo demo curta PT 9:16", "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4", "features-video-pt-short-916"],
+              ["Vídeo demo completa PT 16:9", "/docs/ConstruPilot_Demo_Completa_PT_16x9.mp4", "features-video-pt-full-169"],
             ].map(([label, href, tid]) => (
               <a key={tid} href={href} target="_blank" rel="noreferrer" data-testid={tid}
                  className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
