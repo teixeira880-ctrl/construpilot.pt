@@ -69,10 +69,12 @@ Le moteur de calcul est **100% déterministe** — aucune IA n'invente de cotes.
 
 **P3 — Assistant IA Claude Sonnet 4.5 ✅**
 - Backend : `stair_engine/assistant.py` (emergentintegrations `LlmChat` + `send_message_with_tools`), route `POST /api/assistant/chat` + `GET /api/assistant/conversations/{id}`.
-- Tools exposés (OpenAI schema portable) : `optimize_stair`, `calculate_straight`, `analyze_concrete`. Le LLM ne calcule jamais lui-même, il déclenche les fonctions moteur.
-- Prompt système strict FR : refuse d'inventer des cotes, demande clarification si params manquants.
+- Tools exposés (OpenAI schema portable) : `optimize_stair`, `calculate_straight`, `analyze_concrete`, `force_stair_solution` (solveur forcé hors normes DTU).
+- Le LLM ne calcule jamais lui-même, il déclenche les fonctions moteur.
+- Prompt système strict FR : refuse d'inventer des cotes, demande clarification si params manquants. **Règle nouvelle** : si `optimize_stair` ne renvoie aucune solution buildable OU si l'utilisateur demande explicitement un type absent des solutions, appelle `force_stair_solution`.
 - Historique MongoDB collection `assistant_conversations` (`_id = conversation_id`), re-hydraté via `initial_messages` à chaque tour.
-- Tests : 4 pytest slow (utilise la vraie API Anthropic) + 7 pytest publics — 11/11 passants.
+- Solveur forcé (`stair_engine/forced_solver.py`) : escalier droit avec compromis maximaux (pente ≤ 55°, giron ≥ 180 mm, hauteur ≤ 220 mm, échappée ≥ 1700 mm), alerte rouge dédiée `NON_CONFORMING_FORCED_SOLUTION` listant tous les seuils DTU enfreints.
+- Tests : 20 slow (4 assistant + 6 forced solver publics + 2 unit) + 93 non-slow — **113/113 passants**.
 - Frontend : écran `/assistant.tsx` (bulles user/assistant, spinner, 3 suggestions, cartes solutions cliquables → `/result`). Persistence AsyncStorage `stairpilot_assistant_conv_v1`. Bouton "Nouveau" en header. Erreur/timeout affichée en bandeau.
 
 **P4 — Vue 3D interactive ✅**

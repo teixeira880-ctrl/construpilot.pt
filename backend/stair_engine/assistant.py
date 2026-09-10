@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 from .concrete import ConcreteAnalysisInput, compute_concrete_analysis
+from .forced_solver import ForceSolutionInput, compute_forced_solution
 from .models import StairInput, StairResult
 from .optimizer import OptimizeInput, compute_optimize
 from .straight import compute_straight
@@ -33,7 +34,18 @@ SYSTEM_PROMPT = (
     "Réponses courtes et professionnelles en français, sans jamais inventer de cotes. "
     "Après un appel d'outil, résume les résultats en 3-6 lignes max, mets en avant "
     "la solution recommandée et signale les alertes rouges/oranges. "
-    "N'invente pas de code d'alerte : reprends uniquement ceux fournis par l'outil."
+    "N'invente pas de code d'alerte : reprends uniquement ceux fournis par l'outil.\n\n"
+    "RÈGLE IMPORTANTE — TOUJOURS PROPOSER UNE SOLUTION :\n"
+    "1. Si `optimize_stair` ne renvoie AUCUNE solution avec `is_buildable=true`, "
+    "   tu DOIS immédiatement appeler `force_stair_solution` avec les mêmes contraintes.\n"
+    "2. Si l'utilisateur demande EXPLICITEMENT un type précis (droit, quart tournant, demi-tournant, hélicoïdal) "
+    "   et que ce type n'apparaît pas dans les `solutions` de `optimize_stair` (il est dans `excluded` ou absent), "
+    "   appelle aussi `force_stair_solution` pour ne pas frustrer l'utilisateur avec un type imposé qu'il ne veut pas.\n"
+    "3. Quand tu utilises `force_stair_solution`, explique clairement : "
+    "   (a) que la solution est constructible mais HORS NORMES DTU, "
+    "   (b) quels compromis ont été acceptés (pente, giron, échappée exacts en mm/°), "
+    "   (c) l'usage acceptable (accès technique, cave, meunière — jamais habitat principal), "
+    "   (d) 1 ou 2 alternatives conformes possibles (augmenter le recul, ajouter un palier, changer de type)."
 )
 
 
@@ -111,6 +123,35 @@ TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "force_stair_solution",
+            "description": (
+                "SOLVEUR FORCÉ — retourne TOUJOURS une solution géométrique constructible, "
+                "quitte à sacrifier les normes DTU (pente jusqu'à 55°, giron jusqu'à 180 mm, "
+                "hauteur marche jusqu'à 220 mm, échappée jusqu'à 1700 mm). "
+                "À utiliser UNIQUEMENT après que `optimize_stair` ait échoué à trouver une solution "
+                "`is_buildable=true` (toutes les solutions exclues pour impossibilité géométrique). "
+                "La solution retournée inclut une alerte NON_CONFORMING_FORCED_SOLUTION qui liste "
+                "les seuils DTU enfreints."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "floor_height_mm": {"type": "number"},
+                    "available_length_mm": {"type": "number"},
+                    "available_width_mm": {"type": "number"},
+                    "stair_width_mm": {"type": "number", "default": 900},
+                    "stairwell_length_mm": {"type": "number"},
+                    "stairwell_width_mm": {"type": "number"},
+                    "ceiling_height_mm": {"type": "number"},
+                    "slab_thickness_mm": {"type": "number", "default": 200},
+                },
+                "required": ["floor_height_mm", "available_length_mm", "available_width_mm"],
+            },
+        },
+    },
 ]
 
 
@@ -123,33 +164,57 @@ def _dispatch_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         if name == "optimize_stair":
             payload = OptimizeInput(**{k: v for k, v in args.items() if v is not None})
             res = compute_optimize(payload)
-            # Résumé compact pour économiser des tokens
+            solutions_summary = [
+                {
+                    "rank": s.rank,
+                    "type": s.type,
+                    "variant": s.variant,
+                    "score_global": s.score_global,
+                    "num_steps": s.result.num_steps,
+                    "riser_height_mm": s.result.riser_height_mm,
+                    "tread_depth_mm": s.result.tread_depth_mm,
+                    "blondel_value_mm": s.result.blondel_value_mm,
+                    "slope_deg": s.result.slope_deg,
+                    "stair_run_mm": s.result.stair_run_mm,
+                    "headroom_mm": s.result.headroom_mm,
+                    "is_buildable": s.result.is_buildable,
+                    "alerts_top": [
+                        {"level": a.level, "code": a.code, "message": a.message_fr}
+                        for a in s.result.alerts[:3]
+                    ],
+                }
+                for s in res.solutions[: (args.get("max_solutions") or 3)]
+            ]
+            any_buildable = len(solutions_summary) > 0
             return {
                 "ok": True,
-                "solutions": [
-                    {
-                        "rank": s.rank,
-                        "type": s.type,
-                        "variant": s.variant,
-                        "score_global": s.score_global,
-                        "num_steps": s.result.num_steps,
-                        "riser_height_mm": s.result.riser_height_mm,
-                        "tread_depth_mm": s.result.tread_depth_mm,
-                        "blondel_value_mm": s.result.blondel_value_mm,
-                        "slope_deg": s.result.slope_deg,
-                        "stair_run_mm": s.result.stair_run_mm,
-                        "headroom_mm": s.result.headroom_mm,
-                        "is_buildable": s.result.is_buildable,
-                        "alerts_top": [
-                            {"level": a.level, "code": a.code, "message": a.message_fr}
-                            for a in s.result.alerts[:3]
-                        ],
-                    }
-                    for s in res.solutions[: (args.get("max_solutions") or 3)]
-                ],
+                "any_buildable_solution": any_buildable,
+                "must_use_force_solver": not any_buildable,
+                "solutions": solutions_summary,
                 "excluded": [
                     {"type": e.type, "variant": e.variant, "reason": e.reason}
                     for e in res.excluded[:5]
+                ],
+            }
+        if name == "force_stair_solution":
+            payload = ForceSolutionInput(**{k: v for k, v in args.items() if v is not None})
+            forced = compute_forced_solution(payload)
+            sr = forced["stair_result"]
+            return {
+                "ok": True,
+                "type": "straight_forced",
+                "num_steps": sr["num_steps"],
+                "riser_height_mm": sr["riser_height_mm"],
+                "tread_depth_mm": sr["tread_depth_mm"],
+                "blondel_value_mm": sr["blondel_value_mm"],
+                "slope_deg": sr["slope_deg"],
+                "stair_run_mm": sr["stair_run_mm"],
+                "headroom_mm": sr["headroom_mm"],
+                "is_buildable": True,
+                "infractions_dtu": forced["infractions_dtu"],
+                "alerts": [
+                    {"level": a["level"], "code": a["code"], "message": a.get("message_fr") or a.get("message")}
+                    for a in sr.get("alerts", [])
                 ],
             }
         if name == "calculate_straight":

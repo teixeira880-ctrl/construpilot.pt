@@ -102,3 +102,86 @@ async def test_history_preserved_over_turns():
     assert "julien" in text, f"Prénom oublié: {r3.reply_text}"
     assert "2.80" in text or "2,80" in text or "2800" in text or "280" in text, \
         f"Hauteur oubliée: {r3.reply_text}"
+
+
+@pytest.mark.asyncio
+async def test_impossible_case_uses_forced_solver():
+    """Contraintes très serrées + demande explicite d'escalier droit
+    → l'assistant DOIT proposer une solution hors normes via force_stair_solution.
+
+    H=3m avec seulement 1.5m de recul : géométriquement impossible pour un
+    escalier droit conforme DTU. L'assistant doit appeler `force_stair_solution`.
+    """
+    _need_key()
+    conv = str(uuid.uuid4())
+    r = await chat_with_assistant(
+        conv,
+        "Je veux ABSOLUMENT un escalier DROIT (pas hélicoïdal, pas quart tournant). "
+        "Hauteur d'étage 3 mètres, reculement disponible seulement 1.5m, "
+        "trémie 1.5×0.8m. C'est un accès cave technique. "
+        "Si aucun droit conforme ne rentre, propose-moi la meilleure solution "
+        "droite hors normes DTU. Je ne veux pas d'un refus.",
+        history=[],
+    )
+    called = [c["tool"] for c in r.referenced_engine_calls]
+    assert "force_stair_solution" in called, \
+        f"L'assistant n'a pas appelé le solveur forcé (outils appelés: {called})"
+    text = r.reply_text.lower()
+    # Doit expliquer que c'est hors normes / compromis / non conforme
+    assert any(kw in text for kw in ("hors norme", "hors-norme", "non conforme", "non-conforme", "compromis", "dtu")), \
+        f"L'assistant n'a pas expliqué que c'est hors normes: {r.reply_text}"
+    # Doit ne PAS refuser catégoriquement
+    hard_refusals = ["aucune solution", "impossible de construire"]
+    assert not any(f in text for f in hard_refusals), \
+        f"L'assistant refuse au lieu de forcer: {r.reply_text}"
+
+
+# --------------------------------------------------------------------------
+# Test unitaire du solveur forcé (sans LLM, rapide)
+# --------------------------------------------------------------------------
+def test_forced_solver_direct_returns_buildable_out_of_norm():
+    """Le solveur forcé retourne TOUJOURS une solution is_buildable=True + alerte NON_CONFORMING."""
+    from stair_engine.forced_solver import ForceSolutionInput, compute_forced_solution
+
+    # H=3m, recul 1.5m → impossible pour un droit DTU
+    res = compute_forced_solution(ForceSolutionInput(
+        floor_height_mm=3000,
+        available_length_mm=1500,
+        available_width_mm=1500,
+        stair_width_mm=900,
+        stairwell_length_mm=1500,
+        stairwell_width_mm=800,
+        ceiling_height_mm=2500,
+    ))
+    assert res["is_buildable"] is True
+    assert res["type"] == "straight_forced"
+    assert len(res["infractions_dtu"]) >= 1, "Doit lister au moins 1 infraction DTU"
+    codes = [a["code"] for a in res["stair_result"]["alerts"]]
+    assert "NON_CONFORMING_FORCED_SOLUTION" in codes, f"Alerte manquante: {codes}"
+
+    # Sanity géométrique
+    sr = res["stair_result"]
+    assert sr["num_steps"] > 0
+    assert sr["riser_height_mm"] > 100
+    assert sr["tread_depth_mm"] >= 180  # min forcé
+    assert sr["slope_deg"] > 40  # DTU serait <= 40
+
+
+def test_forced_solver_preserves_dtu_when_space_ok():
+    """Si l'espace est suffisant, le forcé produit une solution proche du DTU sans infractions."""
+    from stair_engine.forced_solver import ForceSolutionInput, compute_forced_solution
+
+    res = compute_forced_solution(ForceSolutionInput(
+        floor_height_mm=2800,
+        available_length_mm=4500,  # généreux
+        available_width_mm=2000,
+        stair_width_mm=900,
+        ceiling_height_mm=2500,
+    ))
+    assert res["is_buildable"] is True
+    sr = res["stair_result"]
+    # Devrait être conforme (pas d'alerte NON_CONFORMING)
+    codes = [a["code"] for a in sr["alerts"]]
+    # Cas idéal : aucune infraction listée
+    if len(res["infractions_dtu"]) == 0:
+        assert "NON_CONFORMING_FORCED_SOLUTION" not in codes

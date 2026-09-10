@@ -1,0 +1,37 @@
+{
+  "summary": "STAIRPILOT — nouveau tool `force_stair_solution` (solveur forcé hors normes DTU) via Claude Sonnet 4.5 validé end-to-end. BACKEND ONLY testing. 113 pytest OK en 71s (93 non-slow + 20 slow, 6 nouveaux tests créés).\n\n[LLM behavior via public URL] (1) Cas cave technique — 'Je veux un escalier DROIT obligatoire. Hauteur 3m, recul 1.5m, trémie 1.5x0.8m. Accès cave technique.' → l'assistant appelle bien `force_stair_solution` (référencé dans referenced_engine_calls), reply_text mentionne 'hors normes / compromis / DTU', aucun refus catégorique ('aucune solution', 'impossible de construire'). (2) Cas standard — 'Hauteur 2.80m, recul 4.5m, largeur 1.2m' → l'assistant utilise `optimize_stair` uniquement, computed_solutions >= 1 (comportement normal préservé). (3) Question théorique — 'C'est quoi la formule de Blondel ?' → referenced_engine_calls == [] (aucun tool call).\n\n[Unit] `compute_forced_solution(H=3m, recul=1.5m)` → is_buildable=True, len(infractions_dtu) >= 1, alerte NON_CONFORMING_FORCED_SOLUTION présente dans stair_result.alerts, slope_deg > 40°, tread_depth >= 180mm, riser > 100mm. `compute_forced_solution(H=2.80m, recul=4.5m)` → is_buildable=True, aucune alerte NON_CONFORMING (solution dans les clous DTU).\n\n[Régression] Aucune. POST /api/optimize (H=2.80 recul=4.5) → 200, solutions >= 1. POST /api/calculate/straight → 200, num_steps > 0. POST /api/dossier/generate → 200, content-type application/pdf, magic %PDF. Les 4 tests slow existants (test_phase4_assistant.py) + 7 publics existants + 93 non-slow + 6 nouveaux = 113 tests OK.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase4_force_solver_public.py (NEW — 6 tests : 3 LLM behavior + 3 régression endpoints)",
+    "/app/backend/tests/test_phase4_assistant.py (2 unit forced_solver + 1 LLM slow test_impossible_case_uses_forced_solver + 4 autres slow existants)",
+    "/app/test_reports/pytest/iteration_10_all.xml (113 passed)",
+    "/app/test_reports/pytest/iteration_10_force_public.xml (6 nouveaux, 34.8s)",
+    "/app/test_reports/pytest/iteration_10_fast.xml (93 non-slow, 4s)"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "backend/stair_engine/forced_solver.py:98-107 — La boucle `while (avail_len / num_treads) < FORCED_GIRON_MIN` réduit num_treads jusqu'à ce que h dépasse FORCED_RISER_MAX (220mm). Dans le cas cave (H=3m, recul=1.5m), le compromis final peut donner g=180mm mais avec h > 220mm et stair_run > 1500mm (dépasse le recul). L'infraction 'reculement requis > disponible' est bien listée dans infractions_dtu, mais aucune alerte de code dédié (STAIR_RUN_EXCEEDS_AVAILABLE) n'est ajoutée aux alerts — seule NON_CONFORMING_FORCED_SOLUTION agrège le texte. Envisager une alerte structurée séparée pour ce cas critique (utile côté UI qui filtre par code).",
+    "backend/stair_engine/forced_solver.py:119-124 — Le calcul d'échappée forcée utilise `math.ceil(stairwell_length_mm / g_mm)` : si stairwell_length_mm est passé mais stairwell_width_mm ne l'est pas, aucune vérification que la trémie contient la largeur de la volée. Non bloquant pour la V1 (solveur forcé accepte tout), à documenter.",
+    "backend/stair_engine/assistant.py:322 safety_max_loops=4 — Après un appel `optimize_stair` renvoyant `must_use_force_solver=true`, le LLM enchaîne toujours `force_stair_solution` dans les 4 loops disponibles. Testé OK sur le cas cave, mais pas de test dédié pour une conversation qui aurait besoin de 5+ appels outils.",
+    "backend/stair_engine/forced_solver.py — Le solveur ne gère QUE l'escalier droit forcé (`type=straight_forced`). Si un utilisateur demande explicitement un quart-tournant hors normes et que la règle 2 du SYSTEM_PROMPT s'applique (type absent des solutions), le solveur retournera quand même un droit forcé — comportement documenté dans la docstring de `compute_forced_solution` (extensible Phase 5). À signaler dans le reply LLM que le type retourné n'est pas celui demandé.",
+    "backend/stair_engine/assistant.py:199-219 — Le dispatch de force_stair_solution ne retourne pas `stair_result` complet au LLM (seuls les scalaires + alerts). Si le LLM veut ensuite chaîner `analyze_concrete`, il n'a pas de stair_result à réinjecter. Actuellement pas de test qui exhibe ce cas, mais à prévoir pour l'itération suivante (analyse béton d'une solution forcée)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase4_force_solver_public.py (nouveau, 6 tests slow via public URL)"
+  ],
+  "success_rate": {
+    "backend": "100% (113/113 pytest — 93 non-slow + 20 slow, 71.2s total)",
+    "frontend": "N/A (skipped per request)"
+  },
+  "seed_data_creation": "Aucune donnée persistée intentionnellement. Les tests LLM créent quelques docs dans MongoDB `assistant_conversations` (conversation_id UUID auto-généré à chaque test).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Le tool `force_stair_solution` est exposé au LLM dans /app/backend/stair_engine/assistant.py TOOLS et dispatché dans _dispatch_tool. Prompt système contient une règle stricte : appeler force_stair_solution si (a) optimize_stair renvoie 0 solutions buildable OU (b) l'utilisateur exige un type absent des solutions. Le solveur produit UNIQUEMENT du 'straight_forced' pour l'instant — extension Phase 5 prévue pour QT/DT forcé. Les warnings Pydantic sur `PydanticSerializationUnexpectedValue` viennent de LiteLLM interne (StreamingChoices vs Choices) — cosmétiques, à ignorer. Public URL backend: https://escalier-pro.preview.emergentagent.com. EMERGENT_LLM_KEY dispo dans backend/.env. Slow LLM tests coûtent ~5-15s/test, budget total ~35s pour les 6 tests force_solver_public.",
+  "rca_of_issue": "N/A — feature implémentée correctement, tous critères d'acceptation validés. Le solveur forcé retourne bien is_buildable=true + alerte NON_CONFORMING_FORCED_SOLUTION avec liste explicite d'infractions ; l'assistant LLM appelle bien le nouvel outil quand géométriquement nécessaire ET préserve l'usage d'optimize_stair pour les cas standards."
+}
