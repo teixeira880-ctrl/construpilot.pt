@@ -9,8 +9,8 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://pilot-build-demo.preview.emergentagent.com").rstrip("/")
 PRO_EMAIL = "pro@construpilot.fr"
 PRO_PASS = "Pro2026!"
-ADMIN_EMAIL = "teixeira8880@gmail.com"
-ADMIN_PASS = "CP-D5615C-Prov!"
+ADMIN_EMAIL = "deboradsmelo@gmail.com"
+ADMIN_PASS = "Miguel1156."
 
 
 def _login(session: requests.Session, email: str, password: str) -> str:

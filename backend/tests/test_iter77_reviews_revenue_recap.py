@@ -22,7 +22,7 @@ def _load_base():
 BASE = _load_base()
 API = f"{BASE}/api"
 
-ADMIN_PROV = ("teixeira8880@gmail.com", "CP-D5615C-Prov!")
+ADMIN_PROV = ("deboradsmelo@gmail.com", "Miguel1156.")
 ADMIN_BO = ("admin@construpilot.fr", "Construpilot2026!")
 PRO = ("pro@construpilot.fr", "Pro2026!")
 DEMO = ("demo@construpilot.fr", "Demo2026!")

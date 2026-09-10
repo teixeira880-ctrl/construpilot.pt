@@ -149,6 +149,37 @@ CLIENT_EMAIL = "client@construpilot.fr"
 PRO_EMAIL = "pro@construpilot.fr"
 COLLEGUE_EMAIL = "collegue@construpilot.fr"
 
+_MERGE_SKIP = {"users", "user_sessions", "known_devices", "login_attempts", "two_fa_codes",
+               "password_reset_tokens"}
+
+
+async def _merge_legacy_admin(db, owner_email: str):
+    """One-shot : fusionne l'ancien compte admin (LEGACY_ADMIN_EMAIL) dans le compte définitif."""
+    legacy_email = (os.environ.get("LEGACY_ADMIN_EMAIL") or "").lower().strip()
+    if not legacy_email or legacy_email == owner_email:
+        return
+    new = await db.users.find_one({"email": owner_email})
+    old = await db.users.find_one({"email": legacy_email})
+    if not new or not old or new.get("admin_merged_from") == legacy_email:
+        return
+    old_id, new_id = old.get("user_id"), new.get("user_id")
+    moved = {}
+    for coll in await db.list_collection_names():
+        if coll in _MERGE_SKIP or coll.startswith("system."):
+            continue
+        res = await db[coll].update_many({"user_id": old_id}, {"$set": {"user_id": new_id}})
+        if res.modified_count:
+            moved[coll] = res.modified_count
+    carry = {k: v for k, v in old.items()
+             if (k.startswith("brand_") or k in ("phone", "company", "siret", "plan"))
+             and v not in (None, "") and new.get(k) in (None, "", "free")}
+    carry.update({"admin_merged_from": legacy_email, "role": "admin"})
+    await db.users.update_one({"email": owner_email}, {"$set": carry})
+    await db.users.update_one({"email": legacy_email},
+                              {"$set": {"role": "user", "admin_merged_into": owner_email}})
+    logger.info("Ancien admin %s fusionné dans %s : %s", legacy_email, owner_email, moved)
+
+
 async def _seed_demo_org():
     """Crée idempotemment l'org 'BTP Demo SAS' avec pro@ owner + collegue@ member."""
     import secrets
@@ -241,7 +272,11 @@ async def seed():
             logger.info("Compte admin définitif créé : %s", owner_email)
         else:
             if existing.get("role") != "admin":
-                await db.users.update_one({"email": owner_email}, {"$set": {"role": "admin"}})
+                upd = {"role": "admin"}
+                if existing.get("plan") in (None, "free"):
+                    upd["plan"] = "premium"
+                await db.users.update_one({"email": owner_email}, {"$set": upd})
+                logger.info("Compte %s promu administrateur définitif", owner_email)
             # One-time : un seed précédent forçait le 2FA à True, ce qui bloquait la
             # connexion (le code email n'est pas toujours délivrable). On repasse le 2FA
             # en OPT-IN (désactivé) une seule fois — l'admin peut le réactiver depuis /compte.
@@ -249,6 +284,7 @@ async def seed():
                 await db.users.update_one(
                     {"email": owner_email},
                     {"$set": {"two_fa_enabled": False, "two_fa_seed_reset": True}})
+        await _merge_legacy_admin(db, owner_email)
 
     # Second administrateur : info@construpilot.fr (gestion complète du site).
     # Idempotent : promeut le compte existant (même Google) en admin ; le crée
