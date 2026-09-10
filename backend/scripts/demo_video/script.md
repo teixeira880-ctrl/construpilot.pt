@@ -1,15 +1,40 @@
-# Narração — ConstruPilot demo institucional (PT-PT · ~180s)
+# ConstruPilot — Script de narração (v9 · enriquecido)
+
+Voz: **João - Narrator** (ElevenLabs `ID3DiXGPB7uwug5tZ3FB`, PT-PT europeu)
+Modelo: `eleven_multilingual_v2`
+Duração alvo: ~3 minutos.
 
 ## Segmentos
 
-- **intro** (5s): ConstruPilot. Da planta ao orçamento em minutos.
-- **b1** (18s): Somos uma plataforma 100% portuguesa para construção civil. Trezentos e vinte e dois trabalhos compostos, quarenta e três especialidades, sete mil linhas de composição — tudo com preços de mercado dois mil e vinte e seis.
-- **b2** (20s): Descreva o seu projeto por voz, em português. A ConstruPilot transcreve a sua descrição e transforma-a num orçamento detalhado em segundos, com linhas orçamentadas pela biblioteca portuguesa.
-- **b3** (18s): Fotografe uma divisão. A inteligência artificial identifica paredes, pavimento, teto, janelas e sanitários — e propõe automaticamente os trabalhos recomendados.
-- **b4** (18s): A biblioteca partilhada inclui piscinas em betão, canalização, pladur, isolamento, cobertura, e muito mais. Filtro por especialidade, três gamas de preços e coeficientes regionais para Lisboa, Porto, Algarve e Interior.
-- **b5** (18s): As calculadoras cobrem azulejos, pladur, betão e isolamento. Introduza a área, escolha o tipo de assentamento e receba resultados em português: caixas, sacos de cola, betumação e quantidades exatas.
-- **b6** (20s): Estude plantas em DWG, DXF ou PDF. A ConstruPilot mede paredes, vãos e sanitários automaticamente e aplica preços da biblioteca ao seu estudo.
-- **b7** (20s): Crie um orçamento profissional em minutos: linhas com o seu preço, IVA seis, treze ou vinte e três porcento, assinatura eletrónica e envio por email ao cliente.
-- **b8** (18s): O painel apresenta o volume de negócio assinado, faturado e por especialidade. Um CRM completo — clientes, obras, propostas e portal do cliente.
-- **b9** (18s): O Coach de obras responde em português, sempre. Dúvidas sobre licenças, IVA, materiais ou execução — resposta imediata, sem sair da aplicação.
-- **outro** (7s): Construpilot ponto pt. Construção inteligente, em português.
+### intro (slate)
+> ConstruPilot. A plataforma portuguesa para orçamentar, medir e gerir obras. Da planta ao orçamento em minutos, com preços reais do mercado 2026.
+
+### b1 — Landing (`/`)
+> Bem-vindo ao ConstruPilot. Uma biblioteca com trezentos e vinte e dois trabalhos compostos organizados em quarenta e três especialidades, com preços de mercado atualizados para dois mil e vinte e seis. Coeficientes regionais para Lisboa, Porto, Algarve e Interior. IVA seis, treze e vinte e três por cento. Tudo pensado para a construção civil em Portugal — de arquitetos a construtores, de particulares a empresas.
+
+### b2 — Login (`/login`)
+> Aceda à sua conta e comece de imediato. Cada utilizador nasce com uma biblioteca completa de trezentos e vinte e dois trabalhos preenchidos, prontos a usar. Sem necessidade de inserir preços manualmente. Do primeiro dia ao último, todos os dados sincronizados na nuvem.
+
+### b3 — Foto AI (`/photo`)
+> Análise fotográfica com inteligência artificial. Envie uma foto da divisão e receba imediatamente a identificação de paredes, pavimento, teto, janelas e portas. Estado de conservação avaliado em segundos. Trabalhos recomendados listados por prioridade, com estimativa de custos incluída. Da fotografia ao orçamento, tudo em português europeu.
+
+### b4 — Biblioteca (`/biblioteca`)
+> Biblioteca partilhada ConstruPilot. Trezentos e vinte e dois trabalhos compostos com decomposição em materiais, mão de obra e equipamento. Três gamas de preços por trabalho: Económico, Standard e Premium. Fontes: Santander, CYPE, Multigam. Categoria especial para piscinas com sessenta e dois trabalhos exclusivos. Filtragem por especialidade, procura instantânea.
+
+### b5 — Calculadoras (`/calculadoras`)
+> Calculadoras profissionais integradas. Azulejos, betão, isolamento, divisórias em pladur. Insira as dimensões e receba resultados imediatos: número de peças, quantidades de materiais, custo estimado. Compare formatos, escolha o mais económico. Exporte para PDF ou adicione diretamente ao orçamento.
+
+### b6 — Estudo de plantas (`/planta`)
+> Estudo de plantas. Carregue plantas em DWG, DXF ou PDF. Meça áreas, comprimentos e volumes com precisão. Compare versões, identifique diferenças. Estimativas por divisão geradas automaticamente com base na biblioteca de preços. Ideal para arquitetos e gabinetes de engenharia.
+
+### b7 — Orçamentos (`/orcamentos`)
+> Crie orçamentos profissionais em minutos. Adicione trabalhos da biblioteca, ajuste quantidades, aplique coeficientes regionais. Assinatura eletrónica pelo cliente, envio automático por email, recibo em PDF gerado no ato. Estatísticas em tempo real do seu volume de negócio assinado.
+
+### b8 — Dashboard (`/dashboard`)
+> Dashboard executivo. Painel único com todos os indicadores: orçamentos em curso, faturas emitidas, volume de negócio assinado, notificações e alertas. CRM integrado, gestão de clientes e projetos. Tudo à distância de um clique, no seu computador ou telemóvel.
+
+### b9 — Coach IA (`/coach`)
+> Coach de obras com inteligência artificial. Um assistente virtual em português, disponível vinte e quatro horas por dia, sete dias por semana. Tire dúvidas técnicas, receba conselhos sobre materiais, cumprimento de normas e boas práticas. Como ter um engenheiro consigo em cada obra.
+
+### outro (slate)
+> ConstruPilot. Da planta ao orçamento em minutos. Descubra em construpilot.pt. A construção inteligente começa aqui.
