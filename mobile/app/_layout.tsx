@@ -1,22 +1,26 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
-import { LogBox } from "react-native";
-
-import { ErrorBoundary } from "@/src/components/error-boundary";
-import { queryClient } from "@/src/query-client";
-
-// Disable logbox errors etc so that users can see the app
-// and agent works as expected.
-LogBox.ignoreAllLogs(true)
+import { Stack } from 'expo-router';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { colors } from '../src/theme';
 
 export default function RootLayout() {
-  // One app level ErrorBoundary; a render crash shows a reload screen
-  // instead of a blank app.
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <Stack screenOptions={{ headerShown: false }} />
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.bg },
+          headerTitleStyle: { color: colors.text, fontWeight: '700' },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.bg },
+        }}
+      >
+        <Stack.Screen name="index" options={{ title: 'STAIRPILOT' }} />
+        <Stack.Screen name="type-select" options={{ title: 'Type d\'escalier' }} />
+        <Stack.Screen name="form" options={{ title: 'Dimensions' }} />
+        <Stack.Screen name="result" options={{ title: 'Résultat' }} />
+      </Stack>
+    </SafeAreaProvider>
   );
 }

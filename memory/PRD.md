@@ -8,76 +8,74 @@ Le moteur de calcul est **100% déterministe** — aucune IA n'invente de cotes.
 ## Personas cibles
 - **BE béton** (bureau d'études structure) — France, référentiel DTU 36.3.
 - **Maçon** confronté à un escalier béton sur chantier.
-- Pas d'authentification au MVP. Projets stockés localement sur l'appareil (Phase 2).
+- Pas d'authentification au MVP. Projets stockés localement sur l'appareil.
 
 ## Stack
 - **Backend** : FastAPI + MongoDB (`/app/backend`).
-- **Frontend** : Expo (React Native) — `/app/mobile`.
+- **Frontend** : Expo Router (React Native, SDK 57) — `/app/mobile`.
 - **Moteur de calcul** : Python déterministe (`/app/backend/stair_engine/`).
-- **Base de règles** : seuils DTU 36.3 dans `norms_fr.py` (structure préparée multi-pays).
+- **Rendu 2D** : `react-native-svg` (composants `StairPlan`, `StairSection`).
+- **Stockage local** : `@react-native-async-storage/async-storage`.
+- **Base de règles** : seuils DTU 36.3 dans `norms_fr.py`.
 
 ## Roadmap phases
 
-### Phase 0 — Moteur de calcul déterministe (BACKEND UNIQUEMENT) ✅ TERMINÉ
-Objectif : prouver que le moteur géométrique est fiable et testable avant d'attaquer l'UI mobile.
+### Phase 0 — Moteur de calcul déterministe ✅ TERMINÉ
+- Module `stair_engine/` complet (escalier droit + QT bas modes straight/balanced).
+- 4 routes API (`/api/calculate/straight`, `/api/calculate/quarter-turn-bottom`, `/api/norms/fr`, `/api/openapi.json`).
+- Système d'alertes 17 codes, semantic `is_buildable` distinguant blockers géométriques vs non-conformités DTU.
+- 42/42 tests passants.
 
-**Périmètre livré :**
-- Module Python modulaire `/app/backend/stair_engine/` :
-  - `models.py` — Pydantic input/output
-  - `norms_fr.py` — seuils DTU 36.3 configurables
-  - `blondel.py` — formule de Blondel + recherche `n`
-  - `alerts.py` — système d'alertes (rouge / orange / vert)
-  - `straight.py` — moteur escalier droit
-  - `quarter_turn.py` — moteur QT bas (modes `straight` et `balanced`)
-  - `README.md` — formules et hypothèses
-- Routes FastAPI (préfixe `/api`) :
-  - `POST /api/calculate/straight`
-  - `POST /api/calculate/quarter-turn-bottom`
-  - `GET /api/norms/fr`
-  - `GET /api/openapi.json` (alias)
-- Tests pytest : **24/24 passants** dans `/app/backend/tests/test_stair_engine.py`
-- Échappée : formule **rigoureuse** (position trémie + hauteur cumulée par marche)
-- QT bas : mode `balanced` (par défaut) avec 3 marches balancées + volée droite, ligne de foulée 500mm
+### Phase 1 — App mobile Expo + rendu 2D coté ✅ TERMINÉ
+**Backend étendu :**
+- 2 routes ajoutées : `/api/calculate/quarter-turn-top` et `/api/calculate/half-turn`.
+- 11 nouveaux tests pytest (test_phase1_stairs.py).
+- Total : **54/54 tests backend passants**.
 
-**Choix techniques Phase 0 (validés utilisateur) :**
-1. QT bas — paramètre `balancing: "straight" | "balanced"`, défaut `balanced`.
-2. Échappée — formule rigoureuse dès Phase 0 (paramètre optionnel `stairwell_offset_mm`).
-3. Seuils DTU — valeurs FR par défaut, structure configurable pour multi-pays.
-4. pytest — dans `requirements.txt` unique.
-5. Aucune IA/LLM en Phase 0.
+**App mobile Expo :**
+- 4 écrans : Home (liste projets), Type-select (4 typologies), Form (saisie steps), Result (chiffres + SVG + alertes).
+- Rendu 2D SVG en plan et en coupe pour les 4 types (droit, QT bas, QT haut, demi-tournant).
+- Stockage local AsyncStorage clé `stairpilot_projects_v1` avec CRUD complet (list, get, save, delete, duplicate).
+- Design BTP : palette blanc / gris anthracite / bleu technique / rouge-orange-vert. Pas d'emojis. Typo mono pour cotes.
+- Gestion CORS + timeout + erreurs réseau (message FR clair).
 
-**Ce qui NE FAIT PAS partie de Phase 0 :**
-- Rendu 2D/3D
-- UI Expo
-- IA/LLM
-- Export PDF
-- Escaliers demi-tournant / hélicoïdal
-- Béton armé / ferraillage
+**Choix techniques Phase 1 (validés) :**
+- Expo Router (file-based) sur `_layout.tsx` + `index/type-select/form/result.tsx`.
+- Pas de state manager (React state + AsyncStorage + navigation params).
+- Toutes URL via `process.env.EXPO_PUBLIC_BACKEND_URL`.
+- Composants `<View>/<Text>/<TouchableOpacity>` uniquement (pas de HTML).
 
-### Phase 1 — UI Expo & autres types d'escaliers (à venir)
-- Écran de saisie mobile-first
-- Rendu 2D en coupe + plan
-- QT haut, demi-tournant, hélicoïdal
-- Stockage local des projets
-
-### Phase 2 — Persistance & partage
-- Projets MongoDB (multi-devices)
-- Export PDF fiche technique
-- Partage projet
+### Phase 2 — Persistance cloud + hélicoïdal + comparateur (à venir)
+- Auth optionnelle (Emergent Google Auth ou JWT custom).
+- Sync projets multi-devices via MongoDB.
+- Escalier hélicoïdal.
+- Comparateur multi-solutions (proposer 3 variantes).
 
 ### Phase 3 — Béton armé
-- Ferraillage escaliers béton
-- Notes de calcul BAEL / EC2
+- Ferraillage escaliers béton.
+- Notes de calcul BAEL / EC2.
+
+### Phase 4 — Export & assistant IA
+- Export PDF fiche technique.
+- Rendu 3D.
+- Assistant IA (LLM) pour aide à la conception.
 
 ## Contraintes techniques (transverses)
 - Toutes routes préfixées `/api`.
-- MongoDB via variables d'env (`MONGO_URL`, `DB_NAME`) — non utilisé en Phase 0.
+- MongoDB via `MONGO_URL`, `DB_NAME` (non utilisé activement en Phase 1).
 - Frontend Expo utilise `EXPO_PACKAGER_PROXY_URL` (non modifiable).
-- Toutes cotes en **mm** en interne. Angles en degrés dans la sortie.
+- URL app mobile web preview : `https://escalier-pro.expo.preview.emergentagent.com`
+- URL backend public : `https://escalier-pro.preview.emergentagent.com/api/*`
+- Toutes cotes en **mm** en interne. Angles en degrés en sortie.
 
-## Décisions clés à valider par l'utilisateur (Phase 0)
+## Décisions clés — Phase 1
 1. **Convention marches** : `num_treads = num_steps - 1` (le dernier riser débouche sur le plancher haut).
-2. **QT balancé** : angles uniformes entre winders (méthode simple), méthode des développées non implémentée en Phase 0.
-3. **QT échappée** : calcul rigoureux uniquement sur la volée droite au-dessus du quart tournant (marches balancées supposées dans un dégagement libre).
-4. **Nez de marche (débord)** : `tread_thickness_mm` renseigné mais non utilisé pour l'échappée en Phase 0.
-5. **Recherche `n`** : minimise `|h - 170mm|` dans plage optimale [160, 180], fallback [155, 195] avec alerte orange.
+2. **QT balancé** : angles uniformes entre winders (méthode simple, méthode des développées non implémentée).
+3. **Demi-tournant** : split hauteur en 2 volées équilibrées + 4-12 winders au milieu (mode auto par défaut).
+4. **Nez de marche (débord)** : `tread_thickness_mm` non utilisé pour l'échappée en Phase 1.
+5. **Recherche `n`** : minimise `|h - 170mm|` dans plage optimale [160, 180], fallback [155, 195].
+6. **Storage** : AsyncStorage local uniquement. Pas de cloud sync en Phase 1.
+
+## Semantic is_buildable
+- **7 BLOCKING_CODES** → `is_buildable=false` : STAIR_RUN_TOO_LONG, STAIR_WIDTH_INSUFFICIENT, STAIRWELL_TOO_SMALL, HEADROOM_INSUFFICIENT, GEOMETRY_INVALID, BALANCING_IMPOSSIBLE, AUTO_WINDERS_NO_SOLUTION.
+- **Autres red alerts** = non-conformités DTU, `is_buildable=true` (constructible mais non-conforme).

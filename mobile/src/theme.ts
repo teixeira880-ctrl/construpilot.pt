@@ -1,124 +1,77 @@
-// Design tokens for this app. Light theme only.Always modify the colors and theme to Dark, Light or Dark and Light according to the design guidelines.
-//
-// The keys match the "color" block of /app/design_guidelines.json. Fill the
-// values from that file (or from the user's brand colors). Keep every key; do
-// not add a second theme or colors file; do not write color literals in
-// components.
-//
-// How the names work: a plain key is a background, and its `on` partner is the
-// text or icon color that sits on top of it. Always use them as a pair.
-//   <View style={{ backgroundColor: colors.brandPrimary }}>
-//     <Text style={{ color: colors.onBrandPrimary }}>Continue</Text>
-//   </View>
-//
-// Styling a screen or component: build the sheet with makeStyles so colors
-// and layout live together and follow the active scheme:
-//   const useStyles = makeStyles((colors) => ({
-//     card: { backgroundColor: colors.surfaceSecondary, padding: 16 },
-//     title: { color: colors.onSurfaceSecondary, fontSize: 16 },
-//   }));
-//   function Screen() {
-//     const styles = useStyles();
-//     return <View style={styles.card}><Text style={styles.title}>Hi</Text></View>;
-//   }
-// For color props that are not styles (icon color, placeholderTextColor,
-// ActivityIndicator) read useTheme().colors inside the component.
-// Never call StyleSheet.create with color values at module level; it cannot
-// follow the scheme.
-//
-// To support dark mode later: add `dark` to `themes` with every key filled.
-// Nothing else changes; the device setting takes over automatically.
-// Feel free to add as many new colors as you need to support the design guidelines.
+/**
+ * Palette et tokens de design STAIRPILOT — professionnel BTP.
+ * Blanc / gris anthracite / bleu technique / rouge-orange-vert pour alertes.
+ */
 
-import { useMemo } from "react";
-import { Appearance, StyleSheet, useColorScheme } from "react-native";
+export const colors = {
+  bg: '#FFFFFF',
+  bgSubtle: '#F5F6F8',
+  bgCard: '#FFFFFF',
+  border: '#D6D9DE',
+  borderStrong: '#9AA1AC',
 
-export type ColorScheme = "light" | "dark";
+  text: '#1A1D22',
+  textMuted: '#5A6270',
+  textDim: '#8A929E',
 
-const light = {
-  // ---------------------------------------------------------------------------
-  // Surfaces: backgrounds, from the screen down to small fills.
-  // Each `on` key is the text and icon color for that background.
-  // ---------------------------------------------------------------------------
-  surface: "#FFFFFF", // primary canvas, most of every screen
-  onSurface: "#111827", // text and icons on the canvas
-  surfaceSecondary: "#F9FAFB", // cards, sheets, list rows
-  onSurfaceSecondary: "#374151", // text and icons on cards, sheets, rows
-  surfaceTertiary: "#F3F4F6", // input backgrounds, chips, deepest nesting
-  onSurfaceTertiary: "#4B5563", // text on inputs and chips; also muted text
-  surfaceInverse: "#1F2937", // tooltips, snackbars, anything popping against the theme
-  onSurfaceInverse: "#FFFFFF", // text and icons on the inverse surface
-  muted: "#6B7280", // subdued text on surface: captions, timestamps, placeholders
+  primary: '#0B5FFF',           // bleu technique
+  primaryPressed: '#0847BF',
+  primaryBg: '#E8F0FF',
 
-  // ---------------------------------------------------------------------------
-  // Brand: the identity color and the fills built from it.
-  // Neutral by default; replace with the design guidelines values.
-  // ---------------------------------------------------------------------------
-  brand: "#111827", // base hue, anchor only; Primary, Secondary, Tertiary are weights of it
-  onBrand: "#FFFFFF", // text and icons placed directly on brand
-  brandPrimary: "#111827", // primary CTA, active tab indicator, selected states
-  onBrandPrimary: "#FFFFFF", // text and icons on brandPrimary
-  brandSecondary: "#E5E7EB", // secondary CTA, less prominent accents
-  onBrandSecondary: "#111827", // text and icons on brandSecondary
-  brandTertiary: "#F3F4F6", // chips, tags, badges, subtle brand moments
-  onBrandTertiary: "#111827", // text and icons on brandTertiary
+  danger: '#D64545',            // rouge alerte
+  dangerBg: '#FDECEC',
+  warn: '#E38B1E',              // orange alerte
+  warnBg: '#FDF3E5',
+  ok: '#2F8F55',                // vert alerte
+  okBg: '#E9F5EE',
 
-  // ---------------------------------------------------------------------------
-  // Status: semantic only, never decorative. Fill for badges, banners and
-  // toasts; the `on` key is text on that fill. The plain key is also safe as
-  // text on `surface`.
-  // ---------------------------------------------------------------------------
-  success: "#15803D",
-  onSuccess: "#FFFFFF",
-  warning: "#B45309",
-  onWarning: "#FFFFFF",
-  error: "#B91C1C",
-  onError: "#FFFFFF",
-  info: "#1D4ED8",
-  onInfo: "#FFFFFF",
-
-  // ---------------------------------------------------------------------------
-  // Lines
-  // ---------------------------------------------------------------------------
-  border: "#E5E7EB", // hairline outline, 0.5pt or 1pt max: inputs, cards
-  borderStrong: "#D1D5DB", // focus rings, selected outlines, 1.5pt max
-  divider: "#E5E7EB", // subtle list separators
+  ink: '#111318',               // fond pour hero
 };
 
-export type ThemeColors = typeof light;
+export const spacing = {
+  xs: 4,
+  s: 8,
+  m: 12,
+  l: 16,
+  xl: 24,
+  xxl: 32,
+  xxxl: 48,
+};
 
-export const defaultScheme = "light" satisfies ColorScheme;
+export const radius = {
+  s: 6,
+  m: 10,
+  l: 14,
+  xl: 20,
+};
 
-export const themes: { light: ThemeColors; dark?: ThemeColors } = { light };
+export const typography = {
+  h1: { fontSize: 26, fontWeight: '700' as const, letterSpacing: -0.4 },
+  h2: { fontSize: 20, fontWeight: '700' as const, letterSpacing: -0.2 },
+  h3: { fontSize: 16, fontWeight: '700' as const },
+  body: { fontSize: 15, fontWeight: '400' as const },
+  bodyStrong: { fontSize: 15, fontWeight: '600' as const },
+  small: { fontSize: 13, fontWeight: '400' as const },
+  caption: { fontSize: 11, fontWeight: '500' as const, letterSpacing: 0.5 },
+  mono: {
+    fontFamily: 'Courier',
+    fontSize: 15,
+    fontWeight: '600' as const,
+    letterSpacing: 0.4,
+  },
+  monoSmall: {
+    fontFamily: 'Courier',
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+};
 
-// In-app theme toggle, only after `dark` exists in `themes`. Call
-// setColorScheme("dark"), setColorScheme("light"), or setColorScheme(null) to
-// follow the device. Every useTheme() consumer re-renders. Persisting the
-// choice and re-applying it on launch is the toggle's job.
-export function setColorScheme(scheme: ColorScheme | null) {
-  Appearance.setColorScheme?.(scheme);
-}
-
-// Keep native surfaces (alerts, pickers, navigation chrome) on the schemes this
-// app ships: light only forces light; once `dark` exists the device decides.
-// Optional call because react-native-web does not implement it.
-setColorScheme?.(themes.dark ? null : defaultScheme);
-
-export function useTheme(): { scheme: ColorScheme; colors: ThemeColors } {
-  const system = useColorScheme();
-  const scheme: ColorScheme = system && themes[system] ? system : defaultScheme;
-  return { scheme, colors: themes[scheme] ?? themes.light };
-}
-
-// Themed StyleSheet: returns a hook that builds the sheet from the active
-// scheme's colors and memoizes it until the scheme changes.
-export function makeStyles<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(
-  factory: (colors: ThemeColors) => T & StyleSheet.NamedStyles<any>,
-): () => T {
-  return function useStyles(): T {
-    const { colors } = useTheme();
-    return useMemo(() => StyleSheet.create(factory(colors)), [colors]);
-  };
-}
-
-
+export const shadow = {
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+};

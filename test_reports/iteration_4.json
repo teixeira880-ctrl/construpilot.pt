@@ -1,0 +1,44 @@
+{
+  "summary": "STAIRPILOT Phase 1 fully validated end-to-end. BACKEND: 61/61 pytest tests pass (32 unit engine tests + 10 pre-existing integration tests + 11 new Phase 1 stair tests + 7 new public-URL smoke tests targeting the two new routes /api/calculate/quarter-turn-top and /api/calculate/half-turn). All 7 backend review items green: (1) QT-top straight with the exact review payload returns is_buildable=true, num_steps=16, riser≈175; (2) QT-top balanced without num_winders auto-picks and emits AUTO_WINDERS_SELECTED; (3) half-turn H=2800/L=3000/W=2200/stair=900/straight → is_buildable=true; (4) half-turn balanced num_winders='auto' finds a buildable config with AUTO_WINDERS_SELECTED; (5) half-turn num_winders=2 rejected 422 (Pydantic 4..12 range); (6) full pytest suite 61 passed in 1.44s; (7) CORS wildcard verified on both preflight and simple requests. MOBILE (Expo web preview https://escalier-pro.expo.preview.emergentagent.com): Home renders 'STAIRPILOT' + 'Aucun projet' + testID='new-project-btn'; Type-select shows all 4 testID cards and next-btn is disabled until selection; Form pre-fills defaults (2800/2800/200/4500/1500/900) and exposes every required testID (input-floor-height, input-length, input-width, input-stair-width, input-tremie-length/width, compute-btn); Full straight flow H=2800/L=4500 → Résultat with green 'Constructible' banner, 16 marches, riser=175, giron=280, Blondel=630, 8 SVGs rendered (plan + section); QT-bottom balanced auto H=2800/L=3000/W=2200 → 'Constructible', AUTO_WINDERS_SELECTED alert visible, winder fan clearly drawn in the SVG plan; Persistence works — the project appears on the Home list after Calculer; Error case L=500 → red 'Non constructible' banner + STAIR_RUN_TOO_LONG code. No page errors, no red screen. Only observation: React Native Web onLongPress cannot be reliably fired via Playwright mouse events on the web preview (the delete dialog didn't trigger via mouse.down+wait+mouse.up), but the handler is correctly wired in code (handleDelete + RNAlert.alert).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "react-native-web (library-level, not app code)",
+        "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Emitted by a react-native-web dependency, non-blocking, no functional impact."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase1_stairs.py",
+    "/app/backend/tests/test_phase1_public_api.py",
+    "/app/backend/tests/test_stair_engine.py",
+    "/app/backend/tests/test_api_integration.py",
+    "/app/test_reports/pytest/iteration_4.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "form.tsx (line ~359): num_winders parsing uses `parseInt(nw, 10) || 'auto'` — parseInt('0',10)===0 which is falsy and would silently fall back to 'auto'. Not exercised today (min is 3 for QT / 4 for half-turn, backend rejects 0 anyway), but a stricter isNaN check would be safer.",
+    "server.py: Tigris/boto3 config still loaded at import time but never exercised by any route (dead dep already flagged in iteration 3, unchanged).",
+    "server.py: @app.on_event('shutdown') still deprecated — migrate to lifespan context manager when convenient.",
+    "Cloudflare edge sometimes rewrites `Access-Control-Allow-Origin: *` -> echoed origin on connection reuse. Harmless because backend keeps allow_credentials=False, but worth knowing for future integrators; the public API test tolerates both values."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase1_public_api.py"
+  ],
+  "success_rate": {
+    "backend": "100% (61/61 pytest tests, incl. 11 Phase 1 unit + 7 Phase 1 public-URL smoke)",
+    "frontend": "100% on validated criteria (Home, Type-select, Form, Result straight & QT-bot balanced auto, persistence, error case). Long-press delete dialog not reproducible via Playwright web mouse events but handler is correctly implemented in code."
+  },
+  "seed_data_creation": "None. Backend tests are stateless. AsyncStorage is per-browser-session; each test run starts empty.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public URL for mobile web = https://escalier-pro.expo.preview.emergentagent.com. Public URL for backend = https://escalier-pro.preview.emergentagent.com (via EXPO_PUBLIC_BACKEND_URL). No auth. Two new routes in this iteration: POST /api/calculate/quarter-turn-top and POST /api/calculate/half-turn. Half-turn num_winders range is 4..12 (not 3..9 like QT). AUTO_WINDERS_SELECTED alert code is emitted whenever balanced+num_winders='auto' picks a winder count. Alert message displayed on the result screen uses `code` verbatim in the banner subtitle (e.g. 'STAIR_RUN_TOO_LONG · 1 alerte'). React Native onLongPress cannot be triggered reliably from Playwright over the web preview (mouse.down+wait+mouse.up does not fire it); rely on code inspection or a real device to validate long-press flows.",
+  "rca_of_issue": "N/A — no bugs found."
+}

@@ -15,6 +15,8 @@ from .models import (
 from .norms_fr import DTU_36_3_FR, StairNorms
 from .straight import compute_straight
 from .quarter_turn import compute_quarter_turn_bottom
+from .quarter_turn_top import QuarterTurnTopInput, compute_quarter_turn_top
+from .half_turn import HalfTurnInput, compute_half_turn
 from .blondel import blondel_value, optimal_giron_mm
 
 __all__ = [
@@ -22,12 +24,16 @@ __all__ = [
     "AlertLevel",
     "StairInput",
     "QuarterTurnBottomInput",
+    "QuarterTurnTopInput",
+    "HalfTurnInput",
     "StairResult",
     "TreadDetail",
     "DTU_36_3_FR",
     "StairNorms",
     "compute_straight",
     "compute_quarter_turn_bottom",
+    "compute_quarter_turn_top",
+    "compute_half_turn",
     "blondel_value",
     "optimal_giron_mm",
 ]

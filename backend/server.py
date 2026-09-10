@@ -13,10 +13,14 @@ import boto3
 
 from stair_engine import (
     DTU_36_3_FR,
+    HalfTurnInput,
     QuarterTurnBottomInput,
+    QuarterTurnTopInput,
     StairInput,
     StairResult,
+    compute_half_turn,
     compute_quarter_turn_bottom,
+    compute_quarter_turn_top,
     compute_straight,
 )
 
@@ -102,6 +106,18 @@ async def calculate_quarter_turn_bottom(payload: QuarterTurnBottomInput) -> Stai
     return compute_quarter_turn_bottom(payload)
 
 
+@api_router.post("/calculate/quarter-turn-top", response_model=StairResult)
+async def calculate_quarter_turn_top(payload: QuarterTurnTopInput) -> StairResult:
+    """Calcule un escalier quart tournant haut (mode 'balanced' ou 'straight')."""
+    return compute_quarter_turn_top(payload)
+
+
+@api_router.post("/calculate/half-turn", response_model=StairResult)
+async def calculate_half_turn(payload: HalfTurnInput) -> StairResult:
+    """Calcule un escalier demi-tournant (mode 'balanced' ou 'straight')."""
+    return compute_half_turn(payload)
+
+
 @api_router.get("/norms/fr")
 async def get_norms_fr():
     """Retourne les seuils DTU 36.3 utilisés par le moteur (structure configurable)."""
@@ -119,8 +135,8 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_credentials=False,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
