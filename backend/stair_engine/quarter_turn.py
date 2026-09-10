@@ -18,7 +18,69 @@ def compute_quarter_turn_bottom(
     Deux modes :
       - "straight"  : palier bas rectangulaire + volée droite au-dessus.
       - "balanced"  : marches balancées dans le quart + volée droite au-dessus.
+
+    En mode balanced avec `num_winders="auto"`, on essaie 7, 6, 5, 4, 3 winders et
+    on retient la première configuration `is_buildable=True`. Sinon, on retourne
+    la meilleure configuration (celle avec le moins d'alertes rouges).
     """
+    if inp.balancing == "balanced" and inp.num_winders == "auto":
+        return _compute_balanced_auto(inp, norms)
+    return _compute_qt_single(inp, norms)
+
+
+def _compute_balanced_auto(
+    base_inp: QuarterTurnBottomInput, norms: StairNorms
+) -> StairResult:
+    """Essaie plusieurs valeurs de num_winders (3→9 croissant) et renvoie la 1ère buildable.
+
+    On privilégie le MINIMUM de winders qui rend l'escalier constructible.
+    Ainsi on maximise le confort (ligne de foulée) et on garde autant que possible
+    des marches droites pour la conformité DTU.
+    """
+    candidates = [3, 4, 5, 6, 7, 8, 9]
+    best_result: StairResult | None = None
+    best_red_count = float("inf")
+    for n in candidates:
+        trial_inp = base_inp.model_copy(update={"num_winders": n})
+        result = _compute_qt_single(trial_inp, norms)
+        if result.is_buildable:
+            result.alerts.insert(
+                0,
+                Alert(
+                    level="green",
+                    code="AUTO_WINDERS_SELECTED",
+                    message_fr=(
+                        f"Répartition automatique : {n} marches balancées "
+                        "(minimum permettant à l'escalier de rentrer dans l'espace disponible)."
+                    ),
+                    metric="num_winders",
+                    value=float(n),
+                ),
+            )
+            return result
+        red_count = sum(1 for a in result.alerts if a.level == "red")
+        if red_count < best_red_count:
+            best_red_count = red_count
+            best_result = result
+    # Aucune configuration OK : renvoyer la meilleure
+    if best_result is not None:
+        best_result.alerts.insert(
+            0,
+            Alert(
+                level="red",
+                code="AUTO_WINDERS_NO_SOLUTION",
+                message_fr=(
+                    "Aucune répartition de marches balancées (3 à 9) ne satisfait les contraintes "
+                    "géométriques. Configuration retournée : celle avec le moins d'alertes rouges."
+                ),
+            ),
+        )
+    return best_result  # type: ignore[return-value]
+
+
+def _compute_qt_single(
+    inp: QuarterTurnBottomInput, norms: StairNorms = DTU_36_3_FR
+) -> StairResult:
     alerts_all: List[Alert] = []
 
     # 1. Nombre total de marches et hauteur de marche
@@ -178,8 +240,7 @@ def compute_quarter_turn_bottom(
         )
 
     # is_buildable
-    has_red = any(a.level == "red" for a in alerts_all)
-    is_buildable = not has_red
+    is_buildable = A.compute_is_buildable(alerts_all)
 
     # OPTIMAL
     opt_alert = A.check_optimal(blondel, slope_deg, norms)
@@ -300,7 +361,7 @@ def _compute_balanced_mode(
     alerts_all: List[Alert],
     treads: List[TreadDetail],
 ) -> dict:
-    num_winders = inp.num_winders
+    num_winders = inp.num_winders if isinstance(inp.num_winders, int) else 5
     walkline = inp.walkline_offset_mm
     inner_radius = inp.inner_radius_mm
 

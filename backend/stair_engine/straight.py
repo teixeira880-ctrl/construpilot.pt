@@ -205,8 +205,7 @@ def compute_straight(
         )
 
     # 6. is_buildable
-    has_red = any(a.level == "red" for a in alerts_all)
-    is_buildable = not has_red
+    is_buildable = A.compute_is_buildable(alerts_all)
 
     # 7. Optimal config (vert)
     opt_alert = A.check_optimal(blondel, slope_deg, norms)

@@ -1,27 +1,54 @@
 """Système d'alertes STAIRPILOT.
 
 Codes minimum :
-    - HEADROOM_INSUFFICIENT (rouge, échappée < 1.90m)
-    - STAIRWELL_TOO_SMALL (rouge, trémie incompatible)
-    - BLONDEL_OUT_OF_RANGE (rouge <580 ou >660, orange 580-600 ou 640-660)
-    - RISER_TOO_HIGH (rouge >200, orange >180)
-    - RISER_TOO_LOW (orange <150)
-    - TREAD_TOO_SMALL (rouge <220, orange <250)
-    - SLOPE_TOO_STEEP (rouge >40°, orange >35°)
-    - STAIR_RUN_TOO_LONG (rouge, ne rentre pas dans available_length)
-    - STAIR_WIDTH_TOO_SMALL (orange <700)
-    - BALANCING_IMPOSSIBLE (rouge, contraintes winders incompatibles)
-    - BALANCING_INNER_TOO_SMALL (orange, giron intérieur < 100)
-    - BALANCING_WALKLINE_TOO_SMALL (rouge, giron ligne de foulée < 240)
-    - GEOMETRY_OK (vert, tout est dans les clous)
-    - OPTIMAL_CONFIG (vert, Blondel 620-640 + pente 28-33°)
+    - HEADROOM_INSUFFICIENT (rouge, échappée < 1.90m) — blocker géométrique
+    - STAIRWELL_TOO_SMALL (rouge, trémie incompatible) — blocker géométrique
+    - STAIR_RUN_TOO_LONG (rouge, ne rentre pas dans available_length) — blocker
+    - STAIR_WIDTH_INSUFFICIENT (rouge, ne rentre pas en largeur) — blocker
+    - GEOMETRY_INVALID (rouge) — blocker
+    - BALANCING_IMPOSSIBLE (rouge) — blocker
+    - BLONDEL_OUT_OF_RANGE (rouge/orange) — non-conformité DTU (n'empêche pas la construction)
+    - RISER_TOO_HIGH (rouge/orange) — non-conformité DTU
+    - RISER_TOO_LOW (orange)
+    - TREAD_TOO_SMALL (rouge/orange) — non-conformité DTU
+    - SLOPE_TOO_STEEP (rouge/orange) — non-conformité DTU
+    - STAIR_WIDTH_TOO_SMALL (orange)
+    - BALANCING_INNER_TOO_SMALL (orange)
+    - BALANCING_WALKLINE_TOO_SMALL (rouge) — non-conformité DTU
+    - GEOMETRY_OK (vert)
+    - OPTIMAL_CONFIG (vert)
+    - AUTO_WINDERS_SELECTED (vert)
+    - AUTO_WINDERS_NO_SOLUTION (rouge) — blocker
 """
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from .models import Alert
 from .norms_fr import DTU_36_3_FR, StairNorms
+
+
+# Codes qui bloquent physiquement la construction. Les autres alertes rouges sont
+# des non-conformités DTU (à corriger mais l'escalier peut être coulé).
+BLOCKING_CODES: Set[str] = {
+    "STAIR_RUN_TOO_LONG",
+    "STAIR_WIDTH_INSUFFICIENT",
+    "STAIRWELL_TOO_SMALL",
+    "HEADROOM_INSUFFICIENT",
+    "GEOMETRY_INVALID",
+    "BALANCING_IMPOSSIBLE",
+    "AUTO_WINDERS_NO_SOLUTION",
+}
+
+
+def is_alert_blocking(alert: Alert) -> bool:
+    """True si l'alerte empêche physiquement la construction."""
+    return alert.level == "red" and alert.code in BLOCKING_CODES
+
+
+def compute_is_buildable(alerts: List[Alert]) -> bool:
+    """is_buildable = aucun blocker géométrique/sécurité."""
+    return not any(is_alert_blocking(a) for a in alerts)
 
 
 def check_blondel(blondel_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]:

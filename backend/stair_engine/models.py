@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 AlertLevel = Literal["red", "orange", "green"]
@@ -20,11 +20,19 @@ class Alert(BaseModel):
 
     level: AlertLevel
     code: str
+    message: str = ""       # message FR peuplé automatiquement depuis message_fr si vide
     message_fr: str
     metric: Optional[str] = None
     value: Optional[float] = None
     threshold: Optional[float] = None
     tread_index: Optional[int] = None  # utilisé pour HEADROOM et winders
+
+    @model_validator(mode="after")
+    def _fill_message(self) -> "Alert":
+        if not self.message:
+            # Pydantic v2: setattr bypass frozen; ok here (not frozen)
+            object.__setattr__(self, "message", self.message_fr)
+        return self
 
 
 class TreadDetail(BaseModel):
@@ -87,9 +95,20 @@ class QuarterTurnBottomInput(StairInput):
     steps_before_landing: int = Field(default=0, ge=0, le=10)
 
     # Mode "balanced" (marches balancées)
-    num_winders: int = Field(default=3, ge=2, le=6)
+    num_winders: Union[int, Literal["auto"]] = "auto"
     walkline_offset_mm: float = Field(default=500, gt=0, le=2000)
     inner_radius_mm: float = Field(default=0, ge=0, le=1000)
+
+    @field_validator("num_winders")
+    @classmethod
+    def _check_num_winders(cls, v):
+        if isinstance(v, str):
+            if v != "auto":
+                raise ValueError("num_winders doit être un int ou 'auto'")
+            return v
+        if not (2 <= v <= 9):
+            raise ValueError("num_winders doit être entre 2 et 9")
+        return v
 
 
 class StairResult(BaseModel):

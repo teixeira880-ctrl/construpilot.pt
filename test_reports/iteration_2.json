@@ -1,0 +1,38 @@
+{
+  "summary": "STAIRPILOT Phase 0 backend iteration 2 validated against public preview URL https://5668c919-dc01-48f6-afa8-90d3e1731ac6.preview.emergentagent.com. All 28 unit tests + 7 new integration tests pass (35/35). All three iteration-2 fixes are working: (1) preview URL now serves API correctly (200 on /api/norms/fr and /api/openapi.json); (2) num_winders default='auto' iterates 3→9 and returns first buildable config (returned 8 winders for the QT bas review case, is_buildable=true); (3) every alert now carries a non-empty 'message' field auto-filled from message_fr. Blocker vs DTU non-conformity semantics verified: STAIR_RUN_TOO_LONG => is_buildable=false; BALANCING_WALKLINE_TOO_SMALL (num_winders=5) => is_buildable=true when run fits.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_stair_engine.py",
+    "/app/backend/tests/test_api_integration.py",
+    "/app/test_reports/pytest/all_tests.xml",
+    "/app/test_reports/pytest/api_integration.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: le module 'boto3' + configuration Tigris est chargé à l'import mais n'est utilisé nulle part dans les routes actives — dépendance morte à supprimer ou à câbler avant Phase 1 pour éviter de shipper des credentials/endpoint non exercés.",
+    "server.py: usage de @app.on_event('shutdown') est déprécié en FastAPI récents — préférer un lifespan context manager pour rester à jour.",
+    "stair_engine/alerts.py: Alert() utilise object.__setattr__ dans le model_validator — fonctionne car le modèle n'est pas frozen mais un simple 'self.message = self.message_fr' serait équivalent et plus lisible.",
+    "Un choix design worth-flagging (non-bug): mode auto num_winders retourne la première config qui *physiquement* rentre, même si elle viole DTU (ex: 8 winders sur L=3000 donne walkline≈98mm << 240mm). is_buildable=true est cohérent avec la sémantique documentée mais l'utilisateur final peut être surpris — envisager d'introduire un mode 'auto_dtu_compliant' ou de préférer la config DTU-conforme la plus proche."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_api_integration.py"
+  ],
+  "success_rate": {
+    "backend": "100% (35/35 pytest tests, 7/7 integration tests via public URL)",
+    "frontend": "skipped per request (backend only)"
+  },
+  "seed_data_creation": "None. Tests are stateless (no DB writes).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public preview URL confirmed: https://5668c919-dc01-48f6-afa8-90d3e1731ac6.preview.emergentagent.com. mobile/.env additionally exposes https://escalier-pro.preview.emergentagent.com which also serves the same backend. Integration tests live in /app/backend/tests/test_api_integration.py and can be reused. Note: BALANCING_WALKLINE_TOO_SMALL, SLOPE_TOO_STEEP, BLONDEL_OUT_OF_RANGE, RISER_TOO_HIGH, TREAD_TOO_SMALL are red DTU alerts but NON-blocking (is_buildable=true). Blockers: STAIR_RUN_TOO_LONG, HEADROOM_INSUFFICIENT, STAIR_WIDTH_INSUFFICIENT, STAIRWELL_TOO_SMALL, BALANCING_IMPOSSIBLE, AUTO_WINDERS_NO_SOLUTION, GEOMETRY_INVALID.",
+  "rca_of_issue": "N/A — no bugs found in iteration 2. All three fixes reported by main agent were verified as working."
+}

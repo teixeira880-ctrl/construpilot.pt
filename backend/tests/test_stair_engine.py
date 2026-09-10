@@ -193,7 +193,7 @@ def test_09_qt_bottom_balanced_ok():
 
 
 def test_10_qt_bottom_balanced_tight_walkline_fails():
-    """QT bas balanced avec walkline_offset faible → BALANCING_WALKLINE_TOO_SMALL."""
+    """QT bas balanced avec walkline_offset faible → BALANCING_WALKLINE_TOO_SMALL (non-conformité DTU)."""
     r = compute_quarter_turn_bottom(
         QuarterTurnBottomInput(
             floor_height_mm=2800,
@@ -207,6 +207,7 @@ def test_10_qt_bottom_balanced_tight_walkline_fails():
     )
     # walkline = 200 * π/8 ≈ 78.5 → < 240
     assert "BALANCING_WALKLINE_TOO_SMALL" in _alert_codes(r)
+    # Le run 900 + 11*280 = 3980 > 3500 → aussi STAIR_RUN_TOO_LONG (blocker)
     assert r.is_buildable is False
 
 
@@ -407,3 +408,121 @@ def test_24_riser_too_high_alert():
     # ou 3800/22 = 172.7 (optimal). Il choisira 22 marches.
     assert r.num_steps in range(21, 24)
     assert 160 <= r.riser_height_mm <= 180
+
+
+def test_25_qt_bottom_auto_winders_tight_run():
+    """QT bas H=2800/L=3000/W=2200 avec num_winders='auto' doit trouver une config buildable."""
+    r = compute_quarter_turn_bottom(
+        QuarterTurnBottomInput(
+            floor_height_mm=2800,
+            available_length_mm=3000,
+            available_width_mm=2200,
+            stair_width_mm=900,
+            stairwell_length_mm=2800,
+            stairwell_width_mm=1000,
+            ceiling_height_mm=2800,
+            balancing="balanced",
+            # num_winders omitted → défaut auto
+        )
+    )
+    assert r.is_buildable is True, (
+        f"Attendu buildable=True, obtenu {r.is_buildable}, alerts={[a.code for a in r.alerts]}"
+    )
+    # Sélection auto doit être signalée
+    auto_alerts = [a for a in r.alerts if a.code == "AUTO_WINDERS_SELECTED"]
+    assert len(auto_alerts) == 1
+    winders_used = int(auto_alerts[0].value)
+    # Contraint géométrique : L=3000 impose de nombreux winders (typiquement 6-9)
+    assert 6 <= winders_used <= 9, f"Nb winders sélectionné = {winders_used}"
+    # Encombrement doit rentrer
+    footprint = r.required_stairwell_mm["turn_footprint_length_mm"] + r.required_stairwell_mm["min_length_mm"]
+    assert footprint <= 3000 + 1  # tolérance arrondi
+
+
+def test_26_all_alerts_have_message():
+    """Toutes les alertes retournées doivent avoir un champ `message` non-vide."""
+    scenarios = [
+        # Scenario nominal
+        compute_straight(
+            StairInput(
+                floor_height_mm=2800,
+                available_length_mm=4500,
+                available_width_mm=1500,
+                stair_width_mm=900,
+                stairwell_length_mm=3200,
+                stairwell_width_mm=1000,
+                ceiling_height_mm=2800,
+            )
+        ),
+        # Scenario avec plusieurs alertes rouges
+        compute_straight(
+            StairInput(
+                floor_height_mm=2800,
+                available_length_mm=2000,
+                available_width_mm=1500,
+                stair_width_mm=600,
+                stairwell_length_mm=1000,
+                stairwell_width_mm=500,
+                ceiling_height_mm=2400,
+            )
+        ),
+        # QT bas
+        compute_quarter_turn_bottom(
+            QuarterTurnBottomInput(
+                floor_height_mm=2800,
+                available_length_mm=3000,
+                available_width_mm=2200,
+                stair_width_mm=900,
+                balancing="balanced",
+            )
+        ),
+    ]
+    for r in scenarios:
+        assert len(r.alerts) > 0
+        for a in r.alerts:
+            assert a.message and a.message.strip(), f"Alerte {a.code} sans message: {a}"
+            assert a.message_fr and a.message_fr.strip(), f"Alerte {a.code} sans message_fr: {a}"
+            # message doit être identique à message_fr (auto-populated)
+            assert a.message == a.message_fr
+
+
+def test_27_qt_bottom_manual_winders_5():
+    """QT bas mode balanced avec num_winders=5 explicite."""
+    r = compute_quarter_turn_bottom(
+        QuarterTurnBottomInput(
+            floor_height_mm=2800,
+            available_length_mm=3500,
+            available_width_mm=2200,
+            stair_width_mm=900,
+            balancing="balanced",
+            num_winders=5,
+        )
+    )
+    winders = [t for t in r.treads if t.type == "winder"]
+    assert len(winders) == 5
+    # 5 winders sur 90° → 18° par winder
+    assert abs(winders[0].angle_deg - 18.0) < 0.1
+    # walkline = 500 * (π/2 / 5) = 500 * 0.314159 ≈ 157.08 → < 240 → alerte rouge non-blocker
+    assert "BALANCING_WALKLINE_TOO_SMALL" in _alert_codes(r)
+
+
+def test_28_num_winders_out_of_range_rejected():
+    """num_winders hors range 2-9 rejeté."""
+    with pytest.raises(ValidationError):
+        QuarterTurnBottomInput(
+            floor_height_mm=2800,
+            available_length_mm=3500,
+            available_width_mm=2200,
+            stair_width_mm=900,
+            balancing="balanced",
+            num_winders=15,  # trop élevé
+        )
+    with pytest.raises(ValidationError):
+        QuarterTurnBottomInput(
+            floor_height_mm=2800,
+            available_length_mm=3500,
+            available_width_mm=2200,
+            stair_width_mm=900,
+            balancing="balanced",
+            num_winders="wrong-string",
+        )
