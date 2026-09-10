@@ -72,16 +72,49 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
         })
     params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html,
               "attachments": attachments}
-    if cc:
-        params["cc"] = [cc]
     if reply_to:
         params["reply_to"] = reply_to
+    await unsuppress(to)
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
-        return {"ok": True, "id": resp.get("id")}
     except Exception as e:
         logger.error(f"Email+PDF send failed: {e}")
         raise
+    # Copie au pro envoyée SÉPARÉMENT : une adresse pro en liste de suppression (rebond) ne doit jamais
+    # bloquer la remise au client (Resend supprime tout le message si un destinataire cc est supprimé).
+    if cc and cc.lower() != (to or "").lower():
+        try:
+            await asyncio.to_thread(resend.Emails.send, {**params, "to": [cc], "subject": f"[Copie] {subject}"})
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Copie pro non envoyée ({cc}): {e}")
+    return {"ok": True, "id": resp.get("id")}
+
+
+async def unsuppress(email: str) -> bool:
+    """Retire l'adresse de la liste de suppression Resend (rebond antérieur) pour permettre la remise."""
+    if not email or not _configure():
+        return False
+    try:
+        res = await asyncio.to_thread(resend.Suppressions.list, {"limit": 100})
+        ids = [s["id"] for s in (res.get("data") or []) if (s.get("email") or "").lower() == email.lower()]
+        if ids:
+            await asyncio.to_thread(resend.Suppressions.remove, {"ids": ids})
+            logger.info(f"Suppression Resend levée pour {email}")
+            return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"unsuppress({email}) impossible: {e}")
+    return False
+
+
+async def email_last_event(email_id: str) -> str | None:
+    """Dernier événement Resend (delivered / bounced / suppressed / …) pour un e-mail envoyé."""
+    if not email_id or not _configure():
+        return None
+    try:
+        e = await asyncio.to_thread(resend.Emails.get, email_id)
+        return e.get("last_event")
+    except Exception:  # noqa: BLE001
+        return None
 
 
 BRAND = "#FF5A00"

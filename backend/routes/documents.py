@@ -1420,10 +1420,23 @@ async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_
 async def send_status(log_id: str, user=Depends(current_user)) -> dict:
     """État réel de l'envoi (traité en arrière-plan) : queued / sent / failed + cause lisible."""
     log = await db.quote_sends.find_one({"log_id": log_id, "user_id": user["user_id"]},
-                                        {"_id": 0, "email_status": 1, "error": 1, "email_via": 1, "client_email": 1})
+                                        {"_id": 0, "email_status": 1, "error": 1, "email_via": 1, "client_email": 1, "email_id": 1})
     if not log:
         raise HTTPException(404, "Envoi introuvable")
     err = log.get("error") or ""
+    if log.get("email_status") == "sent" and log.get("email_id"):
+        from engines.emailer import email_last_event
+        ev = await email_last_event(log["email_id"])
+        if ev in ("bounced", "complained", "suppressed", "failed", "delivery_delayed"):
+            causes = {"bounced": "adresse rejetée par le serveur du destinataire (rebond)",
+                      "suppressed": "adresse en liste de suppression Resend (rebond antérieur) — retirée automatiquement, renvoyez le devis",
+                      "complained": "destinataire a signalé un spam", "failed": "échec de remise", "delivery_delayed": "remise retardée"}
+            err = f"Resend : {causes.get(ev, ev)}"
+            log["email_status"] = "failed" if ev != "delivery_delayed" else "queued"
+            await db.quote_sends.update_one({"log_id": log_id}, {"$set": {"email_status": log["email_status"], "error": err, "last_event": ev}})
+            if ev in ("suppressed", "bounced"):
+                from engines.emailer import unsuppress
+                await unsuppress(log.get("client_email") or "")
     if "only send testing emails" in err or "own email address" in err or "resend.dev" in err:
         err = ("Expéditeur non configuré sur le serveur (SENDER_EMAIL absent ou domaine non vérifié chez Resend) : "
                "Resend n'autorise alors l'envoi qu'à votre propre adresse. Renseignez SENDER_EMAIL avec une adresse "
