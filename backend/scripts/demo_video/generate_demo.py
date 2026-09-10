@@ -1,10 +1,10 @@
-"""Gera o vídeo demo institucional ConstruPilot (PT-PT · ~180s · 1920x1080).
+"""Gera o vídeo demo institucional ConstruPilot (PT-PT · 1920x1080 · sincronia frame-perfect).
 
 Pipeline:
-  1. Narração PT-PT com gTTS (voz sintetizada Google, TLD .pt para PT-PT).
-  2. Captura de screencasts do preview autenticado com Playwright (record_video).
-  3. Trilha ambient gerada com ffmpeg (sines suaves) — sem dependência de CDN.
-  4. Compositing final: concat vídeo + mix narração+música → MP4 H.264 30fps.
+  1. Gera TODO o áudio (ElevenLabs 'João - Narrator' PT-PT) e mede a duração real de cada segmento.
+  2. Grava CADA cena Playwright separadamente, com duração = duração real do áudio correspondente.
+  3. Constrói intro/outro slates ffmpeg com duração = duração do áudio de intro/outro.
+  4. Compositing final: concat vídeo alinhado + concat áudio + mix música ambiente.
 
 Saída: /app/frontend/public/construpilot-demo.mp4
 """
@@ -24,72 +24,82 @@ PASSWORD = "uFuBb6Q5h1QUxCmc"
 TMP = Path("/tmp/demo_video")
 AUD = TMP / "audio"
 CLIPS = TMP / "clips"
-for d in (AUD, CLIPS):
+NORM = TMP / "norm"
+for d in (AUD, CLIPS, NORM):
     d.mkdir(parents=True, exist_ok=True)
 
 OUT = Path("/app/frontend/public/construpilot-demo.mp4")
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
+FONT_BOLD = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+FONT_REG  = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+
 # --------------------------------------------------------------------------
-# 1) Narração
+# SEGMENTOS — (nome, tipo, path_ou_None, texto)
+#   tipo "slate"      → visual gerado com ffmpeg (intro/outro)
+#   tipo "playwright" → visual capturado com Playwright em `path`
 # --------------------------------------------------------------------------
 SEGMENTS = [
-    ("intro", 5, "ConstruPilot. Da planta ao orçamento em minutos."),
-    ("b1", 18,
-     "Somos uma plataforma 100 por cento portuguesa para construção civil. "
+    ("intro", "slate", None,
+     "ConstruPilot. Da planta ao orçamento em minutos."),
+
+    ("b1", "playwright", "/",
+     "Somos uma plataforma cem por cento portuguesa para construção civil. "
      "Trezentos e vinte e dois trabalhos compostos, quarenta e três especialidades, "
      "sete mil linhas de composição — tudo com preços de mercado dois mil e vinte e seis."),
-    ("b2", 20,
+
+    ("b2", "playwright", "/login",
      "Descreva o seu projeto por voz, em português. A ConstruPilot transcreve "
      "a sua descrição e transforma-a num orçamento detalhado em segundos, "
      "com linhas orçamentadas pela biblioteca portuguesa."),
-    ("b3", 18,
+
+    ("b3", "playwright", "/photo",
      "Fotografe uma divisão. A inteligência artificial identifica paredes, pavimento, "
      "teto, janelas e sanitários — e propõe automaticamente os trabalhos recomendados."),
-    ("b4", 18,
+
+    ("b4", "playwright", "/biblioteca",
      "A biblioteca partilhada inclui piscinas em betão, canalização, pladur, "
      "isolamento, cobertura, e muito mais. Filtro por especialidade, três gamas de "
      "preços e coeficientes regionais para Lisboa, Porto, Algarve e Interior."),
-    ("b5", 18,
+
+    ("b5", "playwright", "/calculadoras",
      "As calculadoras cobrem azulejos, pladur, betão e isolamento. Introduza a área, "
      "escolha o tipo de assentamento e receba resultados em português."),
-    ("b6", 20,
+
+    ("b6", "playwright", "/planta",
      "Estude plantas em DWG, DXF ou PDF. A ConstruPilot mede paredes, vãos e "
      "sanitários automaticamente e aplica preços da biblioteca ao seu estudo."),
-    ("b7", 20,
+
+    ("b7", "playwright", "/orcamentos",
      "Crie um orçamento profissional em minutos: linhas com o seu preço, IVA seis, "
      "treze ou vinte e três por cento, assinatura eletrónica e envio por email."),
-    ("b8", 18,
+
+    ("b8", "playwright", "/dashboard",
      "O painel apresenta o volume de negócio assinado, faturado e por especialidade. "
      "Um CRM completo — clientes, obras, propostas e portal do cliente."),
-    ("b9", 18,
+
+    ("b9", "playwright", "/coach",
      "O Coach de obras responde em português, sempre. Dúvidas sobre licenças, IVA, "
      "materiais ou execução — resposta imediata, sem sair da aplicação."),
-    ("outro", 7, "ConstruPilot ponto p t. Construção inteligente, em português."),
+
+    ("outro", "slate", None,
+     "ConstruPilot ponto p t. Construção inteligente, em português."),
 ]
 
-
-FONT_BOLD = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
-FONT_REG = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
-
-
-def _tts_bytes_sync(text: str) -> bytes:
-    from gtts import gTTS
-    import io
-    buf = io.BytesIO()
-    gTTS(text=text, lang="pt", tld="pt", slow=False).write_to_fp(buf)
-    return buf.getvalue()
+# Buffer visual/áudio (segundos) por cena para respiração natural + evitar clipping
+VIDEO_TAIL = 0.35  # cauda visual extra a gravar (freeze/scroll) antes do corte exato
 
 
+# ==========================================================================
+# TTS · ElevenLabs (João - Narrator PT-PT europeu)
+# ==========================================================================
 def _tts_bytes_elevenlabs(text: str) -> bytes:
-    """ElevenLabs PT-PT nativo — voz 'João - Narrator'
-    (serene and expressive male narrator voice).
-    accent european · locale pt-PT · multilingual v2."""
+    """ElevenLabs PT-PT nativo — voz 'João - Narrator'."""
     from elevenlabs.client import ElevenLabs
     from elevenlabs import VoiceSettings
     client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
     stream = client.text_to_speech.convert(
-        voice_id="ID3DiXGPB7uwug5tZ3FB",           # João - Narrator · PT-PT
+        voice_id="ID3DiXGPB7uwug5tZ3FB",
         model_id="eleven_multilingual_v2",
         output_format="mp3_44100_128",
         text=text,
@@ -100,256 +110,301 @@ def _tts_bytes_elevenlabs(text: str) -> bytes:
     return b"".join(chunk for chunk in stream if chunk)
 
 
-async def _tts_bytes_openai(text: str) -> bytes:
-    from emergentintegrations.llm.openai import OpenAITextToSpeech
-    tts = OpenAITextToSpeech(api_key=os.environ["EMERGENT_LLM_KEY"])
-    return await tts.generate_speech(
-        text=text, model="tts-1-hd", voice="onyx",
-        response_format="mp3", speed=1.05,
+def _probe_duration(path: Path) -> float:
+    r = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=nw=1:nk=1", str(path)],
+        capture_output=True, text=True, check=True,
     )
+    return float(r.stdout.strip())
 
 
-async def build_narration() -> tuple[list[Path], str]:
+def build_narration() -> tuple[list[Path], list[float]]:
+    """Gera cada segmento como WAV (sem encoder delay do LAME), adiciona 250ms de
+    silêncio no fim para respiração natural, e mede a duração real.
+    Devolve (paths_wav, durations)."""
     files: list[Path] = []
-    provider = "elevenlabs_joao_narrator_pt_pt"
-    for name, dur, text in SEGMENTS:
-        mp3 = AUD / f"{name}.mp3"
-        data: bytes | None = None
-        if provider == "elevenlabs_joao_narrator_pt_pt":
-            try:
-                data = _tts_bytes_elevenlabs(text)
-            except Exception as e:
-                print(f"  [tts] ElevenLabs falhou ({type(e).__name__}) — fallback OpenAI onyx. {str(e)[:100]}")
-                provider = "openai_onyx (fallback)"
-        if data is None and "openai" in provider:
-            try:
-                data = await _tts_bytes_openai(text)
-            except Exception as e:
-                print(f"  [tts] OpenAI falhou ({type(e).__name__}) — fallback gTTS. {str(e)[:80]}")
-                provider = "gtts_pt (fallback)"
-        if data is None:
-            data = _tts_bytes_sync(text)
-        mp3.write_bytes(data)
-        padded = AUD / f"{name}_pad.mp3"
+    durs: list[float] = []
+    for name, _kind, _path, text in SEGMENTS:
+        raw_mp3 = AUD / f"{name}_raw.mp3"
+        wav = AUD / f"{name}.wav"
+        raw_mp3.write_bytes(_tts_bytes_elevenlabs(text))
+        # decode mp3 → WAV 44.1kHz stereo + 250ms de silêncio no fim
         subprocess.run([
-            "ffmpeg", "-y", "-i", str(mp3),
-            "-af", f"apad=whole_dur={dur}",
-            "-t", str(dur), "-ar", "44100", "-ac", "2",
-            str(padded)
+            "ffmpeg", "-y", "-i", str(raw_mp3),
+            "-af", "apad=pad_dur=0.25",
+            "-ar", "44100", "-ac", "2",
+            "-c:a", "pcm_s16le",
+            str(wav),
         ], check=True, capture_output=True)
-        files.append(padded)
-    return files, provider
+        d = _probe_duration(wav)
+        files.append(wav)
+        durs.append(d)
+        print(f"  · {name:>5s} · {d:6.2f}s · '{text[:60]}...'")
+    return files, durs
 
 
-# --------------------------------------------------------------------------
-# 2) Screencasts (uma sessão Playwright, navegando pelos 9 flows)
-# --------------------------------------------------------------------------
-FLOWS = [
-    # (path, dwell_seconds)
-    ("/",             23),
-    ("/login",        20),
-    ("/photo",        18),
-    ("/biblioteca",   18),
-    ("/calculadoras", 18),
-    ("/planta",       20),   # antes: /plan-takeoff (404) → corrigido
-    ("/orcamentos",   20),
-    ("/dashboard",    18),
-    ("/coach",        18),
-]
-
-
-async def capture_screencasts() -> list[Path]:
+# ==========================================================================
+# Playwright · uma cena por segmento web · duração = duração do áudio
+# ==========================================================================
+async def capture_scenes(target: dict[str, float]) -> dict[str, Path]:
+    """`target` = {seg_name: dur_seconds} para cenas 'playwright' apenas.
+    Devolve {seg_name: Path(webm)}."""
+    results: dict[str, Path] = {}
     async with async_playwright() as p:
         browser = await p.chromium.launch(
-            headless=True, executable_path="/usr/bin/google-chrome", args=["--no-sandbox"],
+            headless=True, executable_path="/usr/bin/google-chrome",
+            args=["--no-sandbox"],
         )
-        ctx = await browser.new_context(
-            viewport={"width": 1920, "height": 1080},
-            record_video_dir=str(CLIPS),
-            record_video_size={"width": 1920, "height": 1080},
-        )
-        page = await ctx.new_page()
 
-        # setup — flag skip do tour + cookies
-        await page.goto(BASE + "/login", wait_until="networkidle", timeout=25000)
-        await page.evaluate(
-            "localStorage.setItem('onboarding_skipped','1');"
-            "localStorage.setItem('cookies_accepted','1');"
-        )
-        # login
+        # -- 1) Auth setup (uma vez) ------------------------------------
+        ctx0 = await browser.new_context(viewport={"width": 1920, "height": 1080})
+        page0 = await ctx0.new_page()
         try:
-            await page.fill('[data-testid="login-email-input"]', EMAIL)
-            await page.fill('[data-testid="login-password-input"]', PASSWORD)
-            await page.click('button[type="submit"]')
-            await page.wait_for_timeout(4500)
-        except Exception:
-            pass
+            await page0.goto(BASE + "/login", wait_until="networkidle", timeout=25000)
+            await page0.evaluate(
+                "localStorage.setItem('onboarding_skipped','1');"
+                "localStorage.setItem('cookies_accepted','1');"
+            )
+            await page0.fill('[data-testid="login-email-input"]', EMAIL)
+            await page0.fill('[data-testid="login-password-input"]', PASSWORD)
+            await page0.click('button[type="submit"]')
+            await page0.wait_for_timeout(4500)
+        except Exception as e:
+            print(f"  [auth] warning: {type(e).__name__}: {str(e)[:120]}")
+        storage = await ctx0.storage_state()
+        await ctx0.close()
 
-        # navegar pelos flows (na MESMA página → gera 1 único vídeo do context)
-        for path, dwell in FLOWS:
+        # -- 2) Grava cada cena -----------------------------------------
+        for name, kind, path, _text in SEGMENTS:
+            if kind != "playwright":
+                continue
+            dur = target[name] + VIDEO_TAIL
+            scene_dir = CLIPS / name
+            for f in scene_dir.glob("*.webm"):
+                f.unlink()
+            scene_dir.mkdir(parents=True, exist_ok=True)
+            # b2 (página de login) sem sessão para mostrar o form; restante autenticada
+            state = None if name == "b2" else storage
+            ctx = await browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                record_video_dir=str(scene_dir),
+                record_video_size={"width": 1920, "height": 1080},
+                storage_state=state,
+            )
+            page = await ctx.new_page()
+            try:
+                await page.evaluate(
+                    "localStorage.setItem('onboarding_skipped','1');"
+                    "localStorage.setItem('cookies_accepted','1');"
+                )
+            except Exception:
+                pass
             try:
                 await page.goto(BASE + path, wait_until="networkidle", timeout=20000)
             except Exception:
                 pass
-            await page.wait_for_timeout(dwell * 1000)
 
-        # scroll leve na landing final para dar movimento
-        try:
-            await page.goto(BASE + "/", wait_until="networkidle", timeout=15000)
-            for _ in range(4):
-                await page.mouse.wheel(0, 300)
-                await page.wait_for_timeout(1500)
-        except Exception:
-            pass
+            # scroll suave para adicionar movimento durante toda a cena
+            target_ms = int(dur * 1000)
+            step_ms = 1400
+            elapsed = 0
+            while elapsed + step_ms < target_ms:
+                try:
+                    await page.mouse.wheel(0, 220)
+                except Exception:
+                    pass
+                await page.wait_for_timeout(step_ms)
+                elapsed += step_ms
+            if target_ms - elapsed > 0:
+                await page.wait_for_timeout(target_ms - elapsed)
 
-        await ctx.close()
+            await ctx.close()  # finaliza o webm
+            webms = sorted(scene_dir.glob("*.webm"))
+            if not webms:
+                raise RuntimeError(f"Cena {name}: webm não gerado.")
+            results[name] = webms[0]
+            probed = _probe_duration(webms[0])
+            print(f"  · {name} · {path:15s} · pedido {dur:5.2f}s · gravado {probed:5.2f}s")
+
         await browser.close()
+    return results
 
-    return sorted(CLIPS.glob("*.webm"))
 
-
-# --------------------------------------------------------------------------
-# 3) Trilha ambient (ffmpeg sines)
-# --------------------------------------------------------------------------
-def build_bg_music(total_seconds: int) -> Path:
+# ==========================================================================
+# Trilha ambient (ffmpeg sines)
+# ==========================================================================
+def build_bg_music(total_seconds: float) -> Path:
     bg = TMP / "bg_music.mp3"
+    t = max(1.0, total_seconds)
     subprocess.run([
         "ffmpeg", "-y",
-        "-f", "lavfi", "-i", f"sine=frequency=196:duration={total_seconds}",  # sol
-        "-f", "lavfi", "-i", f"sine=frequency=294:duration={total_seconds}",  # ré
-        "-f", "lavfi", "-i", f"sine=frequency=392:duration={total_seconds}",  # sol oitava
+        "-f", "lavfi", "-i", f"sine=frequency=196:duration={t:.3f}",
+        "-f", "lavfi", "-i", f"sine=frequency=294:duration={t:.3f}",
+        "-f", "lavfi", "-i", f"sine=frequency=392:duration={t:.3f}",
         "-filter_complex",
         "[0]volume=0.025[a];[1]volume=0.018[b];[2]volume=0.012[c];"
         "[a][b][c]amix=inputs=3:normalize=0[m];[m]afade=t=in:st=0:d=2,"
-        f"afade=t=out:st={total_seconds-2}:d=2[out]",
+        f"afade=t=out:st={max(0.0,t-2):.3f}:d=2[out]",
         "-map", "[out]", "-ar", "44100", "-ac", "2", "-b:a", "128k",
-        str(bg)
+        str(bg),
     ], check=True, capture_output=True)
     return bg
 
 
-# --------------------------------------------------------------------------
-# 4) Compositing final
-# --------------------------------------------------------------------------
-def compose(narration_files: list[Path], video_files: list[Path], bg_music: Path,
-            total_dur: int) -> None:
-    # concat narração
-    audios_txt = TMP / "audios.txt"
-    audios_txt.write_text("\n".join(f"file '{p}'" for p in narration_files))
-    narration = TMP / "narration.mp3"
-    subprocess.run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(audios_txt),
-        "-c:a", "libmp3lame", "-ar", "44100", "-ac", "2", str(narration)
-    ], check=True, capture_output=True)
-
-    # mix narração + música (-20dB música)
-    mixed = TMP / "mixed_audio.mp3"
-    subprocess.run([
-        "ffmpeg", "-y", "-i", str(narration), "-i", str(bg_music),
-        "-filter_complex",
-        "[1:a]volume=0.1[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0",
-        "-c:a", "libmp3lame", "-b:a", "192k", str(mixed)
-    ], check=True, capture_output=True)
-
-    # concat vídeos webm (transcode para mp4 30fps 1920x1080) + intro/outro
-    norm_dir = TMP / "norm"
-    norm_dir.mkdir(exist_ok=True)
-    norm_files = []
-    # ---- INTRO 2s ----
-    intro = TMP / "intro.mp4"
+# ==========================================================================
+# Compositing final · vídeo (11 clips normalizados) + áudio (11 segmentos)
+# ==========================================================================
+def make_slate(name: str, dur: float, primary_text: str,
+               secondary_text: str = "", tertiary_text: str = "") -> Path:
+    """Slate para intro/outro. Dur EXATA em segundos."""
+    out = NORM / f"clip_{name}.mp4"
+    filters = [
+        (f"drawtext=text='{primary_text}':fontcolor=0x10b981:fontsize=140:"
+         f"x=(w-text_w)/2:y=(h-text_h)/2-{60 if secondary_text else 0}:"
+         f"fontfile={FONT_BOLD}:alpha='if(lt(t,0.5),t*2,1)'"),
+    ]
+    if secondary_text:
+        filters.append(
+            f"drawtext=text='{secondary_text}':fontcolor=white:fontsize=48:"
+            f"x=(w-text_w)/2:y=(h-text_h)/2+70:fontfile={FONT_REG}:"
+            f"alpha='if(lt(t,0.8),0,if(lt(t,1.3),(t-0.8)*2,1))'"
+        )
+    if tertiary_text:
+        filters.append(
+            f"drawtext=text='{tertiary_text}':fontcolor=0x10b981:fontsize=42:"
+            f"x=(w-text_w)/2:y=(h-text_h)/2+150:fontfile={FONT_BOLD}:"
+            f"alpha='if(lt(t,1.3),0,if(lt(t,1.8),(t-1.3)*2,1))'"
+        )
+    vf = ",".join(filters)
     subprocess.run([
         "ffmpeg", "-y",
-        "-f", "lavfi", "-i", "color=c=0x0f172a:s=1920x1080:d=2:r=30",
-        "-vf",
-        f"drawtext=text='ConstruPilot':fontcolor=0x10b981:fontsize=140:"
-        f"x=(w-text_w)/2:y=(h-text_h)/2:fontfile={FONT_BOLD}:"
-        f"alpha='if(lt(t,0.5),t*2,1)'",
+        "-f", "lavfi", "-i", f"color=c=0x0f172a:s=1920x1080:d={dur:.3f}:r=30",
+        "-vf", vf,
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-        "-pix_fmt", "yuv420p", "-t", "2", "-an", str(intro),
+        "-pix_fmt", "yuv420p", "-t", f"{dur:.3f}", "-an", str(out),
     ], check=True, capture_output=True)
-    norm_files.append(intro)
+    return out
 
-    # ---- Screencasts normalizados ----
-    for i, v in enumerate(video_files):
-        out = norm_dir / f"clip_{i:02d}.mp4"
-        subprocess.run([
-            "ffmpeg", "-y", "-i", str(v),
-            "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,"
-                   "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=30",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
-            "-pix_fmt", "yuv420p", "-an", str(out)
-        ], check=True, capture_output=True)
-        norm_files.append(out)
 
-    # ---- OUTRO 3s ----
-    outro = TMP / "outro.mp4"
+def normalize_webm(webm: Path, dur: float, tag: str) -> Path:
+    """Escala/pad para 1920x1080@30fps, corta EXATAMENTE em `dur`s.
+    Se o webm for mais curto, faz freeze do último frame (tpad clone)."""
+    out = NORM / f"clip_{tag}.mp4"
+    # tpad estende com clone; -t garante corte exato
     subprocess.run([
-        "ffmpeg", "-y",
-        "-f", "lavfi", "-i", "color=c=0x0f172a:s=1920x1080:d=3:r=30",
+        "ffmpeg", "-y", "-i", str(webm),
         "-vf",
-        (f"drawtext=text='ConstruPilot':fontcolor=0x10b981:fontsize=120:"
-         f"x=(w-text_w)/2:y=(h-text_h)/2-140:fontfile={FONT_BOLD}:"
-         f"alpha='if(lt(t,0.5),t*2,1)',"
-         f"drawtext=text='Da planta ao orcamento em minutos':fontcolor=white:fontsize=48:"
-         f"x=(w-text_w)/2:y=(h-text_h)/2+20:fontfile={FONT_REG}:"
-         f"alpha='if(lt(t,1),0,if(lt(t,1.5),(t-1)*2,1))',"
-         f"drawtext=text='construpilot.pt':fontcolor=0x10b981:fontsize=42:"
-         f"x=(w-text_w)/2:y=(h-text_h)/2+110:fontfile={FONT_BOLD}:"
-         f"alpha='if(lt(t,1.5),0,if(lt(t,2),(t-1.5)*2,1))'"),
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-        "-pix_fmt", "yuv420p", "-t", "3", "-an", str(outro),
+        "scale=1920:1080:force_original_aspect_ratio=decrease,"
+        "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=30,"
+        f"tpad=stop_mode=clone:stop_duration=5",
+        "-t", f"{dur:.3f}",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+        "-pix_fmt", "yuv420p", "-an", str(out),
     ], check=True, capture_output=True)
-    norm_files.append(outro)
+    return out
 
+
+def compose(narration_files: list[Path], seg_durs: list[float],
+            web_webms: dict[str, Path]) -> tuple[float, float]:
+    # ---- 1) Vídeo: gerar 11 clips normalizados ----
+    print("→ Normalização de clips (frame-perfect)…")
+    norm_clips: list[Path] = []
+    for i, (name, kind, path, text) in enumerate(SEGMENTS):
+        dur = seg_durs[i]
+        if kind == "slate":
+            if name == "intro":
+                clip = make_slate("intro", dur, "ConstruPilot")
+            else:
+                clip = make_slate(
+                    "outro", dur,
+                    "ConstruPilot",
+                    "Da planta ao orcamento em minutos",
+                    "construpilot.pt",
+                )
+        else:
+            clip = normalize_webm(web_webms[name], dur, name)
+        norm_clips.append(clip)
+        d = _probe_duration(clip)
+        print(f"  · clip {name:>5s} · alvo {dur:5.2f}s · ffprobe {d:5.2f}s (Δ={d-dur:+.3f}s)")
+
+    # ---- 2) Concat vídeo ----
+    print("→ Concat vídeo…")
     clips_txt = TMP / "clips.txt"
-    clips_txt.write_text("\n".join(f"file '{p}'" for p in norm_files))
+    clips_txt.write_text("\n".join(f"file '{p}'" for p in norm_clips))
     silent = TMP / "silent.mp4"
     subprocess.run([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(clips_txt),
-        "-c", "copy", str(silent)
+        "-c", "copy", str(silent),
+    ], check=True, capture_output=True)
+    video_dur = _probe_duration(silent)
+
+    # ---- 3) Concat áudio (todos os 11 segmentos WAV em sequência, sem encoder delay) ----
+    print("→ Concat narração (WAV → sem drift)…")
+    audios_txt = TMP / "audios.txt"
+    audios_txt.write_text("\n".join(f"file '{p}'" for p in narration_files))
+    narration = TMP / "narration.wav"
+    subprocess.run([
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(audios_txt),
+        "-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2", str(narration),
+    ], check=True, capture_output=True)
+    narration_dur = _probe_duration(narration)
+
+    # ---- 4) Trilha ambient com a mesma duração ----
+    bg = build_bg_music(video_dur)
+
+    # ---- 5) Mix narração + música ambiente (WAV → AAC final) ----
+    print("→ Mix narração + música…")
+    mixed = TMP / "mixed.m4a"
+    subprocess.run([
+        "ffmpeg", "-y", "-i", str(narration), "-i", str(bg),
+        "-filter_complex",
+        "[1:a]volume=0.1[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0",
+        "-c:a", "aac", "-b:a", "192k", str(mixed),
     ], check=True, capture_output=True)
 
-    # combinar vídeo + áudio final (intro 2s antes → shift áudio; outro 3s no fim → audio termina antes)
-    # estratégia simples: prepend 2s de silêncio à mixed antes de merge
-    mixed_shift = TMP / "mixed_shift.mp3"
+    # ---- 6) Merge vídeo + áudio ----
+    print("→ Merge final…")
     subprocess.run([
-        "ffmpeg", "-y",
-        "-f", "lavfi", "-t", "2", "-i", "anullsrc=r=44100:cl=stereo",
-        "-i", str(mixed),
-        "-filter_complex", "[0:a][1:a]concat=n=2:v=0:a=1[out]",
-        "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k",
-        str(mixed_shift)
-    ], check=True, capture_output=True)
-
-    final_dur = 2 + total_dur + 3
-    subprocess.run([
-        "ffmpeg", "-y", "-i", str(silent), "-i", str(mixed_shift),
+        "ffmpeg", "-y", "-i", str(silent), "-i", str(mixed),
         "-c:v", "libx264", "-preset", "fast", "-crf", "23",
         "-c:a", "aac", "-b:a", "192k",
-        "-t", str(final_dur),
+        "-map", "0:v:0", "-map", "1:a:0",
         "-movflags", "+faststart",
-        str(OUT)
+        str(OUT),
     ], check=True, capture_output=True)
 
+    return video_dur, narration_dur
 
-# --------------------------------------------------------------------------
+
+# ==========================================================================
 async def main() -> None:
-    total = sum(dur for _, dur, _ in SEGMENTS)
-    print(f"→ Duração alvo: {total}s")
-    print("→ Narração PT-PT…")
-    nar_files, tts_used = await build_narration()
-    print(f"  {len(nar_files)} segmentos gerados · TTS: {tts_used}")
-    print("→ Trilha ambient (ffmpeg sines)…")
-    bg = build_bg_music(total)
-    print("→ Screencasts Playwright…")
-    vids = await capture_screencasts()
-    print(f"  {len(vids)} clips capturados")
-    if not vids:
-        raise RuntimeError("Nenhum clip capturado — abortar.")
+    print("→ Narração PT-PT (João - Narrator)…")
+    nar_files, seg_durs = build_narration()
+    total_audio = sum(seg_durs)
+    print(f"  Total narração: {total_audio:.2f}s · {len(nar_files)} segmentos")
+
+    web_targets = {
+        name: seg_durs[i]
+        for i, (name, kind, _p, _t) in enumerate(SEGMENTS)
+        if kind == "playwright"
+    }
+    print(f"→ Screencasts Playwright ({len(web_targets)} cenas, cada uma = duração do áudio)…")
+    web_webms = await capture_scenes(web_targets)
+
     print("→ Compositing final ffmpeg…")
-    compose(nar_files, vids, bg, total)
-    size = OUT.stat().st_size
-    print(f"✓ OK: {OUT} ({size/1024/1024:.2f} MB) · TTS={tts_used}")
+    video_dur, narration_dur = compose(nar_files, seg_durs, web_webms)
+
+    size_mb = OUT.stat().st_size / 1024 / 1024
+    delta = video_dur - narration_dur
+    print("=" * 70)
+    print(f"✓ OK: {OUT} ({size_mb:.2f} MB)")
+    print(f"  video_dur    = {video_dur:.3f}s")
+    print(f"  audio_dur    = {narration_dur:.3f}s")
+    print(f"  sync delta   = {delta*1000:+.0f} ms")
+    print(f"  segmentos    = {len(seg_durs)}")
+    for i, (name, kind, path, _t) in enumerate(SEGMENTS):
+        print(f"    [{i:02d}] {name:>5s}  {seg_durs[i]:6.2f}s  {kind:10s}  {path or '(slate)'}")
 
 
 if __name__ == "__main__":
