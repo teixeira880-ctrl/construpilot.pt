@@ -6,8 +6,10 @@ sys.path.insert(0, "/app/backend")
 from dotenv import load_dotenv  # noqa: E402
 load_dotenv("/app/backend/.env")
 
-SHOTS = "/tmp/video/shots"
-WORK = "/tmp/video/work"
+SHOTS = "/app/backend/scripts/demo_video/work/shots"
+CLIPS = "/app/backend/scripts/demo_video/work/clips"
+META = json.load(open(f"{CLIPS}/meta.json")) if os.path.exists(f"{CLIPS}/meta.json") else {}
+WORK = "/app/backend/scripts/demo_video/work"
 OUT = "/app/frontend/public/docs"
 FONT_B = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
 FONT_R = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
@@ -195,17 +197,36 @@ def frame_portrait(src, dst):
     canvas.save(dst)
 
 
-def clip(img, audio, title, out, size):
+def _caption(w, h, tf):
+    fs = int(w * 0.026) if w > h else int(w * 0.042)
+    box_y = int(h * 0.055) if w > h else int(h * 0.14)
+    return (f"drawtext=fontfile={FONT_B}:textfile={tf}:fontsize={fs}:fontcolor=white:x={int(w*0.04)}:y={box_y}:"
+            f"box=1:boxcolor=0x04120a@0.78:boxborderw={int(fs*0.6)}")
+
+
+def clip(img, audio, title, out, size, video=None, offset=0.0):
+    """Scène = image fixe (zoom lent) ou enregistrement d'écran animé, ajusté à la durée de la voix off."""
     w, h = size
     dur = duration(audio) + 0.8
     tf = out + ".txt"
     open(tf, "w").write(title)
+    draw = _caption(w, h, tf)
+    fades = f"fade=t=in:st=0:d=0.4,fade=t=out:st={dur-0.4:.2f}:d=0.4,format=yuv420p"
+    if video:
+        avail = duration(video) - offset
+        speed = f"setpts=PTS/{avail / dur:.4f}," if avail > dur + 0.5 else ""  # accélère légèrement si trop long
+        if w > h:
+            vsrc = f"[0:v]trim=start={offset:.2f},setpts=PTS-STARTPTS,{speed}scale={w}:{h},tpad=stop_mode=clone:stop_duration=60,trim=0:{dur:.2f},setpts=PTS-STARTPTS,{draw},{fades}[v]"
+        else:
+            vsrc = (f"[0:v]trim=start={offset:.2f},setpts=PTS-STARTPTS,{speed}tpad=stop_mode=clone:stop_duration=60,trim=0:{dur:.2f},setpts=PTS-STARTPTS,split[a][b];"
+                    f"[a]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},boxblur=24:2,eq=brightness=-0.25[bg];"
+                    f"[b]scale=1020:-2[fg];[bg][fg]overlay=(W-w)/2:520,{draw},{fades}[v]")
+        sh(["ffmpeg", "-y", "-i", video, "-i", audio, "-filter_complex", f"{vsrc};[1:a]adelay=300|300,apad[a]",
+            "-map", "[v]", "-map", "[a]", "-t", f"{dur:.2f}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", "-r", "30", out])
+        return dur
     zoom = f"zoompan=z='min(zoom+0.0006,1.09)':d={int(dur * 30) + 1}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps=30"
-    fs = int(w * 0.026) if w > h else int(w * 0.042)
-    box_y = int(h * 0.055) if w > h else int(h * 0.14)
-    draw = (f"drawtext=fontfile={FONT_B}:textfile={tf}:fontsize={fs}:fontcolor=white:x={int(w*0.04)}:y={box_y}:"
-            f"box=1:boxcolor=0x04120a@0.78:boxborderw={int(fs*0.6)}")
-    vf = f"{zoom},{draw},fade=t=in:st=0:d=0.4,fade=t=out:st={dur-0.4:.2f}:d=0.4,format=yuv420p"
+    vf = f"{zoom},{draw},{fades}"
     sh(["ffmpeg", "-y", "-loop", "1", "-framerate", "30", "-i", img, "-i", audio,
         "-filter_complex", f"[0:v]{vf}[v];[1:a]adelay=300|300,apad[a]",
         "-map", "[v]", "-map", "[a]", "-t", f"{dur:.2f}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
@@ -229,12 +250,17 @@ def build(scenes, name, portrait=False):
     total += clip(intro_img, silence, t_full if len(scenes) > 12 else t_short, f"{d}/00_intro.mp4", size)
     parts.append(f"{d}/00_intro.mp4")
     for i, (slug, title, _) in enumerate(scenes, 1):
+        out = f"{d}/{i:02d}_{slug}.mp4"
+        vid = f"{CLIPS}/{slug}.webm"
+        if os.path.exists(vid):
+            total += clip(None, f"{WORK}/tts_{LANG}/{slug}.mp3", title, out, size, video=vid, offset=META.get(slug, 2.0))
+            parts.append(out)
+            continue
         src = f"{SHOTS}/{slug}.png"
         if portrait:
             src2 = f"{d}/{slug}_p.png"
             frame_portrait(src, src2)
             src = src2
-        out = f"{d}/{i:02d}_{slug}.mp4"
         total += clip(src, f"{WORK}/tts_{LANG}/{slug}.mp3", title, out, size)
         parts.append(out)
     total += clip(outro_img, silence, site, f"{d}/99_outro.mp4", size)

@@ -139,3 +139,4 @@ frontend/node_modules/.cache/default-development/1.pack_
 .env
 .env.*
 *.env
+backend/scripts/demo_video/work/
