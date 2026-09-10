@@ -8,7 +8,15 @@ load_dotenv("/app/backend/.env")
 
 SHOTS = "/app/backend/scripts/demo_video/work/shots"
 CLIPS = "/app/backend/scripts/demo_video/work/clips"
-META = json.load(open(f"{CLIPS}/meta.json")) if os.path.exists(f"{CLIPS}/meta.json") else {}
+META: dict = {}
+
+
+def use_clips(lang: str) -> None:
+    """Clips enregistrés avec l'interface dans la langue de la vidéo (clips_pt si dispo)."""
+    global CLIPS, META
+    cand = f"/app/backend/scripts/demo_video/work/clips_{lang}"
+    CLIPS = cand if lang != "fr" and os.path.exists(f"{cand}/meta.json") else "/app/backend/scripts/demo_video/work/clips"
+    META = json.load(open(f"{CLIPS}/meta.json")) if os.path.exists(f"{CLIPS}/meta.json") else {}
 WORK = "/app/backend/scripts/demo_video/work"
 OUT = "/app/frontend/public/docs"
 FONT_B = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
@@ -141,9 +149,14 @@ ELEVEN_VOICES = {"pt": os.environ.get("DEMO_VOICE_PT_ID", "ejarTsrf33xoVlH9hMuy"
 def tts_elevenlabs(text: str) -> bytes:
     from elevenlabs import ElevenLabs, VoiceSettings
     client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
-    gen = client.text_to_speech.convert(text=text, voice_id=ELEVEN_VOICES[LANG], model_id="eleven_multilingual_v2",
-                                        output_format="mp3_44100_128",
-                                        voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.8, style=0.2, use_speaker_boost=True))
+    if LANG == "pt":  # voix plus vivante : Eleven v3 (expressif)
+        gen = client.text_to_speech.convert(text=text, voice_id=ELEVEN_VOICES[LANG], model_id="eleven_v3",
+                                            output_format="mp3_44100_128",
+                                            voice_settings=VoiceSettings(stability=0.3, similarity_boost=0.8, style=0.6, use_speaker_boost=True))
+    else:
+        gen = client.text_to_speech.convert(text=text, voice_id=ELEVEN_VOICES[LANG], model_id="eleven_multilingual_v2",
+                                            output_format="mp3_44100_128",
+                                            voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.8, style=0.2, use_speaker_boost=True))
     return b"".join(gen)
 
 
@@ -275,8 +288,10 @@ def build(scenes, name, portrait=False):
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
+    use_clips("fr")
     if which == "pt":
         LANG = "pt"
+        use_clips("pt")
         asyncio.run(tts_all(FULL_PT))
         build(SHORT_PT, "ConstruPilot_Demo_Curta_PT")
         build(SHORT_PT, "ConstruPilot_Demo_Curta_PT", portrait=True)

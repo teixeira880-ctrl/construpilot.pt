@@ -3,7 +3,8 @@ import asyncio, json, os, sys, glob, shutil, time
 from playwright.async_api import async_playwright
 
 BASE = open("/app/frontend/.env").read().split("REACT_APP_BACKEND_URL=")[1].split("\n")[0].strip()
-OUT = sys.argv[1] if len(sys.argv) > 1 else "/app/backend/scripts/demo_video/work/clips"
+LANG = os.environ.get("DEMO_LANG", "fr")
+OUT = sys.argv[1] if len(sys.argv) > 1 else f"/app/backend/scripts/demo_video/work/clips{'_pt' if LANG == 'pt' else ''}"
 ONLY = sys.argv[2].split(",") if len(sys.argv) > 2 else None
 EMAIL, PWD = "pro@construpilot.fr", "Pro2026!"
 CTX = json.loads(os.environ.get("CTX_IDS", "{}"))
@@ -95,11 +96,11 @@ async def s_estimation_form(a, p):
     await p.wait_for_timeout(1200)
     await a.click('[data-testid="select-project-type"]'); await p.wait_for_timeout(700)
     try:
-        opt = p.locator('[role="option"]', has_text="Piscine enterrée").first
+        opt = p.locator('[role="option"]', has_text="Piscin").first
         await opt.scroll_into_view_if_needed(timeout=3000); await p.wait_for_timeout(400)
-        await a.click('[role="option"]:has-text("Piscine enterrée")', ms=600, timeout=3000)
+        await a.click('[role="option"]:has-text("Piscin")', ms=600, timeout=3000)
     except Exception:
-        await p.keyboard.type("Piscine", delay=80); await p.keyboard.press("Enter")
+        await p.keyboard.type("Piscin", delay=80); await p.keyboard.press("Enter")
     await a.type('[data-testid="input-surface"]', "32", delay=140)
     await p.wait_for_timeout(600)
     await a.click('[data-testid="wizard-next-btn"]'); await p.wait_for_timeout(900)
@@ -133,7 +134,10 @@ async def s_piscine_result(a, p):
 
 async def s_smart_project(a, p):
     await p.wait_for_timeout(1200)
-    await a.type('[data-testid="smart-project-input"]', "Rénover une salle de bain de 8 m² : dépose du carrelage, douche à l'italienne, faïence murale, meuble vasque et peinture du plafond.", delay=28)
+    txt = ("Remodelar uma casa de banho de 8 m²: remoção do azulejo, base de duche, azulejo nas paredes, móvel de lavatório e pintura do teto."
+           if LANG == "pt" else
+           "Rénover une salle de bain de 8 m² : dépose du carrelage, douche à l'italienne, faïence murale, meuble vasque et peinture du plafond.")
+    await a.type('[data-testid="smart-project-input"]', txt, delay=28)
     await p.wait_for_timeout(500)
     b = await p.locator('[data-testid="smart-project-submit-btn"]').bounding_box()
     if b:
@@ -159,7 +163,7 @@ async def s_calculateurs(a, p):
 
 async def s_prix(a, p):
     await p.wait_for_timeout(1200)
-    await a.type('[data-testid="price-search-input"]', "carrelage", delay=90)
+    await a.type('[data-testid="price-search-input"]', "azulejo" if LANG == "pt" else "carrelage", delay=90)
     try:
         await a.click('[data-testid="price-search-btn"]')
     except Exception:
@@ -192,7 +196,7 @@ async def s_devis_editeur(a, p):
 async def s_bibliotheque(a, p):
     await p.wait_for_selector('[data-testid="library-search-input"]', timeout=25000)
     await p.wait_for_timeout(800)
-    await a.type('[data-testid="library-search-input"]', "peinture", delay=90)
+    await a.type('[data-testid="library-search-input"]', "pintura" if LANG == "pt" else "peinture", delay=90)
     await p.wait_for_timeout(1200); await a.scroll(400, 1500)
 
 async def s_devis_suivi(a, p):
@@ -290,7 +294,9 @@ async def run():
         cookies = [{"name": "session_token", "value": r.cookies.get("session_token") or token, "domain": host, "path": "/",
                     "httpOnly": True, "secure": True, "sameSite": "Lax", "expires": time.time() + 6 * 24 * 3600}]
         ls = [{"name": "construpilot_token", "value": token},
-              {"name": "cp_cookie_consent", "value": json.dumps({"analytics": True, "ads": True, "ts": int(time.time() * 1000)})}]
+              {"name": "cp_cookie_consent", "value": json.dumps({"analytics": True, "ads": True, "ts": int(time.time() * 1000)})},
+              {"name": "construpilot_lang", "value": LANG}]
+        httpx.put(f"{BASE}/api/auth/language", json={"lang": LANG}, headers={"Authorization": f"Bearer {token}"}, timeout=30)
         state = {"cookies": cookies, "origins": [{"origin": BASE, "localStorage": ls}]}
         anon_state = {"cookies": [], "origins": [{"origin": BASE, "localStorage": ls[1:]}]}
         print("login api ok")
@@ -341,6 +347,7 @@ async def run():
                 shutil.move(vids[0], f"{OUT}/{slug}.webm")
             json.dump(meta, open(meta_path, "w"))
         await browser.close()
+        httpx.put(f"{BASE}/api/auth/language", json={"lang": "fr"}, headers={"Authorization": f"Bearer {token}"}, timeout=30)
 
 
 asyncio.run(run())
