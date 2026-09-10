@@ -47,8 +47,8 @@ export default function HomeScreen() {
         testID={`project-card-${item.id}`}
         activeOpacity={0.7}
         onPress={() => router.push({
-          pathname: '/result',
-          params: { projectId: item.id },
+          pathname: '/form',
+          params: { type: item.type, projectId: item.id },
         })}
         onLongPress={() => handleDelete(item)}
         style={styles.card}

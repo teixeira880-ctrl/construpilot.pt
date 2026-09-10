@@ -1,0 +1,36 @@
+{
+  "summary": "STAIRPILOT Phase 1 iteration 2 bug fixes VALIDATED end-to-end. BACKEND: 61/61 pytest tests pass (32 unit engine + 10 pre-existing integration + 11 Phase 1 stair + 7 public-URL smoke + 1 CORS wildcard on norms route = 61 passed in 1.50s). No backend regression. MOBILE (Expo web preview): both fixes verified via Playwright on https://escalier-pro.expo.preview.emergentagent.com. BUG 1 (Persistence + Update) — passed: creating QT-bas 'Test QT bas tight' (H=2800, L=3000, W=2200, stair=900, tremie=2800x1000, ceiling=2800), returning Home, tapping the project card opens the Form in edit mode with URL '/form?type=quarter-turn-bottom&projectId=<uuid>' AND all 8 checked fields are correctly hydrated (name='Test QT bas tight', floor=2800, ceiling=2800, length=3000, width=2200, stair_width=900, tremie_length=2800, tremie_width=1000) — no default value 4500 leaking through. Updating length to 4500 and re-Calculer keeps a single card on Home (count=1, no duplicate), and tapping the card again shows length=4500 with the same name. BUG 2 (Banner is_buildable priority) — passed: QT-bas L=3000 balanced auto → banner ORANGE (bg=rgb(253,243,229)=warnBg, border=rgb(227,139,30)=warn) with label 'Constructible' and subtitle 'Constructible mais non-conforme DTU · 2 alertes rouges' (walkline + slope both red). Straight L=500 → banner RED (bg=rgb(253,236,236)=dangerBg, border=rgb(214,69,69)=danger) 'Non constructible / STAIR_RUN_TOO_LONG'. Straight L=5000 with tremie 3200x1000 and ceiling 2800 → banner GREEN (bg=rgb(233,245,238)=okBg, border=rgb(47,143,85)=ok) 'Constructible / Toutes les cotes respectent les seuils DTU 36.3'. No red screen, no console errors, no regression on the 4 screens + storage + SVG rendering.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_stair_engine.py",
+    "/app/backend/tests/test_phase1_stairs.py",
+    "/app/backend/tests/test_phase1_public_api.py",
+    "/app/backend/tests/test_api_integration.py",
+    "/app/test_reports/pytest/iteration_5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "storage.saveProject: when an id is provided but not found in storage, the code falls through to create a new project WITH the same id (input.id ?? uuid()). This is edge-case safe today (Form only passes existing projectId) but could resurrect a deleted project silently if the id is passed from another device. Consider throwing or logging when id is provided-but-missing.",
+    "form.tsx line ~403: num_winders parsing uses `parseInt(nw, 10) || 'auto'` — parseInt('0', 10) === 0 is falsy and silently becomes 'auto'. Backend rejects <3 anyway, but a stricter Number.isNaN check would surface user typos.",
+    "form.tsx useEffect on projectId: no dependency on 'router' or cleanup for concurrent navigations — fine for now but if the user rapidly taps two different cards a stale hydration could win. Extremely unlikely in practice."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (61/61 pytest)",
+    "frontend": "100% on validated criteria (BUG1 prefill, BUG1 update-no-duplicate, BUG2 orange, BUG2 red, BUG2 green)"
+  },
+  "seed_data_creation": "None. Fresh AsyncStorage cleared at start of every test run; projects created inside the test are cleaned by the storage.clear() at the next run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public URL mobile: https://escalier-pro.expo.preview.emergentagent.com — Public URL backend: https://escalier-pro.preview.emergentagent.com. No auth. Selectors: InputField testID is on the TextInput itself (renders as data-testid on the <input> element in web) — use `[data-testid=\"input-name\"]` directly (NOT `[data-testid=\"input-name\"] input`). Type-select cards use testID `type-card-<slug>` (slug ∈ straight | quarter-turn-bottom | quarter-turn-top | half-turn), NOT `type-<slug>`. Form router flow uses router.replace('/result'), so pressing back from Result lands on the previous /type-select (not /). To return home use `page.goto('/')`. Banner colors: dangerBg=rgb(253,236,236), warnBg=rgb(253,243,229), okBg=rgb(233,245,238). Border colors: danger=rgb(214,69,69), warn=rgb(227,139,30), ok=rgb(47,143,85). BUG1 fix works via saveProject({id: projectId, ...}) upsert in /app/mobile/src/storage.ts (matches by id → merges). BUG2 fix works via new statusColor / statusSubtitle logic in /app/mobile/app/result.tsx (is_buildable takes precedence over alert max-level).",
+  "rca_of_issue": "N/A — both bugs fixed by main agent; validation confirmed all 5 scenarios (prefill, update-no-duplicate, orange-buildable-nonDTU, red-nonbuildable, green-ok) behave exactly as specified in the review request."
+}

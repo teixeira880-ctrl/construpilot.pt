@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform,
   TouchableOpacity, ActivityIndicator, Alert as RNAlert,
@@ -11,7 +11,7 @@ import { colors, radius, spacing, typography } from '../src/theme';
 import type { StairType, QuarterTurnInput, HalfTurnInput, StairInput } from '../src/types';
 import { STAIR_TYPE_LABELS } from '../src/types';
 import { computeStair } from '../src/api';
-import { saveProject } from '../src/storage';
+import { getProject, saveProject } from '../src/storage';
 
 interface FormState {
   name: string;
@@ -63,14 +63,49 @@ function parseNum(v: string): number | undefined {
 
 export default function FormScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type: StairType }>();
+  const params = useLocalSearchParams<{ type: StairType; projectId?: string }>();
   const type = (params.type ?? 'straight') as StairType;
+  const projectId = params.projectId;
+  const isEditing = !!projectId;
   const isQt = type === 'quarter-turn-bottom' || type === 'quarter-turn-top';
   const isHalf = type === 'half-turn';
   const isTurn = isQt || isHalf;
 
   const [state, setState] = useState<FormState>(DEFAULT_STATE);
   const [loading, setLoading] = useState(false);
+  const [loadingProject, setLoadingProject] = useState(isEditing);
+
+  // Hydrate depuis un projet existant si projectId fourni
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const p = await getProject(projectId);
+      if (p) {
+        const inp = p.input as any;
+        setState({
+          name: p.name,
+          floor_height_mm: String(inp.floor_height_mm ?? ''),
+          ceiling_height_mm: inp.ceiling_height_mm != null ? String(inp.ceiling_height_mm) : '',
+          slab_thickness_mm: inp.slab_thickness_mm != null ? String(inp.slab_thickness_mm) : '200',
+          available_length_mm: String(inp.available_length_mm ?? ''),
+          available_width_mm: String(inp.available_width_mm ?? ''),
+          stair_width_mm: String(inp.stair_width_mm ?? ''),
+          tread_thickness_mm: inp.tread_thickness_mm != null ? String(inp.tread_thickness_mm) : '30',
+          has_risers: inp.has_risers ?? true,
+          stairwell_length_mm: inp.stairwell_length_mm != null ? String(inp.stairwell_length_mm) : '',
+          stairwell_width_mm: inp.stairwell_width_mm != null ? String(inp.stairwell_width_mm) : '',
+          stairwell_offset_mm: inp.stairwell_offset_mm != null ? String(inp.stairwell_offset_mm) : '',
+          direction: inp.direction ?? 'right',
+          balancing: inp.balancing ?? 'balanced',
+          num_winders: inp.num_winders != null ? String(inp.num_winders) : 'auto',
+          walkline_offset_mm: inp.walkline_offset_mm != null ? String(inp.walkline_offset_mm) : '500',
+          landing_length_mm: inp.landing_length_mm != null ? String(inp.landing_length_mm) : '',
+          landing_width_mm: inp.landing_width_mm != null ? String(inp.landing_width_mm) : '',
+        });
+      }
+      setLoadingProject(false);
+    })();
+  }, [projectId]);
 
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setState((s) => ({ ...s, [k]: v }));
@@ -87,6 +122,7 @@ export default function FormScreen() {
       const input = buildInput(type, state);
       const result = await computeStair(type, input);
       const project = await saveProject({
+        id: projectId,  // undefined = create new; string = update existing
         name: state.name || `${STAIR_TYPE_LABELS[type]} — ${state.floor_height_mm} mm`,
         type,
         input,
@@ -99,6 +135,14 @@ export default function FormScreen() {
       setLoading(false);
     }
   };
+
+  if (loadingProject) {
+    return (
+      <SafeAreaView edges={['bottom']} style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.container}>

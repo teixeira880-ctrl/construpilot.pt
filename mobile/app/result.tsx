@@ -49,20 +49,32 @@ export default function ResultScreen() {
   const input = project.input as any;
   const screenW = Dimensions.get('window').width - 2 * spacing.l;
 
-  const globalLevel: 'red' | 'orange' | 'green' =
-    r.alerts.some((a) => a.level === 'red')
-      ? 'red'
-      : r.alerts.some((a) => a.level === 'orange')
-        ? 'orange'
-        : 'green';
+  const nonBlockerReds = r.alerts.filter((a) => a.level === 'red');
+  const orangeAlerts = r.alerts.filter((a) => a.level === 'orange');
 
-  const statusLabel = r.is_buildable ? 'Constructible' : 'Non constructible';
-  const statusColor =
-    globalLevel === 'green' ? colors.ok :
-      globalLevel === 'orange' ? colors.warn : colors.danger;
-  const statusBg =
-    globalLevel === 'green' ? colors.okBg :
-      globalLevel === 'orange' ? colors.warnBg : colors.dangerBg;
+  // Le banner reflète is_buildable en priorité (constructibilité physique),
+  // pas la couleur d'alerte max. Si is_buildable=true mais alertes DTU rouges,
+  // on affiche vert avec un sous-titre explicite ("mais non-conforme DTU").
+  const statusColor = !r.is_buildable
+    ? colors.danger
+    : nonBlockerReds.length > 0
+      ? colors.warn
+      : orangeAlerts.length > 0
+        ? colors.warn
+        : colors.ok;
+  const statusBg = !r.is_buildable
+    ? colors.dangerBg
+    : nonBlockerReds.length > 0 || orangeAlerts.length > 0
+      ? colors.warnBg
+      : colors.okBg;
+  const statusLabel = !r.is_buildable ? 'Non constructible' : 'Constructible';
+  const statusSubtitle = !r.is_buildable
+    ? (r.alerts.find((a) => a.level === 'red')?.code ?? '—')
+    : nonBlockerReds.length > 0
+      ? `Constructible mais non-conforme DTU · ${nonBlockerReds.length} alerte${nonBlockerReds.length > 1 ? 's' : ''} rouge${nonBlockerReds.length > 1 ? 's' : ''}`
+      : orangeAlerts.length > 0
+        ? `${orangeAlerts.length} avertissement${orangeAlerts.length > 1 ? 's' : ''}`
+        : 'Toutes les cotes respectent les seuils DTU 36.3';
 
   const handleDuplicate = async () => {
     const dup = await duplicateProject(project.id);
@@ -86,9 +98,7 @@ export default function ResultScreen() {
           <View style={[styles.bannerDot, { backgroundColor: statusColor }]} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.bannerStatus, { color: statusColor }]}>{statusLabel}</Text>
-            <Text style={styles.bannerSub}>
-              {r.alerts[0]?.code || '—'} · {r.alerts.length} alerte{r.alerts.length > 1 ? 's' : ''}
-            </Text>
+            <Text style={styles.bannerSub}>{statusSubtitle}</Text>
           </View>
         </View>
 
@@ -137,7 +147,7 @@ export default function ResultScreen() {
             testID="edit-btn"
             label="Modifier dimensions"
             variant="secondary"
-            onPress={() => router.push({ pathname: '/form', params: { type: project.type } })}
+            onPress={() => router.push({ pathname: '/form', params: { type: project.type, projectId: project.id } })}
             fullWidth
           />
           <View style={{ height: spacing.s }} />
