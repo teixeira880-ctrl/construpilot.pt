@@ -88,3 +88,18 @@ export async function runOptimize(body: any): Promise<any> {
   }
   return await res.json();
 }
+
+export async function analyzeConcrete(body: any): Promise<any> {
+  const url = `${BASE}/api/concrete/analyze`;
+  const res = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = JSON.stringify((await res.json()).detail); } catch {}
+    throw new Error(`Erreur backend (HTTP ${res.status}). ${detail}`);
+  }
+  return await res.json();
+}

@@ -22,6 +22,7 @@ export default function RootLayout() {
         <Stack.Screen name="result" options={{ title: 'Résultat' }} />
         <Stack.Screen name="optimize" options={{ title: 'Optimisation auto' }} />
         <Stack.Screen name="compare" options={{ title: 'Comparateur' }} />
+        <Stack.Screen name="concrete" options={{ title: 'Analyse béton armé' }} />
       </Stack>
     </SafeAreaProvider>
   );

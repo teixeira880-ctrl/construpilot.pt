@@ -144,6 +144,14 @@ export default function ResultScreen() {
         {/* Actions */}
         <View style={styles.actions}>
           <Button
+            testID="concrete-btn"
+            label="Analyse béton armé"
+            variant="primary"
+            onPress={() => router.push({ pathname: '/concrete', params: { projectId: project.id } })}
+            fullWidth
+          />
+          <View style={{ height: spacing.s }} />
+          <Button
             testID="edit-btn"
             label="Modifier dimensions"
             variant="secondary"

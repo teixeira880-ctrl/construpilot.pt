@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 import boto3
 
 from stair_engine import (
+    ConcreteAnalysisInput,
+    ConcreteAnalysisResult,
     DTU_36_3_FR,
     HalfTurnInput,
     HelicoidalInput,
@@ -21,6 +23,7 @@ from stair_engine import (
     QuarterTurnTopInput,
     StairInput,
     StairResult,
+    compute_concrete_analysis,
     compute_half_turn,
     compute_helicoidal,
     compute_optimize,
@@ -133,6 +136,12 @@ async def calculate_helicoidal(payload: HelicoidalInput) -> StairResult:
 async def optimize_stair(payload: OptimizeInput) -> OptimizeResult:
     """Propose N solutions triées par pertinence."""
     return compute_optimize(payload)
+
+
+@api_router.post("/concrete/analyze", response_model=ConcreteAnalysisResult)
+async def concrete_analyze(payload: ConcreteAnalysisInput) -> ConcreteAnalysisResult:
+    """Analyse béton armé : métré + pré-dim paillasse + ferraillage indicatif (DTU 21)."""
+    return compute_concrete_analysis(payload)
 
 
 @api_router.get("/norms/fr")
