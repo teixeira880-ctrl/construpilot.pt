@@ -302,8 +302,6 @@ async def seed():
         if upd:
             await db.users.update_one({"email": third_admin_email}, {"$set": upd})
             logger.info("Compte admin tertiaire mis à jour : %s", third_admin_email)
-    # Nettoie tout verrou anti-brute-force résiduel pour ce compte (identifier = "{ip}:{email}").
-    await db.login_attempts.delete_many({"identifier": {"$regex": f":{third_admin_email}$"}})
 
     # Migration one-shot : rendus 3D embarqués → collection plan_renders_3d
     # (les images base64 dans plans_takeoff dépassaient la limite BSON 16 Mo).
