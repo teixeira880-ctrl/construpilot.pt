@@ -125,14 +125,47 @@ async def add_cost(doc_id: str, body: CostIn, user=Depends(current_user)) -> dic
             **body.model_dump(), "date": body.date or _now()[:10], "created_at": _now()}
     await db.job_costs.insert_one(dict(cost))
     cost.pop("_id", None)
+    await _check_overrun(doc_id, uid, user)
     return await list_costs(doc_id, user)
+
+
+async def _check_overrun(doc_id: str, uid: str, user) -> None:
+    """Alerte le pro (notification + e-mail) quand les achats réels dépassent le coût prévu au devis (chantier ouvert)."""
+    import uuid
+    q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": uid}, {"_id": 0})
+    if not q or q.get("job_finished_at") or q.get("cost_overrun_alerted_at"):
+        return
+    costs = await db.job_costs.find({"user_id": uid, "doc_id": doc_id}, {"_id": 0, "amount_ht": 1}).to_list(5000)
+    j = _job_view(q, costs)
+    if not j["quoted_cost_ht"] or j["real_cost_ht"] <= j["quoted_cost_ht"]:
+        return
+    over = round(j["real_cost_ht"] - j["quoted_cost_ht"], 2)
+    pct = round(over / j["quoted_cost_ht"] * 100, 1)
+    title = f"Dérive de coûts : {j['title']} — +{over:,.0f} € ({pct} %) au-dessus du devis".replace(",", " ")
+    await db.pro_documents.update_one({"doc_id": doc_id}, {"$set": {"cost_overrun_alerted_at": _now()}})
+    await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": uid, "type": "cost_overrun",
+                                       "doc_id": doc_id, "message": title, "created_at": _now(), "read": False})
+    try:
+        from engines.emailer import send_email, wrap_html
+        if user.get("email"):
+            html = (f"<h2>⚠️ Dérive de coûts sur un chantier</h2><p><b>{j['title']}</b>{(' · ' + j['client']) if j['client'] else ''}</p>"
+                    f"<ul><li>Coût prévu au devis : <b>{j['quoted_cost_ht']:,.2f} € HT</b></li>"
+                    f"<li>Achats réels saisis : <b>{j['real_cost_ht']:,.2f} € HT</b></li>"
+                    f"<li>Dépassement : <b style='color:#dc2626'>+{over:,.2f} € ({pct} %)</b></li>"
+                    f"<li>Marge réelle actuelle : <b>{j['margin_ht']:,.2f} € ({j['margin_pct']} %)</b></li></ul>"
+                    "<p>Consultez le rapport de rentabilité pour le détail des dépenses.</p>").replace(",", " ")
+            await send_email(user["email"], title, wrap_html(html))
+    except Exception:  # noqa: BLE001
+        pass
 
 
 @router.delete("/costs/{cost_id}")
 async def delete_cost(cost_id: str, user=Depends(current_user)) -> dict:
-    r = await db.job_costs.delete_one({"cost_id": cost_id, "user_id": user["user_id"]})
-    if not r.deleted_count:
+    c = await db.job_costs.find_one({"cost_id": cost_id, "user_id": user["user_id"]}, {"_id": 0, "doc_id": 1})
+    if not c:
         raise HTTPException(404, "Dépense introuvable")
+    await db.job_costs.delete_one({"cost_id": cost_id})
+    await db.pro_documents.update_one({"doc_id": c["doc_id"]}, {"$unset": {"cost_overrun_alerted_at": ""}})
     return {"ok": True}
 
 

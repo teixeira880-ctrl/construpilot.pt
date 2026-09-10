@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { api } from "@/lib/api";
+import { PriceHistoryPanel } from "@/components/admin/PriceHistoryPanel";
 
 export default function AdminSharedLibraryTab() {
   const [items, setItems] = useState([]);
@@ -140,6 +141,8 @@ export default function AdminSharedLibraryTab() {
           </Button>
         )}
       </div>
+
+      <PriceHistoryPanel refreshKey={total} />
 
       <div className="relative max-w-sm">
         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

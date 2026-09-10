@@ -70,8 +70,11 @@ async def _merge_import(content: bytes, filename: str, update_prices: bool = Fal
     if not rows:
         raise HTTPException(400, "Aucun ouvrage valide détecté dans le fichier.")
     existing = await db.shared_library_items.find(
-        {"$nor": [{"lang": "pt"}, {"country": "PT"}]}, {"_id": 0, "designation": 1, "unit": 1, "item_id": 1}).to_list(50000)
+        {"$nor": [{"lang": "pt"}, {"country": "PT"}]},
+        {"_id": 0, "designation": 1, "unit": 1, "item_id": 1, "price_low": 1, "price_mid": 1, "price_high": 1}).to_list(50000)
     by_key = {(_norm(e.get("designation", "")), (e.get("unit") or "").strip().lower()): e.get("item_id") for e in existing}
+    by_id = {e.get("item_id"): e for e in existing}
+    history = []
     seen = set(by_key)
     now = _now()
     docs = []
@@ -85,12 +88,20 @@ async def _merge_import(content: bytes, filename: str, update_prices: bool = Fal
                 upd = {k: r[k] for k in PRICE_FIELDS if r.get(k) is not None}
                 if upd:
                     upd["updated_at"] = now
+                    old = by_id.get(by_key[key]) or {}
+                    if any(old.get(f) != upd.get(f) for f in ("price_low", "price_mid", "price_high") if f in upd):
+                        history.append({"hist_id": "slh_" + secrets.token_hex(6), "item_id": by_key[key],
+                                        "designation": old.get("designation"), "unit": old.get("unit"), "at": now, "file": filename,
+                                        "old": {f: old.get(f) for f in ("price_low", "price_mid", "price_high")},
+                                        "new": {f: upd.get(f, old.get(f)) for f in ("price_low", "price_mid", "price_high")}})
                     await db.shared_library_items.update_one({"item_id": by_key[key]}, {"$set": upd})
                     updated += 1
             continue
         seen.add(key)
         docs.append({"item_id": "shl_" + secrets.token_hex(6), **r, "created_at": now, "updated_at": now})
     sample = [{k: v for k, v in d.items()} for d in docs[:5]]
+    if history:
+        await db.shared_library_price_history.insert_many(history)
     if docs:
         await db.shared_library_items.insert_many(docs)
     total = await db.shared_library_items.count_documents({})
@@ -273,3 +284,14 @@ async def export_library_xlsx():
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                              headers={"Content-Disposition": 'attachment; filename="ConstruPilot_FR_Bibliotheque_export.xlsx"'})
+
+
+@admin_router.get("/price-history")
+async def price_history(item_id: str = "", limit: int = 100, user=Depends(admin_user)) -> dict:
+    """Historique des variations de prix (après chaque import Excel « actualiser les prix »)."""
+    q = {"item_id": item_id} if item_id else {}
+    rows = await db.shared_library_price_history.find(q, {"_id": 0}).sort("at", -1).to_list(max(1, min(limit, 1000)))
+    for r in rows:
+        o, n = (r.get("old") or {}).get("price_mid"), (r.get("new") or {}).get("price_mid")
+        r["delta_pct"] = round((n - o) / o * 100, 1) if o and n is not None else None
+    return {"items": rows, "count": len(rows)}

@@ -4,6 +4,7 @@ import { BadgeCheck, FileText, Phone, Mail, Star, CheckCircle2, XCircle, PenLine
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api, API, eur2 } from "@/lib/api";
+import { ProjectSiteTracking } from "@/components/ProjectSiteTracking";
 
 const STATUS = { accepted: ["Accepté", "bg-emerald-500/15 text-emerald-700"], signed: ["Signé", "bg-emerald-500/15 text-emerald-700"],
   refused: ["Refusé", "bg-red-500/10 text-red-600"], issued: ["Reçu", "bg-primary/10 text-primary"], sent: ["Reçu", "bg-primary/10 text-primary"] };
@@ -89,6 +90,7 @@ export const ProjectArtisanSection = ({ project, onChange }) => {
       ) : (
         <p className="text-sm text-muted-foreground" data-testid="project-quotes-empty">L'artisan prépare votre devis : il apparaîtra ici dès son envoi.</p>
       )}
+      <ProjectSiteTracking projectId={project.project_id} acceptedQuote={a.accepted_quote} />
     </section>
   );
 };

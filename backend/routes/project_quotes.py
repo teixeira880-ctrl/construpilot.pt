@@ -170,3 +170,34 @@ async def project_quote_pdf(project_id: str, doc_id: str, user=Depends(current_u
                              lang=d.get("lang") or user.get("lang"))
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'inline; filename="devis_{d.get("number") or doc_id}.pdf"'})
+
+
+@router.get("/{project_id}/site")
+async def homeowner_site_tracking(project_id: str, user=Depends(current_user)) -> dict:
+    """Suivi de chantier vu par le particulier : comptes-rendus, photos, réserves et avancement du devis accepté."""
+    import re
+    p = await _owned_project(project_id, user)
+    block = await project_artisan_block(p)
+    acc = block.get("accepted_quote")
+    if not acc:
+        return {"accepted_quote": None, "progress": None, "reports": [], "reserves": [], "checklist": {"done": 0, "total": 0}}
+    pro = acc["pro_user_id"]
+    title = (acc.get("title") or "").strip()
+    match = {"user_id": pro, "$or": [{"doc_id": acc["doc_id"]}] + ([{"project": {"$regex": f"^{re.escape(title)}$", "$options": "i"}}] if title else [])}
+    reports = await db.site_reports.find(match, {"_id": 0, "user_id": 0}).sort("created_at", -1).to_list(50)
+    reserves = await db.site_reserves.find(match, {"_id": 0, "user_id": 0, "company_email": 0}).sort("created_at", -1).to_list(100)
+    checklist = await db.site_checklist.find(match, {"_id": 0, "done": 1}).to_list(500)
+    progress = None
+    for r in reports:
+        lots = [float(l.get("progress") or 0) for l in (r.get("lots") or []) if isinstance(l, dict)]
+        if lots:
+            progress = round(sum(lots) / len(lots))
+            break
+    if progress is None and checklist:
+        progress = round(sum(1 for c in checklist if c.get("done")) / len(checklist) * 100)
+    for r in reports:
+        r["photos"] = [f"/api/site/file?path={ph}" if ph and not str(ph).startswith(("http", "/api")) else ph for ph in (r.get("photos") or [])]
+    for r in reserves:
+        r["photos"] = [f"/api/site/file?path={ph}" if ph and not str(ph).startswith(("http", "/api")) else ph for ph in (r.get("photos") or [])]
+    return {"accepted_quote": acc, "progress": progress, "reports": reports, "reserves": reserves,
+            "checklist": {"done": sum(1 for c in checklist if c.get("done")), "total": len(checklist)}}

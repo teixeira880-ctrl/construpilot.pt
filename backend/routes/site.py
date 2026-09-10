@@ -58,6 +58,7 @@ def _uid(user):
 # ── Comptes-rendus de visite ──
 class ReportIn(BaseModel):
     project: str
+    doc_id: str | None = None
     title: str = ""
     notes: str = ""
     lots: list[dict] = []      # [{name, progress}]
@@ -91,6 +92,7 @@ async def delete_report(report_id: str, user=Depends(current_user)):
 # ── Réserves ──
 class ReserveIn(BaseModel):
     project: str
+    doc_id: str | None = None
     lot: str = ""
     description: str
     company: str = ""
@@ -138,6 +140,7 @@ async def delete_reserve(reserve_id: str, user=Depends(current_user)):
 # ── Checklist d'avancement ──
 class ChecklistIn(BaseModel):
     project: str
+    doc_id: str | None = None
     label: str
     lot: str = ""
 
