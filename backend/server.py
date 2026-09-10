@@ -156,6 +156,37 @@ async def api_openapi():
     return app.openapi()
 
 
+from stair_engine.pdf_dossier import generate_dossier_pdf
+from fastapi.responses import Response
+from pydantic import BaseModel
+
+
+class DossierRequest(BaseModel):
+    project_name: str
+    stair_input: dict
+    stair_result: dict
+    concrete_analysis: dict | None = None
+    author: str | None = None
+
+
+@api_router.post("/dossier/generate")
+async def dossier_generate(payload: DossierRequest):
+    pdf_bytes = generate_dossier_pdf(
+        project_name=payload.project_name,
+        stair_input=payload.stair_input,
+        stair_result=payload.stair_result,
+        concrete_analysis=payload.concrete_analysis,
+        author=payload.author,
+    )
+    safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in payload.project_name)[:40]
+    fname = f"stairpilot_{safe}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

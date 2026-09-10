@@ -1,0 +1,36 @@
+{
+  "summary": "STAIRPILOT Phase 4 P1+P2 — Both features validated end-to-end. BACKEND (public URL): 3/3 new pytest passing on /api/dossier/generate — (1) minimal payload → HTTP 200 + content-type=application/pdf + %PDF magic + 7.4KB, (2) with concrete_analysis → 21.7KB (bigger than minimal, > 10KB), (3) Content-Disposition: attachment; filename=...pdf with accents in project_name accepted. Existing unit tests test_phase4_pdf.py still 3/3. FRONTEND (Playwright, 390x844, Expo web): Home → new-project-btn → /type-select → type-card-straight → next-btn → /form?type=straight (name='TEST_droit', defaults floor=2800, ceiling=2800, slab=200, length=4500, width=1500, stair_width=900) → compute-btn → /result?projectId=UUID. Result screen: project-title, status-banner (Constructible, GEOMETRY_OK), all 8 KeyValue chiffres clés rendered correctly (Marches=16, Hauteur=175mm, Giron=280mm, Pente=33.69°, Blondel=630mm, Échappée=2275mm, Longueur volée=5047.77mm, Reculement=4200mm), section-tabs present with all 3 tabs (tab-section-long/trans/axial). Section SVG content changes per tab: long=13410 chars, trans=5181 chars, axial=6093 chars — 3 visually distinct SVGs confirmed by screenshots (long shows step profile, trans shows section transversale with rebars & 900mm width, axial shows béton armé indicative with HA principaux + chapeaux appui haut). NO crash / red screen when switching tabs. export-pdf-btn visible & clickable → fires POST /api/dossier/generate → 200 application/pdf → web blob download triggered → stairpilot_TEST_droit.pdf saved locally, 10725 bytes (>3KB required; includes concrete_analysis so >10KB expected).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "TouchableOpacity/Pressable (RNW)", "issue": "Recurring warnings 'props.pointerEvents is deprecated' and '\"shadow*\" style props deprecated. Use boxShadow' — non-blocking (react-native-web version). Same as iter 7."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase4_pdf.py (unit, 3/3)",
+    "/app/backend/tests/test_phase4_dossier_public.py (public API, 3/3)",
+    "/app/test_reports/pytest/iteration_8.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "mobile/src/pdf.ts uses `await import('expo-file-system')` inside a web branch guard — clean. Uses new API `File`/`Paths` from expo-file-system v19+ (Paths.cache + File.create/write). Confirm the installed expo-file-system version exposes File/Paths (only relevant on native; web branch is fine).",
+    "backend/server.py: DossierRequest uses `dict` for stair_input/stair_result — permissive but loses Pydantic validation. Consider typing them as StairInput / StairResult once the mobile payload shape is stable, to reject malformed dossier requests with a proper 422 instead of silently generating a PDF with missing fields.",
+    "result.tsx handleExportPDF calls analyzeConcrete synchronously before generateAndSharePDF — adds ~1-2s latency and requires a working /api/concrete/analyze even when the user only wants the geometry dossier. Consider making concrete_analysis truly optional (fire-and-forget or user toggle) — currently a failure of concrete API is swallowed which is OK, but success path always waits.",
+    "pdf.ts: EXPO_PUBLIC_BACKEND_URL is captured at module load; if the value is missing at build time the app will throw at click time only. A build-time guard would give faster feedback."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase4_dossier_public.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (3/3 new public tests + 3/3 unit tests on /api/dossier/generate)",
+    "frontend": "100% (create project → 3 SVG tabs render distinct content → export-pdf-btn triggers POST /api/dossier/generate → PDF blob download 10.7KB)"
+  },
+  "seed_data_creation": "localStorage cleared; 1 project 'TEST_droit' (straight, uuid 2d122a7b-...) created and persisted; 1 PDF written to /tmp/stairpilot_TEST_droit.pdf (10725 bytes).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public app URL: https://escalier-pro.expo.preview.emergentagent.com. Public API URL: https://escalier-pro.preview.emergentagent.com. Result screen testIDs: project-title, status-banner, kv-num-steps, plan-svg, section-tabs, tab-section-long|trans|axial, section-svg, alerts-list, concrete-btn, export-pdf-btn, edit-btn, duplicate-btn. Form testIDs found: input-name, compute-btn (dimension inputs use different naming — not input-<field_key>). Type-picker: type-card-straight + next-btn. On web the PDF download is a blob+anchor download (page.on('download') fires); on native, expo-sharing.shareAsync is used with expo-file-system File API. handleExportPDF also fetches /api/concrete/analyze BEFORE calling /api/dossier/generate — swallows errors, so a broken concrete endpoint would still allow PDF generation but with concrete_analysis=null (smaller PDF).",
+  "rca_of_issue": "N/A — Phase 4 P1 (PDF export) and P2 (3 section tabs) both meet spec."
+}

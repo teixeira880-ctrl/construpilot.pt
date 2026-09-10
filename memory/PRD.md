@@ -55,10 +55,20 @@ Le moteur de calcul est **100% déterministe** — aucune IA n'invente de cotes.
 - Ferraillage escaliers béton.
 - Notes de calcul BAEL / EC2.
 
-### Phase 4 — Export & assistant IA
-- Export PDF fiche technique.
-- Rendu 3D.
-- Assistant IA (LLM) pour aide à la conception.
+### Phase 4 — Export & assistant IA (P1 + P2 ✅ TERMINÉS)
+**P1 — Export PDF dossier technique ✅**
+- Backend : `stair_engine/pdf_dossier.py` (reportlab) + route `POST /api/dossier/generate`.
+- 6 pages A4 : fiche projet, plan, coupe longitudinale, métré béton, ferraillage, annexes.
+- Enrichi automatiquement avec l'analyse béton armé (`concrete_analysis` optionnel).
+- Frontend : bouton `export-pdf-btn` dans `result.tsx`. Web = blob + `<a download>`. Natif = `expo-file-system` cache + `expo-sharing`.
+- Tests : 6/6 pytest (unit + intégration URL publique). Fichier PDF ~7KB minimal, ~22KB avec ferraillage complet.
+
+**P2 — Coupes 2D supplémentaires ✅**
+- Nouveaux composants SVG : `StairSectionTransverse.tsx` (coupe transversale à mi-volée : largeur, paillasse, garde-corps, aciers principaux + répartition) et `StairSectionAxial.tsx` (coupe béton armé : paillasse inclinée + attentes + chapeaux + étriers).
+- 3 onglets dans `result.tsx` : "Coupe long." / "Coupe trans." / "Coupe axe" (testID `tab-section-long/trans/axial`).
+
+**P3 — Assistant IA Claude Sonnet 4.5** (à venir)
+**P4 — Vue 3D interactive** (à venir)
 
 ## Contraintes techniques (transverses)
 - Toutes routes préfixées `/api`.

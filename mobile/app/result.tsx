@@ -10,15 +10,23 @@ import { AlertRow } from '../src/components/AlertRow';
 import { KeyValue } from '../src/components/KeyValue';
 import { StairPlan } from '../src/drawing/StairPlan';
 import { StairSection } from '../src/drawing/StairSection';
+import { StairSectionTransverse } from '../src/drawing/StairSectionTransverse';
+import { StairSectionAxial } from '../src/drawing/StairSectionAxial';
 import { colors, radius, spacing, typography } from '../src/theme';
 import type { StoredProject, StairType } from '../src/types';
-import { getProject, saveProject, duplicateProject } from '../src/storage';
+import { getProject, duplicateProject } from '../src/storage';
+import { analyzeConcrete } from '../src/api';
+import { generateAndSharePDF } from '../src/pdf';
+
+type SectionKind = 'long' | 'trans' | 'axial';
 
 export default function ResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId: string }>();
   const [project, setProject] = useState<StoredProject | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sectionKind, setSectionKind] = useState<SectionKind>('long');
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -52,9 +60,6 @@ export default function ResultScreen() {
   const nonBlockerReds = r.alerts.filter((a) => a.level === 'red');
   const orangeAlerts = r.alerts.filter((a) => a.level === 'orange');
 
-  // Le banner reflète is_buildable en priorité (constructibilité physique),
-  // pas la couleur d'alerte max. Si is_buildable=true mais alertes DTU rouges,
-  // on affiche vert avec un sous-titre explicite ("mais non-conforme DTU").
   const statusColor = !r.is_buildable
     ? colors.danger
     : nonBlockerReds.length > 0
@@ -80,6 +85,38 @@ export default function ResultScreen() {
     const dup = await duplicateProject(project.id);
     if (dup) {
       router.replace({ pathname: '/result', params: { projectId: dup.id } });
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // Récupère (optionnellement) l'analyse béton pour enrichir le PDF
+      let concrete: any = null;
+      try {
+        concrete = await analyzeConcrete({
+          stair_result: r,
+          stair_type: project.type,
+          concrete_class: 'C25/30',
+          steel_grade: 'B500B',
+          exposure_class: 'XC1',
+          live_load_kN_m2: 2.5,
+        });
+      } catch {
+        // Non bloquant : on génère quand même le PDF sans analyse béton
+      }
+      const filename = await generateAndSharePDF({
+        project_name: project.name,
+        stair_input: input,
+        stair_result: r,
+        concrete_analysis: concrete,
+      });
+      RNAlert.alert('Dossier PDF prêt', `Fichier généré : ${filename}`);
+    } catch (e: any) {
+      RNAlert.alert('Export impossible', e?.message ?? 'Erreur inconnue');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -127,10 +164,32 @@ export default function ResultScreen() {
           />
         </View>
 
-        {/* Coupe */}
-        <SectionTitle>Coupe verticale</SectionTitle>
+        {/* Coupe (3 onglets) */}
+        <SectionTitle>Coupes</SectionTitle>
+        <View style={styles.tabs} testID="section-tabs">
+          <SectionTab
+            active={sectionKind === 'long'} label="Coupe long."
+            onPress={() => setSectionKind('long')} testID="tab-section-long"
+          />
+          <SectionTab
+            active={sectionKind === 'trans'} label="Coupe trans."
+            onPress={() => setSectionKind('trans')} testID="tab-section-trans"
+          />
+          <SectionTab
+            active={sectionKind === 'axial'} label="Coupe axe"
+            onPress={() => setSectionKind('axial')} testID="tab-section-axial"
+          />
+        </View>
         <View style={styles.svgWrap} testID="section-svg">
-          <StairSection input={input} result={r} width={screenW} height={260} />
+          {sectionKind === 'long' && (
+            <StairSection input={input} result={r} width={screenW} height={280} />
+          )}
+          {sectionKind === 'trans' && (
+            <StairSectionTransverse input={input} result={r} width={screenW} height={280} />
+          )}
+          {sectionKind === 'axial' && (
+            <StairSectionAxial input={input} result={r} width={screenW} height={280} />
+          )}
         </View>
 
         {/* Alertes */}
@@ -148,6 +207,16 @@ export default function ResultScreen() {
             label="Analyse béton armé"
             variant="primary"
             onPress={() => router.push({ pathname: '/concrete', params: { projectId: project.id } })}
+            fullWidth
+          />
+          <View style={{ height: spacing.s }} />
+          <Button
+            testID="export-pdf-btn"
+            label={exporting ? 'Génération…' : 'Exporter dossier PDF'}
+            variant="secondary"
+            onPress={handleExportPDF}
+            loading={exporting}
+            disabled={exporting}
             fullWidth
           />
           <View style={{ height: spacing.s }} />
@@ -178,11 +247,27 @@ function humanType(t: StairType): string {
     'quarter-turn-bottom': 'Quart tournant bas',
     'quarter-turn-top': 'Quart tournant haut',
     'half-turn': 'Demi-tournant',
+    'helicoidal': 'Hélicoïdal',
   };
   return M[t];
 }
 function SectionTitle({ children }: { children: string }) {
   return <Text style={styles.sectionTitle}>{children}</Text>;
+}
+
+function SectionTab({
+  active, label, onPress, testID,
+}: { active: boolean; label: string; onPress: () => void; testID: string }) {
+  return (
+    <TouchableOpacity
+      testID={testID}
+      onPress={onPress}
+      style={[styles.tab, active && styles.tabActive]}
+      activeOpacity={0.8}
+    >
+      <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -224,5 +309,29 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     overflow: 'hidden',
   },
+  tabs: {
+    flexDirection: 'row',
+    marginBottom: spacing.s,
+    borderRadius: radius.s,
+    backgroundColor: colors.bgSubtle,
+    padding: 3,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.s,
+    alignItems: 'center',
+    borderRadius: radius.s - 1,
+  },
+  tabActive: {
+    backgroundColor: colors.bg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  tabText: { ...typography.small, color: colors.textMuted, fontWeight: '600' },
+  tabTextActive: { color: colors.primary },
   actions: { marginTop: spacing.l },
 });
