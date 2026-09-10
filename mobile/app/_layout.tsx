@@ -20,6 +20,8 @@ export default function RootLayout() {
         <Stack.Screen name="type-select" options={{ title: 'Type d\'escalier' }} />
         <Stack.Screen name="form" options={{ title: 'Dimensions' }} />
         <Stack.Screen name="result" options={{ title: 'Résultat' }} />
+        <Stack.Screen name="optimize" options={{ title: 'Optimisation auto' }} />
+        <Stack.Screen name="compare" options={{ title: 'Comparateur' }} />
       </Stack>
     </SafeAreaProvider>
   );

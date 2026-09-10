@@ -22,6 +22,7 @@ const ENDPOINTS: Record<StairType, string> = {
   'quarter-turn-bottom': '/api/calculate/quarter-turn-bottom',
   'quarter-turn-top': '/api/calculate/quarter-turn-top',
   'half-turn': '/api/calculate/half-turn',
+  'helicoidal': '/api/calculate/helicoidal',
 };
 
 const TIMEOUT_MS = 12000;
@@ -70,5 +71,20 @@ export async function getNormsFR(): Promise<Record<string, any>> {
   const url = `${BASE}/api/norms/fr`;
   const res = await fetchWithTimeout(url, { method: 'GET' });
   if (!res.ok) throw new Error(`Erreur norms/fr HTTP ${res.status}`);
+  return await res.json();
+}
+
+export async function runOptimize(body: any): Promise<any> {
+  const url = `${BASE}/api/optimize`;
+  const res = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = JSON.stringify((await res.json()).detail); } catch {}
+    throw new Error(`Erreur backend (HTTP ${res.status}). ${detail}`);
+  }
   return await res.json();
 }

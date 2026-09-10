@@ -69,6 +69,7 @@ export default function FormScreen() {
   const isEditing = !!projectId;
   const isQt = type === 'quarter-turn-bottom' || type === 'quarter-turn-top';
   const isHalf = type === 'half-turn';
+  const isHelico = type === 'helicoidal';
   const isTurn = isQt || isHalf;
 
   const [state, setState] = useState<FormState>(DEFAULT_STATE);
@@ -382,7 +383,21 @@ function validate(s: FormState): string | null {
   return null;
 }
 
-function buildInput(type: StairType, s: FormState): StairInput | QuarterTurnInput | HalfTurnInput {
+function buildInput(type: StairType, s: FormState): any {
+  if (type === 'helicoidal') {
+    return {
+      floor_height_mm: parseNum(s.floor_height_mm)!,
+      inner_radius_mm: parseNum(s.stairwell_offset_mm) ?? 150,
+      outer_radius_mm: (parseNum(s.stair_width_mm) ?? 900) + (parseNum(s.stairwell_offset_mm) ?? 150),
+      sweep_angle_deg: parseNum(s.landing_length_mm) ?? 360,
+      direction: s.direction === 'left' ? 'ccw' : 'cw',
+      walkline_offset_mm: parseNum(s.walkline_offset_mm) ?? 500,
+      slab_thickness_mm: parseNum(s.slab_thickness_mm) ?? 200,
+      ceiling_height_mm: parseNum(s.ceiling_height_mm) ?? null,
+      tread_thickness_mm: parseNum(s.tread_thickness_mm) ?? 30,
+      has_risers: s.has_risers,
+    };
+  }
   const base: StairInput = {
     floor_height_mm: parseNum(s.floor_height_mm)!,
     available_length_mm: parseNum(s.available_length_mm)!,

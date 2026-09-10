@@ -1,0 +1,43 @@
+{
+  "summary": "STAIRPILOT Phase 2 (Hélicoïdal + Optimizer + Comparateur) validated end-to-end. BACKEND: 75/75 pytest tests pass (parallel gw0/gw1 in 1.56s). Public-URL smoke on https://escalier-pro.preview.emergentagent.com: (1) POST /api/calculate/helicoidal with {2800/150/750/360} → 200 is_buildable=true, num_steps=16, tread_depth_mm=255.25 (dans [250,275]) ✓; (2) POST /api/calculate/helicoidal with inner=50 outer=700 → HELICOIDAL_INNER_TREAD_TOO_SMALL présent dans alerts ✓; (3) POST /api/optimize (payload cahier des charges) → 200, 5 solutions triées desc [71.4, 71.4, 69.9, 66.31, 47.27], chaque solution avec scores {confort, encombrement, faisabilite, esthetique} et result StairResult complet (num_steps>0, is_buildable=true) ✓. MOBILE (Playwright, viewport 390x844, URL https://escalier-pro.expo.preview.emergentagent.com): Home affiche new-project-btn + optimize-btn ✓. Type-select expose 5 cards dont type-card-helicoidal ✓. Tap card helicoidal + Suivant → /form?type=helicoidal (header 'HELICOÏDAL', formulaire mappé, bouton Calculer présent) ✓. 'Optimisation auto' → /optimize avec opt-floor-height/opt-length/opt-width/opt-search-btn tous visibles ✓. Rechercher solutions (DEFAULTS: 2800/3500/2200/900/2800/1000/200/2800) → /compare avec compare-title = '5 solutions trouvées', solutions 1→5 toutes visibles avec save-solution-1..5, 5 SVG mini-plans rendus (StairPlan pour QT/DT/helico), 4 métriques (Marches/Pente/Reculement/Blondel) et 4 ScoreBar (Confort/Encombrement/Faisabilité/Esthétique) affichés ✓. Save solution #1 → RNAlert 'Projet sauvegardé' puis retour Home montre 1 project-card ✓. Aucun red screen, seul un warning bénin 'props.pointerEvents is deprecated'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/compare", "issues": ["Score bars sur solution #1 affichent 73/60/80/75 alors que backend renvoie 72.56/60.03/80/75 — c'est correct (toFixed(0) arrondit 72.56 à 73). Comportement conforme."]}
+    ],
+    "react_native_issues": [
+      {"component": "TouchableOpacity/Pressable (RNW)", "issue": "Console warning récurrent 'props.pointerEvents is deprecated. Use style.pointerEvents' — non bloquant, à corriger éventuellement via mise à jour react-native-web ou passage de pointerEvents en style."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase2_helico_optimizer.py",
+    "/app/backend/tests/test_phase1_stairs.py",
+    "/app/backend/tests/test_phase1_public_api.py",
+    "/app/backend/tests/test_api_integration.py",
+    "/app/backend/tests/test_stair_engine.py",
+    "/app/test_reports/pytest/iteration_6.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "optimizer.py L113: `h_per_turn = h_mm * (360.0 / inp.sweep_angle_deg) * n_steps / (n_steps)` — expression morte (immédiatement remplacée par steps_per_turn/height_per_turn). Nettoyer pour clarté.",
+    "helicoidal.py: la boucle sur les treads calcule a_start/a_end mais ne les stocke pas dans TreadDetail (le modèle n'a pas start_angle/end_angle). Le HelicoidalTreadDetail défini en tête du fichier est inutilisé. Soit l'utiliser réellement dans le résultat (avec un union de types côté StairResult), soit supprimer HelicoidalTreadDetail.",
+    "compare.tsx L67: quand on sauvegarde une solution d'optimisation, `input: {} as any` est stocké — ré-ouvrir le projet enverra un form vide (aucune valeur préremplie). C'est un choix documenté dans le commentaire, mais l'UX serait meilleure si les inputs de /optimize étaient conservés dans OPTIMIZE_CACHE_KEY et propagés lors du save (au moins floor_height_mm/stair_width_mm).",
+    "optimizer.py: `_score_encombrement` utilise turn_footprint_width_mm mais `required_stairwell_mm` pour l'hélicoïdal renvoie diameter_mm et non turn_footprint_width_mm → l'hélicoïdal utilise inp.stair_width_mm au lieu de 2*outer_radius, ce qui sous-estime son encombrement. À examiner.",
+    "helicoidal.py L143: `slope_deg` calcule atan2(H, 2π·r_walkline·sweep/360) mais utilise walkline_radius (r_walkline) qui peut avoir été clampé à outer-30 — cohérent avec le tread réel; RAS mais mérite une note."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (75/75 pytest ; 3/3 smoke publics)",
+    "frontend": "100% sur les 5 critères review (Home 2 boutons ✓ ; 5 type-cards ✓ ; flow /optimize→/compare ✓ ; cartes solutions complètes (rank+type+badge+SVG+4 métriques+4 barres+save) ✓ ; helicoidal→form charge ✓)"
+  },
+  "seed_data_creation": "Aucune. localStorage vidé au début du run Playwright.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "URL app: https://escalier-pro.expo.preview.emergentagent.com — URL API: https://escalier-pro.preview.emergentagent.com. Aucune auth. Selectors: opt-floor-height/opt-length/opt-width/opt-search-btn (screen /optimize), compare-title + solution-1..5 + save-solution-1..5 (screen /compare). Optimize résultat cache dans AsyncStorage sous 'stairpilot_optimize_result_v1'. Type-select cards: type-card-{straight|quarter-turn-bottom|quarter-turn-top|half-turn|helicoidal}. Form helicoidal reçu via query ?type=helicoidal — les champs sont mappés sur les inputs existants (stairwell_offset_mm ↔ inner_radius, landing_length_mm ↔ sweep_angle). Backend: 5 types × variantes = ~9 candidats optimizer (droit, QT bas balanced+straight, QT haut balanced+straight, DT balanced+straight, hélico 270/360/450). Scoring pondéré {confort:0.35, encombrement:0.25, faisabilite:0.20, esthetique:0.20}.",
+  "rca_of_issue": "N/A — implémentation Phase 2 conforme au cahier des charges. Aucun bug bloquant détecté."
+}

@@ -36,9 +36,76 @@ export function StairPlan({ type, input, result, width, height }: PlanProps) {
     return renderQTBottomPlan(input as QuarterTurnInput, result, width, height);
   } else if (type === 'quarter-turn-top') {
     return renderQTTopPlan(input as QuarterTurnInput, result, width, height);
+  } else if (type === 'helicoidal') {
+    return renderHelicoidalPlan(input as any, result, width, height);
   } else {
     return renderHalfTurnPlan(input as HalfTurnInput, result, width, height);
   }
+}
+
+// -------------- HELICOIDAL --------------
+function renderHelicoidalPlan(inp: any, r: StairResult, W: number, H: number) {
+  const inner = inp.inner_radius_mm ?? 150;
+  const outer = inp.outer_radius_mm ?? 750;
+  const sweep = inp.sweep_angle_deg ?? 360;
+  const n = r.num_treads || r.num_steps;
+  const walkline = Math.min((inp.walkline_offset_mm ?? 500) + inner, outer - 30);
+  const cx = W / 2;
+  const cy = H / 2;
+  const s = Math.min((W - 60) / (2 * outer), (H - 60) / (2 * outer));
+  const rInner = inner * s;
+  const rOuter = outer * s;
+  const rWalk = walkline * s;
+
+  const anglePer = sweep / n;
+  const wedges: React.ReactNode[] = [];
+  for (let i = 0; i < n; i++) {
+    const a1 = (i * anglePer - 90) * Math.PI / 180;  // start at top
+    const a2 = ((i + 1) * anglePer - 90) * Math.PI / 180;
+    const x1i = cx + rInner * Math.cos(a1);
+    const y1i = cy + rInner * Math.sin(a1);
+    const x1o = cx + rOuter * Math.cos(a1);
+    const y1o = cy + rOuter * Math.sin(a1);
+    const x2i = cx + rInner * Math.cos(a2);
+    const y2i = cy + rInner * Math.sin(a2);
+    const x2o = cx + rOuter * Math.cos(a2);
+    const y2o = cy + rOuter * Math.sin(a2);
+    const large = anglePer > 180 ? 1 : 0;
+    const path = `M ${x1i},${y1i} L ${x1o},${y1o} A ${rOuter},${rOuter} 0 ${large} 1 ${x2o},${y2o} L ${x2i},${y2i} A ${rInner},${rInner} 0 ${large} 0 ${x1i},${y1i} Z`;
+    wedges.push(
+      <Path key={i} d={path} stroke={COLOR_STROKE} strokeWidth={0.8}
+        fill={i % 2 === 0 ? '#FFFFFF' : '#F5F6F8'} />
+    );
+    // Numéro sur la ligne de foulée
+    const midA = (a1 + a2) / 2;
+    wedges.push(
+      <SvgText key={`t${i}`}
+        x={cx + rWalk * Math.cos(midA)}
+        y={cy + rWalk * Math.sin(midA) + 3}
+        fontSize="9" fill={COLOR_DIM} textAnchor="middle"
+      >{i + 1}</SvgText>
+    );
+  }
+
+  return (
+    <Svg width={W} height={H}>
+      <Rect x={0} y={0} width={W} height={H} fill={COLOR_BG} />
+      {wedges}
+      {/* Fût central */}
+      <Path d={`M ${cx + rInner},${cy} A ${rInner},${rInner} 0 1 1 ${cx - rInner},${cy} A ${rInner},${rInner} 0 1 1 ${cx + rInner},${cy}`}
+        fill="#D6D9DE" stroke={COLOR_STROKE} strokeWidth={1.2} />
+      {/* Ligne de foulée */}
+      <Path d={`M ${cx + rWalk},${cy} A ${rWalk},${rWalk} 0 1 1 ${cx - rWalk},${cy} A ${rWalk},${rWalk} 0 1 1 ${cx + rWalk},${cy}`}
+        stroke={COLOR_WALKLINE} strokeWidth={0.8} strokeDasharray="3 3" fill="none" />
+      {/* Cotes */}
+      <SvgText x={cx} y={H - 12} fontSize="10" fill={COLOR_DIM} textAnchor="middle">
+        ⌀ext {2 * outer}mm · ⌀int {2 * inner}mm · {sweep}° · {anglePer.toFixed(1)}°/marche
+      </SvgText>
+      <SvgText x={cx} y={20} fontSize="10" fill={COLOR_WALKLINE} textAnchor="middle" fontWeight="bold">
+        MONTÉE {inp.direction === 'ccw' ? '↺' : '↻'}
+      </SvgText>
+    </Svg>
+  );
 }
 
 // -------------- STRAIGHT --------------

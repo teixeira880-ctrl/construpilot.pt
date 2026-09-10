@@ -14,11 +14,16 @@ import boto3
 from stair_engine import (
     DTU_36_3_FR,
     HalfTurnInput,
+    HelicoidalInput,
+    OptimizeInput,
+    OptimizeResult,
     QuarterTurnBottomInput,
     QuarterTurnTopInput,
     StairInput,
     StairResult,
     compute_half_turn,
+    compute_helicoidal,
+    compute_optimize,
     compute_quarter_turn_bottom,
     compute_quarter_turn_top,
     compute_straight,
@@ -116,6 +121,18 @@ async def calculate_quarter_turn_top(payload: QuarterTurnTopInput) -> StairResul
 async def calculate_half_turn(payload: HalfTurnInput) -> StairResult:
     """Calcule un escalier demi-tournant (mode 'balanced' ou 'straight')."""
     return compute_half_turn(payload)
+
+
+@api_router.post("/calculate/helicoidal", response_model=StairResult)
+async def calculate_helicoidal(payload: HelicoidalInput) -> StairResult:
+    """Calcule un escalier hélicoïdal (colimaçon)."""
+    return compute_helicoidal(payload)
+
+
+@api_router.post("/optimize", response_model=OptimizeResult)
+async def optimize_stair(payload: OptimizeInput) -> OptimizeResult:
+    """Propose N solutions triées par pertinence."""
+    return compute_optimize(payload)
 
 
 @api_router.get("/norms/fr")

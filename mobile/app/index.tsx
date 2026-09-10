@@ -102,6 +102,14 @@ export default function HomeScreen() {
           onPress={() => router.push('/type-select')}
           fullWidth
         />
+        <View style={{ height: spacing.s }} />
+        <Button
+          testID="optimize-btn"
+          label="Optimisation auto"
+          variant="secondary"
+          onPress={() => router.push('/optimize')}
+          fullWidth
+        />
       </View>
     </SafeAreaView>
   );

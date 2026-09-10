@@ -8,7 +8,7 @@ import { colors, radius, spacing, typography } from '../src/theme';
 import type { StairType } from '../src/types';
 import { STAIR_TYPE_LABELS, STAIR_TYPE_DESCRIPTIONS } from '../src/types';
 
-const TYPES: StairType[] = ['straight', 'quarter-turn-bottom', 'quarter-turn-top', 'half-turn'];
+const TYPES: StairType[] = ['straight', 'quarter-turn-bottom', 'quarter-turn-top', 'half-turn', 'helicoidal'];
 
 export default function TypeSelectScreen() {
   const router = useRouter();
@@ -90,17 +90,36 @@ function TypeIcon({ type }: { type: StairType }) {
     );
   }
   // half-turn
+  if (type === 'half-turn') {
+    return (
+      <Svg width={64} height={54} viewBox="0 0 64 54">
+        <Path d="M4,42 L38,42" stroke={stroke} strokeWidth={1.5} fill="none" />
+        <Path d="M38,42 L52,42 L52,20 L38,20" stroke={stroke} strokeWidth={1.5} fill="none" />
+        <Path d="M38,20 L4,20" stroke={stroke} strokeWidth={1.5} fill="none" />
+        {[10, 18, 26, 34].map((x) => (
+          <Line key={`b${x}`} x1={x} y1={42} x2={x} y2={36} stroke={stroke} strokeWidth={0.8} />
+        ))}
+        {[34, 26, 18, 10].map((x) => (
+          <Line key={`t${x}`} x1={x} y1={20} x2={x} y2={26} stroke={stroke} strokeWidth={0.8} />
+        ))}
+      </Svg>
+    );
+  }
+  // helicoidal
   return (
     <Svg width={64} height={54} viewBox="0 0 64 54">
-      <Path d="M4,42 L38,42" stroke={stroke} strokeWidth={1.5} fill="none" />
-      <Path d="M38,42 L52,42 L52,20 L38,20" stroke={stroke} strokeWidth={1.5} fill="none" />
-      <Path d="M38,20 L4,20" stroke={stroke} strokeWidth={1.5} fill="none" />
-      {[10, 18, 26, 34].map((x) => (
-        <Line key={`b${x}`} x1={x} y1={42} x2={x} y2={36} stroke={stroke} strokeWidth={0.8} />
-      ))}
-      {[34, 26, 18, 10].map((x) => (
-        <Line key={`t${x}`} x1={x} y1={20} x2={x} y2={26} stroke={stroke} strokeWidth={0.8} />
-      ))}
+      <Path d="M32,10 A22,22 0 1 1 31.99,10" stroke={stroke} strokeWidth={1.2} fill="none" />
+      <Path d="M32,18 A14,14 0 1 1 31.99,18" stroke={stroke} strokeWidth={1} fill="none" />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
+        const rad = (deg - 90) * Math.PI / 180;
+        return (
+          <Line key={i}
+            x1={32 + 14 * Math.cos(rad)} y1={32 + 14 * Math.sin(rad)}
+            x2={32 + 22 * Math.cos(rad)} y2={32 + 22 * Math.sin(rad)}
+            stroke={stroke} strokeWidth={0.8}
+          />
+        );
+      })}
     </Svg>
   );
 }

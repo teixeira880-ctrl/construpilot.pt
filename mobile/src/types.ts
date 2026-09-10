@@ -6,7 +6,8 @@ export type StairType =
   | 'straight'
   | 'quarter-turn-bottom'
   | 'quarter-turn-top'
-  | 'half-turn';
+  | 'half-turn'
+  | 'helicoidal';
 
 export type BalancingMode = 'straight' | 'balanced';
 export type Direction = 'left' | 'right';
@@ -101,6 +102,7 @@ export const STAIR_TYPE_LABELS: Record<StairType, string> = {
   'quarter-turn-bottom': 'Quart tournant bas',
   'quarter-turn-top': 'Quart tournant haut',
   'half-turn': 'Demi-tournant',
+  'helicoidal': 'Hélicoïdal',
 };
 
 export const STAIR_TYPE_DESCRIPTIONS: Record<StairType, string> = {
@@ -108,4 +110,20 @@ export const STAIR_TYPE_DESCRIPTIONS: Record<StairType, string> = {
   'quarter-turn-bottom': 'Départ tournant à 90° puis volée droite.',
   'quarter-turn-top': 'Volée droite puis arrivée tournante à 90°.',
   'half-turn': 'Deux volées en aller-retour avec palier ou marches balancées à 180°.',
+  'helicoidal': 'Escalier colimaçon autour d\'un fût central (giron variable).',
 };
+
+export interface OptimizeSolution {
+  rank: number;
+  type: string;
+  variant: string;
+  score_global: number;
+  scores: { confort: number; encombrement: number; faisabilite: number; esthetique: number };
+  result: StairResult;
+}
+
+export interface OptimizeApiResult {
+  solutions: OptimizeSolution[];
+  excluded: { type: string; variant: string; reason: string }[];
+  computed_at?: string;
+}
