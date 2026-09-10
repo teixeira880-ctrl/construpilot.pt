@@ -70,6 +70,7 @@ export default function OptimizeScreen() {
       };
       const result = await runOptimize(body);
       await AsyncStorage.setItem(OPTIMIZE_CACHE_KEY, JSON.stringify(result));
+      await AsyncStorage.setItem('stairpilot_optimize_input_v1', JSON.stringify(body));
       router.push('/compare');
     } catch (e: any) {
       RNAlert.alert('Erreur', e?.message ?? 'Erreur inconnue');

@@ -1,0 +1,32 @@
+{
+  "summary": "STAIRPILOT Phase 2 iter2 — 3 fixes validated end-to-end. BACKEND: 76/76 pytest pass in 1.41s (main agent claimed 77 but actual test count in the repo is 76 — 6 helico + 7 optimizer including 2 new encombrement tests + 63 others; no test is missing). Public API smoke POST /api/optimize {H=2800,L=3500,W=2200,stair_width=900,ceiling=2800} → helicoidal sweep_360 scores.encombrement=37.14 ✅ (within expected [30,45], confirming Fix 3: (2*outer_radius)² = 2200² = 4.84M, avail=7.7M → ratio_libre≈0.371). MOBILE (Playwright, 390x844): Home → optimize-btn → opt-search-btn → /compare with compare-title='5 solutions trouvées'. All 5 cards show BOTH testID='detail-solution-N' AND testID='save-solution-N' (Fix 1 ✅). Tap detail-solution-1 → navigates to /result?projectId=... with 'Solution optimizer — QT bas (score 71.4)' title, is_buildable banner, chiffres clés complets (Marches=16, Hauteur=175, Giron=280, Pente=39.31°, Blondel=630, Longueur volée=4420, Reculement=3420), SVG plan visible with balanced winders. Tap save-solution-1 → project persisted; back to Home shows 2 project-cards (Fix 2 ✅). Tap card → /form?type=quarter-turn-bottom&projectId=... in edit mode with ALL fields visually prefilled: name='Solution optimizer — QT bas (score...', floor_height=2800, ceiling=2800, slab=200, length=3500, width=2200, stair_width=900 (confirmed via screenshot). No red screens; only benign 'props.pointerEvents deprecated' warning.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "TouchableOpacity/Pressable (RNW)", "issue": "Recurring console warning 'props.pointerEvents is deprecated. Use style.pointerEvents' — non-blocking; fix by migrating to style.pointerEvents or upgrading react-native-web."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase2_helico_optimizer.py",
+    "/app/test_reports/pytest/iteration_7.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Main agent context claimed '77/77 pytest' but the actual test count is 76 (verified via pytest run). No test missing/failing — likely a count off-by-one in the handoff note.",
+    "compare.tsx reconstructInput() for helicoidal hard-codes inner_radius_mm=150 regardless of what the optimizer used. Consider passing the actual inner used by optimize (currently 150 by default, so this is coincidentally correct, but fragile if inner default changes).",
+    "form.tsx buildInput() for helicoidal derives outer_radius_mm = stair_width_mm + stairwell_offset_mm, but reconstructInput() saves outer_radius_mm from the optimizer result. When the saved helico project is reopened, the mapping stairwell_offset_mm/stair_width_mm is derived from outer_radius but the reverse mapping happens via buildInput → risk of round-trip drift. Consider storing helico-specific fields (inner/outer/sweep) in a dedicated form section."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (76/76 pytest ; encombrement API returns 37.14 within expected [30,45])",
+    "frontend": "100% (5/5 solutions have both detail+save buttons ; detail→/result complet ; save→Home→Form prefilled with all 6 dimension fields visually confirmed)"
+  },
+  "seed_data_creation": "localStorage cleared at test start; 1 project created via save-solution-1 flow, then detail-solution-1 created a 2nd project (viewDetail also persists).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public app URL: https://5668c919-dc01-48f6-afa8-90d3e1731ac6.expo.preview.emergentagent.com. Public API URL: https://escalier-pro.preview.emergentagent.com. Compare screen testIDs: compare-title, solution-N, detail-solution-N (primary), save-solution-N (secondary). Optimize input body cached under AsyncStorage key 'stairpilot_optimize_input_v1'; result under 'stairpilot_optimize_result_v1'. reconstructInput() in compare.tsx handles 3 shapes: straight (base only), QT/DT (base + balancing + num_winders='auto' + walkline_offset_mm=500), helicoidal (floor + inner=150 + outer=diameter_mm/2 + sweep parsed from variant). viewDetail persists project then router.push('/result?projectId=X'). Note: viewDetail also persists a project (side-effect) — user will see 2 projects if they both save and view-detail the same solution.",
+  "rca_of_issue": "N/A — all 3 fixes conform to spec and E2E flow validates."
+}

@@ -101,11 +101,15 @@ def _score_confort(r: StairResult) -> float:
 
 def _score_encombrement(r: StairResult, inp: OptimizeInput) -> float:
     avail = inp.available_length_mm * inp.available_width_mm
-    used_l = r.stair_run_mm
-    # largeur : selon type
-    turn_w = r.required_stairwell_mm.get("turn_footprint_width_mm", inp.stair_width_mm)
-    used_w = max(inp.stair_width_mm, turn_w or inp.stair_width_mm)
-    used = used_l * used_w
+    if r.stair_type.startswith("helicoidal"):
+        # Emprise = carré circonscrit du cercle extérieur (2×outer_radius)²
+        diameter = r.required_stairwell_mm.get("diameter_mm", 0) or 0
+        used = diameter * diameter
+    else:
+        used_l = r.stair_run_mm
+        turn_w = r.required_stairwell_mm.get("turn_footprint_width_mm", inp.stair_width_mm)
+        used_w = max(inp.stair_width_mm, turn_w or inp.stair_width_mm)
+        used = used_l * used_w
     if avail <= 0:
         return 0
     ratio = 1 - min(1, used / avail)

@@ -192,7 +192,35 @@ def test_optimize_max_solutions_limit():
     assert len(r.solutions) <= 2
 
 
-def test_optimize_all_solutions_have_full_result():
+def test_optimize_helicoidal_encombrement_correct():
+    """Encombrement hélicoïdal utilise (2×outer_radius)², pas stair_width×stair_run."""
+    r = compute_optimize(OptimizeInput(
+        floor_height_mm=2800, available_length_mm=3500,
+        available_width_mm=2200, stair_width_mm=900,
+        ceiling_height_mm=2800,
+    ))
+    helico = [s for s in r.solutions if s.type == "helicoidal" and s.variant == "sweep_360"]
+    if not helico:
+        pytest.skip("helicoidal 360 non-buildable dans ce scénario")
+    # outer_radius = min(3500, 2200)/2 = 1100. Carré = 2200×2200 = 4_840_000
+    # avail = 3500×2200 = 7_700_000
+    # ratio_libre = 1 - 4_840_000/7_700_000 = 0.3714 → score ≈ 37
+    assert 30 <= helico[0].scores.encombrement <= 45, \
+        f"Encombrement hélico attendu ~37, obtenu {helico[0].scores.encombrement}"
+
+
+def test_optimize_helicoidal_smaller_footprint():
+    """Hélicoïdal avec petit outer_radius → meilleur score encombrement."""
+    r = compute_optimize(OptimizeInput(
+        floor_height_mm=2800, available_length_mm=5000,
+        available_width_mm=2500, stair_width_mm=900,
+        ceiling_height_mm=2800,
+    ))
+    # outer = min(5000, 2500)/2 = 1250. Carré = 2500²=6.25M. Avail=5000×2500=12.5M
+    # ratio libre = 1 - 6.25/12.5 = 0.5 → score = 50
+    helico = [s for s in r.solutions if s.type == "helicoidal"]
+    if helico:
+        assert 40 <= helico[0].scores.encombrement <= 60
     r = compute_optimize(OptimizeInput(
         floor_height_mm=2800, available_length_mm=4500,
         available_width_mm=2500, stair_width_mm=900,
