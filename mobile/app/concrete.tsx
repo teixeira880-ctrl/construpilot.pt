@@ -142,18 +142,24 @@ export default function ConcreteScreen() {
             <ReinforcementSchema data={data} width={Dimensions.get('window').width - 2 * spacing.l} />
             <SectionTitle>Nomenclature aciers</SectionTitle>
             <View style={styles.nomHeader}>
-              <Text style={[styles.nomCell, { flex: 0.4 }]}>Rep</Text>
-              <Text style={[styles.nomCell, { flex: 1.8 }]}>Désignation</Text>
-              <Text style={[styles.nomCell, { flex: 0.8 }]}>Ø</Text>
-              <Text style={[styles.nomCell, { flex: 0.6 }]}>Nb</Text>
+              <Text style={[styles.nomCell, { flex: 0.35 }]}>Rep</Text>
+              <Text style={[styles.nomCell, { flex: 1.6 }]}>Désignation</Text>
+              <Text style={[styles.nomCell, { flex: 0.75 }]}>Ø</Text>
+              <Text style={[styles.nomCell, { flex: 0.75, textAlign: 'right' }]}>L (m)</Text>
+              <Text style={[styles.nomCell, { flex: 0.5, textAlign: 'right' }]}>Nb</Text>
               <Text style={[styles.nomCell, { flex: 0.8, textAlign: 'right' }]}>Poids</Text>
             </View>
             {data.nomenclature.map((row: any) => (
               <View key={row.repere} style={styles.nomRow}>
-                <Text style={[styles.nomCell, { flex: 0.4 }]}>{row.repere}</Text>
-                <Text style={[styles.nomCell, { flex: 1.8, fontSize: 12 }]}>{row.designation}</Text>
-                <Text style={[styles.nomCell, { flex: 0.8 }]}>{row.diameter}</Text>
-                <Text style={[styles.nomCell, { flex: 0.6 }]}>{row.count}</Text>
+                <Text style={[styles.nomCell, { flex: 0.35 }]}>{row.repere}</Text>
+                <Text
+                  style={[styles.nomCell, { flex: 1.6, fontSize: 11 }]}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >{row.designation}</Text>
+                <Text style={[styles.nomCell, { flex: 0.75 }]}>{row.diameter}</Text>
+                <Text style={[styles.nomCell, { flex: 0.75, textAlign: 'right' }]}>{row.total_length_m.toFixed(1)}</Text>
+                <Text style={[styles.nomCell, { flex: 0.5, textAlign: 'right' }]}>{row.count}</Text>
                 <Text style={[styles.nomCell, { flex: 0.8, textAlign: 'right' }]}>{row.weight_kg} kg</Text>
               </View>
             ))}
