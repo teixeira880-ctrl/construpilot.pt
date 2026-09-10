@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, API, eur, eur2, num } from "@/lib/api";
 import { EstimationView } from "@/components/EstimationView";
+import { ProjectArtisanSection } from "@/components/ProjectArtisanSection";
 import { LeadDialog } from "@/components/LeadDialog";
 import { EmailPdfDialog } from "@/components/EmailPdfDialog";
 import { WhatsAppShare } from "@/components/WhatsAppShare";
@@ -170,6 +171,8 @@ export default function ProjectDetail() {
       )}
 
       <SavingsCard projectId={p.project_id} estimation={p.estimation} />
+
+      <ProjectArtisanSection project={p} onChange={(block) => setP((prev) => ({ ...prev, artisan: block }))} />
 
       <Tabs defaultValue="works">
         <TabsList className="rounded-sm flex-wrap h-auto">

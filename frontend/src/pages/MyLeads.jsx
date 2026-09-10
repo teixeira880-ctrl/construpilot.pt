@@ -48,7 +48,7 @@ export default function MyLeads() {
         email: l.email || "", phone: l.phone || "", address: l.address || "",
         notes: l.description || "",
       });
-      navigate(`/devis-editeur?client=${data.client_id}`);
+      navigate(`/devis-editeur?client=${data.client_id}&lead=${l.lead_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Création impossible"); }
   };
 

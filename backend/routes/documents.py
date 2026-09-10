@@ -54,6 +54,17 @@ class DocIn(BaseModel):
     payment_terms: str = ""
     deposit_pct: float = Field(default=0, ge=0, le=100)
     status: str | None = None
+    lead_id: str | None = None
+
+
+async def _lead_link(lead_id: str | None, user_id: str) -> dict:
+    """Rattache un devis à la demande (lead) et au chantier du particulier."""
+    if not lead_id:
+        return {}
+    lead = await db.leads.find_one({"lead_id": lead_id, "$or": [{"assigned_to": user_id}, {"candidates.user_id": user_id}, {"candidates": user_id}]}, {"_id": 0, "project_id": 1, "user_id": 1})
+    if not lead:
+        return {}
+    return {"lead_id": lead_id, "project_id": lead.get("project_id"), "homeowner_user_id": lead.get("user_id")}
 
 
 def _compute_totals(lines: list[dict], deposit_pct: float = 0.0) -> dict:
@@ -433,6 +444,7 @@ async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
         "title": (body.title or "").strip()[:160],
         "client_id": body.client_id,
         "client": await _client_snapshot(body.client_id, user),
+        **(await _lead_link(body.lead_id, user["user_id"])),
         "status": body.status or "draft",
         "lines": lines,
         "notes": (body.notes or "").strip()[:2000],
@@ -1170,6 +1182,7 @@ async def update_document(doc_id: str, body: DocIn,
         "title": (body.title or "").strip()[:160],
         "client_id": body.client_id,
         "client": await _client_snapshot(body.client_id, user),
+        **(await _lead_link(body.lead_id, user["user_id"])),
         "lines": lines,
         "notes": (body.notes or "").strip()[:2000],
         "payment_terms": (body.payment_terms or "").strip()[:300],

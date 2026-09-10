@@ -65,6 +65,7 @@ export default function QuoteEditor() {
   const [depositPct, setDepositPct] = useState(0);
   const [status, setStatus] = useState("draft");
   const [number, setNumber] = useState(null);
+  const [leadId, setLeadId] = useState(() => sp.get("lead") || null);
   const [lines, setLines] = useState([blankLine(isPT ? 23 : 10)]);
   const [aiLineBusy, setAiLineBusy] = useState(null);
   const [planBusy, setPlanBusy] = useState(false);
@@ -180,6 +181,7 @@ export default function QuoteEditor() {
     setDepositPct(d.deposit_pct || 0);
     setStatus(d.status || "draft");
     setNumber(d.number || null);
+    if (d.lead_id) setLeadId(d.lead_id);
     setDocType(d.doc_type || "quote");
     setLines((d.lines || []).map((l) => ({ ...blankLine(), ...l, _saveToLib: false })));
   }, []);
@@ -348,7 +350,7 @@ export default function QuoteEditor() {
   };
 
   const payload = () => ({
-    doc_type: docType, client_id: clientId || null, title, notes,
+    doc_type: docType, client_id: clientId || null, title, notes, lead_id: leadId,
     deposit_pct: Number(depositPct) || 0, status,
     lines: lines.filter((l) => l.designation.trim()).map((l) => ({
       designation: l.designation, description: l.description || "", unit: l.unit, qty: Number(l.qty) || 0,

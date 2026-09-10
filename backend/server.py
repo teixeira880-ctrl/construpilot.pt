@@ -118,6 +118,8 @@ api_router.include_router(vrd_routes.router)
 api_router.include_router(appro_routes.router)
 from routes import profitability as profitability_routes
 api_router.include_router(profitability_routes.router)
+from routes import project_quotes as project_quotes_routes
+api_router.include_router(project_quotes_routes.router)
 api_router.include_router(help_routes.router)
 api_router.include_router(evolution_routes.router)
 api_router.include_router(einvoicing_routes.router)
