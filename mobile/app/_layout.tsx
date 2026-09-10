@@ -23,6 +23,8 @@ export default function RootLayout() {
         <Stack.Screen name="optimize" options={{ title: 'Optimisation auto' }} />
         <Stack.Screen name="compare" options={{ title: 'Comparateur' }} />
         <Stack.Screen name="concrete" options={{ title: 'Analyse béton armé' }} />
+        <Stack.Screen name="assistant" options={{ title: 'Assistant IA' }} />
+        <Stack.Screen name="view-3d" options={{ title: 'Vue 3D' }} />
       </Stack>
     </SafeAreaProvider>
   );

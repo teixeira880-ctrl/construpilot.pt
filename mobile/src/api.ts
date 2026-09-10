@@ -103,3 +103,38 @@ export async function analyzeConcrete(body: any): Promise<any> {
   }
   return await res.json();
 }
+
+export async function assistantChat(body: {
+  message: string;
+  conversation_id?: string | null;
+}): Promise<{
+  conversation_id: string;
+  reply_text: string;
+  referenced_engine_calls: { tool: string; arguments: any; ok: boolean }[];
+  computed_solutions: any[];
+  metadata: { model: string; timing_ms: number };
+}> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  try {
+    const res = await fetch(`${BASE}/api/assistant/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = JSON.stringify((await res.json()).detail); } catch {}
+      throw new Error(`Assistant HTTP ${res.status}. ${detail}`);
+    }
+    return await res.json();
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error("L'assistant met trop de temps à répondre (timeout).");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}

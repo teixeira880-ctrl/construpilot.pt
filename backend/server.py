@@ -157,6 +157,7 @@ async def api_openapi():
 
 
 from stair_engine.pdf_dossier import generate_dossier_pdf
+from stair_engine.assistant import chat_with_assistant
 from fastapi.responses import Response
 from pydantic import BaseModel
 
@@ -185,6 +186,67 @@ async def dossier_generate(payload: DossierRequest):
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# Assistant IA (Phase 4 — P3)
+# ---------------------------------------------------------------------------
+class AssistantChatRequest(BaseModel):
+    message: str
+    conversation_id: str | None = None
+
+
+class AssistantChatResponse(BaseModel):
+    conversation_id: str
+    reply_text: str
+    referenced_engine_calls: list[dict]
+    computed_solutions: list[dict]
+    metadata: dict
+
+
+@api_router.post("/assistant/chat", response_model=AssistantChatResponse)
+async def assistant_chat(payload: AssistantChatRequest):
+    conv_id = payload.conversation_id or str(uuid.uuid4())
+
+    # Charge historique existant depuis MongoDB (si présent)
+    existing = await db.assistant_conversations.find_one({"_id": conv_id}, {"_id": 0})
+    history: list[dict] = (existing or {}).get("messages", []) if existing else []
+    history_prompt = [{"role": m["role"], "content": m["content"]} for m in history if m.get("role") in ("user", "assistant")]
+
+    reply = await chat_with_assistant(conv_id, payload.message, history_prompt)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    new_messages = history + [
+        {"role": "user", "content": payload.message, "timestamp": now_iso},
+        {"role": "assistant", "content": reply.reply_text, "timestamp": now_iso},
+    ]
+    await db.assistant_conversations.update_one(
+        {"_id": conv_id},
+        {
+            "$set": {
+                "messages": new_messages,
+                "updated_at": now_iso,
+            },
+            "$setOnInsert": {"created_at": now_iso},
+        },
+        upsert=True,
+    )
+
+    return AssistantChatResponse(
+        conversation_id=reply.conversation_id,
+        reply_text=reply.reply_text,
+        referenced_engine_calls=reply.referenced_engine_calls,
+        computed_solutions=reply.computed_solutions,
+        metadata=reply.metadata,
+    )
+
+
+@api_router.get("/assistant/conversations/{conversation_id}")
+async def get_assistant_conversation(conversation_id: str):
+    doc = await db.assistant_conversations.find_one({"_id": conversation_id}, {"_id": 0})
+    if not doc:
+        return {"conversation_id": conversation_id, "messages": []}
+    return {"conversation_id": conversation_id, **doc}
 
 
 # Include the router in the main app

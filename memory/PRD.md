@@ -67,8 +67,21 @@ Le moteur de calcul est **100% déterministe** — aucune IA n'invente de cotes.
 - Nouveaux composants SVG : `StairSectionTransverse.tsx` (coupe transversale à mi-volée : largeur, paillasse, garde-corps, aciers principaux + répartition) et `StairSectionAxial.tsx` (coupe béton armé : paillasse inclinée + attentes + chapeaux + étriers).
 - 3 onglets dans `result.tsx` : "Coupe long." / "Coupe trans." / "Coupe axe" (testID `tab-section-long/trans/axial`).
 
-**P3 — Assistant IA Claude Sonnet 4.5** (à venir)
-**P4 — Vue 3D interactive** (à venir)
+**P3 — Assistant IA Claude Sonnet 4.5 ✅**
+- Backend : `stair_engine/assistant.py` (emergentintegrations `LlmChat` + `send_message_with_tools`), route `POST /api/assistant/chat` + `GET /api/assistant/conversations/{id}`.
+- Tools exposés (OpenAI schema portable) : `optimize_stair`, `calculate_straight`, `analyze_concrete`. Le LLM ne calcule jamais lui-même, il déclenche les fonctions moteur.
+- Prompt système strict FR : refuse d'inventer des cotes, demande clarification si params manquants.
+- Historique MongoDB collection `assistant_conversations` (`_id = conversation_id`), re-hydraté via `initial_messages` à chaque tour.
+- Tests : 4 pytest slow (utilise la vraie API Anthropic) + 7 pytest publics — 11/11 passants.
+- Frontend : écran `/assistant.tsx` (bulles user/assistant, spinner, 3 suggestions, cartes solutions cliquables → `/result`). Persistence AsyncStorage `stairpilot_assistant_conv_v1`. Bouton "Nouveau" en header. Erreur/timeout affichée en bandeau.
+
+**P4 — Vue 3D interactive ✅**
+- Écran `/view-3d.tsx` accessible depuis `/result` via bouton `view-3d-btn`.
+- Rendu via `@react-three/fiber` (web) et `@react-three/fiber/native` (natif, chargé via `Platform.OS` + `require`). `three@0.186`, `expo-gl@57`.
+- Géométrie générée depuis `StairResult` pour les 5 types : droit (Box), quart tournant bas/haut (winders trapézoïdaux approximés), demi-tournant (2 volées + palier), hélicoïdal (secteurs radiaux + fût cylindrique).
+- Contrôles : OrbitControls chargé dynamiquement sur web (glisser rotation + molette zoom) avec fallback rotation auto si non dispo.
+- Sélecteur matériau béton (brut #7A7A7A / lisse #A8A8A8 / peint #E8E4DC) + bouton "Reset" caméra.
+- Éclairage : ambient 0.6 + 2 directional lights + sol receiveShadow.
 
 ## Contraintes techniques (transverses)
 - Toutes routes préfixées `/api`.

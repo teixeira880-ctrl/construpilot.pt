@@ -110,6 +110,14 @@ export default function HomeScreen() {
           onPress={() => router.push('/optimize')}
           fullWidth
         />
+        <View style={{ height: spacing.s }} />
+        <Button
+          testID="assistant-btn"
+          label="Assistant IA"
+          variant="secondary"
+          onPress={() => router.push('/assistant')}
+          fullWidth
+        />
       </View>
     </SafeAreaView>
   );

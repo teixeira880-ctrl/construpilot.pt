@@ -211,6 +211,14 @@ export default function ResultScreen() {
           />
           <View style={{ height: spacing.s }} />
           <Button
+            testID="view-3d-btn"
+            label="Vue 3D"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/view-3d', params: { projectId: project.id } })}
+            fullWidth
+          />
+          <View style={{ height: spacing.s }} />
+          <Button
             testID="export-pdf-btn"
             label={exporting ? 'Génération…' : 'Exporter dossier PDF'}
             variant="secondary"
