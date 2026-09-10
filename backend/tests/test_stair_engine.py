@@ -526,3 +526,102 @@ def test_28_num_winders_out_of_range_rejected():
             balancing="balanced",
             num_winders="wrong-string",
         )
+
+
+def test_29_auto_and_explicit_same_winders_give_same_is_buildable():
+    """Sécurité : auto-mode et mode explicite avec le MÊME nombre de winders
+    doivent produire la même géométrie et donc le même is_buildable."""
+    # H=2800, L=3000, W=2200 : auto choisit 8 winders (validé par test_25).
+    base_params = dict(
+        floor_height_mm=2800,
+        available_length_mm=3000,
+        available_width_mm=2200,
+        stair_width_mm=900,
+        stairwell_length_mm=2800,
+        stairwell_width_mm=1000,
+        ceiling_height_mm=2800,
+        balancing="balanced",
+    )
+
+    r_auto = compute_quarter_turn_bottom(QuarterTurnBottomInput(**base_params))
+    auto_alerts = [a for a in r_auto.alerts if a.code == "AUTO_WINDERS_SELECTED"]
+    assert len(auto_alerts) == 1
+    winders_auto = int(auto_alerts[0].value)
+
+    r_explicit = compute_quarter_turn_bottom(
+        QuarterTurnBottomInput(**base_params, num_winders=winders_auto)
+    )
+
+    # Même géométrie (au sens strict) et donc même is_buildable
+    assert r_auto.is_buildable == r_explicit.is_buildable
+    assert r_auto.num_treads == r_explicit.num_treads
+    assert r_auto.stair_run_mm == r_explicit.stair_run_mm
+    assert r_auto.riser_height_mm == r_explicit.riser_height_mm
+    # Les alertes non-auto doivent être les mêmes
+    codes_auto = {a.code for a in r_auto.alerts if a.code != "AUTO_WINDERS_SELECTED"}
+    codes_explicit = {a.code for a in r_explicit.alerts}
+    assert codes_auto == codes_explicit
+
+
+def test_30_physically_impossible_geometry_is_not_buildable():
+    """Géométrie physiquement impossible → is_buildable=false avec alerte rouge blocker."""
+    # H=2800 avec L=500 : impossible de faire tenir un escalier
+    r = compute_straight(
+        StairInput(
+            floor_height_mm=2800,
+            available_length_mm=500,
+            available_width_mm=1500,
+            stair_width_mm=900,
+        )
+    )
+    assert r.is_buildable is False
+    blockers = {"STAIR_RUN_TOO_LONG", "STAIR_WIDTH_INSUFFICIENT", "HEADROOM_INSUFFICIENT",
+                "STAIRWELL_TOO_SMALL", "GEOMETRY_INVALID", "BALANCING_IMPOSSIBLE",
+                "AUTO_WINDERS_NO_SOLUTION"}
+    red_codes = {a.code for a in r.alerts if a.level == "red"}
+    assert red_codes & blockers, f"Aucun blocker géométrique trouvé : {red_codes}"
+
+
+def test_31_dtu_nonconform_but_physically_ok_is_buildable():
+    """Géométrie physiquement possible mais non-conforme DTU (pente > 40°)
+    → is_buildable=true avec alerte rouge non-blocker."""
+    # H=2800, L=3200 : run réel 15*280=4200 ne rentre pas → STAIR_RUN_TOO_LONG blocker.
+    # Pour une pente > 40° sans blocker, il faut un cas différent : escalier balancé auto
+    # H=2800, L=3000, W=2200 → auto choisit 8 winders, pente ≈ 44° (rouge non-blocker),
+    # walkline < 240 (rouge non-blocker), géométrie qui rentre.
+    r = compute_quarter_turn_bottom(
+        QuarterTurnBottomInput(
+            floor_height_mm=2800,
+            available_length_mm=3000,
+            available_width_mm=2200,
+            stair_width_mm=900,
+            balancing="balanced",
+        )
+    )
+    assert r.is_buildable is True
+    # Il DOIT y avoir au moins une alerte rouge non-blocker DTU
+    red_alerts = [a for a in r.alerts if a.level == "red"]
+    assert len(red_alerts) >= 1
+    blockers = {"STAIR_RUN_TOO_LONG", "STAIR_WIDTH_INSUFFICIENT", "HEADROOM_INSUFFICIENT",
+                "STAIRWELL_TOO_SMALL", "GEOMETRY_INVALID", "BALANCING_IMPOSSIBLE",
+                "AUTO_WINDERS_NO_SOLUTION"}
+    red_codes = {a.code for a in red_alerts}
+    non_blocker_reds = red_codes - blockers
+    assert len(non_blocker_reds) > 0, f"Attendu au moins 1 red DTU non-blocker, trouvé : {red_codes}"
+
+
+def test_32_is_buildable_independent_of_num_winders_when_both_fit():
+    """Deux configurations num_winders différentes qui rentrent toutes deux → is_buildable=true."""
+    base_params = dict(
+        floor_height_mm=2800,
+        available_length_mm=5000,  # large : plusieurs configs winder rentrent
+        available_width_mm=2500,
+        stair_width_mm=900,
+        balancing="balanced",
+    )
+    for n in [3, 4, 5]:
+        r = compute_quarter_turn_bottom(
+            QuarterTurnBottomInput(**base_params, num_winders=n)
+        )
+        # Avec L=5000, tous rentrent
+        assert r.is_buildable is True, f"n={n} devrait être buildable, alerts={[a.code for a in r.alerts]}"

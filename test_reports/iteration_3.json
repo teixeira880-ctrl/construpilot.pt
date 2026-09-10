@@ -1,0 +1,37 @@
+{
+  "summary": "STAIRPILOT Phase 0 iteration 3 fully validated against the official pod URL https://escalier-pro.preview.emergentagent.com. 42/42 pytest tests pass (32 unit engine tests + 10 integration tests via the official public URL). All 8 review criteria are verified: (1) GET /api/norms/fr returns HTTP 200 with headroom_min_mm=1900 on the official URL; (2) GET /api/openapi.json returns HTTP 200; (3) mode auto and mode explicit with the SAME num_winders produce identical geometry (num_treads=15, stair_run_mm=2860, riser=175, is_buildable=true) and the same non-AUTO alert set — auto adds AUTO_WINDERS_SELECTED (N=8), explicit does not; (4) physically impossible H=2800/L=500 → is_buildable=false with STAIR_RUN_TOO_LONG (blocker); (5) DTU non-conforme mais physiquement OK (QT auto H=2800/L=3000/W=2200) → is_buildable=true avec red alerts BALANCING_WALKLINE_TOO_SMALL + SLOPE_TOO_STEEP mais AUCUN STAIR_RUN_TOO_LONG; (6) BLOCKING_CODES semantics correct — seuls les 7 codes bloqueurs mettent is_buildable=false, les red DTU non-conformités (walkline, slope, blondel, riser, tread) laissent is_buildable=true; (7) pytest suite passe intégralement; (8) chaque alerte porte un champ 'message' non-null identique à 'message_fr'. La 'incohérence' rapportée par le testeur précédent (num_winders=5 vs auto) était bien une méprise géométrique (5 winders → run 3700mm ne rentre pas dans L=3000; 8 winders → run 2860mm rentre), confirmée par les tests 29 et 32.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_stair_engine.py",
+    "/app/backend/tests/test_api_integration.py",
+    "/app/test_reports/pytest/all_tests.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: boto3/Tigris config chargée à l'import mais aucune route ne l'exerce — dépendance morte à câbler avant Phase 1 (report unchanged from iteration 2).",
+    "server.py: @app.on_event('shutdown') déprécié — migrer vers lifespan context manager (report unchanged from iteration 2).",
+    "stair_engine/alerts.py: object.__setattr__ dans le validator fonctionne mais 'self.message = self.message_fr' serait plus lisible (le modèle n'est pas frozen).",
+    "Design choice (non-bug, worth flagging): mode num_winders='auto' retourne la première config qui rentre physiquement, même si walkline << 240mm. Sémantique documentée et cohérente avec BLOCKING_CODES, mais un mode 'auto_dtu_compliant' pourrait éviter la surprise utilisateur."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_api_integration.py"
+  ],
+  "success_rate": {
+    "backend": "100% (42/42 pytest tests; 10/10 integration tests via official URL escalier-pro.preview.emergentagent.com)",
+    "frontend": "skipped per request (backend only)"
+  },
+  "seed_data_creation": "None. Tests are stateless (no DB writes).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Official pod URL = https://escalier-pro.preview.emergentagent.com (from mobile/.env EXPO_PACKAGER_HOSTNAME and EXPO_PUBLIC_BACKEND_URL). Old ID URL https://5668c919-...preview.emergentagent.com is deprecated for this pod; the c4a69199-... URL is the Webflow marketing page and NOT this backend — do not use it. Integration tests hardcode the official URL. BLOCKING_CODES = {STAIR_RUN_TOO_LONG, STAIR_WIDTH_INSUFFICIENT, STAIRWELL_TOO_SMALL, HEADROOM_INSUFFICIENT, GEOMETRY_INVALID, BALANCING_IMPOSSIBLE, AUTO_WINDERS_NO_SOLUTION}. Non-blocker red DTU alerts = {BLONDEL_OUT_OF_RANGE, RISER_TOO_HIGH, SLOPE_TOO_STEEP, BALANCING_WALKLINE_TOO_SMALL, TREAD_TOO_SMALL, STAIR_WIDTH_TOO_SMALL}. AUTO_WINDERS_SELECTED alert carries N in 'tread_index' (int) and mirrored in 'value' (numeric). Reference case: H=2800/L=3000/W=2200 balanced auto → 8 winders, run=2860, riser=175, buildable=true, reds=[BALANCING_WALKLINE_TOO_SMALL, SLOPE_TOO_STEEP].",
+  "rca_of_issue": "N/A — no bugs found. Iteration-2 tester's report of an is_buildable 'incohérence' between auto and explicit num_winders was itself a misreading: the two calls used different N values (auto→8, explicit→5). New tests 29 (unit) and test_auto_and_explicit_same_winders_same_geometry (integration) explicitly compare auto vs explicit with the SAME N and confirm identical geometry, identical is_buildable, and identical non-AUTO alert set."
+}
