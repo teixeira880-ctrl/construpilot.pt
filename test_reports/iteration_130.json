@@ -1,0 +1,33 @@
+{
+  "summary": "Iter 130 — Tested runtime FR→PT DomTranslator layer. FR mode regression PASSES on /, /estimation, /smart-project, /calculateurs, /prix (no console errors; smart-project button stays 'Analyser mon projet'). PT mode PASSES: /smart-project heading 'Descreva o seu projeto, a IA faz o resto' & submit-btn 'Analisar o meu projeto', input editable (typed 'Meu projeto teste 123' preserved verbatim, translator did NOT overwrite user input), /calculateurs tile tab shows 'Comprimento azulejo (cm)', /prix in Portuguese, /estimation project defaults 'Renovação completa de moradia'. Logged-in PT (pro@construpilot.fr / Pro2026!) all PASS: /rentabilite title='Relatório de rentabilidade', KPIs in PT ('Margem' present); /devis-editeur/doc_b0d2b8abda1e editor-library-mode-select change → toast 'Preferência guardada' shown (PT); /radar shows 'Radar Obras'; /plan?open=plan_f6d3ae6fb2f2, /appro, /suivi-chantier all render (no React error overlay, no console errors, non-blank body). ONE BUG: switching PT→FR via [data-testid=market-toggle-fr] does NOT restore French text for t()-driven strings — restore() blindly writes cached __fr back which is a PT string (captured during PT mode) so labels/headings remain Portuguese despite lang=fr / aria-pressed=true / html_lang=fr.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DomTranslator.jsx", "issue": "PT→FR toggle does not restore French text for t()-managed strings. After clicking [data-testid=market-toggle-fr] while on /estimation, lang state = 'fr' and aria-pressed on FR button = true, but H1 remains 'Orçamente a sua obra em 3 passos' (PT). Root cause: when PT mode first ran, translateNode captured __fr = current nodeValue = PT string returned by t() (since t() already returned PT). On lang change to FR, React re-renders and sets nodeValue = FR text ('Chiffrez votre chantier en 3 étapes'), but the DomTranslator useEffect cleanup+restore then runs restore() which walks TEXT nodes and unconditionally writes n.nodeValue = n.__fr — forcing text back to the cached PT value. Screenshot confirms mixed state: form option values ('Rénovation complète maison', 'France') updated by React AFTER restore, while H1 and labels ('País', 'Área (m²)') stay in PT.", "selector": "[data-testid=market-toggle-fr]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/suivi-chantier (PT mode)", "issues": ["Tabs 'Comptes-rendus (0)', 'Réserves (0)', 'Avancement (0%)' remain in French — labels appear to be static FR text not present in pt_auto.json.", "Placeholder 'Nom du chantier (ex. Villa Dupont)' remains FR in PT mode — missing dictionary entry."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix DomTranslator restore/toggle logic: __fr is misnamed — it stores whatever text was present at first observation which, when initial render was in PT, IS the PT string. Options: (a) only record __fr if node's text is NOT already a PT lookup value; (b) don't call restore() on PT→FR toggle — instead disconnect observer and let React re-render (also on FR set, translateNode should never re-fire); (c) key mapping by lang: track a Map<node, {fr, pt}> so restore has the actual French; (d) simplest: force a full remount / reload on lang change. Additionally the mutation observer's write-back after React updates (translateNode running via requestAnimationFrame when lang=fr already? — no useEffect cleanup runs first so obs is disconnected, but restore is the actual culprit).",
+    "Add missing pt_auto.json entries for /suivi-chantier tabs 'Comptes-rendus', 'Réserves', 'Avancement' and placeholder 'Nom du chantier (ex. Villa Dupont)' (or handle via t())."
+  ],
+  "critical_code_review_comments": [
+    "DomTranslator.jsx L30 stores node.__fr = node.nodeValue on first pass regardless of whether that value is French — but the field name and restore() logic assume it's French. This is the root cause of the toggle-back bug.",
+    "DomTranslator.jsx L58-62 restore() writes __fr unconditionally, even for text nodes React has already updated to a NEW value in the target language. Should skip nodes whose current value equals a known translation of __fr (or use a per-lang cache).",
+    "DomTranslator.jsx observer runs on every characterData mutation and calls translateNode(document.body) on rAF — O(N) full-DOM walk per rAF is expensive on dynamic pages (results grids, tables). Consider only re-translating mutated subtrees.",
+    "SKIP set excludes TEXTAREA but not INPUT — input placeholders are handled via ATTRS but input `value` is not touched (good), however if any component uses value as a display label DomTranslator won't cover it (acceptable trade-off but worth documenting).",
+    "PT mode has NO console errors on any route tested — solid baseline."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not tested)", "frontend": "13/14 assertions PASS (~93%). Only failure: PT→FR toggle live-restore of t() strings."},
+  "test_credentials": "pro@construpilot.fr / Pro2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None. QuoteEditor preference on doc_b0d2b8abda1e was changed from shared_first → company_first as part of toast test. Consider resetting if needed.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The PT→FR toggle bug is fully reproducible in ~10s: 1) add_init_script setting localStorage construpilot_lang='pt'; 2) goto /estimation; 3) wait ~2s for DomTranslator; 4) click [data-testid=market-toggle-fr]; 5) wait 3s; 6) evaluate document.querySelector('h1').innerText → still 'Orçamente a sua obra em 3 passos' while html_lang='fr' & localStorage='fr' & FR button aria-pressed='true'. To confirm the fix: after toggle, H1 must equal 'Chiffrez votre chantier en 3 étapes'. Also verify labels 'País'→'Pays', 'Área (m²)'→'Surface (m²)'.",
+  "rca of the issue": "DomTranslator.jsx captures node.__fr = node.nodeValue on first walk. When the app initially renders in PT (I18nContext returns PT strings from t()), __fr is set to the PT string. On PT→FR toggle, useEffect runs restore() which writes node.nodeValue = node.__fr, effectively re-Portuguese-izing every t()-driven text node that React had just updated to French. Reproduction: PT init → toggle FR → H1 stays PT. Mitigation: either (1) skip restore() entirely and rely on React re-render + disconnect observer (won't undo previously-mutated hardcoded FR text though), (2) store lang alongside cached value so restore only writes back if cached was actually French, or (3) force reload on FR toggle when previous lang was PT."
+}

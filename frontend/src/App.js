@@ -88,6 +88,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 import CookieConsent from "@/components/CookieConsent";
+import { DomTranslator } from "@/components/DomTranslator";
 
 const Protected = ({ children, admin }) => {
   const { user, loading } = useAuth();
@@ -254,6 +255,7 @@ function App() {
                       <MobileTabBar />
                       <InstallPrompt />
                       <CookieConsent />
+                      <DomTranslator />
                       <Toaster position="top-right" richColors />
                     </ConfirmProvider>
                   </WhiteLabelProvider>
