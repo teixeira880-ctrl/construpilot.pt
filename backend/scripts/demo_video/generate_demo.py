@@ -82,14 +82,14 @@ def _tts_bytes_sync(text: str) -> bytes:
 
 
 def _tts_bytes_elevenlabs(text: str) -> bytes:
-    """ElevenLabs PT-PT nativo — voz 'Tomilho' (tom comercial/publicitário,
-    dicção clara e enérgica, ritmo dinâmico; ideal para vídeo institucional).
+    """ElevenLabs PT-PT nativo — voz 'João - Narrator'
+    (serene and expressive male narrator voice).
     accent european · locale pt-PT · multilingual v2."""
     from elevenlabs.client import ElevenLabs
     from elevenlabs import VoiceSettings
     client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
     stream = client.text_to_speech.convert(
-        voice_id="BMx0x1OMlUwe9Nnvy96U",           # Tomilho · PT-PT comercial
+        voice_id="ID3DiXGPB7uwug5tZ3FB",           # João - Narrator · PT-PT
         model_id="eleven_multilingual_v2",
         output_format="mp3_44100_128",
         text=text,
@@ -111,11 +111,11 @@ async def _tts_bytes_openai(text: str) -> bytes:
 
 async def build_narration() -> tuple[list[Path], str]:
     files: list[Path] = []
-    provider = "elevenlabs_tomilho_pt_pt"
+    provider = "elevenlabs_joao_narrator_pt_pt"
     for name, dur, text in SEGMENTS:
         mp3 = AUD / f"{name}.mp3"
         data: bytes | None = None
-        if provider == "elevenlabs_tomilho_pt_pt":
+        if provider == "elevenlabs_joao_narrator_pt_pt":
             try:
                 data = _tts_bytes_elevenlabs(text)
             except Exception as e:
