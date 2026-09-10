@@ -1416,6 +1416,25 @@ async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_
     return {"subject": subject, "html": html, "attachments": attachments}
 
 
+@router.get("/send-status/{log_id}")
+async def send_status(log_id: str, user=Depends(current_user)) -> dict:
+    """État réel de l'envoi (traité en arrière-plan) : queued / sent / failed + cause lisible."""
+    log = await db.quote_sends.find_one({"log_id": log_id, "user_id": user["user_id"]},
+                                        {"_id": 0, "email_status": 1, "error": 1, "email_via": 1, "client_email": 1})
+    if not log:
+        raise HTTPException(404, "Envoi introuvable")
+    err = log.get("error") or ""
+    if "only send testing emails" in err or "own email address" in err or "resend.dev" in err:
+        err = ("Expéditeur non configuré sur le serveur (SENDER_EMAIL absent ou domaine non vérifié chez Resend) : "
+               "Resend n'autorise alors l'envoi qu'à votre propre adresse. Renseignez SENDER_EMAIL avec une adresse "
+               "d'un domaine vérifié (ex. info@construpilot.fr).")
+    elif "SENDER_EMAIL" in err:
+        err = "SENDER_EMAIL absent sur le serveur : configurez une adresse d'un domaine vérifié chez Resend (ex. info@construpilot.fr)."
+    elif "RESEND_API_KEY" in err:
+        err = "Clé RESEND_API_KEY absente sur le serveur : aucun e-mail ne peut partir."
+    return {"email_status": log.get("email_status"), "error": err or None, "via": log.get("email_via"), "to": log.get("client_email")}
+
+
 @router.post("/{doc_id}/send")
 async def send_document(doc_id: str, body: DocSendIn, background_tasks: BackgroundTasks,
                         user=Depends(current_user)):

@@ -71,7 +71,7 @@ export default function Library() {
         type: form.type, category: form.category, designation: form.designation,
         unit: form.unit, unit_price_ht: parseFloat(form.unit_price_ht) || 0,
         cost_price_ht: parseFloat(form.cost_price_ht) || 0,
-        vat_rate: parseFloat(form.vat_rate) || 10, notes: form.notes,
+        vat_rate: (form.vat_rate === "" || form.vat_rate == null) ? 10 : parseFloat(form.vat_rate), notes: form.notes,
       };
       if (editing) await api.put(`/library/${editing}`, payload);
       else await api.post("/library", payload);

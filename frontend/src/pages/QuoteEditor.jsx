@@ -354,7 +354,7 @@ export default function QuoteEditor() {
     deposit_pct: Number(depositPct) || 0, status,
     lines: lines.filter((l) => l.designation.trim()).map((l) => ({
       designation: l.designation, description: l.description || "", unit: l.unit, qty: Number(l.qty) || 0,
-      unit_price_ht: Number(l.unit_price_ht) || 0, cost_price_ht: Number(l.cost_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
+      unit_price_ht: Number(l.unit_price_ht) || 0, cost_price_ht: Number(l.cost_price_ht) || 0, vat_rate: (l.vat_rate === "" || l.vat_rate == null) ? 10 : Number(l.vat_rate),
       category: l.category || "",
     })),
   });
@@ -367,7 +367,7 @@ export default function QuoteEditor() {
       try {
         await api.post("/library", {
           type: "ouvrage", category: l.category || "Devis", designation: l.designation,
-          unit: l.unit, unit_price_ht: Number(l.unit_price_ht) || 0, cost_price_ht: Number(l.cost_price_ht) || 0, vat_rate: Number(l.vat_rate) || 10,
+          unit: l.unit, unit_price_ht: Number(l.unit_price_ht) || 0, cost_price_ht: Number(l.cost_price_ht) || 0, vat_rate: (l.vat_rate === "" || l.vat_rate == null) ? 10 : Number(l.vat_rate),
         });
       } catch { /* ignore */ }
     }
@@ -729,12 +729,24 @@ export default function QuoteEditor() {
         filename: f.name, content_type: f.type || "application/octet-stream",
         content_b64: await fileToB64(f),
       })));
-      await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d, render_url: renderUrl, attachments })
-        .then(({ data }) => {
-          toast.success(data?.attached_3d ? t("crm.t_quote_sent_3d") : t("crm.t_quote_sent"));
-        });
+      const { data } = await api.post(`/documents/${id}/send`, { client_email: sendEmail, client_name: sendName, message: sendMsg, attach_3d: attach3d, render_url: renderUrl, attachments });
+      toast.success(data?.attached_3d ? t("crm.t_quote_sent_3d") : t("crm.t_quote_sent"));
       closeSend(false);
       setStatus("sent");
+      // Vérification de la remise réelle (envoi en arrière-plan) : alerte si l'e-mail n'est pas parti
+      if (data?.log_id) {
+        for (let i = 0; i < 12; i++) {
+          await new Promise((r) => setTimeout(r, 4000));
+          try {
+            const { data: st } = await api.get(`/documents/send-status/${data.log_id}`);
+            if (st.email_status === "sent") break;
+            if (st.email_status === "failed") {
+              toast.error((isPT ? "E-mail NÃO entregue ao cliente : " : "E-mail NON remis au client : ") + (st.error || ""), { duration: 15000 });
+              break;
+            }
+          } catch { break; }
+        }
+      }
     } catch (e) {
       toast.error(e?.response?.data?.detail || t("crm.t_send_fail"));
     } finally { setSending(false); }

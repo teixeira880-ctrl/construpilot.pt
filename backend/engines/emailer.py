@@ -22,7 +22,9 @@ def _configure():
 
 
 def _from(from_name: str | None = None):
-    addr = os.environ.get("SENDER_EMAIL") or "onboarding@resend.dev"
+    addr = os.environ.get("SENDER_EMAIL")
+    if not addr:
+        raise RuntimeError("SENDER_EMAIL manquant : configurez une adresse d'un domaine vérifié chez Resend")
     if from_name:
         clean = from_name.replace('"', "").replace("<", "").replace(">", "").strip()[:80]
         if clean:
