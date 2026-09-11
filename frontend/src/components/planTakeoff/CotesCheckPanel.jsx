@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Ruler, FileDown, Loader2, Image as ImageIcon, Pencil, EyeOff, Eye, Check, X, RefreshCw } from "lucide-react";
+import { Ruler, FileDown, Loader2, Image as ImageIcon, Pencil, EyeOff, Eye, Check, X, RefreshCw, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 
 const LABEL = { ok: "OK", warn: "À vérifier", ko: "Incohérence", ignored: "Ignorée" };
@@ -104,12 +107,63 @@ function Chains({ chains }) {
   );
 }
 
+function SendDialog({ open, onClose, plan, pageIndex, report, onSent }) {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [copyMe, setCopyMe] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Adresse e-mail invalide");
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/cotes/send`,
+        { page_index: pageIndex, to_email: email, message, copy_me: copyMe });
+      toast.success(`Rapport envoyé à ${data.sent_to}${data.copy_sent ? " (copie reçue)" : ""}`, { duration: 7000 });
+      onSent?.();
+      onClose();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="rounded-sm sm:max-w-md" data-testid="cotes-send-dialog">
+        <DialogHeader>
+          <DialogTitle>Envoyer le rapport de contrôle des cotes</DialogTitle>
+          <DialogDescription>
+            Le PDF (synthèse, toutes les cotes, chaînes et plan annoté) est joint à l'e-mail.
+            {report && ` Verdict actuel : ${LABEL[report.summary.verdict]} — ${report.summary.ko} incohérence(s).`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-2">
+          <Label className="text-xs">Destinataire (architecte, client, bureau d'études)</Label>
+          <Input type="email" placeholder="architecte@exemple.fr" value={email} onChange={(e) => setEmail(e.target.value)}
+                 className="rounded-sm" data-testid="cotes-send-email" />
+          <Label className="text-xs">Message (optionnel)</Label>
+          <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="rounded-sm text-sm"
+                    placeholder="Bonjour, veuillez trouver ci-joint le contrôle des cotes du plan…" data-testid="cotes-send-message" />
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={copyMe} onChange={(e) => setCopyMe(e.target.checked)} data-testid="cotes-send-copy" />
+            M'envoyer une copie
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" className="rounded-sm" onClick={onClose} disabled={busy}>Annuler</Button>
+          <Button className="rounded-sm gap-2" onClick={send} disabled={busy} data-testid="cotes-send-submit">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />} Envoyer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selectedIndex = null, onFocusCote }) {
   const [tolPct, setTolPct] = useState(2);
   const [tolCm, setTolCm] = useState(3);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);
   const [overlay, setOverlay] = useState(null);
+  const [sendOpen, setSendOpen] = useState(false);
 
   useEffect(() => {
     const r = plan?.cotes_checks?.[String(pageIndex)] || null;
@@ -218,12 +272,22 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
           )}
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={showOverlay} data-testid="cotes-overlay-btn">
-              <ImageIcon className="h-3.5 w-3.5" /> Voir le plan annoté
+              <ImageIcon className="h-3.5 w-3.5" /> Plan annoté
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={downloadPdf} data-testid="cotes-pdf-btn">
-              <FileDown className="h-3.5 w-3.5" /> Rapport PDF
+              <FileDown className="h-3.5 w-3.5" /> PDF
+            </Button>
+            <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={() => setSendOpen(true)} data-testid="cotes-send-btn">
+              <Mail className="h-3.5 w-3.5" /> Envoyer
             </Button>
           </div>
+          {report.last_sent && (
+            <p className="text-[11px] text-muted-foreground" data-testid="cotes-last-sent">
+              Dernier envoi : {report.last_sent.to_email} · {new Date(report.last_sent.sent_at).toLocaleString("fr-FR")}
+            </p>
+          )}
+          <SendDialog open={sendOpen} onClose={() => setSendOpen(false)} plan={plan} pageIndex={pageIndex}
+                      report={report} onSent={() => refreshPlan?.()} />
           {overlay && (
             <a href={overlay} target="_blank" rel="noreferrer" data-testid="cotes-overlay-link">
               <img src={overlay} alt="Plan annoté — cotes mesurées" className="w-full border rounded-sm" data-testid="cotes-overlay-img" />

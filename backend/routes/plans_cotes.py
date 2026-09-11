@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Query
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
 from core.security import current_user
@@ -190,6 +190,65 @@ async def _report_and_overlay(plan_id: str, user_id: str, page_index: int):
 async def cotes_overlay(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)):
     _, _, png = await _report_and_overlay(plan_id, user["user_id"], page_index)
     return Response(content=png, media_type="image/png")
+
+
+class CotesSendIn(BaseModel):
+    page_index: int = Field(default=0, ge=0)
+    to_email: EmailStr
+    message: str = ""
+    copy_me: bool = True
+
+
+@router.post("/{plan_id}/cotes/send")
+async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)) -> dict:
+    """Envoie le rapport de contrôle des cotes (PDF) à l'architecte / au client."""
+    import html as _html
+    from engines.emailer import logo_url_for, send_email_with_pdf, wrap_company_html
+
+    p, report, png = await _report_and_overlay(plan_id, user["user_id"], body.page_index)
+    branding = await _resolve_branding(user["user_id"]) or {}
+    pdf = build_cotes_pdf(p, body.page_index, report, png, branding)
+    sm = report["summary"]
+    company = branding.get("company_name") or user.get("name") or "ConstruPilot"
+    perso = _html.escape(body.message.strip()[:2000]).replace("\n", "<br/>")
+    verdict = {"ok": "aucune incohérence", "warn": "écarts à vérifier",
+               "ko": f"{sm['ko']} incohérence(s)"}[sm["verdict"]]
+    fname = _html.escape(p.get("filename") or "plan")
+    inner = (
+        (f"<p>{perso}</p>" if perso else "") +
+        f"<p>Veuillez trouver ci-joint le <b>rapport de contrôle des cotes</b> du plan « {fname} » "
+        f"(page {body.page_index + 1}) : chaque cote inscrite a été mesurée à l'échelle et comparée à sa valeur.</p>"
+        f"<p><b>{sm['total']}</b> cotes contrôlées · <b>{sm['ok']}</b> conformes · <b>{sm['warn']}</b> à vérifier · "
+        f"<b>{sm['ko']}</b> incohérence(s) · {sm['chains_total']} chaîne(s) de cotes ({sm['chains_ko']} incohérente(s)) · "
+        f"écart max {sm['max_delta_cm']:.0f} cm — tolérance ±{report['tolerance']['pct']} % / {report['tolerance']['cm']} cm.</p>"
+        f"<p>Verdict : <b>{verdict}</b>. Le plan annoté (cotes mesurées en vert / orange / rouge) figure en dernière page du PDF.</p>")
+    html = wrap_company_html(
+        f"Rapport de contrôle des cotes — {fname}", inner, company_name=company,
+        logo_url=logo_url_for(user["user_id"], branding), logo_b64=branding.get("logo_b64"),
+        contact_line=branding.get("contact_line"), siret=branding.get("siret"),
+        vat=branding.get("vat"), nif=branding.get("nif"), alvara=branding.get("alvara"),
+        company_email=branding.get("company_email"), verified=bool(branding.get("verified")))
+    subject = f"Rapport de contrôle des cotes — {p.get('filename') or 'plan'} ({verdict})"
+    reply_to = branding.get("company_email") or user.get("email")
+    try:
+        await send_email_with_pdf(body.to_email, subject, html, pdf,
+                                  filename=f"controle-cotes-p{body.page_index + 1}.pdf",
+                                  reply_to=reply_to, from_name=company)
+        if body.copy_me and user.get("email") and user["email"].lower() != body.to_email.lower():
+            await send_email_with_pdf(user["email"], f"[Copie] {subject}", html, pdf,
+                                      filename=f"controle-cotes-p{body.page_index + 1}.pdf",
+                                      reply_to=reply_to, from_name=company)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception:
+        raise HTTPException(502, "Envoi de l'e-mail impossible — réessayez plus tard")
+    entry = {"kind": "cotes", "to_email": body.to_email, "page_index": body.page_index,
+             "sent_at": _now(), "verdict": sm["verdict"], "ko": sm["ko"], "total": sm["total"]}
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"$push": {"sent_reports": {"$each": [entry], "$slice": -20}},
+         "$set": {f"cotes_checks.{body.page_index}.last_sent": entry}})
+    return {"ok": True, "sent_to": body.to_email, "copy_sent": body.copy_me, **entry}
 
 
 @router.get("/{plan_id}/cotes/report.pdf")
