@@ -33,6 +33,7 @@ const NAV_PRO = [
   { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
   { to: "/rendu-ia", label: "Rendu IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
   { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Nouveau" },
+  { to: "/controle-cotes", label: "Analyser cotes des plans", key: "nav.cotes", icon: Ruler, auth: true, pro: true, badge: "Nouveau" },
   { to: "/radar", label: "Radar Chantiers", key: "nav.radar", icon: Radar, auth: true, pro: true, badge: "Nouveau" },
   { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact },

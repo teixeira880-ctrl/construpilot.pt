@@ -47,6 +47,7 @@ import SignQuote from "@/pages/SignQuote";
 import ProspectionLanding from "@/pages/ProspectionLanding";
 import PcSignPage from "@/pages/PcSignPage";
 import PcDashboard from "@/pages/PcDashboard";
+import CotesControl from "@/pages/CotesControl";
 import Account from "@/pages/Account";
 import QuoteTracking from "@/pages/QuoteTracking";
 import PublicEstimation from "@/pages/PublicEstimation";
@@ -206,6 +207,7 @@ function AppRouter() {
       <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
       <Route path="/etudes-pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
+      <Route path="/controle-cotes" element={<ProRoute><Shell><CotesControl /></Shell></ProRoute>} />
       <Route path="/compte" element={<Protected><Shell><Account /></Shell></Protected>} />
       <Route path="/pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
       <Route path="/plan" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
