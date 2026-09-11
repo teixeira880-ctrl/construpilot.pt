@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -237,12 +236,14 @@ function AppRouter() {
   );
 }
 
-function App() {
-  useEffect(() => {
-    const saved = localStorage.getItem("construpilot_theme");
-    if (saved !== "light") document.documentElement.classList.add("dark");
-  }, []);
+// Thème : mode jour par défaut ; le mode sombre n'est appliqué que s'il a été choisi explicitement.
+if (localStorage.getItem("construpilot_theme") === "dark") {
+  document.documentElement.classList.add("dark");
+} else {
+  document.documentElement.classList.remove("dark");
+}
 
+function App() {
   return (
     <div className="App">
       <ErrorBoundary>
