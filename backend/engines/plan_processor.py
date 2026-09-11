@@ -165,8 +165,18 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
         except Exception as e:
             logger.warning(f"text extract failed p{i}: {e}")
 
+        # --- Cotes vectorielles exactes (texte de cote ↔ ligne de cote ↔ lignes d'attache) ---
+        pdf_dims: dict = {}
+        try:
+            from engines.plan_vector_pdf import extract_vector_dimensions
+            pdf_dims = extract_vector_dimensions(vectors, text_blocks, render_dpi * ratio / 72)
+        except Exception as e:
+            logger.warning(f"vector dims failed p{i}: {e}")
+
         pages_out.append({
             "index": i,
+            "pdf_dimensions": pdf_dims.get("dimensions") or [],
+            "pdf_vector_scale": {k: v for k, v in pdf_dims.items() if k != "dimensions"},
             "width_px": fw,
             "height_px": fh,
             "dpi": round(render_dpi * ratio, 2),

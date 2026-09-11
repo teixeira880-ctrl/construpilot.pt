@@ -225,14 +225,17 @@ def plan_model() -> tuple[str, str]:
     return (provider or "openai"), (model or "gpt-5.5")
 
 
-async def _call_gpt_vision(image_b64_png: str, api_key: str, prompt: str | None = None) -> str:
+async def _call_gpt_vision(image_b64_png: str, api_key: str, prompt: str | None = None, lang: str = "fr") -> str:
     """Send the plan image to the configured vision model and return raw text."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    from engines.plan_geometry_prompt import LANG_INSTRUCTION
     provider, model = plan_model()
     chat = LlmChat(
         api_key=api_key,
         session_id="plan-analyze",
-        system_message=CORE_PRINCIPLES + "\n\nTu réponds toujours en JSON strict, sans markdown.",
+        system_message=CORE_PRINCIPLES + "\n\nTu réponds toujours en JSON strict, sans markdown. "
+        "Les clés JSON restent telles que demandées ; les VALEURS textuelles (noms de pièces, localisations, notes) : "
+        + LANG_INSTRUCTION.get(lang, LANG_INSTRUCTION["fr"]),
     ).with_model(provider, model)
     msg = UserMessage(
         text=prompt or PROMPT,
@@ -263,13 +266,13 @@ Règles : une entrée par cote lue ; pour une cote horizontale y1 == y2, pour un
 sois le plus précis possible sur les extrémités (elles servent à mesurer le trait) ; n'invente aucune valeur."""
 
 
-async def read_dimension_lines(image_b64_png: str) -> dict:
+async def read_dimension_lines(image_b64_png: str, lang: str = "fr") -> dict:
     """Lecture dédiée de toutes les cotes du plan (valeur + position du trait)."""
     api_key = os.environ.get("EMERGENT_LLM_KEY")
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent", "dimension_lines": []}
     try:
-        raw = await _call_gpt_vision(image_b64_png, api_key, prompt=COTES_PROMPT)
+        raw = await _call_gpt_vision(image_b64_png, api_key, prompt=COTES_PROMPT, lang=lang)
         data = _parse_json_response(raw)
     except Exception as e:
         logger.warning(f"AI cotes reading failed: {e}")
@@ -340,7 +343,7 @@ def _normalize_analysis(data: dict) -> dict:
     return data
 
 
-async def analyze_plan_image(image_b64_png: str) -> dict:
+async def analyze_plan_image(image_b64_png: str, lang: str = "fr") -> dict:
     """Send a PNG plan image to GPT-Vision and return the parsed gros-œuvre JSON.
 
     Always returns a dict — errors are surfaced via the `error` key.
@@ -349,7 +352,7 @@ async def analyze_plan_image(image_b64_png: str) -> dict:
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent", "confidence": 0.0}
     try:
-        raw = await _call_gpt_vision(image_b64_png, api_key)
+        raw = await _call_gpt_vision(image_b64_png, api_key, lang=lang)
     except ImportError:
         logger.error("emergentintegrations not installed")
         return {"error": "AI unavailable", "confidence": 0.0}

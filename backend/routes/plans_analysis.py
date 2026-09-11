@@ -204,7 +204,8 @@ async def analyze_plan(plan_id: str, page_index: int = 0, user=Depends(current_u
     img = pages[page_index].get("image_png_b64")
     if not img:
         raise HTTPException(500, "Image manquante")
-    analysis = await analyze_plan_image(img)
+    _b = await _resolve_branding(user["user_id"]) or {}
+    analysis = await analyze_plan_image(img, "pt" if (_b.get("country") or "").upper() == "PT" else "fr")
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {"ai_analysis": {**analysis, "page_index": page_index,

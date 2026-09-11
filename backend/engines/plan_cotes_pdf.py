@@ -9,8 +9,10 @@ from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
-from reportlab.platypus import (Image as RLImage, PageBreak, Paragraph, SimpleDocTemplate,
+from reportlab.platypus import (Image as RLImage, PageBreak, SimpleDocTemplate,
                                 Spacer, Table, TableStyle)
+
+from engines.plan_pdf_i18n import LANG as PDF_LANG, Paragraph, cover_story, disclaimer, tr
 
 from engines.pdf_takeoff import DARK, GREY, LIGHT_GREY, ORANGE, _story_header_branding, _styles
 
@@ -80,6 +82,7 @@ def _fit_image(png: bytes, max_w: float, max_h: float) -> RLImage:
 
 
 def _tbl(rows, widths, S, status_col: int | None = None, statuses: list | None = None):
+    rows = [[tr(c) if isinstance(c, str) else c for c in r] for r in rows]
     t = Table(rows, colWidths=widths, repeatRows=1)
     style = [("BACKGROUND", (0, 0), (-1, 0), DARK), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
              ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, -1), 7.5),
@@ -107,12 +110,24 @@ def _story_summary(story, report, S):
     if report.get("abstention"):
         story.append(Paragraph(f"<b>Abstention ConstruPilot :</b> {report['abstention']} "
                                f"({sm.get('nd', 0)} cote(s) non déterminée(s)).", S["body"]))
-    src = {"ai": "lecture IA du plan (image)", "dxf": "cotes exactes du fichier DXF"}.get(
-        (report.get("reading") or {}).get("source"), "—")
+    rd = report.get("reading") or {}
+    src = {"ai": "lecture IA du plan (image)", "dxf": "cotes exactes du fichier DXF",
+           "pdf_vector+ai": "cotes vectorielles du PDF (mesure exacte au mm) croisées avec la lecture IA"}.get(rd.get("source"), "—")
+    eff = cal.get("effective_scale_denominator")
     story.append(Paragraph(
         f"Tolérance : ±{tol['pct']} % (ou ±{tol['cm']} cm) · Source des cotes : {src} · "
         f"Échelle : {cal.get('pixels_per_meter', 0):.1f} px/m ({cal.get('method', '—')}"
-        f"{', calibrée automatiquement' if report.get('auto_calibrated') else ''}).", S["muted"]))
+        f"{', calibrée automatiquement' if report.get('auto_calibrated') else ''})"
+        f"{f' · échelle effective du PDF 1/{eff:g}' if eff else ''}.", S["muted"]))
+    cross = rd.get("cross") or {}
+    if cross:
+        story.append(Paragraph(
+            f"<b>Croisement vectoriel ↔ IA :</b> {cross.get('vector', 0)} cote(s) mesurée(s) dans les vecteurs du PDF, "
+            f"{cross.get('confirmed', 0)} confirmée(s) par la lecture IA, {cross.get('ai_only', 0)} lue(s) par l'IA seule "
+            f"(non vérifiées, jamais comptées en incohérence)"
+            + (" · divergences de lecture (le texte vectoriel fait foi) : " + " ; ".join(
+                f"« {d.get('vector_text')} » lu « {d.get('ai_text')} » par l'IA" for d in cross["divergences"])
+               if cross.get("divergences") else "") + ".", S["muted"]))
 
 
 def _story_items(story, report, S):
@@ -182,7 +197,12 @@ def _story_geometry(story, geo: dict, S):
         f"<font color='{_LVL_COL[lvl]}'><b>Niveau global : {_LVL_LABEL[lvl]}</b></font> — "
         f"{len(geo.get('anomalies') or [])} anomalie(s) · passage 2 : "
         f"{(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmée(s), "
-        f"{(geo.get('double_lecture') or {}).get('infirmees', 0)} infirmée(s).", S["h1"]))
+        f"{(geo.get('double_lecture') or {}).get('infirmees', 0)} infirmée(s)"
+        + (f" · agent adversarial : {geo['adversarial'].get('maintenues', 0)} maintenue(s), "
+           f"{geo['adversarial'].get('contestees', 0)} contestée(s), {geo['adversarial'].get('rejetees', 0)} rejetée(s)"
+           if (geo.get("adversarial") or {}).get("ok") else "") + ".", S["h1"]))
+    if (geo.get("adversarial") or {}).get("conclusion"):
+        story.append(Paragraph(f"<b>Agent de contrôle adversarial :</b> {_e(geo['adversarial']['conclusion'])}", S["muted"]))
     doc = geo.get("document") or {}
     if doc:
         story.append(Paragraph("Cartouche : " + " · ".join(
@@ -254,6 +274,13 @@ def _story_geometry(story, geo: dict, S):
             story.append(Paragraph("<b>Hypothèses possibles :</b> " + _e(" · ".join(a["hypotheses"])), S["muted"]))
         if v.get("recalcul") or v.get("commentaire"):
             story.append(Paragraph(f"<b>Recalcul passage 2 :</b> {_e(v.get('recalcul'))} {_e(v.get('commentaire'))}", S["muted"]))
+        adv = a.get("adversarial")
+        if adv:
+            story.append(Paragraph(
+                f"<b>Contrôle adversarial (passage 3) : {_e(adv.get('verdict'))}</b>"
+                + (f" — niveau {_e(a.get('niveau_initial'))} → {_e(a['niveau'])}" if a.get("niveau_initial") and a.get("niveau_initial") != a["niveau"] else "")
+                + (f" · attaque : {_e(adv.get('attaque'))}" if adv.get("attaque") else "")
+                + (f" · {_e(adv.get('recalcul'))}" if adv.get("recalcul") else ""), S["muted"]))
         story.append(Spacer(1, 2 * mm))
     story.append(Paragraph(
         "Seuils de détection ConstruPilot (0–2 mm négligeable · 2–10 mm faible · 10–30 mm à vérifier · 30–100 mm anomalie "
@@ -289,13 +316,23 @@ def _doc(buf):
                              title="Contrôle des cotes", author="ConstruPilot")
 
 
+def _scope_box(text: str, S, width: float = landscape(A4)[0] - 28 * mm):
+    t = Table([[Paragraph(text, S["body"])]], colWidths=[width])
+    t.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.8, ORANGE), ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GREY),
+                           ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                           ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
+    return t
+
+
 def build_cotes_pdf(plan: dict, page_index: int, report: dict, overlay_png: bytes,
                     branding: dict | None) -> bytes:
     S = _styles()
     buf = io.BytesIO()
     doc = _doc(buf)
     story: list = []
-    _story_header_branding(story, branding, S)
+    story += cover_story(plan, page_index, report, branding, PDF_LANG.get(), S, landscape(A4)[0] - 28 * mm)
+    story.append(_scope_box(disclaimer(plan, page_index, report, branding, PDF_LANG.get()), S))
+    story.append(PageBreak())
     story.append(Paragraph("CONTRÔLE DES COTES", S["kicker"]))
     story.append(Paragraph(f"{plan.get('filename') or 'Plan'} — page {page_index + 1}", S["h1"]))
     story.append(Paragraph(
@@ -331,6 +368,9 @@ def build_cotes_pdf_multi(plan: dict, bundle: list[tuple[int, dict, bytes]], agg
     story.append(Paragraph(f"{plan.get('filename') or 'Plan'} — {agg['pages']} page(s) contrôlée(s)", S["h1"]))
     story.append(Paragraph(
         f"Rapport généré le {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M')} UTC.", S["muted"]))
+    if bundle:
+        story.append(Spacer(1, 2 * mm))
+        story.append(_scope_box(disclaimer(plan, bundle[0][0], bundle[0][1], branding, PDF_LANG.get()), S))
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(
         f"<font color='{RL_COL[agg['verdict']].hexval()}'><b>Verdict global : {LABEL[agg['verdict']]}</b></font> — "
@@ -364,7 +404,7 @@ def _footer(canvas, doc):
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(GREY)
     canvas.drawRightString(doc.pagesize[0] - 14 * mm, 8 * mm,
-                           f"ConstruPilot · Contrôle des cotes · page {doc.page}")
+                           tr(f"ConstruPilot · Contrôle des cotes · page {doc.page}"))
     canvas.setFillColor(ORANGE)
     canvas.rect(14 * mm, 8 * mm, 18 * mm, 1.2, fill=1, stroke=0)
     canvas.restoreState()

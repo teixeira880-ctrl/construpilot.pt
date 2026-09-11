@@ -42,9 +42,71 @@ def dims_from_ai(dimension_lines: list[dict], img_w: int, img_h: int) -> list[di
     return out
 
 
+EXACT_SOURCES = ("dxf", "pdf")
+
+
 def dims_from_dxf(dxf_dimensions: list[dict]) -> list[dict]:
     return [{**d, "confidence": 1.0, "source": "dxf"} for d in dxf_dimensions or []
             if d.get("value_m") and d.get("measured_m")]
+
+
+def dims_from_pdf_vectors(pdf_dimensions: list[dict]) -> list[dict]:
+    """Cotes vectorielles PDF (mesure exacte en points PDF → m, positions px image)."""
+    return [{**{k: v for k, v in d.items() if k != "orientation"}, "confidence": 1.0, "source": "pdf"}
+            for d in pdf_dimensions or [] if d.get("value_m") and d.get("measured_m")]
+
+
+def _mid(d: dict) -> tuple[float, float]:
+    return (d["x1"] + d["x2"]) / 2, (d["y1"] + d["y2"]) / 2
+
+
+def merge_vector_and_ai(vdims: list[dict], adims: list[dict], img_w: int, img_h: int,
+                        vector_complete: bool = False) -> tuple[list[dict], dict]:
+    """Croisement lecture vectorielle ↔ lecture IA (mode hybride).
+
+    - même valeur, même orientation, même zone → cote vectorielle CONFIRMÉE par l'IA ;
+    - même zone mais valeur différente → DIVERGENCE de lecture (le texte vectoriel fait foi) ;
+    - cote IA sans équivalent vectoriel → conservée comme non vérifiée (mesure pixel, jamais KO).
+    """
+    side = float(max(img_w, img_h))
+    near, close = 0.04 * side, 0.025 * side
+    merged = [dict(v) for v in vdims]
+    stats = {"vector": len(vdims), "ai": len(adims), "confirmed": 0, "divergences": [], "ai_only": 0,
+             "ai_only_dropped": 0, "vector_complete": vector_complete}
+    for a in adims:
+        if _length_px(a) < 0.002 * side:
+            continue  # bbox IA dégénérée
+        ao = _orientation(a)
+        am = _mid(a)
+        cands = []
+        for v in merged:
+            if _orientation(v) != ao:
+                continue
+            vm = _mid(v)
+            dist = math.hypot(vm[0] - am[0], vm[1] - am[1])
+            if dist <= near:
+                cands.append((dist, v))
+        cands.sort(key=lambda c: c[0])
+        same = [c for c in cands if abs(c[1]["value_m"] - a["value_m"]) <= 0.006]
+        if same:
+            v = next((c[1] for c in same if not c[1].get("ai_confirmed")), same[0][1])
+            if not v.get("ai_confirmed"):
+                v["ai_confirmed"] = True
+                stats["confirmed"] += 1
+            continue
+        if cands and cands[0][0] <= close:
+            best = cands[0][1]
+            stats["divergences"].append({"vector_text": best.get("raw_text"), "vector_m": best["value_m"],
+                                         "ai_text": a.get("raw_text"), "ai_m": a["value_m"],
+                                         "x": round(am[0], 1), "y": round(am[1], 1)})
+            best["ai_divergent_m"] = a["value_m"]
+            continue
+        if vector_complete:  # tous les textes numériques du PDF ont un trait : une cote IA orpheline est un doublon mal placé
+            stats["ai_only_dropped"] += 1
+            continue
+        stats["ai_only"] += 1
+        merged.append({**a, "unverified": True})
+    return merged, stats
 
 
 def _status(delta_m: float, tol_m: float) -> str:
@@ -73,8 +135,10 @@ def _axis(d: dict, orient: str) -> tuple[float, float, float]:
 
 def _find_chains(items: list[dict], tol_pct: float, tol_cm: float, img_side: float) -> list[dict]:
     """Une cote 'totale' doit être égale à la somme des cotes partielles contiguës qu'elle couvre."""
-    tol_px = max(6.0, img_side * 0.015)
-    band_px = max(10.0, img_side * 0.02)
+    exact = bool(items) and all(it.get("source") in EXACT_SOURCES for it in items)
+    # positions exactes (DXF / vecteurs PDF) → tolérances serrées pour ne pas mélanger deux lignes de cotes voisines
+    tol_px = max(2.0, img_side * 0.0015) if exact else max(6.0, img_side * 0.015)
+    band_px = max(3.0, img_side * 0.003) if exact else max(10.0, img_side * 0.02)
     chains = []
     for total in items:
         o = total["orientation"]
@@ -109,12 +173,16 @@ def _find_chains(items: list[dict], tol_pct: float, tol_cm: float, img_side: flo
             continue
         sum_m = sum(it["indicated_m"] for it in best)
         delta = sum_m - total["indicated_m"]
-        tol = _tol_m(total["indicated_m"], tol_pct, tol_cm)
+        if exact:  # arithmétique pure sur des valeurs inscrites : seuils mm ConstruPilot (BLEU ok / JAUNE warn / au-delà ko)
+            status = "ok" if abs(delta) <= 0.0105 else "warn" if abs(delta) <= 0.0305 else "ko"
+        else:
+            status = _status(delta, _tol_m(total["indicated_m"], tol_pct, tol_cm))
         chains.append({"total_index": total["index"], "total_m": total["indicated_m"],
                        "part_indexes": [it["index"] for it in best],
                        "parts_m": [it["indicated_m"] for it in best],
                        "sum_m": round(sum_m, 3), "delta_m": round(delta, 3),
-                       "delta_cm": round(delta * 100, 1), "status": _status(delta, tol)})
+                       "delta_cm": round(delta * 100, 1), "status": status,
+                       "niveau": _niveau_mm(delta * 1000), "exact": exact})
     return chains
 
 
@@ -188,7 +256,9 @@ def items_to_dims(items: list[dict]) -> list[dict]:
              "source": it.get("source", "ai"), "confidence": it.get("confidence", 0.5),
              "location": it.get("location"), "raw_text": it.get("raw_text"),
              "override": it.get("override"), "ignored": it.get("ignored", False),
-             "edited": it.get("edited", False), "original_m": it.get("original_m")}
+             "edited": it.get("edited", False), "original_m": it.get("original_m"),
+             "unverified": it.get("unverified", False), "ai_confirmed": it.get("ai_confirmed", False),
+             "ai_divergent_m": it.get("ai_divergent_m")}
             for it in items]
 
 
@@ -197,7 +267,7 @@ def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float
     items = []
     for i, d in enumerate(dims):
         px = _length_px(d)
-        exact = d.get("measured_m") if d.get("source") == "dxf" else None
+        exact = d.get("measured_m") if d.get("source") in EXACT_SOURCES else None
         measured = exact if exact is not None else px / ppm
         indicated = float(d["value_m"])
         delta = measured - indicated
@@ -217,25 +287,30 @@ def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float
             "niveau": _niveau_mm(delta * 1000),
             "override": bool(d.get("override")), "ignored": bool(d.get("ignored")),
             "edited": bool(d.get("edited")), "original_m": d.get("original_m"),
+            "unverified": bool(d.get("unverified")), "ai_confirmed": bool(d.get("ai_confirmed")),
+            "ai_divergent_m": d.get("ai_divergent_m"),
         })
+        if items[-1]["unverified"] and items[-1]["status"] in ("warn", "ko"):
+            items[-1]["status"] = "nd"  # cote IA sans trait vectoriel : mesure pixel → jamais un KO
     active = [it for it in items if not it["ignored"]]
     # Abstention (règle ConstruPilot : un faux positif est plus dangereux qu'une donnée non déterminée) :
     # si les ratios mesure/cote sont trop dispersés, l'échelle ou le placement des traits n'est pas fiable →
     # les statuts issus de la MESURE passent en « nd » ; seuls les contrôles arithmétiques (chaînes) restent.
     measure_reliable = True
     ratios = sorted(it["measured_m"] / it["indicated_m"] for it in active
-                    if it["indicated_m"] >= 1.0 and it.get("source") != "dxf")
+                    if it["indicated_m"] >= 1.0 and it.get("source") not in EXACT_SOURCES)
     if len(ratios) >= 4:
         med = ratios[len(ratios) // 2]
         spread = sorted(abs(r - med) for r in ratios)[len(ratios) // 2] / med if med else 1
         if spread > 0.08 or abs(1 - med) > 0.12:
             measure_reliable = False
             for it in active:
-                if it["source"] != "dxf" and it["status"] in ("warn", "ko"):
+                if it["source"] not in EXACT_SOURCES and it["status"] in ("warn", "ko"):
                     it["status"] = "nd"
     # Les chaînes reposent sur la position des traits : sans mesure fiable, on s'abstient aussi (l'analyse
     # géométrique IA, qui raisonne sur les valeurs inscrites, prend le relais pour les fermetures).
-    chains = _find_chains(active, tol_pct, tol_cm, float(max(img_w, img_h))) if measure_reliable else []
+    chain_items = [it for it in active if not it["unverified"]]
+    chains = _find_chains(chain_items, tol_pct, tol_cm, float(max(img_w, img_h))) if measure_reliable else []
     for it in items:
         it["chain_status"] = None
     for c in chains:

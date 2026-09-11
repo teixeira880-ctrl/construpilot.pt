@@ -355,6 +355,8 @@ async def seed():
     await db.password_reset_tokens.create_index("token_hash")
     await db.two_fa_codes.create_index("expires_at", expireAfterSeconds=0)
     await db.two_fa_codes.create_index("pending_token")
+    await db.cotes_jobs.create_index("job_id")
+    await db.cotes_jobs.create_index("created", expireAfterSeconds=86400)
     await db.known_devices.create_index("device_key")
     await db.reviews.create_index("token")
     await db.reviews.create_index("user_id")

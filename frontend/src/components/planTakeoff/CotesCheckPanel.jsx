@@ -60,7 +60,7 @@ function Row({ it, selected, onFocus, onEdit, onToggleIgnore, busy }) {
   return (
     <tr className={`border-t whitespace-nowrap cursor-pointer ${selected ? "bg-amber-100 text-slate-900" : "hover:bg-muted/60"} ${it.ignored ? "opacity-50" : ""}`}
         data-testid={`cotes-row-${it.index}`} onClick={() => onFocus(it)}>
-      <td className="px-1 num">{it.index}</td>
+      <td className="px-1 num">{it.index}<sup className="text-[8px] text-muted-foreground ml-0.5" title={SRC_TITLE[it.source] || ""}>{SRC[it.source] || ""}</sup></td>
       <td className="px-1 truncate max-w-[110px]" title={`${it.location || ""}${it.edited ? ` (corrigée, lu ${it.original_m})` : ""}`}>
         {it.location || "—"}{it.edited && <span className="text-amber-700"> ✎</span>}
       </td>
@@ -92,6 +92,34 @@ function Row({ it, selected, onFocus, onEdit, onToggleIgnore, busy }) {
         </span>
       </td>
     </tr>
+  );
+}
+
+const SRC = { pdf: "V", dxf: "D", ai: "IA" };
+const SRC_TITLE = { pdf: "Cote vectorielle PDF (mesure exacte)", dxf: "Cote DXF (mesure exacte)", ai: "Cote lue par l'IA (mesure pixel)" };
+
+function Reading({ r, calib }) {
+  if (!r || r.source === "ai" || !r.source) return null;
+  const cross = r.cross;
+  const eff = calib?.effective_scale_denominator;
+  return (
+    <div className="text-[11px] border border-sky-300 bg-sky-50 text-sky-900 rounded-sm px-1.5 py-1 grid gap-0.5" data-testid="cotes-reading">
+      <div>
+        <b>Lecture {r.source === "dxf" ? "DXF exacte" : "vectorielle PDF + IA (hybride)"}</b>
+        {r.source === "pdf_vector+ai" && cross && (
+          <> : {cross.vector} cote(s) mesurées au mm dans le PDF · {cross.confirmed} confirmée(s) par l'IA
+            {cross.ai_only > 0 && ` · ${cross.ai_only} lue(s) par l'IA seule (non vérifiées, jamais KO)`}</>
+        )}
+        {eff && <> · échelle effective 1/{eff}{calib?.scale_denominator && Math.abs(eff - calib.scale_denominator) > 0.5 ? ` (déclarée 1/${calib.scale_denominator} — PDF réduit)` : ""}</>}
+      </div>
+      {cross?.divergences?.length > 0 && (
+        <div data-testid="cotes-divergences">
+          <b>Divergence(s) de lecture</b> (le texte vectoriel fait foi) :{" "}
+          {cross.divergences.map((d, i) => `« ${d.vector_text} » lu « ${d.ai_text} » par l'IA`).join(" ; ")}
+        </div>
+      )}
+      {r.vector?.partial_vectors && <div>⚠ Vecteurs partiels (plan importé avant la lecture vectorielle) — réimportez le PDF pour une couverture complète.</div>}
+    </div>
   );
 }
 
@@ -264,6 +292,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       {report && (
         <div className="grid gap-2" data-testid="cotes-report">
           <Summary s={report.summary} />
+          <Reading r={report.reading} calib={report.calibration} />
           {report.abstention && (
             <p className="text-[11px] border border-slate-400 bg-slate-100 text-slate-700 rounded-sm px-1.5 py-1" data-testid="cotes-abstention">
               <b>Abstention ConstruPilot :</b> {report.abstention} ({report.summary.nd} cote(s) non déterminée(s))

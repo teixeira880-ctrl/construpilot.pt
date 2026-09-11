@@ -11,6 +11,7 @@ from engines import plan_cotes as C
 from engines import plan_texts as T
 from engines.plan_ai import read_dimension_lines
 from engines.plan_cotes_pdf import build_cotes_pdf, build_cotes_pdf_multi, render_cotes_overlay
+from engines.plan_pdf_i18n import LANG as PDF_LANG, disclaimer, tr
 from routes.plans_analysis import _apply_new_calibration
 from routes.plans_common import _now, _resolve_branding, _snapshot, router
 
@@ -22,10 +23,11 @@ class CotesCheckIn(BaseModel):
 
 
 async def _plan_page(plan_id: str, user_id: str, page_index: int, with_image: bool):
-    proj = {"_id": 0, "plan_id": 1, "filename": 1, "kind": 1, "calibrations": 1,
+    proj = {"_id": 0, "plan_id": 1, "filename": 1, "kind": 1, "calibrations": 1, "detected_scale_denominator": 1,
             "ai_analysis": 1, "rooms": 1, "cotes_checks": 1,
             "pages.width_px": 1, "pages.height_px": 1, "pages.dxf_dimensions": 1,
-            "pages.dxf_ratio": 1, "pages.unit_to_m": 1}
+            "pages.dxf_ratio": 1, "pages.unit_to_m": 1, "pages.dpi": 1,
+            "pages.pdf_dimensions": 1, "pages.pdf_vector_scale": 1, "pages.vectors": 1, "pages.text_blocks": 1}
     if with_image:
         proj["pages.image_png_b64"] = 1
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user_id}, proj)
@@ -37,9 +39,30 @@ async def _plan_page(plan_id: str, user_id: str, page_index: int, with_image: bo
     return p, pages[page_index]
 
 
+def _vector_dims(page: dict) -> dict:
+    """Cotes vectorielles d'une page PDF : stockées à l'import, sinon recalculées depuis vecteurs/textes stockés."""
+    if page.get("pdf_dimensions") is not None and page.get("pdf_vector_scale") is not None:
+        return {"dimensions": page["pdf_dimensions"], **page["pdf_vector_scale"]}
+    if not page.get("vectors") or not page.get("text_blocks") or not page.get("dpi"):
+        return {"dimensions": []}
+    from engines.plan_vector_pdf import extract_vector_dimensions
+    res = extract_vector_dimensions(page["vectors"], page["text_blocks"], float(page["dpi"]) / 72)
+    res["partial_vectors"] = len(page["vectors"]) >= 2500
+    return res
+
+
 async def _ensure_calibration(p: dict, page: dict, plan_id: str, page_index: int,
-                              dims: list[dict], w: int, h: int) -> tuple[dict, bool]:
+                              dims: list[dict], w: int, h: int, vec: dict | None = None) -> tuple[dict, bool]:
     calib = (p.get("calibrations") or {}).get(str(page_index))
+    if vec and vec.get("pt_per_m") and (vec.get("matched") or 0) >= 3 and page.get("dpi"):
+        ppm = float(vec["pt_per_m"]) * float(page["dpi"]) / 72
+        if not calib or (calib.get("method") != "manual" and abs(ppm / float(calib["pixels_per_meter"]) - 1) > 0.02):
+            payload = {"pixels_per_meter": round(ppm, 4), "meters_per_pixel": round(1 / ppm, 8),
+                       "method": "pdf_vector", "confidence": 0.98, "samples_used": vec.get("matched"),
+                       "effective_scale_denominator": round(1000 * 72 / 25.4 / float(vec["pt_per_m"]), 1),
+                       "scale_denominator": p.get("detected_scale_denominator"), "created_at": _now()}
+            await _apply_new_calibration(p, plan_id, page_index, payload)
+            return payload, True
     if calib:
         return calib, False
     if page.get("dxf_dimensions") and page.get("dxf_ratio") and page.get("unit_to_m"):
@@ -81,6 +104,7 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
     if not w or not h:
         raise HTTPException(500, "Dimensions de page manquantes")
     reading: dict = {}
+    vec: dict | None = None
     if page.get("dxf_dimensions"):
         dims = C.dims_from_dxf(page["dxf_dimensions"])
         reading = {"source": "dxf", "count": len(dims)}
@@ -88,16 +112,28 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
         img = page.get("image_png_b64")
         if not img:
             raise HTTPException(500, "Image manquante")
-        res = await read_dimension_lines(_ai_image(img))
+        vec = _vector_dims(page) if p.get("kind") == "pdf" else None
+        vdims = C.dims_from_pdf_vectors((vec or {}).get("dimensions"))
+        res = await read_dimension_lines(_ai_image(img), await _report_lang(user_id))
         if res.get("error"):
-            raise HTTPException(502, res["error"])
-        dims = C.dims_from_ai(res["dimension_lines"], w, h)
-        snapped = C.snap_dims_to_image(img, dims)
-        reading = {"source": "ai", "count": len(dims), "scale_text": res.get("scale_text"),
-                   "units_hint": res.get("units_hint"), "snapped_endpoints": snapped}
+            if not vdims:
+                raise HTTPException(502, res["error"])
+            res = {"dimension_lines": [], "error_ai": res["error"]}
+        adims = C.dims_from_ai(res["dimension_lines"], w, h)
+        snapped = C.snap_dims_to_image(img, adims)
+        reading = {"scale_text": res.get("scale_text"), "units_hint": res.get("units_hint"),
+                   "snapped_endpoints": snapped, "ai_error": res.get("error_ai")}
+        if vdims:
+            complete = (vec.get("matched") or 0) >= 0.9 * (vec.get("texts_numeric") or 1) and not vec.get("partial_vectors")
+            dims, cross = C.merge_vector_and_ai(vdims, adims, w, h, vector_complete=complete)
+            reading.update({"source": "pdf_vector+ai", "count": len(dims), "cross": cross,
+                            "vector": {k: v for k, v in vec.items() if k != "dimensions"}})
+        else:
+            dims = adims
+            reading.update({"source": "ai", "count": len(dims)})
     if not dims:
         raise HTTPException(422, "Aucune cote lisible sur cette page")
-    calib, auto = await _ensure_calibration(p, page, plan_id, page_index, dims, w, h)
+    calib, auto = await _ensure_calibration(p, page, plan_id, page_index, dims, w, h, vec)
     report = C.check_dimensions(dims, float(calib["pixels_per_meter"]), tol_pct, tol_cm, w, h)
     ai_rooms = ((p.get("ai_analysis") or {}).get("rooms") or []) \
         if (p.get("ai_analysis") or {}).get("page_index") in (None, page_index) else []
@@ -106,31 +142,35 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
         report["surfaces"] = T.reconcile_written_surfaces(page_rooms, ai_rooms, float(calib["pixels_per_meter"]))
     report.update({"page_index": page_index, "calibration": calib, "auto_calibrated": auto,
                    "reading": reading, "created_at": _now()})
+    prev_geo = ((p.get("cotes_checks") or {}).get(str(page_index)) or {}).get("geometry")
+    if prev_geo:  # ne jamais perdre les passes IA (2-4) : conservées et marquées à rafraîchir
+        report["geometry"] = {**prev_geo, "stale": True, "stale_since": _now()}
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id}, {"$set": {f"cotes_checks.{page_index}": report, "updated_at": _now()}})
     await _snapshot(plan_id, user_id, "cotes_check", {"page": page_index, **report["summary"]})
     return report
 
 
-_JOBS: dict[str, dict] = {}
-
-
 def _start_job(coro_factory, user_id: str) -> dict:
-    """Lance un traitement long en tâche de fond (évite le timeout 60 s de l'ingress) → {job_id}."""
+    """Lance un traitement long en tâche de fond (évite le timeout 60 s de l'ingress) → {job_id}.
+
+    État persisté dans `cotes_jobs` (survit aux rechargements et au multi-pods)."""
     import asyncio
     import uuid
+    from datetime import datetime, timezone
     job_id = f"job_{uuid.uuid4().hex[:12]}"
-    _JOBS[job_id] = {"status": "running", "user_id": user_id, "started_at": _now()}
 
     async def runner():
+        await db.cotes_jobs.insert_one({"job_id": job_id, "user_id": user_id, "status": "running",
+                                        "started_at": _now(), "created": datetime.now(timezone.utc)})
         try:
-            _JOBS[job_id].update({"status": "done", "result": await coro_factory(), "finished_at": _now()})
+            result = await coro_factory()
+            upd = {"status": "done", "result": result, "finished_at": _now()}
         except HTTPException as e:
-            _JOBS[job_id].update({"status": "error", "error": e.detail, "finished_at": _now()})
+            upd = {"status": "error", "error": e.detail, "finished_at": _now()}
         except Exception as e:  # noqa: BLE001
-            _JOBS[job_id].update({"status": "error", "error": f"{type(e).__name__}: {e}"[:300], "finished_at": _now()})
-        for k in [k for k, v in _JOBS.items() if v.get("finished_at") and len(_JOBS) > 200]:
-            _JOBS.pop(k, None)
+            upd = {"status": "error", "error": f"{type(e).__name__}: {e}"[:300], "finished_at": _now()}
+        await db.cotes_jobs.update_one({"job_id": job_id}, {"$set": upd})
 
     asyncio.create_task(runner())
     return {"job_id": job_id, "status": "running"}
@@ -138,10 +178,11 @@ def _start_job(coro_factory, user_id: str) -> dict:
 
 @router.get("/cotes-jobs/{job_id}")
 async def cotes_job(job_id: str, user=Depends(current_user)) -> dict:
-    j = _JOBS.get(job_id)
-    if not j or j["user_id"] != user["user_id"]:
-        raise HTTPException(404, "Tâche inconnue")
-    return {k: v for k, v in j.items() if k != "user_id"}
+    j = await db.cotes_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]}, {"_id": 0, "user_id": 0, "created": 0})
+    if not j:
+        # insertion juste après le lancement : laisser le client re-sonder
+        return {"job_id": job_id, "status": "running"}
+    return j
 
 
 @router.post("/{plan_id}/cotes/check")
@@ -211,6 +252,7 @@ async def cotes_pdf_all(plan_id: str, user=Depends(current_user)):
     if not bundle:
         raise HTTPException(404, "Aucune page contrôlée — lancez d'abord le contrôle des cotes")
     branding = await _resolve_branding(user["user_id"])
+    PDF_LANG.set(_lang_of(branding))
     pdf = build_cotes_pdf_multi(p, bundle, _global_summary([b[1] for b in bundle]), branding)
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="controle-cotes-{plan_id}-global.pdf"'})
@@ -249,22 +291,35 @@ class GeometryIn(BaseModel):
     page_index: int = Field(default=0, ge=0)
 
 
+def _lang_of(branding: dict | None) -> str:
+    return "pt" if ((branding or {}).get("country") or "").upper() == "PT" else "fr"
+
+
+async def _report_lang(user_id: str) -> str:
+    """Langue des analyses/rapports de plans : PT si l'entreprise est au Portugal, sinon FR."""
+    return _lang_of(await _resolve_branding(user_id))
+
+
 @router.post("/{plan_id}/cotes/geometry")
 async def cotes_geometry(plan_id: str, body: GeometryIn, background: bool = Query(False),
                          user=Depends(current_user)) -> dict:
     """Analyse géométrique complète (double lecture IA) : fermetures, contrôles croisés, façades, anomalies."""
     from engines.plan_geometry_ai import analyze_geometry
     p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
+    lang = await _report_lang(user["user_id"])
 
     async def run():
         report = (p.get("cotes_checks") or {}).get(str(body.page_index))
         if not report:
             report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
         geo = await analyze_geometry(_ai_image(page["image_png_b64"]), report,
-                                     int(page.get("width_px") or 0), int(page.get("height_px") or 0))
+                                     int(page.get("width_px") or 0), int(page.get("height_px") or 0), lang)
         if geo.get("error"):
             raise HTTPException(502, geo["error"])
         geo["created_at"] = _now()
+        prev_nar = ((report.get("geometry") or {}).get("narratif"))
+        if prev_nar:
+            geo["narratif"] = {**prev_nar, "stale": True}
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id}, {"$set": {f"cotes_checks.{body.page_index}.geometry": geo, "updated_at": _now()}})
         await _snapshot(plan_id, user["user_id"], "cotes_geometry",
@@ -274,6 +329,60 @@ async def cotes_geometry(plan_id: str, body: GeometryIn, background: bool = Quer
     if background:
         return _start_job(run, user["user_id"])
     return await run()
+
+
+@router.post("/{plan_id}/cotes/narratif")
+async def cotes_narratif(plan_id: str, body: GeometryIn, background: bool = Query(False),
+                         user=Depends(current_user)) -> dict:
+    """Passage 4 : rédaction du rapport narratif (une section par grande cote) — nécessite l'analyse géométrique."""
+    from engines.plan_geometry_ai import analyze_geometry, write_narrative
+    p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
+    lang = await _report_lang(user["user_id"])
+
+    async def run():
+        report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+        if not report:
+            report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
+        geo = report.get("geometry")
+        img = _ai_image(page["image_png_b64"])
+        w, h = int(page.get("width_px") or 0), int(page.get("height_px") or 0)
+        if geo and geo.get("stale"):
+            geo = None  # cotes relues depuis : l'analyse géométrique doit être refaite avant la rédaction
+        if not geo:
+            geo = await analyze_geometry(img, report, w, h, lang)
+            if geo.get("error"):
+                raise HTTPException(502, geo["error"])
+            geo["created_at"] = _now()
+        nar = await write_narrative(img, report, geo, lang)
+        if nar.get("error"):
+            raise HTTPException(502, nar["error"])
+        nar["created_at"] = _now()
+        geo["narratif"] = nar
+        await db.plans_takeoff.update_one(
+            {"plan_id": plan_id}, {"$set": {f"cotes_checks.{body.page_index}.geometry": geo, "updated_at": _now()}})
+        await _snapshot(plan_id, user["user_id"], "cotes_narratif",
+                        {"page": body.page_index, "sections": len(nar["sections"]), "lang": lang})
+        return nar
+
+    if background:
+        return _start_job(run, user["user_id"])
+    return await run()
+
+
+@router.get("/{plan_id}/cotes/narratif.pdf")
+async def cotes_narratif_pdf(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)):
+    from engines.plan_narrative_pdf import build_narrative_report
+    p, page = await _plan_page(plan_id, user["user_id"], page_index, with_image=True)
+    report = (p.get("cotes_checks") or {}).get(str(page_index))
+    if not report or not (report.get("geometry") or {}).get("narratif"):
+        raise HTTPException(404, "Rédigez d'abord le rapport narratif")
+    branding = await _resolve_branding(user["user_id"])
+    lang = (report["geometry"]["narratif"].get("lang") or _lang_of(branding))
+    PDF_LANG.set(lang)
+    pdf = build_narrative_report(p, page_index, report, page["image_png_b64"], branding, lang)
+    fname = f"rapport-narratif-{plan_id[-6:]}-p{page_index + 1}.pdf"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @router.get("/{plan_id}/cotes")
@@ -369,6 +478,16 @@ async def cotes_overlay(plan_id: str, page_index: int = Query(0, ge=0), user=Dep
     return Response(content=png, media_type="image/png")
 
 
+def _EMAIL_PT(sm: dict, report: dict, fname: str, page_index: int, verdict: str, perso: str) -> str:
+    return ((f"<p>{perso}</p>" if perso else "") +
+            f"<p>Segue em anexo o <b>relatório de controlo de cotas</b> da planta « {fname} » "
+            f"(página {page_index + 1}): cada cota inscrita foi medida à escala e comparada com o seu valor.</p>"
+            f"<p><b>{sm['total']}</b> cotas controladas · <b>{sm['ok']}</b> conformes · <b>{sm['warn']}</b> a verificar · "
+            f"<b>{sm['ko']}</b> incoerência(s) · {sm['chains_total']} cadeia(s) de cotas ({sm['chains_ko']} incoerente(s)) · "
+            f"desvio máx. {sm['max_delta_cm']:.0f} cm — tolerância ±{report['tolerance']['pct']} % / {report['tolerance']['cm']} cm.</p>"
+            f"<p>Veredicto: <b>{verdict}</b>. A planta anotada (cotas medidas em verde / laranja / vermelho) encontra-se na última página do PDF.</p>")
+
+
 class CotesSendIn(BaseModel):
     page_index: int = Field(default=0, ge=0)
     to_email: EmailStr
@@ -384,6 +503,8 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
 
     p, report, png = await _report_and_overlay(plan_id, user["user_id"], body.page_index)
     branding = await _resolve_branding(user["user_id"]) or {}
+    lang = _lang_of(branding)
+    PDF_LANG.set(lang)
     if report.get("geometry"):
         from engines.plan_report_pdf import build_control_report
         page = (p.get("pages") or [])[body.page_index]
@@ -393,10 +514,10 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
     sm = report["summary"]
     company = branding.get("company_name") or user.get("name") or "ConstruPilot"
     perso = _html.escape(body.message.strip()[:2000]).replace("\n", "<br/>")
-    verdict = {"ok": "aucune incohérence", "warn": "écarts à vérifier",
-               "ko": f"{sm['ko']} incohérence(s)"}[sm["verdict"]]
+    verdict = tr({"ok": "aucune incohérence", "warn": "écarts à vérifier",
+                  "ko": f"{sm['ko']} incohérence(s)"}[sm["verdict"]], lang)
     fname = _html.escape(p.get("filename") or "plan")
-    inner = (
+    inner = _EMAIL_PT(sm, report, fname, body.page_index, verdict, perso) if lang == "pt" else (
         (f"<p>{perso}</p>" if perso else "") +
         f"<p>Veuillez trouver ci-joint le <b>rapport de contrôle des cotes</b> du plan « {fname} » "
         f"(page {body.page_index + 1}) : chaque cote inscrite a été mesurée à l'échelle et comparée à sa valeur.</p>"
@@ -405,26 +526,34 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
         f"écart max {sm['max_delta_cm']:.0f} cm — tolérance ±{report['tolerance']['pct']} % / {report['tolerance']['cm']} cm.</p>"
         f"<p>Verdict : <b>{verdict}</b>. Le plan annoté (cotes mesurées en vert / orange / rouge) figure en dernière page du PDF.</p>")
     geo = report.get("geometry")
-    if geo:
+    if geo and lang == "pt":
+        inner += (f"<p><b>Análise geométrica ConstruPilot (dupla leitura)</b>: nível "
+                  f"<b>{_html.escape(tr(geo.get('niveau_global_label') or geo.get('niveau_global') or '', 'pt'))}</b> — "
+                  f"{len(geo.get('anomalies') or [])} anomalia(s), "
+                  f"{(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmada(s) na passagem 2. "
+                  f"{_html.escape((geo.get('reponses') or {}).get('fermeture') or '')}</p>")
+    elif geo:
         inner += (f"<p><b>Analyse géométrique ConstruPilot (double lecture)</b> : niveau "
                   f"<b>{_html.escape(geo.get('niveau_global_label') or geo.get('niveau_global') or '')}</b> — "
                   f"{len(geo.get('anomalies') or [])} anomalie(s), "
                   f"{(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmée(s) au passage 2. "
                   f"{_html.escape((geo.get('reponses') or {}).get('fermeture') or '')}</p>")
+    inner += f"<p style='color:#64748B;font-size:12px'>{disclaimer(p, body.page_index, report, branding, lang)}</p>"
+    title = f"Relatório de controlo de cotas — {fname}" if lang == "pt" else f"Rapport de contrôle des cotes — {fname}"
     html = wrap_company_html(
-        f"Rapport de contrôle des cotes — {fname}", inner, company_name=company,
+        title, inner, company_name=company,
         logo_url=logo_url_for(user["user_id"], branding), logo_b64=branding.get("logo_b64"),
         contact_line=branding.get("contact_line"), siret=branding.get("siret"),
         vat=branding.get("vat"), nif=branding.get("nif"), alvara=branding.get("alvara"),
         company_email=branding.get("company_email"), verified=bool(branding.get("verified")))
-    subject = f"Rapport de contrôle des cotes — {p.get('filename') or 'plan'} ({verdict})"
+    subject = f"{'Relatório de controlo de cotas' if lang == 'pt' else 'Rapport de contrôle des cotes'} — {p.get('filename') or 'plan'} ({verdict})"
     reply_to = branding.get("company_email") or user.get("email")
     try:
         await send_email_with_pdf(body.to_email, subject, html, pdf,
                                   filename=f"controle-cotes-p{body.page_index + 1}.pdf",
                                   reply_to=reply_to, from_name=company)
         if body.copy_me and user.get("email") and user["email"].lower() != body.to_email.lower():
-            await send_email_with_pdf(user["email"], f"[Copie] {subject}", html, pdf,
+            await send_email_with_pdf(user["email"], f"[{'Cópia' if lang == 'pt' else 'Copie'}] {subject}", html, pdf,
                                       filename=f"controle-cotes-p{body.page_index + 1}.pdf",
                                       reply_to=reply_to, from_name=company)
     except RuntimeError as e:
@@ -450,6 +579,7 @@ async def cotes_rapport(plan_id: str, page_index: int = Query(0, ge=0), court: b
     if not report:
         raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
     branding = await _resolve_branding(user["user_id"])
+    PDF_LANG.set(_lang_of(branding))
     pdf = build_control_report(p, page_index, report, page["image_png_b64"], branding, court=court)
     fname = f"rapport-controle-plan{'-court' if court else ''}-{plan_id[-6:]}-p{page_index + 1}.pdf"
     return Response(content=pdf, media_type="application/pdf",
@@ -460,6 +590,7 @@ async def cotes_rapport(plan_id: str, page_index: int = Query(0, ge=0), court: b
 async def cotes_pdf(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)):
     p, report, png = await _report_and_overlay(plan_id, user["user_id"], page_index)
     branding = await _resolve_branding(user["user_id"])
+    PDF_LANG.set(_lang_of(branding))
     pdf = build_cotes_pdf(p, page_index, report, png, branding)
     fname = f"controle-cotes-{plan_id}-p{page_index + 1}.pdf"
     return Response(content=pdf, media_type="application/pdf",

@@ -13,8 +13,11 @@ from PIL import Image, ImageDraw
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.platypus import (Image as RLImage, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate,
+from reportlab.platypus import (Image as RLImage, KeepTogether, PageBreak, SimpleDocTemplate,
                                 Spacer, Table, TableStyle)
+
+from engines.plan_pdf_i18n import LANG as PDF_LANG, Paragraph, cover_story, disclaimer, tr
+from engines.plan_cotes_pdf import _scope_box
 
 from engines.pdf_takeoff import DARK, GREY, LIGHT_GREY, ORANGE, _story_header_branding, _styles
 from engines.plan_cotes_pdf import COL, _e, _fit_image, _font, _tbl
@@ -83,7 +86,8 @@ def build_controls(report: dict, geo: dict | None) -> list[dict]:
             a.get("niveau") or "JAUNE", a.get("cotes_index") or [], formule=a.get("formule") or "",
             calcul=a.get("calcul") or "", explication=a.get("explication") or "", hypotheses_txt=a.get("hypotheses") or [],
             action=a.get("action") or "", confiance=a.get("confiance") or "MOYEN",
-            verification=(a.get("verification") or {}).get("verdict"))
+            verification=(a.get("verification") or {}).get("verdict"),
+            adversarial=(a.get("adversarial") or {}).get("verdict"), adv_attaque=(a.get("adversarial") or {}).get("attaque"))
     for c in report.get("chains") or []:
         lvl = _STATUS_LVL.get(c["status"], "JAUNE")
         add("chaine", f"Chaîne de cotes → cote #{c['total_index']} ({_m(c['total_m'])})", c["total_m"], c["sum_m"], c["delta_m"],
@@ -152,7 +156,7 @@ def _cards(counts: dict, S):
               ("JAUNE", "Points à vérifier", LVL_HEX["JAUNE"]), ("ORANGE", "Incohérences", LVL_HEX["ORANGE"]),
               ("ROUGE", "Incohérences majeures", LVL_HEX["ROUGE"])]
     for i, (k, lab, hexc) in enumerate(labels):
-        cells.append((str(counts.get(k, 0)), lab))
+        cells.append((str(counts.get(k, 0)), tr(lab)))
         style.append(("BACKGROUND", (i, 0), (i, 1), colors.HexColor(hexc)))
     t = Table([[c[0] for c in cells], [c[1] for c in cells]], colWidths=[_W / 5 - 2 * mm] * 5, hAlign="LEFT")
     t.setStyle(TableStyle(style))
@@ -205,6 +209,10 @@ def _fiche(c: dict, zoom: bytes | None, S):
     meta = f"Confiance : {_e(c.get('confiance') or 'ÉLEVÉ')}"
     if c.get("verification"):
         meta += f" · Recalcul indépendant (passage 2) : {_e(c['verification'])}"
+    if c.get("adversarial"):
+        meta += f" · Contrôle adversarial : <b>{_e(c['adversarial'])}</b>"
+        if c.get("adv_attaque"):
+            meta += f" ({_e(c['adv_attaque'])})"
     if c.get("cotes"):
         meta += " · Cotes concernées : " + ", ".join(f"#{i}" for i in c["cotes"])
     block.append(Paragraph(meta, S["muted"]))
@@ -238,9 +246,8 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
     story: list = []
 
     # PAGE 1 — couverture + résumé
-    _story_header_branding(story, branding, S)
-    story.append(Paragraph("<font color='#FF5A00'><b>Constru</b></font><b>Pilot</b>", S["h1"]))
-    story.append(Paragraph("RAPPORT DE CONTRÔLE DU PLAN", S["kicker"]))
+    story += cover_story(plan, page_index, report, branding, PDF_LANG.get(), S, _W)
+    story += [_scope_box(disclaimer(plan, page_index, report, branding, PDF_LANG.get()), S, _W), PageBreak()]
     story.append(Paragraph("Analyse automatique de cohérence du plan — contrôle géométrique et dimensionnel", S["h2"]))
     story.append(Spacer(1, 4 * mm))
     rows = [["Projet", doc_info.get("projet") or "NON INDIQUÉ"], ["Localisation", doc_info.get("localisation") or "NON INDIQUÉ"],
@@ -249,9 +256,9 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
             ["Date du plan", doc_info.get("date") or "NON INDIQUÉ"], ["Révision", doc_info.get("revision") or "NON INDIQUÉ"],
             ["Échelle", doc_info.get("echelle") or (report.get("reading") or {}).get("scale_text") or "NON INDIQUÉ"],
             ["Date de l'analyse", now.strftime("%d/%m/%Y %H:%M UTC")], ["Identifiant du rapport", rid]]
-    t = Table([[Paragraph(f"<b>{_e(k)}</b>", S["body"]), Paragraph(_e(v), S["body"])] for k, v in rows], colWidths=[50 * mm, _W - 50 * mm])
+    t = Table([[Paragraph(f"<b>{_e(k)}</b>", S["body"]), Paragraph(_e(tr(v)), S["body"])] for k, v in rows], colWidths=[50 * mm, _W - 50 * mm])
     t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
-    story += [t, Spacer(1, 6 * mm), Paragraph("Objet du rapport", S["h2"])]
+    story += [t, Spacer(1, 5 * mm), Paragraph("Objet du rapport", S["h2"])]
     story.append(Paragraph(
         f"Contrôle automatique de cohérence géométrique et dimensionnelle du plan « {_e(plan.get('filename') or 'plan')} » "
         f"(page {page_index + 1}) : lecture des cotes inscrites, recalcul indépendant des chaînes et des grandes cotes, "
@@ -263,7 +270,18 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
         hyp.append("épaisseur(s) de murs prise(s) en compte : " + ", ".join(_m(v) for v in murs["epaisseurs_m"]) + " (LUE / DÉDUIT)")
     hyp.append("référence de cotation : " + (murs.get("reference_cotation") or "non déterminable avec certitude — HYPOTHÈSE : cotes entre faces"))
     hyp.append(f"tolérance de détection : ±{report['tolerance']['pct']} % ou ±{report['tolerance']['cm']} cm ; seuils mm ConstruPilot pour les niveaux")
-    hyp.append("échelle : " + (f"{(report.get('calibration') or {}).get('pixels_per_meter', 0):.0f} px/m ({(report.get('calibration') or {}).get('method', '—')})"))
+    cal = report.get("calibration") or {}
+    hyp.append("échelle : " + (f"{cal.get('pixels_per_meter', 0):.0f} px/m ({cal.get('method', '—')})")
+               + (f" — échelle effective du PDF 1/{cal['effective_scale_denominator']:g}"
+                  + (f" alors que le cartouche indique 1/{cal['scale_denominator']} (PDF réduit à l'impression)"
+                     if cal.get("scale_denominator") and abs(cal["effective_scale_denominator"] - cal["scale_denominator"]) > 0.5 else "")
+                  if cal.get("effective_scale_denominator") else ""))
+    cross = (report.get("reading") or {}).get("cross") or {}
+    if cross:
+        hyp.append(f"source des cotes : extraction vectorielle du PDF ({cross.get('vector', 0)} cotes mesurées au millimètre entre "
+                   f"lignes d'attache) croisée avec la lecture IA ({cross.get('confirmed', 0)} confirmées, "
+                   f"{cross.get('ai_only', 0)} lues par l'IA seule et non vérifiées"
+                   + (f", {len(cross['divergences'])} divergence(s) de lecture tranchée(s) par le texte vectoriel" if cross.get("divergences") else "") + ")")
     story.append(Paragraph("Hypothèses retenues", S["h2"]))
     for line in hyp:
         story.append(Paragraph(f"• {_e(line)}", S["muted"]))
@@ -431,7 +449,7 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
         canvas.saveState()
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(GREY)
-        canvas.drawRightString(A4[0] - 14 * mm, 9 * mm, f"ConstruPilot · Rapport de contrôle du plan · {rid} · page {d.page}")
+        canvas.drawRightString(A4[0] - 14 * mm, 9 * mm, tr(f"ConstruPilot · Rapport de contrôle du plan · {rid} · page {d.page}"))
         canvas.setFillColor(ORANGE)
         canvas.rect(14 * mm, 9 * mm, 18 * mm, 1.2, fill=1, stroke=0)
         canvas.restoreState()

@@ -1,0 +1,33 @@
+{
+  "summary": "Iter 135 — Retest (a) bug _run_check préservation geometry (b) pages de garde brandées FR/PT (c) frontend narratif. BACKEND 8/9 pytest pass en 121 s (/app/backend/tests/test_iter135_stale_covers.py, junitxml /app/test_reports/pytest/iter135.xml). ✓ (a) Bug corrigé : plan_ee9385c91ee5 avait déjà geometry (niveau_global présent, 4 anomalies) + narratif (3 sections). Après POST /cotes/check?background=1 → job done en ~65 s, re-GET /cotes → geometry TOUJOURS présente, geometry.stale == True, geometry.narratif.sections=3 conservé, GET /cotes/narratif.pdf → 200 pdf. ✓ (b FR) rapport.pdf?court=1 et narratif.pdf : page 1 contient bien 'CONTRÔLE DE COHÉRENCE DES COTATIONS', 'RAPPORT DE CONTRÔLE', 'Entreprise demandeuse : Marc BTP (Pro)', 'ConstruPilot.fr', 'Document examiné', 'Portée de ce document', 'bureau d'études techniques (BET)' + 1 image logo. ✗ report.pdf FR : le pavé disclaimer 'Portée de ce document / BET' déborde sur la PAGE 2 (portrait A4 trop serré). ✓ (b PT) 3 PDF : page 1 contient 'CONTROLO DE COERÊNCIA DAS COTAS', 'Empresa requerente : Marco Obras Lda', 'Âmbito deste documento', et ne contient PAS 'Entreprise demandeuse' ni 'Portée' (i18n propre). ✓ FRONTEND /controle-cotes?plan=plan_ee9385c91ee5 (pro@construpilot.fr) : [geo-report], [geo-stale] visible avec message 'Les cotes ont été relues…' (confirme bug _run_check corrigé côté UI), [geo-narrative] visible, [geo-narrative-btn] libellé 'Réécrire le rapport narratif', [geo-narrative-pdf-btn] visible, clic sur [geo-narrative-toggle] → 3 sections [geo-narrative-section-*] rendues, clic PDF btn → téléchargement 'rapport-narratif-p1.pdf'. [cotes-reading] = 'Lecture vectorielle PDF + IA (hybride) : 51 cote(s) mesurées au mm dans le PDF · 34 confirmée(s) par l'IA · échelle effective 1/35.7 (déclarée 1/25 — PDF réduit)', [cotes-verdict] = 'À vérifier'. 0 erreur console React. Aucune IA longue relancée.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/takeoffs/{plan}/cotes/report.pdf?page_index=0 (FR)", "issue": "Le pavé « Portée de ce document » (mentionnant le BET) est produit APRÈS la couverture mais tombe sur la PAGE 2 au lieu de la PAGE 1. Cause : plan_report_pdf.py utilise pagesize=A4 portrait (les marges 14/16 mm laissent trop peu de place pour la couverture longue + le _scope_box). rapport.pdf (landscape via plan_cotes_pdf) et narratif.pdf (dimensions plus généreuses) sont OK. Fix suggéré : soit passer report.pdf en landscape A4 comme rapport.pdf, soit réduire la taille du bloc couverture (title2 + doc_examiné) sur portrait, soit fusionner _scope_box dans la même Frame que le cover_story (KeepInFrame + shrink) pour forcer l'affichage page 1. Attendu par la spec iter 135 : 'la PAGE 1 de chacun contient ... Portée de ce document ... BET'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter135_stale_covers.py",
+    "/app/test_reports/pytest/iter135.xml"
+  ],
+  "action_items": [
+    "Fix layout report.pdf FR (et vraisemblablement PT aussi, à revalider) pour que 'Portée de ce document' + 'bureau d'études techniques (BET)' apparaissent bien SUR LA PAGE 1 comme requis par la spec. Recommandation : passer report.pdf en landscape A4 (aligné avec rapport.pdf) ou envelopper cover_story + scope_box dans un KeepInFrame shrink='shrink'."
+  ],
+  "critical_code_review_comments": [
+    "plan_report_pdf.py L244-250 : le bloc couverture + disclaimer est bâti en portrait A4 avec des marges 14/16 mm — sur des projets à filename+ titre long, l'ensemble excède l'espace disponible et le disclaimer BET glisse en page 2. Solution robuste : placer cover_story et _scope_box dans un `KeepInFrame(_W, _H_cover, [...], mode='shrink')` avant le PageBreak.",
+    "plans_cotes.py _run_check L145-147 : bien corrigé, geometry conservé avec stale=True. cotes_geometry (L320-322) et cotes_narratif (L349) préservent aussi correctement le narratif existant en stale — cohérence de comportement validée."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter135_stale_covers.py"],
+  "success_rate": {"backend": "89%", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! ; pro.pt@construpilot.pt / ProPT2026!",
+  "seed_data_creation": "Aucun seed créé (test_upload_vector_pdf non relancé). Le POST /cotes/check?background=1 a été exécuté 1 fois sur plan_ee9385c91ee5 p0 conformément à la consigne — geometry.stale est désormais True, narratif préservé.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Le bug critique iter 134 (perte de geometry par /cotes/check) est bien corrigé — validation à la fois côté API (test_b_check_background_preserves_geometry) et côté UI (bandeau [geo-stale] visible + section [geo-narrative] rendue avec 3 [geo-narrative-section-*]). Seule régression restante : report.pdf FR (page 1 sans mention 'Portée/BET' — les mentions basculent en page 2). rapport.pdf et narratif.pdf FR/PT ainsi que report.pdf PT sont conformes.",
+  "rca of the issue": "report.pdf FR : cover_story() génère 8 lignes typographiques (kicker, title1, title2 souvent en 2 lignes avec le type de plan, 4 lignes ‹asker/with/project/doc›, ligne date). Sur A4 portrait 297×210 mm − marges 30 mm ≈ 267 mm de hauteur utile ; l'ensemble titres+cover atteint ~180-200 mm en cas de projet long. Puis _scope_box (bloc encadré ~35-40 mm) plus PageBreak — le _scope_box excède la hauteur restante et ReportLab le déplace en page 2. Reproductible sur plan_ee9385c91ee5 (filename 'houilles.pdf' + description 'Structure / Fondations - Plan de coffrages - Fondation - Dessin 1 - 04/01/2025 - échelle 1/25'). Mitigation : (i) passer report.pdf en landscape A4 ; (ii) OU envelopper cover+scope dans KeepInFrame shrink ; (iii) OU réduire titre2 sur portrait ; (iv) OU forcer scope_box en cadre solide de hauteur max sur cover-frame dédié."
+}

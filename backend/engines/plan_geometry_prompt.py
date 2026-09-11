@@ -119,6 +119,24 @@ Les « hypotheses_fermeture » sont des « hypothèses mathématiques permettant
 Utilise les valeurs INSCRITES sur le plan pour les calculs de fermeture (les mesures ConstruPilot servent de
 contrôle croisé). Classe chaque écart avec les seuils mm (VERT/BLEU/JAUNE/ORANGE/ROUGE). N'invente rien."""
 
+PASS3_ADVERSARIAL = """PASSAGE 3 — AGENT DE CONTRÔLE ADVERSARIAL CONSTRUPILOT. Ton rôle est de CONTREDIRE volontairement chaque
+anomalie ci-dessous avant validation du rapport : cherche une explication innocente (référence axe/face, cote
+alternative, unité, décrochement volontaire, épaisseur de mur oubliée, lecture erronée d'un chiffre, chaîne mal
+associée), refais le calcul avec cette explication et conclus. Une anomalie ne survit que si aucune contradiction
+crédible ne tient. Anomalies à attaquer :
+{anomalies_json}
+Cotes lues sur le plan (index #n, valeur inscrite) : {cotes_json}
+Rends ce JSON strict :
+{{
+ "contestations": [{{"numero": 1, "attaque": "explication innocente testée", "recalcul": "formule et résultat",
+                    "verdict": "MAINTENUE|CONTESTÉE|REJETÉE", "confiance_finale": "TRÈS ÉLEVÉ|ÉLEVÉ|MOYEN|FAIBLE",
+                    "commentaire": ""}}],
+ "quantites_douteuses": [{{"element": "", "raison": ""}}],
+ "conclusion": "synthèse de l'agent adversarial"
+}}
+MAINTENUE = la contradiction échoue, l'anomalie est validée · CONTESTÉE = une explication innocente est plausible mais
+non démontrée (niveau abaissé à JAUNE) · REJETÉE = la contradiction est démontrée (anomalie retirée du verdict)."""
+
 PASS2_FORMAT = """PASSAGE 2 — RECALCUL INDÉPENDANT. Relis le plan (image jointe) sans considérer le premier calcul comme
 correct. Voici les anomalies et fermetures issues du passage 1 :
 {pass1_json}
@@ -128,4 +146,39 @@ Refais indépendamment les sommes, fermetures et comparaisons, puis rends ce JSO
  "anomalies_supplementaires": [ …même format qu'une anomalie du passage 1, numero à partir de 100… ],
  "ecarts_entre_passes": [""],
  "conclusion": ""
+}}"""
+
+LANG_INSTRUCTION = {
+    "fr": "Rédige TOUS les textes en français professionnel (ingénieur / économiste de la construction).",
+    "pt": "Escreve TODOS os textos em português europeu (Portugal) profissional, vocabulário técnico de engenharia civil "
+          "e medição de obra (cota, cadeia de cotas, fachada, espessura de parede, alvenaria). Nunca uses português do Brasil.",
+}
+
+PASS4_NARRATIVE = """PASSAGE 4 — RÉDACTION DU RAPPORT NARRATIF CONSTRUPILOT (style « rapport d'ingénieur écrit à la main »).
+{lang_instruction}
+Tu disposes UNIQUEMENT des données validées ci-dessous (cotes exactes, fermetures, chaînes, façades, anomalies avec
+verdict adversarial). Tu ne recalcules pas de nouvelles valeurs et tu n'inventes aucun chiffre : chaque nombre écrit
+doit provenir de ces données. Le plan (image) sert seulement à situer les cotes (haut/bas/gauche/droite, façade, refend).
+{data_json}
+
+Écris un rapport narratif complet, une SECTION NUMÉROTÉE PAR GRANDE COTE (cote générale ≥ 1 m disposant d'une chaîne,
+d'une fermeture ou d'une façade opposée ; les façades opposées 14,96/15,00 forment une seule section comparative si les
+deux sont présentes). Chaque section explique en prose : où se trouve la cote, quelles cotes partielles la composent,
+le calcul écrit en entier (« 0,24 + 0,13 + 5,07 + … = 14,97 m »), l'écart en mm/cm, ce que cela signifie concrètement,
+et ce qu'il faut vérifier. Les « chaines_exactes » (vecteurs PDF/DXF, positions exactes) font foi ; une fermeture IA dont la somme s'écarte de
+plus de 10 cm de la cote générale est une chaîne INCOMPLÈTE (épaisseurs omises) : n'en fais jamais une section ni un
+écart, mentionne-la au plus en une phrase comme chaîne partielle. Vocabulaire : « à vérifier », « incohérence », « NON DÉTERMINÉ » ; jamais « le plan est faux »,
+jamais « bureau d'études ». Utilise les niveaux VERT/BLEU/JAUNE/ORANGE/ROUGE tels que fournis.
+Rends ce JSON strict :
+{{
+ "titre": "",
+ "introduction": "2-4 phrases : document analysé, échelle effective, méthode (vecteurs PDF exacts + IA + double lecture + contrôle adversarial)",
+ "methode": "1 paragraphe : comment les cotes ont été mesurées et croisées",
+ "sections": [{{"numero": 1, "titre": "Cote générale 14,96 m — façade haute", "cote_plan_m": 14.96,
+               "texte": "2-4 paragraphes rédigés", "calcul": "0,24 + 0,13 + … = 14,97 m", "ecart_mm": 10,
+               "niveau": "BLEU", "conclusion": "1-2 phrases", "cotes_index": [1, 2]}}],
+ "facades": "paragraphe comparatif des façades opposées (ou NON DÉTERMINÉ)",
+ "synthese": "paragraphe de synthèse générale",
+ "recommandations": ["action concrète 1", "action concrète 2"],
+ "conclusion": "paragraphe final factuel et prudent"
 }}"""

@@ -110,7 +110,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
     """Récupère branding : prefer org branding si user en fait partie.
     Ajoute toujours la photo de profil uploadée (data URL) si présente."""
     u = await db.users.find_one({"user_id": user_id},
-                                 {"_id": 0, "organization_id": 1, "picture": 1,
+                                 {"_id": 0, "organization_id": 1, "picture": 1, "company": 1, "name": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
                                   "brand_company_email": 1,
                                   "brand_siret": 1, "brand_vat": 1,
@@ -137,7 +137,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                                                  "brand_certifications": 1})
         if org and any(org.get(k) for k in ("brand_company_name", "brand_contact_line",
                                               "brand_logo_b64", "brand_certifications")):
-            return {"company_name": org.get("brand_company_name"),
+            return {"company_name": org.get("brand_company_name") or u.get("brand_company_name") or u.get("company") or u.get("name"),
                     "contact_line": org.get("brand_contact_line"),
                     "company_email": org.get("brand_company_email"),
                     "logo_b64": org.get("brand_logo_b64"),
@@ -156,7 +156,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                     "profile_photo_b64": photo}
     if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64",
                               "brand_certifications", "brand_default_email_message")):
-        return {"company_name": u.get("brand_company_name"),
+        return {"company_name": u.get("brand_company_name") or u.get("company") or u.get("name"),
                 "contact_line": u.get("brand_contact_line"),
                 "company_email": u.get("brand_company_email"),
                 "logo_b64": u.get("brand_logo_b64"),

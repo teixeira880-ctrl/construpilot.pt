@@ -1,0 +1,38 @@
+{
+  "summary": "Iter 134 — Contrôle des cotes : (1) extraction vectorielle PDF + hybride IA, (2) rapport narratif PDF FR/PT, (3) portugais natif, (4) jobs persistés dans Mongo (cotes_jobs). BACKEND: 12/12 pytest pass en 115 s (/app/backend/tests/test_iter134_cotes_vector_narratif_pt.py). ✓ POST /api/takeoffs/upload (houilles.pdf) → 200, calibrations['0'].method='pdf_vector', effective_scale_denominator≈35.7, samples_used=51. ✓ GET /cotes plan_ee9385c91ee5?page_index=0 → 200, reading.source='pdf_vector+ai', reading.cross.vector=51, confirmed>0, divergences liste, ai_only int, summary.ko=0, ≥51 items 'pdf' avec measured_exact_m, chains non vide (niveau + exact=True), calibration.method='pdf_vector'. ✓ POST /cotes/recompute → 200, chains + summary cohérent. ✓ GET /cotes/narratif.pdf FR → 200 app/pdf, ≥4 pages, contient 'RAPPORT NARRATIF'. ✓ /cotes/rapport.pdf?court=1 → 200 pdf. ✓ /cotes/report.pdf → 200, texte contient 'vectoriel'. ✓ PT: /cotes/narratif.pdf → texte contient 'RELATÓRIO NARRATIVO' (pas 'RAPPORT NARRATIF'), /cotes/report.pdf contient 'CONTROLO DAS COTAS', /cotes/rapport.pdf?court=1 contient 'RELATÓRIO DE CONTROLO DA PLANTA'. ✓ FR ne peut pas accéder plan PT → 404. ✓ Jobs persistés : POST /cotes/check?background=1 → {job_id, status:'running'} ; job_id inconnu → status='running' ; autre user → status='running' seulement ; polling atteint status='done' avec result.summary (~50-90 s). ✓ Narratif 404 sur plan sans narratif. FRONTEND (5/6 aspects validés) sur /controle-cotes?plan=plan_ee9385c91ee5 avec pro@construpilot.fr : ✓ [data-testid=cotes-reading] visible avec 'Lecture vectorielle PDF + IA (hybride) : 51 cote(s) mesurées au mm dans le PDF · 34 confirmée(s) par l'IA · échelle effective 1/35.7 (déclarée 1/25 — PDF réduit)'. ✓ [data-testid=cotes-divergences] visible avec les divergences vectoriel↔IA. ✓ [data-testid=cotes-table] : 51 lignes portent l'exposant 'V' (source vectorielle). ✓ [data-testid=cotes-verdict] = 'À vérifier'. ✓ [data-testid=cotes-chains] visible. ✓ Dashboard /dashboard [cotes-tile] fonctionne (régression OK). ✗ [data-testid=geo-narrative] non trouvé : la page rend bien 'geo-report' et 'geo-run-btn' mais pas la sous-section 'geo-narrative' — vérification directe Mongo : plan_ee9385c91ee5.cotes_checks['0'].geometry est NULL. Cause identifiée : le test backend test_cotes_check_background_job (POST /cotes/check?background=1) a écrasé le document cotes_checks[0] complet (voir bug ci-dessous). Aucune erreur console React sur les 2 pages. 0 console error.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/takeoffs/{plan_id}/cotes/check (background=1 ou sync)", "issue": "Le job _run_check fait un $set complet de cotes_checks.{page_index} avec le nouveau report qui NE contient PAS le champ 'geometry'. Toute analyse géométrique et tout rapport narratif préalablement rédigés (geometry + geometry.narratif) sont détruits (data-loss). Constaté sur plan_ee9385c91ee5 après exécution du test job persisté : GET /cotes retourne geometry={}, GET /cotes/narratif.pdf → 404, et le frontend n'affiche plus [geo-narrative]. À corriger dans backend/routes/plans_cotes.py::_run_check (ligne ~145) : préserver report.get('geometry') existant, ex. `set_dict = {**existing_report.get('geometry') and {'geometry': existing_report['geometry']} or {}, ...}` ou merger côté Mongo via updates ciblés au lieu d'un $set global.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Rapport narratif sur /controle-cotes", "issue": "Section [data-testid=geo-narrative] et boutons geo-narrative-btn/geo-narrative-pdf-btn/geo-narrative-toggle n'ont pas pu être testés car le champ geometry a été effacé côté Mongo (voir bug backend). Le composant GeometryReport rend geo-report + geo-run-btn mais l'intérieur (dont geo-narrative) est conditionné à un objet geo non vide (`{geo && (…)}` à la ligne 138 de GeometryReport.jsx).", "affected_selectors": ["[data-testid=geo-narrative]", "[data-testid=geo-narrative-btn]", "[data-testid=geo-narrative-pdf-btn]", "[data-testid=geo-narrative-toggle]", "[data-testid=geo-narrative-section-*]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter134_cotes_vector_narratif_pt.py",
+    "/app/test_reports/pytest/iter134.xml"
+  ],
+  "action_items": [
+    "URGENT — Corriger _run_check dans backend/routes/plans_cotes.py : préserver le champ 'geometry' (et donc geometry.narratif) existant lors du recalcul du contrôle des cotes. Sinon lancer /cotes/check après une analyse géométrique détruit tout le passage 2/3/4 IA (30-60 min de calcul).",
+    "Après le fix : re-générer la géométrie + narratif sur plan_ee9385c91ee5 page 0 pour restaurer les données de test (POST /cotes/geometry puis POST /cotes/narratif), sans quoi la section geo-narrative frontend restera indisponible.",
+    "Envisager la même protection dans /cotes/geometry lui-même : bien que analyze_geometry retourne un objet complet, un futur passage 5 ne devra pas écraser 'narratif' sans le préserver."
+  ],
+  "critical_code_review_comments": [
+    "plans_cotes.py _run_check (L145) : $set complet de cotes_checks.{page} écrase silencieusement geometry/narratif — data-loss non signalé à l'utilisateur.",
+    "plans_cotes.py cotes_narratif (L340) : si `report.get('geometry')` est falsy, on relance une analyse géométrique lourde à l'intérieur du narratif — bien conçu mais l'utilisateur perd la trace de l'analyse géométrique originelle (l'objet complet est remis à zéro).",
+    "Le comportement 'job_id inconnu → status running' est intentionnel selon la spec mais peut masquer une erreur — envisager une expiration TTL sur la collection cotes_jobs pour éviter la croissance non bornée."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter134_cotes_vector_narratif_pt.py"],
+  "success_rate": {"backend": "100%", "frontend": "83%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026! ; pro.pt@construpilot.pt / ProPT2026!",
+  "seed_data_creation": "Le test test_upload_vector_pdf a créé un nouveau plan houilles.pdf (calibration vectorielle) sous le compte pro@construpilot.fr. Aucun autre seed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "IMPORTANT : après fix du bug _run_check, l'agent principal doit régénérer geometry+narratif pour plan_ee9385c91ee5 page 0 (POST /cotes/geometry puis POST /cotes/narratif — appels IA ~5-7 min chacun). Sans cela, la section frontend [data-testid=geo-narrative] restera indisponible. Le PDF narratif backend a été validé fonctionnellement AVANT que le job de fond n'écrase la donnée (test_narratif_pdf_fr, test_narratif_pdf_pt et test_rapport_pdf_pt_court, test_report_pdf_pt, test_rapport_pdf_fr_court, test_report_pdf_fr_mentions_vectorielles tous PASS). Le plan PT plan_e628b6d7479b n'a pas été touché — narratif PT resté intact.",
+  "rca of the issue": "Reproduction : (1) plan avec geometry.narratif persisté ; (2) POST /api/takeoffs/{plan_id}/cotes/check (background=1 ou pas) ; (3) GET /api/takeoffs/{plan_id}/cotes → geometry:{} ; (4) GET /cotes/narratif.pdf → 404. Root cause : dans plans_cotes.py::_run_check, la mise à jour Mongo est un $set complet du sous-document cotes_checks.{page_index}, avec un `report` construit uniquement à partir de check_dimensions(). Le champ 'geometry' préexistant est écrasé. Mitigation : soit récupérer l'ancien report via find_one avant le $set et merger explicitement 'geometry' dans le nouveau ; soit passer à des $set granulaires (items, chains, summary, tolerance, calibration, reading, created_at) qui laissent 'geometry' intact."
+}

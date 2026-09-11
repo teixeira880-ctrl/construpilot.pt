@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="9" time="121.545" timestamp="2026-09-11T19:04:52.958541+00:00" hostname="agent-env-24ae75bf-e76f-4526-8a46-3eb12cc61f6c"><testcase classname="tests.test_iter135_stale_covers" name="test_a_pre_check_geometry_present" time="0.843" /><testcase classname="tests.test_iter135_stale_covers" name="test_b_check_background_preserves_geometry" time="104.910" /><testcase classname="tests.test_iter135_stale_covers" name="test_c_narratif_pdf_still_available" time="2.511" /><testcase classname="tests.test_iter135_stale_covers" name="test_fr_cover_pages[rapport.pdf-extra0]" time="1.869" /><testcase classname="tests.test_iter135_stale_covers" name="test_fr_cover_pages[narratif.pdf-extra1]" time="2.519" /><testcase classname="tests.test_iter135_stale_covers" name="test_fr_cover_pages[report.pdf-extra2]" time="1.581"><failure message="AssertionError: [report.pdf] mentions manquantes en page 1: ['Portée de ce document', &quot;bureau d'études techniques (BET)&quot;]&#10;  Extrait: ConstruPilot · Contrôle des cotes · page 1&#10;  Marc BTP (Pro)&#10;  CONTRÔLE DE COHÉRENCE DES COTATIONS&#10;  RAPPORT DE CONTRÔLE&#10;  DES COTES ET DE L'ÉQUERRAGE — PLAN DE COFFRAGES - FONDATION&#10;  Entreprise demandeuse : Marc BTP (Pro)&#10;  Analyse réalisée à l'aide de ConstruPilot.fr&#10;  Projet : Construction d'une maison individuelle&#10;  Document examiné : houilles.pdf (page 1) — Structure / Fondations - Plan de coffrages - Fondation - Dessin 1 - 04/01/2025 - échelle 1/25&#10;  Date de l'analyse : 11/09/2026 19:06 UTC&#10;  &#10;assert not ['Portée de ce document', &quot;bureau d'études techniques (BET)&quot;]">backend/tests/test_iter135_stale_covers.py:153: in test_fr_cover_pages
+    assert not missing, f"[{path}] mentions manquantes en page 1: {missing}\nExtrait: {txt[:600]}"
+E   AssertionError: [report.pdf] mentions manquantes en page 1: ['Portée de ce document', "bureau d'études techniques (BET)"]
+E     Extrait: ConstruPilot · Contrôle des cotes · page 1
+E     Marc BTP (Pro)
+E     CONTRÔLE DE COHÉRENCE DES COTATIONS
+E     RAPPORT DE CONTRÔLE
+E     DES COTES ET DE L'ÉQUERRAGE — PLAN DE COFFRAGES - FONDATION
+E     Entreprise demandeuse : Marc BTP (Pro)
+E     Analyse réalisée à l'aide de ConstruPilot.fr
+E     Projet : Construction d'une maison individuelle
+E     Document examiné : houilles.pdf (page 1) — Structure / Fondations - Plan de coffrages - Fondation - Dessin 1 - 04/01/2025 - échelle 1/25
+E     Date de l'analyse : 11/09/2026 19:06 UTC
+E     
+E   assert not ['Portée de ce document', "bureau d'études techniques (BET)"]</failure></testcase><testcase classname="tests.test_iter135_stale_covers" name="test_pt_cover_pages[rapport.pdf-extra0]" time="2.527" /><testcase classname="tests.test_iter135_stale_covers" name="test_pt_cover_pages[narratif.pdf-extra1]" time="2.826" /><testcase classname="tests.test_iter135_stale_covers" name="test_pt_cover_pages[report.pdf-extra2]" time="1.598" /></testsuite></testsuites>

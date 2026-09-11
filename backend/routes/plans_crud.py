@@ -363,10 +363,20 @@ def _auto_calibrate_pages(parsed: dict) -> dict:
     if parsed.get("kind") == "dxf":
         return _auto_calibrate_dxf(parsed)
     scale = parsed.get("detected_scale_denominator")
-    if not scale:
-        return {}
     calibs: dict = {}
     for pg in parsed["pages"]:
+        vec = pg.get("pdf_vector_scale") or {}
+        if vec.get("pt_per_m") and (vec.get("matched") or 0) >= 3:
+            ppm = float(vec["pt_per_m"]) * float(pg.get("dpi", 150)) / 72
+            calibs[str(pg["index"])] = {
+                "pixels_per_meter": round(ppm, 4), "meters_per_pixel": round(1 / ppm, 8),
+                "method": "pdf_vector", "scale_denominator": scale,
+                "effective_scale_denominator": round(1000 * 72 / 25.4 / float(vec["pt_per_m"]), 1),
+                "samples_used": vec.get("matched"), "confidence": 0.98, "created_at": _now(),
+            }
+            continue
+        if not scale:
+            continue
         ppm = auto_calibration_from_pdf_scale(scale, pg.get("dpi", 150))
         if ppm:
             calibs[str(pg["index"])] = {
