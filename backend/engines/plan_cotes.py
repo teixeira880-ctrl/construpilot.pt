@@ -54,6 +54,12 @@ def _status(delta_m: float, tol_m: float) -> str:
     return "warn" if a <= tol_m else "ko"
 
 
+def _niveau_mm(delta_mm: float) -> str:
+    """Classification ConstruPilot : VERT ≤2 mm · BLEU ≤10 · JAUNE ≤30 · ORANGE ≤100 · ROUGE >100."""
+    a = abs(delta_mm)
+    return "VERT" if a <= 2 else "BLEU" if a <= 10 else "JAUNE" if a <= 30 else "ORANGE" if a <= 100 else "ROUGE"
+
+
 def _tol_m(value_m: float, tol_pct: float, tol_cm: float) -> float:
     return max(value_m * tol_pct / 100.0, tol_cm / 100.0)
 
@@ -207,6 +213,7 @@ def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float
             "delta_pct": round(delta / indicated * 100, 2) if indicated else None,
             "tolerance_cm": round(tol * 100, 1),
             "status": "ignored" if d.get("ignored") else _status(delta, tol),
+            "niveau": _niveau_mm(delta * 1000),
             "override": bool(d.get("override")), "ignored": bool(d.get("ignored")),
             "edited": bool(d.get("edited")), "original_m": d.get("original_m"),
         })

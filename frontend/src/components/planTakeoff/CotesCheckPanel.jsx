@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import GeometryReport from "@/components/planTakeoff/GeometryReport";
 
 const LABEL = { ok: "OK", warn: "À vérifier", ko: "Incohérence", ignored: "Ignorée" };
 const CLS = {
@@ -270,6 +271,9 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
               Surfaces écrites : {report.surfaces.matches.length} pièce(s) comparée(s), écart médian {report.surfaces.deviation_pct} %.
             </p>
           )}
+          <GeometryReport plan={plan} pageIndex={pageIndex} geo={report.geometry}
+                          onUpdated={(geo) => { setReport({ ...report, geometry: geo }); refreshPlan?.(); }}
+                          onFocusIndex={(i) => { const it = report.items.find((x) => x.index === i); if (it) onFocusCote?.(it); }} />
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={showOverlay} data-testid="cotes-overlay-btn">
               <ImageIcon className="h-3.5 w-3.5" /> Plan annoté

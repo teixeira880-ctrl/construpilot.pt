@@ -158,6 +158,106 @@ def _story_surfaces(story, report, S):
     story.append(_tbl(rows, [80 * mm, 30 * mm, 30 * mm, 30 * mm], S))
 
 
+_LVL_COL = {"VERT": "#16a34a", "BLEU": "#2563eb", "JAUNE": "#ca8a04", "ORANGE": "#ea580c", "ROUGE": "#dc2626"}
+_LVL_LABEL = {"VERT": "Cohérent", "BLEU": "Information", "JAUNE": "À vérifier",
+              "ORANGE": "Incohérence", "ROUGE": "Incohérence majeure"}
+
+
+def _e(s) -> str:
+    from xml.sax.saxutils import escape
+    return escape(str(s if s is not None else ""))
+
+
+def _story_geometry(story, geo: dict, S):
+    """Section « Analyse géométrique ConstruPilot » (double lecture IA)."""
+    if not geo:
+        return
+    story.append(PageBreak())
+    story.append(Paragraph("ANALYSE GÉOMÉTRIQUE CONSTRUPILOT — DOUBLE LECTURE", S["kicker"]))
+    lvl = geo.get("niveau_global", "VERT")
+    story.append(Paragraph(
+        f"<font color='{_LVL_COL[lvl]}'><b>Niveau global : {_LVL_LABEL[lvl]}</b></font> — "
+        f"{len(geo.get('anomalies') or [])} anomalie(s) · passage 2 : "
+        f"{(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmée(s), "
+        f"{(geo.get('double_lecture') or {}).get('infirmees', 0)} infirmée(s).", S["h1"]))
+    doc = geo.get("document") or {}
+    if doc:
+        story.append(Paragraph("Cartouche : " + " · ".join(
+            f"{k.replace('_', ' ')} : {_e(v)}" for k, v in doc.items() if v), S["muted"]))
+    rep = geo.get("reponses") or {}
+    if rep:
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(f"<b>1. Fermeture mathématique :</b> {_e(rep.get('fermeture') or 'NON INDIQUÉ')}", S["body"]))
+        story.append(Paragraph(f"<b>2. Compatibilité géométrique :</b> {_e(rep.get('compatibilite') or 'NON INDIQUÉ')}", S["body"]))
+        av = rep.get("a_verifier") or []
+        story.append(Paragraph("<b>3. À vérifier avant utilisation :</b> " + (_e(" ; ".join(map(str, av))) if av else "—"), S["body"]))
+    if geo.get("synthese"):
+        story.append(Paragraph(_e(geo["synthese"]), S["muted"]))
+    ferm = geo.get("fermetures") or []
+    if ferm:
+        story.append(Paragraph("Fermeture des chaînes", S["h2"]))
+        rows = [["Dir.", "Chaîne (valeurs inscrites)", "Calculé", "Cote plan", "Erreur", "Statut"]]
+        for f in ferm:
+            rows.append([_e(f.get("direction")), Paragraph(_e(f.get("chaine")), S["muted"]),
+                         f"{float(f.get('cote_calculee_m') or 0):.2f} m", f"{float(f.get('cote_plan_m') or 0):.2f} m",
+                         f"{float(f.get('erreur_m') or 0) * 100:+.1f} cm", _e(f.get("statut"))])
+        story.append(_tbl(rows, [14 * mm, 110 * mm, 24 * mm, 24 * mm, 24 * mm, 40 * mm], S))
+    mat = geo.get("matrice") or []
+    if mat:
+        story.append(Paragraph("Matrice de cohérence", S["h2"]))
+        rows = [["Élément", "Valeur plan", "Calculée", "Écart", "Source du calcul", "Confiance", "Statut"]]
+        for m in mat:
+            rows.append([Paragraph(_e(m.get("element")), S["muted"]), f"{float(m.get('valeur_plan_m') or 0):.2f} m",
+                         f"{float(m.get('valeur_calculee_m') or 0):.2f} m", f"{float(m.get('ecart_m') or 0) * 100:+.1f} cm",
+                         Paragraph(_e(m.get("source_calcul")), S["muted"]), _e(m.get("confiance")), _e(m.get("statut"))])
+        story.append(_tbl(rows, [50 * mm, 22 * mm, 22 * mm, 20 * mm, 70 * mm, 22 * mm, 34 * mm], S))
+    def _fmt(section, it):
+        if section == "controles_croises":
+            vals = " / ".join(str(v) for v in (it.get("valeurs") or []))
+            return f"{it.get('description', '')} — valeurs : {vals} — écart {float(it.get('ecart_m') or 0) * 100:+.1f} cm — {it.get('statut', '')}"
+        if section == "facades":
+            causes = " ; ".join(map(str, it.get("causes_possibles") or []))
+            return (f"{it.get('nom', '')} : {float(it.get('longueur_plan_m') or 0):.2f} m vs opposée "
+                    f"{float(it.get('longueur_opposee_m') or 0):.2f} m — écart {float(it.get('ecart_m') or 0) * 100:+.1f} cm — "
+                    f"{it.get('statut', '')}{' (' + causes + ')' if causes else ''}")
+        segs = " ; ".join(f"{s.get('segment', '')} : {s.get('statut', '')}"
+                          + (f" ({s.get('decalage_mm')} mm)" if s.get("decalage_mm") else "")
+                          for s in (it.get("segments") or []) if isinstance(s, dict))
+        return f"{it.get('nom', '')} — {segs}"
+
+    for section, title in (("controles_croises", "Contrôles croisés"), ("facades", "Façades"), ("alignements", "Alignements")):
+        items = [it for it in (geo.get(section) or []) if isinstance(it, dict)]
+        if items:
+            story.append(Paragraph(title, S["h2"]))
+            for it in items:
+                story.append(Paragraph("• " + _e(_fmt(section, it)), S["muted"]))
+    anoms = geo.get("anomalies") or []
+    story.append(Paragraph("Anomalies détaillées", S["h2"]))
+    if not anoms:
+        story.append(Paragraph("Aucune anomalie détectée par l'analyse géométrique.", S["muted"]))
+    for a in anoms:
+        v = a.get("verification") or {}
+        story.append(Paragraph(
+            f"<font color='{_LVL_COL.get(a['niveau'], '#64748b')}'><b>ANOMALIE #{a['numero']} — {_LVL_LABEL.get(a['niveau'], a['niveau'])}</b></font>"
+            f" · confiance {_e(a.get('confiance'))} · passage 2 : {_e(v.get('verdict') or '—')}", S["body"]))
+        for label, key in (("Localisation", "localisation"), ("Donnée du plan", "donnee_plan"), ("Calcul ConstruPilot", "calcul"),
+                           ("Formule", "formule"), ("Résultat", "resultat"), ("Explication", "explication"),
+                           ("Action recommandée", "action")):
+            if a.get(key):
+                story.append(Paragraph(f"<b>{label} :</b> {_e(a[key])}", S["muted"]))
+        if a.get("ecart_mm") is not None:
+            story.append(Paragraph(f"<b>Écart :</b> {a['ecart_mm']:+.0f} mm", S["muted"]))
+        if a.get("hypotheses"):
+            story.append(Paragraph("<b>Hypothèses possibles :</b> " + _e(" · ".join(a["hypotheses"])), S["muted"]))
+        if v.get("recalcul") or v.get("commentaire"):
+            story.append(Paragraph(f"<b>Recalcul passage 2 :</b> {_e(v.get('recalcul'))} {_e(v.get('commentaire'))}", S["muted"]))
+        story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(
+        "Seuils de détection ConstruPilot (0–2 mm négligeable · 2–10 mm faible · 10–30 mm à vérifier · 30–100 mm anomalie "
+        "importante · > 100 mm anomalie majeure) — ce ne sont pas des tolérances réglementaires d'exécution. "
+        "Les hypothèses de correction ne modifient jamais le plan.", S["muted"]))
+
+
 def _story_page_body(story, report, overlay_png, S, page_title: str):
     story.append(Spacer(1, 3 * mm))
     _story_summary(story, report, S)
@@ -165,6 +265,7 @@ def _story_page_body(story, report, overlay_png, S, page_title: str):
     _story_items(story, report, S)
     _story_chains(story, report, S)
     _story_surfaces(story, report, S)
+    _story_geometry(story, report.get("geometry"), S)
     story.append(PageBreak())
     story.append(Paragraph(page_title, S["h2"]))
     W, H = landscape(A4)
@@ -206,6 +307,7 @@ def build_cotes_pdf(plan: dict, page_index: int, report: dict, overlay_png: byte
     _story_surfaces(story, report, S)
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(_LEGEND, S["muted"]))
+    _story_geometry(story, report.get("geometry"), S)
     story.append(PageBreak())
     story.append(Paragraph("Plan original — cotes mesurées", S["h2"]))
     W, H = landscape(A4)

@@ -188,6 +188,30 @@ async def cotes_latest(user=Depends(current_user)) -> dict:
 
 
 
+class GeometryIn(BaseModel):
+    page_index: int = Field(default=0, ge=0)
+
+
+@router.post("/{plan_id}/cotes/geometry")
+async def cotes_geometry(plan_id: str, body: GeometryIn, user=Depends(current_user)) -> dict:
+    """Analyse géométrique complète (double lecture IA) : fermetures, contrôles croisés, façades, anomalies."""
+    from engines.plan_geometry_ai import analyze_geometry
+    p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
+    report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+    if not report:
+        report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
+    geo = await analyze_geometry(page["image_png_b64"], report,
+                                 int(page.get("width_px") or 0), int(page.get("height_px") or 0))
+    if geo.get("error"):
+        raise HTTPException(502, geo["error"])
+    geo["created_at"] = _now()
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{body.page_index}.geometry": geo, "updated_at": _now()}})
+    await _snapshot(plan_id, user["user_id"], "cotes_geometry",
+                    {"page": body.page_index, "niveau": geo["niveau_global"], "anomalies": len(geo["anomalies"])})
+    return geo
+
+
 @router.get("/{plan_id}/cotes")
 async def cotes_last(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)) -> dict:
     p, _ = await _plan_page(plan_id, user["user_id"], page_index, with_image=False)
@@ -311,6 +335,13 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
         f"<b>{sm['ko']}</b> incohérence(s) · {sm['chains_total']} chaîne(s) de cotes ({sm['chains_ko']} incohérente(s)) · "
         f"écart max {sm['max_delta_cm']:.0f} cm — tolérance ±{report['tolerance']['pct']} % / {report['tolerance']['cm']} cm.</p>"
         f"<p>Verdict : <b>{verdict}</b>. Le plan annoté (cotes mesurées en vert / orange / rouge) figure en dernière page du PDF.</p>")
+    geo = report.get("geometry")
+    if geo:
+        inner += (f"<p><b>Analyse géométrique ConstruPilot (double lecture)</b> : niveau "
+                  f"<b>{_html.escape(geo.get('niveau_global_label') or geo.get('niveau_global') or '')}</b> — "
+                  f"{len(geo.get('anomalies') or [])} anomalie(s), "
+                  f"{(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmée(s) au passage 2. "
+                  f"{_html.escape((geo.get('reponses') or {}).get('fermeture') or '')}</p>")
     html = wrap_company_html(
         f"Rapport de contrôle des cotes — {fname}", inner, company_name=company,
         logo_url=logo_url_for(user["user_id"], branding), logo_b64=branding.get("logo_b64"),
