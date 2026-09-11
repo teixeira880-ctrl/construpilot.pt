@@ -174,12 +174,24 @@ def snap_dims_to_image(image_b64: str, dims: list[dict], max_shift_frac: float =
     return moved
 
 
+def items_to_dims(items: list[dict]) -> list[dict]:
+    """Rapport stocké → cotes réutilisables pour un recalcul sans relire le plan."""
+    return [{"x1": it["x1"], "y1": it["y1"], "x2": it["x2"], "y2": it["y2"],
+             "value_m": it["indicated_m"], "measured_m": it.get("measured_exact_m"),
+             "source": it.get("source", "ai"), "confidence": it.get("confidence", 0.5),
+             "location": it.get("location"), "raw_text": it.get("raw_text"),
+             "override": it.get("override"), "ignored": it.get("ignored", False),
+             "edited": it.get("edited", False), "original_m": it.get("original_m")}
+            for it in items]
+
+
 def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float,
                      img_w: int, img_h: int) -> dict:
     items = []
     for i, d in enumerate(dims):
         px = _length_px(d)
-        measured = d.get("measured_m") if d.get("source") == "dxf" else px / ppm
+        exact = d.get("measured_m") if d.get("source") == "dxf" else None
+        measured = exact if exact is not None else px / ppm
         indicated = float(d["value_m"])
         delta = measured - indicated
         tol = _tol_m(indicated, tol_pct, tol_cm)
@@ -190,25 +202,29 @@ def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float
             "raw_text": d.get("raw_text"), "source": d.get("source", "ai"),
             "confidence": round(float(d.get("confidence") or 0.5), 2),
             "indicated_m": round(indicated, 3), "measured_m": round(measured, 3),
-            "pixel_length": round(px, 1),
+            "measured_exact_m": exact, "pixel_length": round(px, 1),
             "delta_m": round(delta, 3), "delta_cm": round(delta * 100, 1),
             "delta_pct": round(delta / indicated * 100, 2) if indicated else None,
-            "tolerance_cm": round(tol * 100, 1), "status": _status(delta, tol),
-            "override": bool(d.get("override")),
+            "tolerance_cm": round(tol * 100, 1),
+            "status": "ignored" if d.get("ignored") else _status(delta, tol),
+            "override": bool(d.get("override")), "ignored": bool(d.get("ignored")),
+            "edited": bool(d.get("edited")), "original_m": d.get("original_m"),
         })
-    chains = _find_chains(items, tol_pct, tol_cm, float(max(img_w, img_h)))
+    active = [it for it in items if not it["ignored"]]
+    chains = _find_chains(active, tol_pct, tol_cm, float(max(img_w, img_h)))
     for it in items:
         it["chain_status"] = None
     for c in chains:
         if c["status"] != "ok":
             for idx in [c["total_index"], *c["part_indexes"]]:
                 items[idx - 1]["chain_status"] = c["status"]
-    counts = {s: sum(1 for it in items if it["status"] == s) for s in ("ok", "warn", "ko")}
+    counts = {s: sum(1 for it in active if it["status"] == s) for s in ("ok", "warn", "ko")}
     chain_counts = {s: sum(1 for c in chains if c["status"] == s) for s in ("ok", "warn", "ko")}
-    worst = max((abs(it["delta_cm"]) for it in items), default=0.0)
+    worst = max((abs(it["delta_cm"]) for it in active), default=0.0)
     return {
         "items": items, "chains": chains,
-        "summary": {"total": len(items), **counts, "chains_total": len(chains),
+        "summary": {"total": len(active), "ignored": len(items) - len(active), **counts,
+                    "chains_total": len(chains),
                     "chains_ko": chain_counts["ko"], "chains_warn": chain_counts["warn"],
                     "max_delta_cm": round(worst, 1),
                     "verdict": ("ko" if counts["ko"] or chain_counts["ko"]

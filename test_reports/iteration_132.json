@@ -1,0 +1,18 @@
+{
+  "summary": "Iter 132 — Cotes edit/ignore/recompute (extends iter 131). Backend: 10/10 pytest pass. PATCH /api/takeoffs/plan_383d0b5c291b/cotes/items/3 with indicated_m=6.0 → item 3 becomes ok (edited=true, original_m=5.5, indicated_m=6.0), KO chain becomes ok (sum=10.0), verdict=ok; instant (<1s, no AI). PATCH ignored:true on item 2 → status='ignored', summary.total=3, ignored=1, chains empty. PATCH ignored:false → total=4, 1 chain restored. PATCH index=99 → 404. PATCH indicated_m=0 or -1.5 → 422. POST .../cotes/recompute {tol_pct:10, tol_cm:3} → tolerance echoed, item 3 becomes 'warn' (9.1% ≤ 10% but >6%), instant. Recompute back tol_pct:2 → item 3 'ko'. GET report.pdf 200 with %PDF header after edit. Frontend (pro@construpilot.fr on /plan?open=plan_f6d3ae6fb2f2 → tab-ai): (a) clicking cotes-row-2 Localisation cell → row highlighted amber, canvas zoom indicator = 220% (screenshot confirms); (b) cotes-edit-btn-2 opens cotes-edit-input-2 (prefilled 3.8), typed 3.9 + cotes-edit-save-2 → toast 'Cote #2 corrigée et rapport recalculé' in 0.32s (no AI), ✎ marker appears on row; (c) cotes-ignore-btn-3 → toast 'Cote #3 ignorée', row opacity-50, summary shows '1 ignorée(s)'; click again → 'réintégrée'; (d) cotes-tol-pct=10 reveals cotes-recompute-btn → toast 'Recalculé avec ±2 % / 3 cm — 30 incohérence(s)' in 0.83s (tol wording reflects saved value after refetch); back to 2% works. Canvas draws coloured dimension lines with labels ('#2 3.80→3.52 (-28 cm)', '#3 1.20→1.16 (-4 cm)') visible in screenshot. 0 console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_iter132_cotes_edit.py", "/app/test_reports/pytest/iter132.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "CotesCheckPanel.jsx recompute toast message: after `apply` refreshes state from returned report, the toast uses `d.tolerance.pct` which reflects the NEW tolerance sent — good. However tolChanged is computed against report.tolerance while inputs are echoed strings; a stale Number('') would fall to fallback 2/0. Minor.",
+  "plans_cotes.py cotes_edit_item: silently ignores requests where indicated_m equals current value (no edit flag). Consider also allowing 'clear override' semantics (indicated_m=null to reset)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter132_cotes_edit.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!",
+  "seed_data_creation": "None — used existing plans plan_383d0b5c291b (DXF) and plan_f6d3ae6fb2f2 (image). Test fixture restores item edits to original state on teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter 132 covers PATCH /cotes/items/{index} and POST /cotes/recompute. Both DXF (plan_383d0b5c291b) and image (plan_f6d3ae6fb2f2) plans have persisted reports. AI check button (cotes-check-btn) intentionally NOT clicked to avoid re-running slow Gemini call — recompute/patch are instant. Canvas rendering of checked cotes verified visually."
+}

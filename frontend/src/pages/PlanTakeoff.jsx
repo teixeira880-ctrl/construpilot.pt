@@ -253,6 +253,16 @@ export default function PlanTakeoff() {
     if (!ai || (ai.page_index != null && ai.page_index !== pageIndex)) return [];
     return ai.dimension_lines || [];
   }, [plan, pageIndex]);
+  // Contrôle des cotes : cotes contrôlées de la page (dessinées sur le canvas, cliquables)
+  const [selectedCheckedCote, setSelectedCheckedCote] = useState(null);
+  const checkedCotes = useMemo(() => plan?.cotes_checks?.[String(pageIndex)]?.items || [],
+                               [plan, pageIndex]);
+  const focusCheckedCote = useCallback((it) => {
+    if (!it) return;
+    setSelectedCheckedCote(it.index);
+    setFocusRequest({ px: (it.x1 + it.x2) / 2, py: (it.y1 + it.y2) / 2, zoom: 2.2, ts: Date.now() });
+  }, []);
+  useEffect(() => { setSelectedCheckedCote(null); }, [pageIndex]);
   const rooms = useMemo(() => (plan?.rooms || []).filter((r) => r.page_index === pageIndex),
                         [plan, pageIndex]);
 
@@ -3010,6 +3020,9 @@ export default function PlanTakeoff() {
             focusRequest={focusRequest}
             selectedCoteIndex={selectedCote}
             onCoteClick={setSelectedCote}
+            checkedCotes={checkedCotes}
+            selectedCheckedIndex={selectedCheckedCote}
+            onCheckedCoteClick={setSelectedCheckedCote}
             onCanvasDoubleClick={onCanvasDoubleClick}
             showDeltas={showDeltas}
             contrast={planContrast}
@@ -4027,7 +4040,8 @@ export default function PlanTakeoff() {
             </TabsContent>
 
             <TabsContent value="ai" className="mt-3 grid gap-3">
-              <CotesCheckPanel plan={plan} pageIndex={pageIndex} refreshPlan={refreshPlan} />
+              <CotesCheckPanel plan={plan} pageIndex={pageIndex} refreshPlan={refreshPlan}
+                               selectedIndex={selectedCheckedCote} onFocusCote={focusCheckedCote} />
               {!plan.ai_analysis && (
                 <p className="text-xs text-muted-foreground">
                   Cliquez sur <b>Analyse IA du plan</b> en haut pour détecter automatiquement les pièces, ouvertures et surfaces écrites.

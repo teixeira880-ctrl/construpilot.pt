@@ -14,10 +14,11 @@ from reportlab.platypus import (Image as RLImage, PageBreak, Paragraph, SimpleDo
 
 from engines.pdf_takeoff import DARK, GREY, LIGHT_GREY, ORANGE, _story_header_branding, _styles
 
-COL = {"ok": (22, 163, 74), "warn": (234, 88, 12), "ko": (220, 38, 38)}
+COL = {"ok": (22, 163, 74), "warn": (234, 88, 12), "ko": (220, 38, 38), "ignored": (148, 163, 184)}
 RL_COL = {"ok": colors.HexColor("#16a34a"), "warn": colors.HexColor("#ea580c"),
-          "ko": colors.HexColor("#dc2626")}
-LABEL = {"ok": "OK", "warn": "À vérifier", "ko": "INCOHÉRENCE"}
+          "ko": colors.HexColor("#dc2626"), "ignored": colors.HexColor("#94a3b8")}
+LABEL = {"ok": "OK", "warn": "À vérifier", "ko": "INCOHÉRENCE", "ignored": "Ignorée"}
+_RANK = {"ko": 0, "warn": 1, "ok": 2, "ignored": 3}
 ORIENT = {"h": "horiz.", "v": "vert.", "o": "oblique"}
 
 
@@ -39,6 +40,8 @@ def render_cotes_overlay(image_b64: str, report: dict) -> bytes:
     font = _font(max(10, 11 * scale))
     tick = max(4, int(7 * scale))
     for it in report.get("items") or []:
+        if it.get("ignored"):
+            continue
         col = COL[it["status"]] + (255,)
         p1, p2 = (it["x1"], it["y1"]), (it["x2"], it["y2"])
         d.line([p1, p2], fill=col, width=lw)
@@ -97,7 +100,9 @@ def _story_summary(story, report, S):
     story.append(Paragraph(
         f"<font color='{RL_COL[sm['verdict']].hexval()}'><b>Verdict : {verdict}</b></font> — "
         f"{sm['total']} cotes contrôlées : {sm['ok']} OK, {sm['warn']} à vérifier, "
-        f"<b>{sm['ko']} incohérence(s)</b> · {sm['chains_total']} chaîne(s) de cotes "
+        f"<b>{sm['ko']} incohérence(s)</b>"
+        f"{' · ' + str(sm['ignored']) + ' ignorée(s)' if sm.get('ignored') else ''} · "
+        f"{sm['chains_total']} chaîne(s) de cotes "
         f"({sm['chains_ko']} incohérente(s)) · écart max {sm['max_delta_cm']:.0f} cm.", S["body"]))
     src = {"ai": "lecture IA du plan (image)", "dxf": "cotes exactes du fichier DXF"}.get(
         (report.get("reading") or {}).get("source"), "—")
@@ -111,8 +116,11 @@ def _story_items(story, report, S):
     story.append(Paragraph("Détail des cotes contrôlées", S["h2"]))
     rows = [["#", "Localisation", "Orient.", "Cote indiquée", "Mesuré", "Écart", "Écart %", "Conf.", "Statut"]]
     statuses = []
-    for it in sorted(report["items"], key=lambda x: ({"ko": 0, "warn": 1, "ok": 2}[x["status"]], x["index"])):
-        rows.append([str(it["index"]), Paragraph(it.get("location") or "—", S["muted"]),
+    for it in sorted(report["items"], key=lambda x: (_RANK[x["status"]], x["index"])):
+        loc = it.get("location") or "—"
+        if it.get("edited") and it.get("original_m") is not None:
+            loc += f" <i>(corrigée : {it['original_m']:.2f} → {it['indicated_m']:.2f})</i>"
+        rows.append([str(it["index"]), Paragraph(loc, S["muted"]),
                      ORIENT.get(it["orientation"], "—"), f"{it['indicated_m']:.2f} m",
                      f"{it['measured_m']:.2f} m", f"{it['delta_cm']:+.1f} cm",
                      f"{it['delta_pct']:+.1f} %" if it.get("delta_pct") is not None else "—",

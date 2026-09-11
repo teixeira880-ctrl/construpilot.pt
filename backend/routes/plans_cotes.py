@@ -108,6 +108,76 @@ async def cotes_last(plan_id: str, page_index: int = Query(0, ge=0), user=Depend
     return report
 
 
+class CoteEditIn(BaseModel):
+    page_index: int = Field(default=0, ge=0)
+    indicated_m: float | None = Field(default=None, gt=0, le=500)
+    ignored: bool | None = None
+
+
+class RecomputeIn(BaseModel):
+    page_index: int = Field(default=0, ge=0)
+    tol_pct: float | None = Field(default=None, ge=0.1, le=20)
+    tol_cm: float | None = Field(default=None, ge=0, le=100)
+
+
+async def _recompute(p: dict, page: dict, plan_id: str, page_index: int, report: dict,
+                     items: list[dict], tol_pct: float, tol_cm: float) -> dict:
+    w, h = int(page.get("width_px") or 0), int(page.get("height_px") or 0)
+    ppm = float((report.get("calibration") or {}).get("pixels_per_meter") or 0)
+    if not ppm:
+        raise HTTPException(400, "Calibration du rapport manquante — relancez le contrôle")
+    fresh = C.check_dimensions(C.items_to_dims(items), ppm, tol_pct, tol_cm, w, h)
+    ai_rooms = ((p.get("ai_analysis") or {}).get("rooms") or []) \
+        if (p.get("ai_analysis") or {}).get("page_index") in (None, page_index) else []
+    page_rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+    if ai_rooms and page_rooms:
+        fresh["surfaces"] = T.reconcile_written_surfaces(page_rooms, ai_rooms, ppm)
+    new_report = {**report, **fresh, "recomputed_at": _now()}
+    await db.plans_takeoff.update_one(
+        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{page_index}": new_report, "updated_at": _now()}})
+    return new_report
+
+
+@router.patch("/{plan_id}/cotes/items/{index}")
+async def cotes_edit_item(plan_id: str, index: int, body: CoteEditIn, user=Depends(current_user)) -> dict:
+    """Corrige la valeur inscrite d'une cote (mauvaise lecture) ou l'ignore, puis recalcule sans IA."""
+    p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=False)
+    report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+    if not report:
+        raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
+    items = report.get("items") or []
+    if index < 1 or index > len(items):
+        raise HTTPException(404, "Cote inconnue")
+    it = items[index - 1]
+    if body.indicated_m is not None and abs(body.indicated_m - it["indicated_m"]) > 1e-9:
+        if it.get("original_m") is None:
+            it["original_m"] = it["indicated_m"]
+        it["indicated_m"] = round(body.indicated_m, 3)
+        it["edited"] = True
+    if body.ignored is not None:
+        it["ignored"] = body.ignored
+    tol = report.get("tolerance") or {}
+    new_report = await _recompute(p, page, plan_id, body.page_index, report, items,
+                                  float(tol.get("pct", 2.0)), float(tol.get("cm", 3.0)))
+    await _snapshot(plan_id, user["user_id"], "cotes_edit",
+                    {"page": body.page_index, "index": index, "indicated_m": body.indicated_m,
+                     "ignored": body.ignored})
+    return new_report
+
+
+@router.post("/{plan_id}/cotes/recompute")
+async def cotes_recompute(plan_id: str, body: RecomputeIn, user=Depends(current_user)) -> dict:
+    """Recalcule le rapport (nouvelle tolérance) à partir des cotes déjà lues — sans IA."""
+    p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=False)
+    report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+    if not report:
+        raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
+    tol = report.get("tolerance") or {}
+    return await _recompute(p, page, plan_id, body.page_index, report, report.get("items") or [],
+                            body.tol_pct if body.tol_pct is not None else float(tol.get("pct", 2.0)),
+                            body.tol_cm if body.tol_cm is not None else float(tol.get("cm", 3.0)))
+
+
 async def _report_and_overlay(plan_id: str, user_id: str, page_index: int):
     p, page = await _plan_page(plan_id, user_id, page_index, with_image=True)
     report = (p.get("cotes_checks") or {}).get(str(page_index))

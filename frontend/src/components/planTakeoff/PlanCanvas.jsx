@@ -15,6 +15,9 @@ export default function PlanCanvas({
   focusRequest = null,  // {px, py, ts} — quand ts change, centrer sur (px, py)
   selectedCoteIndex = null,
   onCoteClick = null,
+  checkedCotes = [],            // cotes contrôlées (px image + statut) — remplace l'affichage des cotes IA
+  selectedCheckedIndex = null,
+  onCheckedCoteClick = null,
   onCanvasDoubleClick = null,
   showDeltas = true,
   contrast = 1,
@@ -83,14 +86,18 @@ export default function PlanCanvas({
     if (!focusRequest || focusRequest.ts == null) return;
     const c = canvasRef.current;
     if (!c) return;
-    const rect = c.getBoundingClientRect();
     const targetZoom = Math.max(1.0, Math.min(2.5, focusRequest.zoom ?? 1.5));
     const cx = focusRequest.px ?? 0;
     const cy = focusRequest.py ?? 0;
-    // (px*zoom + offset.x) = rect.width/2 => offset.x = rect.width/2 - px*zoom
+    // Transform du rendu : écran = centre + offset + R(rotation) · zoom · (p − centreImage)
+    // → pour centrer p : offset = −R · zoom · (p − centreImage)
+    const img = imgRef.current;
+    const vx = (cx - (img?.width || 0) / 2) * targetZoom;
+    const vy = (cy - (img?.height || 0) / 2) * targetZoom;
+    const a = ((rotation || 0) * Math.PI) / 180;
     const newOffset = {
-      x: rect.width / 2 - cx * targetZoom,
-      y: rect.height / 2 - cy * targetZoom,
+      x: -(vx * Math.cos(a) - vy * Math.sin(a)),
+      y: -(vx * Math.sin(a) + vy * Math.cos(a)),
     };
     onZoomChange(targetZoom);
     onOffsetChange(newOffset);
@@ -253,9 +260,46 @@ export default function PlanCanvas({
       });
     }
 
+    // COTES CONTRÔLÉES (rapport « Contrôle des cotes ») : vert / orange / rouge
+    if (showDimensionLines && checkedCotes?.length) {
+      const COLS = { ok: "rgba(22,163,74,0.95)", warn: "rgba(234,88,12,0.95)", ko: "rgba(220,38,38,0.95)" };
+      ctx.save();
+      checkedCotes.forEach((c) => {
+        if (c.ignored) return;
+        const isSel = c.index === selectedCheckedIndex;
+        const col = COLS[c.status] || COLS.ok;
+        ctx.strokeStyle = isSel ? "rgba(245, 158, 11, 1)" : col;
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = (isSel ? 4 : 2.5) / zoom;
+        if (isSel) { ctx.shadowColor = "rgba(245, 158, 11, 0.9)"; ctx.shadowBlur = 12 / zoom; }
+        ctx.beginPath(); ctx.moveTo(c.x1, c.y1); ctx.lineTo(c.x2, c.y2); ctx.stroke();
+        const tick = 6 / zoom;
+        const dx = c.x2 - c.x1, dy = c.y2 - c.y1, len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len, ny = dx / len;
+        [[c.x1, c.y1], [c.x2, c.y2]].forEach(([x, y]) => {
+          ctx.beginPath(); ctx.moveTo(x + nx * tick, y + ny * tick); ctx.lineTo(x - nx * tick, y - ny * tick); ctx.stroke();
+        });
+        const label = c.status === "ok"
+          ? `#${c.index} ${Number(c.measured_m).toFixed(2)}`
+          : `#${c.index} ${Number(c.indicated_m).toFixed(2)}→${Number(c.measured_m).toFixed(2)} (${c.delta_cm > 0 ? "+" : ""}${Math.round(c.delta_cm)} cm)`;
+        const cx = (c.x1 + c.x2) / 2, cy = (c.y1 + c.y2) / 2;
+        ctx.font = `bold ${(isSel ? 14 : 11) / zoom}px system-ui`;
+        const w = ctx.measureText(label).width + 8 / zoom, h = (isSel ? 19 : 15) / zoom;
+        const vertical = Math.abs(dy) > Math.abs(dx);
+        const lx = vertical ? cx + tick + 4 / zoom + w / 2 : cx;
+        const ly = vertical ? cy : cy - tick - h / 2 - 2 / zoom;
+        ctx.fillRect(lx - w / 2, ly - h / 2, w, h);
+        ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(label, lx, ly);
+        ctx.textBaseline = "alphabetic";
+        ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+      });
+      ctx.restore();
+    }
+
     // AI DIMENSION LINES OVERLAY (traits de cote détectés par l'IA)
     // Coordonnées normalisées 0-1 → converties dans l'espace image
-    if (showDimensionLines && dimensionLines?.length && imgRef.current) {
+    if (showDimensionLines && !checkedCotes?.length && dimensionLines?.length && imgRef.current) {
       const W = imgRef.current.naturalWidth;
       const H = imgRef.current.naturalHeight;
       ctx.save();
@@ -704,7 +748,7 @@ export default function PlanCanvas({
   }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
        calibration, detectedWalls, showWalls, pixelsPerMeter,
        dimensionLines, showDimensionLines, annotations, activeCounterId,
-       selectedCoteIndex, showDeltas, measurements,
+       selectedCoteIndex, showDeltas, measurements, checkedCotes, selectedCheckedIndex,
        structure, showStructure, selectedStruct, contrast, brightness]);
 
   useEffect(() => { redraw(); }, [redraw]);
@@ -731,6 +775,18 @@ export default function PlanCanvas({
         const hit = hitStructItem(rx, ry);
         if (hit) { onStructSelect({ type: hit.type, id: hit.id }); return; }
         onStructSelect(null);
+      }
+      // Cotes contrôlées cliquables (priorité sur les cotes IA)
+      if (onCheckedCoteClick && showDimensionLines && checkedCotes?.length) {
+        const tolC = 12 / zoom;
+        let bestC = null, bestDC = Infinity;
+        checkedCotes.forEach((c) => {
+          if (c.ignored) return;
+          const dd = pointSegDist(rx, ry, c.x1, c.y1, c.x2, c.y2);
+          if (dd < tolC && dd < bestDC) { bestC = c.index; bestDC = dd; }
+        });
+        onCheckedCoteClick(bestC);
+        return;
       }
       // Cotes IA cliquables : hit-test au clic (pas au drag)
       if (!onCoteClick) return;
