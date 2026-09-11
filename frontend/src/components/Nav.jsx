@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 import {
   Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
   FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
@@ -81,7 +82,13 @@ export const Nav = () => {
     const isDark = document.documentElement.classList.contains("dark");
     localStorage.setItem("construpilot_theme", isDark ? "dark" : "light");
     setDark(isDark);
+    if (user) api.put("/auth/theme", { theme: isDark ? "dark" : "light" }).catch(() => {});
   };
+  useEffect(() => {
+    const sync = () => setDark(document.documentElement.classList.contains("dark"));
+    window.addEventListener("construpilot-theme", sync);
+    return () => window.removeEventListener("construpilot-theme", sync);
+  }, []);
 
   const pill = (active) =>
     `px-3 py-2 rounded-lg text-sm inline-flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 ${

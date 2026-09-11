@@ -20,6 +20,7 @@ import { Stat } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
 import { DpgfImport } from "@/components/DpgfImport";
 import { PriceLibrary } from "@/components/PriceLibrary";
+import { CotesTile } from "@/components/CotesTile";
 
 const STATUS_ICON = { done: "✅", doing: "🔄", todo: "⏳" };
 
@@ -149,6 +150,8 @@ export default function Dashboard() {
       </div>
 
       <RevenueChart />
+
+      <CotesTile />
 
       <a href="/appro" data-testid="appro-link" className="block surface p-6 border-2 border-primary/30 hover:border-primary transition-colors">
         <div className="flex items-center justify-between gap-4">

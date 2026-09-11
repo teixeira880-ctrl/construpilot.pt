@@ -34,6 +34,14 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [checkAuth]);
 
+  // Thème mémorisé sur le compte : appliqué dès que l'utilisateur est connu (tous appareils)
+  useEffect(() => {
+    if (!user?.theme) return;
+    document.documentElement.classList.toggle("dark", user.theme === "dark");
+    localStorage.setItem("construpilot_theme", user.theme);
+    window.dispatchEvent(new Event("construpilot-theme"));
+  }, [user?.theme]);
+
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
     if (data.two_fa_required) return data;

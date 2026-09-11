@@ -1,5 +1,6 @@
 import uuid
 import asyncio
+from typing import Literal
 import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
@@ -52,7 +53,7 @@ def _public(u: dict) -> dict:
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
                                   "lang", "created_at", "account_type", "kyc_status",
                                   "siret", "target_margin_pct", "target_margins_by_lot",
-                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode")}
+                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode", "theme")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
     return out
@@ -382,6 +383,17 @@ async def set_language(body: LanguageIn, user=Depends(current_user)) -> dict:
     lang = norm_lang(body.lang)
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"lang": lang}})
     return {"lang": lang}
+
+
+class ThemeIn(BaseModel):
+    theme: Literal["light", "dark"]
+
+
+@router.put("/theme")
+async def set_theme(body: ThemeIn, user=Depends(current_user)) -> dict:
+    """Mémorise le thème jour/nuit sur le compte (retrouvé sur tous les appareils)."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"theme": body.theme}})
+    return {"theme": body.theme}
 
 
 class PhotoIn(BaseModel):

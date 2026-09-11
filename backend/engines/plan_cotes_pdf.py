@@ -158,13 +158,38 @@ def _story_surfaces(story, report, S):
     story.append(_tbl(rows, [80 * mm, 30 * mm, 30 * mm, 30 * mm], S))
 
 
+def _story_page_body(story, report, overlay_png, S, page_title: str):
+    story.append(Spacer(1, 3 * mm))
+    _story_summary(story, report, S)
+    story.append(Spacer(1, 3 * mm))
+    _story_items(story, report, S)
+    _story_chains(story, report, S)
+    _story_surfaces(story, report, S)
+    story.append(PageBreak())
+    story.append(Paragraph(page_title, S["h2"]))
+    W, H = landscape(A4)
+    story.append(_fit_image(overlay_png, W - 28 * mm, H - 48 * mm))
+
+
+_LEGEND = ("Légende du plan annoté : <font color='#16a34a'><b>vert</b></font> = cote conforme · "
+           "<font color='#ea580c'><b>orange</b></font> = écart proche de la tolérance, à vérifier · "
+           "<font color='#dc2626'><b>rouge</b></font> = incohérence entre la cote indiquée et la mesure. "
+           "Les écarts positifs signifient que la mesure est plus grande que la cote inscrite. "
+           "Lecture IA : positions des traits de cote approximatives (±1-2 %) — les incohérences "
+           "signalées doivent être confirmées sur le plan d'origine.")
+
+
+def _doc(buf):
+    return SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=14 * mm, rightMargin=14 * mm,
+                             topMargin=12 * mm, bottomMargin=14 * mm,
+                             title="Contrôle des cotes", author="ConstruPilot")
+
+
 def build_cotes_pdf(plan: dict, page_index: int, report: dict, overlay_png: bytes,
                     branding: dict | None) -> bytes:
     S = _styles()
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=14 * mm, rightMargin=14 * mm,
-                            topMargin=12 * mm, bottomMargin=14 * mm,
-                            title="Contrôle des cotes", author="ConstruPilot")
+    doc = _doc(buf)
     story: list = []
     _story_header_branding(story, branding, S)
     story.append(Paragraph("CONTRÔLE DES COTES", S["kicker"]))
@@ -180,17 +205,51 @@ def build_cotes_pdf(plan: dict, page_index: int, report: dict, overlay_png: byte
     _story_chains(story, report, S)
     _story_surfaces(story, report, S)
     story.append(Spacer(1, 4 * mm))
-    story.append(Paragraph(
-        "Légende du plan annoté : <font color='#16a34a'><b>vert</b></font> = cote conforme · "
-        "<font color='#ea580c'><b>orange</b></font> = écart proche de la tolérance, à vérifier · "
-        "<font color='#dc2626'><b>rouge</b></font> = incohérence entre la cote indiquée et la mesure. "
-        "Les écarts positifs signifient que la mesure est plus grande que la cote inscrite. "
-        "Lecture IA : positions des traits de cote approximatives (±1-2 %) — les incohérences "
-        "signalées doivent être confirmées sur le plan d'origine.", S["muted"]))
+    story.append(Paragraph(_LEGEND, S["muted"]))
     story.append(PageBreak())
     story.append(Paragraph("Plan original — cotes mesurées", S["h2"]))
     W, H = landscape(A4)
     story.append(_fit_image(overlay_png, W - 28 * mm, H - 48 * mm))
+    doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
+    return buf.getvalue()
+
+
+def build_cotes_pdf_multi(plan: dict, bundle: list[tuple[int, dict, bytes]], agg: dict,
+                          branding: dict | None) -> bytes:
+    """Rapport global : synthèse par page puis, pour chaque page, détail + plan annoté."""
+    S = _styles()
+    buf = io.BytesIO()
+    doc = _doc(buf)
+    story: list = []
+    _story_header_branding(story, branding, S)
+    story.append(Paragraph("CONTRÔLE DES COTES — RAPPORT GLOBAL", S["kicker"]))
+    story.append(Paragraph(f"{plan.get('filename') or 'Plan'} — {agg['pages']} page(s) contrôlée(s)", S["h1"]))
+    story.append(Paragraph(
+        f"Rapport généré le {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M')} UTC.", S["muted"]))
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph(
+        f"<font color='{RL_COL[agg['verdict']].hexval()}'><b>Verdict global : {LABEL[agg['verdict']]}</b></font> — "
+        f"{agg['total']} cotes contrôlées : {agg['ok']} OK, {agg['warn']} à vérifier, <b>{agg['ko']} incohérence(s)</b>"
+        f"{' · ' + str(agg['ignored']) + ' ignorée(s)' if agg.get('ignored') else ''} · "
+        f"{agg['chains_total']} chaîne(s) de cotes ({agg['chains_ko']} incohérente(s)) · écart max {agg['max_delta_cm']:.0f} cm.",
+        S["body"]))
+    story.append(Spacer(1, 3 * mm))
+    rows = [["Page", "Cotes", "OK", "À vérifier", "Incohérences", "Chaînes KO", "Écart max", "Verdict"]]
+    statuses = []
+    for idx, rep, _ in bundle:
+        sm = rep["summary"]
+        rows.append([f"Page {idx + 1}", str(sm["total"]), str(sm["ok"]), str(sm["warn"]), str(sm["ko"]),
+                     f"{sm['chains_ko']}/{sm['chains_total']}", f"{sm['max_delta_cm']:.0f} cm", LABEL[sm["verdict"]]])
+        statuses.append(sm["verdict"])
+    story.append(_tbl(rows, [26 * mm, 22 * mm, 20 * mm, 26 * mm, 30 * mm, 28 * mm, 26 * mm, 40 * mm],
+                      S, status_col=7, statuses=statuses))
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph(_LEGEND, S["muted"]))
+    for idx, rep, png in bundle:
+        story.append(PageBreak())
+        story.append(Paragraph(f"PAGE {idx + 1}", S["kicker"]))
+        story.append(Paragraph(f"{plan.get('filename') or 'Plan'} — page {idx + 1}", S["h1"]))
+        _story_page_body(story, rep, png, S, f"Page {idx + 1} — plan original, cotes mesurées")
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     return buf.getvalue()
 

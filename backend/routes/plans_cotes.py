@@ -1,7 +1,7 @@
 """Contrôle des cotes d'un plan : lecture (IA ou DXF) → mesure à l'échelle → rapport + PDF."""
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field
 
@@ -10,7 +10,7 @@ from core.security import current_user
 from engines import plan_cotes as C
 from engines import plan_texts as T
 from engines.plan_ai import read_dimension_lines
-from engines.plan_cotes_pdf import build_cotes_pdf, render_cotes_overlay
+from engines.plan_cotes_pdf import build_cotes_pdf, build_cotes_pdf_multi, render_cotes_overlay
 from routes.plans_analysis import _apply_new_calibration
 from routes.plans_common import _now, _resolve_branding, _snapshot, router
 
@@ -60,9 +60,8 @@ async def _ensure_calibration(p: dict, page: dict, plan_id: str, page_index: int
     return payload, True
 
 
-@router.post("/{plan_id}/cotes/check")
-async def cotes_check(plan_id: str, body: CotesCheckIn, user=Depends(current_user)) -> dict:
-    p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
+async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
+                     tol_pct: float, tol_cm: float, user_id: str) -> dict:
     w, h = int(page.get("width_px") or 0), int(page.get("height_px") or 0)
     if not w or not h:
         raise HTTPException(500, "Dimensions de page manquantes")
@@ -83,20 +82,110 @@ async def cotes_check(plan_id: str, body: CotesCheckIn, user=Depends(current_use
                    "units_hint": res.get("units_hint"), "snapped_endpoints": snapped}
     if not dims:
         raise HTTPException(422, "Aucune cote lisible sur cette page")
-    calib, auto = await _ensure_calibration(p, page, plan_id, body.page_index, dims, w, h)
-    report = C.check_dimensions(dims, float(calib["pixels_per_meter"]), body.tol_pct, body.tol_cm, w, h)
+    calib, auto = await _ensure_calibration(p, page, plan_id, page_index, dims, w, h)
+    report = C.check_dimensions(dims, float(calib["pixels_per_meter"]), tol_pct, tol_cm, w, h)
     ai_rooms = ((p.get("ai_analysis") or {}).get("rooms") or []) \
-        if (p.get("ai_analysis") or {}).get("page_index") in (None, body.page_index) else []
-    page_rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == body.page_index]
+        if (p.get("ai_analysis") or {}).get("page_index") in (None, page_index) else []
+    page_rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     if ai_rooms and page_rooms:
         report["surfaces"] = T.reconcile_written_surfaces(page_rooms, ai_rooms, float(calib["pixels_per_meter"]))
-    report.update({"page_index": body.page_index, "calibration": calib, "auto_calibrated": auto,
+    report.update({"page_index": page_index, "calibration": calib, "auto_calibrated": auto,
                    "reading": reading, "created_at": _now()})
     await db.plans_takeoff.update_one(
-        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{body.page_index}": report, "updated_at": _now()}})
-    await _snapshot(plan_id, user["user_id"], "cotes_check",
-                    {"page": body.page_index, **report["summary"]})
+        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{page_index}": report, "updated_at": _now()}})
+    await _snapshot(plan_id, user_id, "cotes_check", {"page": page_index, **report["summary"]})
     return report
+
+
+@router.post("/{plan_id}/cotes/check")
+async def cotes_check(plan_id: str, body: CotesCheckIn, user=Depends(current_user)) -> dict:
+    p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
+    return await _run_check(p, page, plan_id, body.page_index, body.tol_pct, body.tol_cm, user["user_id"])
+
+
+class CotesCheckAllIn(BaseModel):
+    tol_pct: float = Field(default=2.0, ge=0.1, le=20)
+    tol_cm: float = Field(default=3.0, ge=0, le=100)
+
+
+def _global_summary(reports: list[dict]) -> dict:
+    sums = [r["summary"] for r in reports]
+    agg = {k: sum(s.get(k, 0) for s in sums)
+           for k in ("total", "ok", "warn", "ko", "ignored", "chains_total", "chains_ko", "chains_warn")}
+    agg["max_delta_cm"] = max((s.get("max_delta_cm", 0) for s in sums), default=0)
+    agg["pages"] = len(reports)
+    agg["verdict"] = ("ko" if agg["ko"] or agg["chains_ko"]
+                      else "warn" if agg["warn"] or agg["chains_warn"] else "ok")
+    return agg
+
+
+@router.post("/{plan_id}/cotes/check-all")
+async def cotes_check_all(plan_id: str, body: CotesCheckAllIn, user=Depends(current_user)) -> dict:
+    """Contrôle des cotes sur toutes les pages (lectures IA en parallèle)."""
+    import asyncio
+    p, _ = await _plan_page(plan_id, user["user_id"], 0, with_image=True)
+    pages = p.get("pages") or []
+
+    async def one(i: int):
+        try:
+            return await _run_check(p, pages[i], plan_id, i, body.tol_pct, body.tol_cm, user["user_id"])
+        except HTTPException as e:
+            return {"page_index": i, "error": e.detail}
+
+    results = await asyncio.gather(*(one(i) for i in range(len(pages))))
+    done = [r for r in results if "error" not in r]
+    errors = [{"page_index": r["page_index"], "error": r["error"]} for r in results if "error" in r]
+    return {"pages": [{"page_index": r["page_index"], "summary": r["summary"]} for r in done],
+            "errors": errors, "summary": _global_summary(done) if done else None,
+            "tolerance": {"pct": body.tol_pct, "cm": body.tol_cm}}
+
+
+@router.get("/{plan_id}/cotes/report-all.pdf")
+async def cotes_pdf_all(plan_id: str, user=Depends(current_user)):
+    """Rapport PDF global : synthèse multi-pages + détail et plan annoté de chaque page."""
+    p, _ = await _plan_page(plan_id, user["user_id"], 0, with_image=True)
+    checks = p.get("cotes_checks") or {}
+    pages = p.get("pages") or []
+    bundle = []
+    for i, page in enumerate(pages):
+        rep = checks.get(str(i))
+        if rep:
+            bundle.append((i, rep, render_cotes_overlay(page["image_png_b64"], rep)))
+    if not bundle:
+        raise HTTPException(404, "Aucune page contrôlée — lancez d'abord le contrôle des cotes")
+    branding = await _resolve_branding(user["user_id"])
+    pdf = build_cotes_pdf_multi(p, bundle, _global_summary([b[1] for b in bundle]), branding)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="controle-cotes-{plan_id}-global.pdf"'})
+
+
+latest_router = APIRouter(prefix="/cotes", tags=["cotes"])
+
+
+@latest_router.get("/latest")
+async def cotes_latest(user=Depends(current_user)) -> dict:
+    """Dernier contrôle des cotes de l'utilisateur (tuile tableau de bord)."""
+    cur = db.plans_takeoff.find({"user_id": user["user_id"], "cotes_checks": {"$exists": True, "$ne": {}}},
+                                {"_id": 0, "plan_id": 1, "filename": 1, "cotes_checks": 1})
+    best = None
+    plans_checked = 0
+    async for pl in cur:
+        checks = pl.get("cotes_checks") or {}
+        if not checks:
+            continue
+        plans_checked += 1
+        reps = [r for r in checks.values() if r.get("summary")]
+        if not reps:
+            continue
+        ts = max((r.get("recomputed_at") or r.get("created_at") or "") for r in reps)
+        if not best or ts > best["checked_at"]:
+            agg = _global_summary(reps)
+            worst = min(checks.items(), key=lambda kv: {"ko": 0, "warn": 1, "ok": 2}.get(
+                (kv[1].get("summary") or {}).get("verdict"), 3))
+            best = {"plan_id": pl["plan_id"], "filename": pl.get("filename"), "page_index": int(worst[0]),
+                    "pages_checked": len(reps), "checked_at": ts, "summary": agg, "verdict": agg["verdict"]}
+    return {"latest": best, "plans_checked": plans_checked}
+
 
 
 @router.get("/{plan_id}/cotes")

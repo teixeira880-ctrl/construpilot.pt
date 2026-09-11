@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, Loader2, Ruler, ExternalLink, FileText } from "lucide-react";
+import { Upload, Loader2, Ruler, ExternalLink, FileText, Layers, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
@@ -97,6 +97,35 @@ export default function CotesControl() {
 
   const pageCount = plan?.pages?.length || 0;
   const report = plan?.cotes_checks?.[String(pageIndex)];
+  const checkedPages = plan ? Object.keys(plan.cotes_checks || {}).length : 0;
+  const [allBusy, setAllBusy] = useState(false);
+
+  const checkAll = async () => {
+    setAllBusy(true);
+    try {
+      const { data } = await api.post(`/takeoffs/${plan.plan_id}/cotes/check-all`, { tol_pct: 2, tol_cm: 3 }, { timeout: 300000 });
+      const s = data.summary;
+      if (s) toast.success(`${s.pages} page(s) contrôlée(s) — ${s.total} cotes, ${s.ko} incohérence(s)` +
+        (data.errors?.length ? ` · ${data.errors.length} page(s) sans cote lisible` : ""), { duration: 8000 });
+      else toast.error(data.errors?.[0]?.error || "Aucune cote lisible");
+      await loadPlan(plan.plan_id);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Contrôle multi-pages impossible"); }
+    finally { setAllBusy(false); }
+  };
+
+  const downloadAll = async () => {
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/takeoffs/${plan.plan_id}/cotes/report-all.pdf`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("construpilot_token")}` }, credentials: "include",
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "Erreur serveur");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(await res.blob());
+      a.download = `controle-cotes-global.pdf`;
+      a.click();
+      toast.success("Rapport PDF global téléchargé");
+    } catch (e) { toast.error(e.message); }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 grid gap-5" data-testid="cotes-control-page">
@@ -141,6 +170,17 @@ export default function CotesControl() {
         {plan && (
           <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => navigate(`/plan?open=${plan.plan_id}`)} data-testid="cotes-open-editor">
             <ExternalLink className="h-3.5 w-3.5" /> Ouvrir dans l'éditeur de plan
+          </Button>
+        )}
+        {plan && pageCount > 1 && (
+          <Button size="sm" className="rounded-sm gap-2" disabled={allBusy} onClick={checkAll} data-testid="cotes-check-all-btn">
+            {allBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+            {allBusy ? `Contrôle des ${pageCount} pages…` : `Contrôler les ${pageCount} pages`}
+          </Button>
+        )}
+        {plan && checkedPages > 1 && (
+          <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={downloadAll} data-testid="cotes-pdf-all-btn">
+            <FileDown className="h-3.5 w-3.5" /> PDF global ({checkedPages} pages)
           </Button>
         )}
         {report && <span className={`text-sm font-medium ${VERDICT[report.summary.verdict][1]}`} data-testid="cotes-control-verdict">{VERDICT[report.summary.verdict][0]}</span>}
