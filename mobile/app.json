@@ -1,22 +1,24 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "STAIRPILOT",
+    "slug": "stairpilot",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "stairpilot",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.escalierpro.kcnv4f"
+      "bundleIdentifier": "com.stairpilot.app",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.emergent.escalierpro.kcnv4f"
+      "package": "com.stairpilot.app",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +44,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_ME_WITH_eas_init"
+      }
     }
   }
 }
