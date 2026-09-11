@@ -105,8 +105,17 @@ PASSAGE 1 — lis le plan (image jointe), reconstruis la géométrie et rends ce
                 "ecart_mm": 0, "niveau": "VERT|BLEU|JAUNE|ORANGE|ROUGE", "confiance": "TRÈS ÉLEVÉ|ÉLEVÉ|MOYEN|FAIBLE",
                 "explication": "", "hypotheses": [], "action": "", "cotes_index": [1, 2]}}],
  "reponses": {{"fermeture": "", "compatibilite": "", "a_verifier": []}},
+ "donnees_extraites": [{{"element": "Grande cote nord", "valeur_m": 13.3, "type": "exterieure|interieure|epaisseur|axe|ouverture|niveau|surface|autre",
+                        "source": "LUE|CALCULÉE|HYPOTHÈSE", "confiance": "TRÈS ÉLEVÉ|ÉLEVÉ|MOYEN|FAIBLE"}}],
+ "hypotheses_fermeture": [{{"fermeture_index": 0, "hypothese": "A", "dimension": "3e travée", "valeur_theorique_m": 5.0,
+                           "au_lieu_de_m": 5.2, "calcul": "13,30 − 0,40 − 5,20 − 2,70 = 5,00"}}],
+ "explications": [{{"fermeture_index": 0, "texte": "La somme des trois dimensions intérieures est de 13,10 m. Deux murs de 20 cm ajoutent 0,40 m…"}}],
+ "checklist": ["Confirmer la grande cote 13,27 ou 13,30 m", "Confirmer les références de cotation face/axe"],
+ "conclusion": "Le contrôle géométrique met en évidence… (factuel : « incohérence détectée », « point à clarifier », jamais « le plan est faux »)",
  "synthese": ""
 }}
+Les fermetures COHÉRENTES doivent aussi figurer (avec leur explication) : le rapport montre les contrôles réussis.
+Les « hypotheses_fermeture » sont des « hypothèses mathématiques permettant la fermeture de la chaîne », jamais « la cote correcte est ».
 Utilise les valeurs INSCRITES sur le plan pour les calculs de fermeture (les mesures ConstruPilot servent de
 contrôle croisé). Classe chaque écart avec les seuils mm (VERT/BLEU/JAUNE/ORANGE/ROUGE). N'invente rien."""
 

@@ -320,7 +320,12 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
 
     p, report, png = await _report_and_overlay(plan_id, user["user_id"], body.page_index)
     branding = await _resolve_branding(user["user_id"]) or {}
-    pdf = build_cotes_pdf(p, body.page_index, report, png, branding)
+    if report.get("geometry"):
+        from engines.plan_report_pdf import build_control_report
+        page = (p.get("pages") or [])[body.page_index]
+        pdf = build_control_report(p, body.page_index, report, page["image_png_b64"], branding)
+    else:
+        pdf = build_cotes_pdf(p, body.page_index, report, png, branding)
     sm = report["summary"]
     company = branding.get("company_name") or user.get("name") or "ConstruPilot"
     perso = _html.escape(body.message.strip()[:2000]).replace("\n", "<br/>")
@@ -369,6 +374,21 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
         {"$push": {"sent_reports": {"$each": [entry], "$slice": -20}},
          "$set": {f"cotes_checks.{body.page_index}.last_sent": entry}})
     return {"ok": True, "sent_to": body.to_email, "copy_sent": body.copy_me, **entry}
+
+
+@router.get("/{plan_id}/cotes/rapport.pdf")
+async def cotes_rapport(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)):
+    """Rapport de contrôle du plan ConstruPilot (couverture, résumé, calculs, plan annoté CP-xx, fiches, checklist)."""
+    from engines.plan_report_pdf import build_control_report
+    p, page = await _plan_page(plan_id, user["user_id"], page_index, with_image=True)
+    report = (p.get("cotes_checks") or {}).get(str(page_index))
+    if not report:
+        raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
+    branding = await _resolve_branding(user["user_id"])
+    pdf = build_control_report(p, page_index, report, page["image_png_b64"], branding)
+    fname = f"rapport-controle-plan-{plan_id[-6:]}-p{page_index + 1}.pdf"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @router.get("/{plan_id}/cotes/report.pdf")

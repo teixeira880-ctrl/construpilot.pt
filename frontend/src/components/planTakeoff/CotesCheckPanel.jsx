@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Ruler, FileDown, Loader2, Image as ImageIcon, Pencil, EyeOff, Eye, Check, X, RefreshCw, Mail } from "lucide-react";
+import { Ruler, FileDown, Loader2, Image as ImageIcon, Pencil, EyeOff, Eye, Check, X, RefreshCw, Mail, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -218,6 +218,17 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
     } catch (e) { toast.error(e.message); }
   };
 
+  const downloadRapport = async () => {
+    try {
+      const blob = await authedBlob(`/takeoffs/${plan.plan_id}/cotes/rapport.pdf?page_index=${pageIndex}`);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `rapport-controle-plan-p${pageIndex + 1}.pdf`;
+      a.click();
+      toast.success("Rapport de contrôle du plan téléchargé");
+    } catch (e) { toast.error(e.message); }
+  };
+
   const sorted = report ? [...report.items].sort((a, b) => (RANK[a.status] - RANK[b.status]) || a.index - b.index) : [];
 
   return (
@@ -280,6 +291,9 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={downloadPdf} data-testid="cotes-pdf-btn">
               <FileDown className="h-3.5 w-3.5" /> PDF
+            </Button>
+            <Button size="sm" className="flex-1 gap-2 rounded-sm" onClick={downloadRapport} title="Rapport de contrôle du plan ConstruPilot (couverture, résumé, calculs, plan annoté CP-xx, fiches, checklist)" data-testid="cotes-rapport-btn">
+              <FileText className="h-3.5 w-3.5" /> Rapport
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={() => setSendOpen(true)} data-testid="cotes-send-btn">
               <Mail className="h-3.5 w-3.5" /> Envoyer
