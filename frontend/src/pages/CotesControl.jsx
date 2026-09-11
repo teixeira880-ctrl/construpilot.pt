@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import CotesCheckPanel from "@/components/planTakeoff/CotesCheckPanel";
+import { runCotesJob } from "@/lib/cotesJobs";
 
 const VERDICT = { ok: ["Conforme", "text-emerald-700"], warn: ["À vérifier", "text-orange-700"], ko: ["Incohérences", "text-red-700"] };
 
@@ -103,13 +104,13 @@ export default function CotesControl() {
   const checkAll = async () => {
     setAllBusy(true);
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/cotes/check-all`, { tol_pct: 2, tol_cm: 3 }, { timeout: 300000 });
+      const data = await runCotesJob(`/takeoffs/${plan.plan_id}/cotes/check-all`, { tol_pct: 2, tol_cm: 3 });
       const s = data.summary;
       if (s) toast.success(`${s.pages} page(s) contrôlée(s) — ${s.total} cotes, ${s.ko} incohérence(s)` +
         (data.errors?.length ? ` · ${data.errors.length} page(s) sans cote lisible` : ""), { duration: 8000 });
       else toast.error(data.errors?.[0]?.error || "Aucune cote lisible");
       await loadPlan(plan.plan_id);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Contrôle multi-pages impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Contrôle multi-pages impossible"); }
     finally { setAllBusy(false); }
   };
 

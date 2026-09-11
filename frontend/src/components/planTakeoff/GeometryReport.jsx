@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Brain, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { runCotesJob } from "@/lib/cotesJobs";
 
 const LVL = {
   VERT: ["Cohérent", "bg-emerald-100 text-emerald-800 border-emerald-300"],
@@ -49,13 +49,15 @@ function Anomaly({ a, onFocus }) {
 export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocusIndex }) {
   const [busy, setBusy] = useState(false);
   const [show, setShow] = useState(true);
+  const [secs, setSecs] = useState(0);
   const run = async () => {
     setBusy(true);
+    setSecs(0);
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/cotes/geometry`, { page_index: pageIndex }, { timeout: 240000 });
+      const data = await runCotesJob(`/takeoffs/${plan.plan_id}/cotes/geometry`, { page_index: pageIndex }, { onTick: setSecs });
       toast.success(`Analyse géométrique : ${LVL[data.niveau_global][0]} — ${data.anomalies.length} anomalie(s), passage 2 : ${data.double_lecture.confirmees} confirmée(s)`, { duration: 8000 });
       onUpdated?.(data);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Analyse géométrique impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Analyse géométrique impossible"); }
     finally { setBusy(false); }
   };
   const [gl, gcls] = geo ? (LVL[geo.niveau_global] || LVL.JAUNE) : [];
@@ -63,7 +65,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
     <div className="grid gap-2 border-t pt-2" data-testid="geo-report">
       <Button size="sm" variant={geo ? "outline" : "default"} className="w-full justify-start gap-2 rounded-sm" disabled={busy} onClick={run} data-testid="geo-run-btn">
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-        {busy ? "Double lecture IA en cours (≈ 30 s)…" : geo ? "Relancer l'analyse géométrique" : "Analyse géométrique complète (double lecture IA)"}
+        {busy ? `Double lecture IA en cours (${secs} s)…` : geo ? "Relancer l'analyse géométrique" : "Analyse géométrique complète (double lecture IA)"}
       </Button>
       {!geo && <p className="text-[11px] text-muted-foreground">Reconstruction géométrique : fermeture des chaînes (espaces + murs), contrôles croisés, façades opposées, alignements, hypothèses de correction, matrice de cohérence — deux passes indépendantes.</p>}
       {geo && (

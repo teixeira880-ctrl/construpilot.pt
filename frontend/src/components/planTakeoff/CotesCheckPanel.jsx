@@ -9,15 +9,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import GeometryReport from "@/components/planTakeoff/GeometryReport";
+import { runCotesJob } from "@/lib/cotesJobs";
 
-const LABEL = { ok: "OK", warn: "À vérifier", ko: "Incohérence", ignored: "Ignorée" };
+const LABEL = { ok: "OK", warn: "À vérifier", ko: "Incohérence", ignored: "Ignorée", nd: "Non déterminé" };
 const CLS = {
   ok: "bg-emerald-100 text-emerald-800 border-emerald-300",
   warn: "bg-orange-100 text-orange-800 border-orange-300",
   ko: "bg-red-100 text-red-800 border-red-300",
   ignored: "bg-slate-100 text-slate-500 border-slate-300",
+  nd: "bg-slate-200 text-slate-600 border-slate-400",
 };
-const RANK = { ko: 0, warn: 1, ok: 2, ignored: 3 };
+const RANK = { ko: 0, warn: 1, nd: 2, ok: 3, ignored: 4 };
 
 async function authedBlob(path) {
   const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api${path}`, {
@@ -178,17 +180,18 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
   const apply = async (fn, okMsg) => {
     setBusy(true);
     try {
-      const { data } = await fn();
+      const res = await fn();
+      const data = res?.data ?? res;
       setReport(data);
       setOverlay(null);
       if (okMsg) toast.success(okMsg(data), { duration: 6000 });
       await refreshPlan?.();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Opération impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Opération impossible"); }
     finally { setBusy(false); }
   };
 
   const run = () => apply(
-    () => api.post(`/takeoffs/${plan.plan_id}/cotes/check`, { page_index: pageIndex, tol_pct: Number(tolPct) || 2, tol_cm: Number(tolCm) || 0 }),
+    () => runCotesJob(`/takeoffs/${plan.plan_id}/cotes/check`, { page_index: pageIndex, tol_pct: Number(tolPct) || 2, tol_cm: Number(tolCm) || 0 }),
     (d) => `${d.summary.total} cotes contrôlées — ${d.summary.ko} incohérence(s)` + (d.auto_calibrated ? " · échelle calibrée automatiquement" : ""));
   const recompute = () => apply(
     () => api.post(`/takeoffs/${plan.plan_id}/cotes/recompute`, { page_index: pageIndex, tol_pct: Number(tolPct) || 2, tol_cm: Number(tolCm) || 0 }),
@@ -261,6 +264,11 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       {report && (
         <div className="grid gap-2" data-testid="cotes-report">
           <Summary s={report.summary} />
+          {report.abstention && (
+            <p className="text-[11px] border border-slate-400 bg-slate-100 text-slate-700 rounded-sm px-1.5 py-1" data-testid="cotes-abstention">
+              <b>Abstention ConstruPilot :</b> {report.abstention} ({report.summary.nd} cote(s) non déterminée(s))
+            </p>
+          )}
           <div className="max-h-64 overflow-auto border rounded-sm" data-testid="cotes-table">
             <table className="w-full text-[11px]">
               <thead className="bg-muted sticky top-0">

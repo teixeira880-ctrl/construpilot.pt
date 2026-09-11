@@ -23,7 +23,7 @@ LVL_HEX = {"VERT": "#16a34a", "BLEU": "#2563eb", "JAUNE": "#ca8a04", "ORANGE": "
 LVL_LABEL = {"VERT": "Cohérent", "BLEU": "Information", "JAUNE": "À vérifier",
              "ORANGE": "Incohérence", "ROUGE": "Incohérence majeure"}
 LVL_RGB = {"VERT": COL["ok"], "BLEU": (37, 99, 235), "JAUNE": (202, 138, 4), "ORANGE": COL["warn"], "ROUGE": COL["ko"]}
-_STATUS_LVL = {"ok": "VERT", "warn": "JAUNE", "ko": "ORANGE"}
+_STATUS_LVL = {"ok": "VERT", "warn": "JAUNE", "ko": "ORANGE", "nd": "BLEU", "ignored": "BLEU"}
 _W = A4[0] - 28 * mm
 
 
@@ -212,14 +212,18 @@ def _fiche(c: dict, zoom: bytes | None, S):
     return KeepTogether(block)
 
 
-def build_control_report(plan: dict, page_index: int, report: dict, image_b64: str, branding: dict | None) -> bytes:
+def build_control_report(plan: dict, page_index: int, report: dict, image_b64: str, branding: dict | None,
+                         court: bool = False) -> bytes:
     S = _styles()
     geo = report.get("geometry") or {}
     ctrls = build_controls(report, geo)
     marked_png, zooms = render_marked_plan(image_b64, ctrls, report)
     counts = {lv: sum(1 for c in ctrls if c["niveau"] == lv) for lv in LVL_HEX}
     active_items = [it for it in report.get("items") or [] if not it.get("ignored")]
+    nd_items = [it for it in active_items if it["status"] == "nd"]
     for it in active_items:
+        if it["status"] == "nd":
+            continue
         lv = it.get("niveau") or _STATUS_LVL.get(it["status"], "JAUNE")
         counts[lv] = counts.get(lv, 0) + 1
     counts["VERT"] += counts.pop("BLEU", 0)
@@ -247,7 +251,26 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
             ["Date de l'analyse", now.strftime("%d/%m/%Y %H:%M UTC")], ["Identifiant du rapport", rid]]
     t = Table([[Paragraph(f"<b>{_e(k)}</b>", S["body"]), Paragraph(_e(v), S["body"])] for k, v in rows], colWidths=[50 * mm, _W - 50 * mm])
     t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
-    story += [t, Spacer(1, 8 * mm), Paragraph("Résumé du contrôle", S["h2"]), _cards(counts, S), Spacer(1, 6 * mm)]
+    story += [t, Spacer(1, 6 * mm), Paragraph("Objet du rapport", S["h2"])]
+    story.append(Paragraph(
+        f"Contrôle automatique de cohérence géométrique et dimensionnelle du plan « {_e(plan.get('filename') or 'plan')} » "
+        f"(page {page_index + 1}) : lecture des cotes inscrites, recalcul indépendant des chaînes et des grandes cotes, "
+        "comparaison des façades opposées, contrôle des alignements et identification des points à clarifier avant "
+        "utilisation des dimensions pour l'implantation ou l'exécution.", S["body"]))
+    murs = geo.get("murs") or {}
+    hyp = []
+    if murs.get("epaisseurs_m"):
+        hyp.append("épaisseur(s) de murs prise(s) en compte : " + ", ".join(_m(v) for v in murs["epaisseurs_m"]) + " (LUE / DÉDUIT)")
+    hyp.append("référence de cotation : " + (murs.get("reference_cotation") or "non déterminable avec certitude — HYPOTHÈSE : cotes entre faces"))
+    hyp.append(f"tolérance de détection : ±{report['tolerance']['pct']} % ou ±{report['tolerance']['cm']} cm ; seuils mm ConstruPilot pour les niveaux")
+    hyp.append("échelle : " + (f"{(report.get('calibration') or {}).get('pixels_per_meter', 0):.0f} px/m ({(report.get('calibration') or {}).get('method', '—')})"))
+    story.append(Paragraph("Hypothèses retenues", S["h2"]))
+    for line in hyp:
+        story.append(Paragraph(f"• {_e(line)}", S["muted"]))
+    if report.get("abstention"):
+        story.append(Paragraph(f"<b>Abstention ConstruPilot :</b> {_e(report['abstention'])} "
+                               f"{len(nd_items)} cote(s) classée(s) NON DÉTERMINÉ.", S["body"]))
+    story += [Spacer(1, 4 * mm), Paragraph("Résumé du contrôle", S["h2"]), _cards(counts, S), Spacer(1, 6 * mm)]
     story.append(Paragraph(
         "Ce rapport est produit par le contrôle ConstruPilot : chaque cote est relue, mesurée à l'échelle et confrontée aux autres "
         "données du plan par recalcul indépendant. Les valeurs recalculées et les hypothèses sont toujours distinguées des valeurs "
@@ -309,8 +332,10 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
         if it.get("ignored"):
             continue
         lv = it.get("niveau") or _STATUS_LVL.get(it["status"], "JAUNE")
+        if it["status"] == "nd":
+            lv = "BLEU"
         rows.append([str(it["index"]), Paragraph(_e(it.get("location") or "—"), S["muted"]), _m(it["indicated_m"]),
-                     _m(it["measured_m"]), f"{it['delta_cm']:+.1f} cm", LVL_LABEL[lv]])
+                     _m(it["measured_m"]), f"{it['delta_cm']:+.1f} cm", "NON DÉTERMINÉ" if it["status"] == "nd" else LVL_LABEL[lv]])
         statuses.append({"VERT": "ok", "BLEU": "ok", "JAUNE": "warn", "ORANGE": "ko", "ROUGE": "ko"}[lv])
     story.append(Paragraph("Toutes les cotes contrôlées (cote inscrite vs mesure à l'échelle)", S["h2"]))
     story.append(_tbl(rows, [10 * mm, 70 * mm, 26 * mm, 26 * mm, 22 * mm, 28 * mm], S, status_col=5, statuses=statuses))
@@ -343,21 +368,22 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
                           for s in (a.get("segments") or []) if isinstance(s, dict))
         story.append(Paragraph(f"<b>{_e(a.get('nom'))}</b> — {_e(segs)}", S["body"]))
 
-    # PAGE 6 — plan annoté
-    story.append(PageBreak())
-    story.append(Paragraph("PLAN ANNOTÉ CONSTRUPILOT", S["kicker"]))
-    story.append(Paragraph("Marqueurs CP-xx : vert conforme · jaune à vérifier · orange incohérence · rouge incohérence majeure", S["muted"]))
-    story.append(_fit_image(marked_png, _W, A4[1] - 70 * mm))
-    story.append(Paragraph(" · ".join(f"{c['id']} → {c['titre']}" for c in ctrls if c["cotes"])[:1500], S["muted"]))
+    # PAGE 6 — plan annoté (omis en rapport court)
+    if not court:
+        story.append(PageBreak())
+        story.append(Paragraph("PLAN ANNOTÉ CONSTRUPILOT", S["kicker"]))
+        story.append(Paragraph("Marqueurs CP-xx : vert conforme · jaune à vérifier · orange incohérence · rouge incohérence majeure", S["muted"]))
+        story.append(_fit_image(marked_png, _W, A4[1] - 70 * mm))
+        story.append(Paragraph(" · ".join(f"{c['id']} → {c['titre']}" for c in ctrls if c["cotes"])[:1500], S["muted"]))
 
-    # Fiches CP-xx (anomalies & façades, avec zoom)
+    # Fiches CP-xx (anomalies & façades, avec zoom) — sans zoom en rapport court
     fiches = [c for c in ctrls if c["kind"] in ("anomalie", "facade")]
     if fiches:
         story.append(PageBreak())
         story.append(Paragraph("FICHES DÉTAILLÉES", S["kicker"]))
         story.append(Paragraph("Points nécessitant vérification", S["h1"]))
         for c in fiches:
-            story.append(_fiche(c, zooms.get(c["id"]), S))
+            story.append(_fiche(c, None if court else zooms.get(c["id"]), S))
 
     # Tableau général
     story.append(PageBreak())
@@ -394,6 +420,12 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
         "Traçabilité : chaque résultat est reproductible à partir des valeurs sources, de la formule et de l'écart indiqués. "
         "Seuils de détection ConstruPilot : 0–2 mm négligeable · 2–10 mm faible · 10–30 mm à vérifier · 30–100 mm anomalie "
         "importante · > 100 mm anomalie majeure — ce ne sont pas des tolérances réglementaires d'exécution.", S["muted"]))
+    story.append(Spacer(1, 3 * mm))
+    story.append(Paragraph(
+        "Périmètre : cette analyse est limitée au document fourni (page indiquée), à ses cotes lisibles et à l'échelle "
+        "déclarée ou calibrée. Elle ne constitue ni une étude d'exécution ni une validation structurelle : les valeurs "
+        "recalculées et les hypothèses de fermeture sont des aides à la vérification, jamais des cotes de remplacement. "
+        "Les points signalés doivent être confirmés avec l'auteur du plan.", S["muted"]))
 
     def _footer(canvas, d):
         canvas.saveState()

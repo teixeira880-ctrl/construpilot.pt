@@ -7,6 +7,7 @@ import os
 
 from engines.plan_ai import _parse_json_response
 from engines.plan_geometry_prompt import PASS1_FORMAT, PASS2_FORMAT, SYSTEM_GEOMETRY
+from engines.plan_principles import CORE_PRINCIPLES
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +32,13 @@ def level_for_mm(delta_mm: float) -> str:
 
 async def _call(image_b64: str, prompt: str) -> dict:
     from emergentintegrations.llm.chat import ImageContent, LlmChat, UserMessage
+    from engines.plan_ai import plan_model
     api_key = os.environ.get("EMERGENT_LLM_KEY")
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent"}
+    provider, model = plan_model()
     chat = LlmChat(api_key=api_key, session_id="plan-geometry",
-                   system_message=SYSTEM_GEOMETRY).with_model("gemini", "gemini-3-flash-preview")
+                   system_message=CORE_PRINCIPLES + "\n\n" + SYSTEM_GEOMETRY).with_model(provider, model)
     raw = await chat.send_message(UserMessage(text=prompt, file_contents=[ImageContent(image_base64=image_b64)]))
     return _parse_json_response(raw)
 

@@ -15,6 +15,8 @@ import logging
 import os
 import re
 
+from engines.plan_principles import CORE_PRINCIPLES
+
 logger = logging.getLogger(__name__)
 
 
@@ -216,14 +218,22 @@ RÈGLES CRITIQUES :
 """
 
 
+def plan_model() -> tuple[str, str]:
+    """Modèle IA pour la lecture de plans : PLAN_AI_MODEL='provider:model' (défaut GPT-5.5, le plus fort en raisonnement+vision)."""
+    raw = os.environ.get("PLAN_AI_MODEL") or "openai:gpt-5.5"
+    provider, _, model = raw.partition(":")
+    return (provider or "openai"), (model or "gpt-5.5")
+
+
 async def _call_gpt_vision(image_b64_png: str, api_key: str, prompt: str | None = None) -> str:
-    """Send the plan image to the Gemini 3 Flash vision model and return raw text."""
+    """Send the plan image to the configured vision model and return raw text."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    provider, model = plan_model()
     chat = LlmChat(
         api_key=api_key,
         session_id="plan-analyze",
-        system_message="Tu réponds toujours en JSON strict, sans markdown.",
-    ).with_model("gemini", "gemini-3-flash-preview")
+        system_message=CORE_PRINCIPLES + "\n\nTu réponds toujours en JSON strict, sans markdown.",
+    ).with_model(provider, model)
     msg = UserMessage(
         text=prompt or PROMPT,
         file_contents=[ImageContent(image_base64=image_b64_png)],

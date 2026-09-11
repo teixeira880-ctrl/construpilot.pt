@@ -60,6 +60,21 @@ async def _ensure_calibration(p: dict, page: dict, plan_id: str, page_index: int
     return payload, True
 
 
+def _ai_image(img_b64: str, max_side: int = 2200) -> str:
+    """Réduit l'image envoyée à l'IA (grands plans A0/A1) — les bbox normalisées restent valables."""
+    import base64
+    import io
+
+    from PIL import Image
+    im = Image.open(io.BytesIO(base64.b64decode(img_b64)))
+    if max(im.size) <= max_side:
+        return img_b64
+    im.thumbnail((max_side, max_side))
+    buf = io.BytesIO()
+    im.convert("RGB").save(buf, format="PNG", optimize=True)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
 async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
                      tol_pct: float, tol_cm: float, user_id: str) -> dict:
     w, h = int(page.get("width_px") or 0), int(page.get("height_px") or 0)
@@ -73,7 +88,7 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
         img = page.get("image_png_b64")
         if not img:
             raise HTTPException(500, "Image manquante")
-        res = await read_dimension_lines(img)
+        res = await read_dimension_lines(_ai_image(img))
         if res.get("error"):
             raise HTTPException(502, res["error"])
         dims = C.dims_from_ai(res["dimension_lines"], w, h)
@@ -97,9 +112,45 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
     return report
 
 
+_JOBS: dict[str, dict] = {}
+
+
+def _start_job(coro_factory, user_id: str) -> dict:
+    """Lance un traitement long en tâche de fond (évite le timeout 60 s de l'ingress) → {job_id}."""
+    import asyncio
+    import uuid
+    job_id = f"job_{uuid.uuid4().hex[:12]}"
+    _JOBS[job_id] = {"status": "running", "user_id": user_id, "started_at": _now()}
+
+    async def runner():
+        try:
+            _JOBS[job_id].update({"status": "done", "result": await coro_factory(), "finished_at": _now()})
+        except HTTPException as e:
+            _JOBS[job_id].update({"status": "error", "error": e.detail, "finished_at": _now()})
+        except Exception as e:  # noqa: BLE001
+            _JOBS[job_id].update({"status": "error", "error": f"{type(e).__name__}: {e}"[:300], "finished_at": _now()})
+        for k in [k for k, v in _JOBS.items() if v.get("finished_at") and len(_JOBS) > 200]:
+            _JOBS.pop(k, None)
+
+    asyncio.create_task(runner())
+    return {"job_id": job_id, "status": "running"}
+
+
+@router.get("/cotes-jobs/{job_id}")
+async def cotes_job(job_id: str, user=Depends(current_user)) -> dict:
+    j = _JOBS.get(job_id)
+    if not j or j["user_id"] != user["user_id"]:
+        raise HTTPException(404, "Tâche inconnue")
+    return {k: v for k, v in j.items() if k != "user_id"}
+
+
 @router.post("/{plan_id}/cotes/check")
-async def cotes_check(plan_id: str, body: CotesCheckIn, user=Depends(current_user)) -> dict:
+async def cotes_check(plan_id: str, body: CotesCheckIn, background: bool = Query(False),
+                      user=Depends(current_user)) -> dict:
     p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
+    if background:
+        return _start_job(lambda: _run_check(p, page, plan_id, body.page_index, body.tol_pct, body.tol_cm, user["user_id"]),
+                          user["user_id"])
     return await _run_check(p, page, plan_id, body.page_index, body.tol_pct, body.tol_cm, user["user_id"])
 
 
@@ -120,7 +171,8 @@ def _global_summary(reports: list[dict]) -> dict:
 
 
 @router.post("/{plan_id}/cotes/check-all")
-async def cotes_check_all(plan_id: str, body: CotesCheckAllIn, user=Depends(current_user)) -> dict:
+async def cotes_check_all(plan_id: str, body: CotesCheckAllIn, background: bool = Query(False),
+                          user=Depends(current_user)) -> dict:
     """Contrôle des cotes sur toutes les pages (lectures IA en parallèle)."""
     import asyncio
     p, _ = await _plan_page(plan_id, user["user_id"], 0, with_image=True)
@@ -132,12 +184,17 @@ async def cotes_check_all(plan_id: str, body: CotesCheckAllIn, user=Depends(curr
         except HTTPException as e:
             return {"page_index": i, "error": e.detail}
 
-    results = await asyncio.gather(*(one(i) for i in range(len(pages))))
-    done = [r for r in results if "error" not in r]
-    errors = [{"page_index": r["page_index"], "error": r["error"]} for r in results if "error" in r]
-    return {"pages": [{"page_index": r["page_index"], "summary": r["summary"]} for r in done],
-            "errors": errors, "summary": _global_summary(done) if done else None,
-            "tolerance": {"pct": body.tol_pct, "cm": body.tol_cm}}
+    async def run_all():
+        results = await asyncio.gather(*(one(i) for i in range(len(pages))))
+        done = [r for r in results if "error" not in r]
+        errors = [{"page_index": r["page_index"], "error": r["error"]} for r in results if "error" in r]
+        return {"pages": [{"page_index": r["page_index"], "summary": r["summary"]} for r in done],
+                "errors": errors, "summary": _global_summary(done) if done else None,
+                "tolerance": {"pct": body.tol_pct, "cm": body.tol_cm}}
+
+    if background:
+        return _start_job(run_all, user["user_id"])
+    return await run_all()
 
 
 @router.get("/{plan_id}/cotes/report-all.pdf")
@@ -193,23 +250,30 @@ class GeometryIn(BaseModel):
 
 
 @router.post("/{plan_id}/cotes/geometry")
-async def cotes_geometry(plan_id: str, body: GeometryIn, user=Depends(current_user)) -> dict:
+async def cotes_geometry(plan_id: str, body: GeometryIn, background: bool = Query(False),
+                         user=Depends(current_user)) -> dict:
     """Analyse géométrique complète (double lecture IA) : fermetures, contrôles croisés, façades, anomalies."""
     from engines.plan_geometry_ai import analyze_geometry
     p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
-    report = (p.get("cotes_checks") or {}).get(str(body.page_index))
-    if not report:
-        report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
-    geo = await analyze_geometry(page["image_png_b64"], report,
-                                 int(page.get("width_px") or 0), int(page.get("height_px") or 0))
-    if geo.get("error"):
-        raise HTTPException(502, geo["error"])
-    geo["created_at"] = _now()
-    await db.plans_takeoff.update_one(
-        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{body.page_index}.geometry": geo, "updated_at": _now()}})
-    await _snapshot(plan_id, user["user_id"], "cotes_geometry",
-                    {"page": body.page_index, "niveau": geo["niveau_global"], "anomalies": len(geo["anomalies"])})
-    return geo
+
+    async def run():
+        report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+        if not report:
+            report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
+        geo = await analyze_geometry(_ai_image(page["image_png_b64"]), report,
+                                     int(page.get("width_px") or 0), int(page.get("height_px") or 0))
+        if geo.get("error"):
+            raise HTTPException(502, geo["error"])
+        geo["created_at"] = _now()
+        await db.plans_takeoff.update_one(
+            {"plan_id": plan_id}, {"$set": {f"cotes_checks.{body.page_index}.geometry": geo, "updated_at": _now()}})
+        await _snapshot(plan_id, user["user_id"], "cotes_geometry",
+                        {"page": body.page_index, "niveau": geo["niveau_global"], "anomalies": len(geo["anomalies"])})
+        return geo
+
+    if background:
+        return _start_job(run, user["user_id"])
+    return await run()
 
 
 @router.get("/{plan_id}/cotes")
@@ -377,7 +441,8 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
 
 
 @router.get("/{plan_id}/cotes/rapport.pdf")
-async def cotes_rapport(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)):
+async def cotes_rapport(plan_id: str, page_index: int = Query(0, ge=0), court: bool = Query(False),
+                        user=Depends(current_user)):
     """Rapport de contrôle du plan ConstruPilot (couverture, résumé, calculs, plan annoté CP-xx, fiches, checklist)."""
     from engines.plan_report_pdf import build_control_report
     p, page = await _plan_page(plan_id, user["user_id"], page_index, with_image=True)
@@ -385,8 +450,8 @@ async def cotes_rapport(plan_id: str, page_index: int = Query(0, ge=0), user=Dep
     if not report:
         raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
     branding = await _resolve_branding(user["user_id"])
-    pdf = build_control_report(p, page_index, report, page["image_png_b64"], branding)
-    fname = f"rapport-controle-plan-{plan_id[-6:]}-p{page_index + 1}.pdf"
+    pdf = build_control_report(p, page_index, report, page["image_png_b64"], branding, court=court)
+    fname = f"rapport-controle-plan{'-court' if court else ''}-{plan_id[-6:]}-p{page_index + 1}.pdf"
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 

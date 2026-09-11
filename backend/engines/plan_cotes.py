@@ -78,13 +78,14 @@ def _find_chains(items: list[dict], tol_pct: float, tol_cm: float, img_side: flo
     chains = []
     for total in items:
         o = total["orientation"]
-        if o == "o":
+        if o == "o" or total["indicated_m"] < 1.0:
             continue
         a1, a2, _ = _axis(total, o)
         cands = [it for it in items if it is not total and it["orientation"] == o]
         cands = [it for it in cands
                  if _axis(it, o)[0] >= a1 - tol_px and _axis(it, o)[1] <= a2 + tol_px
-                 and _axis(it, o)[1] - _axis(it, o)[0] < (a2 - a1) - tol_px]
+                 and _axis(it, o)[1] - _axis(it, o)[0] < (a2 - a1) - tol_px
+                 and it["indicated_m"] < 0.9 * total["indicated_m"]]
         if len(cands) < 2:
             continue
         bands: dict[int, list[dict]] = {}
@@ -218,18 +219,39 @@ def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float
             "edited": bool(d.get("edited")), "original_m": d.get("original_m"),
         })
     active = [it for it in items if not it["ignored"]]
-    chains = _find_chains(active, tol_pct, tol_cm, float(max(img_w, img_h)))
+    # Abstention (règle ConstruPilot : un faux positif est plus dangereux qu'une donnée non déterminée) :
+    # si les ratios mesure/cote sont trop dispersés, l'échelle ou le placement des traits n'est pas fiable →
+    # les statuts issus de la MESURE passent en « nd » ; seuls les contrôles arithmétiques (chaînes) restent.
+    measure_reliable = True
+    ratios = sorted(it["measured_m"] / it["indicated_m"] for it in active
+                    if it["indicated_m"] >= 1.0 and it.get("source") != "dxf")
+    if len(ratios) >= 4:
+        med = ratios[len(ratios) // 2]
+        spread = sorted(abs(r - med) for r in ratios)[len(ratios) // 2] / med if med else 1
+        if spread > 0.08 or abs(1 - med) > 0.12:
+            measure_reliable = False
+            for it in active:
+                if it["source"] != "dxf" and it["status"] in ("warn", "ko"):
+                    it["status"] = "nd"
+    # Les chaînes reposent sur la position des traits : sans mesure fiable, on s'abstient aussi (l'analyse
+    # géométrique IA, qui raisonne sur les valeurs inscrites, prend le relais pour les fermetures).
+    chains = _find_chains(active, tol_pct, tol_cm, float(max(img_w, img_h))) if measure_reliable else []
     for it in items:
         it["chain_status"] = None
     for c in chains:
         if c["status"] != "ok":
             for idx in [c["total_index"], *c["part_indexes"]]:
                 items[idx - 1]["chain_status"] = c["status"]
-    counts = {s: sum(1 for it in active if it["status"] == s) for s in ("ok", "warn", "ko")}
+    counts = {s: sum(1 for it in active if it["status"] == s) for s in ("ok", "warn", "ko", "nd")}
     chain_counts = {s: sum(1 for c in chains if c["status"] == s) for s in ("ok", "warn", "ko")}
-    worst = max((abs(it["delta_cm"]) for it in active), default=0.0)
+    worst = max((abs(it["delta_cm"]) for it in active if it["status"] != "nd"), default=0.0)
     return {
         "items": items, "chains": chains,
+        "measure_reliable": measure_reliable,
+        "abstention": None if measure_reliable else (
+            "Mesure à l'échelle non fiable sur cette page (dispersion des ratios mesure/cote) : les écarts "
+            "mesurés ne sont pas signalés comme incohérences. Seuls les contrôles arithmétiques (chaînes, "
+            "fermetures) font foi. Calibrez l'échelle manuellement pour réactiver la mesure."),
         "summary": {"total": len(active), "ignored": len(items) - len(active), **counts,
                     "chains_total": len(chains),
                     "chains_ko": chain_counts["ko"], "chains_warn": chain_counts["warn"],

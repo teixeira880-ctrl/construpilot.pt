@@ -14,11 +14,11 @@ from reportlab.platypus import (Image as RLImage, PageBreak, Paragraph, SimpleDo
 
 from engines.pdf_takeoff import DARK, GREY, LIGHT_GREY, ORANGE, _story_header_branding, _styles
 
-COL = {"ok": (22, 163, 74), "warn": (234, 88, 12), "ko": (220, 38, 38), "ignored": (148, 163, 184)}
+COL = {"ok": (22, 163, 74), "warn": (234, 88, 12), "ko": (220, 38, 38), "ignored": (148, 163, 184), "nd": (100, 116, 139)}
 RL_COL = {"ok": colors.HexColor("#16a34a"), "warn": colors.HexColor("#ea580c"),
-          "ko": colors.HexColor("#dc2626"), "ignored": colors.HexColor("#94a3b8")}
-LABEL = {"ok": "OK", "warn": "À vérifier", "ko": "INCOHÉRENCE", "ignored": "Ignorée"}
-_RANK = {"ko": 0, "warn": 1, "ok": 2, "ignored": 3}
+          "ko": colors.HexColor("#dc2626"), "ignored": colors.HexColor("#94a3b8"), "nd": colors.HexColor("#64748b")}
+LABEL = {"ok": "OK", "warn": "À vérifier", "ko": "INCOHÉRENCE", "ignored": "Ignorée", "nd": "NON DÉTERMINÉ"}
+_RANK = {"ko": 0, "warn": 1, "nd": 2, "ok": 3, "ignored": 4}
 ORIENT = {"h": "horiz.", "v": "vert.", "o": "oblique"}
 
 
@@ -104,6 +104,9 @@ def _story_summary(story, report, S):
         f"{' · ' + str(sm['ignored']) + ' ignorée(s)' if sm.get('ignored') else ''} · "
         f"{sm['chains_total']} chaîne(s) de cotes "
         f"({sm['chains_ko']} incohérente(s)) · écart max {sm['max_delta_cm']:.0f} cm.", S["body"]))
+    if report.get("abstention"):
+        story.append(Paragraph(f"<b>Abstention ConstruPilot :</b> {report['abstention']} "
+                               f"({sm.get('nd', 0)} cote(s) non déterminée(s)).", S["body"]))
     src = {"ai": "lecture IA du plan (image)", "dxf": "cotes exactes du fichier DXF"}.get(
         (report.get("reading") or {}).get("source"), "—")
     story.append(Paragraph(
