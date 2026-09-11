@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import io
 import logging
+import re
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -255,6 +256,40 @@ def _render_preview(entities, bounds: tuple[float, float, float, float]) -> tupl
     }
 
 
+_DIM_UNIT_RE = re.compile(r"(-?\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\b", re.IGNORECASE)
+
+
+def _extract_dimensions(msp, to_px, unit_to_m: float) -> list[dict]:
+    """Cotes linéaires du DXF : mesure géométrique exacte + texte inscrit (surcharge éventuelle)."""
+    out = []
+    for e in msp.query("DIMENSION"):
+        try:
+            if e.dimtype not in (0, 1):
+                continue
+            measured = float(e.get_measurement())
+            p2, p3 = e.dxf.defpoint2, e.dxf.defpoint3
+            a, b = to_px(p2.x, p2.y), to_px(p3.x, p3.y)
+            txt = str(e.dxf.get("text", "") or "").strip()
+            override = txt not in ("", "<>")
+            indicated_m = measured * unit_to_m
+            if override:
+                m = _DIM_UNIT_RE.search(txt.replace("<>", ""))
+                if not m:
+                    continue
+                unit = (m.group(2) or "").lower()
+                factor = {"mm": 0.001, "cm": 0.01, "m": 1.0}.get(unit, unit_to_m)
+                indicated_m = float(m.group(1).replace(",", ".")) * factor
+            if measured <= 0 or indicated_m <= 0:
+                continue
+            out.append({"x1": round(a[0], 2), "y1": round(a[1], 2), "x2": round(b[0], 2), "y2": round(b[1], 2),
+                        "measured_m": round(measured * unit_to_m, 4), "value_m": round(indicated_m, 4),
+                        "raw_text": txt or None, "override": override,
+                        "location": f"calque {e.dxf.layer}"})
+        except Exception:
+            continue
+    return out
+
+
 def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
     """Point d'entrée : parse un DXF et renvoie la structure normalisée."""
     # ezdxf a besoin d'un stream mode texte ou d'un fichier temporaire
@@ -346,6 +381,12 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
         except Exception:
             continue
 
+    try:
+        unit_to_m = _unit_to_m(doc, bounds)
+    except Exception:
+        unit_to_m = 1.0
+    dxf_dimensions = _extract_dimensions(msp, to_px, unit_to_m)
+
     return {
         "kind": "dxf",
         "page_count": 1,
@@ -358,6 +399,8 @@ def process_dxf(data: bytes, filename: str = "plan.dxf") -> dict:
             "vectors": vectors[:8000],
             "text_blocks": text_blocks[:3000],
             "dimensions_count": dim_count,
+            "dxf_dimensions": dxf_dimensions[:2000],
+            "unit_to_m": unit_to_m,
             "raw_text_length": sum(len(t.get("text", "")) for t in text_blocks),
             "dxf_bounds": {"min_x": bounds[0], "min_y": bounds[1],
                            "max_x": bounds[2], "max_y": bounds[3]},

@@ -216,7 +216,7 @@ RÈGLES CRITIQUES :
 """
 
 
-async def _call_gpt_vision(image_b64_png: str, api_key: str) -> str:
+async def _call_gpt_vision(image_b64_png: str, api_key: str, prompt: str | None = None) -> str:
     """Send the plan image to the Gemini 3 Flash vision model and return raw text."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
     chat = LlmChat(
@@ -225,10 +225,47 @@ async def _call_gpt_vision(image_b64_png: str, api_key: str) -> str:
         system_message="Tu réponds toujours en JSON strict, sans markdown.",
     ).with_model("gemini", "gemini-3-flash-preview")
     msg = UserMessage(
-        text=PROMPT,
+        text=prompt or PROMPT,
         file_contents=[ImageContent(image_base64=image_b64_png)],
     )
     return await chat.send_message(msg)
+
+
+COTES_PROMPT = """Tu es un métreur expert. Relève TOUTES les cotes (lignes de cote) inscrites sur ce plan,
+sans exception : cotes extérieures totales, cotes partielles (chaînes), cotes intérieures de pièces,
+cotes d'ouvertures, cotes verticales et horizontales. Ne confonds pas un mur avec un trait de cote.
+
+Réponds UNIQUEMENT en JSON strict :
+{
+  "scale_text": "1:50" | null,
+  "units_hint": "cm" | "m" | "mm" | null,
+  "dimension_lines": [
+    {"value_m": 3.42,                 // valeur convertie en MÈTRES (342 cm → 3.42 ; 3420 mm → 3.42)
+     "raw_text": "342",               // texte exactement tel qu'inscrit sur le plan
+     "orientation": "horizontale" | "verticale" | "oblique",
+     "location": "façade sud, cote totale" | "salon, largeur" | "fenêtre cuisine" | ...,
+     "bbox_norm": [x1, y1, x2, y2],   // extrémités EXACTES du trait de cote (entre les 2 traits d'attache),
+                                      // normalisées 0-1 : x=0 bord gauche, x=1 bord droit, y=0 haut, y=1 bas
+     "confidence": 0.0-1.0}
+  ]
+}
+Règles : une entrée par cote lue ; pour une cote horizontale y1 == y2, pour une verticale x1 == x2 ;
+sois le plus précis possible sur les extrémités (elles servent à mesurer le trait) ; n'invente aucune valeur."""
+
+
+async def read_dimension_lines(image_b64_png: str) -> dict:
+    """Lecture dédiée de toutes les cotes du plan (valeur + position du trait)."""
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        return {"error": "EMERGENT_LLM_KEY absent", "dimension_lines": []}
+    try:
+        raw = await _call_gpt_vision(image_b64_png, api_key, prompt=COTES_PROMPT)
+        data = _parse_json_response(raw)
+    except Exception as e:
+        logger.warning(f"AI cotes reading failed: {e}")
+        return {"error": f"Lecture IA des cotes impossible : {type(e).__name__}", "dimension_lines": []}
+    return {"scale_text": data.get("scale_text"), "units_hint": data.get("units_hint"),
+            "dimension_lines": _clean_dimension_lines(data.get("dimension_lines") or [])}
 
 
 def _parse_json_response(raw: str) -> dict:

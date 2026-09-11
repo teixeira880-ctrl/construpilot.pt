@@ -1,0 +1,19 @@
+{
+  "summary": "Iter 131 — Contrôle des cotes. Backend: 11/11 pytest passed (validation, unknown-plan 404, DXF exact plan plan_383d0b5c291b returns 4 items with item#3 override 5.5→6.0 ko, KO chain sum 9.5, verdict ko; overlay.png returns image/png, report.pdf ≥2 pages, plan detail exposes cotes_checks, uploaded synthetic DXF status logic verified, AI check on image plan plan_f6d3ae6fb2f2 returns reading.source='ai' with snapped_endpoints + valid items). Frontend: login as pro@construpilot.fr → /plan?open=plan_f6d3ae6fb2f2 → tab-ai. cotes-check-panel visible, tolerance defaults 2/3, existing report shown (verdict 'Incohérence', 35 rows). Clicked cotes-check-btn → spinner 'Lecture et mesure des cotes…' → success toast '32 cotes contrôlées — 30 incohérence(s)'. cotes-overlay-btn shows cotes-overlay-img. cotes-pdf-btn triggers PDF download (controle-cotes-p1.pdf). Zero console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_iter131_cotes_check.py", "/app/test_reports/pytest/iter131.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "engines/plan_cotes.py _find_chains: bands keyed by rounded int of (perp_pos/band_px) can split a valid chain across two adjacent bands if the perpendicular positions fall on a band boundary; consider a sliding-window grouping instead.",
+    "routes/plans_cotes.py: 502 raised on AI read errors but AI call has no timeout guard; on slow Gemini responses the client can hit CDN 60s bad-gateway before the endpoint answers (observed once during testing). Consider a soft timeout + async streaming/heartbeat.",
+    "CotesCheckPanel.jsx: tolCm defaults to '3' but if user clears it and validates empty, run() sends tol_cm: 0 while tol_pct fallback is 2 — inconsistent fallback; use `Number(tolCm) || 3` for parity."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter131_cotes_check.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "pro@construpilot.fr / Pro2026!",
+  "seed_data_creation": "Uploaded a synthetic DXF plan during test_status_logic_via_uploaded_dxf and deleted it in teardown; no persistent test data left.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Both target plans exist: plan_f6d3ae6fb2f2 (image + AI cotes report cached) and plan_383d0b5c291b (DXF with 4 dims, verdict ko). AI check ~30s but occasionally hits 60s CDN cutoff — retry once if 502."
+}

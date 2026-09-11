@@ -15,6 +15,7 @@ import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
 import { MeasureHelpDialog } from "@/components/planTakeoff/MeasureHelpDialog";
+import CotesCheckPanel from "@/components/planTakeoff/CotesCheckPanel";
 import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
 import { LiveTotalBar } from "@/components/planTakeoff/LiveTotalBar";
 import {
@@ -4026,6 +4027,7 @@ export default function PlanTakeoff() {
             </TabsContent>
 
             <TabsContent value="ai" className="mt-3 grid gap-3">
+              <CotesCheckPanel plan={plan} pageIndex={pageIndex} refreshPlan={refreshPlan} />
               {!plan.ai_analysis && (
                 <p className="text-xs text-muted-foreground">
                   Cliquez sur <b>Analyse IA du plan</b> en haut pour détecter automatiquement les pièces, ouvertures et surfaces écrites.
