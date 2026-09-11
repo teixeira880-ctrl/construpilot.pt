@@ -603,7 +603,7 @@ export default function QuoteEditor() {
     if (!d) return;
     if (internal && docId) await save();
     try {
-      const path = internal ? `/documents/${d.doc_id}/pdf-internal` : `/documents/${d.doc_id}/pdf?lang=${lang}`;
+      const path = internal ? `/documents/${d.doc_id}/pdf-internal` : `/documents/${d.doc_id}/pdf`;
       const res = await api.get(path, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
@@ -707,7 +707,7 @@ export default function QuoteEditor() {
       if (data?.attachment_image_b64) setPreview3d(data.attachment_image_b64);
     }).catch(() => {});
     // Aperçu PDF
-    api.get(`/documents/${id}/pdf?lang=${lang}`, { responseType: "blob" })
+    api.get(`/documents/${id}/pdf`, { responseType: "blob" })
       .then((res) => setPdfPreviewUrl(URL.createObjectURL(res.data)))
       .catch(() => {});
   };

@@ -117,6 +117,13 @@ def _reduced_vat_rate(doc: dict) -> float | None:
     return reduced[0] if reduced else None
 
 
+async def _doc_lang(doc: dict, branding: dict | None) -> str:
+    """Langue des PDF : celle du document, sinon PT si l'entreprise est au Portugal, sinon FR."""
+    if doc.get("lang") in ("fr", "pt"):
+        return doc["lang"]
+    return "pt" if ((branding or {}).get("country") or "").upper() == "PT" else "fr"
+
+
 async def _apply_pt_vat(user: dict, lines: list, *text_hints: str) -> None:
     """Ajuste o IVA das linhas geradas para profissionais em Portugal.
 
@@ -1307,7 +1314,7 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
     branding = await _resolve_branding(user["user_id"])
     reviews = await get_reviews_for_user(user["user_id"]) if doc["doc_type"] == "quote" else None
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
-                                   lang=(lang or doc.get("lang") or user.get("lang")))
+                                   lang=await _doc_lang(doc, branding))
     fname = f"{doc.get('number') or doc['doc_id']}.pdf"
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
@@ -1474,7 +1481,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     branding = await _resolve_branding(user["user_id"]) or {}
     reviews = await get_reviews_for_user(user["user_id"]) if doc["doc_type"] == "quote" else None
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
-                                   lang=(doc.get("lang") or user.get("lang")))
+                                   lang=await _doc_lang(doc, branding))
     company = branding.get("company_name") or user.get("name") or "ConstruPilot"
     company_email = branding.get("company_email")
     ttc = (doc.get("totals") or {}).get("ttc") or doc.get("total_ttc") or 0
@@ -1657,7 +1664,8 @@ async def _ensure_facturx(doc_id: str, user: dict, force: bool = False):
     if not force and doc.get("facturx_hash") == h and doc.get("facturx_pdf_b64"):
         return doc, base64.b64decode(doc["facturx_pdf_b64"]), doc.get("facturx_validation") or {}, "cache"
 
-    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=None, lang=user.get("lang"))
+    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=None,
+                                   lang=await _doc_lang(doc, branding))
     try:
         fx, report = await convert_facturx(pdf_bytes, build_invoice_data(doc, branding))
         source = "convert"
@@ -1915,8 +1923,7 @@ async def run_invoice_reminders() -> int:
             continue
         try:
             branding = await _resolve_branding(inv["user_id"]) or {}
-            pro = await db.users.find_one({"user_id": inv["user_id"]}, {"_id": 0, "lang": 1})
-            lang = (pro or {}).get("lang")
+            lang = await _doc_lang(inv, branding)
             pdf = build_document_pdf(inv, branding=branding, lang=lang)
             remaining = inv.get("remaining_due", inv.get("totals", {}).get("ttc", 0)) or 0
             name = client.get("first_name") or client.get("company") or ""
