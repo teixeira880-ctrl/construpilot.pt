@@ -2,16 +2,17 @@ import csv
 import io
 import uuid
 from datetime import datetime, timezone
-
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import Response
-from pydantic import BaseModel, EmailStr
+from pathlib import Path
 
 from core.db import db
 from core.security import admin_user
-from engines.pdf_pitch import build_pitch_deck_pdf
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel, EmailStr
 
 router = APIRouter(prefix="/investors", tags=["investors"])
+
+PITCH_DECK_PATH = Path("/app/frontend/public/pitch-deck.pdf")
 
 
 class DeckRequestIn(BaseModel):
@@ -60,10 +61,12 @@ async def deck_requests_csv():
 
 @router.get("/pitch-deck.pdf")
 async def pitch_deck_pdf():
-    """PDF public du pitch deck investisseurs (page /investisseurs)."""
-    pdf = build_pitch_deck_pdf()
-    return Response(
-        content=pdf,
+    """PDF público do pitch deck de investidores (versão final PT-PT fornecida
+    pelo utilizador, servida diretamente de /app/frontend/public/pitch-deck.pdf)."""
+    if not PITCH_DECK_PATH.exists():
+        raise HTTPException(status_code=404, detail="Pitch deck não disponível.")
+    return FileResponse(
+        path=str(PITCH_DECK_PATH),
         media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="ConstruPilot-Pitch-Deck.pdf"'},
     )
