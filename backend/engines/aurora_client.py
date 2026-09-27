@@ -234,6 +234,92 @@ class AuroraCompanyClient:
         async with httpx.AsyncClient(timeout=self._timeout) as c:
             return await c.post(url, content=body_bytes, headers=headers)
 
+    async def ask_with_retry(
+        self,
+        *,
+        question: str,
+        project_id: str,
+        resources: list[str] | None = None,
+        max_attempts: int = 3,
+        base_delay: float = 1.0,
+    ) -> tuple[Any, dict]:
+        """Wrapper `ask()` com retry exponencial (1s, 2s, 4s).
+
+        Devolve `(answer, meta)`:
+          - `answer` é o envelope tipado `aurora.company-answer.v1` OU `None`
+            se todas as tentativas devolveram `text` vazio ou erro HTTP.
+          - `meta` inclui `attempts`, `last_status`, `ok`, e possíveis erros.
+        Nunca devolve string vazia como sucesso.
+        """
+        import asyncio
+        import logging
+
+        from engines.aurora_contract import (
+            AuroraContractError,
+            parse_aurora_company_answer,
+        )
+        logger = logging.getLogger("aurora.client")
+        meta: dict[str, Any] = {"attempts": 0, "ok": False, "last_status": None}
+        for attempt in range(max_attempts):
+            meta["attempts"] = attempt + 1
+            r = await self.ask(
+                question=question, project_id=project_id, resources=resources,
+            )
+            meta["last_status"] = r.status_code
+
+            if r.status_code >= 400:
+                # deterministas: não vale a pena repetir
+                if r.status_code in (401, 403, 404, 422):
+                    body_snippet = r.text[:400]
+                    try:
+                        j = r.json()
+                        code = (j.get("error") or {}).get("code")
+                        cid = (j.get("error") or {}).get("correlation_id")
+                    except Exception:  # noqa: BLE001
+                        code, cid = None, None
+                    meta["error"] = f"http_{r.status_code}"
+                    meta["detail"] = body_snippet
+                    meta["error_code"] = code
+                    meta["correlation_id"] = cid
+                    return None, meta
+                # 5xx / 429: retry com backoff
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(base_delay * (2 ** attempt))
+                    continue
+                meta["error"] = f"http_{r.status_code}_after_retries"
+                meta["detail"] = r.text[:400]
+                return None, meta
+
+            # 2xx — parsear com contrato tipado
+            try:
+                answer = parse_aurora_company_answer(r.json())
+            except (AuroraContractError, ValueError) as e:
+                meta["error"] = "contract_error"
+                meta["detail"] = str(e)[:400]
+                return None, meta
+
+            # log seguro (sem secrets)
+            logger.info(
+                "aurora ask ok status=%d schema=%s model=%s route=%s text_len=%d "
+                "request_id=%s attempt=%d",
+                r.status_code, answer.schema_, answer.model, answer.route,
+                len(answer.text), self._last_request_id, meta["attempts"],
+            )
+
+            if answer.text.strip():
+                meta["ok"] = True
+                meta["schema"] = answer.schema_
+                meta["model"] = answer.model
+                meta["route"] = answer.route
+                meta["mode"] = answer.mode
+                return answer, meta
+
+            # text vazio legítimo — retry (pode ser variação do modelo)
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(base_delay * (2 ** attempt))
+        meta["error"] = "empty_text_after_retries"
+        return None, meta
+
 
 # ------------------ Singleton lazy ---------------------------------------
 _client_singleton: AuroraCompanyClient | None = None

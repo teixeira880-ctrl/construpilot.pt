@@ -96,10 +96,6 @@ def _extract_json_from_response(text: str) -> dict | None:
 # ---------------------------------------------------------------------------
 async def analyze_pc_document(*, text: str, project_id: str) -> dict[str, Any]:
     """Envia o texto do PC a Aurora e recebe análise estruturada JSON."""
-    try:
-        _ = AuroraConfig()
-    except Exception:  # noqa: BLE001
-        return {"ok": False, "error": "aurora_not_configured"}
     if not AuroraConfig().configured:
         return {"ok": False, "error": "aurora_not_configured"}
 
@@ -107,44 +103,38 @@ async def analyze_pc_document(*, text: str, project_id: str) -> dict[str, Any]:
 
     try:
         client = AuroraCompanyClient()
-        r = await client.ask(question=question, project_id=project_id, resources=[])
     except AuroraNotConfigured:
         return {"ok": False, "error": "aurora_not_configured"}
     except AuroraKeyIdInvalid:
         return {"ok": False, "error": "aurora_invalid_key_format"}
-    except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": "aurora_exception", "detail": type(e).__name__}
 
-    if r.status_code >= 400:
-        return {"ok": False, "error": f"aurora_ask_{r.status_code}",
-                "detail": r.text[:500]}
-
-    try:
-        payload = r.json()
-    except Exception:  # noqa: BLE001
-        payload = {"_raw": r.text[:2000]}
-
-    answer_text = (
-        payload.get("text")
-        or payload.get("answer")
-        or payload.get("response")
-        or payload.get("message")
-        or (payload.get("choices", [{}])[0].get("message", {}).get("content") if payload.get("choices") else None)
-        or json.dumps(payload)
+    answer, meta = await client.ask_with_retry(
+        question=question, project_id=project_id, resources=[],
+        max_attempts=3, base_delay=1.0,
     )
-    parsed = _extract_json_from_response(answer_text)
+    if not meta.get("ok") or answer is None:
+        return {
+            "ok": False,
+            "error": meta.get("error") or "aurora_empty",
+            "meta": {k: meta.get(k) for k in ("attempts", "last_status", "error_code",
+                                              "correlation_id", "detail")},
+        }
+
+    parsed = _extract_json_from_response(answer.text)
     if not parsed:
         return {"ok": False, "error": "parse_failed",
-                "raw_snippet": answer_text[:1200]}
+                "raw_snippet": answer.text[:1200]}
 
     return {
         "ok": True,
         "analysis": parsed,
-        "_raw_answer_text": answer_text[:2500],  # debug temporário
         "aurora": {
-            "schema": payload.get("schema"),
-            "model": payload.get("model"),
-            "read_only": payload.get("read_only"),
+            "schema": answer.schema_,
+            "model": answer.model,
+            "route": answer.route,
+            "mode": answer.mode,
+            "read_only": answer.read_only,
+            "attempts": meta.get("attempts"),
         },
     }
 
