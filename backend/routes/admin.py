@@ -950,12 +950,26 @@ async def aurora_test_connection() -> dict:
         return {"ok": False, "error": "not_configured", "detail": str(e)}
 
     try:
-        result = await client.get_capabilities()
+        resp = await client.get_capabilities()
+        # `get_capabilities()` devolve `httpx.Response` — desserializar antes de aceder.
+        try:
+            body = resp.json()
+        except Exception:  # noqa: BLE001
+            body = {"_raw": resp.text[:400]}
+        if resp.status_code >= 400:
+            return {
+                "ok": False,
+                "error": "http_error",
+                "status": resp.status_code,
+                "detail": (resp.text or "")[:400],
+            }
         return {
             "ok": True,
             "endpoint": f"{client.config.endpoint_base}/capabilities",
-            "schema_version": result.get("schema_version") or result.get("schema"),
-            "capabilities": result,
+            "status": resp.status_code,
+            "schema": body.get("schema") or body.get("schema_version"),
+            "schema_version": body.get("schema_version") or body.get("schema"),
+            "capabilities": body,
         }
     except httpx.HTTPStatusError as e:
         # Nunca inclui headers da resposta (poderia conter dados sensíveis)
@@ -1045,12 +1059,20 @@ async def aurora_phase2() -> dict:
 
 @router.post("/aurora/phase3")
 async def aurora_phase3() -> dict:
-    """Fase 3 · POST /ask (AS1 assinado, leitura conversacional)."""
+    """Fase 3 · POST /ask (AS1 assinado, leitura conversacional).
+
+    Usa `parse_aurora_company_answer` para validar o envelope
+    `aurora.company-answer.v1` e nunca considerar `text == ""` como sucesso.
+    """
     from engines.aurora_client import (
         AuroraKeyIdInvalid,
         AuroraNotConfigured,
         reset_aurora_client,
         get_aurora_client,
+    )
+    from engines.aurora_contract import (
+        AuroraContractError,
+        parse_aurora_company_answer,
     )
     reset_aurora_client()
     try:
@@ -1060,13 +1082,39 @@ async def aurora_phase3() -> dict:
             project_id="obra-teste-001",
             resources=[],
         )
+        if r.status_code >= 400:
+            return {
+                "ok": False,
+                "phase": 3,
+                "status": r.status_code,
+                "error": f"http_{r.status_code}",
+                "detail": (r.text or "")[:400],
+                "debug_canonical_tail": client._last_canonical[-200:],
+                "debug_request_id": client._last_request_id,
+            }
+        try:
+            answer = parse_aurora_company_answer(r.json())
+        except (AuroraContractError, ValueError) as e:
+            return {
+                "ok": False,
+                "phase": 3,
+                "status": r.status_code,
+                "error": "contract_error",
+                "detail": str(e)[:400],
+            }
+        text_length = len(answer.text)
         return {
-            "ok": r.status_code < 400,
+            "ok": r.status_code < 400 and text_length > 0,
             "phase": 3,
             "status": r.status_code,
-            "response": r.text[:1500],
-            "debug_canonical_tail": client._last_canonical[-200:] if r.status_code >= 400 else None,
-            "debug_request_id": client._last_request_id if r.status_code >= 400 else None,
+            "schema": answer.schema_,
+            "model": answer.model,
+            "route": answer.route,
+            "mode": answer.mode,
+            "external_ai_used": answer.external_ai_used,
+            "text_length": text_length,
+            "text_snippet": answer.text[:200],
+            "warning": None if text_length > 0 else "aurora_returned_empty_text",
         }
     except AuroraNotConfigured as e:
         return {"ok": False, "phase": 3, "error": "not_configured", "detail": str(e)}
