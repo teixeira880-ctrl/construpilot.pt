@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from core.db import db
 from core.security import current_user
 from engines import estimation, ai, pdf
+from engines.aurora_sync import sync_project_fire_and_forget
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -62,6 +63,8 @@ async def create_project(body: ProjectIn, user=Depends(current_user)):
     }
     await db.projects.insert_one(doc)
     doc.pop("_id", None)
+    # Aurora sync (fail-safe, non-blocking)
+    sync_project_fire_and_forget(doc)
     return doc
 
 
@@ -95,7 +98,10 @@ async def update_project(project_id: str, body: UpdateIn, user=Depends(current_u
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     updates["updated_at"] = _now()
     await db.projects.update_one({"project_id": project_id}, {"$set": updates})
-    return await _get(project_id, user)
+    updated = await _get(project_id, user)
+    # Aurora sync (fail-safe, non-blocking)
+    sync_project_fire_and_forget(updated)
+    return updated
 
 
 @router.delete("/{project_id}")

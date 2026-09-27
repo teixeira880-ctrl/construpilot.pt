@@ -1076,6 +1076,44 @@ async def aurora_phase3() -> dict:
         return {"ok": False, "phase": 3, "error": "unexpected", "detail": type(e).__name__}
 
 
+@router.post("/aurora/sync-all")
+async def aurora_sync_all(limit: int = 500) -> dict:
+    """Sync bulk de todos os projetos ConstruPilot → Aurora (upsert idempotente).
+
+    Admin-only. Fail-safe: cada projeto é tentado individualmente; falhas são
+    contadas mas não abortam o batch. Retorna estatísticas + primeiros 5
+    entity_ids retornados por Aurora.
+    """
+    from engines.aurora_client import AuroraConfig
+    from engines.aurora_sync import sync_project_to_aurora
+    if not AuroraConfig().configured:
+        return {"ok": False, "error": "aurora_not_configured"}
+    cursor = db.projects.find({}, {"_id": 0}).limit(max(1, min(int(limit), 2000)))
+    projects = await cursor.to_list(length=None)
+    total = len(projects)
+    synced = 0
+    failed = 0
+    sample: list[dict] = []
+    for p in projects:
+        result = await sync_project_to_aurora(p)
+        if result and result.get("aurora_entity_id"):
+            synced += 1
+            if len(sample) < 5:
+                sample.append({
+                    "project_id": p.get("project_id"),
+                    "aurora_entity_id": result.get("aurora_entity_id"),
+                    "version": result.get("version"),
+                })
+        else:
+            failed += 1
+    return {
+        "ok": True,
+        "total": total,
+        "synced": synced,
+        "failed": failed,
+        "sample_first_5": sample,
+    }
+
 
 # ---------------------------------------------------------------------------
 # Zona protegida · atualização de secrets do .env sem passar pelo chat.
