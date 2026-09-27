@@ -125,19 +125,28 @@ export default function Admin() {
         <SectionTitle over={t("admin.over")} title={t("admin.title")}>
           {t("admin.subtitle")}
         </SectionTitle>
-        <button
-          data-testid="admin-demo-unlock-btn"
-          onClick={async () => {
-            try {
-              const { data } = await api.post("/admin/demo-unlock");
-              toast.success(`Modo de demonstração ativado — ${data.tier} · todas as opções desbloqueadas`);
-              setTimeout(() => window.location.reload(), 900);
-            } catch { toast.error("Ativação do modo de demonstração impossível"); }
-          }}
-          className="shrink-0 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 text-sm font-semibold transition-colors">
-          🎬 Modo de demonstração — desbloquear tudo
-          <span className="block text-[11px] font-normal text-muted-foreground">Stripe test · carte 4242 4242 4242 4242</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            data-testid="admin-secrets-link"
+            onClick={() => navigate("/admin/secrets")}
+            className="shrink-0 rounded-sm border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-4 py-2 text-sm font-semibold transition-colors">
+            🔐 Chaves API · Zona protegida
+            <span className="block text-[11px] font-normal text-muted-foreground">Inserir secrets sem chat</span>
+          </button>
+          <button
+            data-testid="admin-demo-unlock-btn"
+            onClick={async () => {
+              try {
+                const { data } = await api.post("/admin/demo-unlock");
+                toast.success(`Modo de demonstração ativado — ${data.tier} · todas as opções desbloqueadas`);
+                setTimeout(() => window.location.reload(), 900);
+              } catch { toast.error("Ativação do modo de demonstração impossível"); }
+            }}
+            className="shrink-0 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 text-sm font-semibold transition-colors">
+            🎬 Modo de demonstração — desbloquear tudo
+            <span className="block text-[11px] font-normal text-muted-foreground">Stripe test · carte 4242 4242 4242 4242</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">

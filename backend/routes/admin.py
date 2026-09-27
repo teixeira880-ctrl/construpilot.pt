@@ -969,3 +969,261 @@ async def aurora_test_connection() -> dict:
     except Exception as e:  # noqa: BLE001
         # Fallback defensivo — nunca expor traceback com secrets
         return {"ok": False, "error": "unexpected", "detail": type(e).__name__}
+
+
+# ---------------------------------------------------------------------------
+# Aurora · endpoints de teste para 3 fases (admin-only).
+# ---------------------------------------------------------------------------
+@router.post("/aurora/phase1")
+async def aurora_phase1() -> dict:
+    """Fase 1 · GET /capabilities (sem AS1 signing)."""
+    from engines.aurora_client import (
+        AuroraKeyIdInvalid,
+        AuroraNotConfigured,
+        reset_aurora_client,
+        get_aurora_client,
+    )
+    reset_aurora_client()  # garante que uma rotação de .env é apanhada
+    try:
+        client = get_aurora_client()
+        r = await client.get_capabilities()
+        body: dict = {}
+        try:
+            body = r.json()
+        except Exception:  # noqa: BLE001
+            body = {"_raw": r.text[:800]}
+        return {
+            "ok": r.status_code < 400,
+            "phase": 1,
+            "status": r.status_code,
+            "schema": body.get("schema") or body.get("schema_version"),
+            "response": body,
+        }
+    except AuroraNotConfigured as e:
+        return {"ok": False, "phase": 1, "error": "not_configured", "detail": str(e)}
+    except AuroraKeyIdInvalid as e:
+        return {"ok": False, "phase": 1, "error": "invalid_key_format", "detail": str(e)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "phase": 1, "error": "unexpected", "detail": type(e).__name__}
+
+
+@router.post("/aurora/phase2")
+async def aurora_phase2() -> dict:
+    """Fase 2 · POST /projects/upsert (AS1 assinado) + GET /projects/get."""
+    from engines.aurora_client import (
+        AuroraKeyIdInvalid,
+        AuroraNotConfigured,
+        reset_aurora_client,
+        get_aurora_client,
+    )
+    reset_aurora_client()
+    try:
+        client = get_aurora_client()
+        proj = {
+            "project_id": "obra-teste-001",
+            "name": "Obra de teste ConstruPilot",
+            "status": "active",
+            "progress_percent": 10,
+        }
+        r_up = await client.upsert_project(proj)
+        r_get = await client.get_project("obra-teste-001")
+        return {
+            "ok": (r_up.status_code < 400) and (r_get.status_code < 400),
+            "phase": 2,
+            "upsert": {"status": r_up.status_code, "body": r_up.text[:800]},
+            "get": {"status": r_get.status_code, "body": r_get.text[:800]},
+            "debug_canonical_tail": client._last_canonical[-200:] if r_up.status_code >= 400 else None,
+            "debug_request_id": client._last_request_id if r_up.status_code >= 400 else None,
+        }
+    except AuroraNotConfigured as e:
+        return {"ok": False, "phase": 2, "error": "not_configured", "detail": str(e)}
+    except AuroraKeyIdInvalid as e:
+        return {"ok": False, "phase": 2, "error": "invalid_key_format", "detail": str(e)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "phase": 2, "error": "unexpected", "detail": type(e).__name__}
+
+
+@router.post("/aurora/phase3")
+async def aurora_phase3() -> dict:
+    """Fase 3 · POST /ask (AS1 assinado, leitura conversacional)."""
+    from engines.aurora_client import (
+        AuroraKeyIdInvalid,
+        AuroraNotConfigured,
+        reset_aurora_client,
+        get_aurora_client,
+    )
+    reset_aurora_client()
+    try:
+        client = get_aurora_client()
+        r = await client.ask(
+            question="Resume o estado desta obra e indica riscos com base apenas nos dados disponíveis.",
+            project_id="obra-teste-001",
+            resources=[],
+        )
+        return {
+            "ok": r.status_code < 400,
+            "phase": 3,
+            "status": r.status_code,
+            "response": r.text[:1500],
+            "debug_canonical_tail": client._last_canonical[-200:] if r.status_code >= 400 else None,
+            "debug_request_id": client._last_request_id if r.status_code >= 400 else None,
+        }
+    except AuroraNotConfigured as e:
+        return {"ok": False, "phase": 3, "error": "not_configured", "detail": str(e)}
+    except AuroraKeyIdInvalid as e:
+        return {"ok": False, "phase": 3, "error": "invalid_key_format", "detail": str(e)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "phase": 3, "error": "unexpected", "detail": type(e).__name__}
+
+
+
+# ---------------------------------------------------------------------------
+# Zona protegida · atualização de secrets do .env sem passar pelo chat.
+# Utilizador cola valores no formulário (frontend `/admin/secrets`) e o backend
+# grava-os no `/app/backend/.env`. Nenhum valor é escrito em logs ou respostas.
+# ---------------------------------------------------------------------------
+import re
+import time
+import subprocess
+from pathlib import Path
+
+from fastapi import BackgroundTasks
+from pydantic import BaseModel, Field
+
+# Whitelist rígida — MONGO_URL / JWT_SECRET / VAPID_* NUNCA editáveis por aqui.
+ALLOWED_SECRETS: set[str] = {
+    "AURORA_BASE_URL",
+    "AURORA_COMPANY_API_KEY",
+    "AURORA_COMPANY_SIGNING_SECRET",
+    "ELEVENLABS_API_KEY",
+    "RESEND_API_KEY",
+    "CLOUDCONVERT_API_KEY",
+    "TAVILY_API_KEY",
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+    "SMS_TO_API_KEY",
+    "STRIPE_SECRET_KEY",
+    "AUTOSEO_WEBHOOK_TOKEN",
+    "GITHUB_PAT",
+}
+
+_ENV_PATH = Path("/app/backend/.env")
+
+
+def _read_env_text() -> str:
+    return _ENV_PATH.read_text(encoding="utf-8") if _ENV_PATH.exists() else ""
+
+
+def _hint(value: str) -> str:
+    v = value.strip()
+    if len(v) <= 12:
+        return "***"
+    return f"{v[:4]}…{v[-4:]}"
+
+
+@router.get("/secrets/status")
+async def secrets_status() -> dict:
+    """Devolve quais secrets estão configurados. **Nunca** revela valores.
+
+    Para cada secret preenchido, devolve um `hint` (4 primeiros + 4 últimos chars)
+    e o `length`. Secrets vazios não aparecem em `configured`.
+    """
+    text = _read_env_text()
+    configured: list[dict] = []
+    for key in sorted(ALLOWED_SECRETS):
+        m = re.search(rf"^{re.escape(key)}=(.*)$", text, flags=re.MULTILINE)
+        val = (m.group(1).strip() if m else "")
+        if val:
+            configured.append({"key": key, "hint": _hint(val), "length": len(val)})
+    return {
+        "configured": configured,
+        "allowed": sorted(ALLOWED_SECRETS),
+        "env_file": str(_ENV_PATH),
+    }
+
+
+class SecretUpdate(BaseModel):
+    key: str = Field(min_length=1)
+    value: str = Field(min_length=1)
+
+
+class SecretsPayload(BaseModel):
+    secrets: list[SecretUpdate]
+    restart_backend: bool = True
+
+
+def _do_restart_backend() -> None:
+    """Executado em background_task após a resposta ser enviada."""
+    try:
+        subprocess.run(
+            ["sudo", "supervisorctl", "restart", "backend"],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+    except Exception:
+        # Sem log — o próprio processo vai reiniciar em segundos
+        pass
+
+
+@router.post("/secrets/update")
+async def secrets_update(payload: SecretsPayload,
+                          background: BackgroundTasks) -> dict:
+    """Atualiza uma ou mais entradas do `.env` (só chaves na whitelist).
+
+    Regras:
+      · valores NUNCA são logados nem devolvidos na resposta;
+      · backup do `.env` antes de qualquer escrita (`/app/backend/.env.bak.<ts>`);
+      · se a chave já existir, substitui a linha; senão, adiciona no fim;
+      · quotes simples/dupla nos valores são preservadas literalmente;
+      · restart do backend agendado para *após* a resposta (BackgroundTasks).
+    """
+    if not _ENV_PATH.exists():
+        raise HTTPException(status_code=500, detail=".env não encontrado")
+
+    if not payload.secrets:
+        raise HTTPException(status_code=400, detail="Lista de secrets vazia.")
+
+    # Validação whitelist + valores não vazios / sem quebras de linha
+    for s in payload.secrets:
+        if s.key not in ALLOWED_SECRETS:
+            raise HTTPException(status_code=400,
+                                detail=f"Chave '{s.key}' não permitida.")
+        if not s.value.strip():
+            raise HTTPException(status_code=400,
+                                detail=f"Valor vazio para '{s.key}'.")
+        if "\n" in s.value or "\r" in s.value:
+            raise HTTPException(status_code=400,
+                                detail=f"Valor de '{s.key}' contém quebras de linha.")
+
+    original = _read_env_text()
+    updated = original
+    updated_keys: list[str] = []
+    for s in payload.secrets:
+        pattern = rf"^{re.escape(s.key)}=.*$"
+        # escapar backslashes na substituição para regex
+        replacement = f"{s.key}={s.value}"
+        if re.search(pattern, updated, flags=re.MULTILINE):
+            updated = re.sub(pattern, lambda _m: replacement,
+                             updated, flags=re.MULTILINE)
+        else:
+            if not updated.endswith("\n"):
+                updated += "\n"
+            updated += f"{replacement}\n"
+        updated_keys.append(s.key)
+
+    # Backup + escrita atómica
+    backup = _ENV_PATH.parent / f".env.bak.{int(time.time())}"
+    backup.write_text(original, encoding="utf-8")
+    tmp = _ENV_PATH.parent / ".env.tmp"
+    tmp.write_text(updated, encoding="utf-8")
+    tmp.replace(_ENV_PATH)
+
+    if payload.restart_backend:
+        background.add_task(_do_restart_backend)
+
+    # Nunca inclui valores na resposta
+    return {
+        "ok": True,
+        "updated_keys": updated_keys,
+        "backup_file": backup.name,
+        "restart_scheduled": payload.restart_backend,
+    }

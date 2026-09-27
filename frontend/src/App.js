@@ -27,6 +27,7 @@ import Coach from "@/pages/Coach";
 import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
+import AdminSecrets from "@/pages/AdminSecrets";
 import NotFound from "@/pages/NotFound";
 import { MentionsLegales, Confidentialite, CGV } from "@/pages/LegalPages";
 import Welcome from "@/pages/Welcome";
@@ -231,6 +232,7 @@ function AppRouter() {
       <Route path="/bienvenue" element={<Protected><Shell><Welcome /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
+      <Route path="/admin/secrets" element={<Protected admin><Shell><AdminSecrets /></Shell></Protected>} />
       <Route path="/mentions-legales" element={<Shell><MentionsLegales /></Shell>} />
       <Route path="/confidentialite" element={<Shell><Confidentialite /></Shell>} />
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />
