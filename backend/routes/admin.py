@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import os
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -906,3 +907,65 @@ async def run_migrations(admin=Depends(admin_user)) -> dict:
     except Exception as e:  # noqa: BLE001
         results["biblioteca_pt_2026"] = {"error": f"{type(e).__name__}: {e}"}
     return {"ok": True, "run_by": admin.get("email"), "results": results}
+
+
+
+# ---------------------------------------------------------------------------
+# Aurora Company API V1 — endpoints de diagnóstico (backend-only, admin-only).
+# NUNCA devolver headers/secrets. Só metadados de conectividade.
+# ---------------------------------------------------------------------------
+@router.get("/aurora/status")
+async def aurora_status() -> dict:
+    """Devolve o estado de configuração do Aurora sem revelar secrets.
+
+    Só indica se as três env vars estão preenchidas — nunca os valores.
+    """
+    from engines.aurora_client import AuroraConfig
+    cfg = AuroraConfig()
+    return {
+        "configured": cfg.configured,
+        "has_base_url": bool(cfg.base_url),
+        "has_api_key": bool(os.environ.get("AURORA_COMPANY_API_KEY", "").strip()),
+        "has_signing_secret": bool(os.environ.get("AURORA_COMPANY_SIGNING_SECRET", "").strip()),
+        "endpoint_base": (cfg.endpoint_base if cfg.base_url else None),
+    }
+
+
+@router.post("/aurora/test-connection")
+async def aurora_test_connection() -> dict:
+    """Fase 1: chama GET /capabilities e devolve o schema (sem AS1 signing).
+
+    Nunca faz log da API key nem do signing secret. Falha graciosamente com
+    detalhe de erro seguro (status HTTP + mensagem sem headers/secrets).
+    """
+    import httpx
+    from engines.aurora_client import (
+        AuroraNotConfigured,
+        get_aurora_client,
+    )
+
+    try:
+        client = get_aurora_client()
+    except AuroraNotConfigured as e:
+        return {"ok": False, "error": "not_configured", "detail": str(e)}
+
+    try:
+        result = await client.get_capabilities()
+        return {
+            "ok": True,
+            "endpoint": f"{client.config.endpoint_base}/capabilities",
+            "schema_version": result.get("schema_version") or result.get("schema"),
+            "capabilities": result,
+        }
+    except httpx.HTTPStatusError as e:
+        # Nunca inclui headers da resposta (poderia conter dados sensíveis)
+        return {"ok": False, "error": "http_error",
+                "status": e.response.status_code,
+                "detail": (e.response.text or "")[:400]}
+    except httpx.TimeoutException:
+        return {"ok": False, "error": "timeout"}
+    except httpx.RequestError as e:
+        return {"ok": False, "error": "network", "detail": type(e).__name__}
+    except Exception as e:  # noqa: BLE001
+        # Fallback defensivo — nunca expor traceback com secrets
+        return {"ok": False, "error": "unexpected", "detail": type(e).__name__}
