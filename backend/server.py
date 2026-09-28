@@ -42,7 +42,8 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     branding_public as branding_public_routes,
                     notifications as notifications_routes,
                     runway_render as runway_render_routes,
-                    tool_presets as tool_presets_routes)  # noqa: E402
+                    tool_presets as tool_presets_routes,
+                    coach as coach_routes)  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
@@ -119,6 +120,7 @@ api_router.include_router(resend_webhook_routes.router)
 api_router.include_router(branding_public_routes.router)
 api_router.include_router(notifications_routes.router)
 api_router.include_router(runway_render_routes.router)
+api_router.include_router(coach_routes.router)
 app.include_router(api_router)
 
 app.add_middleware(

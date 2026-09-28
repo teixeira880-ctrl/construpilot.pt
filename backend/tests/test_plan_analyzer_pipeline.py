@@ -20,11 +20,6 @@ from engines.aurora_contract import AURORA_ANSWER_SCHEMA, AuroraCompanyAnswer
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-@pytest.fixture
-def anyio_backend():
-    return "asyncio"
-
-
 MOCK_AURORA_JSON = """{
   "plan_summary": {"type": "planta baixa", "area_total_m2": 180, "num_divisoes": 8, "escala": "1:100", "descricao": "T3"},
   "measurements": {"paredes_ml": 45.5, "portas_un": 8, "janelas_un": 6, "divisoes": ["sala","cozinha","q1","q2","q3","wc1","wc2","corredor"]},

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Send, Mic, MicOff, Sparkles, Volume2, Calculator } from "lucide-react";
+import { Send, Mic, MicOff, Sparkles, Volume2, Calculator, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { API, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/context/I18nContext";
@@ -13,15 +13,18 @@ const EXAMPLE_KEYS = ["coach.ex1", "coach.ex2", "coach.ex3", "coach.ex4", "coach
 
 export default function Coach() {
   const { t } = useI18n();
+  const [params] = useSearchParams();
+  const projectId = params.get("project_id") || null;
   const [messages, setMessages] = useState([
     { role: "assistant", content: t("coach.greeting") },
   ]);
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
+  const [thinking, setThinking] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
   const [listening, setListening] = useState(false);
   const [speak, setSpeak] = useState(false);
   const [sendingEst, setSendingEst] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const bottom = useRef(null);
   const recognition = useRef(null);
   const navigate = useNavigate();
@@ -49,50 +52,44 @@ export default function Coach() {
 
   const send = async (text = input) => {
     const msg = text.trim();
-    if (!msg || streaming) return;
+    if (!msg || thinking) return;
     setInput("");
-    setMessages((m) => [...m, { role: "user", content: msg }, { role: "assistant", content: "" }]);
-    setStreaming(true);
+    setUnavailable(false);
+    setMessages((m) => [...m, { role: "user", content: msg }]);
+    setThinking(true);
     try {
-      const res = await fetch(`${API}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ message: msg, session_id: sessionId }),
-      });
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let full = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop();
-        for (const part of parts) {
-          if (!part.startsWith("data: ")) continue;
-          const payload = JSON.parse(part.slice(6));
-          if (payload.session_id) setSessionId(payload.session_id);
-          if (payload.delta) {
-            full += payload.delta;
-            setMessages((m) => {
-              const copy = [...m];
-              copy[copy.length - 1] = { role: "assistant", content: full };
-              return copy;
-            });
-          }
-        }
+      const payload = { message: msg };
+      if (projectId) payload.project_id = projectId;
+      if (conversationId) payload.conversation_id = conversationId;
+      const { data } = await api.post("/coach/ask", payload);
+      if (!data?.reply || !data.reply.trim()) {
+        throw new Error("empty_reply");
       }
-      if (speak && full && window.speechSynthesis) {
-        const u = new SpeechSynthesisUtterance(full.slice(0, 600));
+      setConversationId(data.conversation_id);
+      setMessages((m) => [...m, {
+        role: "assistant",
+        content: data.reply,
+        meta: data.meta,
+      }]);
+      if (speak && window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(data.reply.slice(0, 600));
         u.lang = "pt-PT";
         window.speechSynthesis.speak(u);
       }
-    } catch {
-      toast.error(t("coach.unavailable"));
+    } catch (err) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      if (status === 503) {
+        setUnavailable(true);
+        toast.error(detail?.message || t("coach.unavailable"));
+        if (detail?.conversation_id) setConversationId(detail.conversation_id);
+      } else if (status === 401) {
+        toast.error("Sessão expirada. Volte a iniciar sessão.");
+      } else {
+        toast.error(t("coach.unavailable") || "Erro ao contactar o assistente.");
+      }
     } finally {
-      setStreaming(false);
+      setThinking(false);
     }
   };
 
@@ -126,7 +123,7 @@ export default function Coach() {
         {t("coach.subtitle")}
       </SectionTitle>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" data-testid="coach-examples">
         {EXAMPLE_KEYS.map((k) => (
           <button
             key={k} onClick={() => send(t(k))} data-testid={`coach-example-${k}`}
@@ -152,7 +149,7 @@ export default function Coach() {
         </div>
       )}
 
-      <div className="surface flex flex-col h-[62vh]">
+      <div className="surface flex flex-col h-[62vh]" data-testid="coach-chat-panel">
         <div className="flex-1 overflow-y-auto p-6 grid gap-5" data-testid="chat-messages">
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : ""}`}>
@@ -167,10 +164,36 @@ export default function Coach() {
                   m.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary"
                 }`}
               >
-                {m.content || (streaming && i === messages.length - 1 ? "…" : "")}
+                {m.content}
+                {m.role === "assistant" && m.meta?.mode_used && (
+                  <div className="mt-2 pt-2 border-t border-border/40 text-[10px] text-muted-foreground uppercase tracking-wide">
+                    Aurora · {m.meta.mode_used}
+                  </div>
+                )}
               </div>
             </div>
           ))}
+          {thinking && (
+            <div className="flex gap-3" data-testid="coach-thinking">
+              <span className="shrink-0 h-8 w-8 grid place-items-center bg-primary/15 border border-primary/30 rounded-sm">
+                <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+              </span>
+              <div className="max-w-[80%] p-4 rounded-sm text-sm bg-secondary text-muted-foreground italic">
+                A pensar…
+              </div>
+            </div>
+          )}
+          {unavailable && !thinking && (
+            <div className="flex gap-3" data-testid="coach-unavailable">
+              <span className="shrink-0 h-8 w-8 grid place-items-center bg-destructive/15 border border-destructive/30 rounded-sm">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </span>
+              <div className="max-w-[80%] p-4 rounded-sm text-sm bg-destructive/10 border border-destructive/30">
+                O assistente IA está temporariamente indisponível. Já notificámos o administrador.
+                Tente novamente em alguns minutos.
+              </div>
+            </div>
+          )}
           <div ref={bottom} />
         </div>
 
@@ -194,8 +217,11 @@ export default function Coach() {
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder={t("coach.placeholder")}
             data-testid="chat-input" className="rounded-sm h-11"
+            disabled={thinking}
           />
-          <Button onClick={() => send()} disabled={streaming} data-testid="chat-send-btn" className="rounded-sm h-11 gap-2 hover:bg-orange-600 hover:text-white">
+          <Button onClick={() => send()} disabled={thinking || !input.trim()}
+                  data-testid="chat-send-btn"
+                  className="rounded-sm h-11 gap-2 hover:bg-orange-600 hover:text-white">
             <Send className="h-4 w-4" />
           </Button>
         </div>
