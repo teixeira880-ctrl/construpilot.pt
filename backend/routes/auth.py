@@ -1,6 +1,7 @@
 import uuid
 import asyncio
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timezone, timedelta
 
@@ -149,30 +150,32 @@ async def register(body: RegisterIn, response: Response) -> dict:
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(user)
-    # E-mail de bienvenue (best-effort, ne bloque jamais l'inscription)
+    # E-mail de boas-vindas (best-effort, nunca bloqueia o registo)
     try:
         import os
         from engines import emailer
         verify_url = f"{os.getenv('FRONTEND_URL', '')}/verifier-email/{user['email_verify_token']}"
+        first_name = body.name.split(' ')[0] if body.name else ''
         body_html = (
-            f"<p>Olá {body.name.split(' ')[0] if body.name else ''},</p>"
-            "<p>Bienvenue sur <b>ConstruPilot</b> ! Merci de <b>confirmer votre adresse e-mail</b> "
-            "en cliquant sur le bouton ci-dessous pour activer toutes les fonctionnalités.</p>"
-            "<p>Pour bien démarrer :</p>"
+            f"<p>Olá {first_name},</p>"
+            "<p>Bem-vindo(a) ao <b>ConstruPilot</b>! Por favor, <b>confirme o seu endereço de e-mail</b> "
+            "clicando no botão abaixo para ativar todas as funcionalidades.</p>"
+            "<p>Para começar:</p>"
             "<ul style='margin:0 0 8px 18px;padding:0'>"
-            "<li><b>Particulier</b> : estimez le coût de vos travaux et comparez les prix</li>"
-            "<li><b>Professionnel</b> : mesurez un plan et générez un devis client</li>"
+            "<li><b>Particular</b>: estime o custo das suas obras e compare preços</li>"
+            "<li><b>Profissional</b>: meça uma planta e gere um orçamento para o cliente</li>"
             "</ul>"
-            "<p>À très vite,<br/>L'équipe ConstruPilot</p>"
+            "<p>Até breve,<br/>A equipa ConstruPilot</p>"
         )
         html = emailer.wrap_html(
-            "Confirmez votre e-mail — ConstruPilot 🎉", body_html,
+            "Confirme o seu e-mail — ConstruPilot 🎉", body_html,
             cta_url=verify_url,
-            cta_label="Confirmer mon e-mail",
+            cta_label="Confirmar o meu e-mail",
         )
-        await emailer.send_email(email, "Confirmez votre e-mail — ConstruPilot", html)
+        await emailer.send_email(email, "Confirme o seu e-mail — ConstruPilot", html)
     except Exception:
-        pass
+        logging.getLogger("auth.register").exception(
+            "register welcome email failed for %s", email)
     # Credit the referrer (silent no-op if code invalid) — routed via referrals module
     if body.referred_by_code:
         from routes.referrals import credit_referrer
@@ -206,12 +209,13 @@ async def resend_verification(user=Depends(current_user)) -> dict:
         from engines import emailer
         verify_url = f"{os.getenv('FRONTEND_URL', '')}/verifier-email/{token}"
         html = emailer.wrap_html(
-            "Confirmez votre e-mail — ConstruPilot",
-            "<p>Confirmez votre adresse e-mail pour activer toutes les fonctionnalités.</p>",
-            cta_url=verify_url, cta_label="Confirmer mon e-mail")
-        await emailer.send_email(u["email"], "Confirmez votre e-mail — ConstruPilot", html)
+            "Confirme o seu e-mail — ConstruPilot",
+            "<p>Confirme o seu endereço de e-mail para ativar todas as funcionalidades.</p>",
+            cta_url=verify_url, cta_label="Confirmar o meu e-mail")
+        await emailer.send_email(u["email"], "Confirme o seu e-mail — ConstruPilot", html)
     except Exception:
-        pass
+        logging.getLogger("auth.resend_verification").exception(
+            "resend-verification email failed for %s", u.get("email"))
     return {"ok": True, "sent": True}
 
 
@@ -539,7 +543,8 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
             subject = "Votre compte Pro ConstruPilot — action requise"
         await emailer.send_email(u["email"], subject, html)
     except Exception:
-        pass
+        logging.getLogger("auth.kyc").exception(
+            "KYC status email failed for %s", u.get("email"))
     return {"ok": True, "kyc_status": upd["kyc_status"]}
 
 
@@ -711,7 +716,8 @@ async def _send_2fa_email(user: dict, code: str) -> None:
             recipient = user.get("two_fa_email") or user["email"]
             await send_email(recipient, T(lang, "twofa.subject", code=code), html)
         except Exception:
-            pass
+            logging.getLogger("auth.2fa").exception(
+                "2FA code email failed for user=%s", user.get("user_id"))
     asyncio.create_task(_send())
 
 

@@ -39,9 +39,12 @@ async def send_email(to: str, subject: str, html: str,
         params["reply_to"] = reply_to
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info("Email sent to=%s subject=%r id=%s",
+                    to, (subject[:60] + "…") if len(subject) > 60 else subject,
+                    (resp or {}).get("id"))
         return {"ok": True, "id": resp.get("id")}
     except Exception as e:
-        logger.error(f"Email send failed: {e}")
+        logger.error(f"Email send failed to={to}: {e}")
         raise
 
 
