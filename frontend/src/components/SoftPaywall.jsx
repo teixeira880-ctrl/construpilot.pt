@@ -13,7 +13,7 @@ import { useBilling } from "@/context/BillingContext";
 const MESSAGES = {
   savings: {
     title: "Desbloqueie a análise completa de poupanças",
-    body: "Voyez chaque euro potentiellement économisé sur votre projet : matériaux, alternatives, DIY, fournisseurs.",
+    body: "Veja cada euro potencialmente poupado no seu projeto: materiais, alternativas, DIY, fornecedores.",
   },
   price_search: {
     title: "Compare todos os fornecedores e optimize o seu cesto",
@@ -21,11 +21,11 @@ const MESSAGES = {
   },
   diy: {
     title: "Descubra todas as tarefas que pode fazer sozinho",
-    body: "Guides pas-à-pas, matériel requis, gains estimés, conseils sécurité — pour chaque lot.",
+    body: "Guias passo-a-passo, material necessário, ganhos estimados, conselhos de segurança — para cada especialidade.",
   },
   quote: {
     title: "Análise ilimitada dos seus orçamentos",
-    body: "L'IA compare vos devis à la base de prix ConstruPilot et détecte les surcoûts.",
+    body: "A IA compara os seus orçamentos à base de preços ConstruPilot e deteta os sobrecustos.",
   },
   pdf: {
     title: "Export PDF professionnel",

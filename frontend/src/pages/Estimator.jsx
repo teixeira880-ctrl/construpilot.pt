@@ -114,7 +114,7 @@ export default function Estimator() {
         project: { name: `Estimation ${form.city || ""}`.trim() || "Votre projet", city: form.city, description: form.description },
         estimation,
       });
-      toast.success(`Votre estimation détaillée vient de vous être envoyée par e-mail à ${to} ✉️`);
+      toast.success(`A sua estimativa detalhada acabou de lhe ser enviada por e-mail para ${to} ✉️`);
     } catch { /* envoi silencieux, non bloquant */ }
   };
 
@@ -159,7 +159,7 @@ export default function Estimator() {
 
   const findSupplierPrices = async () => {
     const lots = (est?.lots || []).filter((l) => (l.material_cost || 0) > 0 && (l.quantity || 0) > 0);
-    if (!lots.length) { toast.error("Aucun poste matériaux à chiffrer"); return; }
+    if (!lots.length) { toast.error("Nenhum item de materiais a orçamentar"); return; }
     setBusyOptim(true);
     try {
       const coefficient = Number(localStorage.getItem("construpilot_dept_coef") || 1) || 1;
@@ -168,7 +168,7 @@ export default function Estimator() {
         items: lots.map((l) => ({ query: l.name, quantity: Math.ceil(l.quantity), name: l.name })),
       });
       setOptim(data);
-    } catch { toast.error("Recherche de prix impossible"); }
+    } catch { toast.error("Pesquisa de preços impossível"); }
     finally { setBusyOptim(false); }
   };
 

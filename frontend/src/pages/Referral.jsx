@@ -36,7 +36,7 @@ export default function Referral() {
       toast.success(`${label} copié`);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("Copie impossible");
+      toast.error("Cópia impossível");
     }
   };
 

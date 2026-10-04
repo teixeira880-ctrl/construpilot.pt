@@ -24,18 +24,18 @@ export default function ResetPassword() {
       await api.post("/auth/forgot-password", { email });
       setSent(true);
     } catch {
-      toast.error("Demande impossible — réessayez");
+      toast.error("Pedido impossível — tente novamente");
     } finally { setBusy(false); }
   };
 
   const doReset = async (e) => {
     e.preventDefault();
-    if (pwd.length < 8) return toast.error("Mot de passe : 8 caractères minimum");
+    if (pwd.length < 8) return toast.error("Palavra-passe: 8 caracteres mínimo");
     if (pwd !== confirm) return toast.error("A confirmação não coincide");
     setBusy(true);
     try {
       await api.post("/auth/reset-password", { token, new_password: pwd });
-      toast.success("Mot de passe réinitialisé — connectez-vous");
+      toast.success("Palavra-passe reinicializada — inicie sessão");
       navigate("/login");
     } catch (err) {
       const d = err?.response?.data?.detail;

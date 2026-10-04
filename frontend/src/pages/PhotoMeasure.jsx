@@ -56,7 +56,7 @@ export default function PhotoMeasure() {
             qty: Number((m.value / 1e6).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
     ));
     sessionStorage.setItem("construpilot_pending_ouvrages", JSON.stringify(lines));
-    toast.success(`${lines.length} mesure(s) envoyée(s) vers le devis`);
+    toast.success(`${lines.length} medição(ões) enviada(s) para o orçamento`);
     nav("/devis-editeur");
   };
 

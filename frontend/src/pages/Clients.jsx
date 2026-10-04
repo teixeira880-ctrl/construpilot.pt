@@ -77,9 +77,9 @@ export default function Clients() {
 
   const remove = async (c) => {
     if (!(await confirm({
-      title: "Supprimer ce client ?",
-      description: `${name(c)} sera supprimé. Impossible s'il a des devis/factures liés.`,
-      confirmLabel: "Supprimer",
+      title: "Eliminar este cliente?",
+      description: `${name(c)} será eliminado. Impossível se tiver orçamentos/faturas associados.`,
+      confirmLabel: "Eliminar",
     }))) return;
     try { await api.delete(`/clients/${c.client_id}`); toast.success(t("crm.deleted")); load(q); }
     catch (e) { toast.error(e?.response?.data?.detail || t("crm.delete_fail")); }

@@ -30,7 +30,7 @@ export const TwoFaCard = () => {
         : "Adresse de réception réinitialisée (email du compte)");
     } catch (err) {
       const d = err?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Enregistrement impossible");
+      toast.error(typeof d === "string" ? d : "Impossível guardar");
     } finally { setSavingEmail(false); }
   };
 
@@ -41,7 +41,7 @@ export const TwoFaCard = () => {
       setUser(data.user);
       toast.success("Double authentification activée");
     } catch {
-      toast.error("Activation impossible");
+      toast.error("Ativação impossível");
     } finally { setBusy(false); }
   };
 
@@ -56,7 +56,7 @@ export const TwoFaCard = () => {
       toast.success("Double authentification désactivée");
     } catch (err) {
       const d = err?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Désactivation impossible");
+      toast.error(typeof d === "string" ? d : "Impossível desativar");
     } finally { setBusy(false); }
   };
 

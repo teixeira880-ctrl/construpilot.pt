@@ -38,7 +38,7 @@ export default function SmartProject() {
       if (data.analysis?.ceiling_height_m) setCeilingHeight(data.analysis.ceiling_height_m);
       setName(data.analysis?.summary?.slice(0, 48) || "Mon projet");
     } catch (e) {
-      toast.error("L'analyse IA a échoué. Réessayez.");
+      toast.error("A análise IA falhou. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -70,7 +70,7 @@ export default function SmartProject() {
       toast.success("Projet sauvegardé");
       navigate(`/projet/${data.project_id}`);
     } catch (e) {
-      toast.error("Sauvegarde impossible");
+      toast.error("Salvaguarda impossível");
     } finally {
       setSaving(false);
     }
@@ -79,7 +79,7 @@ export default function SmartProject() {
   return (
     <div className="grid gap-12">
       <div>
-        <SEO title="Smart Project IA — Devis chiffré en 30 s" description="Décrivez votre projet en 2 lignes : ConstruPilot le décompose en lots, calcule les surfaces, chiffre chaque poste et trouve les meilleurs prix matériaux. Gratuit." keywords="devis IA, smart project BTP, estimation automatique, projet rénovation IA, chiffrage instantané" canonical="/smart-project" />
+        <SEO title="Smart Project IA — Orçamento valorizado em 30 s" description="Décrivez votre projet en 2 lignes : ConstruPilot le décompose en lots, calcule les surfaces, chiffre chaque poste et trouve les meilleurs prix matériaux. Gratuit." keywords="devis IA, smart project BTP, estimation automatique, projet rénovation IA, chiffrage instantané" canonical="/smart-project" />
         <SectionTitle as="h1" over="ConstruPilot Smart Project" title="Décrivez votre projet, l'IA fait le reste">
           Liste des travaux, ordre d'exécution, budget, quantités, durée, ce que vous pouvez faire
           vous-même, risques et économies possibles.
@@ -188,7 +188,7 @@ export default function SmartProject() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button onClick={save} disabled={saving} data-testid="save-project-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                <Save className="h-4 w-4" /> {user ? "Enregistrer mon projet" : "Se connecter et enregistrer"}
+                <Save className="h-4 w-4" /> {user ? "Guardar o meu projeto" : "Entrar e guardar"}
               </Button>
               <Button
                 variant="outline"
@@ -214,7 +214,7 @@ export default function SmartProject() {
                     );
                     navigate("/prix?from=smart-project");
                   } catch (e) {
-                    toast.error("Impossible de récupérer les matériaux");
+                    toast.error("Impossível recuperar os materiais");
                     navigate("/prix");
                   }
                 }}

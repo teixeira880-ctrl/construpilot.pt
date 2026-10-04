@@ -73,7 +73,7 @@ export default function Admin() {
     }))) return;
     try {
       const { data } = await api.delete(`/admin/users/${u.user_id}`);
-      toast.success(`Conta ${u.email} supprimé · ${data.purged_total} enregistrement(s) purgé(s)`);
+      toast.success(`Conta ${u.email} eliminada · ${data.purged_total} registo(s) eliminado(s)`);
       load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Eliminação impossível"); }
   };
@@ -112,7 +112,7 @@ export default function Admin() {
     await api.post("/admin/suppliers", {
       ...newSup, shipping: Number(newSup.shipping), free_from: Number(newSup.free_from),
     });
-    toast.success("Fornecedor ajouté");
+    toast.success("Fornecedor adicionado");
     setNewSup({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
     load();
   };
@@ -468,7 +468,7 @@ export default function Admin() {
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6" data-testid="admin-lead-stats">
               {[
                 { label: "Total leads", value: leadStats.total, accent: false },
-                { label: "Via page d'accueil", value: leadStats.landing, accent: false },
+                { label: "Via página inicial", value: leadStats.landing, accent: false },
                 { label: "Particuliers", value: leadStats.particulier, accent: true },
                 { label: "Pros", value: leadStats.pro, accent: true },
                 { label: "Novos", value: leadStats.novo, accent: false },
@@ -502,7 +502,7 @@ export default function Admin() {
           )}
           <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="admin-leads-filter">
             {[["all", "Tous"], ["novo", "Novos"], ["contacté", "Contactés"],
-              ["devis envoyé", "Orçamento envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
+              ["orçamento enviado", "Orçamento enviado"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
               ["j2", "Relancés J+2"]].map(([v, lbl]) => (
               <button key={v} onClick={() => setLeadFilter(v)} data-testid={`admin-leads-filter-${v}`}
                 className={`px-3 py-1.5 rounded-sm text-xs font-semibold border transition-colors ${leadFilter === v ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/40"}`}>
@@ -548,7 +548,7 @@ export default function Admin() {
                   >
                     <SelectTrigger className="rounded-sm h-9 w-40" data-testid={`admin-lead-status-${l.lead_id}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["novo", "contacté", "visite planifiée", "devis envoyé", "gagné", "perdu"].map((s) => (
+                      {["novo", "contacté", "visite planifiée", "orçamento enviado", "gagné", "perdu"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
@@ -595,7 +595,7 @@ export default function Admin() {
                   </Button>
                   {l.email && (
                     <>
-                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Invitation envoyée à ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); } }}
+                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Convite enviado para ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); } }}
                               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
                               data-testid={`admin-lead-invite-send-${l.lead_id}`}>
                         <Mail className="h-3.5 w-3.5" /> Inviter à créer un compte{l.invited_at ? " ✓" : ""}
@@ -981,7 +981,7 @@ function InboxPanel() {
     catch { toast.error("Action impossível"); }
   };
   const deleteReview = async (id) => {
-    try { await api.delete(`/reviews/site/${id}`); toast.success("Avis supprimé"); loadPendingReviews(); }
+    try { await api.delete(`/reviews/site/${id}`); toast.success("Avaliação eliminada"); loadPendingReviews(); }
     catch { toast.error("Action impossível"); }
   };
 
@@ -1066,7 +1066,7 @@ function InboxPanel() {
                   ${s.signed ? "bg-green-500/15 text-green-600 border-green-500/40"
                              : s.opened_at ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
                                             : "bg-secondary text-muted-foreground border-border"}`}>
-                  {s.signed ? "signé" : s.opened_at ? "ouvert" : "envoyé"}
+                  {s.signed ? "signé" : s.opened_at ? "ouvert" : "enviado"}
                 </span>
               </div>
             )}

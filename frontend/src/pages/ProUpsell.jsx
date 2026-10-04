@@ -65,7 +65,7 @@ export default function ProUpsell() {
         plan_id: plan.plan_id, origin_url: window.location.origin,
       });
       if (data?.url) { window.location.href = data.url; return; }
-      toast.error("Impossible de démarrer le paiement");
+      toast.error("Impossível iniciar o pagamento");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Paiement indisponible");
     } finally { setBusyId(""); }
@@ -78,7 +78,7 @@ export default function ProUpsell() {
           <Lock className="h-8 w-8 text-primary" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold">
-          {analyse ? "Débloquez l'analyse de devis" : "Passez en compte Pro"}
+          {analyse ? "Desbloqueie a análise de orçamentos" : "Passez en compte Pro"}
         </h1>
         <p className="text-muted-foreground mt-3">
           {analyse

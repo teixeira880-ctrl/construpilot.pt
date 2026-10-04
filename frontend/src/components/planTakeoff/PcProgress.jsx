@@ -17,7 +17,7 @@ export const PcProgress = ({ planId, planning, progress }) => {
       await api.post(`/takeoffs/${planId}/pc-study/progress`, { done: [...next] });
       toast.success("Avancement mis à jour — visible par votre client");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Enregistrement impossible");
+      toast.error(e?.response?.data?.detail || "Impossível guardar");
       setDone(done);
     }
   };

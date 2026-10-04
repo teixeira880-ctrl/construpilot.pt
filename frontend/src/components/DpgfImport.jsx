@@ -22,7 +22,7 @@ export const DpgfImport = () => {
       setRes(data);
       toast.success(`${data.filled}/${data.line_count} lignes chiffrées — total ${eur(data.grand_total_ht)} HT`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import impossible (fichier .xlsx attendu)");
+      toast.error(e?.response?.data?.detail || "Importação impossível (é esperado um ficheiro .xlsx)");
     } finally { setBusy(false); }
   };
 
@@ -33,7 +33,7 @@ export const DpgfImport = () => {
       const a = document.createElement("a");
       a.href = url; a.download = "dpgf_rempli.xlsx"; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Téléchargement impossible"); }
+    } catch { toast.error("Transferência impossível"); }
   };
 
   return (

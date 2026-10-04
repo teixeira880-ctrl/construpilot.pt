@@ -46,7 +46,7 @@ const { data } = await api.post("/estimation", {
 console.log(data.data.total_avg);`;
 
 const USE_CASES = [
-  { icon: Package, title: "Distributeur matériaux",
+  { icon: Package, title: "Distribuidor de materiais",
     desc: "Ajoutez un simulateur de rénovation à votre site marchand. Convertissez les visiteurs en paniers moyens supérieurs grâce à l'estimation avant achat." },
   { icon: Zap, title: "Constructeur / Franchise",
     desc: "Estimez instantanément le budget d'un client dans votre showroom, générez un PDF marqué avec votre logo et transformez sur place." },
@@ -60,7 +60,7 @@ const CodeBlock = ({ code, testid }) => {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); toast.success("Copié"); }
-    catch { toast.error("Copie impossible"); }
+    catch { toast.error("Cópia impossível"); }
   };
   return (
     <div className="relative group">

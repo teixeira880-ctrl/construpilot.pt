@@ -30,7 +30,7 @@ export default function MyReviews() {
     api
       .get("/reviews/me")
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Impossible de charger vos avis"));
+      .catch(() => toast.error("Impossível carregar as suas avaliações"));
 
   useEffect(() => {
     if (user) load();
@@ -39,10 +39,10 @@ export default function MyReviews() {
   const togglePublish = async (r) => {
     try {
       await api.patch(`/reviews/${r.review_id}/publish`, { published: !r.published });
-      toast.success(!r.published ? "Avis affiché sur vos devis" : "Avis masqué");
+      toast.success(!r.published ? "Avaliação apresentada nos seus orçamentos" : "Avis masqué");
       load();
     } catch {
-      toast.error("Action impossible");
+      toast.error("Ação impossível");
     }
   };
 
@@ -117,7 +117,7 @@ export default function MyReviews() {
                         onClick={() => togglePublish(r)}
                         data-testid={`review-toggle-${r.review_id}`}>
                   {r.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  {r.published ? "Masquer" : "Afficher"}
+                  {r.published ? "Masquer" : "Mostrar"}
                 </Button>
               </div>
               {r.comment && (

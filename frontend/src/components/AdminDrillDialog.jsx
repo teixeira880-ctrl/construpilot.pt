@@ -124,17 +124,29 @@ export default function AdminDrillDialog({ metric, onClose }) {
   };
 
   const sendBulk = async () => {
-    if (selectedEmails.length === 0) { toast.error("Aucun destinataire sélectionné"); return; }
-    if (!subject.trim() || !message.trim()) { toast.error("Objet et message requis"); return; }
+    if (selectedEmails.length === 0) { toast.error("Nenhum destinatário selecionado"); return; }
+    if (!subject.trim() || !message.trim()) { toast.error("Assunto e mensagem obrigatórios"); return; }
     setSending(true);
     try {
       const { data: res } = await api.post("/admin/bulk-email", {
         recipients: selectedEmails, subject, message,
       });
-      toast.success(`${res.sent}/${res.total} e-mail(s) envoyé(s)${res.failed ? ` · ${res.failed} échec(s)` : ""}`);
+      const failed = res?.failed || 0;
+      const details = res?.failed_details || [];
+      if (failed > 0) {
+        const sample = details.slice(0, 3).map((d) => `${d.email}: ${(d.error || "").split(":")[0]}`).join(" · ");
+        toast.warning(
+          `${res.sent}/${res.total} e-mail(s) enviados · ${failed} falha(s)${sample ? ` — ${sample}` : ""}`,
+          { duration: 10000 },
+        );
+        // eslint-disable-next-line no-console
+        console.warn("[bulk-email] falhas:", details);
+      } else {
+        toast.success(`${res.sent}/${res.total} e-mail(s) enviados com sucesso`);
+      }
       setCompose(false); setSubject(""); setMessage(""); setSelected(new Set());
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally { setSending(false); }
   };
 
@@ -144,14 +156,14 @@ export default function AdminDrillDialog({ metric, onClose }) {
         <DialogContent className="max-w-[95vw] w-[1100px] max-h-[88vh] flex flex-col" data-testid="admin-drill-dialog">
           <DialogHeader>
             <DialogTitle data-testid="admin-drill-title">{data?.title || "Détails"}</DialogTitle>
-            <DialogDescription>{data?.description || "Chargement…"}</DialogDescription>
+            <DialogDescription>{data?.description || "Carregamento…"}</DialogDescription>
           </DialogHeader>
 
           {/* Recherche + actions */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[220px]">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom, e-mail, ville…)"
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar (nome, e-mail, cidade…)"
                      className="rounded-sm h-9 pl-9" data-testid="admin-drill-search" />
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1" data-testid="admin-drill-count">

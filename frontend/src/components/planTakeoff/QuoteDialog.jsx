@@ -39,7 +39,7 @@ export function QuoteDialog({
       <DialogContent className="rounded-sm max-w-md" data-testid="quote-dialog">
         <DialogHeader>
           <DialogTitle>
-            {quoteMode === "send" ? "Envoyer le devis par email" : "Générer un devis PDF"}
+            {quoteMode === "send" ? "Enviar o orçamento por email" : "Gerar um orçamento PDF"}
           </DialogTitle>
           <DialogDescription>
             Le devis reprend automatiquement les surfaces mesurées et applique la main
@@ -121,7 +121,7 @@ export function QuoteDialog({
               <div className="grid gap-2">
                 <Label>Objet email (optionnel)</Label>
                 <Input value={quoteSubject} onChange={(e) => setQuoteSubject(e.target.value)}
-                       placeholder="Ex : Votre devis pour la rénovation appartement Paris 11"
+                       placeholder="Ex: O seu orçamento para a renovação apartamento Paris 11"
                        maxLength={180}
                        data-testid="quote-subject-input" className="rounded-sm h-11" />
                 <p className="text-[10px] text-muted-foreground">
@@ -202,7 +202,7 @@ export function QuoteDialog({
                 </label>
               )}
               <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm">
-                Une copie sera envoyée à votre adresse pour trace. L'envoi est loggé dans l'historique.
+                Une copie sera envoyée à votre adresse pour trace. L'o envio é registado no'historique.
               </p>
 
               {quoteSends.length > 0 && (
@@ -282,13 +282,13 @@ export function QuoteDialog({
             <Button onClick={downloadQuotePdf} disabled={quoteBusy} data-testid="quote-download-btn"
                     className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <FileDown className="h-4 w-4" />
-              {quoteBusy ? "Génération…" : "Télécharger"}
+              {quoteBusy ? "Génération…" : "Descarregar"}
             </Button>
           ) : (
             <Button onClick={sendQuotePdf} disabled={quoteBusy || !quoteClientEmail}
                     data-testid="quote-send-btn"
                     className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              {quoteBusy ? "Envoi…" : "Envoyer au client"}
+              {quoteBusy ? "A enviar…" : "Enviar ao cliente"}
             </Button>
           )}
         </DialogFooter>

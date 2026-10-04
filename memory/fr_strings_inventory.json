@@ -1,0 +1,537 @@
+{
+  "total": 99,
+  "per_file": {
+    "App.js": 11,
+    "components/FeatureShowcase.jsx": 1,
+    "components/BrandingDialog.jsx": 2,
+    "components/StarterChecklist.jsx": 1,
+    "components/NotificationsBell.jsx": 1,
+    "components/Nav.jsx": 6,
+    "components/ImportDocumentsDialog.jsx": 1,
+    "components/DataManagementPanel.jsx": 2,
+    "components/pwa/MobileTabBar.jsx": 2,
+    "components/planTakeoff/StructuralTakeoffDialog.jsx": 1,
+    "components/planTakeoff/PcOrderDialog.jsx": 1,
+    "components/planTakeoff/EstimateDialog.jsx": 1,
+    "lib/blogArticles.js": 7,
+    "lib/cities.js": 2,
+    "lib/blogBodies.jsx": 4,
+    "pages/Dashboard.jsx": 4,
+    "pages/MyLeads.jsx": 1,
+    "pages/EInvoicing.jsx": 1,
+    "pages/Login.jsx": 2,
+    "pages/QuoteTracking.jsx": 8,
+    "pages/Calculators.jsx": 2,
+    "pages/ClientPortal.jsx": 1,
+    "pages/LandingPortugal.jsx": 1,
+    "pages/Admin.jsx": 1,
+    "pages/Welcome.jsx": 1,
+    "pages/LocalLanding.jsx": 2,
+    "pages/ClientDetail.jsx": 3,
+    "pages/PhotoMeasure.jsx": 1,
+    "pages/Entreprise.jsx": 12,
+    "pages/TechAnalysis.jsx": 2,
+    "pages/PlanTakeoff.jsx": 4,
+    "pages/Situations.jsx": 1,
+    "pages/Clients.jsx": 1,
+    "pages/Invoices.jsx": 4,
+    "pages/QuoteEditor.jsx": 4
+  },
+  "rows": [
+    {
+      "file": "App.js",
+      "line": 179,
+      "fr": "/suivi-chantier"
+    },
+    {
+      "file": "App.js",
+      "line": 191,
+      "fr": "/devis-travaux-:city"
+    },
+    {
+      "file": "App.js",
+      "line": 195,
+      "fr": "/devis"
+    },
+    {
+      "file": "App.js",
+      "line": 196,
+      "fr": "/factures"
+    },
+    {
+      "file": "App.js",
+      "line": 197,
+      "fr": "/factures-electroniques"
+    },
+    {
+      "file": "App.js",
+      "line": 199,
+      "fr": "/entreprise"
+    },
+    {
+      "file": "App.js",
+      "line": 206,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "App.js",
+      "line": 207,
+      "fr": "/devis-editeur/:docId"
+    },
+    {
+      "file": "App.js",
+      "line": 208,
+      "fr": "/scanner-devis"
+    },
+    {
+      "file": "App.js",
+      "line": 231,
+      "fr": "/fournisseur"
+    },
+    {
+      "file": "App.js",
+      "line": 235,
+      "fr": "/bienvenue"
+    },
+    {
+      "file": "components/FeatureShowcase.jsx",
+      "line": 18,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "components/BrandingDialog.jsx",
+      "line": 15,
+      "fr": "rge"
+    },
+    {
+      "file": "components/BrandingDialog.jsx",
+      "line": 291,
+      "fr": "{entreprise}"
+    },
+    {
+      "file": "components/StarterChecklist.jsx",
+      "line": 33,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "components/NotificationsBell.jsx",
+      "line": 114,
+      "fr": "/devis"
+    },
+    {
+      "file": "components/Nav.jsx",
+      "line": 21,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "components/Nav.jsx",
+      "line": 29,
+      "fr": "/entreprise"
+    },
+    {
+      "file": "components/Nav.jsx",
+      "line": 30,
+      "fr": "/devis"
+    },
+    {
+      "file": "components/Nav.jsx",
+      "line": 31,
+      "fr": "/factures"
+    },
+    {
+      "file": "components/Nav.jsx",
+      "line": 33,
+      "fr": "/suivi-chantier"
+    },
+    {
+      "file": "components/Nav.jsx",
+      "line": 51,
+      "fr": "/scanner-devis"
+    },
+    {
+      "file": "components/ImportDocumentsDialog.jsx",
+      "line": 228,
+      "fr": "/devis-editeur/${r.doc_id}"
+    },
+    {
+      "file": "components/DataManagementPanel.jsx",
+      "line": 57,
+      "fr": "entreprise-data-management"
+    },
+    {
+      "file": "components/DataManagementPanel.jsx",
+      "line": 78,
+      "fr": "/devis-editeur/${q.doc_id}"
+    },
+    {
+      "file": "components/pwa/MobileTabBar.jsx",
+      "line": 10,
+      "fr": "/devis"
+    },
+    {
+      "file": "components/pwa/MobileTabBar.jsx",
+      "line": 11,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "components/planTakeoff/StructuralTakeoffDialog.jsx",
+      "line": 78,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "components/planTakeoff/PcOrderDialog.jsx",
+      "line": 72,
+      "fr": "commandes@negoce.fr"
+    },
+    {
+      "file": "components/planTakeoff/EstimateDialog.jsx",
+      "line": 118,
+      "fr": "estimate-to-devis-btn"
+    },
+    {
+      "file": "lib/blogArticles.js",
+      "line": 25,
+      "fr": "estimer-chantier-5-min"
+    },
+    {
+      "file": "lib/blogArticles.js",
+      "line": 47,
+      "fr": "devis-tva-10-mode-emploi"
+    },
+    {
+      "file": "lib/blogArticles.js",
+      "line": 91,
+      "fr": "re2020-renovation-guide"
+    },
+    {
+      "file": "lib/blogArticles.js",
+      "line": 92,
+      "fr": "RE2020 e renovação: o que os profissionais têm mesmo de saber"
+    },
+    {
+      "file": "lib/blogArticles.js",
+      "line": 99,
+      "fr": "RE2020 renovação, regulamentação ambiental 2020, Bbio renovação, Cep obras, isolamento RE2020, profissional RE2020"
+    },
+    {
+      "file": "lib/blogArticles.js",
+      "line": 102,
+      "fr": "chauffage-re2020-quel-choix"
+    },
+    {
+      "file": "lib/blogArticles.js",
+      "line": 103,
+      "fr": "Aquecimento & RE2020 em 2026: bomba de calor, pellets, radiadores — a escolha certa"
+    },
+    {
+      "file": "lib/cities.js",
+      "line": 95,
+      "fr": "Nouvelle-Aquitaine"
+    },
+    {
+      "file": "lib/cities.js",
+      "line": 130,
+      "fr": "Île de Nantes (ZAC): Bbio máximo imposto mais exigente do que a RE2020 nacional."
+    },
+    {
+      "file": "lib/blogBodies.jsx",
+      "line": 78,
+      "fr": "estimer-chantier-5-min"
+    },
+    {
+      "file": "lib/blogBodies.jsx",
+      "line": 207,
+      "fr": "devis-tva-10-mode-emploi"
+    },
+    {
+      "file": "lib/blogBodies.jsx",
+      "line": 448,
+      "fr": "re2020-renovation-guide"
+    },
+    {
+      "file": "lib/blogBodies.jsx",
+      "line": 510,
+      "fr": "chauffage-re2020-quel-choix"
+    },
+    {
+      "file": "pages/Dashboard.jsx",
+      "line": 110,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "pages/Dashboard.jsx",
+      "line": 111,
+      "fr": "/devis-editeur?type=invoice"
+    },
+    {
+      "file": "pages/Dashboard.jsx",
+      "line": 112,
+      "fr": "/factures"
+    },
+    {
+      "file": "pages/Dashboard.jsx",
+      "line": 239,
+      "fr": "/scanner-devis"
+    },
+    {
+      "file": "pages/MyLeads.jsx",
+      "line": 51,
+      "fr": "/devis-editeur?client=${data.client_id}"
+    },
+    {
+      "file": "pages/EInvoicing.jsx",
+      "line": 214,
+      "fr": "/factures"
+    },
+    {
+      "file": "pages/Login.jsx",
+      "line": 34,
+      "fr": "/bienvenue"
+    },
+    {
+      "file": "pages/Login.jsx",
+      "line": 95,
+      "fr": "/bienvenue"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 84,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 93,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 110,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 117,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 235,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 307,
+      "fr": "/devis-editeur/${send.invoice_doc_id}"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 349,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "pages/QuoteTracking.jsx",
+      "line": 398,
+      "fr": "/devis-editeur/${d.doc_id}"
+    },
+    {
+      "file": "pages/Calculators.jsx",
+      "line": 178,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/Calculators.jsx",
+      "line": 231,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/ClientPortal.jsx",
+      "line": 167,
+      "fr": "/devis/signer/${q.signature_token}"
+    },
+    {
+      "file": "pages/LandingPortugal.jsx",
+      "line": 71,
+      "fr": "/scanner-devis"
+    },
+    {
+      "file": "pages/Admin.jsx",
+      "line": 59,
+      "fr": "/devis-editeur?client=${data.client_id}"
+    },
+    {
+      "file": "pages/Welcome.jsx",
+      "line": 29,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "pages/LocalLanding.jsx",
+      "line": 51,
+      "fr": "/devis-travaux-${c.slug}"
+    },
+    {
+      "file": "pages/LocalLanding.jsx",
+      "line": 162,
+      "fr": "/devis-travaux-${x.slug}"
+    },
+    {
+      "file": "pages/ClientDetail.jsx",
+      "line": 71,
+      "fr": "/devis-editeur/${inv.doc_id}"
+    },
+    {
+      "file": "pages/ClientDetail.jsx",
+      "line": 119,
+      "fr": "/devis-editeur/${d.doc_id}"
+    },
+    {
+      "file": "pages/ClientDetail.jsx",
+      "line": 163,
+      "fr": "/devis-editeur?client=${clientId}"
+    },
+    {
+      "file": "pages/PhotoMeasure.jsx",
+      "line": 60,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 30,
+      "fr": "/devis"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 31,
+      "fr": "/factures"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 33,
+      "fr": "/suivi-chantier"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 118,
+      "fr": "entreprise-locked"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 122,
+      "fr": "entreprise-upgrade-btn"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 131,
+      "fr": "entreprise-page"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 145,
+      "fr": "entreprise-kpis"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 159,
+      "fr": "entreprise-modules"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 172,
+      "fr": "entreprise-team"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 241,
+      "fr": "entreprise-activity"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 278,
+      "fr": "entreprise-subscription"
+    },
+    {
+      "file": "pages/Entreprise.jsx",
+      "line": 283,
+      "fr": "entreprise-manage-sub"
+    },
+    {
+      "file": "pages/TechAnalysis.jsx",
+      "line": 41,
+      "fr": "commandes"
+    },
+    {
+      "file": "pages/TechAnalysis.jsx",
+      "line": 62,
+      "fr": "commandes"
+    },
+    {
+      "file": "pages/PlanTakeoff.jsx",
+      "line": 1463,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/PlanTakeoff.jsx",
+      "line": 2244,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/PlanTakeoff.jsx",
+      "line": 2637,
+      "fr": "/devis-editeur"
+    },
+    {
+      "file": "pages/PlanTakeoff.jsx",
+      "line": 4098,
+      "fr": "/devis-editeur?plan=${plan.plan_id}&client=${data.client_id}"
+    },
+    {
+      "file": "pages/Situations.jsx",
+      "line": 245,
+      "fr": "/devis-editeur/${s.invoice_doc_id}"
+    },
+    {
+      "file": "pages/Clients.jsx",
+      "line": 169,
+      "fr": "/devis-editeur?client=${c.client_id}"
+    },
+    {
+      "file": "pages/Invoices.jsx",
+      "line": 132,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/Invoices.jsx",
+      "line": 211,
+      "fr": "/devis-editeur?type=invoice"
+    },
+    {
+      "file": "pages/Invoices.jsx",
+      "line": 218,
+      "fr": "/factures-electroniques"
+    },
+    {
+      "file": "pages/Invoices.jsx",
+      "line": 295,
+      "fr": "/devis-editeur/${inv.doc_id}"
+    },
+    {
+      "file": "pages/QuoteEditor.jsx",
+      "line": 151,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/QuoteEditor.jsx",
+      "line": 275,
+      "fr": "/devis-editeur/${d.doc_id}"
+    },
+    {
+      "file": "pages/QuoteEditor.jsx",
+      "line": 485,
+      "fr": "/devis-editeur/${data.doc_id}"
+    },
+    {
+      "file": "pages/QuoteEditor.jsx",
+      "line": 635,
+      "fr": "/devis"
+    }
+  ]
+}

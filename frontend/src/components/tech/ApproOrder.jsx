@@ -30,7 +30,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
     try {
       const { data } = await api.post("/pro/appro/price", { items, supplier_id: supplierId || null, overrides: ov });
       setPriced(data);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Chiffrage impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Orçamentação impossível"); }
     finally { setBusy(false); }
   };
 
@@ -65,8 +65,8 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
     try {
       const o = await createOrder(supplierId || null);
       setOrder(o);
-      toast.success("Bon de commande créé (brouillon)");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Impossible de créer le bon"); }
+      toast.success("Nota de encomenda criada (rascunho)");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível criar a nota"); }
     finally { setBusy(false); }
   };
 
@@ -75,7 +75,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
     if (!o) {
       setBusy(true);
       try { o = await createOrder(supplierId || null); setOrder(o); }
-      catch (e) { toast.error(e?.response?.data?.detail || "Impossible de créer le bon"); setBusy(false); return; }
+      catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível criar a nota"); setBusy(false); return; }
       setBusy(false);
     }
     setToEmail(supplier?.email || "");
@@ -83,16 +83,16 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
   };
 
   const sendEmail = async () => {
-    if (!toEmail) return toast.error("Adresse e-mail du fournisseur requise");
+    if (!toEmail) return toast.error("E-mail do fornecedor necessário");
     setBusy(true);
     try {
       await api.post(`/pro/appro/orders/${order.order_id}/email`, {
         to: toEmail, cc_self: ccSelf,
         priced_items: priced ? priced.items : null,
       });
-      toast.success(`Bon de commande envoyé à ${toEmail}`);
+      toast.success(`Nota de encomenda enviada para ${toEmail}`);
       setEmailOpen(false);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível enviar"); }
     finally { setBusy(false); }
   };
 
@@ -163,7 +163,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
         <Button size="sm" variant="outline" onClick={doCreateOrder} disabled={busy} className="gap-2 rounded-sm" data-testid="appro-create-order-btn"><ShoppingCart className="h-4 w-4" />Créer le bon</Button>
         <Button size="sm" onClick={openEmail} disabled={busy} className="gap-2 rounded-sm" data-testid="appro-email-btn"><Mail className="h-4 w-4" />Envoyer au fournisseur</Button>
       </div>
-      <p className="text-[11px] text-muted-foreground">Aucune commande n'est envoyée sans votre validation dans l'aperçu.</p>
+      <p className="text-[11px] text-muted-foreground">Aucune commande n'é enviada sem a sua validação no'aperçu.</p>
 
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
         <DialogContent data-testid="appro-email-dialog">
@@ -171,7 +171,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
           <div className="space-y-3 text-sm">
             <div>
               <label className="text-xs text-muted-foreground">Destinataire (fournisseur)</label>
-              <Input value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="email@fournisseur.fr" className="h-9" data-testid="appro-email-to" />
+              <Input value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="email@fornecedor.pt" className="h-9" data-testid="appro-email-to" />
             </div>
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={ccSelf} onChange={(e) => setCcSelf(e.target.checked)} data-testid="appro-email-cc" />

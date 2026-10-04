@@ -24,15 +24,15 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
       const qs = new URLSearchParams({ level: levelIndex, supplier, notes }).toString();
       const res = await fetch(`${base}/api/takeoffs/${planId}/pc-study/purchase-order?${qs}`,
         { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
-      if (!res.ok) throw new Error((await res.json())?.detail || "Génération impossible");
+      if (!res.ok) throw new Error((await res.json())?.detail || "Impossível gerar");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `bon-commande-${levelName}.pdf`;
+      a.href = url; a.download = `nota-de-encomenda-${levelName}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      toast.success("Bon de commande téléchargé");
-    } catch (e) { toast.error(e.message || "Génération impossible"); }
+      toast.success("Ordem de encomenda descarregada");
+    } catch (e) { toast.error(e.message || "Impossível gerar"); }
     finally { setBusy(false); }
   };
 
@@ -44,9 +44,9 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
         level_index: levelIndex, supplier_email: email.trim(),
         supplier_name: supplier, notes,
       });
-      toast.success(`Bon de commande ${data.ref} envoyé à ${data.sent_to} — ${data.total_ht} € HT`);
+      toast.success(`Nota de encomenda ${data.ref} enviada para ${data.sent_to} — ${data.total_ht} € s/ IVA`);
       onClose();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível enviar"); }
     finally { setBusy(false); }
   };
 

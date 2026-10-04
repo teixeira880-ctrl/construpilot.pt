@@ -154,7 +154,7 @@ export function MultiPlanDialog({
                   data-testid="multi-consolidated-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <FileText className="h-4 w-4" />
-            {consolidatedBusy ? "Création…" : `Devis consolidé (${multiSelected.length})`}
+            {consolidatedBusy ? "Création…" : `Orçamento consolidado (${multiSelected.length})`}
           </Button>
         </DialogFooter>
       </DialogContent>

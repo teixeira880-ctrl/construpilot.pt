@@ -34,7 +34,7 @@ export const DevicesList = () => {
       toast.success("Appareil retiré de l'historique");
       load();
     } catch {
-      toast.error("Suppression impossible");
+      toast.error("Eliminação impossível");
     }
   };
 
@@ -46,7 +46,7 @@ export const DevicesList = () => {
       toast.success("Tous les autres appareils ont été déconnectés");
       load();
     } catch {
-      toast.error("Opération impossible");
+      toast.error("Operação impossível");
     } finally {
       setBusy(false);
     }

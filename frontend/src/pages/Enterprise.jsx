@@ -25,7 +25,7 @@ export default function Enterprise() {
       await api.post("/enterprise/contact", form);
       setOk(true);
       toast.success("Merci — notre équipe vous recontacte sous 48 h");
-    } catch (err) { toast.error(err?.response?.data?.detail || "Envoi impossible"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Impossível enviar"); }
     finally { setBusy(false); }
   };
 
@@ -125,7 +125,7 @@ export default function Enterprise() {
           <Textarea rows={3} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="rounded-sm" />
         </div>
         <Button type="submit" disabled={busy} data-testid="ent-submit" className="rounded-sm gap-2 justify-self-start hover:bg-orange-600 hover:text-white">
-          <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Envoyer ma demande"}
+          <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o meu pedido"}
           <ArrowRight className="h-4 w-4" />
         </Button>
         <p className="text-xs text-muted-foreground">

@@ -123,7 +123,7 @@ export default function PcSignPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             Établie le {String(data.generated_at || "").slice(0, 10)}
-            {data.planning?.total_days ? ` · chantier estimé ${data.planning.total_days} jours (${data.planning.total_weeks} semaines)` : ""}
+            {data.planning?.total_days ? ` · obra estimada em ${data.planning.total_days} dias (${data.planning.total_weeks} semanas)` : ""}
           </p>
         </header>
 

@@ -50,8 +50,8 @@ export function MarketingTeaser() {
             <Smartphone className="h-4 w-4" /> ConstruPilot Mobile
           </div>
           <h2 className="font-display text-3xl lg:text-5xl font-bold tracking-tight leading-tight">
-            {pt ? "Orçamente uma obra" : "Chiffrez un chantier"} <br />
-            <span className="text-primary italic">{pt ? "a partir da obra." : "depuis le chantier."}</span>
+            {pt ? "Orçamente uma obra" : "Orçamente uma obra"} <br />
+            <span className="text-primary italic">{pt ? "a partir da obra." : "desde a obra."}</span>
           </h2>
           <p className="mt-5 text-base text-muted-foreground max-w-md leading-relaxed">
             {pt
@@ -61,7 +61,7 @@ export function MarketingTeaser() {
           <ul className="mt-8 grid gap-2 text-sm text-muted-foreground">
             {(pt
               ? ["Análise IA de estrutura em 8 s", "Render 3D fotorrealista (Nano Banana)", "Orçamento assinado + PDF enviado por e-mail"]
-              : ["Analyse IA gros œuvre en 8 s", "Rendu 3D photoréaliste (Nano Banana)", "Devis signé + PDF envoyé par email"]
+              : ["Analyse IA gros œuvre en 8 s", "Rendu 3D photoréaliste (Nano Banana)", "Orçamento assinado + PDF enviado por email"]
             ).map((f) => (
               <li key={f} className="flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" /> {f}
@@ -112,7 +112,7 @@ export function MarketingTeaser() {
                       <Play className="h-7 w-7 text-primary fill-primary" />
                     </div>
                     <p className="mt-4 font-display font-bold text-lg">
-                      {pt ? "Pré-visualização da app" : "Aperçu de l'app"}
+                      {pt ? "Pré-visualização da app" : "Pré-visualização da app"}
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       {pt ? "Vídeo indisponível neste navegador" : "Vidéo indisponible sur ce navigateur"}

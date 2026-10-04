@@ -57,7 +57,7 @@ export default function Calculators() {
       navigate("/login");
       return false;
     }
-    toast.info("Fonction Premium — passez à une offre payante pour l'utiliser 🔒");
+    toast.info("Função Premium — passe para uma oferta paga para a utilizar 🔒");
     navigate("/tarifs");
     return false;
   };
@@ -159,7 +159,7 @@ export default function Calculators() {
       name: active.name,
       materials: result.materials.map((m) => ({ name: m.name, quantity: m.quantity, unit: m.unit })),
     }]);
-    toast.success(`« ${active.name} » ajouté à la sélection`);
+    toast.success(`«${active.name}» adicionado à seleção`);
   };
 
   const buildGroupedQuote = async () => {
@@ -172,9 +172,9 @@ export default function Calculators() {
         unit_price_ht: 0, vat_rate: 10, category: entry.name,
       })));
       const { data } = await api.post("/documents", {
-        doc_type: "quote", title: `Devis — ${cart.map((e) => e.name).join(" + ")}`, lines,
+        doc_type: "quote", title: `Orçamento — ${cart.map((e) => e.name).join(" + ")}`, lines,
       });
-      toast.success("Devis groupé créé — complétez les prix");
+      toast.success("Orçamento agrupado criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch { toast.error("Não foi possível criar o orçamento"); }
     finally { setAddingQuote(false); }
@@ -207,7 +207,7 @@ export default function Calculators() {
       a.href = url; a.download = `fiche-calcul-${active.key}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Export PDF impossible"); }
+    } catch { toast.error("Impossível exportar PDF"); }
     finally { setBusyPdf(false); }
   };
 
@@ -225,9 +225,9 @@ export default function Calculators() {
         unit_price_ht: 0, vat_rate: 10, category: active.name,
       }));
       const { data } = await api.post("/documents", {
-        doc_type: "quote", title: `Devis — ${active.name}`, lines,
+        doc_type: "quote", title: `Orçamento — ${active.name}`, lines,
       });
-      toast.success("Devis créé — complétez les prix");
+      toast.success("Orçamento criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch { toast.error("Não foi possível criar o orçamento"); }
     finally { setAddingQuote(false); }

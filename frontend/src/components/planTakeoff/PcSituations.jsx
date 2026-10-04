@@ -29,11 +29,11 @@ export const PcSituations = ({ planId }) => {
     try {
       const { data: r } = await api.post(`/takeoffs/${planId}/pc-study/situations`,
         solde ? { solde: true } : { pct_cumul: parseFloat(pct) });
-      toast.success(`Facture ${r.situation.invoice_no} de ${eur(r.situation.amount)} émise`
-        + (r.emailed ? " et envoyée au client" : " (aucun email client — envoyez d'abord l'étude)"));
+      toast.success(`Fatura ${r.situation.invoice_no} de ${eur(r.situation.amount)} emitida`
+        + (r.emailed ? " e enviada ao cliente" : " (sem email do cliente — envie primeiro o estudo)"));
       setPct("");
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Facturation impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível faturar"); }
     finally { setBusy(false); }
   };
 
@@ -108,7 +108,7 @@ export const PcSituations = ({ planId }) => {
           </div>
         ) : (
           <p className="text-xs text-emerald-600 font-semibold" data-testid="pc-situations-complete">
-            ✓ 100 % du marché facturé{b.remaining_to_pay <= 0.01 ? " et encaissé — chantier soldé !" : " — en attente d'encaissement."}
+            ✓ 100 % du marché facturé{b.remaining_to_pay <= 0.01 ? " e recebida — obra liquidada!" : " — en attente d'encaissement."}
           </p>
         )}
         <p className="text-[10px] text-muted-foreground">

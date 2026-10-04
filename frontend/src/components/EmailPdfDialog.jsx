@@ -39,7 +39,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
       toast.success(`Orçamento enviado a ${form.to}`);
       setOpen(false);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Envoi impossible");
+      toast.error(err?.response?.data?.detail || "Impossível enviar");
     } finally {
       setBusy(false);
     }
@@ -86,7 +86,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
             Depuis <b>onboarding@resend.dev</b> · le destinataire reçoit le PDF en pièce jointe.
           </div>
           <Button type="submit" disabled={busy} data-testid="email-pdf-send" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Envoyer le devis"}
+            <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o orçamento"}
           </Button>
         </form>
       </DialogContent>

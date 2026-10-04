@@ -38,7 +38,7 @@ export default function ApiKeys() {
       toast.success("Clé créée — copiez-la, elle ne sera plus affichée");
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Impossible de créer la clé");
+      toast.error(err?.response?.data?.detail || "Não foi possível criar a chave");
     } finally { setBusy(false); }
   };
 
@@ -48,15 +48,15 @@ export default function ApiKeys() {
       const { data } = await api.post(`/api-keys/${prefix}/rotate`);
       setFreshKey(data);
       load();
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
   const revoke = async (prefix) => {
     if (!confirm("Révoquer cette clé ? Les appels échoueront immédiatement.")) return;
     try { await api.delete(`/api-keys/${prefix}`); load(); }
-    catch { toast.error("Impossible"); }
+    catch { toast.error("Impossível"); }
   };
 
-  const copy = async (v) => { try { await navigator.clipboard.writeText(v); toast.success("Copié"); } catch { toast.error("Copie impossible"); } };
+  const copy = async (v) => { try { await navigator.clipboard.writeText(v); toast.success("Copié"); } catch { toast.error("Cópia impossível"); } };
 
   if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
 

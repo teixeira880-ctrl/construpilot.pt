@@ -33,7 +33,7 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
       toast.success("Demande transmise à ConstruPilot — un conseiller vous contacte sous 48 h.");
       setOpen(false);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Envoi impossible");
+      toast.error(err?.response?.data?.detail || "Impossível enviar");
     } finally {
       setBusy(false);
     }
@@ -87,7 +87,7 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
             <Textarea rows={4} value={form.description} onChange={set("description")} data-testid="lead-description-input" className="rounded-sm" />
           </div>
           <Button type="submit" disabled={busy} data-testid="submit-lead-btn" className="rounded-sm hover:bg-orange-600 hover:text-white">
-            {busy ? "Envoi…" : "Envoyer ma demande"}
+            {busy ? "A enviar…" : "Enviar o meu pedido"}
           </Button>
         </form>
       </DialogContent>

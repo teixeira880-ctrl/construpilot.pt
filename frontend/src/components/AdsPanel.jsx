@@ -56,7 +56,7 @@ export default function AdsPanel() {
   };
 
   const save = async () => {
-    if (!form.name.trim()) return toast.error("Nom requis");
+    if (!form.name.trim()) return toast.error("Nome obrigatório");
     setSaving(true);
     const payload = {
       name: form.name, platform: form.platform, status: form.status,
@@ -73,7 +73,7 @@ export default function AdsPanel() {
         toast.success("Campagne ajoutée");
       }
       setOpen(false); setForm(EMPTY); setEditingId(null); load();
-    } catch { toast.error("Erreur"); } finally { setSaving(false); }
+    } catch { toast.error("Erro"); } finally { setSaving(false); }
   };
   const del = async () => {
     if (!toDelete) return;
@@ -220,7 +220,7 @@ export default function AdsPanel() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editingId ? "Modifier la campagne" : "Nouvelle campagne"}</DialogTitle>
+          <DialogHeader><DialogTitle>{editingId ? "Modificar a campanha" : "Nova campanha"}</DialogTitle>
             <DialogDescription>Renseignez la dépense et les leads pour calculer le coût par lead.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">

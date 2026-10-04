@@ -20,18 +20,18 @@ const STATUS_STYLE = {
   "acceptée": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
   "ouverte": "bg-sky-500/15 text-sky-600 border-sky-500/40",
   "relancée": "bg-amber-500/15 text-amber-600 border-amber-500/40",
-  "envoyée": "bg-primary/10 text-primary border-primary/40",
+  "enviada": "bg-primary/10 text-primary border-primary/40",
   "générée": "bg-muted text-muted-foreground border-border",
 };
 const STATUS_ICON = {
   "paga": BadgeCheck, "sinal pago": CreditCard, "aceite": CheckCircle2, "aberta": Eye,
   "reenviada": BellRing, "enviada": Send, "gerada": FileStack,
   "soldée": BadgeCheck, "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
-  "relancée": BellRing, "envoyée": Send, "générée": FileStack,
+  "relancée": BellRing, "enviada": Send, "générée": FileStack,
 };
 const STATUS_LABEL = {
   "soldée": "paga", "acompte versé": "sinal pago", "acceptée": "aceite",
-  "ouverte": "aberta", "relancée": "reenviada", "envoyée": "enviada", "générée": "gerada",
+  "ouverte": "aberta", "relancée": "reenviada", "enviada": "enviada", "générée": "gerada",
 };
 
 export default function PcDashboard() {

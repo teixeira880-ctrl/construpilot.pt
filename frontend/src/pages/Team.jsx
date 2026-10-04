@@ -58,7 +58,7 @@ export default function Team() {
       setOpenCreate(false); setNewName("");
       await refresh();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Création impossible");
+      toast.error(e?.response?.data?.detail || "Criação impossível");
     } finally { setBusy(false); }
   };
 
@@ -71,7 +71,7 @@ export default function Team() {
       setOpenJoin(false); setJoinCode("");
       await refresh();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Impossible de rejoindre");
+      toast.error(e?.response?.data?.detail || "Impossível aderir");
     } finally { setBusy(false); }
   };
 
@@ -82,7 +82,7 @@ export default function Team() {
       toast.success("Vous avez quitté l'équipe");
       await refresh();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Impossible de quitter");
+      toast.error(e?.response?.data?.detail || "Impossível sair");
     }
   };
 
@@ -93,21 +93,21 @@ export default function Team() {
       toast.success("Membre retiré");
       await refresh();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Suppression impossible");
+      toast.error(e?.response?.data?.detail || "Eliminação impossível");
     }
   };
 
   const transferOwnership = async (uid, name) => {
     if (!window.confirm(
       `Transférer la propriété de l'équipe à ${name || uid} ?\n\n` +
-      `Vous deviendrez admin. Cette action est réversible uniquement si le nouveau propriétaire vous re-transfère la propriété.`
+      `Passará a ser administrador. Esta ação só é reversível se o novo proprietário lhe voltar a transferir a propriedade.`
     )) return;
     try {
       await api.post("/organizations/transfer-ownership", { new_owner_user_id: uid });
       toast.success(`Propriété transférée à ${name}`);
       await refresh();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Transfert impossible");
+      toast.error(e?.response?.data?.detail || "Transferência impossível");
     }
   };
 
@@ -118,11 +118,11 @@ export default function Team() {
       const { data } = await api.post("/organizations/invite",
         { email: inviteEmail.trim(), role: inviteRole });
       toast.success(data.email_status === "sent"
-        ? `Invitation envoyée à ${inviteEmail}`
+        ? `Convite enviado para ${inviteEmail}`
         : `Code communiqué : partagez-le manuellement`);
       setOpenInvite(false); setInviteEmail("");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Invitation impossible");
+      toast.error(e?.response?.data?.detail || "Convite impossível");
     } finally { setBusy(false); }
   };
 
@@ -132,7 +132,7 @@ export default function Team() {
       await navigator.clipboard.writeText(state.org_code);
       setCopied(true); setTimeout(() => setCopied(false), 1500);
       toast.success("Code copié");
-    } catch { toast.error("Copie impossible"); }
+    } catch { toast.error("Cópia impossível"); }
   };
 
   if (loading) return <div className="surface p-10 text-center">Chargement…</div>;
@@ -290,13 +290,13 @@ export default function Team() {
                   <DialogHeader>
                     <DialogTitle>Inviter un collègue</DialogTitle>
                     <DialogDescription>
-                      L'invitation lui sera envoyée par email avec le code de l'équipe.
+                      L'convite ser-lhe-á enviado por e-mail com o código de'équipe.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-2">
                     <Label>Email</Label>
                     <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
-                           placeholder="collegue@entreprise.fr" data-testid="team-invite-email"
+                           placeholder="colega@empresa.pt" data-testid="team-invite-email"
                            className="rounded-sm h-11" />
                   </div>
                   <DialogFooter>

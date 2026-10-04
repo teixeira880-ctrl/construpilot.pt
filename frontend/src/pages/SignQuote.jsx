@@ -111,10 +111,10 @@ export default function SignQuote() {
       await axios.post(`${API}/quotes/public/sign/${token}`, {
         signature_b64: b64, signer_name: signerName.trim(),
       });
-      toast.success("Devis signé avec succès !");
+      toast.success("Orçamento assinado com sucesso!");
       await reload();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Signature impossible");
+      toast.error(e?.response?.data?.detail || "Assinatura impossível");
     } finally { setSigning(false); }
   };
 
@@ -131,7 +131,7 @@ export default function SignQuote() {
             {data.company_name || "ConstruPilot"}
           </p>
           <h1 className="font-display text-4xl sm:text-5xl font-extrabold mt-2">
-            {data.signed ? "Devis signé" : "Signature de votre devis"}
+            {data.signed ? "Orçamento assinado" : "Assinatura do seu orçamento"}
           </h1>
           {data.contact_line && (
             <p className="text-xs text-muted-foreground mt-2">{data.contact_line}</p>
@@ -234,7 +234,7 @@ export default function SignQuote() {
                                  hover:bg-orange-600 transition disabled:opacity-40 disabled:cursor-not-allowed
                                  inline-flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
-                {signing ? "Envoi…" : "Bon pour accord"}
+                {signing ? "A enviar…" : "Bon pour accord"}
               </button>
             </div>
             <p className="text-[10px] text-muted-foreground border-t border-border pt-3">

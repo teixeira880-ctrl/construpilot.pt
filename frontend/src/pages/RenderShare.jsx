@@ -11,7 +11,7 @@ function Comparator({ beforeSrc, afterSrc }) {
       {/* Après (définit la hauteur) */}
       <img src={afterSrc} alt="après travaux" className="w-full block pointer-events-none" />
       {/* Avant (superposé, rogné à droite) */}
-      <img src={beforeSrc} alt="chantier actuel"
+      <img src={beforeSrc} alt="obra atual"
            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
            style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }} />
       {/* Ligne + poignée */}
@@ -76,7 +76,7 @@ export default function RenderShare() {
               <div className="grid md:grid-cols-2 gap-6">
                 <figure className="space-y-2">
                   <figcaption className="text-xs uppercase tracking-wide text-neutral-400">Aujourd'hui</figcaption>
-                  <img src={inputSrc} alt="chantier actuel" className="w-full rounded-xl border border-white/10" data-testid="render-share-before" />
+                  <img src={inputSrc} alt="obra atual" className="w-full rounded-xl border border-white/10" data-testid="render-share-before" />
                 </figure>
                 <figure className="space-y-2">
                   <figcaption className="text-xs uppercase tracking-wide text-primary">Après travaux</figcaption>

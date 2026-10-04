@@ -27,10 +27,10 @@ import { usePermissions } from "@/context/PermissionContext";
 import { toast } from "sonner";
 
 const QUICK = [
-  { key: "devis", to: "/devis", label: "Orçamentos & seguimento", icon: FileText },
-  { key: "factures", to: "/factures", label: "Faturas", icon: FileText },
+  { key: "orçamentos", to: "/devis", label: "Orçamentos & seguimento", icon: FileText },
+  { key: "faturas", to: "/factures", label: "Faturas", icon: FileText },
   { key: "situations", to: "/situations", label: "Situações de obra", icon: Layers },
-  { key: "chantier", to: "/suivi-chantier", label: "Seguimento de obra", icon: ClipboardList },
+  { key: "obra", to: "/suivi-chantier", label: "Seguimento de obra", icon: ClipboardList },
   { key: "rh", to: "/rh", label: "RH & Registo de ponto", icon: HardHat },
   { key: "catalogue", to: "/mon-catalogue", label: "Catálogo de preços", icon: Tag },
 ];

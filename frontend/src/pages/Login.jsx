@@ -48,7 +48,7 @@ export default function Login() {
         const isPro = acct === "pro" || acct === "pro_business";
         if (isPro) {
           if (!form.siret || form.siret.replace(/[ .\-]/g, "").length !== 14) {
-            toast.error("SIRET requis (14 chiffres) pour un compte pro");
+            toast.error("SIRET obrigatório (14 dígitos) para uma conta profissional");
             setBusy(false); return;
           }
           if (!form.kbis || !form.decennale) {
@@ -68,11 +68,11 @@ export default function Login() {
             await api.post("/auth/kyc/submit", fd, { headers: { "Content-Type": "multipart/form-data" } });
             toast.success("Documents envoyés — validation sous 24-48h");
           } catch {
-            toast.warning("Compte créé, mais l'envoi des documents a échoué. Renvoyez-les depuis votre compte.");
+            toast.warning("Conta criada, mas o envio dos documentos falhou. Reenvie-os a partir da sua conta.");
           }
         }
         if (ref) {
-          toast.success(`Code parrainage ${ref.toUpperCase()} appliqué — bienvenue !`);
+          toast.success(`Código de referência ${ref.toUpperCase()} aplicado — bem-vindo!`);
           sessionStorage.removeItem("construpilot_ref");
         }
         // Envoi de la demande de travaux mise en attente avant l'inscription
@@ -112,7 +112,7 @@ export default function Login() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="relative hidden lg:block grain">
-        <img src={IMAGES.dashboard_banner} alt="Plans de chantier" className="absolute inset-0 h-full w-full object-cover opacity-50" />
+        <img src={IMAGES.dashboard_banner} alt="Plantas de obra" className="absolute inset-0 h-full w-full object-cover opacity-50" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20" />
         <div className="relative h-full p-12 flex flex-col justify-between">
           <Link to="/" className="flex items-center gap-2 w-fit">

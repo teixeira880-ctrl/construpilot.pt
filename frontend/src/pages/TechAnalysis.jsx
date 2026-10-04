@@ -38,7 +38,7 @@ export default function TechAnalysis() {
   const loadSuppliers = () => api.get("/pro/suppliers").then(({ data }) => setSuppliers(data.items || [])).catch(() => {});
 
   const tabs = [["acier", "Ferraillage / Acier"], ["etancheite", "Étanchéité"],
-  ["toiture", "Toiture"], ["vrd", "VRD / Réseaux"], ["commandes", "Commandes"], ["fournisseurs", "Mes fournisseurs"]];
+  ["toiture", "Toiture"], ["vrd", "VRD / Réseaux"], ["commandes", "Encomendas"], ["fournisseurs", "Mes fournisseurs"]];
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6" data-testid="tech-analysis-page">
@@ -76,7 +76,7 @@ const SupplierManager = ({ suppliers, reload }) => {
       const payload = { ...form, categories: form.categories || [], price_list: (form.price_list || []).filter((r) => r.label) };
       if (editId) await api.put(`/pro/suppliers/${editId}`, payload);
       else await api.post("/pro/suppliers", payload);
-      toast.success(editId ? "Fornecedor mis à jour" : "Fornecedor ajouté");
+      toast.success(editId ? "Fornecedor mis à jour" : "Fornecedor adicionado");
       setForm(empty); setEditId(null); reload();
     } catch { toast.error("Impossível"); }
   };
@@ -94,7 +94,7 @@ const SupplierManager = ({ suppliers, reload }) => {
   return (
     <div className="grid lg:grid-cols-2 gap-5" data-testid="suppliers-tab">
       <div className="surface p-4 space-y-2">
-        <h3 className="font-bold mb-1">{editId ? "Editar le fournisseur" : "Adicionar un fournisseur"}</h3>
+        <h3 className="font-bold mb-1">{editId ? "Editar o fornecedor" : "Adicionar um fornecedor"}</h3>
         {[["name", "Nom *"], ["agency", "Agence"], ["client_number", "N° client"], ["email", "Email"], ["phone", "Téléphone"], ["delivery_address", "Adresse de livraison"]].map(([k, l]) => (
           <div key={k}><label className="text-xs text-muted-foreground">{l}</label>
             <Input value={form[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className="h-8" data-testid={`supplier-${k}`} /></div>

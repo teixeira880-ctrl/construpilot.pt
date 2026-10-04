@@ -251,10 +251,16 @@ class BulkEmailBody(BaseModel):
 
 @router.post("/bulk-email")
 async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> dict:
-    """Envoie un e-mail promotionnel à une liste de contacts sélectionnés dans le détail admin."""
+    """Envia um e-mail promocional a uma lista de contactos.
+
+    Captura o motivo de cada falha e devolve-o em `failed_details`, para o painel
+    admin apresentar o erro Resend (ex: *bounced*, *rate_limited*, *invalid_to*)
+    e não apenas um contador opaco.
+    """
     import re
     import asyncio
     from engines.emailer import send_email, wrap_html
+
     seen: set[str] = set()
     emails: list[str] = []
     for e in body.recipients or []:
@@ -264,38 +270,63 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
             emails.append(e)
     emails = emails[:200]
     if not emails:
-        raise HTTPException(400, "Aucun destinataire valide")
+        raise HTTPException(400, "Nenhum destinatário válido.")
     subject = (body.subject or "").strip()[:200] or "ConstruPilot"
     msg_html = (body.message or "").strip()
     if not msg_html:
-        raise HTTPException(400, "Message vide")
+        raise HTTPException(400, "Mensagem vazia.")
     html = wrap_html(subject, msg_html.replace("\n", "<br>"),
-                     unsubscribe_url=f"{os.getenv('FRONTEND_URL', '')}/desinscription")
+                     unsubscribe_url=f"{os.getenv('FRONTEND_URL', '')}/desinscricao")
 
-    async def _one(addr: str) -> bool:
+    import logging
+    _log = logging.getLogger("admin.bulk_email")
+
+    async def _one(addr: str) -> tuple[bool, str | None, str | None]:
         try:
-            await send_email(addr, subject, html)
-            return True
-        except Exception:  # noqa: BLE001
-            return False
+            r = await send_email(addr, subject, html)
+            return True, (r or {}).get("id"), None
+        except Exception as e:  # noqa: BLE001
+            err = f"{type(e).__name__}: {str(e)[:160]}"
+            _log.warning("bulk_email failed to=%s · %s", addr, err)
+            return False, None, err
 
     sent = 0
+    failed_details: list[dict] = []
+    sent_ids: list[str] = []
     for i in range(0, len(emails), 10):
         chunk = emails[i:i + 10]
-        res = await asyncio.gather(*[_one(a) for a in chunk])
-        sent += sum(1 for r in res if r)
+        results = await asyncio.gather(*[_one(a) for a in chunk])
+        for addr, (ok, mid, err) in zip(chunk, results):
+            if ok:
+                sent += 1
+                if mid:
+                    sent_ids.append(mid)
+            else:
+                failed_details.append({"email": addr, "error": err or "unknown"})
+        # Resend rate limit: 10 req/s. Esperamos 1.1 s entre chunks de 10
+        # para evitar HTTP 429 Too Many Requests.
+        if i + 10 < len(emails):
+            await asyncio.sleep(1.1)
+
+    campaign_id = "camp_" + os.urandom(5).hex()
     await db.email_campaigns.insert_one({
-        "campaign_id": "camp_" + os.urandom(5).hex(),
+        "campaign_id": campaign_id,
         "subject": subject,
         "message": msg_html[:5000],
         "recipients_count": len(emails),
         "recipients_sample": emails[:50],
         "sent": sent,
         "failed": len(emails) - sent,
+        "failed_details": failed_details[:200],
+        "sent_ids": sent_ids[:200],
         "sent_by": (admin or {}).get("email") or (admin or {}).get("user_id"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
-    return {"ok": True, "sent": sent, "failed": len(emails) - sent, "total": len(emails)}
+    return {
+        "ok": True, "campaign_id": campaign_id,
+        "sent": sent, "failed": len(emails) - sent, "total": len(emails),
+        "failed_details": failed_details[:50],
+    }
 
 
 @router.get("/campaigns")
@@ -924,19 +955,33 @@ from pydantic import BaseModel, Field
 
 # Whitelist rígida — MONGO_URL / JWT_SECRET / VAPID_* NUNCA editáveis por aqui.
 ALLOWED_SECRETS: set[str] = {
+    # LLM / Pesquisa
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
     "PERPLEXITY_API_KEY",
     "CLAUDE_MODEL",
     "CLAUDE_EFFORT",
-    "ELEVENLABS_API_KEY",
-    "RESEND_API_KEY",
-    "CLOUDCONVERT_API_KEY",
     "TAVILY_API_KEY",
+    # Autodesk Platform Services (Plans Pro · Sprint 3)
+    "AUTODESK_CLIENT_ID",
+    "AUTODESK_CLIENT_SECRET",
+    "AUTODESK_CALLBACK_URL",
+    # E-mail / notificações
+    "RESEND_API_KEY",
+    "RESEND_WEBHOOK_SECRET",
+    "ADMIN_ALERT_EMAIL",
+    "SENDER_EMAIL",
+    # TTS / voz
+    "ELEVENLABS_API_KEY",
+    # Doc convert
+    "CLOUDCONVERT_API_KEY",
+    # SMS
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
     "SMS_TO_API_KEY",
+    # Pagamentos
     "STRIPE_SECRET_KEY",
+    # Outros
     "AUTOSEO_WEBHOOK_TOKEN",
     "GITHUB_PAT",
 }

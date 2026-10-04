@@ -28,16 +28,16 @@ export default function OrdersTab({ suppliers = [] }) {
   const toggle = (id, on) => setSelected((prev) => (on ? [...prev, id] : prev.filter((x) => x !== id)));
 
   const merge = async () => {
-    if (selected.length < 2) return toast.error("Sélectionnez au moins 2 commandes");
+    if (selected.length < 2) return toast.error("Selecione pelo menos 2 encomendas");
     setBusy(true);
     try {
       const { data } = await api.post("/pro/appro/orders/merge", {
         order_ids: selected, project: project.trim(), supplier_id: supplierId || null,
       });
-      toast.success(`Commande fusionnée — ${data.item_count} lignes (${data.merged_count} bons)`);
+      toast.success(`Encomenda agrupada — ${data.item_count} linhas (${data.merged_count} notas)`);
       setSelected([]); setProject(""); load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Fusion impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível agrupar");
     } finally { setBusy(false); }
   };
 
@@ -45,16 +45,16 @@ export default function OrdersTab({ suppliers = [] }) {
     try {
       await api.patch(`/pro/appro/orders/${id}/status`, { status });
       setOrders((prev) => prev.map((o) => (o.order_id === id ? { ...o, status } : o)));
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
 
   const del = async (id) => {
-    if (!window.confirm("Supprimer ce bon de commande ?")) return;
+    if (!window.confirm("Eliminar esta nota de encomenda?")) return;
     try {
       await api.delete(`/pro/appro/orders/${id}`);
       setOrders((prev) => prev.filter((o) => o.order_id !== id));
       setSelected((prev) => prev.filter((x) => x !== id));
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
 
   return (
@@ -107,7 +107,7 @@ export default function OrdersTab({ suppliers = [] }) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-semibold text-sm truncate">
-                        {o.project || TYPE_LBL[o.type] || "Commande"}
+                        {o.project || TYPE_LBL[o.type] || "Encomenda"}
                       </span>
                       <span className="text-[10px] font-bold uppercase bg-secondary px-1.5 py-0.5 rounded">
                         {TYPE_LBL[o.type] || o.type}
@@ -128,7 +128,7 @@ export default function OrdersTab({ suppliers = [] }) {
                           data-testid={`order-status-${o.order_id}`}
                           className={`text-[11px] font-bold rounded-full px-2 py-1 border-0 cursor-pointer ${STATUS[o.status] || STATUS.brouillon}`}>
                     <option value="brouillon">Brouillon</option>
-                    <option value="envoyé">Envoyée</option>
+                    <option value="enviado">Envoyée</option>
                     <option value="confirmé">Confirmée</option>
                   </select>
                   <button onClick={() => del(o.order_id)} data-testid={`order-delete-${o.order_id}`}>

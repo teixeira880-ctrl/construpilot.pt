@@ -83,7 +83,7 @@ export default function Situations() {
     setBusy(true);
     try {
       const { data } = await api.post("/situations", { marche_id: marcheId, lines, retention_pct: Number(retention) || 0 });
-      toast.success(`Situation n°${data.seq} créée — facture ${data.invoice_number}`);
+      toast.success(`Auto de medição n.º ${data.seq} criado — fatura ${data.invoice_number}`);
       await refreshMarche(); loadRetentions();
     } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
     finally { setBusy(false); }
@@ -135,7 +135,7 @@ export default function Situations() {
     catch { toast.error("Erro"); }
   };
   const remindRet = async (mid) => {
-    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Relance envoyée à ${data.to}` : "Email não enviado (cliente sem email ou serviço indisponível)"); }
+    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Lembrete enviado para ${data.to}` : "Email não enviado (cliente sem email ou serviço indisponível)"); }
     catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
 
@@ -259,7 +259,7 @@ export default function Situations() {
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="avancement-kpis">
                 <Kpi label="Montante marché HT" value={eur(summary.totals.contract_ht)} />
-                <Kpi label="Déjà facturé HT" value={eur(summary.totals.billed_ht)} accent />
+                <Kpi label="Já faturado s/ IVA" value={eur(summary.totals.billed_ht)} accent />
                 <Kpi label="Restante a facturar" value={eur(summary.totals.remaining_ht)} />
                 <Kpi label="Caução retida" value={eur(summary.totals.retention_held)} />
               </div>

@@ -225,7 +225,7 @@ export default function PcStudyDialog({ open, onClose, study, busy, onRun, onDow
                         <td className="p-1.5 text-right">
                           <button onClick={() => setOrderLevel(i)}
                                   className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-orange-600 transition underline underline-offset-2"
-                                  title="Générer le bon de commande matériaux de ce niveau"
+                                  title="Gerar a nota de encomenda de materiais deste nível"
                                   data-testid={`pc-level-${i}-order-btn`}>
                             <PackageOpen className="h-3 w-3" /> Commander
                           </button>

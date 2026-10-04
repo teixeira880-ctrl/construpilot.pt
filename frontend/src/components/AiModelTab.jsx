@@ -57,9 +57,9 @@ export default function AiModelTab() {
         alert_email: alertEmail.trim(),
       });
       setBudget(res);
-      toast.success("Budget IA enregistré");
+      toast.success("Orçamento IA guardado");
     } catch {
-      toast.error("Enregistrement du budget impossible");
+      toast.error("Impossível guardar orçamento");
     } finally {
       setSavingBudget(false);
     }
@@ -73,7 +73,7 @@ export default function AiModelTab() {
       setData((d) => ({ ...d, current: res.current }));
       toast.success("Modèle IA mis à jour");
     } catch {
-      toast.error("Échec de la mise à jour du modèle");
+      toast.error("Falha na atualização do modelo");
     } finally {
       setSaving("");
     }

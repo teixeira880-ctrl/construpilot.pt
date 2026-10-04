@@ -54,14 +54,14 @@ export default function PresetPicker({
         toast.info(`Vous avez déjà ${data.already_had} modèles`);
       }
     } catch (e) {
-      toast.error("Import impossible");
+      toast.error("Impossível importar");
     } finally {
       setLoading(false);
     }
   };
 
   const create = async () => {
-    if (!newName.trim()) return toast.error("Nom requis");
+    if (!newName.trim()) return toast.error("Nome obrigatório");
     const kind = kinds[0] || "other";
     try {
       const body = {
@@ -77,18 +77,18 @@ export default function PresetPicker({
       setNewName(""); setNewPrice(""); setCreating(false);
       await load();
     } catch {
-      toast.error("Création impossible");
+      toast.error("Criação impossível");
     }
   };
 
   const remove = async (preset_id) => {
-    if (!window.confirm("Supprimer ce modèle ?")) return;
+    if (!window.confirm("Eliminar este modelo?")) return;
     try {
       await api.delete(`/tool-presets/${preset_id}`);
-      toast.success("Modèle supprimé");
+      toast.success("Modelo eliminado");
       await load();
     } catch {
-      toast.error("Suppression impossible");
+      toast.error("Eliminação impossível");
     }
   };
 
@@ -133,8 +133,8 @@ export default function PresetPicker({
             {filtered.length === 0 && (
               <div className="text-center py-6 text-xs text-muted-foreground px-4">
                 {presets.length === 0
-                  ? "Aucun modèle. Cliquez « Modèles d'usine » pour démarrer avec 6 presets prêts."
-                  : `Aucun modèle de type ${kinds.join(", ")}. Créez-en un.`}
+                  ? "Nenhum modelo. Clique «Modelos de fábrica» para começar com 6 predefinições prontas."
+                  : `Nenhum modelo do tipo ${kinds.join(", ")}. Crie um.`}
               </div>
             )}
             {filtered.map((p) => (

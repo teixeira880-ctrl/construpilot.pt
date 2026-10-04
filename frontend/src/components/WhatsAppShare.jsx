@@ -94,7 +94,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
       setStats(s);
       toast.success("Lien de partage prêt");
     } catch {
-      toast.error("Impossible de générer le lien");
+      toast.error("Impossível gerar o link");
     } finally {
       setBusy(false);
     }
@@ -137,20 +137,20 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
     try {
       const { data } = await api.post(`/projects/${projectId}/share/sms`,
         { to: p, message: displayMsg });
-      toast.success(`SMS envoyé (${data.status})`);
+      toast.success(`SMS enviado (${data.status})`);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Envoi impossible");
+      toast.error(err?.response?.data?.detail || "Impossível enviar");
     } finally { setBusy(false); }
   };
 
   const copyMsg = async () => {
     try { await navigator.clipboard.writeText(displayMsg); toast.success("Message copié"); }
-    catch { toast.error("Copie impossible"); }
+    catch { toast.error("Cópia impossível"); }
   };
   const copyLink = async () => {
     if (!link) return;
     try { await navigator.clipboard.writeText(link); toast.success("Lien copié"); }
-    catch { toast.error("Copie impossible"); }
+    catch { toast.error("Cópia impossível"); }
   };
 
   return (
@@ -280,7 +280,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
                     data-testid="sms-twilio-btn"
                     className="w-full rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <Send className="h-4 w-4" />
-              {smsCfg.twilio_enabled ? "Envoyer via Twilio (serveur)" : "Twilio non configuré"}
+              {smsCfg.twilio_enabled ? "Enviar via Twilio (servidor)" : "Twilio non configuré"}
             </Button>
             {!smsCfg.twilio_enabled && (
               <p className="text-xs text-muted-foreground text-center">

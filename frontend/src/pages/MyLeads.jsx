@@ -34,7 +34,7 @@ export default function MyLeads() {
       await api.put(`/leads/${lead.lead_id}/handling`, { handling_status: status });
       toast.success(status === "acceptee" ? "Demande prise en charge" : status === "refusee" ? "Demande refusée" : "Mise à jour");
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Action impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Ação impossível"); }
     finally { setBusy(""); }
   };
 
@@ -49,7 +49,7 @@ export default function MyLeads() {
         notes: l.description || "",
       });
       navigate(`/devis-editeur?client=${data.client_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Création impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
   };
 
   return (

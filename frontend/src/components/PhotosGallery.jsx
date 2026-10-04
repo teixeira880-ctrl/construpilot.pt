@@ -164,7 +164,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
       toast.success(`Photo ajoutée${gain}`);
       load();
     } catch {
-      toast.error("Upload impossible");
+      toast.error("Carregamento impossível");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -172,11 +172,11 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
   };
 
   const remove = async (photo) => {
-    if (!confirm("Supprimer cette photo ?")) return;
+    if (!confirm("Eliminar esta fotografia?")) return;
     try {
       await api.delete(`/projects/${projectId}/photos/${photo.photo_id}`);
       setPhotos((p) => p.filter((x) => x.photo_id !== photo.photo_id));
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Eliminação impossível"); }
   };
 
   const lotOptions = useMemo(() => {
@@ -242,7 +242,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
           <Button onClick={() => inputRef.current?.click()} disabled={uploading}
                   data-testid="photo-upload-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Upload className="h-4 w-4" /> {uploading ? "Envoi…" : "Choisir une photo"}
+            <Upload className="h-4 w-4" /> {uploading ? "A enviar…" : "Escolher uma foto"}
           </Button>
           <p className="text-xs text-muted-foreground self-center">
             JPG, PNG, WEBP · compressé automatiquement (~150 Ko) · associez un lot pour comparer avant/après

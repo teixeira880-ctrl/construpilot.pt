@@ -370,7 +370,7 @@ export default function QuoteEditor() {
       const blob = new Blob(chunksRef.current, { type: rec.mimeType || (recMode === "audio" ? "audio/webm" : "video/webm") });
       const isMp4 = (rec.mimeType || "").includes("mp4");
       const ext = recMode === "audio" ? (isMp4 ? "m4a" : "webm") : (isMp4 ? "mp4" : "webm");
-      const file = new File([blob], `chantier-${Date.now()}.${ext}`, { type: blob.type });
+      const file = new File([blob], `obra-${Date.now()}.${ext}`, { type: blob.type });
       closeRecorder();
       if (blob.size > 0) reviewVideo(file);
     };
@@ -495,7 +495,7 @@ export default function QuoteEditor() {
       const res = await api.get(`/documents/${d.doc_id}/pdf?lang=${lang}`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis.pdf`; a.click();
+      a.href = url; a.download = `orcamento.pdf`; a.click();
       URL.revokeObjectURL(url);
       toast.success(t("crm.pdf_ok"));
     } catch { toast.error(t("crm.pdf_fail")); }

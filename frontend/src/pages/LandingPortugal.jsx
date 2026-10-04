@@ -377,7 +377,7 @@ export default function LandingPortugal() {
               <span className="text-primary italic">{t("landing.master_video.title_b", "réinventée.")}</span>
             </h2>
             <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed">
-              {t("landing.master_video.subtitle", "En 30 secondes, découvrez comment chiffrer, editar et piloter vos chantiers avec l'IA.")}
+              {t("landing.master_video.subtitle", "Em 30 segundos, descubra como orçamentar, editar e gerir as suas obras com IA.")}
             </p>
           </motion.div>
 
@@ -441,7 +441,7 @@ export default function LandingPortugal() {
                   t("landing.video.step1", "Import du plan PDF / DWG — tout est préservé (cotes, cartouche)"),
                   t("landing.video.step2", "Calibrage de l'échelle en 2 clics"),
                   t("landing.video.step3", "Análise automatique : compartimentos, paredes, poteaux, poutres, escaliers"),
-                  t("landing.video.step4", "Medição chiffré (béton, coffrage, aços) et devis en 1 clic"),
+                  t("landing.video.step4", "Medição orçamentada (betão, cofragem, aço) e orçamento num clique"),
                 ].map((s, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-foreground" data-testid={`video-step-${i}`}>
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">{i + 1}</span>
@@ -515,7 +515,7 @@ export default function LandingPortugal() {
           <p className="overline">{t("landing.feat.overline", "L'arsenal complet")}</p>
           <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
             {t("landing.feat.title_a", "Des outils de professionnel,")} <br className="hidden md:block" />
-            <span className="text-muted-foreground">{t("landing.feat.title_b", "repensés pour l'efficacité.")}</span>
+            <span className="text-muted-foreground">{t("landing.feat.title_b", "repensados para a eficiência.")}</span>
           </h2>
         </div>
 
@@ -649,7 +649,7 @@ export default function LandingPortugal() {
               
               <div className="p-6 border border-primary/30 rounded-2xl bg-primary/5 backdrop-blur-sm flex flex-col justify-center shadow-inner relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
-                <p className="text-xs uppercase font-bold tracking-wider text-primary mb-4">{t("landing.cmp.diy_cost", "Coût DIY (Matériaux purs)")}</p>
+                <p className="text-xs uppercase font-bold tracking-wider text-primary mb-4">{t("landing.cmp.diy_cost", "Custo DIY (Materiais puros)")}</p>
                 <p className="num text-3xl font-extrabold text-primary">{eur(5800)}</p>
                 <div className="mt-4 inline-flex items-center text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-md w-fit">
                   <TrendingDown className="h-3 w-3 mr-1" /> {t("landing.cmp.savings", "Économie")} {eur(4700)}

@@ -35,8 +35,8 @@ export default function LocalLanding() {
       "name": `Services BTP ${c.name}`,
       "itemListElement": [
         { "@type": "Offer", "name": "Estimation travaux gratuite" },
-        { "@type": "Offer", "name": "Devis rénovation chiffré" },
-        { "@type": "Offer", "name": "Comparateur prix matériaux" },
+        { "@type": "Offer", "name": "Orçamento renovação calculado" },
+        { "@type": "Offer", "name": "Comparador de preços de materiais" },
         { "@type": "Offer", "name": "Métré 2D depuis plan" },
       ],
     },
@@ -45,7 +45,7 @@ export default function LocalLanding() {
   return (
     <>
       <SEO
-        title={`Devis travaux ${c.name} — Estimation rénovation en 30 s`}
+        title={`Orçamento de obras ${c.name} — Estimativa de remodelação em 30 s`}
         description={`Estimez vos travaux à ${c.name} en 30 secondes. Prix moyen rénovation ${c.name} : ${c.priceRange} €/m². Devis IA gratuit, ${c.artisans.toLocaleString("pt-PT")} artisans référencés en ${c.region}.`}
         keywords={`devis travaux ${c.name}, prix rénovation ${c.name}, artisan ${c.name}, devis rénovation ${c.department}, coût travaux ${c.name}, ${c.region} BTP`}
         canonical={`/devis-travaux-${c.slug}`}
@@ -96,7 +96,7 @@ export default function LocalLanding() {
           <Stat icon={Users} value={c.artisans.toLocaleString("pt-PT")}
                 label={`Artisans en ${c.region}`} />
           <Stat icon={Building2} value={c.surface} label={`Surface ${c.name}`} />
-          <Stat icon={Zap} value="30 s" label="Devis chiffré instantané" />
+          <Stat icon={Zap} value="30 s" label="Orçamento orçamentado instantâneo" />
         </div>
       </section>
 

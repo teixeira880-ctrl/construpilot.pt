@@ -44,9 +44,9 @@ const KycForm = ({ onSaved }) => {
         zones: form.zones.split(",").map((s) => s.trim()).filter(Boolean),
         years_experience: form.years_experience ? Number(form.years_experience) : null,
       });
-      toast.success("Dossier envoyé — vérification sous 48 h");
+      toast.success("Processo enviado — verificação em 48 h");
       onSaved();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Impossible"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Impossível"); }
     finally { setBusy(false); }
   };
   return (
@@ -100,7 +100,7 @@ const KycForm = ({ onSaved }) => {
         </div>
       </div>
       <Button type="submit" disabled={busy} data-testid="kyc-submit" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-        <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Soumettre mon dossier"}
+        <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Soumettre mon dossier"}
       </Button>
       <p className="text-xs text-muted-foreground">
         Après vérification (48 h), vous recevez le badge <b>ConstruPilot Verified</b> et accédez aux leads qualifiés.
@@ -127,16 +127,16 @@ export default function ProPortal() {
       const { data } = await api.post("/pro/credits/checkout",
         { amount_cents: cents, origin_url: window.location.origin });
       window.location.href = data.url;
-    } catch (err) { toast.error(err?.response?.data?.detail || "Impossible"); setBusy(false); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Impossível"); setBusy(false); }
   };
 
   const buy = async (leadId) => {
-    if (!confirm("Confirmer l'achat de ce lead ?")) return;
+    if (!confirm("Confirmar a compra deste contacto?")) return;
     try {
       await api.post("/marketplace/leads/buy", { lead_id: leadId });
       toast.success("Lead débloqué — les coordonnées sont désormais visibles");
       load();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Achat impossible"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Compra impossível"); }
   };
 
   if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;

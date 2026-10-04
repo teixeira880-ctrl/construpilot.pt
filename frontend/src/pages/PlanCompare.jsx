@@ -56,7 +56,7 @@ export default function PlanCompare() {
       setAfterImage(afterPage.image_png_b64);
       setAfterMime(afterPage.img_mime || "image/png");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Comparaison impossible");
+      toast.error(e?.response?.data?.detail || "Comparação impossível");
     } finally { setBusy(false); }
   };
 
@@ -184,7 +184,7 @@ export default function PlanCompare() {
           <Label>Plan existant (avant)</Label>
           <Select value={beforeId} onValueChange={setBeforeId}>
             <SelectTrigger className="rounded-sm h-11" data-testid="compare-before-select">
-              <SelectValue placeholder="Choisir un plan…" />
+              <SelectValue placeholder="Escolher uma planta…" />
             </SelectTrigger>
             <SelectContent>
               {plans.map(p => (
@@ -200,7 +200,7 @@ export default function PlanCompare() {
           <Label>Plan projet (après)</Label>
           <Select value={afterId} onValueChange={setAfterId}>
             <SelectTrigger className="rounded-sm h-11" data-testid="compare-after-select">
-              <SelectValue placeholder="Choisir un plan…" />
+              <SelectValue placeholder="Escolher uma planta…" />
             </SelectTrigger>
             <SelectContent>
               {plans.map(p => (

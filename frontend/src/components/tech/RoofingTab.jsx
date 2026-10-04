@@ -39,7 +39,7 @@ export default function RoofingTab({ plans, suppliers }) {
         egout_ml: data.lengths?.egout_ml || 0,
       });
       toast.success("Toiture analysée");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Analyse impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Análise impossível"); }
     finally { setBusy(false); }
   };
 
@@ -49,7 +49,7 @@ export default function RoofingTab({ plans, suppliers }) {
         { surface_projetee_m2: surface, pente_pct: pente, material, loss_pct: loss, ...lg });
       setCmd(data);
       toast.success("Bordereau recalculé");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Calcul impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Cálculo impossível"); }
   };
 
   const createOrder = async (supplierId) => {

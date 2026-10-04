@@ -66,7 +66,7 @@ export default function QuoteTracking() {
   };
   const deleteQuote = async (doc) => {
     if (!(await confirm({
-      title: "Eliminar ce devis ?",
+      title: "Eliminar este orçamento?",
       description: `O orçamento ${doc.number || ""} será eliminado definitivamente.`,
       confirmLabel: "Eliminar",
     }))) return;
@@ -125,7 +125,7 @@ export default function QuoteTracking() {
       await api.post(`/documents/${send.doc_id}/send`, {
         client_email: send.client_email, client_name: send.client_name || "",
       });
-      toast.success("Nouvel envoi lancé ✅");
+      toast.success("Novo envio lançado ✅");
       await load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Envio impossível");
@@ -212,7 +212,7 @@ export default function QuoteTracking() {
     try {
       await api.post(`/reviews/request/${send.log_id}`);
       setCompleted((prev) => new Set(prev).add(send.log_id));
-      toast.success("Obra terminé — demande d'avis envoyée au client 🎉");
+      toast.success("Obra concluída — pedido de avaliação enviado ao cliente 🎉");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Action impossível");
     }
@@ -230,7 +230,7 @@ export default function QuoteTracking() {
         { vat_rate: Number(invoiceVat) });
       toast.success(data.already
         ? "Fatura déjà créée — ouverture de l'editor"
-        : `Fatura ${data.number || ""} créée desde le devis 🎉`);
+        : `Fatura ${data.number || ""} criada a partir do orçamento 🎉`);
       setInvoiceSend(null);
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
@@ -274,7 +274,7 @@ export default function QuoteTracking() {
             <button onClick={() => retrySend(send)} disabled={retrying === send.log_id}
                     data-testid={`retry-send-${send.log_id}`}
                     className="text-[10px] px-2 py-0.5 rounded-sm border border-red-500/40 text-red-600 font-semibold">
-              {retrying === send.log_id ? "Envoi…" : "Tentar novamente"}
+              {retrying === send.log_id ? "A enviar…" : "Tentar novamente"}
             </button>
           </div>
         )}
@@ -316,7 +316,7 @@ export default function QuoteTracking() {
                   onClick={() => { setInvoiceVat("10"); setInvoiceSend(send); }}
                   data-testid={`convert-invoice-${send.log_id}`}>
             <Receipt className="h-3 w-3" />
-            {invoicing === send.log_id ? "Conversion…" : "Convertir en facture"}
+            {invoicing === send.log_id ? "Conversion…" : "Converter em fatura"}
           </Button>
         )}
         {showComplete && (
@@ -342,7 +342,7 @@ export default function QuoteTracking() {
   return (
     <div className="grid gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle over="Suivi Orçamento" title="Où en sont vos devis envoyés ?">
+        <SectionTitle over="Suivi Orçamento" title="Em que ponto estão os seus orçamentos enviados?">
           Toutes les propositions envoyées à vos clients, organisées par état d'avancement.
           Relancez au bon moment grâce au suivi d'ouverture et de signature.
         </SectionTitle>
@@ -353,7 +353,7 @@ export default function QuoteTracking() {
         </Link>
         <ImportDocumentsDialog triggerLabel="Importar PDF" onImported={load} />
         <label className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-sm px-3 py-2"
-               data-testid="auto-remind-toggle" title="Relance automatique par e-mail des devis envoyés non signés">
+               data-testid="auto-remind-toggle" title="Relançamento automático por e-mail dos orçamentos enviados não assinados">
           <Switch checked={autoRemind} onCheckedChange={toggleAutoRemind} data-testid="auto-remind-switch" />
           Relances auto
           {autoRemind && (
@@ -417,7 +417,7 @@ export default function QuoteTracking() {
                   </select>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => facturer(d)}
-                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Transformer en facture"}
+                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Transformar em fatura"}
                           data-testid={`quote-invoice-${d.doc_id}`}>
                     <Receipt className="h-3.5 w-3.5" /> Facturer
                   </Button>

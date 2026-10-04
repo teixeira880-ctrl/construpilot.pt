@@ -14,7 +14,7 @@ export default function Referrals() {
   useEffect(() => {
     api.get("/referrals/me")
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Impossible de charger votre parrainage"))
+      .catch(() => toast.error("Impossível carregar o seu patrocínio"))
       .finally(() => setBusy(false));
   }, []);
 
@@ -28,7 +28,7 @@ export default function Referrals() {
 
   const shareWhatsapp = () => {
     if (!data?.share_url) return;
-    const text = `Salut ! J'utilise ConstruPilot pour chiffrer mes chantiers en 30 s. Essaie avec mon lien : ${data.share_url}`;
+    const text = `Olá! Uso o ConstruPilot para orçamentar as minhas obras em 30 s. Experimenta com o meu link: ${data.share_url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -38,8 +38,8 @@ export default function Referrals() {
     window.location.href = `mailto:?subject=${encodeURIComponent("Découvrez ConstruPilot")}&body=${encodeURIComponent(body)}`;
   };
 
-  if (busy) return <div className="grid gap-10"><SectionTitle title="Chargement…" /></div>;
-  if (!data) return <div className="grid gap-10"><SectionTitle title="Erreur de chargement" /></div>;
+  if (busy) return <div className="grid gap-10"><SectionTitle title="Carregamento…" /></div>;
+  if (!data) return <div className="grid gap-10"><SectionTitle title="Erro de carregamento" /></div>;
 
   const progress = Math.min(100, (data.bonus_days_earned / data.bonus_days_cap) * 100);
   const monthsEarned = Math.floor(data.bonus_days_earned / 30);

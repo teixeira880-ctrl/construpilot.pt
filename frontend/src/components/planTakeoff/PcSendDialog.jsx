@@ -25,20 +25,20 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
 
   const saveTemplate = async () => {
     const body = message.trim();
-    if (!body) return toast.error("Écrivez d'abord un message à enregistrer");
+    if (!body) return toast.error("Escreva primeiro uma mensagem para registar");
     const name = body.split("\n")[0].slice(0, 40) || "Modèle";
     try {
       const { data } = await api.post("/emails/templates", { name, body });
       setTemplates((prev) => [data.template, ...prev]);
-      toast.success(`Modèle enregistré : ${data.template.name}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossible"); }
+      toast.success(`Modelo guardado: ${data.template.name}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível guardar"); }
   };
 
   const deleteTemplate = async (templateId) => {
     try {
       await api.delete(`/emails/templates/${templateId}`);
       setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Eliminação impossível"); }
   };
 
   const send = async () => {
@@ -52,7 +52,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
       onSent?.();
       onClose();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Impossível enviar");
     } finally { setBusy(false); }
   };
 
@@ -62,7 +62,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
         <DialogHeader>
           <DialogTitle>Envoyer l'étude PC au client</DialogTitle>
           <DialogDescription>
-            Le PDF de l'étude gros œuvre (quantités, devis, planning) sera joint à l'email.
+            Le PDF de l'estudo de estrutura (quantidades, orçamento, planeamento) será anexado ao'email.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
@@ -113,7 +113,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
           <Button onClick={send} disabled={busy} className="rounded-sm gap-2"
                   data-testid="pc-send-confirm">
             <Mail className="h-3.5 w-3.5" />
-            {busy ? "Envoi…" : "Envoyer l'étude"}
+            {busy ? "A enviar…" : "Enviar o estudo"}
           </Button>
         </DialogFooter>
       </DialogContent>

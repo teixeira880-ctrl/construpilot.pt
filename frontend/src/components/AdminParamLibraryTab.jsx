@@ -63,7 +63,7 @@ export default function AdminParamLibraryTab() {
         { headers: { "Content-Type": "multipart/form-data" } });
       toast.success(`${data.ouvrages} ouvrages · ${data.lines} lignes importés`);
       await load(q); await loadTables();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Import impossible"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Impossível importar"); }
     finally { setUploading(false); }
   };
 
@@ -77,7 +77,7 @@ export default function AdminParamLibraryTab() {
       const { data } = await api.get(`/admin/param-library/ouvrages/${base_code}`,
         { params: { level: lvl, region: rg, margin_pct: mg } });
       setDetail(data);
-    } catch { toast.error("Calcul impossible"); }
+    } catch { toast.error("Cálculo impossível"); }
   };
   useEffect(() => { if (detail) openDetail(detail.base_code, level, region, margin); /* eslint-disable-next-line */ }, [level, region, margin]);
 
@@ -93,13 +93,13 @@ export default function AdminParamLibraryTab() {
   };
   const saveMaterial = async (m) => {
     await api.put(`/admin/param-library/materials/${m.mat_id}`, { name: m.name, unit: m.unit, price: Number(m.price) });
-    toast.success("Matériau mis à jour");
+    toast.success("Material atualizado");
   };
   const genMissing = async () => {
     setGenBusy(true);
     try {
       const { data } = await api.post("/admin/param-library/materials/generate-missing");
-      toast.success(`${data.added} matériau(x) manquant(s) ajouté(s) — à compléter`);
+      toast.success(`${data.added} material(is) em falta adicionado(s) — a completar`);
       await loadTables();
     } finally { setGenBusy(false); }
   };

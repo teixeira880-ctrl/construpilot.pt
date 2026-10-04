@@ -84,7 +84,7 @@ export const ProfileForm = () => {
       </p>
       <div className="flex items-center gap-4" data-testid="profile-photo-section">
         {user?.picture ? (
-          <img src={user.picture} alt="Photo de profil" data-testid="profile-photo-preview"
+          <img src={user.picture} alt="Foto de perfil" data-testid="profile-photo-preview"
                className="h-16 w-16 rounded-full object-cover border border-border" />
         ) : (
           <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground"

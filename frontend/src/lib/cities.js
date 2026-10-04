@@ -63,8 +63,8 @@ export const CITIES = {
     typicalProject: "Rénovation maison de ville (T4 90m²)",
     typicalPrice: "90 000 – 130 000 €",
     localTips: [
-      "Climat sec : privilégier des enduits chaux et matériaux respirants pour éviter les remontées capillaires.",
-      "Toitures traditionnelles en tuiles canal : imposer une entreprise habilitée « couvreur méditerranéen ».",
+      "Clima seco: privilegiar rebocos de cal e materiais respiráveis para evitar a ascensão capilar.",
+      "Coberturas tradicionais em telha de canudo: exigir uma empresa habilitada «telhador mediterrânico».",
       "Aides Marseille Provence Métropole : bonification MaPrimeRénov' possible pour les logements anciens du centre-ville.",
     ],
   },
@@ -85,7 +85,7 @@ export const CITIES = {
     typicalPrice: "82 000 – 118 000 €",
     localTips: [
       "Briques foraines (Ville Rose) : maçonnerie spécifique — enduits chaux hydraulique obligatoire pour restaurer.",
-      "Zones ZAC nouvelle : DPE C minimum exigé avant remise sur le marché locatif.",
+      "Novas zonas ZAC: DPE C mínimo exigido antes da recolocação no mercado de arrendamento.",
       "Aides Toulouse Métropole : « Rénov'occitanie » cumulable avec les aides nationales.",
     ],
   },
@@ -127,7 +127,7 @@ export const CITIES = {
     typicalPrice: "80 000 – 112 000 €",
     localTips: [
       "Climat humide océanique : penser à une VMC double flux performante (impact santé + économie chauffage).",
-      "Île de Nantes (ZAC) : Bbio maximum imposé plus strict que la RE2020 nationale.",
+      "Île de Nantes (ZAC): Bbio máximo imposto mais exigente do que a RE2020 nacional.",
       "Aides Nantes Métropole : « Mon Projet Rénov » avec accompagnement gratuit d'un conseiller.",
     ],
   },
@@ -148,7 +148,7 @@ export const CITIES = {
     typicalPrice: "95 000 – 130 000 €",
     localTips: [
       "Air marin corrosif : imposer des menuiseries alu ou PVC avec traitement anti-corrosion à 15 km du littoral.",
-      "Vieux-Nice classé : contraintes ABF sur façades, couleurs et matériaux traditionnels obligatoires (ocre, terracotta).",
+      "Vieux-Nice classificado: restrições ABF nas fachadas, cores e materiais tradicionais obrigatórios (ocre, terracota).",
       "Zone sismique modérée : diagnostic PPRs obligatoire pour toute rénovation lourde.",
     ],
   },

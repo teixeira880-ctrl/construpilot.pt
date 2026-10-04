@@ -39,13 +39,13 @@ export default function SupplierPortal() {
 
   const submitClaim = async (e) => {
     e.preventDefault();
-    if (!claim.contact_name || !claim.contact_email) return toast.error("Nom + email requis");
+    if (!claim.contact_name || !claim.contact_email) return toast.error("Nome + email obrigatórios");
     setBusy(true);
     try {
       await api.post("/suppliers/claim", claim);
-      toast.success("Réclamation envoyée — validation sous 48 h");
+      toast.success("Reclamação enviada — validação em 48 h");
       load();
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
     finally { setBusy(false); }
   };
 

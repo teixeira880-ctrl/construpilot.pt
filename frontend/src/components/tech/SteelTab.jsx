@@ -29,7 +29,7 @@ export default function SteelTab({ plans, suppliers }) {
       setAna(data);
       setCount(data.element_count || 1);
       toast.success("Ferraillage analysé");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Analyse impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Análise impossível"); }
     finally { setBusy(false); }
   };
 
@@ -45,8 +45,8 @@ export default function SteelTab({ plans, suppliers }) {
     try {
       const { data } = await api.put(`/pro/steel/${planId}`, { lines: ana.lines, treillis: ana.treillis || [] });
       setAna({ ...ana, ...data });
-      toast.success("Bordereau enregistré");
-    } catch { toast.error("Enregistrement impossible"); }
+      toast.success("Mapa guardado");
+    } catch { toast.error("Impossível guardar"); }
   };
 
   const compute = async () => {
@@ -55,7 +55,7 @@ export default function SteelTab({ plans, suppliers }) {
         { loss_pct: loss, bar_length_m: barLen, element_count: count });
       setCmd(data);
       toast.success("Quantités commandables calculées");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Calcul impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Cálculo impossível"); }
   };
 
   const createOrder = async (supplierId) => {

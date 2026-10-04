@@ -57,7 +57,7 @@ export class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.hasError) return this.props.children;
 
-    const msg = this.state.error?.message || "Une erreur inattendue est survenue.";
+    const msg = this.state.error?.message || "Ocorreu um erro inesperado.";
 
     return (
       <div

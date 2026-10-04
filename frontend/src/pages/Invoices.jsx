@@ -71,7 +71,7 @@ export default function Invoices() {
     setBatchBusy(true);
     try {
       const { data } = await api.post("/documents/issue-batch", { doc_ids: selected });
-      toast.success(`${data.issued} facture(s) emitida(s) · ${data.conformes} conforme(s) EN16931`);
+      toast.success(`${data.issued} fatura(s) emitida(s) · ${data.conformes} conforme(s) EN16931`);
       setSelected([]); load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Emissão em lote impossível"); }
     finally { setBatchBusy(false); }
@@ -94,7 +94,7 @@ export default function Invoices() {
       const res = await api.get(`/documents/${doc.doc_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `${doc.number || "facture"}.pdf`; a.click();
+      a.href = url; a.download = `${doc.number || "fatura"}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error(t("crm.pdf_fail")); }
   };
@@ -104,7 +104,7 @@ export default function Invoices() {
       const res = await api.get(`/documents/${doc.doc_id}/factur-x`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `${doc.number || "facture"}-facturx.pdf`; a.click();
+      a.href = url; a.download = `${doc.number || "fatura"}-facturx.pdf`; a.click();
       URL.revokeObjectURL(url);
       toast.success(t("crm.facturx_ok"));
     } catch { toast.error(t("crm.facturx_fail")); }
@@ -136,8 +136,8 @@ export default function Invoices() {
 
   const removeInvoice = async (inv) => {
     if (!(await confirm({
-      title: "Eliminar cette facture ?",
-      description: `La facture ${inv.number || ""} sera définitivement supprimée.`,
+      title: "Eliminar esta fatura?",
+      description: `A fatura ${inv.number || ""} será eliminada definitivamente.`,
       confirmLabel: "Eliminar",
     }))) return;
     try {
@@ -171,7 +171,7 @@ export default function Invoices() {
 
   const totalDue = invoices.filter(i => i.status !== "paid").reduce((s, i) => s + (i.totals?.ttc || 0) - (i.paid || 0), 0);
 
-  if (in_org && !can("factures")) return <NoAccess title="Faturas não autorizadas" />;
+  if (in_org && !can("faturas")) return <NoAccess title="Faturas não autorizadas" />;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10" data-testid="invoices-page">
@@ -328,7 +328,7 @@ export default function Invoices() {
             <div className="space-y-4 mt-1" data-testid="facturx-report-body">
               <div className={`rounded-sm p-4 border ${fxReport.valid ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"}`}>
                 <p className="text-sm">
-                  Fatura <b>{fxReport.number || "—"}</b> · profil detetado{" "}
+                  Fatura <b>{fxReport.number || "—"}</b> · perfil detetado{" "}
                   <b>{fxReport.profile || "inconnu"}</b>
                 </p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">

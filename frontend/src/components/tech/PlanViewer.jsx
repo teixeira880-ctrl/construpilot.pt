@@ -21,7 +21,7 @@ export default function PlanViewer({ planId, highlight }) {
         {img ? (
           <img src={`data:image/png;base64,${img}`} alt="Plan" className="max-w-full rounded-sm border border-border" />
         ) : (
-          <div className="text-sm text-muted-foreground p-8">{loading ? "Chargement de l'aperçu…" : "Aperçu du plan indisponible"}</div>
+          <div className="text-sm text-muted-foreground p-8">{loading ? "Carregamento da pré-visualização…" : "Pré-visualização da planta indisponível"}</div>
         )}
         {img && highlight && Array.isArray(highlight) && (
           <div className="absolute border-2 border-primary bg-primary/25 rounded-sm pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"

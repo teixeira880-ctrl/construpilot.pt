@@ -303,7 +303,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">{[l.address, l.phone].filter(Boolean).join(" · ")}</p>
                   </div>
                   <p className="num font-bold">{eur(l.budget)}</p>
-                  <Badge variant="outline" className="rounded-sm">{l.status || "nouveau"}</Badge>
+                  <Badge variant="outline" className="rounded-sm">{l.status || "novo"}</Badge>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </button>
               ))}
@@ -323,7 +323,7 @@ export default function Dashboard() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-base">{selectedLead.name || t("dash.request")}</span>
-                <Badge variant="outline" className="rounded-sm">{selectedLead.status || "nouveau"}</Badge>
+                <Badge variant="outline" className="rounded-sm">{selectedLead.status || "novo"}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Info icon={Euro} label="Budget" value={selectedLead.budget ? eur(selectedLead.budget) : "—"} />

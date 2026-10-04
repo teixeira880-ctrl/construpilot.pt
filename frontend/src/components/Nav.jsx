@@ -26,11 +26,11 @@ const NAV_MAIN = [
 ];
 
 const NAV_PRO = [
-  { to: "/entreprise", label: "Espaço Empresa", key: "nav.company", icon: Building2, perm: "entreprise" },
-  { to: "/devis", label: "Orçamentos", key: "nav.tracking", icon: LineChart, perm: "devis" },
-  { to: "/factures", label: "Faturas", key: "nav.invoices", icon: FileText, perm: "factures" },
+  { to: "/entreprise", label: "Espaço Empresa", key: "nav.company", icon: Building2, perm: "empresa" },
+  { to: "/devis", label: "Orçamentos", key: "nav.tracking", icon: LineChart, perm: "orçamentos" },
+  { to: "/factures", label: "Faturas", key: "nav.invoices", icon: FileText, perm: "faturas" },
   { to: "/situations", label: "Autos de medição", key: "nav.situations", icon: Layers, perm: "situations" },
-  { to: "/suivi-chantier", label: "Acompanhamento de obra", key: "nav.site", icon: HardHat, perm: "chantier" },
+  { to: "/suivi-chantier", label: "Acompanhamento de obra", key: "nav.site", icon: HardHat, perm: "obra" },
   { to: "/rendu-ia", label: "Render IA (antes/depois)", key: "nav.render", icon: Wand2, auth: true, pro: true },
   { to: "/appro", label: "Análise técnica & Aprovisionamento IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Novo" },
   { to: "/rh", label: "RH — Registo de horas", key: "hr.nav", icon: Users, perm: "rh" },

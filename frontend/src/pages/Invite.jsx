@@ -32,7 +32,7 @@ export default function Invite() {
 
   const copy = async (v, label = "Lien") => {
     try { await navigator.clipboard.writeText(v); setCopied(true); setTimeout(() => setCopied(false), 1500); toast.success(label + " copié"); }
-    catch { toast.error("Copie impossible"); }
+    catch { toast.error("Cópia impossível"); }
   };
 
   const share = (channel) => {

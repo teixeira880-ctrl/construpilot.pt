@@ -32,7 +32,7 @@ export default function WaterproofingTab({ plans, suppliers }) {
       setSystem(data.system_type || "bicouche");
       setHighlight(null);
       toast.success("Étanchéité analysée");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Analyse impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Análise impossível"); }
     finally { setBusy(false); }
   };
 
@@ -43,7 +43,7 @@ export default function WaterproofingTab({ plans, suppliers }) {
           system_type: system, recouvrement_pct: recouv, loss_pct: loss });
       setCmd(data);
       toast.success("Bordereau recalculé");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Calcul impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Cálculo impossível"); }
   };
 
   const createOrder = async (supplierId) => {

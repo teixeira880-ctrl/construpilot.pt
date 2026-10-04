@@ -42,7 +42,7 @@ export default function DataManagementPanel() {
   };
   const delQuote = async (q) => {
     if (!(await confirm({
-      title: "Eliminar ce devis ?",
+      title: "Eliminar este orçamento?",
       description: `O orçamento ${q.number || ""} será eliminado definitivamente.`,
       confirmLabel: "Eliminar",
     }))) return;

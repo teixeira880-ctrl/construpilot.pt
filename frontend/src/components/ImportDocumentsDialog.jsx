@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Upload, FileUp, Loader2, CheckCircle2, XCircle, FileText, Trash2, ArrowLeft } from "lucide-react";
 
 const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-const STATUS_LABELS = { draft: "Brouillon", sent: "Envoyé", signed: "Accepté", refused: "Refusé", paid: "Payé" };
+const STATUS_LABELS = { draft: "Brouillon", sent: "Enviado", signed: "Accepté", refused: "Refusé", paid: "Payé" };
 const lineTtc = (l) => (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0) * (1 + (Number(l.vat_rate) || 0) / 100);
 const itemTtc = (it) => (it.lines || []).reduce((s, l) => s + lineTtc(l), 0);
 
@@ -46,9 +46,9 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
       setItems((data.items || []).map((it) => ({ ...it, client: it.client || {}, lines: it.lines || [] })));
       setPhase("preview");
       const okc = (data.items || []).filter((i) => i.ok).length;
-      toast.success(`${okc} document(s) lisible(s) — vérifiez avant de valider`, { id: tid });
+      toast.success(`${okc} documento(s) legível(eis) — verifique antes de validar`, { id: tid });
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Lecture impossible", { id: tid });
+      toast.error(e?.response?.data?.detail || "Leitura impossível", { id: tid });
     } finally { setBusy(false); }
   };
 
@@ -62,17 +62,17 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
 
   const confirmImport = async () => {
     const payload = items.filter((it) => it.ok && (it.lines || []).length > 0);
-    if (!payload.length) { toast.error("Aucun document valide à importer"); return; }
+    if (!payload.length) { toast.error("Nenhum documento válido para importar"); return; }
     setBusy(true);
     const tid = toast.loading("Création des documents…");
     try {
       const { data } = await api.post("/documents/import-pdf/confirm", { status, items: payload });
       setResults(data);
       setPhase("results");
-      if (data.imported > 0) { toast.success(`${data.imported}/${data.total} document(s) créé(s)`, { id: tid }); setDidImport(true); }
-      else toast.error("Aucun document créé", { id: tid });
+      if (data.imported > 0) { toast.success(`${data.imported}/${data.total} documento(s) criado(s)`, { id: tid }); setDidImport(true); }
+      else toast.error("Nenhum documento criado", { id: tid });
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import impossible", { id: tid });
+      toast.error(e?.response?.data?.detail || "Impossível importar", { id: tid });
     } finally { setBusy(false); }
   };
 
@@ -125,7 +125,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
               data-testid="import-docs-dropzone">
               {busy ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Upload className="h-8 w-8 text-primary" />}
               <span className="text-sm font-semibold text-foreground">
-                {busy ? "Lecture des PDF en cours…" : "Cliquez pour choisir vos PDF"}
+                {busy ? "Lecture des PDF en cours…" : "Clique para escolher os seus PDF"}
               </span>
               <span className="text-xs">Plusieurs fichiers acceptés · devis, factures, avoirs</span>
             </button>
@@ -217,7 +217,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                   <p className="truncate font-medium">{r.file}</p>
                   {r.ok ? (
                     <p className="text-xs text-muted-foreground">
-                      {r.doc_type === "invoice" ? "Facture" : r.doc_type === "credit_note" ? "Avoir" : "Devis"}
+                      {r.doc_type === "invoice" ? "Fatura" : r.doc_type === "credit_note" ? "Avoir" : "Orçamento"}
                       {r.number ? ` n° ${r.number}` : ""} · {r.lines} ligne(s) · {eur(r.ttc)}
                       {r.status ? ` · ${STATUS_LABELS[r.status] || r.status}` : ""}
                     </p>

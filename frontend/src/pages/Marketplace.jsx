@@ -29,7 +29,7 @@ export default function Marketplace() {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.description) {
-      return toast.error("Nom, email et description sont requis");
+      return toast.error("Nome, email e descrição são obrigatórios");
     }
     setBusy(true);
     try {
@@ -41,11 +41,11 @@ export default function Marketplace() {
       };
       const { data } = await api.post("/marketplace/leads", payload);
       setPreview(data);
-      toast.success("Demande envoyée — score qualité : " + data.score + "/100");
+      toast.success("Pedido enviado — pontuação de qualidade: " + data.score + "/100");
       setForm({ name: user?.name || "", email: user?.email || "", phone: "", address: "",
                 budget: "", surface: "", delay_days: "", description: "", trade: "" });
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Impossible d'envoyer la demande");
+      toast.error(err?.response?.data?.detail || "Impossível enviar o pedido");
     } finally { setBusy(false); }
   };
 
@@ -119,7 +119,7 @@ export default function Marketplace() {
           </div>
           <Button type="submit" disabled={busy} data-testid="ld-submit"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-            <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Envoyer la demande"}
+            <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o pedido"}
           </Button>
         </form>
 

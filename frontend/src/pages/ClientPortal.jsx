@@ -19,7 +19,7 @@ export default function ClientPortal() {
 
   useEffect(() => {
     if (!token) {
-      setState({ loading: false, error: "Aucun jeton fourni.", data: null });
+      setState({ loading: false, error: "Nenhum token fornecido.", data: null });
       return;
     }
     api
@@ -71,7 +71,7 @@ export default function ClientPortal() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Kpi label="Devis reçus" value={count} />
+        <Kpi label="Orçamentos recebidos" value={count} />
         <Kpi label="Signés" value={signed} accent />
         <Kpi label="En attente" value={pending} />
         <Kpi label="Total montant" value={
@@ -121,10 +121,10 @@ function QuoteCard({ q }) {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-${q.log_id}.pdf`;
+      a.href = url; a.download = `orcamento-${q.log_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Téléchargement impossible"); }
+    } catch { toast.error("Transferência impossível"); }
   };
   const status = q.signed ? "signed" : q.opened_at ? "opened" : "sent";
   const STATUS_MAP = {

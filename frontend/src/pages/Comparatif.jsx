@@ -8,9 +8,9 @@ import { SectionTitle } from "@/components/Bits";
 const COLS = ["ConstruPilot", "Costructor", "Obat", "Tolteck", "Graneet", "Batigest", "OptimBTP", "ProGBat"];
 
 const ROWS = [
-  { label: "Preço de entrada", values: ["Gratuit → 39€", "Gratuit → 12,50€", "32€/mois", "25€/mois", "Sur devis", "Sur devis", "Sur devis", "29€/mois"] },
+  { label: "Preço de entrada", values: ["Gratuit → 39€", "Gratuit → 12,50€", "32€/mois", "25€/mois", "Sob orçamento", "Sob orçamento", "Sob orçamento", "29€/mois"] },
   { label: "Versão gratuita ilimitada", values: [true, true, false, false, false, false, false, false] },
-  { label: "IA (extraction matériaux, coaching)", values: [true, "~", false, false, false, false, false, false] },
+  { label: "IA (extração de materiais, coaching)", values: [true, "~", false, false, false, false, false, false] },
   { label: "Render 3D desde un plan 2D", values: [true, false, false, false, false, false, false, false] },
   { label: "Estimativa por foto", values: [true, false, false, false, false, false, false, false] },
   { label: "Multi-langue (7 langues)", values: [true, false, false, false, false, false, false, false] },
@@ -18,7 +18,7 @@ const ROWS = [
   { label: "Comparador de preços fornecedores", values: [true, true, false, false, false, false, false, "~"] },
   { label: "Acompanhamento de obra (reservas, RC, fotos)", values: [true, "~", true, false, true, true, true, true] },
   { label: "Module RH / pointage GPS", values: [true, false, true, false, false, false, true, true] },
-  { label: "Orçamento & facturation", values: [true, true, true, true, true, true, true, true] },
+  { label: "Orçamentos e faturação", values: [true, true, true, true, true, true, true, true] },
   { label: "Assinatura electrónica de orçamentos", values: [true, "~", true, "~", true, true, "~", true] },
   { label: "Fatura électronique Factur-X (2026)", values: ["~", true, "~", "~", true, true, "~", true] },
   { label: "Facturação por autos de medição", values: [false, false, true, false, true, true, true, true] },
@@ -60,7 +60,7 @@ export default function Comparatif() {
       },
       {
         "@type": "Question",
-        name: "ConstruPilot est-il conforme à la facture électronique 2026 ?",
+        name: "ConstruPilot está conforme à fatura eletrónica 2026?",
         acceptedAnswer: {
           "@type": "Answer",
           text: "ConstruPilot génère des factures au format Factur-X. La transmission via plateforme agréée (PDP) est en cours de finalisation pour la réforme 2026.",
@@ -146,7 +146,7 @@ export default function Comparatif() {
 
       <div className="mt-16">
         <SectionTitle over="Porquê escolher-nos" title="4 razões que fazem a diferença">
-          Là où les autres logiciels s'arrêtent au devis et à la facture, ConstruPilot ajoute l'innovation
+          Là où les autres logiciels s'ficam pelo orçamento e pela fatura, o ConstruPilot acrescenta a'innovation
           et l'acquisition — sans sacrifier les fondamentaux métier.
         </SectionTitle>
         <motion.div

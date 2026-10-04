@@ -140,7 +140,7 @@ export default function Pricing() {
       <SEO
         title="Tarifs — Gratuit pour les particuliers, Premium dès 19 €/mois"
         description="Estimation, calculateurs, comparateur de prix et coach IA pour les particuliers. Devis PDF illimités, TVA 10 % auto, rendu 3D, signature client, CRM et facturation pour les pros. Premium dès 19 €/mois, sans engagement."
-        keywords="prix logiciel devis, tarif construpilot, abonnement artisan, logiciel BTP gratuit, prix outil estimation travaux"
+        keywords="preço software orçamentos, tarifário construpilot, assinatura profissional, software construção civil gratuito, preço ferramenta estimativa de obras"
         canonical="/tarifs"
       />
       <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>

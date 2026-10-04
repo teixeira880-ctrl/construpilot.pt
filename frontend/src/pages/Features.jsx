@@ -14,7 +14,7 @@ const PARTICULIER = [
   { icon: Calculator, title: "Estimador de obras", desc: "Orçamento instantâneo de materiais + mão de obra, por tipo de projeto." },
   { icon: Sparkles, title: "Smart Project", desc: "Descreva «reabilitar casa de banho 8 m²» → lotes, materiais e orçamento gerados pela IA." },
   { icon: Camera, title: "Análise de photo", desc: "Envie uma foto de um compartimento ou de um defeito e a IA propõe soluções." },
-  { icon: FileText, title: "Scanner de devis", desc: "Importe um orçamento em PDF: a IA explica-o e verifica os montantes." },
+  { icon: FileText, title: "Digitalizador de orçamentos", desc: "Importe um orçamento em PDF: a IA explica-o e verifica os montantes." },
   { icon: Ruler, title: "Calculateurs", desc: "Superfícies, volumes, quantités (peinture, carrelage, béton…)." },
   { icon: Search, title: "Pesquisa de preços", desc: "Ordens de grandeza de preços de materiais e serviços." },
   { icon: MessageSquare, title: "Coach IA obras", desc: "Um assistente que responde às suas dúvidas de obra, em português." },
@@ -24,7 +24,7 @@ const PARTICULIER = [
 
 const PRO = [
   { icon: Cuboid, title: "Análise de plans DWG/DXF/PDF", desc: "Render fidèle (cotes, textes) et medição exact : paredes, planchers, escaliers, poutres, poteaux." },
-  { icon: Building2, title: "Medição béton & structure", desc: "Quantités béton et devis détaillé par corps d'état, marges et sinal." },
+  { icon: Building2, title: "Medição béton & structure", desc: "Quantidades de betão e orçamento detalhado por especialidade, margens e sinal." },
   { icon: HardHat, title: "Ferraillage / Acier", desc: "Extração de varões e malhas → mapa de aços e quantidades para encomenda." },
   { icon: Droplets, title: "Étanchéité", desc: "Toiture-terrasse : bordereau par couche → rouleaux, bidons, panneaux." },
   { icon: Layers, title: "Toiture", desc: "Tuiles/ardoises/bac acier, écran, liteaux, faîtage, noues, gouttières." },

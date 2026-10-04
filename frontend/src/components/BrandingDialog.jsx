@@ -98,7 +98,7 @@ export function BrandingDialog({ trigger }) {
       toast.success("Identidade profissional guardada");
       setOpen(false);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Sauvegarde impossible");
+      toast.error(e?.response?.data?.detail || "Salvaguarda impossível");
     } finally { setBusy(false); }
   };
 
@@ -120,8 +120,8 @@ export function BrandingDialog({ trigger }) {
             {source === "organization"
               ? <>Identité partagée avec l'équipe <b>{orgName}</b>. {canEdit
                   ? "Vos modifications s'appliquent à tous les membres."
-                  : "Seul un admin ou le propriétaire peut modifier ces informations."}</>
-              : "Logo, coordonnées et certifications — affichés en tête de chaque PDF (métré, devis, factures)."}
+                  : "Apenas um admin ou o proprietário pode modificar estas informações."}</>
+              : "Logótipo, contactos e certificações — exibidos no cabeçalho de cada PDF (medições, orçamento, faturas)."}
           </DialogDescription>
         </DialogHeader>
 
@@ -136,7 +136,7 @@ export function BrandingDialog({ trigger }) {
           <div className="grid gap-2">
             <Label>E-mail officiel de l'entreprise</Label>
             <Input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)}
-                   placeholder="Ex : contact@votre-entreprise.fr" disabled={!canEdit}
+                   placeholder="Ex: contacto@a-sua-empresa.pt" disabled={!canEdit}
                    data-testid="branding-company-email-input"
                    className="rounded-sm h-11" maxLength={120} />
             <p className="text-xs text-muted-foreground">
@@ -276,7 +276,7 @@ export function BrandingDialog({ trigger }) {
           </div>
 
           <div className="grid gap-2">
-            <Label>Message d'accompagnement par défaut (e-mails devis/factures)</Label>
+            <Label>Mensagem de acompanhamento por omissão (e-mails orçamentos/faturas)</Label>
             <Textarea value={defaultEmailMsg} onChange={(e) => setDefaultEmailMsg(e.target.value)}
                       placeholder={"Olá {client},\n\nSegue em anexo o seu orçamento n.º {numero}...\n\nCom os melhores cumprimentos,\n{entreprise}"}
                       disabled={!canEdit}
@@ -314,7 +314,7 @@ export function BrandingDialog({ trigger }) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} className="rounded-sm">
-            {canEdit ? "Annuler" : "Fermer"}
+            {canEdit ? "Cancelar" : "Fechar"}
           </Button>
           {canEdit && (
             <Button onClick={save} disabled={busy} data-testid="branding-save-btn"

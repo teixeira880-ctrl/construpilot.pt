@@ -4,11 +4,11 @@ import { useI18n } from "@/context/I18nContext";
 
 const FEATURES_FR = [
   { icon: Layers, title: "Déboursé sec automatique",
-    desc: "Coût de revient et prix de vente calculés par ouvrage : matériaux + main d'œuvre + pertes, marge appliquée." },
+    desc: "Custo de produção e preço de venda calculados por trabalho: materiais + mão de obra + perdas, margem aplicada." },
   { icon: MapPin, title: "Coefficients régionaux",
     desc: "Prix ajustés automatiquement selon la zone : Île-de-France, grandes villes ou rural." },
-  { icon: PlugZap, title: "Connexion fournisseurs",
-    desc: "Prêt à connecter Point.P, Chausson, Gedimat, Leroy Merlin… pour actualiser les prix matériaux." },
+  { icon: PlugZap, title: "Ligação fornecedores",
+    desc: "Pronto para ligar Point.P, Chausson, Gedimat, Leroy Merlin… para atualizar os preços materiais." },
 ];
 const FEATURES_PT = [
   { icon: Layers, title: "Custo direto automático",
@@ -33,7 +33,7 @@ export function ParamLibraryPromo() {
         <div className="grid lg:grid-cols-[1.1fr,1fr] gap-14 items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
-              <Boxes className="h-4 w-4" /> {pt ? "Novo · Motor de orçamentação" : "Nouveau · Moteur de chiffrage"}
+              <Boxes className="h-4 w-4" /> {pt ? "Novo · Motor de orçamentação" : "Novo · Motor de orçamentação"}
             </div>
             <h2 className="mt-6 text-4xl sm:text-5xl font-black leading-[1.05] tracking-tight">
               {pt

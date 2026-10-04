@@ -67,7 +67,7 @@ export default function AutoSeoBlogPost({ slug }) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://construpilot.fr/" },
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.fr/" },
       { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.fr/blog" },
       { "@type": "ListItem", "position": 3, "name": a.title, "item": `https://construpilot.fr/blog/${a.slug}` },
     ],

@@ -55,7 +55,7 @@ export default function ProjectDetail() {
       const { data } = await api.post(`/projects/${id}/advice`);
       setP({ ...p, advice: data.advice });
       toast.success("Conseils IA générés");
-    } catch { toast.error("Génération impossible"); }
+    } catch { toast.error("Impossível gerar"); }
     finally { setBusy(""); }
   };
 
@@ -65,8 +65,8 @@ export default function ProjectDetail() {
       const { data } = await api.post("/estimation/materials", { lots: p.estimation.lots });
       setMaterials(data.items);
       await api.patch(`/projects/${id}`, { materials: data.items });
-      toast.success(`${data.items.length} lignes de matériaux générées`);
-    } catch { toast.error("Génération impossible"); }
+      toast.success(`${data.items.length} linhas de materiais geradas`);
+    } catch { toast.error("Impossível gerar"); }
     finally { setBusy(""); }
   };
 
@@ -77,7 +77,7 @@ export default function ProjectDetail() {
         items: materials.map((m) => ({ query: m.search, quantity: Math.ceil(m.quantity), name: m.name })),
       });
       setOptim(data);
-    } catch { toast.error("Optimisation impossible"); }
+    } catch { toast.error("Otimização impossível"); }
     finally { setBusy(""); }
   };
 
@@ -118,7 +118,7 @@ export default function ProjectDetail() {
         </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={downloadPdf} disabled={busy === "pdf"} data-testid="download-pdf-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Download className="h-4 w-4" /> {busy === "pdf" ? "Génération…" : "Télécharger le PDF"}
+            <Download className="h-4 w-4" /> {busy === "pdf" ? "Génération…" : "Descarregar o PDF"}
           </Button>
           <EmailPdfDialog project={{ name: p.name, city: p.city, description: p.description }} estimation={p.estimation} advice={p.advice || ""} />
           <WhatsAppShare project={{ name: p.name, city: p.city, surface: p.surface }} estimation={p.estimation} projectId={p.project_id} />

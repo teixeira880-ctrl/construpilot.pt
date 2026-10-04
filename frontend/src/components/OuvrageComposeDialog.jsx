@@ -47,8 +47,8 @@ export function OuvrageComposeDialog({ onAdd, planVariables }) {
         { base_code, level, region, margin_pct: margin, quantity: 1,
           variables: planVariables || undefined });
       onAdd(data.line);
-      toast.success(`Ajouté : ${data.line.designation} (${data.line.qty} ${data.line.unit} × ${data.line.unit_price_ht} €)`);
-    } catch { toast.error("Impossible d'ajouter l'ouvrage"); }
+      toast.success(`Adicionado: ${data.line.designation} (${data.line.qty} ${data.line.unit} × ${data.line.unit_price_ht} €)`);
+    } catch { toast.error("Impossível adicionar o trabalho"); }
     finally { setAdding(""); }
   };
 

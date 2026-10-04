@@ -36,8 +36,8 @@ export default function VrdTab({ plans, suppliers }) {
         prof_m: n.prof_m || catalog.find((c) => c.key === n.key)?.prof || 0.8,
         bbox: n.bbox || null, confidence: n.confidence || 0.9,
       })));
-      toast.success((data.networks || []).length ? "VRD analysé" : "Aucun réseau détecté — ajoutez-les manuellement");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Analyse impossible"); }
+      toast.success((data.networks || []).length ? "VRD analysé" : "Nenhuma rede detetada — adicione-as manualmente");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Análise impossível"); }
     finally { setBusy(false); }
   };
 
@@ -58,7 +58,7 @@ export default function VrdTab({ plans, suppliers }) {
       const { data } = await api.post(`/pro/vrd/${planId}/recompute`, { networks: nets, loss_pct: loss });
       setCmd(data);
       toast.success("Bordereau VRD recalculé");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Calcul impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Cálculo impossível"); }
   };
 
   const createOrder = async (supplierId) => {

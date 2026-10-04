@@ -377,7 +377,7 @@ export default function PlanTakeoff() {
       setPlan(data);
       setPageIndex(0);
       const kind = data.kind === "dxf" ? "DXF" : data.kind === "pdf" ? "PDF" : "image";
-      toast.success(`${kind} chargé (${data.page_count} page${data.page_count > 1 ? "s" : ""})`);
+      toast.success(`${kind} carregado (${data.page_count} página${data.page_count > 1 ? "s" : ""})`);
     } catch (e) {
       const detail = e?.response?.data?.detail;
       const msg = detail
@@ -788,7 +788,7 @@ export default function PlanTakeoff() {
     try {
       const { data } = await api.post("/emails/templates", { name, body });
       setMsgTemplates((prev) => [data.template, ...prev]);
-      toast.success(`Modelo enregistré : ${data.template.name}`);
+      toast.success(`Modelo guardado: ${data.template.name}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     }
@@ -1142,7 +1142,7 @@ export default function PlanTakeoff() {
         { page_index: pageIndex });
       const parts = [];
       if (data.renamed?.length) parts.push(`${data.renamed.length} compartimento(s) renommée(s)`);
-      if (data.materials_set?.length) parts.push(`${data.materials_set.length} matériau(x) sol`);
+      if (data.materials_set?.length) parts.push(`${data.materials_set.length} material(is) de pavimento`);
       if (data.heights_updated?.length) parts.push(`${data.heights_updated.length} altura(s)`);
       if (data.calibration_set) parts.push("échelle écrite appliquée");
       if (data.surface_flags?.length) parts.push(`⚠ ${data.surface_flags.length} écart(s) de surface >5%`);
@@ -1252,7 +1252,7 @@ export default function PlanTakeoff() {
       await api.delete(`/takeoffs/settings/beton-presets/${encodeURIComponent(selectedPreset)}`);
       setBetonPresets((list) => list.filter((p) => p.name !== selectedPreset));
       setSelectedPreset("");
-      toast.success("Definição supprimé");
+      toast.success("Definição eliminada");
     } catch { toast.error("Não foi possível eliminar"); }
   };
 
@@ -1287,7 +1287,7 @@ export default function PlanTakeoff() {
       const { data } = await api.get("/takeoffs/settings/beton-presets");
       setBetonPresets(data.presets || []);
       setSelectedPreset(name.trim());
-      toast.success(`Definição « ${name.trim()} » enregistré`);
+      toast.success(`Definição «${name.trim()}» guardada`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Gravação da definição impossível"); }
   };
 
@@ -1301,7 +1301,7 @@ export default function PlanTakeoff() {
         plancher_type: plancherType, plancher_price_m2: plancherPriceM2,
         acier_ratios: acierRatios,
       });
-      toast.success("Definições béton enregistrés comme valeurs par défaut de l'entreprise");
+      toast.success("Definições de betão guardadas como valores predefinidos da empresa");
     } catch { toast.error("Gravação das definições impossível"); }
   };
 
@@ -1459,7 +1459,7 @@ export default function PlanTakeoff() {
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${araseQuery()}${mq}`, body);
       const n = data.priced_lines || 0;
-      toast.success((n > 0 ? `Orçamento créé — ${n} ligne(s) chiffrée(s) desde votre bibliothèque` : "Orçamento criado a partir do descritivo") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
+      toast.success((n > 0 ? `Orçamento criado — ${n} linha(s) orçamentada(s) a partir da sua biblioteca` : "Orçamento criado a partir do descritivo") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Geração do orçamento impossível");
@@ -1479,7 +1479,7 @@ export default function PlanTakeoff() {
       const res = await api.get(`/documents/${data.doc_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-${plan.plan_id}.pdf`;
+      a.href = url; a.download = `orcamento-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       const ttc = data.totals?.ttc || 0;
@@ -1845,13 +1845,13 @@ export default function PlanTakeoff() {
         to_email: ecartsEmail.trim(),
         message: ecartsMessage,
       });
-      toast.success(`Relatório d'écarts envoyé à ${data.sent_to}`, { duration: 7000 });
+      toast.success(`Relatório de desvios enviado para ${data.sent_to}`, { duration: 7000 });
       setSendEcartsDialog(false);
       setEcartsMessage("");
       await refreshPlan();
     } catch (e) {
       const detail = e?.response?.data?.detail;
-      toast.error(typeof detail === "string" ? detail : "Envoi impossível — verifique l'email");
+      toast.error(typeof detail === "string" ? detail : "Envio impossível — verifique o email");
     } finally { setSendingEcarts(false); }
   };
 
@@ -1888,7 +1888,7 @@ export default function PlanTakeoff() {
       );
       setLabelDialog(null); setLabelValue("");
       await loadHistory();
-      toast.success("Nom enregistré");
+      toast.success("Nome guardado");
     } catch { toast.error("Não foi possível guardar"); }
   };
 
@@ -1910,7 +1910,7 @@ export default function PlanTakeoff() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-${plan.plan_id}.pdf`;
+      a.href = url; a.download = `orcamento-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       toast.success("Orçamento PDF descarregado");
@@ -1943,7 +1943,7 @@ export default function PlanTakeoff() {
         if (quoteIncludeTva) extras.push("certificado TVA");
         if (quoteAttachVideo && latestVideo) extras.push("tour vidéo 3D");
         const extra = extras.length ? " + " + extras.join(" + ") + " joint(s)" : "";
-        toast.success(`Orçamento envoyé à ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("pt-PT")} € TTC)`);
+        toast.success(`Orçamento enviado para ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("pt-PT")} € c/ IVA)`);
         setQuoteDialog(false);
         setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
         setQuoteSubject(""); setQuoteIntro(""); setQuoteClientAddress("");
@@ -1952,7 +1952,7 @@ export default function PlanTakeoff() {
         toast.error("Envio de email falhou — verifique a chave Resend");
       }
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossível");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally { setQuoteBusy(false); }
   };
 
@@ -2151,7 +2151,7 @@ export default function PlanTakeoff() {
         finish: quoteFinish, floor_material: quoteFloor,
         is_shared: templateShared,
       });
-      toast.success(`Modelo « ${templateName} » enregistré`);
+      toast.success(`Modelo « ${templateName} » guardado`);
       setTemplateName(""); setTemplateShared(false);
       await loadTemplates();
     } catch (e) {
@@ -2164,7 +2164,7 @@ export default function PlanTakeoff() {
     try {
       await api.delete(`/quotes/templates/${id}`);
       await loadTemplates();
-      toast.success("Modelo supprimé");
+      toast.success("Modelo eliminado");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Não foi possível eliminar");
     }
@@ -2220,7 +2220,7 @@ export default function PlanTakeoff() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-projet.pdf`;
+      a.href = url; a.download = `orcamento-projeto.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       toast.success(`Orçamento projet (${multiSelected.length} plans) descarregado`);
@@ -2239,7 +2239,7 @@ export default function PlanTakeoff() {
         project_name: multiProjectName.trim() || "",
         subcontract_plan_ids: subcontractSel.filter((id) => multiSelected.includes(id)),
       });
-      toast.success(`Orçamento consolidado créé — ${data.line_count} lignes`);
+      toast.success(`Orçamento consolidado criado — ${data.line_count} linhas`);
       setMultiDialog(false);
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
@@ -2469,7 +2469,7 @@ export default function PlanTakeoff() {
                 <History className="h-4 w-4" /> Mes plans récents
               </p>
               <span className="text-xs text-muted-foreground">
-                {allPlans.length} plan{allPlans.length > 1 ? "s" : ""} enregistré{allPlans.length > 1 ? "s" : ""}
+                {allPlans.length} plan{allPlans.length > 1 ? "s" : ""} guardado{allPlans.length > 1 ? "s" : ""}
               </span>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -2908,7 +2908,7 @@ export default function PlanTakeoff() {
             </span>
             <Button size="sm" variant="outline" onClick={manualSave} disabled={saving}
                     data-testid="plan-save-btn" className="rounded-sm gap-1 h-8"
-                    title="Forcer l'enregistrement maintenant">
+                    title="Forçar o registo agora">
               <Save className="h-3 w-3" /> Guardar
             </Button>
             {/* P1 — Definição contraste/luminosité du plan */}
@@ -3163,7 +3163,7 @@ export default function PlanTakeoff() {
                 total_avg: est.total_budget || 0,
                 ts: Date.now(),
               }));
-              toast.success(`${items.length} matériau${items.length > 1 ? "x" : ""} ajouté${items.length > 1 ? "s" : ""} au devis`);
+              toast.success(`${items.length} materia${items.length > 1 ? "is" : "l"} adicionado${items.length > 1 ? "s" : ""} ao orçamento`);
               setRoomEstimate(null);
               // Navigate to /prix
               window.location.href = "/prix?from=room-estimate";
@@ -4527,7 +4527,7 @@ export default function PlanTakeoff() {
             <Button onClick={sendEcartsReport} disabled={sendingEcarts}
                     className="rounded-sm gap-2" data-testid="ecarts-send-confirm">
               <Mail className="h-3.5 w-3.5" />
-              {sendingEcarts ? "Envoi…" : "Enviar o relatório"}
+              {sendingEcarts ? "A enviar…" : "Enviar o relatório"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -18,21 +18,21 @@ export const PasswordForm = () => {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (next.length < 8) return toast.error("Mot de passe : 8 caractères minimum");
-    if (next !== confirm) return toast.error("La confirmation ne correspond pas");
+    if (next.length < 8) return toast.error("Palavra-passe: 8 caracteres mínimo");
+    if (next !== confirm) return toast.error("A confirmação não corresponde");
     setBusy(true);
     try {
       await api.post("/auth/change-password", {
         current_password: hasPassword ? current : null, new_password: next,
       });
       toast.success(hasPassword
-        ? "Mot de passe changé — vos autres sessions ont été déconnectées"
-        : "Mot de passe défini — vous pouvez maintenant vous connecter par email");
+        ? "Palavra-passe alterada — as suas outras sessões foram desligadas"
+        : "Palavra-passe definida — pode agora entrar por e-mail");
       setCurrent(""); setNext(""); setConfirm("");
       setUser({ ...user, must_change_password: false, has_password: true });
     } catch (err) {
       const d = err?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Opération impossible");
+      toast.error(typeof d === "string" ? d : "Operação impossível");
     } finally { setBusy(false); }
   };
 
@@ -40,7 +40,7 @@ export const PasswordForm = () => {
     <form onSubmit={submit} className="surface p-5 space-y-4" data-testid="change-password-form">
       <p className="font-semibold flex items-center gap-2">
         <KeyRound className="h-4 w-4 text-primary" />
-        {hasPassword ? "Changer mon mot de passe" : "Définir un mot de passe"}
+        {hasPassword ? "Alterar a minha palavra-passe" : "Definir uma palavra-passe"}
       </p>
       {!hasPassword && (
         <p className="text-xs text-muted-foreground" data-testid="set-password-hint">

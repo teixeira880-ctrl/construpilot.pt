@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/context/I18nContext";
 
 const BADGES_FR = [
-  { icon: ShieldCheck, label: "Conforme Factur-X", sub: "Facture électronique 2026" },
+  { icon: ShieldCheck, label: "Conforme Factur-X", sub: "Fatura eletrónica 2026" },
   { icon: CreditCard, label: "Paiements sécurisés", sub: "Propulsé par Stripe" },
   { icon: Globe, label: "Hébergé en Europe", sub: "Conforme RGPD" },
   { icon: Sparkles, label: "IA dernière génération", sub: "Gemini · Claude · Whisper" },
@@ -44,7 +44,7 @@ const ReviewDialog = ({ open, onOpenChange }) => {
       onOpenChange(false);
       setForm({ name: "", role: "", rating: 5, comment: "" });
     } catch {
-      toast.error(pt ? "Envio impossível, tente novamente." : "Envoi impossible, réessayez.");
+      toast.error(pt ? "Envio impossível, tente novamente." : "Envio impossível, tente novamente.");
     } finally {
       setBusy(false);
     }
@@ -84,7 +84,7 @@ const ReviewDialog = ({ open, onOpenChange }) => {
           </div>
           <DialogFooter>
             <Button type="submit" disabled={busy} className="rounded-full" data-testid="review-submit">
-              {busy ? (pt ? "A enviar…" : "Envoi…") : (pt ? "Publicar a minha avaliação" : "Publier mon avis")}
+              {busy ? (pt ? "A enviar…" : "A enviar…") : (pt ? "Publicar a minha avaliação" : "Publier mon avis")}
             </Button>
           </DialogFooter>
         </form>

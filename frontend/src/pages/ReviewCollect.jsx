@@ -39,7 +39,7 @@ export default function ReviewCollect() {
       setDone(true);
       toast.success("Merci pour votre avis !");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Impossível enviar");
     } finally {
       setBusy(false);
     }
@@ -132,7 +132,7 @@ export default function ReviewCollect() {
                 data-testid="review-comment-input"
                 rows={4}
                 className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-none"
-                placeholder="Qualité du travail, respect des délais, propreté du chantier…"
+                placeholder="Qualidade do trabalho, cumprimento dos prazos, limpeza da obra…"
               />
             </div>
 

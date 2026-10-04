@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 const PLAN_LABELS = {
   pro_business_monthly: "Pro Business", pro_business_yearly: "Pro Business",
   pro_monthly: "Pro", pro_yearly: "Pro", premium_monthly: "Premium", premium_yearly: "Premium",
-  project_pass: "Project Pass", invoicing_addon_monthly: "Option Facturation",
+  project_pass: "Project Pass", invoicing_addon_monthly: "Opção Faturação",
 };
 
 export function PaymentSuccess() {

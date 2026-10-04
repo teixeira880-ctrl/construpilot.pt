@@ -100,7 +100,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       toast.success("Definições enregistrés");
       onSaved?.();
       onClose();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar"); }
     finally { setBusy(false); }
   };
 

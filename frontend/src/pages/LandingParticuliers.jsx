@@ -24,13 +24,13 @@ const EXAMPLE = "Je veux rénover mon appartement de 60 m² : refaire les peintu
 const STEPS = [
   { icon: Camera, title: "Décrivez votre projet", text: "En une phrase ou une photo de votre plan — c'est tout." },
   { icon: Sparkles, title: "L'IA chiffre tout", text: "Estimation détaillée poste par poste en 30 secondes." },
-  { icon: Wallet, title: "Comparez et budgétez", text: "Prix des matériaux, fourchettes réalistes, aucune surprise." },
+  { icon: Wallet, title: "Comparez et budgétez", text: "Preços dos materiais, intervalos realistas, nenhuma surpresa." },
 ];
 
 const PERKS = [
   { icon: Clock, title: "30 secondes", text: "Une estimation instantanée, sans rendez-vous ni attente." },
   { icon: Wallet, title: "100 % gratuit", text: "Estimez votre budget rénovation sans engagement." },
-  { icon: ShieldCheck, title: "Prix réels du marché", text: "Basé sur les tarifs matériaux et main d'œuvre actuels." },
+  { icon: ShieldCheck, title: "Prix réels du marché", text: "Baseado nas tarifas atuais de materiais e mão de obra." },
   { icon: HomeIcon, title: "Pensé pour vous", text: "Pas de jargon : des chiffres clairs pour votre projet." },
 ];
 
@@ -141,7 +141,7 @@ export default function LandingParticuliers() {
             Avant de vous lancer, obtenez une vision claire et réaliste de votre budget. ConstruPilot analyse votre description et vous donne une estimation détaillée — comme le ferait un professionnel, mais en quelques secondes.
           </p>
           <ul className="mt-6 space-y-3">
-            {["Estimation poste par poste (peinture, sol, plomberie…)", "Fourchette de prix basse / moyenne / haute", "Prix des matériaux à jour", "Exportable pour comparer les devis d'artisans"].map((t) => (
+            {["Estimation poste par poste (peinture, sol, plomberie…)", "Fourchette de prix basse / moyenne / haute", "Preços dos materiais atualizados", "Exportável para comparar os orçamentos de profissionais"].map((t) => (
               <li key={t} className="flex items-start gap-2 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> {t}
               </li>

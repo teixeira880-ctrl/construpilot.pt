@@ -17,9 +17,9 @@ const RATIOS = [
 ];
 
 const STYLES = [
-  { key: "moderne", label: "Moderne", suffix: "style moderne, lignes épurées, matériaux contemporains, tons neutres et lumineux" },
-  { key: "classique", label: "Classique", suffix: "style classique et chaleureux, matériaux traditionnels, finitions élégantes et intemporelles" },
-  { key: "economique", label: "Économique", suffix: "finitions simples et économiques, matériaux standard d'entrée de gamme, budget maîtrisé" },
+  { key: "moderne", label: "Moderne", suffix: "estilo moderno, linhas depuradas, materiais contemporâneos, tons neutros e luminosos" },
+  { key: "classique", label: "Classique", suffix: "estilo clássico e acolhedor, materiais tradicionais, acabamentos elegantes e intemporais" },
+  { key: "economique", label: "Économique", suffix: "acabamentos simples e económicos, materiais standard de entrada de gama, orçamento controlado" },
 ];
 
 async function fetchBlobUrl(path, params) {
@@ -83,7 +83,7 @@ function HistoryThumb({ render }) {
             : <img src={afterUrl} alt="après" className="h-24 w-full object-cover rounded-md" />
         ) : (
           <div className="h-24 w-full rounded-md bg-muted grid place-items-center text-xs text-muted-foreground">
-            {render.status === "processing" ? <Loader2 className="h-4 w-4 animate-spin" /> : render.status === "failed" ? "Échec" : "—"}
+            {render.status === "processing" ? <Loader2 className="h-4 w-4 animate-spin" /> : render.status === "failed" ? "Falha" : "—"}
           </div>
         )}
         <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-primary/80 text-primary-foreground">Après</span>
@@ -248,7 +248,7 @@ export default function RenderStudio() {
       const { data } = await api.post(`/runway/renders/${id}/share`);
       setShareUrl(data.share_url);
       try { await navigator.clipboard.writeText(data.share_url); setCopied(true); setTimeout(() => setCopied(false), 2000); toast.success("Link copiado — pronto para enviar ao cliente"); }
-      catch { toast.success("Lien de partage créé"); }
+      catch { toast.success("Link de partilha criado"); }
       loadHistory();
     } catch { toast.error("Partage impossível"); }
   };
@@ -303,7 +303,7 @@ export default function RenderStudio() {
               onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer.files?.[0]); }}
               data-testid="render-dropzone">
               <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} data-testid="render-file-input" />
-              {preview ? <img src={preview} alt="chantier actuel" className="w-full rounded-lg max-h-72 object-contain" /> : (
+              {preview ? <img src={preview} alt="obra atual" className="w-full rounded-lg max-h-72 object-contain" /> : (
                 <div className="py-12 text-center text-muted-foreground">
                   <Upload className="h-8 w-8 mx-auto mb-2" />
                   <p className="text-sm font-medium">Importe uma foto du chantier</p>
@@ -456,7 +456,7 @@ export default function RenderStudio() {
                 <HistoryThumb render={r} />
                 <div className="flex items-center justify-between">
                   <Badge variant={r.status === "done" ? "default" : r.status === "failed" ? "destructive" : "secondary"} className="text-[10px]">
-                    {r.kind === "video" ? "Vidéo" : "Photo"} · {r.status === "done" ? "Pronto" : r.status === "failed" ? "Échec" : "Em curso"}
+                    {r.kind === "video" ? "Vidéo" : "Photo"} · {r.status === "done" ? "Pronto" : r.status === "failed" ? "Falha" : "Em curso"}
                   </Badge>
                   <div className="flex items-center gap-1">
                     {r.status === "done" && (

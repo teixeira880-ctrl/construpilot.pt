@@ -9,7 +9,7 @@ const STATUS_STYLE = {
   verified: "bg-emerald-500/15 text-emerald-600",
   rejected: "bg-red-500/15 text-red-600",
 };
-const STATUS_LABEL = { pending: "En attente", verified: "Validé", rejected: "Refusé" };
+const STATUS_LABEL = { pending: "En attente", verified: "Validado", rejected: "Refusé" };
 
 export default function ProKycPanel() {
   const [rows, setRows] = useState([]);
@@ -46,11 +46,11 @@ export default function ProKycPanel() {
     setBusy(`${userId}-review`);
     try {
       await api.post("/auth/admin/kyc-pros/review", { user_id: userId, approve, reason });
-      toast.success(approve ? "Compte pro validé" : "Compte pro refusé");
+      toast.success(approve ? "Conta profissional validada" : "Compte pro refusé");
       setRows((prev) => prev.filter((r) => r.user_id !== userId || filter === ""));
       if (filter === "") load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Action impossible");
+      toast.error(e?.response?.data?.detail || "Ação impossível");
     } finally { setBusy(""); }
   };
 

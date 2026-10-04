@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { api, eur, num } from "@/lib/api";
 
-const STATUS_LABELS = { en_attente: "En attente", recu: "Devis reçu", retenu: "Retenu ✓" };
+const STATUS_LABELS = { en_attente: "En attente", recu: "Orçamento recebido", retenu: "Retenu ✓" };
 
 export default function PcOrdersTracking({ planId, orders, onSaved }) {
   const [edits, setEdits] = useState({});
@@ -24,7 +24,7 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
       });
       toast.success(`Réponse enregistrée — ${o.ref}`);
       onSaved?.();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Enregistrement impossible"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Impossível guardar"); }
   };
 
   const quotedVals = orders.map((o) => {

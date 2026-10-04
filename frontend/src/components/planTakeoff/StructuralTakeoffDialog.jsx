@@ -64,7 +64,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
       const src = data.scale_source === "calibration"
         ? " (échelle recalée sur votre calibration)" : "";
       toast.success(`Estimation : ${eur(data.totals?.ttc)} TTC${src}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Estimation impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Estimativa impossível"); }
     finally { setBusy(false); }
   };
 
@@ -73,10 +73,10 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
     try {
       const body = buildBody();
       const { data } = await api.post(`/takeoffs/${planId}/metre-to-quote`, body);
-      toast.success(`Devis créé (${data.line_count} lignes) — ouverture de l'éditeur…`);
+      toast.success(`Orçamento criado (${data.line_count} linhas) — a abrir o editor…`);
       onClose();
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Injection en devis impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível inserir no orçamento"); }
     finally { setInjecting(false); }
   };
 

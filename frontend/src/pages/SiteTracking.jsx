@@ -46,7 +46,7 @@ export default function SiteTracking() {
   };
   useEffect(() => { if (allowed) load(); /* eslint-disable-next-line */ }, [project, allowed]);
 
-  if (in_org && !can("chantier")) return <NoAccess title="Acompanhamento de obra não autorizado" />;
+  if (in_org && !can("obra")) return <NoAccess title="Acompanhamento de obra não autorizado" />;
 
   if (!allowed) {
     return (
@@ -59,7 +59,7 @@ export default function SiteTracking() {
     );
   }
 
-  const need = () => { if (!project.trim()) { toast.error("Indiquez d'abord un nom de chantier"); return false; } return true; };
+  const need = () => { if (!project.trim()) { toast.error("Indique primeiro um nome de obra"); return false; } return true; };
 
   const addReport = async () => {
     if (!need()) return;
@@ -83,7 +83,7 @@ export default function SiteTracking() {
     try {
       const { data } = await api.get(`/site/report-pdf?project=${encodeURIComponent(project)}`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
-      const a = document.createElement("a"); a.href = url; a.download = `chantier-${project}.pdf`;
+      const a = document.createElement("a"); a.href = url; a.download = `obra-${project}.pdf`;
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     } catch { toast.error("Export impossível"); } finally { setBusy(false); }
   };
@@ -92,9 +92,9 @@ export default function SiteTracking() {
     setBusy(true);
     try {
       const { data } = await api.post(`/site/reserves/remind?project=${encodeURIComponent(project)}`);
-      if (data.emails_sent) toast.success(`${data.emails_sent} e-mail(s) envoyé(s) aux entreprises`);
-      else toast.info("Nenhuma entreprise avec e-mail sur les réserves en cours");
-    } catch { toast.error("Envoi impossível"); } finally { setBusy(false); }
+      if (data.emails_sent) toast.success(`${data.emails_sent} e-mail(s) enviado(s) às empresas`);
+      else toast.info("Nenhuma empresa com e-mail nas reservas em curso");
+    } catch { toast.error("Envio impossível"); } finally { setBusy(false); }
   };
 
   const openCount = reserves.filter((r) => r.status !== "lifted").length;
@@ -106,7 +106,7 @@ export default function SiteTracking() {
       <SectionTitle overline="Pack Empresa" title="Acompanhamento de obra" />
       <div className="flex flex-wrap items-center gap-3">
         <HardHat className="h-4 w-4 text-primary" />
-        <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Nom du chantier (ex. Moradia Dupont)"
+        <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Nome da obra (ex. Moradia Dupont)"
           className="rounded-sm max-w-sm" data-testid="site-project" />
         <Button variant="outline" className="rounded-sm gap-2" disabled={busy} onClick={exportPdf} data-testid="site-pdf-btn">
           <FileDown className="h-4 w-4" /> Export PDF chantier
@@ -148,7 +148,7 @@ export default function SiteTracking() {
             <Input value={res.lot} onChange={(e) => setRes({ ...res, lot: e.target.value })} placeholder="Lot (ex. Plomberie)" className="rounded-sm" data-testid="reserve-lot" />
             <Input value={res.description} onChange={(e) => setRes({ ...res, description: e.target.value })} placeholder="Descrição de la réserve" className="rounded-sm md:col-span-2" data-testid="reserve-desc" />
             <Input value={res.company} onChange={(e) => setRes({ ...res, company: e.target.value })} placeholder="Empresa" className="rounded-sm" data-testid="reserve-company" />
-            <Input value={res.company_email} onChange={(e) => setRes({ ...res, company_email: e.target.value })} placeholder="E-mail entreprise (pour relance)" className="rounded-sm md:col-span-2" data-testid="reserve-email" />
+            <Input value={res.company_email} onChange={(e) => setRes({ ...res, company_email: e.target.value })} placeholder="E-mail empresa (para relançamento)" className="rounded-sm md:col-span-2" data-testid="reserve-email" />
             <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-primary">
               <Camera className="h-4 w-4" /> Photos {resPhotos.length > 0 && `(${resPhotos.length})`}
               <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => readFiles(e.target.files, setResPhotos)} data-testid="reserve-photo-input" />

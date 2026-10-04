@@ -8,7 +8,7 @@ import { useI18n } from "@/context/I18nContext";
 const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "Blog",
-  "name": "Blog ConstruPilot — Devis travaux, rénovation & BTP",
+  "name": "Blog ConstruPilot — Orçamentos de obras, renovação e construção",
   "url": "https://construpilot.fr/blog",
   "blogPost": BLOG_ARTICLES.map((a) => ({
     "@type": "BlogPosting",
@@ -33,7 +33,7 @@ export default function Blog() {
           : "Guides, astuces et actualités BTP par ConstruPilot : coût rénovation 2026, TVA à 10 %, métré 2D, comparateur de prix matériaux, devis client, plans 3D."}
         keywords={isPT
           ? "blog construção Portugal, custo renovação, IVA obras 6, estimar obra, orçamento obras"
-          : "blog BTP, coût rénovation, TVA 10 pourcent, métré 2D, devis travaux, prix matériaux"}
+          : "blog construção, custo renovação, IVA 10 porcento, medições 2D, orçamento obras, preço materiais"}
         canonical="/blog"
         jsonLd={JSON_LD}
       />

@@ -67,7 +67,7 @@ export default function QuoteScanner() {
 
   const análise = async () => {
     if (!b64 && !pdfB64 && text.trim().length < 20) {
-      return toast.error("Importe uma foto, un PDF ou collez le texte du devis");
+      return toast.error("Importe uma fotografia, um PDF ou cole o texto do orçamento");
     }
     setBusy(true);
     try {
@@ -85,7 +85,7 @@ export default function QuoteScanner() {
   };
 
   const compare = async () => {
-    if (selected.length < 2) return toast.error("Sélectionnez au moins 2 devis");
+    if (selected.length < 2) return toast.error("Selecione pelo menos 2 orçamentos");
     setBusy(true);
     try {
       const { data } = await api.post("/quotes/compare", { quote_ids: selected });
@@ -99,8 +99,8 @@ export default function QuoteScanner() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Scanner de devis travaux IA" description="Uploadez votre devis PDF : ConstruPilot compare chaque ligne aux prix France 2026 et vous dit si le devis est bas, correct ou trop élevé. Gratuit et sans inscription." keywords="análise devis travaux, vérifier prix devis, comparateur devis, devis trop cher, IA análise devis" canonical="/scanner-devis" />
-      <SectionTitle as="h1" over="Scanner de factures et devis" title="Ce prix est-il correct ?">
+      <SEO title="Digitalizador de orçamentos IA" description="Uploadez votre devis PDF : ConstruPilot compare chaque ligne aux prix France 2026 et vous dit si le devis est bas, correct ou trop élevé. Gratuit et sans inscription." keywords="análise devis travaux, vérifier prix devis, comparateur devis, devis trop cher, IA análise devis" canonical="/scanner-devis" />
+      <SectionTitle as="h1" over="Digitalizador de faturas e orçamentos" title="Ce prix est-il correct ?">
         L'IA lit le devis, extrait les lignes et compare avec la base de prix ConstruPilot :
         prix bas, correct, élevé ou très élevé, avec les elementos potentiellement oubliés.
       </SectionTitle>
@@ -109,7 +109,7 @@ export default function QuoteScanner() {
         <div className="surface p-6 grid gap-5">
           <div className="grid gap-2">
             <Label>Empresa</Label>
-            <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nom de l'entreprise" data-testid="quote-company-input" className="rounded-sm" />
+            <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nome da empresa" data-testid="quote-company-input" className="rounded-sm" />
           </div>
           <div className="grid gap-2">
             <Label>Photo, PDF ou capture du devis</Label>
@@ -137,7 +137,7 @@ export default function QuoteScanner() {
             <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} data-testid="quote-text-input" className="rounded-sm" placeholder="Prestation, quantités, prix unitaires, total…" />
           </div>
           <Button onClick={análise} disabled={busy} data-testid="análise-quote-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Sparkles className="h-4 w-4" /> {busy ? "Análise…" : "Analisar ce devis"}
+            <Sparkles className="h-4 w-4" /> {busy ? "Análise…" : "Analisar este orçamento"}
           </Button>
         </div>
 

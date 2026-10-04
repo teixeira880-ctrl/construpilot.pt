@@ -97,7 +97,7 @@ export default function EInvoicing() {
       await api.post("/einvoicing/connect", { siret, platform });
       toast.success("Plateforme connectée (mode simulé)");
       await loadAll();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Connexion impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Ligação impossível"); }
     finally { setBusy(false); }
   };
   const disconnect = async () => {
@@ -107,14 +107,14 @@ export default function EInvoicing() {
       toast.success("Plateforme déconnectée");
       setInbox([]);
       await loadStatus();
-    } catch { toast.error("Déconnexion impossível"); }
+    } catch { toast.error("Encerramento de sessão impossível"); }
     finally { setBusy(false); }
   };
   const simulate = async () => {
     setSimBusy(true);
     try {
       const { data } = await api.post("/einvoicing/inbox/simulate");
-      toast.success(`Nova facture reçue · ${data.invoice.supplier}`);
+      toast.success(`Nova fatura recebida · ${data.invoice.supplier}`);
       await loadInbox();
     } catch (e) { toast.error(e?.response?.data?.detail || "Simulation impossível"); }
     finally { setSimBusy(false); }
@@ -128,7 +128,7 @@ export default function EInvoicing() {
         project_id: decideOn.decision === "accepted" && decisionProject ? decisionProject : null,
       });
       if (data?.expense) {
-        toast.success(`Fatura acceptée · despesa de ${eur(data.expense.amount)} ajoutée au chantier ${data.expense.project_name}`);
+        toast.success(`Fatura aceite · despesa de ${eur(data.expense.amount)} adicionada à obra ${data.expense.project_name}`);
       } else {
         toast.success(decideOn.decision === "accepted" ? "Fatura acceptée (transmise à l'administration — simulé)" : "Fatura refusée (transmise à l'administration — simulé)");
       }
@@ -142,7 +142,7 @@ export default function EInvoicing() {
     setExpenseBusy(true);
     try {
       const { data } = await api.post(`/einvoicing/inbox/${expenseOn.inv_id}/expense`, { project_id: expenseProject });
-      toast.success(`Despesa de ${eur(data.expense.amount)} ajoutée au chantier ${data.expense.project_name}`);
+      toast.success(`Despesa de ${eur(data.expense.amount)} adicionada à obra ${data.expense.project_name}`);
       setExpenseOn(null); setExpenseProject("");
       await loadInbox();
     } catch (e) { toast.error(e?.response?.data?.detail || "Action impossível"); }
@@ -202,7 +202,7 @@ export default function EInvoicing() {
     try {
       await api.post("/einvoicing/settings", { overspend_threshold_pct: Number(threshold) });
       toast.success(`Seuil d'alerte surcoût réglé à ${threshold}%`);
-    } catch { toast.error("Enregistrement impossível"); }
+    } catch { toast.error("Não foi possível guardar"); }
     finally { setSavingThreshold(false); }
   };
 
@@ -225,7 +225,7 @@ export default function EInvoicing() {
       <div className="surface rounded-sm p-4 mb-6 flex items-start gap-3 border-amber-500/20 bg-amber-500/[0.04]" data-testid="einv-info-banner">
         <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
-          À partir de 2026, les entreprises reçoivent leurs factures fournisseurs via une <b className="text-foreground">Plateforme Agréée (PDP)</b> raccordée au rede national. Cet espace simule ce raccordement (receção, acceptation/rejeição, transmission du statut à l'administration). Nenhuma connexion réelle n'est établie — pronto à brancher l'API PDP (Iopole n°0018) dès que disponível.
+          À partir de 2026, les entreprises reçoivent leurs factures fournisseurs via une <b className="text-foreground">Plateforme Agréée (PDP)</b> raccordée au rede national. Cet espace simule ce raccordement (receção, acceptation/rejeição, transmission du statut à l'administração). Nenhuma ligação real n'est établie — pronto à brancher l'API PDP (Iopole n°0018) dès que disponível.
         </p>
       </div>
 
@@ -350,7 +350,7 @@ export default function EInvoicing() {
                         ? <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
                         : <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
                       <span className="text-muted-foreground">
-                        Encomenda <b className="text-foreground">{inv.reconciliation.order_type || "matériaux"}</b> · prévu <b className="num text-foreground">{eur(inv.reconciliation.expected_ht)}</b> HT · facturé <b className="num text-foreground">{eur(inv.reconciliation.invoice_ht)}</b> HT
+                        Encomenda <b className="text-foreground">{inv.reconciliation.order_type || "materiais"}</b> · prévu <b className="num text-foreground">{eur(inv.reconciliation.expected_ht)}</b> HT · facturé <b className="num text-foreground">{eur(inv.reconciliation.invoice_ht)}</b> HT
                       </span>
                       <span className={`num font-bold ${inv.reconciliation.gap_flag === "over" ? "text-red-600 dark:text-red-400" : inv.reconciliation.gap_flag === "under" ? "text-blue-600 dark:text-blue-400" : "text-emerald-600 dark:text-emerald-400"}`} data-testid={`einv-recon-gap-${inv.inv_id}`}>
                         {inv.reconciliation.gap_ht > 0 ? "+" : ""}{eur(inv.reconciliation.gap_ht)} ({inv.reconciliation.gap_pct > 0 ? "+" : ""}{inv.reconciliation.gap_pct}%)

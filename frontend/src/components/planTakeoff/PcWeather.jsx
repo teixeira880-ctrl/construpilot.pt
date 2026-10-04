@@ -24,7 +24,7 @@ export default function PcWeather({ planning, start }) {
   const pours = rows.filter((r) => /fondations|dalle|élévations|escalier/i.test(r.name));
 
   const load = async () => {
-    if (!city.trim()) return toast.error("Indiquez la ville du chantier");
+    if (!city.trim()) return toast.error("Indique a cidade da obra");
     setBusy(true);
     try {
       const { data: d } = await api.get(`/pc/weather?city=${encodeURIComponent(city.trim())}`);
@@ -45,7 +45,7 @@ export default function PcWeather({ planning, start }) {
   return (
     <div className="space-y-2 mt-2" data-testid="pc-weather">
       <div className="flex items-center gap-2">
-        <Input placeholder="Ville du chantier (ex : Marseille)" value={city}
+        <Input placeholder="Cidade da obra (ex: Marselha)" value={city}
                onChange={(e) => setCity(e.target.value)}
                onKeyDown={(e) => e.key === "Enter" && load()}
                data-testid="pc-weather-city-input"

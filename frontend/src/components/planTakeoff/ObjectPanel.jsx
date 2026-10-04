@@ -201,7 +201,7 @@ export default function ObjectPanel({
                       onFocus={() => onFocusObject?.({ kind: "room", data: r })}
                       onExtra={onEstimateRoom ? () => onEstimateRoom(r.room_id) : null}
                       extraIcon={Calculator}
-                      extraLabel="Gerar devis compartimento"
+                      extraLabel="Gerar orçamento do compartimento"
                       onEdit={onRenameRoom ? () => startEdit(r.room_id, r.name) : null}
                       onDelete={onDeleteRoom ? () => onDeleteRoom(r.room_id) : null}
                     />
