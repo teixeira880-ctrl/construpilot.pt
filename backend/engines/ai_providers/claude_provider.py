@@ -1,6 +1,6 @@
 """Anthropic Claude provider.
 
-Model default: `claude-sonnet-4-5-20250929` (via env `CLAUDE_MODEL`).
+Model default: `claude-opus-5-5` (via env `CLAUDE_MODEL`).
 Usa o SDK oficial `anthropic` com cliente async.
 """
 from __future__ import annotations
@@ -21,7 +21,11 @@ logger = logging.getLogger("ai.claude")
 
 ENV_KEY = "ANTHROPIC_API_KEY"
 ENV_MODEL = "CLAUDE_MODEL"
-DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
+ENV_EFFORT = "CLAUDE_EFFORT"
+DEFAULT_MODEL = "claude-opus-5-5"
+DEFAULT_EFFORT = "low"  # para gerações 5.5+ que suportam output_config.effort
+# Modelos recentes que exigem `output_config.effort` em vez de temperature/thinking clássicos.
+_NEW_GEN_PREFIXES = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-5", "claude-sonnet-5")
 
 
 class ClaudeProvider:
@@ -30,8 +34,14 @@ class ClaudeProvider:
     def __init__(self, *, api_key: str | None = None, model: str | None = None):
         self.api_key = (api_key or os.environ.get(ENV_KEY) or "").strip()
         self.model = (model or os.environ.get(ENV_MODEL) or DEFAULT_MODEL).strip()
+        self.effort = (os.environ.get(ENV_EFFORT) or DEFAULT_EFFORT).strip().lower()
         if not self.api_key:
             raise AIProviderNotConfigured(self.name, ENV_KEY)
+
+    @property
+    def _is_new_gen(self) -> bool:
+        """Opus/Sonnet 5+ exigem `output_config.effort` em vez de temperature."""
+        return any(self.model.startswith(p) for p in _NEW_GEN_PREFIXES)
 
     def _client(self):
         # Import lazy: só carrega o SDK se o provedor for efetivamente usado.
@@ -67,17 +77,31 @@ class ClaudeProvider:
 
         t0 = time.time()
         client = self._client()
+        # Modelos 5.5+ (opus/sonnet) usam `output_config.effort` e NÃO suportam temperature.
+        # Para gerações anteriores: `temperature` continua a passar via extra_body.
+        create_kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "system": system or "",
+            "messages": messages,
+        }
+        send_temperature = (temperature is not None) and not self._is_new_gen
+        if self._is_new_gen:
+            # Garantir resposta curta e sem thinking: effort low por default.
+            create_kwargs["extra_body"] = {"output_config": {"effort": self.effort}}
+        elif send_temperature:
+            create_kwargs["extra_body"] = {"temperature": temperature}
         try:
-            # Nota: `temperature` já não é arg top-level em anthropic>=1.0 — passamos via extra_body
-            create_kwargs: dict[str, Any] = {
-                "model": self.model,
-                "max_tokens": max_tokens,
-                "system": system or "",
-                "messages": messages,
-            }
-            if temperature is not None:
-                create_kwargs["extra_body"] = {"temperature": temperature}
-            msg = await client.messages.create(**create_kwargs)
+            try:
+                msg = await client.messages.create(**create_kwargs)
+            except APIStatusError as e:
+                detail = str(e).lower()
+                if (getattr(e, "status_code", None) == 400 and send_temperature
+                        and "temperature" in detail and "deprecat" in detail):
+                    create_kwargs.pop("extra_body", None)
+                    msg = await client.messages.create(**create_kwargs)
+                else:
+                    raise
         except APIStatusError as e:
             status = getattr(e, "status_code", None)
             retriable = status in (408, 409, 425, 429, 500, 502, 503, 504)
@@ -124,7 +148,7 @@ class ClaudeProvider:
         """Health leve: 1 token, prompt mínimo. Latência típica < 1 s."""
         try:
             r = await self.ask(prompt="OK", system="Reply 'ok'.",
-                               max_tokens=5, temperature=0.0)
+                               max_tokens=16, temperature=0.0)
             return {
                 "ok": not r.is_empty, "provider": self.name,
                 "model": r.model, "latency_ms": r.latency_ms,

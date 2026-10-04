@@ -1,7 +1,6 @@
 """Coach IA · Claude (primário) + OpenAI (fallback) + Perplexity (web search).
 
-Substitui `coach_aurora.py`. Mesma assinatura externa (`coach_ask`) para
-que `routes/coach.py` só mude o import.
+Expõe `coach_ask()` chamado por `routes/coach.py`.
 
 Fluxo:
   1. Buscar projeto (opcional) → resumo PT-PT.
@@ -50,9 +49,9 @@ SYSTEM_PROMPT = (
 )
 
 
-# Alias de retrocompatibilidade (coach_aurora.py expunha este nome)
-CoachAuroraError = CoachUnavailableError
-
+# ---------------------------------------------------------------------------
+# Coach IA · router multi-provedor (Claude · OpenAI · Perplexity).
+# ---------------------------------------------------------------------------
 
 def _project_brief(project: dict[str, Any] | None) -> str:
     if not project:
@@ -181,7 +180,7 @@ async def coach_ask(
     db,
     history_limit: int = DEFAULT_HISTORY_LIMIT,
 ) -> dict[str, Any]:
-    """Interface pública (mesma assinatura do antigo `coach_aurora.coach_ask`).
+    """Interface pública do Coach IA.
 
     Retorno em sucesso:
       {"text", "model", "provider", "mode_used", "request_id",
@@ -238,6 +237,6 @@ async def coach_ask(
 
 
 __all__ = [
-    "coach_ask", "CoachUnavailableError", "CoachAuroraError",
+    "coach_ask", "CoachUnavailableError",
     "SYSTEM_PROMPT", "DEFAULT_HISTORY_LIMIT",
 ]
