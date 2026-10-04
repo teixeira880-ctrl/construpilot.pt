@@ -80,6 +80,7 @@ import Entreprise from "@/pages/Entreprise";
 // CITY_LIST removida com as rotas SEO locais FR (100% PT-PT).
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import { I18nProvider } from "@/context/I18nContext";
+import { DomTranslator } from "@/components/DomTranslator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
@@ -299,6 +300,7 @@ function App() {
                 <PermissionProvider>
                   <WhiteLabelProvider>
                     <ConfirmProvider>
+                      <DomTranslator />
                       <AppRouter />
                       <MobileTabBar />
                       <InstallPrompt />
