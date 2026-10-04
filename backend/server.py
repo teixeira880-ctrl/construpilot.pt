@@ -104,6 +104,8 @@ from routes import company as company_routes
 api_router.include_router(company_routes.router)
 from routes import investors as investors_routes
 api_router.include_router(investors_routes.router)
+from routes import btp_solver as btp_solver_routes
+api_router.include_router(btp_solver_routes.router)
 api_router.include_router(autoseo_routes.router)
 api_router.include_router(dpgf_routes.router)
 api_router.include_router(company_library_routes.router)
