@@ -17,13 +17,9 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
-from engines.coach_aurora import (
-    CoachAuroraError,
+from engines.coach_ai import (
+    CoachUnavailableError,
     coach_ask,
-)
-from engines.aurora_client import (
-    AuroraKeyIdInvalid,
-    AuroraNotConfigured,
 )
 
 router = APIRouter(prefix="/coach", tags=["coach"])
@@ -98,11 +94,12 @@ async def coach_ask_endpoint(
             user_id=user_id,
             db=db,
         )
-    except CoachAuroraError as e:
+    except CoachUnavailableError as e:
         logger.warning(
-            "coach unavailable | user=%s conversation=%s reasoning=%s fast=%s",
-            user_id[:12], conversation_id, e.reasoning_meta.get("error"),
-            e.fast_meta.get("error"),
+            "coach unavailable | user=%s conversation=%s primary=%s fallback=%s",
+            user_id[:12], conversation_id,
+            e.primary_meta.get("error") or e.primary_meta.get("code"),
+            e.fallback_meta.get("error") or e.fallback_meta.get("code"),
         )
         raise HTTPException(
             status_code=503,
@@ -113,22 +110,6 @@ async def coach_ask_endpoint(
                     "O administrador foi notificado. Tente novamente em alguns minutos."
                 ),
                 "conversation_id": conversation_id,
-            },
-        )
-    except AuroraNotConfigured:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "error": "coach_not_configured",
-                "message": "O assistente IA não está configurado no servidor.",
-            },
-        )
-    except AuroraKeyIdInvalid:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "error": "coach_config_error",
-                "message": "Chave de configuração do assistente IA inválida.",
             },
         )
     except Exception as e:  # noqa: BLE001
@@ -144,11 +125,13 @@ async def coach_ask_endpoint(
     # Persistir resposta do assistente
     assistant_msg_id = _new_message_id()
     meta = {
+        "provider": answer.get("provider"),
         "model": answer.get("model"),
-        "route": answer.get("route"),
         "mode_used": answer.get("mode_used"),
         "request_id": answer.get("request_id"),
-        "attempts": answer.get("attempts"),
+        "latency_ms": answer.get("latency_ms"),
+        "web_enriched": answer.get("web_enriched"),
+        "citations": answer.get("citations") or [],
     }
     await db.coach_messages.insert_one({
         "message_id": assistant_msg_id,

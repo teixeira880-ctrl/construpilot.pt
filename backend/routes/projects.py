@@ -8,6 +8,15 @@ from core.db import db
 from core.security import current_user
 from engines import estimation, ai, pdf
 from engines.aurora_sync import sync_project_fire_and_forget
+import os
+
+AURORA_ENABLED = (os.environ.get("AURORA_ENABLED") or "false").strip().lower() == "true"
+
+
+def _maybe_sync_aurora(doc: dict) -> None:
+    """Gate por AURORA_ENABLED; no-op se desativado."""
+    if AURORA_ENABLED:
+        sync_project_fire_and_forget(doc)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -63,8 +72,8 @@ async def create_project(body: ProjectIn, user=Depends(current_user)):
     }
     await db.projects.insert_one(doc)
     doc.pop("_id", None)
-    # Aurora sync (fail-safe, non-blocking)
-    sync_project_fire_and_forget(doc)
+    # Aurora sync (fail-safe, non-blocking; gated by AURORA_ENABLED)
+    _maybe_sync_aurora(doc)
     return doc
 
 
@@ -99,8 +108,8 @@ async def update_project(project_id: str, body: UpdateIn, user=Depends(current_u
     updates["updated_at"] = _now()
     await db.projects.update_one({"project_id": project_id}, {"$set": updates})
     updated = await _get(project_id, user)
-    # Aurora sync (fail-safe, non-blocking)
-    sync_project_fire_and_forget(updated)
+    # Aurora sync (fail-safe, non-blocking; gated by AURORA_ENABLED)
+    _maybe_sync_aurora(updated)
     return updated
 
 

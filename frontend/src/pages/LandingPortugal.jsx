@@ -20,6 +20,7 @@ import { Interactive3D } from "@/components/Interactive3D";
 import { ParamLibraryPromo } from "@/components/ParamLibraryPromo";
 import { SoroBlog } from "@/components/SoroBlog";
 import { LandingInstallBanner } from "@/components/pwa/LandingInstallBanner";
+import { ServiceApologyBanner } from "@/components/ServiceApologyBanner";
 import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 
@@ -206,6 +207,7 @@ export default function LandingPortugal() {
         }}
       />
       <Nav />
+      <ServiceApologyBanner />
 
       <div className="bg-primary text-primary-foreground text-center text-sm font-semibold px-4 py-2.5 flex items-center justify-center gap-2" data-testid="promo-banner">
         <Sparkles className="h-4 w-4" />

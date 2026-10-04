@@ -922,13 +922,33 @@ async def aurora_status() -> dict:
     """
     from engines.aurora_client import AuroraConfig
     cfg = AuroraConfig()
+    enabled = (os.environ.get("AURORA_ENABLED") or "false").strip().lower() == "true"
     return {
+        "enabled": enabled,
         "configured": cfg.configured,
         "has_base_url": bool(cfg.base_url),
         "has_api_key": bool(os.environ.get("AURORA_COMPANY_API_KEY", "").strip()),
         "has_signing_secret": bool(os.environ.get("AURORA_COMPANY_SIGNING_SECRET", "").strip()),
         "endpoint_base": (cfg.endpoint_base if cfg.base_url else None),
+        "note": ("Aurora legacy desativado — Coach IA usa Claude+OpenAI. "
+                 "Definir AURORA_ENABLED=true para reactivar."
+                 if not enabled else None),
     }
+
+
+def _aurora_disabled_response(phase: int | str) -> dict:
+    """Resposta genérica quando AURORA_ENABLED=false."""
+    return {
+        "ok": False,
+        "status": "aurora_disabled",
+        "phase": phase,
+        "reason": "migrated_to_claude_openai",
+        "message": "Aurora legacy desativado. Coach IA usa Claude + OpenAI + Perplexity.",
+    }
+
+
+def _aurora_enabled() -> bool:
+    return (os.environ.get("AURORA_ENABLED") or "false").strip().lower() == "true"
 
 
 @router.post("/aurora/test-connection")
@@ -938,6 +958,8 @@ async def aurora_test_connection() -> dict:
     Nunca faz log da API key nem do signing secret. Falha graciosamente com
     detalhe de erro seguro (status HTTP + mensagem sem headers/secrets).
     """
+    if not _aurora_enabled():
+        return _aurora_disabled_response("test-connection")
     import httpx
     from engines.aurora_client import (
         AuroraNotConfigured,
@@ -991,6 +1013,8 @@ async def aurora_test_connection() -> dict:
 @router.post("/aurora/phase1")
 async def aurora_phase1() -> dict:
     """Fase 1 · GET /capabilities (sem AS1 signing)."""
+    if not _aurora_enabled():
+        return _aurora_disabled_response(1)
     from engines.aurora_client import (
         AuroraKeyIdInvalid,
         AuroraNotConfigured,
@@ -1024,6 +1048,8 @@ async def aurora_phase1() -> dict:
 @router.post("/aurora/phase2")
 async def aurora_phase2() -> dict:
     """Fase 2 · POST /projects/upsert (AS1 assinado) + GET /projects/get."""
+    if not _aurora_enabled():
+        return _aurora_disabled_response(2)
     from engines.aurora_client import (
         AuroraKeyIdInvalid,
         AuroraNotConfigured,
@@ -1064,6 +1090,8 @@ async def aurora_phase3() -> dict:
     Usa `parse_aurora_company_answer` para validar o envelope
     `aurora.company-answer.v1` e nunca considerar `text == ""` como sucesso.
     """
+    if not _aurora_enabled():
+        return _aurora_disabled_response(3)
     from engines.aurora_client import (
         AuroraKeyIdInvalid,
         AuroraNotConfigured,
@@ -1132,6 +1160,8 @@ async def aurora_sync_all(limit: int = 500) -> dict:
     contadas mas não abortam o batch. Retorna estatísticas + primeiros 5
     entity_ids retornados por Aurora.
     """
+    if not _aurora_enabled():
+        return _aurora_disabled_response("sync-all")
     from engines.aurora_client import AuroraConfig
     from engines.aurora_sync import sync_project_to_aurora
     if not AuroraConfig().configured:
