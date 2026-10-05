@@ -1,0 +1,271 @@
+"""Rotas /api/plans-pro/* — Autodesk APS + Cascade IA PT.
+
+Endpoints:
+  - POST /api/plans-pro/upload              — DWG/RVT/IFC → upload OSS + translate
+  - GET  /api/plans-pro/{plan_id}/status    — polling do estado da translation
+  - GET  /api/plans-pro/{plan_id}/viewer-token — token assinado para Viewer SDK
+  - POST /api/plans-pro/{plan_id}/analyze   — lança análise IA
+  - GET  /api/plans-pro/{plan_id}/analysis  — resultado estruturado
+  - GET  /api/plans-pro/history             — lista últimos planos
+"""
+from __future__ import annotations
+
+import asyncio
+import base64
+import logging
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from core.db import db
+from core.security import current_user
+from engines.plans_pro import autodesk_client
+from engines.plans_pro.plan_metadata import aggregate_quantities
+from engines.plans_pro.plan_vision import full_analysis
+
+logger = logging.getLogger("plans_pro.routes")
+
+router = APIRouter(prefix="/plans-pro", tags=["plans-pro"])
+
+
+ACCEPT_EXT = {".dwg", ".dxf", ".rvt", ".ifc", ".nwc", ".nwd", ".pdf"}
+MAX_SIZE = 100 * 1024 * 1024  # 100 MB
+
+
+def _plan_id() -> str:
+    return f"pln_{uuid.uuid4().hex[:14]}"
+
+
+def _ext(name: str) -> str:
+    return ("." + name.rsplit(".", 1)[-1].lower()) if "." in name else ""
+
+
+# ---------------------------------------------------------------------------
+# Config check
+# ---------------------------------------------------------------------------
+@router.get("/config")
+async def config_status(user=Depends(current_user)):
+    """Devolve estado de configuração (sem credentials)."""
+    return {
+        "autodesk_configured": autodesk_client.is_configured(),
+        "accepted_extensions": sorted(ACCEPT_EXT),
+        "max_size_mb": MAX_SIZE // (1024 * 1024),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Upload + translate
+# ---------------------------------------------------------------------------
+async def _translate_and_poll(plan_id: str, urn: str) -> None:
+    """Background: trigger translate + polling manifest até terminar."""
+    async def _upd(**fields):
+        fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.plans_pro.update_one({"plan_id": plan_id}, {"$set": fields})
+
+    try:
+        await autodesk_client.translate(urn)
+        await _upd(translation_status="inprogress", progress="20%")
+
+        # Polling (máx 15 min, intervalo 5s crescente)
+        for i in range(180):
+            await asyncio.sleep(5)
+            try:
+                m = await autodesk_client.manifest(urn)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("manifest poll err %s: %s", plan_id, e)
+                continue
+            status = (m.get("status") or "").lower()
+            progress = m.get("progress") or ""
+            await _upd(translation_status=status or "inprogress", progress=progress or f"{min(20 + i, 95)}%")
+            if status in ("success", "failed", "timeout"):
+                break
+        final = await autodesk_client.manifest(urn)
+        await _upd(translation_status=final.get("status") or "unknown",
+                   progress="100%", manifest=final)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("translate falhou %s", plan_id)
+        await _upd(translation_status="failed", error=str(e)[:300])
+
+
+@router.post("/upload")
+async def upload(
+    background: BackgroundTasks,
+    file: UploadFile = File(...),
+    project_id: str | None = Form(None),
+    user=Depends(current_user),
+):
+    if not autodesk_client.is_configured():
+        raise HTTPException(503, "Autodesk APS não configurado neste servidor.")
+    filename = file.filename or "plan"
+    ext = _ext(filename)
+    if ext not in ACCEPT_EXT:
+        raise HTTPException(400, f"Formato não suportado ({ext}). Aceites: {', '.join(sorted(ACCEPT_EXT))}")
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Ficheiro vazio.")
+    if len(data) > MAX_SIZE:
+        raise HTTPException(400, f"Ficheiro demasiado grande (máx {MAX_SIZE // (1024 * 1024)} MB).")
+
+    try:
+        up = await autodesk_client.upload_object(filename, data)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("upload Autodesk falhou")
+        raise HTTPException(502, f"Autodesk upload falhou: {type(e).__name__}") from None
+
+    plan_id = _plan_id()
+    doc = {
+        "plan_id": plan_id,
+        "user_id": user["user_id"],
+        "project_id": project_id,
+        "file_name": filename,
+        "file_type": ext.lstrip("."),
+        "size_bytes": len(data),
+        "autodesk_urn": up["urn"],
+        "oss_object_key": up["object_key"],
+        "oss_bucket": up["bucket"],
+        "translation_status": "pending",
+        "progress": "10%",
+        "ai_analysis": None,
+        "model_used": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.plans_pro.insert_one(doc)
+    background.add_task(_translate_and_poll, plan_id, up["urn"])
+    doc.pop("_id", None)
+    return doc
+
+
+# ---------------------------------------------------------------------------
+# Status / viewer token
+# ---------------------------------------------------------------------------
+@router.get("/{plan_id}/status")
+async def status(plan_id: str, user=Depends(current_user)):
+    doc = await db.plans_pro.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "manifest": 0, "ai_analysis": 0},
+    )
+    if not doc:
+        raise HTTPException(404, "Plano não encontrado.")
+    return doc
+
+
+@router.get("/{plan_id}/viewer-token")
+async def viewer_token(plan_id: str, user=Depends(current_user)):
+    doc = await db.plans_pro.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "autodesk_urn": 1, "translation_status": 1},
+    )
+    if not doc:
+        raise HTTPException(404, "Plano não encontrado.")
+    try:
+        tok = await autodesk_client.viewer_token()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(503, f"Autodesk token falhou: {type(e).__name__}") from None
+    return {
+        "urn": doc.get("autodesk_urn"),
+        "access_token": tok["access_token"],
+        "expires_in": tok["expires_in"],
+        "token_type": tok["token_type"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Analyze (IA cascade)
+# ---------------------------------------------------------------------------
+class AnalyzeIn(BaseModel):
+    project_hint: str | None = None
+    include_web_norms: bool = True
+
+
+@router.post("/{plan_id}/analyze")
+async def analyze(plan_id: str, body: AnalyzeIn, user=Depends(current_user)):
+    doc = await db.plans_pro.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Plano não encontrado.")
+    if doc.get("translation_status") != "success":
+        raise HTTPException(409, "Translation ainda não terminada ou falhou.")
+    urn = doc["autodesk_urn"]
+
+    # 1. Metadata + thumbnails
+    try:
+        meta = await autodesk_client.metadata(urn)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("metadata falhou %s: %s", plan_id, e)
+        meta = {}
+    views = ((meta.get("data") or {}).get("metadata") or [])
+
+    # Quantities agregadas (categorias / layers)
+    categories_views = []
+    manifest = doc.get("manifest") or {}
+    for d in (manifest.get("derivatives") or []):
+        for child in (d.get("children") or []):
+            cats = child.get("categories") or []
+            layers = child.get("layers") or []
+            if cats or layers:
+                categories_views.append({"categories": cats, "layers": layers})
+    quantities = aggregate_quantities(categories_views) if categories_views else {}
+
+    # 2. Thumbnail
+    thumb = None
+    try:
+        thumb = await autodesk_client.thumbnail(urn)
+    except Exception as e:  # noqa: BLE001
+        logger.info("thumbnail indisponível: %s", e)
+
+    # 3. Cascade IA
+    analysis = await full_analysis(
+        filename=doc["file_name"],
+        metadata={"quantities": quantities, "views": views},
+        thumbnail_bytes=thumb,
+        thumbnail_mime="image/png",
+        project_hint=body.project_hint,
+        include_web_norms=body.include_web_norms,
+    )
+
+    # 4. Persistir
+    thumb_b64 = base64.b64encode(thumb).decode() if thumb else None
+    update = {
+        "ai_analysis": analysis,
+        "quantities": quantities,
+        "views_count": len(views),
+        "thumbnail_b64": thumb_b64,
+        "model_used": analysis.get("model_used"),
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.plans_pro.update_one({"plan_id": plan_id}, {"$set": update})
+    return {
+        "plan_id": plan_id,
+        "quantities": quantities,
+        "ai_analysis": analysis,
+        "views_count": len(views),
+    }
+
+
+@router.get("/{plan_id}/analysis")
+async def get_analysis(plan_id: str, user=Depends(current_user)):
+    doc = await db.plans_pro.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "manifest": 0},
+    )
+    if not doc:
+        raise HTTPException(404, "Plano não encontrado.")
+    if not doc.get("ai_analysis"):
+        raise HTTPException(409, "Análise ainda não foi executada. Chame /analyze primeiro.")
+    return doc
+
+
+# ---------------------------------------------------------------------------
+# History
+# ---------------------------------------------------------------------------
+@router.get("/history/list")
+async def history(limit: int = 20, user=Depends(current_user)):
+    limit = max(1, min(int(limit or 20), 100))
+    items = await db.plans_pro.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0, "manifest": 0, "thumbnail_b64": 0, "ai_analysis.synthesis.ouvrages": 0},
+    ).sort("created_at", -1).to_list(limit)
+    return {"items": items}

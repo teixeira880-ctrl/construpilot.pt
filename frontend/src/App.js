@@ -25,6 +25,7 @@ import PriceSearch from "@/pages/PriceSearch";
 import Diy from "@/pages/Diy";
 import Coach from "@/pages/Coach";
 import BtpSolver from "@/pages/BtpSolver";
+import PlansPro from "@/pages/PlansPro";
 import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
@@ -182,6 +183,7 @@ function AppRouter() {
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/btp-solver" element={<Shell><BtpSolver /></Shell>} />
+      <Route path="/plans-pro" element={<Shell><PlansPro /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
       <Route path="/comparatif" element={<Shell><Comparatif /></Shell>} />
