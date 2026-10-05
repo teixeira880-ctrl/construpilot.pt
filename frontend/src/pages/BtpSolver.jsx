@@ -143,24 +143,28 @@ export default function BtpSolver() {
     <div className="min-h-screen px-4 py-8 lg:px-8" data-testid="btp-solver-page">
       <div className="mx-auto max-w-7xl">
         <header className="mb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <img
               src="/assistente-obras-logo.png"
               alt="Assistente de Obras · ConstruPilot"
-              className="h-14 w-14 shrink-0 rounded-lg object-contain"
+              className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 object-contain"
               data-testid="btp-solver-logo"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            <Wrench className="h-7 w-7 text-emerald-600 hidden sm:block" aria-hidden="true" />
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl" data-testid="btp-solver-title">
-              Assistente de Obras
-            </h1>
+            <div>
+              <h1
+                className="text-2xl sm:text-3xl font-bold tracking-tight sr-only"
+                data-testid="btp-solver-title"
+              >
+                Assistente de Obras
+              </h1>
+              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
+                Descreva uma patologia ou dúvida técnica de obra — o Assistente de Obras
+                devolve um diagnóstico detalhado com causas prováveis, soluções orçamentadas
+                e normativa portuguesa aplicável (RGEU, REH, RSCIE, Eurocódigos).
+              </p>
+            </div>
           </div>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Descreva uma patologia ou dúvida técnica de obra — o Assistente de Obras devolve um
-            diagnóstico detalhado com causas prováveis, soluções orçamentadas e normativa
-            portuguesa aplicável (RGEU, REH, RSCIE, Eurocódigos).
-          </p>
         </header>
 
         {isFree && (

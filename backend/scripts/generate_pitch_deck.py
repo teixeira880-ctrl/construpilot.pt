@@ -9,7 +9,6 @@ from reportlab.lib.pagesizes import landscape
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
-
 # 16:9 slide — 297 mm × 167 mm
 PAGE_W, PAGE_H = 297 * mm, 167 * mm
 PRIMARY   = HexColor("#10b981")   # verde ConstruPilot
@@ -233,10 +232,20 @@ def slide_6_tracao(c):
         "Export Excel 5 regimes IVA PT (Continente/Açores/Madeira/ARU/Isento)",
         "Integrações produtivas: CloudConvert · Tavily · Resend",
     ], size=10.5, line_h=7)
-    # Screenshot do estimador à direita
+    # Logo Assistente de Obras no canto superior direito
+    logo_path = Path("/app/frontend/public/assistente-obras-logo.png")
+    if logo_path.exists():
+        try:
+            img = ImageReader(str(logo_path))
+            c.drawImage(img, PAGE_W - 55 * mm, PAGE_H - 60 * mm,
+                        40 * mm, 40 * mm,
+                        preserveAspectRatio=True, mask='auto')
+        except Exception:
+            pass
+    # Screenshot do estimador à direita (mais pequeno para dar espaço ao logo)
     _drop_shadow_image(
         c, SHOTS / "04-estimation.png",
-        x=150 * mm, y=25 * mm, w=132 * mm, h=100 * mm,
+        x=160 * mm, y=25 * mm, w=122 * mm, h=72 * mm,
         caption="Estimador em produção — 3 passos, resultado em segundos"
     )
     # Caixa diferencial compacta em baixo
