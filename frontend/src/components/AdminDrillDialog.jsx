@@ -53,7 +53,7 @@ export default function AdminDrillDialog({ metric, onClose }) {
     setQ(""); setPlanFilter("all"); setCityFilter(""); setInactiveOnly(false); setSelected(new Set());
     api.get(`/admin/drill/${metric}`)
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Détails indisponibles"))
+      .catch(() => toast.error("Detalhes indisponíveis"))
       .finally(() => setLoading(false));
   }, [metric]);
 
@@ -120,7 +120,7 @@ export default function AdminDrillDialog({ metric, onClose }) {
     a.download = `construpilot-${metric}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`${rows.length} ligne(s) exportée(s)`);
+    toast.success(`${rows.length} linha(s) exportada(s)`);
   };
 
   const sendBulk = async () => {
@@ -133,11 +133,25 @@ export default function AdminDrillDialog({ metric, onClose }) {
       });
       const failed = res?.failed || 0;
       const details = res?.failed_details || [];
+      const categories = res?.categories || {};
       if (failed > 0) {
-        const sample = details.slice(0, 3).map((d) => `${d.email}: ${(d.error || "").split(":")[0]}`).join(" · ");
+        // Legenda PT para categorias
+        const legend = {
+          invalid_recipient: "endereço inválido",
+          bounced: "mailbox inexistente",
+          rate_limited: "limite Resend",
+          suppressed: "endereço bloqueado",
+          auth_error: "chave API inválida",
+          domain_not_verified: "domínio não verificado",
+          unknown: "erro desconhecido",
+        };
+        const catSummary = Object.entries(categories)
+          .map(([k, v]) => `${v}× ${legend[k] || k}`)
+          .join(", ");
         toast.warning(
-          `${res.sent}/${res.total} e-mail(s) enviados · ${failed} falha(s)${sample ? ` — ${sample}` : ""}`,
-          { duration: 10000 },
+          `${res.sent}/${res.total} e-mail(s) enviados · ${failed} falha(s)` +
+          (catSummary ? ` — ${catSummary}` : ""),
+          { duration: 12000 },
         );
         // eslint-disable-next-line no-console
         console.warn("[bulk-email] falhas:", details);
@@ -155,11 +169,11 @@ export default function AdminDrillDialog({ metric, onClose }) {
       <Dialog open={!!metric && !compose} onOpenChange={(o) => { if (!o) onClose(); }}>
         <DialogContent className="max-w-[95vw] w-[1100px] max-h-[88vh] flex flex-col" data-testid="admin-drill-dialog">
           <DialogHeader>
-            <DialogTitle data-testid="admin-drill-title">{data?.title || "Détails"}</DialogTitle>
-            <DialogDescription>{data?.description || "Carregamento…"}</DialogDescription>
+            <DialogTitle data-testid="admin-drill-title">{data?.title || "Detalhes"}</DialogTitle>
+            <DialogDescription>{data?.description || "A carregar…"}</DialogDescription>
           </DialogHeader>
 
-          {/* Recherche + actions */}
+          {/* Pesquisa + ações */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[220px]">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -167,52 +181,53 @@ export default function AdminDrillDialog({ metric, onClose }) {
                      className="rounded-sm h-9 pl-9" data-testid="admin-drill-search" />
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1" data-testid="admin-drill-count">
-              <Users className="h-3.5 w-3.5" /> {rows.length} résultat(s)
+              <Users className="h-3.5 w-3.5" /> {rows.length} resultado{rows.length === 1 ? "" : "s"}
             </span>
             {emailKey && (
               <Button size="sm" variant="outline" className="rounded-sm gap-2"
                       disabled={selectedEmails.length === 0} onClick={() => setCompose(true)}
-                      data-testid="admin-drill-email-btn">
+                      data-testid="admin-drill-email-btn"
+                      title={selectedEmails.length === 0 ? "Selecione utilizadores com a caixa à esquerda" : ""}>
                 <Mail className="h-4 w-4" /> E-mail ({selectedEmails.length})
               </Button>
             )}
             <Button size="sm" className="rounded-sm gap-2" onClick={exportCSV} disabled={!rows.length}
                     data-testid="admin-drill-export">
-              <Download className="h-4 w-4" /> Exporter CSV
+              <Download className="h-4 w-4" /> Exportar CSV
             </Button>
           </div>
 
-          {/* Filtres cible pub */}
+          {/* Filtros */}
           {(hasPlan || hasCity || hasInactive) && (
             <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="admin-drill-filters">
-              <span className="text-muted-foreground flex items-center gap-1"><Filter className="h-3.5 w-3.5" /> Filtres :</span>
+              <span className="text-muted-foreground flex items-center gap-1"><Filter className="h-3.5 w-3.5" /> Filtros:</span>
               {hasPlan && (
                 <Select value={planFilter} onValueChange={setPlanFilter}>
                   <SelectTrigger className="rounded-sm h-8 w-[160px]" data-testid="admin-drill-plan-filter">
-                    <SelectValue placeholder="Plan" />
+                    <SelectValue placeholder="Plano" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tous les plans</SelectItem>
+                    <SelectItem value="all">Todos os planos</SelectItem>
                     {planOptions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}
               {hasCity && (
                 <Input value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}
-                       placeholder="Ville / adresse" className="rounded-sm h-8 w-[180px]"
+                       placeholder="Cidade / morada" className="rounded-sm h-8 w-[180px]"
                        data-testid="admin-drill-city-filter" />
               )}
               {hasInactive && (
                 <label className="flex items-center gap-2 cursor-pointer" data-testid="admin-drill-inactive-filter">
                   <Checkbox checked={inactiveOnly} onCheckedChange={(v) => setInactiveOnly(!!v)} />
-                  Inactifs (+30 j)
+                  Inativos (+30 dias)
                 </label>
               )}
               {(planFilter !== "all" || cityFilter || inactiveOnly) && (
                 <button className="text-xs text-muted-foreground underline flex items-center gap-1"
                         onClick={() => { setPlanFilter("all"); setCityFilter(""); setInactiveOnly(false); }}
                         data-testid="admin-drill-clear-filters">
-                  <X className="h-3 w-3" /> Réinitialiser
+                  <X className="h-3 w-3" /> Repor
                 </button>
               )}
             </div>
@@ -222,7 +237,7 @@ export default function AdminDrillDialog({ metric, onClose }) {
             {loading ? (
               <div className="h-40 grid place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : !data ? null : rows.length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground text-center">Aucune donnée.</p>
+              <p className="p-6 text-sm text-muted-foreground text-center">Sem dados.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/95 backdrop-blur">
@@ -268,26 +283,26 @@ export default function AdminDrillDialog({ metric, onClose }) {
         </DialogContent>
       </Dialog>
 
-      {/* Composer e-mail groupé */}
+      {/* Compor e-mail em massa */}
       <Dialog open={compose} onOpenChange={(o) => { if (!o) setCompose(false); }}>
         <DialogContent className="max-w-lg" data-testid="admin-bulk-email-dialog">
           <DialogHeader>
-            <DialogTitle>E-mail promotionnel</DialogTitle>
+            <DialogTitle>E-mail promocional</DialogTitle>
             <DialogDescription>
-              Envoi à {selectedEmails.length} destinataire(s) sélectionné(s).
+              Envio para {selectedEmails.length} destinatário{selectedEmails.length === 1 ? "" : "s"} selecionado{selectedEmails.length === 1 ? "" : "s"}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Objet de l'e-mail"
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Assunto do e-mail"
                    className="rounded-sm" data-testid="admin-bulk-email-subject" />
             <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={7}
-                      placeholder="Votre message… (les retours à la ligne sont conservés)"
+                      placeholder="A sua mensagem… (as quebras de linha são preservadas)"
                       className="rounded-sm" data-testid="admin-bulk-email-message" />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCompose(false)} data-testid="admin-bulk-email-cancel">Annuler</Button>
+            <Button variant="outline" onClick={() => setCompose(false)} data-testid="admin-bulk-email-cancel">Cancelar</Button>
             <Button onClick={sendBulk} disabled={sending} className="gap-2" data-testid="admin-bulk-email-send">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Envoyer
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Enviar
             </Button>
           </DialogFooter>
         </DialogContent>

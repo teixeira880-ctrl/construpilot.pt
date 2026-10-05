@@ -127,11 +127,11 @@ async def drill_metric(metric: str) -> dict:
         }
 
     CONTACT_COLS = [
-        {"key": "user_name", "label": "Nom"},
+        {"key": "user_name", "label": "Nome"},
         {"key": "user_email", "label": "E-mail"},
-        {"key": "user_phone", "label": "Téléphone"},
-        {"key": "user_company", "label": "Société"},
-        {"key": "user_plan", "label": "Plan"},
+        {"key": "user_phone", "label": "Telefone"},
+        {"key": "user_company", "label": "Empresa"},
+        {"key": "user_plan", "label": "Plano"},
     ]
 
     if metric == "users":
@@ -146,11 +146,11 @@ async def drill_metric(metric: str) -> dict:
                  "last_seen": seen.get(u["user_id"]) or "",
                  "created_at": u.get("created_at")} for u in users]
         rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
-        return {"title": "Utilisateurs", "description": "Tous les comptes inscrits — cible publicitaire directe.",
-                "columns": CONTACT_COLS + [{"key": "role", "label": "Rôle"},
-                                           {"key": "city", "label": "Ville"},
-                                           {"key": "last_seen", "label": "Dernière activité"},
-                                           {"key": "created_at", "label": "Inscrit le"}],
+        return {"title": "Utilizadores", "description": "Todas as contas registadas — alvo publicitário direto.",
+                "columns": CONTACT_COLS + [{"key": "role", "label": "Função"},
+                                           {"key": "city", "label": "Cidade"},
+                                           {"key": "last_seen", "label": "Última atividade"},
+                                           {"key": "created_at", "label": "Inscrito em"}],
                 "rows": rows}
 
     if metric in ("projects", "estimated_volume"):
@@ -281,28 +281,47 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
     import logging
     _log = logging.getLogger("admin.bulk_email")
 
-    async def _one(addr: str) -> tuple[bool, str | None, str | None]:
+    async def _one(addr: str) -> tuple[bool, str | None, str | None, str | None]:
         try:
             r = await send_email(addr, subject, html)
-            return True, (r or {}).get("id"), None
+            mid = (r or {}).get("id")
+            return True, mid, None, "sent"
         except Exception as e:  # noqa: BLE001
             err = f"{type(e).__name__}: {str(e)[:160]}"
-            _log.warning("bulk_email failed to=%s · %s", addr, err)
-            return False, None, err
+            # Classifica tipo de erro para o painel admin
+            lower = err.lower()
+            if "invalid" in lower and ("to" in lower or "recipient" in lower):
+                category = "invalid_recipient"
+            elif "bounce" in lower or "mailbox" in lower:
+                category = "bounced"
+            elif "rate" in lower or "429" in lower:
+                category = "rate_limited"
+            elif "suppress" in lower:
+                category = "suppressed"
+            elif "unauthorized" in lower or "401" in lower or "api key" in lower:
+                category = "auth_error"
+            elif "domain" in lower:
+                category = "domain_not_verified"
+            else:
+                category = "unknown"
+            _log.warning("bulk_email failed to=%s · category=%s · %s", addr, category, err)
+            return False, None, err, category
 
     sent = 0
     failed_details: list[dict] = []
     sent_ids: list[str] = []
+    categories_count: dict[str, int] = {}
     for i in range(0, len(emails), 10):
         chunk = emails[i:i + 10]
         results = await asyncio.gather(*[_one(a) for a in chunk])
-        for addr, (ok, mid, err) in zip(chunk, results):
+        for addr, (ok, mid, err, cat) in zip(chunk, results):
             if ok:
                 sent += 1
                 if mid:
                     sent_ids.append(mid)
             else:
-                failed_details.append({"email": addr, "error": err or "unknown"})
+                failed_details.append({"email": addr, "error": err or "unknown", "category": cat or "unknown"})
+                categories_count[cat or "unknown"] = categories_count.get(cat or "unknown", 0) + 1
         # Resend rate limit: 10 req/s. Esperamos 1.1 s entre chunks de 10
         # para evitar HTTP 429 Too Many Requests.
         if i + 10 < len(emails):
@@ -326,6 +345,83 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
         "ok": True, "campaign_id": campaign_id,
         "sent": sent, "failed": len(emails) - sent, "total": len(emails),
         "failed_details": failed_details[:50],
+        "categories": categories_count,
+    }
+
+
+@router.get("/emails/resend-status")
+async def admin_resend_status(limit: int = 50, admin=Depends(admin_user)) -> dict:
+    """Dashboard emails Resend em tempo real.
+
+    Mostra `last_event` real (delivered/bounced/suppressed/failed) para distinguir
+    bounces legítimos de endereços de teste de falhas reais do sistema.
+    """
+    import httpx
+    key = (os.environ.get("RESEND_API_KEY") or "").strip()
+    if not key:
+        raise HTTPException(503, "RESEND_API_KEY ausente.")
+    limit = max(1, min(int(limit or 50), 100))
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        r = await client.get(
+            f"https://api.resend.com/emails?limit={limit}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+        if r.status_code != 200:
+            return {"error": f"Resend {r.status_code}", "detail": r.text[:200]}
+        payload = r.json()
+        # Health check domínio
+        dom_r = await client.get(
+            "https://api.resend.com/domains",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+        domains = []
+        if dom_r.status_code == 200:
+            for d in dom_r.json().get("data", []):
+                domains.append({
+                    "name": d.get("name"),
+                    "status": d.get("status"),
+                    "region": d.get("region"),
+                    "sending": (d.get("capabilities") or {}).get("sending"),
+                })
+
+    events: dict[str, int] = {}
+    items: list[dict] = []
+    for e in payload.get("data", []):
+        ev = e.get("last_event") or "unknown"
+        events[ev] = events.get(ev, 0) + 1
+        to = e.get("to") or []
+        if isinstance(to, list):
+            to_display = to[0] if to else ""
+        else:
+            to_display = str(to)
+        items.append({
+            "id": e.get("id"),
+            "to": to_display,
+            "from": e.get("from"),
+            "subject": e.get("subject"),
+            "last_event": ev,
+            "created_at": e.get("created_at"),
+        })
+
+    total = sum(events.values()) or 1
+    success_rate = round(100 * (events.get("delivered", 0) + events.get("opened", 0) + events.get("clicked", 0)) / total, 1)
+
+    return {
+        "items": items,
+        "events_count": events,
+        "total": total,
+        "success_rate_pct": success_rate,
+        "domains": domains,
+        "legend": {
+            "delivered": "Entregue",
+            "opened": "Aberto",
+            "clicked": "Clicado",
+            "bounced": "Rejeitado (endereço inválido ou inexistente)",
+            "suppressed": "Suprimido (endereço em lista de bloqueio Resend por bounce prévio)",
+            "delivery_delayed": "Entrega atrasada (temporário)",
+            "complained": "Marcado como spam",
+            "sent": "Enviado (aguarda confirmação)",
+        },
     }
 
 

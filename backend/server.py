@@ -53,6 +53,14 @@ from apscheduler.triggers.cron import CronTrigger  # noqa: E402
 app = FastAPI(title="ConstruPilot API", openapi_url="/api/openapi.json", docs_url="/api/docs", redoc_url="/api/redoc")
 api_router = APIRouter(prefix="/api")
 
+# Rate limiting (slowapi) — proteger endpoints Perplexity Plus
+from core.rate_limit import limiter, rate_limit_handler  # noqa: E402
+from slowapi.errors import RateLimitExceeded  # noqa: E402
+from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 
 @api_router.get("/")
 async def root():

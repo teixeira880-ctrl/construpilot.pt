@@ -161,3 +161,4 @@ weasyprint==70.0
 markdown==3.11
 anthropic==1.11.0
 openai==1.99.9
+slowapi==0.1.10

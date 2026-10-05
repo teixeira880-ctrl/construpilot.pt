@@ -8,17 +8,16 @@ Endpoints:
   GET  /api/perplexity-plus/presets           — lista presets
   GET  /api/perplexity-plus/cache-stats       — stats cache (admin ou utilizador)
 """
-from __future__ import annotations
-
 import json
 import logging
-from typing import Any
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.db import db
+from core.rate_limit import limiter
 from core.security import current_user
 from engines.perplexity_plus import (
     PRESETS,
@@ -56,13 +55,16 @@ async def list_presets(user=Depends(current_user)) -> dict:
 # ---------------------------------------------------------------------------
 class ChatIn(BaseModel):
     message: str = Field(..., min_length=2, max_length=4000)
-    conversation_id: str | None = None
-    preset: str | None = None
-    history: list[dict[str, Any]] | None = None
+    conversation_id: Optional[str] = None
+    preset: Optional[str] = None
+    history: Optional[List[dict]] = None
 
 
 @router.post("/chat")
-async def chat_sse(body: ChatIn, request: Request, user=Depends(current_user)):
+@limiter.limit("30/hour")
+async def chat_sse(request: Request, body: ChatIn, user=Depends(current_user)):
+    # anexa user ao request.state para o key_func do limiter
+    request.state.user = user
     if not pplx_plus_client.is_configured():
         raise HTTPException(503, "Perplexity não configurado neste servidor.")
     system = preset_system(body.preset)
@@ -87,10 +89,10 @@ async def chat_sse(body: ChatIn, request: Request, user=Depends(current_user)):
 # 2. Compare
 # ---------------------------------------------------------------------------
 class CompareIn(BaseModel):
-    items: list[str] = Field(..., min_length=2, max_length=10)
-    criteria: list[str] = Field(..., min_length=1, max_length=10)
-    context: str | None = None
-    preset: str | None = None
+    items: List[str] = Field(..., min_length=2, max_length=10)
+    criteria: List[str] = Field(..., min_length=1, max_length=10)
+    context: Optional[str] = None
+    preset: Optional[str] = None
 
 
 COMPARE_SYSTEM = (
@@ -109,7 +111,9 @@ COMPARE_SYSTEM = (
 
 
 @router.post("/compare")
-async def compare(body: CompareIn, user=Depends(current_user)):
+@limiter.limit("20/hour")
+async def compare(request: Request, body: CompareIn, user=Depends(current_user)):
+    request.state.user = user
     if not pplx_plus_client.is_configured():
         raise HTTPException(503, "Perplexity não configurado.")
     sys = preset_system(body.preset, COMPARE_SYSTEM) + "\n\n" + COMPARE_SYSTEM
@@ -133,7 +137,7 @@ async def compare(body: CompareIn, user=Depends(current_user)):
 class NormsIn(BaseModel):
     query: str = Field(..., min_length=3, max_length=600)
     preset: str = "LNEC"
-    context: str | None = None
+    context: Optional[str] = None
 
 
 NORMS_SYSTEM = (
@@ -149,7 +153,9 @@ NORMS_SYSTEM = (
 
 
 @router.post("/norms")
-async def norms(body: NormsIn, user=Depends(current_user)):
+@limiter.limit("20/hour")
+async def norms(request: Request, body: NormsIn, user=Depends(current_user)):
+    request.state.user = user
     if not pplx_plus_client.is_configured():
         raise HTTPException(503, "Perplexity não configurado.")
     preset = get_preset(body.preset) or PRESETS["LNEC"]
@@ -171,8 +177,8 @@ async def norms(body: NormsIn, user=Depends(current_user)):
 # 4. Materials Watch
 # ---------------------------------------------------------------------------
 class MaterialsIn(BaseModel):
-    materials: list[str] = Field(..., min_length=1, max_length=15)
-    region: str | None = "Portugal continental"
+    materials: List[str] = Field(..., min_length=1, max_length=15)
+    region: Optional[str] = "Portugal continental"
 
 
 MATERIALS_SYSTEM = (
@@ -189,7 +195,9 @@ MATERIALS_SYSTEM = (
 
 
 @router.post("/materials-watch")
-async def materials_watch(body: MaterialsIn, user=Depends(current_user)):
+@limiter.limit("15/hour")
+async def materials_watch(request: Request, body: MaterialsIn, user=Depends(current_user)):
+    request.state.user = user
     if not pplx_plus_client.is_configured():
         raise HTTPException(503, "Perplexity não configurado.")
     prompt = (
