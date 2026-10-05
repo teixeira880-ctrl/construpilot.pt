@@ -313,48 +313,68 @@ export default function LandingPortugal() {
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                  {t("landing.hero.reassurance", "Gratuit et sans engagement — résultat en 30 secondes.")}
+                  {t("landing.hero.reassurance", "Grátis e sem compromisso — resultado em 30 segundos.")}
                 </p>
               </div>
 
-              <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
-                <div className="flex -space-x-3">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="h-10 w-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center">
-                      <HardHat className="h-4 w-4 text-primary/60" />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-foreground">{t("landing.hero.trust_title", "Conçu pour les pros du BTP")}</span>
-                  <span className="text-xs">{t("landing.hero.trust_subtitle", "Artisans, PME & architectes")}</span>
-                </div>
+              <div className="mt-8 flex items-center gap-3 flex-wrap text-sm text-muted-foreground" data-testid="hero-trust-row">
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {t("landing.hero.compliance", "Conforme RGEU · REH · Eurocódigos")}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-xs font-semibold text-foreground">
+                  <HardHat className="h-3.5 w-3.5 text-primary/70" />
+                  {t("landing.hero.coverage", "Continente · Madeira · Açores")}
+                </span>
               </div>
             </motion.div>
 
-            {/* Right Content - 3D Viewer */}
-            <motion.div 
-              className="lg:col-span-6 xl:col-span-7 h-[500px] lg:h-[600px] w-full rounded-2xl relative"
+            {/* Right Content - Hero 3D House Image */}
+            <motion.div
+              className="lg:col-span-6 xl:col-span-7 w-full relative"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+              data-testid="hero-3d-image"
             >
-               <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent rounded-2xl pointer-events-none" />
-               <div className="relative h-full w-full rounded-2xl border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden bg-card/50 backdrop-blur-sm p-4">
-                  <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-1 pointer-events-none">
-                     <span className="text-[10px] uppercase font-bold tracking-widest text-primary">{t("landing.hero.live_view", "Vue en direct")}</span>
-                     <span className="text-sm font-semibold">{t("landing.hero.plan3d", "Geração Plan 3D")}</span>
+              <div className="absolute -inset-6 bg-gradient-to-tr from-primary/20 via-transparent to-transparent blur-3xl rounded-[3rem] pointer-events-none" />
+              <div className="relative rounded-2xl border border-white/10 shadow-2xl shadow-primary/10 overflow-hidden bg-card">
+                <img
+                  src="/hero-3d-house.jpg"
+                  alt="Visualização 3D fotorrealista de moradia moderna gerada pelo ConstruPilot"
+                  className="w-full h-auto object-cover aspect-[4/3] lg:aspect-[16/11]"
+                  loading="eager"
+                  fetchpriority="high"
+                />
+                {/* Overlay suave em dark mode */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                {/* Badge canto superior */}
+                <div className="absolute top-5 left-5 flex items-center gap-2 rounded-full bg-black/50 backdrop-blur-md px-3 py-1.5 border border-white/20">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[11px] font-semibold text-white tracking-wide uppercase">
+                    {t("landing.hero.live_view", "Vista 3D gerada por IA")}
+                  </span>
+                </div>
+                {/* Legenda inferior com CTA */}
+                <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/70">
+                      {t("landing.hero.powered_by", "Opus 5.5 · Autodesk APS")}
+                    </p>
+                    <p className="text-base font-semibold text-white mt-0.5">
+                      {t("landing.hero.plan3d", "O seu projeto, em 3D fotorrealista")}
+                    </p>
                   </div>
-                  {/* Reuse the existing Interactive3D component with mock data */}
-                  <div className="h-full w-full overflow-hidden rounded-xl bg-background/50">
-                     <Interactive3D 
-                        rooms={HERO_ROOMS} 
-                        walls={HERO_WALLS} 
-                        scaleMperPx={0.012} 
-                        imageHeight={600} 
-                     />
-                  </div>
-               </div>
+                  <Link
+                    to="/plans-pro"
+                    className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-white/95 hover:bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-900 transition shadow-lg"
+                    data-testid="hero-plans-pro-cta"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    {t("landing.hero.upload_cta", "Carregar o meu projeto")}
+                  </Link>
+                </div>
+              </div>
             </motion.div>
 
           </div>
