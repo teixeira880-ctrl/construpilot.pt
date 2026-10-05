@@ -57,14 +57,45 @@ def _set_widths(ws, widths: list[int]) -> None:
         ws.column_dimensions[get_column_letter(i)].width = w
 
 
-def _write_project_header(ws, *, plan_doc: dict, iva_label: str, numero_orc: str) -> int:
-    """Grava cabeçalho na folha Resumo. Devolve próxima linha livre."""
-    ws["A1"] = "ConstruPilot — Orçamento preliminar"
-    ws["A1"].font = TITLE_FONT
-    ws.merge_cells("A1:F1")
+def _write_project_header(ws, *, plan_doc: dict, iva_label: str, numero_orc: str,
+                          branding: dict | None = None) -> int:
+    """Grava cabeçalho na folha Resumo. Devolve próxima linha livre.
+
+    Se `branding` tiver `brand_logo_b64`, insere o logo em A1. Caso contrário,
+    coloca "ConstruPilot" como título.
+    """
+    branding = branding or {}
+    logo_b64 = (branding.get("brand_logo_b64") or "").split(",")[-1]  # tira prefixo data:
+    row_offset = 0
+    if logo_b64:
+        try:
+            import base64 as _b64
+            import io as _io
+            from openpyxl.drawing.image import Image as XlImage
+            raw = _b64.b64decode(logo_b64)
+            img = XlImage(_io.BytesIO(raw))
+            # Redimensionar para caber em 2 linhas (~60px alto)
+            try:
+                ratio = (img.width or 100) / max(img.height or 60, 1)
+                img.height = 60
+                img.width = int(60 * ratio)
+            except Exception:
+                pass
+            img.anchor = "A1"
+            ws.add_image(img)
+            ws.row_dimensions[1].height = 50
+            ws.row_dimensions[2].height = 20
+            row_offset = 2
+        except Exception as e:  # noqa: BLE001
+            logger.info("Logo render falhou: %s", type(e).__name__)
+
+    title_row = 1 + row_offset
+    ws.cell(row=title_row, column=1).value = branding.get("brand_company_name") or "ConstruPilot — Orçamento preliminar"
+    ws.cell(row=title_row, column=1).font = TITLE_FONT
+    ws.merge_cells(start_row=title_row, start_column=1, end_row=title_row, end_column=6)
 
     gen = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
-    rows = [
+    rows: list[tuple[str, Any]] = [
         ("Ficheiro:", plan_doc.get("file_name") or "—"),
         ("Formato:", (plan_doc.get("file_type") or "").upper() or "—"),
         ("Projeto / ID:", plan_doc.get("project_id") or "—"),
@@ -72,10 +103,22 @@ def _write_project_header(ws, *, plan_doc: dict, iva_label: str, numero_orc: str
         ("Data de geração:", gen),
         ("Regime IVA:", iva_label),
         ("Modelo IA:", plan_doc.get("model_used") or "—"),
-        ("URN Autodesk:", (plan_doc.get("autodesk_urn") or "")[:60] + "…"
-            if plan_doc.get("autodesk_urn") else "—"),
     ]
-    row = 3
+    if branding.get("brand_nif"):
+        rows.append(("NIF:", str(branding["brand_nif"])))
+    if branding.get("brand_address"):
+        morada = str(branding.get("brand_address") or "")
+        cidade = str(branding.get("brand_city") or "")
+        postal = str(branding.get("brand_postal") or "")
+        full = f"{morada}, {postal} {cidade}".strip(", ")
+        if full:
+            rows.append(("Morada:", full))
+    if branding.get("brand_contact_line"):
+        rows.append(("Contacto:", str(branding["brand_contact_line"])))
+    if plan_doc.get("autodesk_urn"):
+        rows.append(("URN Autodesk:", (plan_doc["autodesk_urn"][:60] + "…")))
+
+    row = title_row + 2
     for label, value in rows:
         c = ws.cell(row=row, column=1, value=label)
         c.font = LABEL_FONT
@@ -221,10 +264,14 @@ def _write_resumo_sheet(
     quantities_count: int,
     resumo: str | None,
     normas: list[str],
+    branding: dict | None = None,
 ) -> None:
     ws.title = "Resumo"
     _set_widths(ws, [22, 20, 20, 20, 20, 20])
-    next_row = _write_project_header(ws, plan_doc=plan_doc, iva_label=iva_label, numero_orc=numero_orc)
+    next_row = _write_project_header(
+        ws, plan_doc=plan_doc, iva_label=iva_label,
+        numero_orc=numero_orc, branding=branding,
+    )
 
     # Totais destaque
     ws.cell(row=next_row, column=1, value="Totais").font = Font(bold=True, size=12, color="0F766E")
@@ -275,6 +322,7 @@ def build_workbook(
     *,
     plan_doc: dict,
     iva_rate: str = "23",
+    branding: dict | None = None,
 ) -> tuple[bytes, dict[str, Any]]:
     """Gera workbook .xlsx em memória. Devolve `(bytes, meta_dict)`."""
     iva_cfg = IVA_RATES_PT.get(str(iva_rate), IVA_RATES_PT["23"])
@@ -313,6 +361,7 @@ def build_workbook(
         quantities_count=len(quantities),
         resumo=resumo,
         normas=normas,
+        branding=branding,
     )
 
     buf = io.BytesIO()

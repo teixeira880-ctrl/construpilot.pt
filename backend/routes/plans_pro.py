@@ -281,7 +281,26 @@ async def export_excel(
         raise HTTPException(409, "Análise IA ainda não foi executada. Chame /analyze primeiro.")
 
     try:
-        data, meta = build_workbook(plan_doc=doc, iva_rate=str(iva_rate))
+        # Fetch branding do utilizador (NIF, logo, morada)
+        branding = await db.users.find_one(
+            {"user_id": user["user_id"]},
+            {"_id": 0, "brand_company_name": 1, "brand_nif": 1, "brand_address": 1,
+             "brand_city": 1, "brand_postal": 1, "brand_contact_line": 1,
+             "brand_logo_b64": 1, "organization_id": 1},
+        ) or {}
+        # Override com org branding se pertence a org
+        if branding.get("organization_id"):
+            org = await db.organizations.find_one(
+                {"org_id": branding["organization_id"]},
+                {"_id": 0, "brand_company_name": 1, "brand_nif": 1, "brand_address": 1,
+                 "brand_city": 1, "brand_postal": 1, "brand_contact_line": 1,
+                 "brand_logo_b64": 1},
+            )
+            if org:
+                for k, v in org.items():
+                    if v:
+                        branding[k] = v
+        data, meta = build_workbook(plan_doc=doc, iva_rate=str(iva_rate), branding=branding)
     except Exception as e:  # noqa: BLE001
         logger.exception("Excel export falhou %s", plan_id)
         raise HTTPException(500, f"Falha ao gerar Excel: {type(e).__name__}") from None
