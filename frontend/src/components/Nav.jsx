@@ -45,7 +45,7 @@ const NAV_PRO = [
 const NAV_DISCOVER = [
   { to: "/fonctionnalites", label: "Funcionalidades", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
-  { to: "/btp-solver", label: "Assistente de Obras", key: "nav.btp_solver", icon: Wrench },
+  { to: "/btp-solver", label: "Assistente de Obras", key: "nav.btp_solver", icon: Wrench, logo: "/assistente-obras-logo.png" },
   { to: "/plan", label: "Medir 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
   { to: "/mesure-photo", label: "Medir por foto", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
   { to: "/photo", label: "Análise por foto", key: "nav.photo", icon: Camera },
@@ -141,7 +141,19 @@ export const Nav = () => {
               {discoverItems.map((l) => (
                 <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
                   <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
-                    <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
+                    <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10">
+                      {l.logo ? (
+                        <img
+                          src={l.logo}
+                          alt=""
+                          aria-hidden="true"
+                          className="h-5 w-5 object-contain"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <l.icon className="h-4 w-4 text-primary" />
+                      )}
+                    </span>
                     {t(l.key, l.label)}
                   </Link>
                 </DropdownMenuItem>
@@ -224,7 +236,19 @@ export const Nav = () => {
               key={l.to} to={l.to} onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg hover:bg-secondary transition-colors"
             >
-              <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span> {t(l.key, l.label)}
+              <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10">
+                {l.logo ? (
+                  <img
+                    src={l.logo}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-5 w-5 object-contain"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  <l.icon className="h-4 w-4 text-primary" />
+                )}
+              </span> {t(l.key, l.label)}
               {l.badge && <span className="ml-auto text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>}
             </Link>
           ))}
