@@ -16,7 +16,6 @@ import { SEO } from "@/components/SEO";
 import { TrustSection } from "@/components/TrustSection";
 import { MarketingTeaser } from "@/components/MarketingTeaser";
 import { FeatureShowcase } from "@/components/FeatureShowcase";
-import { Interactive3D } from "@/components/Interactive3D";
 import { ParamLibraryPromo } from "@/components/ParamLibraryPromo";
 import { SoroBlog } from "@/components/SoroBlog";
 import { LandingInstallBanner } from "@/components/pwa/LandingInstallBanner";
@@ -26,32 +25,6 @@ import { useI18n } from "@/context/I18nContext";
 
 const EXAMPLE =
   "Quero renovar uma casa de 150 m², refazer paredes, tetos, eletricidade, canalização, duas casas de banho e substituir as janelas.";
-
-// Data for Interactive3D hero demo — plan de maison réaliste (5 compartimentos + ouvertures)
-const HERO_ROOMS = [
-  { name: "Cuisine", polygon_px: [[0,0],[320,0],[320,260],[0,260]], centroid_px: [160,130],
-    openings: [{ kind: "fenetre", width_m: 1.2 }, { kind: "porte", width_m: 0.8 }] },
-  { name: "Séjour", polygon_px: [[0,260],[480,260],[480,600],[0,600]], centroid_px: [240,430],
-    openings: [{ kind: "baie", width_m: 2.4 }, { kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.9 }] },
-  { name: "Entrée", polygon_px: [[320,0],[480,0],[480,260],[320,260]], centroid_px: [400,130],
-    openings: [{ kind: "porte", width_m: 1.0 }, { kind: "porte", width_m: 0.8 }] },
-  { name: "Chambre 1", polygon_px: [[480,0],[800,0],[800,300],[480,300]], centroid_px: [640,150],
-    openings: [{ kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.8 }] },
-  { name: "Chambre 2", polygon_px: [[480,300],[800,300],[800,600],[480,600]], centroid_px: [640,450],
-    openings: [{ kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.8 }] },
-];
-const HERO_WALLS = [
-  // Paredes porteurs (périmètre + refend central)
-  { x1: 0, y1: 0, x2: 800, y2: 0, wall_type: "porteur", thickness_px: 18 },
-  { x1: 800, y1: 0, x2: 800, y2: 600, wall_type: "porteur", thickness_px: 18 },
-  { x1: 800, y1: 600, x2: 0, y2: 600, wall_type: "porteur", thickness_px: 18 },
-  { x1: 0, y1: 600, x2: 0, y2: 0, wall_type: "porteur", thickness_px: 18 },
-  { x1: 480, y1: 0, x2: 480, y2: 600, wall_type: "porteur", thickness_px: 18 },
-  // Divisórias interiores
-  { x1: 0, y1: 260, x2: 480, y2: 260, wall_type: "cloison", thickness_px: 10 },
-  { x1: 320, y1: 0, x2: 320, y2: 260, wall_type: "cloison", thickness_px: 10 },
-  { x1: 480, y1: 300, x2: 800, y2: 300, wall_type: "cloison", thickness_px: 10 },
-];
 
 const STEPS = [
   { icon: MessageSquare, title: "Descrevo o meu projeto", text: "Numa frase, como a um profissional." },

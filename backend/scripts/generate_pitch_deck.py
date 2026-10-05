@@ -200,7 +200,7 @@ def slide_4_mercado(c):
 
 
 def slide_5_produto(c):
-    _top_band(c, "Produto", "Painel + Biblioteca no mesmo fluxo")
+    _top_band(c, "Produto", "Assistente de Obras + Painel + Biblioteca")
     # 2 screenshots lado a lado
     _drop_shadow_image(
         c, SHOTS / "02-dashboard.png",
@@ -210,28 +210,29 @@ def slide_5_produto(c):
     _drop_shadow_image(
         c, SHOTS / "03-price-library.png",
         x=152 * mm, y=35 * mm, w=130 * mm, h=85 * mm,
-        caption="Biblioteca partilhada — trabalhos e materiais PT"
+        caption="Biblioteca partilhada — trabalhos e materiais PT 2026"
     )
     # Legendas curtas por baixo
     c.setFillColor(DARK)
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(15 * mm, 24 * mm, "5 pilares num só produto:")
+    c.drawString(15 * mm, 24 * mm, "6 pilares num só produto:")
     c.setFillColor(MUTED)
     c.setFont("Helvetica", 9)
     c.drawString(15 * mm, 18 * mm,
-                 "Medição IA · Estimação · Biblioteca de preços · CRM + assinatura · Faturação SAF-T")
+                 "Assistente de Obras (IA + web) · Medição IA · Estimação · Biblioteca PT · CRM + assinatura · Faturação SAF-T")
 
 
 def slide_6_tracao(c):
     _top_band(c, "Tração e diferencial", "Já em produção")
     # Bullets à esquerda
     _bullets(c, 15 * mm, PAGE_H - 45 * mm, [
-        "Plataforma operacional — SaaS multi-tenant PT",
-        "Localização 100% PT-PT — única no mercado",
+        "SaaS multi-tenant PT em produção — localização 100 % PT-PT",
+        "Opus 5.5 + OpenAI + Perplexity Plus (chat SSE, normas, materiais)",
+        "Assistente de Obras — diagnóstico IA + web search com citações",
+        "Plans Pro + Autodesk APS — DWG/RVT/IFC → análise IA",
+        "Export Excel 5 regimes IVA PT (Continente/Açores/Madeira/ARU/Isento)",
         "Integrações produtivas: CloudConvert · Tavily · Resend",
-        "Domínio verificado + emails transacionais ativos",
-        "Motor IA proprietário de leitura de plantas",
-    ], size=11, line_h=8)
+    ], size=10.5, line_h=7)
     # Screenshot do estimador à direita
     _drop_shadow_image(
         c, SHOTS / "04-estimation.png",
@@ -248,41 +249,47 @@ def slide_6_tracao(c):
     c.drawString(19 * mm, 30 * mm, "DIFERENCIAL")
     c.setFillColor(DARK)
     c.setFont("Helvetica", 8.5)
-    c.drawString(19 * mm, 23 * mm, "· Medição 2D + estimação IA + CRM num único fluxo")
-    c.drawString(19 * mm, 17 * mm, "· Preços PT integrados · UX mobile-first, SaaS puro")
+    c.drawString(19 * mm, 23 * mm, "· Assistente de Obras com acesso Internet + citações oficiais DRE/LNEC/APA")
+    c.drawString(19 * mm, 17 * mm, "· Medição 2D · Estimação · Biblioteca PT 2026 · CRM · UX mobile-first")
 
 
 def slide_7_modelo(c):
-    _top_band(c, "Modelo de negócio", "Freemium + Marketplace")
-    # 3 planos lado a lado
+    _top_band(c, "Modelo de negócio", "Freemium + planos para profissionais")
+    # 4 planos lado a lado
     plans = [
-        ("Gratuito", "0 €", ["Estimativas ilimitadas", "1 orçamento/mês", "1 utilizador"], LIGHT_BG, MUTED),
-        ("Pro", "29 €/mês", ["Orçamentos ilimitados", "Biblioteca partilhada", "CRM + faturas", "Até 5 utilizadores"], PRIMARY, white),
-        ("Empresa", "sob consulta", ["Utilizadores ilimitados", "SSO + API", "Suporte dedicado", "SLA 99,9%"], DARK, white),
+        ("Grátis",       "0 €",         ["Coach IA 20/h · Assistente Obras 10/h", "Estimativas ilimitadas", "1 utilizador"], LIGHT_BG, MUTED),
+        ("Pro",          "99 €/mês",    ["Coach IA 60/h · Assistente Obras 40/h", "Orçamentos + CRM + faturas", "Autodesk APS · Excel IVA PT"], PRIMARY, white),
+        ("Pro Business", "179 €/mês",   ["Coach IA 120/h · Assistente Obras 80/h", "Perplexity Plus · 5 utilizadores", "Rendering 3D · Automações"], DARK, white),
+        ("Enterprise",   "sob consulta", ["Utilizadores ilimitados", "SSO + API", "SLA 99,9 %"], ACCENT, white),
     ]
-    x0 = 20 * mm
-    box_w = 82 * mm
+    x0 = 12 * mm
+    box_w = 65 * mm
     for i, (name, price, feats, bg, fg) in enumerate(plans):
-        x = x0 + i * (box_w + 6 * mm)
-        y = PAGE_H - 105 * mm
+        x = x0 + i * (box_w + 3 * mm)
+        y = PAGE_H - 115 * mm
         c.setFillColor(bg)
-        c.rect(x, y, box_w, 55 * mm, fill=1, stroke=0)
+        c.rect(x, y, box_w, 65 * mm, fill=1, stroke=0)
         c.setFillColor(fg)
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(x + 5 * mm, y + 55 * mm, name)
         c.setFont("Helvetica-Bold", 16)
-        c.drawString(x + 6 * mm, y + 45 * mm, name)
-        c.setFont("Helvetica-Bold", 20)
-        c.drawString(x + 6 * mm, y + 33 * mm, price)
-        c.setFont("Helvetica", 9)
+        c.drawString(x + 5 * mm, y + 44 * mm, price)
+        c.setFont("Helvetica", 7.5)
         for j, f in enumerate(feats):
-            c.drawString(x + 6 * mm, y + 24 * mm - j * 5 * mm, f"• {f}")
+            c.drawString(x + 5 * mm, y + 34 * mm - j * 5 * mm, f"• {f}")
     # Nota receita
     c.setFillColor(DARK)
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(20 * mm, 32 * mm, "Fluxos de receita:")
+    c.drawString(15 * mm, 32 * mm, "Fluxos de receita:")
     c.setFillColor(MUTED)
-    c.setFont("Helvetica", 10)
-    c.drawString(20 * mm, 25 * mm,
-                 "1) Subscrições recorrentes (MRR)   2) Marketplace de profissionais (comissão)   3) Add-ons: SMS, assinatura eletrónica premium")
+    c.setFont("Helvetica", 9.5)
+    c.drawString(15 * mm, 25 * mm,
+                 "1) Subscrições MRR (Pro 99 € · Pro Business 179 €)   2) Marketplace de profissionais (comissão)   3) Add-ons: SMS, faturação eletrónica, API")
+    # Nota anual
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(15 * mm, 18 * mm,
+                 "Planos anuais com ~17 % de desconto · Pro 988 €/ano · Pro Business 1 783 €/ano · trial 7 dias")
 
 
 def slide_8_equipa_cta(c):

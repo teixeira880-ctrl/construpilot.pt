@@ -1513,19 +1513,18 @@ const RTL_LANGS = ["ar"];
 function detectLang() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && SUPPORTED.includes(stored)) return stored;
-  // Ordem de precedência :
+  // Política 100% PT-PT:
   //  1) escolha manual do utilizador (localStorage) — tratada acima
-  //  2) domínio .pt → PT
+  //  2) domínio .pt → PT (óbvio)
   //  3) navigator.language começa por 'pt' → PT
-  //  4) navigator.language começa por 'fr' → FR (único caso não-PT auto)
-  //  5) default absoluto : PT-PT (100% PT-PT policy)
+  //  4) qualquer outro navegador (incluindo fr-FR) → PT por default
+  // O utilizador pode mudar manualmente no seletor de idioma se quiser outro idioma.
   try {
     const host = (window.location.hostname || "").toLowerCase();
     if (host.endsWith(".pt")) return "pt";
     const nav = (navigator.language || "").toLowerCase();
     if (nav.startsWith("pt")) return "pt";
-    if (nav.startsWith("fr")) return "fr";
-  } catch { /* SSR / navigateur restreint */ }
+  } catch { /* SSR / navegador restrito */ }
   return "pt";
 }
 

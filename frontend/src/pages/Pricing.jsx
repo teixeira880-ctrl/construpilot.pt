@@ -138,8 +138,8 @@ export default function Pricing() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Tarifs — Gratuit pour les particuliers, Premium dès 19 €/mois"
-        description="Estimation, calculateurs, comparateur de prix et coach IA pour les particuliers. Devis PDF illimités, TVA 10 % auto, rendu 3D, signature client, CRM et facturation pour les pros. Premium dès 19 €/mois, sans engagement."
+        title="Preços — Grátis para particulares, Pro desde 99 €/mês"
+        description="Estimativa, calculadoras, comparador de preços e Coach IA para particulares. Orçamentos PDF ilimitados, IVA PT auto, render 3D, assinatura cliente, CRM e faturação para profissionais. Pro desde 99 €/mês, sem compromisso."
         keywords="preço software orçamentos, tarifário construpilot, assinatura profissional, software construção civil gratuito, preço ferramenta estimativa de obras"
         canonical="/tarifs"
       />
@@ -169,20 +169,20 @@ export default function Pricing() {
       {audience === "pro" && (
         <div className="surface p-6 md:p-8 rounded-sm border-primary/30 flex flex-col md:flex-row md:items-center gap-6" data-testid="invoicing-addon-banner">
           <div className="flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Option</p>
-            <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Facturation & facturation électronique (Factur-X)</h3>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Opção</p>
+            <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Faturação & faturação eletrónica</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              Créez des factures, convertissez vos devis en 1 clic, suivez les paiements et générez des
-              factures électroniques conformes Factur-X. <strong>Inclus gratuitement dans Pro Business</strong>,
-              ou en option pour les abonnés Premium et Pro.
+              Emita faturas, converta orçamentos em 1 clique, acompanhe pagamentos e gere faturas
+              eletrónicas conformes com a AT. <strong>Incluído gratuitamente no Pro Business</strong>,
+              ou como opção para quem subscreve Premium ou Pro.
             </p>
           </div>
           <div className="text-center md:text-right shrink-0">
-            <p className="num text-3xl font-extrabold text-primary">5 €<span className="text-sm text-muted-foreground font-normal">/mois</span></p>
+            <p className="num text-3xl font-extrabold text-primary">5 €<span className="text-sm text-muted-foreground font-normal">/mês</span></p>
             <Button className="rounded-sm mt-3 w-full md:w-auto" data-testid="pricing-invoicing-addon-cta"
               disabled={busy === "invoicing_addon_monthly"}
               onClick={() => subscribe({ plan_id: "invoicing_addon_monthly" })}>
-              {busy === "invoicing_addon_monthly" ? t("pricing.redirecting") : "Activer l'option"}
+              {busy === "invoicing_addon_monthly" ? t("pricing.redirecting") : "Ativar opção"}
             </Button>
           </div>
         </div>
