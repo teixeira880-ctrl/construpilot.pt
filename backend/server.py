@@ -118,6 +118,8 @@ from routes import plans_pro as plans_pro_routes
 api_router.include_router(plans_pro_routes.router)
 from routes import perplexity_plus as perplexity_plus_routes
 api_router.include_router(perplexity_plus_routes.router)
+from routes import stair_engine as stair_engine_routes
+api_router.include_router(stair_engine_routes.router)
 api_router.include_router(autoseo_routes.router)
 api_router.include_router(dpgf_routes.router)
 api_router.include_router(company_library_routes.router)

@@ -27,6 +27,7 @@ import Coach from "@/pages/Coach";
 import BtpSolver from "@/pages/BtpSolver";
 import PlansPro from "@/pages/PlansPro";
 import PerplexityPlus from "@/pages/PerplexityPlus";
+import StairEngine from "@/pages/StairEngine";
 import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
@@ -186,6 +187,7 @@ function AppRouter() {
       <Route path="/btp-solver" element={<Shell><BtpSolver /></Shell>} />
       <Route path="/plans-pro" element={<Shell><PlansPro /></Shell>} />
       <Route path="/perplexity-plus" element={<Shell><PerplexityPlus /></Shell>} />
+      <Route path="/stair-engine" element={<Shell><StairEngine /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
       <Route path="/comparatif" element={<Shell><Comparatif /></Shell>} />
