@@ -16,12 +16,13 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user
 from engines.plans_pro import autodesk_client
+from engines.plans_pro.excel_export import IVA_RATES_PT, build_workbook
 from engines.plans_pro.plan_metadata import aggregate_quantities
 from engines.plans_pro.plan_vision import full_analysis
 
@@ -256,6 +257,48 @@ async def get_analysis(plan_id: str, user=Depends(current_user)):
     if not doc.get("ai_analysis"):
         raise HTTPException(409, "Análise ainda não foi executada. Chame /analyze primeiro.")
     return doc
+
+
+# ---------------------------------------------------------------------------
+# Excel export
+# ---------------------------------------------------------------------------
+@router.get("/{plan_id}/export-excel")
+async def export_excel(
+    plan_id: str,
+    iva_rate: str = Query("23", description="Taxa IVA PT: 23 | 22 | 16 | 6 | 0"),
+    user=Depends(current_user),
+):
+    """Gera orçamento Excel .xlsx a partir da análise IA do plano."""
+    if str(iva_rate) not in IVA_RATES_PT:
+        raise HTTPException(400, f"iva_rate inválido. Aceites: {sorted(IVA_RATES_PT)}")
+    doc = await db.plans_pro.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]},
+        {"_id": 0, "manifest": 0, "thumbnail_b64": 0},
+    )
+    if not doc:
+        raise HTTPException(404, "Plano não encontrado.")
+    if not doc.get("ai_analysis"):
+        raise HTTPException(409, "Análise IA ainda não foi executada. Chame /analyze primeiro.")
+
+    try:
+        data, meta = build_workbook(plan_doc=doc, iva_rate=str(iva_rate))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Excel export falhou %s", plan_id)
+        raise HTTPException(500, f"Falha ao gerar Excel: {type(e).__name__}") from None
+
+    stem = (doc.get("file_name") or "orcamento").rsplit(".", 1)[0][:40].replace('"', "")
+    filename = f"orcamento_{stem}_{meta['numero_orc']}.xlsx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+            "X-Orc-Numero": meta["numero_orc"],
+            "X-Orc-Total-HT": str(meta["totals"]["total_ht_eur"]),
+            "X-Orc-Total-TTC": str(meta["totals"]["total_ttc_eur"]),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

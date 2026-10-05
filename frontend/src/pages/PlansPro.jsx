@@ -15,6 +15,13 @@ import { Textarea } from "../components/ui/textarea";
 import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
 import { Separator } from "../components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 
@@ -32,11 +39,13 @@ const STATUS_LABELS = {
 };
 
 function useAuthHeaders() {
-  const { token } = useAuth();
-  return useMemo(
-    () => ({ Authorization: token ? `Bearer ${token}` : undefined }),
-    [token]
-  );
+  const { user } = useAuth();
+  return useMemo(() => {
+    const token =
+      (typeof window !== "undefined" && localStorage.getItem("construpilot_token")) || null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 }
 
 async function loadAutodeskViewer() {
@@ -305,6 +314,8 @@ export default function PlansPro() {
   const [projectHint, setProjectHint] = useState("");
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [ivaRate, setIvaRate] = useState("23");
   const [config, setConfig] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const viewerRef = useRef(null);
@@ -407,6 +418,42 @@ export default function PlansPro() {
       toast.error(e.message);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!selected) return;
+    setExporting(true);
+    try {
+      const r = await fetch(
+        `${API}/plans-pro/${selected.plan_id}/export-excel?iva_rate=${ivaRate}`,
+        { headers }
+      );
+      if (!r.ok) {
+        let msg = "Falha ao exportar.";
+        try {
+          const d = await r.json();
+          msg = d.detail || msg;
+        } catch {}
+        throw new Error(msg);
+      }
+      const blob = await r.blob();
+      const disp = r.headers.get("content-disposition") || "";
+      const match = disp.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : `orcamento_${selected.plan_id}.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Excel exportado (IVA ${ivaRate}%).`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -575,7 +622,40 @@ export default function PlansPro() {
                         className="w-full h-[500px] bg-slate-900 rounded-md relative overflow-hidden"
                       />
                       <Separator />
-                      <div className="flex justify-end">
+                      <div className="flex justify-end items-center gap-3 flex-wrap">
+                        {analysis?.ai_analysis?.synthesis?.ouvrages?.length > 0 && (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <label className="text-sm text-slate-600" htmlFor="iva-select">
+                                IVA
+                              </label>
+                              <Select value={ivaRate} onValueChange={setIvaRate}>
+                                <SelectTrigger
+                                  id="iva-select"
+                                  className="w-[200px]"
+                                  data-testid="plans-pro-iva-select"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="23">23% — Continente</SelectItem>
+                                  <SelectItem value="22">22% — Açores</SelectItem>
+                                  <SelectItem value="16">16% — Madeira</SelectItem>
+                                  <SelectItem value="6">6% — Reabilitação (ARU)</SelectItem>
+                                  <SelectItem value="0">0% — Isento</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              variant="outline"
+                              onClick={handleExportExcel}
+                              disabled={exporting}
+                              data-testid="plans-pro-export-excel-btn"
+                            >
+                              {exporting ? "A gerar…" : "Exportar para Excel"}
+                            </Button>
+                          </>
+                        )}
                         <Button
                           onClick={handleAnalyze}
                           disabled={analyzing}
