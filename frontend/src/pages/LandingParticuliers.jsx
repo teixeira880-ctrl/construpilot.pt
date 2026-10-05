@@ -121,7 +121,7 @@ export default function LandingParticuliers() {
                 Estimer mon projet gratuitement <ArrowRight className="h-5 w-5" />
               </Button>
               <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-primary" /> Gratuit · Aucune carte bancaire · Résultat immédiat
+                <CheckCircle2 className="h-3 w-3 text-primary" /> Gratuito · Sem cartão bancário · Resultado imediato
               </p>
             </div>
             <div className="mt-4"><SignupCounter /></div>

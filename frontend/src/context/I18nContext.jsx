@@ -75,7 +75,7 @@ const TRANSLATIONS = {
     "landing.social.stat_value": "142 devis",
     "landing.social.stat_label": "Générés cette semaine",
     "landing.social.subtitle": "Utilisé par des pros du BTP en France",
-    "landing.promo": "🎉 100% GRATUIT pendant la phase de lancement — toutes les fonctionnalités Pro débloquées, sans carte bancaire.",
+    "landing.promo": "🎉 100% GRÁTIS durante a fase de lançamento — todas as funcionalidades Pro desbloqueadas, sem cartão bancário.",
     "landing.promo_cta": "J'en profite →",
     "landing.features.overline": "L'arsenal complet",
     "landing.features.title_a": "Des outils de professionnel,",

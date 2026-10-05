@@ -292,7 +292,7 @@ export default function LandingPortugal() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t("landing.hero.email_ph", "Votre e-mail (pour recevoir votre estimation)")}
+                      placeholder={t("landing.hero.email_ph", "O seu e-mail (para receber o orçamento)")}
                       className="ps-9 border-0 bg-background/60 rounded-lg h-11 focus-visible:ring-1 focus-visible:ring-primary/40"
                     />
                   </div>

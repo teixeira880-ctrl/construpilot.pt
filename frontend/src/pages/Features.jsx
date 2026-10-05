@@ -92,10 +92,10 @@ export default function Features() {
       <section className="max-w-4xl mx-auto px-4 py-14 text-center">
         <div className="surface p-8 rounded-xl">
           <PenTool className="h-8 w-8 text-primary mx-auto" />
-          <h2 className="mt-4 font-display text-2xl font-bold">Pronto à estimer votre premier chantier ?</h2>
-          <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">Créez un compte en 30 secondes, ou testez avec un compte démo. Nenhuma carte bancaire obrigatória pour commencer.</p>
+          <h2 className="mt-4 font-display text-2xl font-bold">Pronto para estimar a sua primeira obra?</h2>
+          <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">Crie uma conta em 30 segundos ou experimente com uma conta de demonstração. Não é necessário cartão bancário para começar.</p>
           <div className="mt-6 flex flex-wrap gap-3 justify-center">
-            <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-bottom">Criar mon compte <ArrowRight className="h-4 w-4" /></Button></Link>
+            <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-bottom">Criar a minha conta <ArrowRight className="h-4 w-4" /></Button></Link>
           </div>
           <div className="mt-6 flex flex-wrap gap-4 justify-center text-xs text-muted-foreground">
             {["Sem compromisso", "Contas démo disponíveis", "Support en français"].map((t, i) => (

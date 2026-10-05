@@ -60,7 +60,7 @@ const ACCOUNT_LINKS = [
   { to: "/investisseurs", label: "Investidores", key: "nav.investors", icon: Handshake },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
-  { to: "/compte", label: "Mon compte", key: "nav.account", icon: KeyRound },
+  { to: "/compte", label: "A minha conta", key: "nav.account", icon: KeyRound },
 ];
 
 const ALL_LINKS = [...NAV_MAIN, ...NAV_PRO, ...NAV_DISCOVER, ...ACCOUNT_LINKS];

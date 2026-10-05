@@ -244,7 +244,7 @@ export default function PcSignPage() {
             </p>
             <p className="text-sm text-muted-foreground">
               Sinal de <b>{num(dep.pct)} %</b> — soit <b>{eur(dep.amount)}</b> sur un
-              total de {eur(t.ttc)} TTC. Paiement sécurisé par carte bancaire (Stripe).
+              total de {eur(t.ttc)} TTC. Pagamento seguro por cartão bancário (Stripe).
             </p>
             <Button onClick={payDeposit} disabled={payBusy === "deposit"}
                     className="rounded-sm w-full gap-2" data-testid="pc-deposit-pay-btn">

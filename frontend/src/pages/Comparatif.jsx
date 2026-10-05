@@ -187,10 +187,10 @@ export default function Comparatif() {
           Testez ConstruPilot gratuitement en 30 secondes
         </h2>
         <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-          Sans carte bancaire. Gere votre premier devis IA, un rendu 3D ou une estimation par photo dès maintenant.
+          Sem cartão bancário. Gere o seu primeiro orçamento com IA, uma renderização 3D ou uma estimativa por foto já de seguida.
         </p>
         <Button asChild className="rounded-sm mt-6 gap-2" size="lg" data-testid="comparatif-final-cta-btn">
-          <Link to="/inscription">Criar mon compte gratuit <ArrowRight className="h-4 w-4" /></Link>
+          <Link to="/inscription">Criar a minha conta gratuita <ArrowRight className="h-4 w-4" /></Link>
         </Button>
       </div>
     </>

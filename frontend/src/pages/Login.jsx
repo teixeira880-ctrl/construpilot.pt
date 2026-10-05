@@ -306,7 +306,7 @@ export default function Login() {
                              data-testid="register-decennale-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      Votre compte sera actif immédiatement et validé par notre équipe sous 24-48h.
+                      A sua conta ficará ativa imediatamente e será validada pela nossa equipa em 24-48h.
                     </p>
                   </div>
                 )}
