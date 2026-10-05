@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Send, Mic, MicOff, Sparkles, Volume2, Calculator, AlertTriangle } from "lucide-react";
+import { Send, Mic, MicOff, Sparkles, Volume2, Calculator, AlertTriangle, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/context/I18nContext";
+import { useAuth } from "@/context/AuthContext";
 
 const EXAMPLE_KEYS = ["coach.ex1", "coach.ex2", "coach.ex3", "coach.ex4", "coach.ex5", "coach.ex6"];
 
 export default function Coach() {
   const { t } = useI18n();
+  const { user } = useAuth();
+  const isFree = user?.account_type === "particulier" && user?.role !== "admin";
   const [params] = useSearchParams();
   const projectId = params.get("project_id") || null;
   const [messages, setMessages] = useState([
@@ -79,7 +82,18 @@ export default function Coach() {
     } catch (err) {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
-      if (status === 503) {
+      const body = err?.response?.data;
+      if (status === 429) {
+        // Rate limit — mensagem PT-PT com link upgrade
+        const msg = body?.message || "Atingiu o limite de pedidos.";
+        const upgradeUrl = body?.upgrade_url || "/pricing";
+        const isFreeUser = body?.current_plan === "free";
+        toast.error(msg, {
+          duration: 7000,
+          action: isFreeUser ? { label: "Upgrade", onClick: () => navigate(upgradeUrl) } : undefined,
+          "data-testid": "coach-rate-limit-toast",
+        });
+      } else if (status === 503) {
         setUnavailable(true);
         toast.error(detail?.message || t("coach.unavailable"));
         if (detail?.conversation_id) setConversationId(detail.conversation_id);
@@ -122,6 +136,30 @@ export default function Coach() {
       <SectionTitle as="h1" over={t("coach.over")} title={t("coach.title")}>
         {t("coach.subtitle")}
       </SectionTitle>
+
+      {isFree && (
+        <div
+          data-testid="coach-free-banner"
+          className="flex items-center justify-between gap-3 rounded-sm border border-primary/30 bg-primary/5 px-4 py-3 text-sm"
+        >
+          <div className="flex items-center gap-2.5">
+            <Rocket className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-muted-foreground">
+              Está no plano <strong className="text-foreground">Grátis</strong> · 20 pedidos/h.
+              Faça upgrade para <strong>Pro (99 €/mês)</strong> e tenha 60 pedidos/h.
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/pricing")}
+            data-testid="coach-upgrade-btn"
+            className="rounded-sm shrink-0 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            Ver planos
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2" data-testid="coach-examples">
         {EXAMPLE_KEYS.map((k) => (

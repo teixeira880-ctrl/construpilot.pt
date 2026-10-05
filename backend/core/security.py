@@ -81,6 +81,14 @@ async def current_user(user=Depends(optional_user)):
     return user
 
 
+async def current_user_with_state(request: Request, user=Depends(current_user)):
+    """Idêntico a `current_user` mas também expõe o utilizador em
+    `request.state.user` — necessário para o `key_func` do slowapi
+    poder derivar o plano antes do handler executar."""
+    request.state.user = user
+    return user
+
+
 async def admin_user(user=Depends(current_user)):
     if user.get('role') != 'admin':
         raise HTTPException(status_code=403, detail="Accès administrateur requis")

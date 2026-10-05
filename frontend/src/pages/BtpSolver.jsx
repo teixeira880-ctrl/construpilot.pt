@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip,
   Legend, ResponsiveContainer,
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wrench, AlertTriangle, FileText, BookOpen } from "lucide-react";
+import { Loader2, Wrench, AlertTriangle, FileText, BookOpen, Rocket } from "lucide-react";
 
 const URGENCY_LABEL = {
   informative: { label: "Informativo", color: "bg-slate-500" },
@@ -49,6 +49,8 @@ const toRechartsPie = (chart) => {
 
 export default function BtpSolver() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const isFree = user?.account_type === "particulier" && user?.role !== "admin";
   const [form, setForm] = useState({
     description: "",
     tipo_edificio: "",
@@ -92,8 +94,20 @@ export default function BtpSolver() {
       toast.success("Análise concluída.");
       loadHistory();
     } catch (err) {
-      const msg = err?.response?.data?.detail || err?.message || "Erro desconhecido";
-      toast.error(`Análise falhou: ${msg}`);
+      const status = err?.response?.status;
+      const body = err?.response?.data;
+      if (status === 429) {
+        const msg = body?.message || "Atingiu o limite de pedidos.";
+        const upgradeUrl = body?.upgrade_url || "/pricing";
+        const isFreeUser = body?.current_plan === "free";
+        toast.error(msg, {
+          duration: 7000,
+          action: isFreeUser ? { label: "Upgrade", onClick: () => navigate(upgradeUrl) } : undefined,
+        });
+      } else {
+        const msg = body?.detail || err?.message || "Erro desconhecido";
+        toast.error(`Análise falhou: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -124,6 +138,30 @@ export default function BtpSolver() {
             com causas prováveis, soluções orçamentadas e normativa portuguesa aplicável.
           </p>
         </header>
+
+        {isFree && (
+          <div
+            data-testid="btp-solver-free-banner"
+            className="mb-6 flex items-center justify-between gap-3 rounded-sm border border-primary/30 bg-primary/5 px-4 py-3 text-sm"
+          >
+            <div className="flex items-center gap-2.5">
+              <Rocket className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">
+                Está no plano <strong className="text-foreground">Grátis</strong> · 10 análises/h.
+                Faça upgrade para <strong>Pro (99 €/mês)</strong> e tenha 40 análises/h.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/pricing")}
+              data-testid="btp-solver-upgrade-btn"
+              className="rounded-sm shrink-0 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              Ver planos
+            </Button>
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           {/* Coluna principal */}

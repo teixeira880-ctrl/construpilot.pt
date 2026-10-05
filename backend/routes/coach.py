@@ -5,18 +5,17 @@ Endpoint auxiliar: `GET /api/coach/conversations/{conversation_id}` (histórico)
 
 Nunca chama Emergent LLM — apenas Aurora Company API V1.
 """
-from __future__ import annotations
-
 import logging
 import time
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import current_user
+from core.rate_limit import limiter, plan_limit_fn
+from core.security import current_user, current_user_with_state
 from engines.coach_ai import (
     CoachUnavailableError,
     coach_ask,
@@ -47,9 +46,11 @@ def _now_iso() -> str:
 
 
 @router.post("/ask")
+@limiter.limit(plan_limit_fn(free="20/hour", pro="60/hour", business="120/hour"))
 async def coach_ask_endpoint(
+    request: Request,
     body: CoachAskIn,
-    user=Depends(current_user),
+    user=Depends(current_user_with_state),
 ) -> dict[str, Any]:
     """Envia pergunta ao Coach IA (Aurora).
 

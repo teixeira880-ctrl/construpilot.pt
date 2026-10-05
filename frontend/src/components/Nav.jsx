@@ -45,6 +45,7 @@ const NAV_PRO = [
 const NAV_DISCOVER = [
   { to: "/fonctionnalites", label: "Funcionalidades", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
+  { to: "/btp-solver", label: "Solver BTP", key: "nav.btp_solver", icon: Wrench },
   { to: "/plan", label: "Medir 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
   { to: "/mesure-photo", label: "Medir por foto", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
   { to: "/photo", label: "Análise por foto", key: "nav.photo", icon: Camera },

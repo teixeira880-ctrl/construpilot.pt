@@ -12,7 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import current_user
+from core.rate_limit import limiter, plan_limit_fn
+from core.security import current_user, current_user_with_state
 from engines.btp_solver import solve
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,8 @@ class SolveIn(BaseModel):
 
 
 @router.post("/solve")
-async def solve_problem(body: SolveIn, request: Request, user=Depends(current_user)):
+@limiter.limit(plan_limit_fn(free="10/hour", pro="40/hour", business="80/hour"))
+async def solve_problem(body: SolveIn, request: Request, user=Depends(current_user_with_state)):
     """Resolve um problema BTP: diagnóstico + soluções + gráficos.
 
     Chamada síncrona — devolve o resultado completo (p99 ~ 20 s com Opus 5.5).

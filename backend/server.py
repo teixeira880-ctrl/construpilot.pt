@@ -384,12 +384,12 @@ async def seed():
         exists = await db.plans.find_one({"plan_id": plan["plan_id"]})
         if not exists:
             await db.plans.insert_one(plan)
-    # Migration prix (17/06/2026) : Premium 19€/190€ · Pro 299€/3150€ · Pro Business 350€/3500€
+    # Migration prix (fev/2026) : Premium 19€/190€ · Pro 99€/988€ · Pro Business 179€/1783€
     # + Project Pass 19,90€ → 50€ (accès Plan 2D + 3 rendus 3D offerts)
     PRICE_MIGRATION = {
         "premium_monthly": 1900, "premium_yearly": 19000,
-        "pro_monthly": 29900, "pro_yearly": 315000,
-        "pro_business_monthly": 35000, "pro_business_yearly": 350000,
+        "pro_monthly": 9900, "pro_yearly": 98800,
+        "pro_business_monthly": 17900, "pro_business_yearly": 178300,
         "project_pass": 5000,
     }
     for plan_id, cents in PRICE_MIGRATION.items():
@@ -403,8 +403,8 @@ async def seed():
         "premium_yearly": {"tagline": "Économisez ~17 %",
                            "description": "Économisez environ 17 % avec l'abonnement annuel.",
                            "features": ["Toutes les fonctionnalités Premium", "Économisez ~17 %"]},
-        "pro_yearly": {"tagline": "Économisez ~12 %",
-                       "description": "Facturation annuelle (~12 % d'économies)."},
+        "pro_yearly": {"tagline": "Économisez ~17 %",
+                       "description": "Facturation annuelle (~17 % d'économies)."},
         "pro_business_yearly": {"tagline": "Économisez ~17 %",
                                 "description": "Facturation annuelle (~17 % d'économies)."},
     }
