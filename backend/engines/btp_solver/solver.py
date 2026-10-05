@@ -17,7 +17,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 
-from engines.ai_providers.router import ai_router, needs_web_search
+from engines.ai_providers.router import ai_router
 from engines.btp_solver.schema import (
     Cause,
     Chart,
@@ -27,6 +27,8 @@ from engines.btp_solver.schema import (
     SolutionStep,
     SolverResponse,
 )
+from engines.web_search_router import should_use_web_search
+from core.rate_limit import WEB_LIMITS, web_search_hit, web_search_remaining
 
 logger = logging.getLogger("btp_solver")
 
@@ -161,11 +163,16 @@ async def solve(
     *,
     description: str,
     context: dict | None = None,
+    use_web_search: bool | None = None,
+    user_id: str | None = None,
+    plan: str = "free",
 ) -> SolverResponse:
     """Resolve um problema BTP e devolve diagnóstico + soluções + gráficos.
 
     ``description`` : o que o utilizador vê/descreve (obrigatório).
     ``context`` : {region, surface_m2, idade_anos, tipo_edificio, urgencia, orcamento_max_eur}
+    ``use_web_search`` : toggle UI (True=sempre, False=nunca, None=auto)
+    ``user_id`` / ``plan`` : usados para o sub-bucket web-search soft limit
     """
     ctx_txt = ""
     if context:
@@ -186,7 +193,29 @@ async def solve(
             ctx_txt = "\n\nContexto:\n" + "\n".join(f"- {p}" for p in parts)
 
     user_prompt = f"Problema descrito:\n{description}{ctx_txt}"
-    enrich = needs_web_search(description)
+
+    # Decidir web search (contexto do projeto inclui região para localização PT)
+    want_web, web_mode, web_reason = should_use_web_search(
+        description, project_context=context, user_override=use_web_search,
+    )
+    web_budget = WEB_LIMITS.get("btp_solver", {}).get(plan, 0)
+    web_fallback = False
+    if want_web and user_id:
+        if not web_search_hit(user_id, plan, "btp_solver", web_budget):
+            want_web = False
+            web_fallback = True
+            web_mode = "budget_exhausted"
+    remaining = (
+        web_search_remaining(user_id, plan, "btp_solver", web_budget)
+        if user_id else web_budget
+    )
+
+    logger.info(
+        "flow=btp_solver user=%s web_search=%s mode=%s reason=%s "
+        "budget=%d/%d plan=%s",
+        (user_id or "?")[:12], want_web, web_mode, web_reason,
+        remaining, web_budget, plan,
+    )
 
     # Tentativa 1: temperature baixa (determinístico)
     r = await ai_router.coach_ask(
@@ -195,7 +224,7 @@ async def solve(
         history=None,
         max_tokens=6000,
         temperature=0.2,
-        enrich_with_web=enrich,
+        enrich_with_web=want_web,
     )
     data = _extract_json(r.text) or {}
 
@@ -208,7 +237,7 @@ async def solve(
             history=None,
             max_tokens=6000,
             temperature=0.0,
-            enrich_with_web=enrich,
+            enrich_with_web=want_web,
         )
         data = _extract_json(r.text) or data
 
@@ -288,5 +317,10 @@ async def solve(
         action_plan=action_plan,
         generated_at_iso=datetime.now(timezone.utc).isoformat(),
         model_used=r.model,
-        web_enriched=bool(r.citations),
+        web_enriched=bool(r.citations) and want_web,
+        web_search_mode=web_mode,
+        web_search_reason=web_reason,
+        web_search_fallback=web_fallback,
+        web_remaining=remaining,
+        web_limit=web_budget,
     )

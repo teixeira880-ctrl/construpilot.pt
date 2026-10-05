@@ -5,7 +5,7 @@ Expõe `coach_ask()` chamado por `routes/coach.py`.
 Fluxo:
   1. Buscar projeto (opcional) → resumo PT-PT.
   2. Construir prompt system BTP (RGEU/RJUE/Eurocodes/UE).
-  3. Deteção de palavras-chave de atualidade → Perplexity primeiro.
+  3. Decisão web search (`should_use_web_search`) + budget sub-bucket.
   4. `ai_router.coach_ask()` com Claude→OpenAI fallback.
   5. Falha total → `coach_failures` + email admin + `CoachUnavailableError`.
 
@@ -19,11 +19,16 @@ import time
 import uuid
 from typing import Any
 
+from core.rate_limit import (
+    WEB_LIMITS,
+    web_search_hit,
+    web_search_remaining,
+)
 from engines.ai_providers.router import (
     CoachUnavailableError,
     ai_router,
-    needs_web_search,
 )
+from engines.web_search_router import should_use_web_search
 
 logger = logging.getLogger("coach.ai")
 
@@ -179,12 +184,19 @@ async def coach_ask(
     user_id: str,
     db,
     history_limit: int = DEFAULT_HISTORY_LIMIT,
+    use_web_search: bool | None = None,
+    plan: str = "free",
 ) -> dict[str, Any]:
     """Interface pública do Coach IA.
 
+    Params novos:
+      - ``use_web_search`` : toggle UI (True=sempre, False=nunca, None=auto)
+      - ``plan`` : "free"/"pro"/"business" (do rate_limit.user_plan)
+
     Retorno em sucesso:
       {"text", "model", "provider", "mode_used", "request_id",
-       "latency_ms", "citations", "web_enriched"}
+       "latency_ms", "citations", "web_enriched", "web_search_mode",
+       "web_search_reason", "web_remaining"}
     Levanta `CoachUnavailableError` se ambos os provedores falharem.
     """
     project = None
@@ -195,10 +207,27 @@ async def coach_ask(
 
     history_norm = _format_history(conversation_history, history_limit)
     user_prompt = _build_user_prompt(user_message=user_message, project=project)
-    enrich = needs_web_search(user_message)
 
-    logger.info("coach ask | user=%s project=%s web_enrich=%s",
-                user_id[:12], project_id, enrich)
+    # 1) Decidir web search (keyword/context/toggle)
+    want_web, mode, reason = should_use_web_search(
+        user_message, project_context=project, user_override=use_web_search,
+    )
+    web_budget = WEB_LIMITS.get("coach", {}).get(plan, 0)
+    web_fallback = False
+    if want_web:
+        if not web_search_hit(user_id, plan, "coach", web_budget):
+            # Soft fallback: respondeu claude sem Perplexity
+            want_web = False
+            web_fallback = True
+            mode = "budget_exhausted"
+    remaining = web_search_remaining(user_id, plan, "coach", web_budget)
+
+    logger.info(
+        "flow=coach user=%s project=%s web_search=%s mode=%s reason=%s "
+        "budget=%d/%d plan=%s",
+        user_id[:12], project_id, want_web, mode, reason,
+        remaining, web_budget, plan,
+    )
 
     try:
         resp = await ai_router.coach_ask(
@@ -207,7 +236,7 @@ async def coach_ask(
             history=history_norm,
             max_tokens=1024,
             temperature=0.3,
-            enrich_with_web=enrich,
+            enrich_with_web=want_web,
         )
     except CoachUnavailableError as e:
         await _record_failure(
@@ -221,6 +250,14 @@ async def coach_ask(
         )
         raise
 
+    citations_count = len(resp.citations) if resp.citations else 0
+    logger.info(
+        "flow=coach user=%s citations=%d tokens_in=%s tokens_out=%s model=%s",
+        user_id[:12], citations_count,
+        getattr(resp, "tokens_in", None), getattr(resp, "tokens_out", None),
+        resp.model,
+    )
+
     return {
         "text": resp.text.strip(),
         "model": resp.model,
@@ -228,7 +265,12 @@ async def coach_ask(
         "mode_used": resp.provider,  # compat com UI antiga
         "request_id": resp.request_id,
         "latency_ms": resp.latency_ms,
-        "web_enriched": enrich and bool(resp.citations),
+        "web_enriched": want_web and bool(resp.citations),
+        "web_search_mode": mode,
+        "web_search_reason": reason,
+        "web_search_fallback": web_fallback,
+        "web_remaining": remaining,
+        "web_limit": web_budget,
         "citations": [
             {"url": c.url, "title": c.title, "snippet": c.snippet}
             for c in resp.citations

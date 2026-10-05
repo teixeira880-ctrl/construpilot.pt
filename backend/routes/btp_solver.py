@@ -8,11 +8,18 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.rate_limit import limiter, plan_limit_fn
+from core.rate_limit import (
+    TOTAL_LIMITS,
+    WEB_LIMITS,
+    limiter,
+    plan_limit_fn,
+    user_plan,
+    web_search_remaining,
+)
 from core.security import current_user, current_user_with_state
 from engines.btp_solver import solve
 
@@ -30,11 +37,17 @@ class SolveIn(BaseModel):
     urgencia: Optional[str] = Field(None, max_length=80)
     orcamento_max_eur: Optional[float] = Field(None, ge=0, le=100_000_000)
     project_id: Optional[str] = Field(None, max_length=60)
+    use_web_search: Optional[bool] = None  # None=auto, True=sempre, False=nunca
 
 
 @router.post("/solve")
 @limiter.limit(plan_limit_fn(free="10/hour", pro="40/hour", business="80/hour"))
-async def solve_problem(body: SolveIn, request: Request, user=Depends(current_user_with_state)):
+async def solve_problem(
+    body: SolveIn,
+    request: Request,
+    response: Response,
+    user=Depends(current_user_with_state),
+):
     """Resolve um problema BTP: diagnóstico + soluções + gráficos.
 
     Chamada síncrona — devolve o resultado completo (p99 ~ 20 s com Opus 5.5).
@@ -47,8 +60,15 @@ async def solve_problem(body: SolveIn, request: Request, user=Depends(current_us
         "urgencia": body.urgencia,
         "orcamento_max_eur": body.orcamento_max_eur,
     }
+    plan = user_plan(user)
     try:
-        resp = await solve(description=body.description, context=context)
+        resp = await solve(
+            description=body.description,
+            context=context,
+            use_web_search=body.use_web_search,
+            user_id=user["user_id"],
+            plan=plan,
+        )
     except Exception:
         logger.exception("btp_solver falhou para user=%s", user.get("user_id"))
         raise HTTPException(503, "Análise temporariamente indisponível. Tente novamente dentro de alguns instantes.") from None
@@ -65,6 +85,23 @@ async def solve_problem(body: SolveIn, request: Request, user=Depends(current_us
     await db.btp_analyses.insert_one(doc)
     doc.pop("_id", None)
     doc.pop("created_at", None)
+
+    # Headers rate-limit (total + web) + plano
+    total_limit = TOTAL_LIMITS.get("btp_solver", {}).get(plan, 0)
+    web_limit = WEB_LIMITS.get("btp_solver", {}).get(plan, 0)
+    web_remaining_v = web_search_remaining(user["user_id"], plan, "btp_solver", web_limit)
+    response.headers["X-RateLimit-Flow"] = "btp_solver"
+    response.headers["X-RateLimit-Plan"] = plan
+    response.headers["X-RateLimit-Limit-Total"] = str(total_limit)
+    response.headers["X-RateLimit-Limit-Web"] = str(web_limit)
+    response.headers["X-RateLimit-Remaining-Web"] = str(web_remaining_v)
+
+    doc["rate_limit"] = {
+        "plan": plan,
+        "total_limit": total_limit,
+        "web_limit": web_limit,
+        "web_remaining": web_remaining_v,
+    }
     return doc
 
 

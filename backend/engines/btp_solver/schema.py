@@ -102,3 +102,8 @@ class SolverResponse(BaseModel):
     cost_usd: float | None = None
     model_used: str | None = None
     web_enriched: bool = False
+    web_search_mode: str | None = None
+    web_search_reason: str | None = None
+    web_search_fallback: bool = False
+    web_remaining: int | None = None
+    web_limit: int | None = None

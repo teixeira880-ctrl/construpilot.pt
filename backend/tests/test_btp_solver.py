@@ -110,8 +110,10 @@ async def test_solve_referencias_citacoes_perplexity_agregadas():
             Citation(url="https://lnec.pt/y", title="LNEC guia")]
     with patch("engines.btp_solver.solver.ai_router.coach_ask",
                new=AsyncMock(return_value=_FakeAIResp(text=_SAMPLE_JSON, citations=cits))):
-        r = await solve(description="Teste de enriquecimento.")
+        # use_web_search=True força o fluxo com Perplexity (desde a release web_access/2026-02)
+        r = await solve(description="Teste de enriquecimento.", use_web_search=True)
     urls = [ref.url for ref in r.references if ref.url]
     assert "https://dre.pt/x" in urls
     assert "https://lnec.pt/y" in urls
     assert r.web_enriched is True
+    assert r.web_search_mode == "forced"

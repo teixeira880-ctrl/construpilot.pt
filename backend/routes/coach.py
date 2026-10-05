@@ -10,11 +10,18 @@ import time
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.rate_limit import limiter, plan_limit_fn
+from core.rate_limit import (
+    TOTAL_LIMITS,
+    WEB_LIMITS,
+    limiter,
+    plan_limit_fn,
+    user_plan,
+    web_search_remaining,
+)
 from core.security import current_user, current_user_with_state
 from engines.coach_ai import (
     CoachUnavailableError,
@@ -31,6 +38,7 @@ class CoachAskIn(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     project_id: str | None = None
     conversation_id: str | None = None
+    use_web_search: bool | None = None  # None=auto, True=sempre, False=nunca
 
 
 def _new_conversation_id() -> str:
@@ -49,6 +57,7 @@ def _now_iso() -> str:
 @limiter.limit(plan_limit_fn(free="20/hour", pro="60/hour", business="120/hour"))
 async def coach_ask_endpoint(
     request: Request,
+    response: Response,
     body: CoachAskIn,
     user=Depends(current_user_with_state),
 ) -> dict[str, Any]:
@@ -87,6 +96,7 @@ async def coach_ask_endpoint(
     })
 
     # Chamar Aurora
+    plan = user_plan(user)
     try:
         answer = await coach_ask(
             project_id=body.project_id,
@@ -94,6 +104,8 @@ async def coach_ask_endpoint(
             conversation_history=history,
             user_id=user_id,
             db=db,
+            use_web_search=body.use_web_search,
+            plan=plan,
         )
     except CoachUnavailableError as e:
         logger.warning(
@@ -132,6 +144,9 @@ async def coach_ask_endpoint(
         "request_id": answer.get("request_id"),
         "latency_ms": answer.get("latency_ms"),
         "web_enriched": answer.get("web_enriched"),
+        "web_search_mode": answer.get("web_search_mode"),
+        "web_search_reason": answer.get("web_search_reason"),
+        "web_search_fallback": answer.get("web_search_fallback"),
         "citations": answer.get("citations") or [],
     }
     await db.coach_messages.insert_one({
@@ -145,11 +160,27 @@ async def coach_ask_endpoint(
         "meta": meta,
     })
 
+    # Headers de rate-limit (total + web) + plano
+    total_limit = TOTAL_LIMITS.get("coach", {}).get(plan, 0)
+    web_limit = WEB_LIMITS.get("coach", {}).get(plan, 0)
+    web_remaining_v = web_search_remaining(user_id, plan, "coach", web_limit)
+    response.headers["X-RateLimit-Flow"] = "coach"
+    response.headers["X-RateLimit-Plan"] = plan
+    response.headers["X-RateLimit-Limit-Total"] = str(total_limit)
+    response.headers["X-RateLimit-Limit-Web"] = str(web_limit)
+    response.headers["X-RateLimit-Remaining-Web"] = str(web_remaining_v)
+
     return {
         "reply": answer["text"],
         "conversation_id": conversation_id,
         "message_id": assistant_msg_id,
         "meta": meta,
+        "rate_limit": {
+            "plan": plan,
+            "total_limit": total_limit,
+            "web_limit": web_limit,
+            "web_remaining": web_remaining_v,
+        },
     }
 
 

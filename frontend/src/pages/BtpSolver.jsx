@@ -14,7 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wrench, AlertTriangle, FileText, BookOpen, Rocket } from "lucide-react";
+import { Loader2, Wrench, AlertTriangle, FileText, BookOpen, Rocket, Globe, Link2, Zap } from "lucide-react";
+
+const WEB_MODES = [
+  { value: "auto", label: "Auto", title: "Decido automaticamente" },
+  { value: "always", label: "Sempre", title: "Pesquisa sempre na internet" },
+  { value: "never", label: "Nunca", title: "Não pesquisa na internet" },
+];
 
 const URGENCY_LABEL = {
   informative: { label: "Informativo", color: "bg-slate-500" },
@@ -61,6 +67,8 @@ export default function BtpSolver() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
+  const [webMode, setWebMode] = useState("auto");
+  const [rateInfo, setRateInfo] = useState(null);
 
   const loadHistory = async () => {
     try {
@@ -89,8 +97,16 @@ export default function BtpSolver() {
         idade_anos: form.idade_anos ? Number(form.idade_anos) : undefined,
         orcamento_max_eur: form.orcamento_max_eur ? Number(form.orcamento_max_eur) : undefined,
       };
+      if (webMode === "always") payload.use_web_search = true;
+      else if (webMode === "never") payload.use_web_search = false;
       const r = await api.post("/btp-solver/solve", payload);
       setResult(r.data);
+      if (r.data?.rate_limit) setRateInfo(r.data.rate_limit);
+      if (r.data?.web_search_fallback) {
+        toast.message("Limite de pesquisas web atingido — resposta sem fontes atuais.", {
+          duration: 5000,
+        });
+      }
       toast.success("Análise concluída.");
       loadHistory();
     } catch (err) {
@@ -223,6 +239,54 @@ export default function BtpSolver() {
                       ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />A analisar — pode demorar até 40 s …</>)
                       : (<><Wrench className="mr-2 h-4 w-4" />Diagnosticar</>)}
                   </Button>
+
+                  {/* Toggle web search + indicador de uso */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60"
+                       data-testid="btp-controls-bar">
+                    <div className="flex items-center gap-2" data-testid="btp-web-search-toggle">
+                      <Globe className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+                      <span className="text-xs text-muted-foreground">Pesquisar na Internet:</span>
+                      <div className="flex items-center rounded-sm border border-border overflow-hidden">
+                        {WEB_MODES.map((m) => (
+                          <button
+                            key={m.value}
+                            type="button"
+                            title={m.title}
+                            data-testid={`btp-web-mode-${m.value}`}
+                            onClick={() => setWebMode(m.value)}
+                            className={`px-3 py-1 text-xs transition-colors ${
+                              webMode === m.value
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-background text-muted-foreground hover:bg-secondary"
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {rateInfo && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground"
+                           data-testid="btp-rate-indicator">
+                        <Zap className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                        <span>
+                          <span className="font-semibold text-foreground">{rateInfo.web_remaining}</span>
+                          /{rateInfo.web_limit} pesquisas web · plano{" "}
+                          <strong className="capitalize">{rateInfo.plan}</strong>
+                        </span>
+                        {rateInfo.plan === "free" && (
+                          <button
+                            type="button"
+                            onClick={() => navigate("/pricing")}
+                            data-testid="btp-rate-upgrade-link"
+                            className="text-primary hover:underline"
+                          >
+                            → Pro 99 €/mês
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </form>
               </CardContent>
             </Card>
@@ -241,7 +305,21 @@ export default function BtpSolver() {
                       </Badge>
                       <Badge variant="outline">{result.domain}</Badge>
                       {result.model_used && <Badge variant="secondary" className="text-xs">{result.model_used}</Badge>}
-                      {result.web_enriched && <Badge variant="secondary" className="text-xs">Perplexity ✓</Badge>}
+                      {result.web_enriched && (
+                        <Badge
+                          data-testid="btp-web-badge"
+                          className="text-xs inline-flex items-center gap-1 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/15"
+                        >
+                          <Globe className="h-3 w-3" aria-hidden="true" />
+                          {(result.references || []).filter(r => r.kind === "web").length || result.references?.length || 0} fontes web
+                        </Badge>
+                      )}
+                      {result.web_search_fallback && (
+                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/40">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Sem fontes atuais
+                        </Badge>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -415,18 +493,31 @@ export default function BtpSolver() {
                 {result.references?.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Referências normativas</CardTitle>
+                      <CardTitle className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        Referências e fontes
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        {result.references.map((ref, i) => (
-                          <a key={i} href={ref.url || "#"} target="_blank" rel="noreferrer"
-                            className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            <BookOpen className="h-3 w-3" />
-                            {ref.kind.toUpperCase()} · {ref.code}
-                            {ref.title && <span className="ml-1 text-slate-500">· {ref.title}</span>}
-                          </a>
-                        ))}
+                      <div className="flex flex-wrap gap-2 text-xs" data-testid="btp-references">
+                        {result.references.map((ref, i) => {
+                          const isWeb = ref.kind === "web";
+                          const Icon = isWeb ? Link2 : BookOpen;
+                          return (
+                            <a key={i} href={ref.url || "#"} target="_blank" rel="noreferrer"
+                              data-testid={`btp-ref-${i}`}
+                              className={`inline-flex items-center gap-1 rounded px-2 py-1 border ${
+                                isWeb
+                                  ? "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              }`}>
+                              <Icon className="h-3 w-3" />
+                              <span className="font-medium">{(ref.kind || "").toUpperCase()}</span>
+                              <span>· {ref.code}</span>
+                              {ref.title && <span className="opacity-80">· {ref.title}</span>}
+                            </a>
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>
