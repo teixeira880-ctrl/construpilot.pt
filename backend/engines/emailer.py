@@ -3,13 +3,32 @@
 Usage:
     await send_email(to, subject, html)
     await send_email_with_pdf(to, subject, html, pdf_bytes, filename)
+
+Guard contra remetentes `.local` ou domínios inválidos:
+    - Em `ENV=production` levanta `ForbiddenSenderError` ANTES de chamar Resend.
+    - Default sender: `info@construpilot.pt` (via `mail_sender_config.get_sender`).
+
+Tracking fiel do estado Resend:
+    - Resposta API 2xx com `id` → `accepted` (não `delivered`).
+    - Exceção da API → `failed` + mensagem.
+    - Transição para `delivered`/`bounced`/`complained` só via webhook ou
+      polling a `GET /emails/{id}`.
 """
 import os
 import base64
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 import resend
+
+from engines.mail_sender_config import (
+    ForbiddenSenderError,
+    Market,
+    assert_valid_sender,
+    format_from_header,
+    get_sender,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,30 +40,100 @@ def _configure():
     return bool(key)
 
 
-def _from(from_name: str | None = None):
-    addr = os.environ.get("SENDER_EMAIL") or "onboarding@resend.dev"
-    if from_name:
-        clean = from_name.replace('"', "").replace("<", "").replace(">", "").strip()[:80]
-        if clean:
-            return f"{clean} <{addr}>"
-    return addr
+def _from(from_name: str | None = None) -> str:
+    """Devolve o header `From:` validado contra domínios proibidos.
+
+    Mantido por compatibilidade com código legado; novas chamadas devem
+    usar `format_from_header(get_sender(...))`.
+    """
+    override = {"name": from_name} if from_name else None
+    sender = get_sender(Market.PT, override=override)
+    return format_from_header(sender)
+
+
+async def _log_email_event(
+    *,
+    to: str,
+    subject: str,
+    sender_from: str,
+    reply_to: str | None,
+    status: str,
+    resend_id: str | None = None,
+    error: str | None = None,
+    campaign_id: str | None = None,
+    extra: dict | None = None,
+) -> None:
+    """Guarda evento em `email_logs` (idempotente por `resend_id`).
+
+    Nunca levanta exceção — falhas de log são silenciosas (apenas warning).
+    """
+    try:
+        from core.db import db  # import tardio para evitar ciclo
+        doc = {
+            "to": to,
+            "subject": subject[:200],
+            "from": sender_from,
+            "reply_to": reply_to,
+            "status": status,
+            "last_event": None,
+            "resend_id": resend_id,
+            "campaign_id": campaign_id,
+            "errors": [error] if error else [],
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if extra:
+            doc["extra"] = extra
+        if resend_id:
+            await db.email_logs.update_one(
+                {"resend_id": resend_id},
+                {"$setOnInsert": doc},
+                upsert=True,
+            )
+        else:
+            await db.email_logs.insert_one(doc)
+    except Exception as log_err:
+        logger.warning("email_logs insert falhou: %s", log_err)
 
 
 async def send_email(to: str, subject: str, html: str,
-                     reply_to: str | None = None, from_name: str | None = None) -> dict:
+                     reply_to: str | None = None, from_name: str | None = None,
+                     campaign_id: str | None = None) -> dict:
     if not _configure():
-        raise RuntimeError("RESEND_API_KEY manquant")
-    params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html}
+        raise RuntimeError("RESEND_API_KEY em falta")
+
+    # Guard — pode levantar ForbiddenSenderError em produção
+    sender = get_sender(Market.PT, override={"name": from_name} if from_name else None)
+    reply_final = reply_to or sender["reply_to"]
     if reply_to:
-        params["reply_to"] = reply_to
+        assert_valid_sender(reply_to)
+
+    from_header = format_from_header(sender)
+    params = {"from": from_header, "to": [to], "subject": subject, "html": html}
+    if reply_final:
+        params["reply_to"] = reply_final
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
+        rid = (resp or {}).get("id")
         logger.info("Email sent to=%s subject=%r id=%s",
-                    to, (subject[:60] + "…") if len(subject) > 60 else subject,
-                    (resp or {}).get("id"))
-        return {"ok": True, "id": resp.get("id")}
+                    to, (subject[:60] + "…") if len(subject) > 60 else subject, rid)
+        # Resend aceitou → `accepted` (não `delivered`!)
+        await _log_email_event(
+            to=to, subject=subject, sender_from=sender["from"],
+            reply_to=reply_final, status="accepted" if rid else "queued",
+            resend_id=rid, campaign_id=campaign_id,
+        )
+        return {"ok": True, "id": rid, "status": "accepted" if rid else "queued"}
+    except ForbiddenSenderError:
+        # Já logado dentro do guard — propaga
+        raise
     except Exception as e:
-        logger.error(f"Email send failed to={to}: {e}")
+        logger.error("Email send failed to=%s: %s", to, e)
+        await _log_email_event(
+            to=to, subject=subject, sender_from=sender["from"],
+            reply_to=reply_final, status="failed",
+            error=str(e)[:500], campaign_id=campaign_id,
+        )
         raise
 
 
@@ -53,13 +142,18 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
                               cc: str | None = None,
                               extra_attachments: list[dict] | None = None,
                               reply_to: str | None = None,
-                              from_name: str | None = None) -> dict:
-    """Envoie un email avec un PDF principal + éventuellement d'autres pièces jointes.
-
-    extra_attachments : liste de dicts {filename, content (bytes)}.
-    """
+                              from_name: str | None = None,
+                              campaign_id: str | None = None) -> dict:
+    """Envoie un email avec un PDF principal + éventuellement d'autres pièces jointes."""
     if not _configure():
-        raise RuntimeError("RESEND_API_KEY manquant")
+        raise RuntimeError("RESEND_API_KEY em falta")
+
+    # Guard
+    sender = get_sender(Market.PT, override={"name": from_name} if from_name else None)
+    reply_final = reply_to or sender["reply_to"]
+    if reply_to:
+        assert_valid_sender(reply_to)
+
     attachments = [{
         "filename": filename,
         "content": base64.b64encode(pdf_bytes).decode("utf-8"),
@@ -71,17 +165,32 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
             "content": base64.b64encode(att["content"]).decode("utf-8"),
             "content_type": att.get("content_type", "application/pdf"),
         })
-    params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html,
-              "attachments": attachments}
+    params = {"from": format_from_header(sender), "to": [to], "subject": subject,
+              "html": html, "attachments": attachments}
     if cc:
         params["cc"] = [cc]
-    if reply_to:
-        params["reply_to"] = reply_to
+    if reply_final:
+        params["reply_to"] = reply_final
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
-        return {"ok": True, "id": resp.get("id")}
+        rid = (resp or {}).get("id")
+        await _log_email_event(
+            to=to, subject=subject, sender_from=sender["from"],
+            reply_to=reply_final, status="accepted" if rid else "queued",
+            resend_id=rid, campaign_id=campaign_id,
+            extra={"has_pdf": True, "filename": filename},
+        )
+        return {"ok": True, "id": rid, "status": "accepted" if rid else "queued"}
+    except ForbiddenSenderError:
+        raise
     except Exception as e:
         logger.error(f"Email+PDF send failed: {e}")
+        await _log_email_event(
+            to=to, subject=subject, sender_from=sender["from"],
+            reply_to=reply_final, status="failed",
+            error=str(e)[:500], campaign_id=campaign_id,
+            extra={"has_pdf": True, "filename": filename},
+        )
         raise
 
 

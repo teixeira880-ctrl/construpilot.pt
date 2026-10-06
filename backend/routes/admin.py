@@ -425,6 +425,84 @@ async def admin_resend_status(limit: int = 50, admin=Depends(admin_user)) -> dic
     }
 
 
+@router.get("/resend-status")
+async def admin_resend_status_short(
+    limit: int = 50, admin=Depends(admin_user),
+) -> dict:
+    """Estado fiel dos últimos N emails tal como gravados pelo backend.
+
+    Difere de `/admin/emails/resend-status` (que consulta a Resend API):
+    este endpoint reflete o que o ConstruPilot gravou localmente na
+    coleção `email_logs`, incluindo envios bloqueados pelo guard
+    (`.local`, remetentes inválidos) e falhas da API.
+
+    Campos devolvidos por item: id, resend_id, to, from, subject, status,
+    last_event, errors, created_at.
+    """
+    from engines.mail_sender_config import (
+        FORBIDDEN_DOMAIN_SUFFIXES,
+        get_sender,
+        is_production,
+    )
+
+    limit = max(1, min(int(limit or 50), 200))
+    rows = (
+        await db.email_logs.find({}, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(limit)
+    )
+    # Nunca devolver `errors` com stacktrace cru; sanitiza a 300 chars
+    for r in rows:
+        if r.get("errors"):
+            r["errors"] = [str(x)[:300] for x in r["errors"] if x]
+        if r.get("created_at"):
+            r["created_at"] = r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"])
+        if r.get("updated_at"):
+            r["updated_at"] = r["updated_at"].isoformat() if hasattr(r["updated_at"], "isoformat") else str(r["updated_at"])
+
+    # Agrega por estado
+    buckets: dict[str, int] = {}
+    for r in rows:
+        s = r.get("status") or "unknown"
+        buckets[s] = buckets.get(s, 0) + 1
+
+    # Reporta configuração atual do remetente (sem secrets)
+    try:
+        current_sender = get_sender()
+        current_sender_from = current_sender["from"]
+        current_sender_name = current_sender["name"]
+        sender_ok = True
+        sender_error = None
+    except Exception as e:
+        current_sender_from = "<inválido>"
+        current_sender_name = ""
+        sender_ok = False
+        sender_error = str(e)[:200]
+
+    return {
+        "items": rows,
+        "total": len(rows),
+        "buckets": buckets,
+        "config": {
+            "sender_from": current_sender_from,
+            "sender_name": current_sender_name,
+            "sender_ok": sender_ok,
+            "sender_error": sender_error,
+            "env_is_production": is_production(),
+            "forbidden_domains": list(FORBIDDEN_DOMAIN_SUFFIXES),
+        },
+        "legend": {
+            "queued": "Pedido sem id devolvido (ainda em espera no Resend)",
+            "accepted": "Resend aceitou e devolveu id — ainda não confirmou entrega",
+            "delivered": "Entregue (confirmado via webhook ou polling)",
+            "bounced": "Rejeitado pelo destinatário",
+            "complained": "Marcado como spam",
+            "failed": "Falha na API Resend (ver errors)",
+        },
+    }
+
+
+
 @router.get("/campaigns")
 async def admin_campaigns() -> dict:
     """Historique des campagnes e-mail groupées."""
