@@ -45,7 +45,8 @@ const NAV_PRO = [
 const NAV_DISCOVER = [
   { to: "/fonctionnalites", label: "Funcionalidades", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
-  { to: "/btp-solver", label: "Assistente de Obras", key: "nav.btp_solver", icon: Wrench, logo: "/assistente-obras-logo.png" },
+  { to: "/btp-assistente", label: "Assistente BTP (Novo)", key: "nav.btp_assistente", icon: Sparkles, logo: "/assistente-obras-logo.png", badge: "Novo" },
+  { to: "/btp-solver", label: "Assistente de Obras", key: "nav.btp_solver", icon: Wrench, logo: "/assistente-obras-logo.png", badge: "Legado" },
   { to: "/plan", label: "Medir 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
   { to: "/mesure-photo", label: "Medir por foto", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
   { to: "/photo", label: "Análise por foto", key: "nav.photo", icon: Camera },
@@ -154,7 +155,14 @@ export const Nav = () => {
                         <l.icon className="h-4 w-4 text-primary" />
                       )}
                     </span>
-                    {t(l.key, l.label)}
+                    <span className="flex-1">{t(l.key, l.label)}</span>
+                    {l.badge && (
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                        l.badge === "Novo"
+                          ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
+                          : "bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/30"
+                      }`}>{l.badge}</span>
+                    )}
                   </Link>
                 </DropdownMenuItem>
               ))}

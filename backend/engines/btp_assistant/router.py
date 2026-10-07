@@ -82,6 +82,66 @@ def classificar_modo(
 
 def _ev(tipo, **data) -> AgentEvent:
     return AgentEvent(type=tipo, data=data)
+
+
+# ---------------------------------------------------------------------------
+# Observabilidade (Fase C) — grava métricas por turno sem PII
+# ---------------------------------------------------------------------------
+async def _gravar_metrica(
+    *,
+    conv_id: str,
+    user_id: str,
+    modo: Modo,
+    modelo: str,
+    final_ev: AgentEvent | None,
+    acc_eventos: list[AgentEvent],
+    missing_data_count: int,
+    tool_results: list[dict[str, Any]],
+    had_error: bool,
+    attachments_count: int,
+) -> None:
+    """Grava 1 doc em `btp_assistant_metrics`. ZERO PII (sem prompt/texto)."""
+    duracao_s = (final_ev.data.get("duration_s") if final_ev else None) or 0.0
+    duracao_ms = int(float(duracao_s) * 1000)
+    tools_called = [
+        e.data.get("name") for e in acc_eventos if e.type == "tool_call"
+    ]
+    tool_errors = sum(
+        1 for tr in tool_results if tr.get("status") == "error"
+    )
+    awaiting = bool((final_ev.data.get("awaiting_confirmation") if final_ev else False))
+    if had_error:
+        status = "error"
+    elif awaiting:
+        status = "awaiting_confirmation"
+    else:
+        status = "success"
+    # Plano do utilizador (consulta leve ao users; não bloqueante se falhar)
+    user_plan = "free"
+    try:
+        u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "plan": 1, "account_type": 1})
+        if u:
+            user_plan = (u.get("plan") or u.get("account_type") or "free").lower()
+    except Exception:  # noqa: BLE001
+        pass
+
+    doc = {
+        "conversation_id": conv_id,
+        "user_id": user_id,  # NÃO é PII — é ID interno aleatório; já guardado em outras colecções
+        "user_plan": user_plan,
+        "modo": modo,
+        "modelo": modelo,
+        "duracao_ms": duracao_ms,
+        "events_count": len(acc_eventos),
+        "tools_called": tools_called,
+        "tool_errors": tool_errors,
+        "grounding_used": (modo == "conversa"),  # Google Search activo em conversa
+        "missing_data_count": missing_data_count,
+        "attachments_count": attachments_count,
+        "status": status,
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.btp_assistant_metrics.insert_one(doc)
 def _extrair_function_calls(response: Any) -> list[tuple[str, dict[str, Any]]]:
     """Devolve `[(name, args), ...]` extraídos do candidato Gemini."""
     try:
@@ -419,6 +479,20 @@ async def route_user_request(
         },
         upsert=True,
     )
+
+    # Observabilidade — Fase C: gravar métricas (zero PII)
+    try:
+        await _gravar_metrica(
+            conv_id=conv_id, user_id=user_id, modo=modo,
+            modelo=agent_resp["model_used"],
+            final_ev=final_ev, acc_eventos=acc_eventos,
+            missing_data_count=len(missing_data_final),
+            tool_results=tool_results_final,
+            had_error=any(e.type == "error" for e in acc_eventos),
+            attachments_count=len(attachments or []),
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("falha a gravar métrica — não interrompe o turno")
 
 
 # ---------------------------------------------------------------------------

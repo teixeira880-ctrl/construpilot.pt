@@ -114,8 +114,10 @@ from routes import investors as investors_routes
 api_router.include_router(investors_routes.router)
 from routes import btp_solver as btp_solver_routes
 from routes import btp_assistant as btp_assistant_routes
+from routes import admin_btp_metrics as admin_btp_metrics_routes
 api_router.include_router(btp_solver_routes.router)
 api_router.include_router(btp_assistant_routes.router)
+api_router.include_router(admin_btp_metrics_routes.router)
 from routes import plans_pro as plans_pro_routes
 api_router.include_router(plans_pro_routes.router)
 from routes import perplexity_plus as perplexity_plus_routes

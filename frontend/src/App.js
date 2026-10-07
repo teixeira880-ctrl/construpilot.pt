@@ -25,6 +25,8 @@ import PriceSearch from "@/pages/PriceSearch";
 import Diy from "@/pages/Diy";
 import Coach from "@/pages/Coach";
 import BtpSolver from "@/pages/BtpSolver";
+import AssistenteBTP from "@/pages/AssistenteBTP";
+import BTPMetrics from "@/pages/admin/BTPMetrics";
 import PlansPro from "@/pages/PlansPro";
 import PerplexityPlus from "@/pages/PerplexityPlus";
 import StairEngine from "@/pages/StairEngine";
@@ -185,6 +187,9 @@ function AppRouter() {
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/btp-solver" element={<Shell><BtpSolver /></Shell>} />
+      <Route path="/btp-assistente" element={<Protected><Shell><AssistenteBTP /></Shell></Protected>} />
+      <Route path="/assistente-btp" element={<Navigate to="/btp-assistente" replace />} />
+      <Route path="/admin/btp-metrics" element={<Protected admin><Shell><BTPMetrics /></Shell></Protected>} />
       <Route path="/plans-pro" element={<Shell><PlansPro /></Shell>} />
       <Route path="/perplexity-plus" element={<Shell><PerplexityPlus /></Shell>} />
       <Route path="/stair-engine" element={<Shell><StairEngine /></Shell>} />
