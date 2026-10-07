@@ -1,0 +1,11 @@
+{
+  "quantities": {
+    "Paredes": {"count": 42, "source": "categories", "layers": []},
+    "Lajes": {"count": 5, "source": "categories", "layers": []},
+    "Fundações": {"count": 8, "source": "categories", "layers": []},
+    "Portas": {"count": 7, "source": "categories", "layers": []},
+    "Janelas": {"count": 15, "source": "categories", "layers": []}
+  },
+  "bbox": {"area_m2": 180.0},
+  "materiais": ["C25/30", "A500NR", "PP", "XPS"]
+}

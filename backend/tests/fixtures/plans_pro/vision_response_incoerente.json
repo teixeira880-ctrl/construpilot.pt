@@ -1,0 +1,13 @@
+{
+  "plan_id": "pln_test_incoer",
+  "elementos": [
+    {"id": "ABR-01", "tipo": "abertura", "confidence": 0.7, "source": "llm", "warnings": [], "dimensoes": [], "material": null, "cota_assentamento": null, "diametro_mm": null, "racio_kg_m3": null, "classe_aco": null, "sub_tipo": "janela"},
+    {"id": "ABR-02", "tipo": "abertura", "confidence": 0.7, "source": "llm", "warnings": [], "dimensoes": [], "material": null, "cota_assentamento": null, "diametro_mm": null, "racio_kg_m3": null, "classe_aco": null, "sub_tipo": "janela"},
+    {"id": "ABR-03", "tipo": "abertura", "confidence": 0.7, "source": "llm", "warnings": [], "dimensoes": [], "material": null, "cota_assentamento": null, "diametro_mm": null, "racio_kg_m3": null, "classe_aco": null, "sub_tipo": "janela"}
+  ],
+  "missing_data": [],
+  "warnings": [],
+  "confidence_global": 0.75,
+  "requires_human_review": false,
+  "trace": {}
+}

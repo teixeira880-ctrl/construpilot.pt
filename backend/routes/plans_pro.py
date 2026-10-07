@@ -25,6 +25,11 @@ from engines.plans_pro import autodesk_client
 from engines.plans_pro.excel_export import IVA_RATES_PT, build_workbook
 from engines.plans_pro.plan_metadata import aggregate_quantities
 from engines.plans_pro.plan_vision import full_analysis
+from engines.plans_pro.semantic.exceptions import (
+    AutodeskError as SemAutodeskError,
+    SchemaValidationError,
+    VisionAnalysisError,
+)
 
 logger = logging.getLogger("plans_pro.routes")
 
@@ -183,6 +188,11 @@ class AnalyzeIn(BaseModel):
 
 @router.post("/{plan_id}/analyze")
 async def analyze(plan_id: str, body: AnalyzeIn, user=Depends(current_user)):
+    """Executa a cascade IA — Fase 1 blindada.
+
+    Devolve HTTP 200 mesmo quando `missing_data` não está vazio: o
+    frontend precisa de mostrar modal ao utilizador em vez de 400.
+    """
     doc = await db.plans_pro.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Plano não encontrado.")
@@ -190,16 +200,19 @@ async def analyze(plan_id: str, body: AnalyzeIn, user=Depends(current_user)):
         raise HTTPException(409, "Translation ainda não terminada ou falhou.")
     urn = doc["autodesk_urn"]
 
-    # 1. Metadata + thumbnails
+    # 1. Metadata APS
     try:
         meta = await autodesk_client.metadata(urn)
-    except Exception as e:  # noqa: BLE001
-        logger.warning("metadata falhou %s: %s", plan_id, e)
-        meta = {}
+    except Exception as e:  # excepção legacy do autodesk_client
+        logger.exception("metadata APS falhou (plan=%s)", plan_id)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Autodesk metadata indisponível: {type(e).__name__}",
+        ) from None
     views = ((meta.get("data") or {}).get("metadata") or [])
 
-    # Quantities agregadas (categorias / layers)
-    categories_views = []
+    # Quantities (fonte determinística para cross-check)
+    categories_views: list[dict] = []
     manifest = doc.get("manifest") or {}
     for d in (manifest.get("derivatives") or []):
         for child in (d.get("children") or []):
@@ -209,39 +222,79 @@ async def analyze(plan_id: str, body: AnalyzeIn, user=Depends(current_user)):
                 categories_views.append({"categories": cats, "layers": layers})
     quantities = aggregate_quantities(categories_views) if categories_views else {}
 
-    # 2. Thumbnail
-    thumb = None
+    # 2. Thumbnail (opcional)
+    thumb: bytes | None = None
     try:
         thumb = await autodesk_client.thumbnail(urn)
-    except Exception as e:  # noqa: BLE001
-        logger.info("thumbnail indisponível: %s", e)
+    except Exception as e:  # noqa: BLE001 — thumbnail é opcional
+        logger.exception("thumbnail APS indisponível (plan=%s)", plan_id)
+        thumb = None
 
-    # 3. Cascade IA
-    analysis = await full_analysis(
-        filename=doc["file_name"],
-        metadata={"quantities": quantities, "views": views},
-        thumbnail_bytes=thumb,
-        thumbnail_mime="image/png",
-        project_hint=body.project_hint,
-        include_web_norms=body.include_web_norms,
-    )
+    # 3. Cascade IA tipada
+    try:
+        analise = await full_analysis(
+            plan_id=plan_id,
+            filename=doc["file_name"],
+            metadata={"quantities": quantities, "views": views},
+            thumbnail_bytes=thumb,
+            thumbnail_mime="image/png",
+            project_hint=body.project_hint,
+            include_web_norms=body.include_web_norms,
+        )
+    except VisionAnalysisError:
+        # Todos os providers LLM falharam HTTP/vazio
+        logger.exception("vision analysis falhou totalmente (plan=%s)", plan_id)
+        raise HTTPException(
+            status_code=503,
+            detail="Provedores IA indisponíveis — tente novamente em instantes.",
+        ) from None
+    except SchemaValidationError:
+        # Já tratado no full_analysis (embalado como MissingDataRequest),
+        # este bloco é defesa em profundidade.
+        logger.exception("schema validation inesperada (plan=%s)", plan_id)
+        raise HTTPException(
+            status_code=502,
+            detail="Resposta IA inválida — contacte o suporte.",
+        ) from None
+    except SemAutodeskError:
+        logger.exception("erro Autodesk tipado (plan=%s)", plan_id)
+        raise HTTPException(
+            status_code=502,
+            detail="Erro Autodesk APS — tente novamente.",
+        ) from None
 
-    # 4. Persistir
+    # 4. Persistir — novo contrato + wrapper legacy mínimo para Excel export
+    analise_dump = analise.model_dump(mode="json")
+    legacy_wrapper = {
+        "synthesis": {
+            # Vazio por design em Fase 1 (sem ouvrages ainda).
+            # Excel export produz orçamento com totais a 0 sem crashar.
+            "ouvrages": [],
+            "normas_aplicaveis": [],
+            "resumo": None,
+        },
+        "analise": analise_dump,
+    }
     thumb_b64 = base64.b64encode(thumb).decode() if thumb else None
     update = {
-        "ai_analysis": analysis,
+        "ai_analysis": legacy_wrapper,
         "quantities": quantities,
         "views_count": len(views),
         "thumbnail_b64": thumb_b64,
-        "model_used": analysis.get("model_used"),
+        "model_used": analise.trace.get("providers_used"),
         "analyzed_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.plans_pro.update_one({"plan_id": plan_id}, {"$set": update})
+
+    # Novo contrato de resposta (breaking change — ver relatório Fase 1)
     return {
         "plan_id": plan_id,
+        "analise": analise_dump,
+        "missing_data": [md.model_dump(mode="json") for md in analise.missing_data],
+        "requires_human_review": analise.requires_human_review,
+        "trace": analise.trace,
         "quantities": quantities,
-        "ai_analysis": analysis,
         "views_count": len(views),
     }
 

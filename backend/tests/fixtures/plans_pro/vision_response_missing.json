@@ -1,0 +1,30 @@
+{
+  "plan_id": "pln_test_missing",
+  "elementos": [
+    {
+      "id": "ARM-01", "tipo": "armadura", "confidence": 0.6,
+      "source": "llm", "warnings": ["rácio não visível na planta"],
+      "dimensoes": [],
+      "material": {"nome": "A500NR", "categoria": "aco", "classe": "A500NR", "confidence": 0.9},
+      "cota_assentamento": null,
+      "diametro_mm": 12.0,
+      "racio_kg_m3": null,
+      "classe_aco": "A500NR",
+      "sub_tipo": null
+    }
+  ],
+  "missing_data": [
+    {
+      "question_pt": "Qual é o rácio de armadura (kg/m³ de betão) a aplicar na laje do piso 0?",
+      "field": "armadura.racio_kg_m3",
+      "unit": "kg/m³",
+      "element_id": "ARM-01",
+      "suggested_default": 100.0,
+      "criticidade": "bloqueante"
+    }
+  ],
+  "warnings": [],
+  "confidence_global": 0.55,
+  "requires_human_review": true,
+  "trace": {}
+}

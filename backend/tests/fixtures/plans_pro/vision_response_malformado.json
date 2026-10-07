@@ -1,0 +1,1 @@
+{"plan_id": "pln_test_bad", "elementos": [{"id": "X", "campo_inventado": true, "tipo": "sapata"}], "foo_extra": 123}

@@ -1,0 +1,50 @@
+SAPATA C25/30 ∅12 A500NR 1,20x1,20x0,40
+MURO SOUBASSEMENT PP e=20 cm h=2,80 m
+LAJE BA e=20 cm C30/37
+PILAR 0,30x0,30 C25/30 varões ∅16
+VIGA BA 0,25x0,50 Ø10
+BLOCO 20 PP 20x20x40
+TJ 15 e=15 cm
+TJ 11
+BLOCO TÉRMICO 20
+TIJOLO cerâmico 0,30
+MW e=10 cm lã mineral
+XPS e=4 cm
+EPS e=8 cm
+C12/15 betão de limpeza (BB)
+C16/20 regularização
+C20/25
+C25/30
+C30/37
+C35/45
+C40/50
+C45/55
+C50/60
+A400 varão longitudinal
+A500 estribo
+A500NR armadura
+A500ER soldável
+B500A classe
+B500B classe
+∅6 estribo
+∅8 varão
+∅10
+∅12
+fi14
+phi 16
+D 20
+Ø25
+D32
+e=4 isolamento
+e=5
+e=6
+e=8
+e=10 cm
+h=2,80
+h=3,00 m
+altura=2,5
+0,30x0,60 m
+0.30 X 0.60
+30 x 60 cm
+2500 mm
+2,5 m
