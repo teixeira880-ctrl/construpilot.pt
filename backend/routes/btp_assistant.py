@@ -6,14 +6,12 @@ Endpoints:
     * GET   /api/btp-assistant/conversations/{id}
     * DELETE /api/btp-assistant/conversations/{id}
 """
-from __future__ import annotations
-
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -43,16 +41,16 @@ class AttachmentIn(BaseModel):
 
 class ChatIn(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=8000)
-    conversation_id: str | None = Field(default=None, max_length=80)
+    conversation_id: Optional[str] = Field(default=None, max_length=80)
     stream: bool = Field(default=True)
-    attachments: list[AttachmentIn] = Field(default_factory=list, max_length=6)
+    attachments: List[AttachmentIn] = Field(default_factory=list, max_length=6)
 
 
 class ConfirmIn(BaseModel):
     conversation_id: str
     tool_call_id: str
     name: str
-    arguments: dict[str, Any]
+    arguments: dict
     confirmed: bool
 
 
@@ -62,8 +60,8 @@ class ConfirmIn(BaseModel):
 @router.post("/chat")
 @limiter.limit(plan_limit_fn(free="20/hour", pro="120/hour", business="400/hour"))
 async def chat(
-    body: ChatIn,
     request: Request,
+    body: ChatIn = Body(...),
     user=Depends(current_user),
 ):
     """Entrada principal do agente. Retorna SSE (default) ou JSON."""
@@ -118,7 +116,7 @@ async def chat(
 # POST /confirm — executa acção previamente autorizada
 # ---------------------------------------------------------------------------
 @router.post("/confirm")
-async def confirm(body: ConfirmIn, user=Depends(current_user)):
+async def confirm(body: ConfirmIn = Body(...), user=Depends(current_user)):
     if not body.confirmed:
         return {"status": "cancelled", "tool_call_id": body.tool_call_id}
     call = ToolCall(
