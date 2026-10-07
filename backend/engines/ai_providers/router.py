@@ -59,6 +59,7 @@ class AIRouter:
     """Instancia provedores lazy — ignora os que faltam key."""
 
     def __init__(self):
+        self._gemini = None
         self._claude = None
         self._openai_coach = None
         self._openai_fast = None
@@ -69,6 +70,15 @@ class AIRouter:
     def _lazy_load(self) -> None:
         if self._loaded:
             return
+        # Gemini (NOVO PRIMÁRIO global para Coach/BTP/Plans Pro)
+        try:
+            from engines.ai_providers.gemini_provider import GeminiProvider
+            self._gemini = GeminiProvider()
+            logger.info("router: gemini ready (model=%s)", self._gemini.model)
+        except AIProviderNotConfigured as e:
+            logger.info("router: gemini not configured (%s)", e.code)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("router: gemini init failed: %s", type(e).__name__)
         # Claude
         try:
             from engines.ai_providers.claude_provider import ClaudeProvider
@@ -104,6 +114,7 @@ class AIRouter:
 
     def reset(self) -> None:
         """Força recarregamento (útil após rotação .env)."""
+        self._gemini = None
         self._claude = self._openai_coach = self._openai_fast = None
         self._openai_vision = self._perplexity = None
         self._loaded = False
@@ -111,6 +122,11 @@ class AIRouter:
     # ------------------------------------------------------------------
     # Acessores públicos (podem devolver None se não configurado)
     # ------------------------------------------------------------------
+    @property
+    def gemini(self):
+        self._lazy_load()
+        return self._gemini
+
     @property
     def claude(self):
         self._lazy_load()
@@ -181,11 +197,12 @@ class AIRouter:
 
         primary_meta: dict[str, Any] = {}
         fallback_meta: dict[str, Any] = {}
+        secondary_meta: dict[str, Any] = {}
 
-        # 2. Primary: Claude
-        if self._claude:
+        # 2. Primary: Gemini (novo, Fase 1b)
+        if self._gemini:
             try:
-                r = await self._claude.ask(
+                r = await self._gemini.ask(
                     prompt=enriched_prompt, system=system,
                     max_tokens=max_tokens, temperature=temperature,
                     history=history,
@@ -202,11 +219,37 @@ class AIRouter:
                 primary_meta["error"] = "empty_text"
             except AIProviderError as e:
                 primary_meta = e.to_meta()
-                logger.info("claude failed: %s (retriable=%s)", e.code, e.retriable)
+                logger.info(
+                    "gemini failed: %s (retriable=%s)", e.code, e.retriable,
+                )
         else:
-            primary_meta = {"provider": "claude", "error": "not_configured"}
+            primary_meta = {"provider": "gemini", "error": "not_configured"}
 
-        # 3. Fallback: OpenAI
+        # 3. Fallback 1: Claude
+        if self._claude:
+            try:
+                r = await self._claude.ask(
+                    prompt=enriched_prompt, system=system,
+                    max_tokens=max_tokens, temperature=temperature,
+                    history=history,
+                )
+                secondary_meta = {
+                    "provider": r.provider, "model": r.model,
+                    "latency_ms": r.latency_ms, "ok": not r.is_empty,
+                    "stop_reason": r.stop_reason,
+                }
+                if not r.is_empty:
+                    if web_citations:
+                        r.citations = web_citations
+                    return r
+                secondary_meta["error"] = "empty_text"
+            except AIProviderError as e:
+                secondary_meta = e.to_meta()
+                logger.info("claude fallback failed: %s", e.code)
+        else:
+            secondary_meta = {"provider": "claude", "error": "not_configured"}
+
+        # 4. Fallback 2: OpenAI
         if self._openai_coach:
             try:
                 r = await self._openai_coach.ask(
@@ -230,25 +273,28 @@ class AIRouter:
         else:
             fallback_meta = {"provider": "openai", "error": "not_configured"}
 
-        # 4. Ambos falharam
+        # 5. Todos falharam
         raise CoachUnavailableError(
-            "Coach IA indisponível (Claude + OpenAI falharam).",
-            primary_meta=primary_meta, fallback_meta=fallback_meta,
+            "Coach IA indisponível (Gemini + Claude + OpenAI falharam).",
+            primary_meta={**primary_meta, "secondary": secondary_meta},
+            fallback_meta=fallback_meta,
         )
 
     # ------------------------------------------------------------------
     # Health check
     # ------------------------------------------------------------------
     async def health(self, *, ping: bool = False) -> dict[str, Any]:
-        """Status dos 3 provedores. Se `ping=True`, faz chamada real leve."""
+        """Status dos 4 provedores. Se `ping=True`, faz chamada real leve."""
         self._lazy_load()
         out: dict[str, Any] = {
-            "primary": os.environ.get("AI_PRIMARY_PROVIDER", "claude"),
-            "fallback": os.environ.get("AI_FALLBACK_PROVIDER", "openai"),
+            "primary": os.environ.get("AI_PRIMARY_PROVIDER", "gemini"),
+            "fallback": os.environ.get("AI_FALLBACK_PROVIDER", "claude"),
+            "fallback_2": os.environ.get("AI_FALLBACK2_PROVIDER", "openai"),
             "web_search": os.environ.get("AI_WEB_SEARCH_PROVIDER", "perplexity"),
             "providers": {},
         }
         for name, inst in (
+            ("gemini", self._gemini),
             ("claude", self._claude),
             ("openai", self._openai_coach),
             ("perplexity", self._perplexity),

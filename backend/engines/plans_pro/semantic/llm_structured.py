@@ -1,13 +1,17 @@
 """Chamada LLM com structured outputs — zero JSON patching.
 
-Contrato (Fase 1):
+Contrato (Fase 1b):
     * Entrada: imagem base64 + metadata APS + hint do projecto.
     * Saída: instância Pydantic `AnalisePlanta` validada.
-    * Ordem de fallback **específica deste motor**: OpenAI → Claude.
-      Razão: OpenAI tem `response_format={"type":"json_schema", strict=True}`
-      nativo (determinante aqui); Claude é fallback via tool-use.
-    * O router global `ai_providers` continua Claude-primário para o
-      Coach e Assistente de Obras — NÃO é alterado aqui.
+    * Ordem de fallback **específica deste motor**, alinhada com o router
+      global após Fase 1b: **Gemini → Claude → OpenAI**.
+      Razão: Gemini `responseSchema` + Claude vision + OpenAI
+      `response_format=json_schema strict` são todos capazes de
+      structured output. Gemini é primário porque o utilizador o
+      promoveu globalmente.
+    * O router global `ai_providers.router` já tem a mesma ordem para
+      Coach e BTP — este módulo chama directamente cada provider para
+      permitir `responseSchema` específico desta pipeline.
 
 Regra dura: se o LLM devolver JSON malformado ou que não valide no
 `AnalisePlanta`, levantamos `SchemaValidationError`. NÃO tentamos
@@ -118,6 +122,114 @@ def _construir_prompt(
         "`plan_id` deve ser exactamente o acima."
     )
     return "\n".join(partes)
+
+
+async def _call_gemini(
+    *,
+    prompt: str,
+    image_data_uri: str | None,
+    schema: dict[str, Any],
+) -> str:
+    """Chama Gemini `gemini-pro-latest` com `responseSchema` nativo.
+
+    Devolve o `text` cru (JSON). Levanta `VisionAnalysisError` em erro
+    de rede/API.
+    """
+    provider = ai_router.gemini
+    if provider is None:
+        raise VisionAnalysisError(
+            "Gemini não configurado neste motor.", provider="gemini",
+        )
+    try:
+        r = await provider.ask(
+            prompt=prompt,
+            system=SYSTEM_PROMPT_PT,
+            max_tokens=8192,
+            temperature=0.0,
+            image_url=image_data_uri,
+            response_schema=_schema_for_gemini(schema),
+        )
+    except AIProviderError as e:
+        raise VisionAnalysisError(
+            f"Gemini falhou: {e.code} ({str(e)[:200]})", provider="gemini",
+        ) from e
+    if r.is_empty:
+        raise VisionAnalysisError(
+            "Gemini devolveu resposta vazia.", provider="gemini",
+        )
+    return r.text
+
+
+def _schema_for_gemini(openai_schema: dict[str, Any]) -> dict[str, Any]:
+    """Adapta o JSON Schema (strict OpenAI) ao subset aceite pelo Gemini.
+
+    Gemini `responseSchema` v1beta é mais restritivo que OpenAI:
+        * NÃO aceita `additionalProperties` → removido.
+        * NÃO aceita `$defs` nem `$ref` → inlining recursivo.
+        * NÃO aceita `anyOf`/`oneOf` com discriminator complexo.
+    """
+    import copy
+    s = copy.deepcopy(openai_schema)
+    defs = s.pop("$defs", None) or s.pop("definitions", None) or {}
+    if defs:
+        s = _inline_refs(s, defs)
+    _strip_additional_properties(s)
+    _strip_unsupported_keys(s)
+    return s
+
+
+def _inline_refs(node: Any, defs: dict[str, Any], _depth: int = 0) -> Any:
+    """Substitui recursivamente `$ref: '#/$defs/X'` pela definição real.
+
+    Protecção contra ciclos: `_depth` limita a 20 níveis.
+    """
+    if _depth > 20:
+        return node
+    if isinstance(node, dict):
+        if "$ref" in node and len(node) == 1:
+            ref = node["$ref"]
+            # Formato esperado: "#/$defs/NomeModelo" ou "#/definitions/NomeModelo"
+            if ref.startswith("#/$defs/"):
+                name = ref[len("#/$defs/"):]
+            elif ref.startswith("#/definitions/"):
+                name = ref[len("#/definitions/"):]
+            else:
+                return node
+            target = defs.get(name)
+            if target is None:
+                return node
+            return _inline_refs(
+                {**target}, defs, _depth + 1,
+            )
+        return {k: _inline_refs(v, defs, _depth + 1) for k, v in node.items()}
+    if isinstance(node, list):
+        return [_inline_refs(v, defs, _depth + 1) for v in node]
+    return node
+
+
+def _strip_unsupported_keys(obj: Any) -> None:
+    """Remove chaves de JSON Schema não aceites pelo Gemini v1beta."""
+    unsupported = {"$schema", "$id", "const", "contentMediaType", "contentEncoding"}
+    if isinstance(obj, dict):
+        for k in list(obj.keys()):
+            if k in unsupported:
+                obj.pop(k, None)
+        for v in obj.values():
+            _strip_unsupported_keys(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            _strip_unsupported_keys(v)
+
+
+def _strip_additional_properties(obj: Any) -> None:
+    """Remove `additionalProperties` recursivamente (Gemini não suporta)."""
+    if isinstance(obj, dict):
+        obj.pop("additionalProperties", None)
+        for v in obj.values():
+            _strip_additional_properties(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            _strip_additional_properties(v)
 
 
 async def _call_openai(
@@ -246,12 +358,19 @@ async def analisar_com_structured_output(
 ) -> tuple[AnalisePlanta, dict[str, Any]]:
     """Executa a análise LLM e devolve `(AnalisePlanta, trace)`.
 
-    Ordem para este motor específico: OpenAI → Claude (ver docstring do
-    módulo). Cada tentativa valida o schema; a primeira que validar vence.
+    Ordem para este motor (alinhada com router global pós-Fase 1b):
+    **Gemini → Claude → OpenAI**. Cada tentativa valida o schema; a
+    primeira que validar vence.
+
+    Fallback inter-provider aciona-se em:
+        * `VisionAnalysisError` (HTTP, timeout, config)
+        * `SchemaValidationError` (resposta não valida contra Pydantic)
 
     Levanta:
-        * `VisionAnalysisError` se TODOS os providers falharem HTTP/vazio.
-        * `SchemaValidationError` se TODOS devolverem JSON inválido.
+        * `SchemaValidationError` se o ÚLTIMO provider devolver JSON
+          que não valida. (Os providers anteriores apenas disparam
+          fallback.)
+        * `VisionAnalysisError` se TODOS os providers falharem rede/API.
     """
     schema = _schema_openai_strict()
     prompt = _construir_prompt(
@@ -264,41 +383,84 @@ async def analisar_com_structured_output(
         "providers_attempted": [],
         "providers_used": None,
         "schema_errors": [],
+        "network_errors": [],
     }
 
-    # 1. OpenAI (primário neste motor)
+    # 1. Gemini (primário)
     t0 = time.time()
     try:
-        raw = await _call_openai(
-            prompt=prompt, image_data_uri=image_data_uri, schema=schema
+        raw = await _call_gemini(
+            prompt=prompt, image_data_uri=image_data_uri, schema=schema,
         )
-        trace["providers_attempted"].append("openai")
-        trace["openai_latency_ms"] = int((time.time() - t0) * 1000)
+        trace["providers_attempted"].append("gemini")
+        trace["gemini_latency_ms"] = int((time.time() - t0) * 1000)
         try:
             parsed = _parse_strict(raw)
+            trace["providers_used"] = "gemini"
+            return parsed, trace
         except SchemaValidationError as se:
-            trace["schema_errors"].append({"provider": "openai", "detail": str(se)[:200]})
-            logger.info("openai schema inválido, fallback claude: %s", se)
-            raise  # dispara ao bloco Claude abaixo
-        trace["providers_used"] = "openai"
-        return parsed, trace
-    except (VisionAnalysisError, SchemaValidationError) as e_openai:
-        logger.info("openai falhou: %s", type(e_openai).__name__)
+            trace["schema_errors"].append(
+                {"provider": "gemini", "detail": str(se)[:200]}
+            )
+            logger.info("gemini schema inválido, fallback para claude")
+    except VisionAnalysisError as ve:
+        trace["providers_attempted"].append("gemini")
+        trace["network_errors"].append(
+            {"provider": "gemini", "detail": str(ve)[:200]}
+        )
+        logger.info("gemini indisponível: %s", type(ve).__name__)
 
-    # 2. Claude (fallback)
+    # 2. Claude (fallback 1)
     t1 = time.time()
     try:
         raw = await _call_claude(prompt=prompt, schema=schema)
         trace["providers_attempted"].append("claude")
         trace["claude_latency_ms"] = int((time.time() - t1) * 1000)
-        parsed = _parse_strict(raw)  # erro aqui propaga como SchemaValidationError
-        trace["providers_used"] = "claude"
-        return parsed, trace
-    except SchemaValidationError as se:
-        trace["schema_errors"].append({"provider": "claude", "detail": str(se)[:200]})
-        raise
+        try:
+            parsed = _parse_strict(raw)
+            trace["providers_used"] = "claude"
+            return parsed, trace
+        except SchemaValidationError as se:
+            trace["schema_errors"].append(
+                {"provider": "claude", "detail": str(se)[:200]}
+            )
+            logger.info("claude schema inválido, fallback para openai")
+    except VisionAnalysisError as ve:
+        trace["providers_attempted"].append("claude")
+        trace["network_errors"].append(
+            {"provider": "claude", "detail": str(ve)[:200]}
+        )
+        logger.info("claude indisponível: %s", type(ve).__name__)
+
+    # 3. OpenAI (fallback 2)
+    t2 = time.time()
+    try:
+        raw = await _call_openai(
+            prompt=prompt, image_data_uri=image_data_uri, schema=schema,
+        )
+        trace["providers_attempted"].append("openai")
+        trace["openai_latency_ms"] = int((time.time() - t2) * 1000)
     except VisionAnalysisError:
+        trace["providers_attempted"].append("openai")
+        # Todos os 3 providers caíram em network/API — levantamos
+        if not trace["schema_errors"]:
+            raise
+        # Se os anteriores devolveram schema inválido mas OpenAI nem respondeu,
+        # ainda preferimos reportar o schema (indica problema de prompt).
+        raise SchemaValidationError(
+            "Nenhum provider conseguiu produzir JSON válido.",
+            raw_response=str(trace["schema_errors"])[:1500],
+        )
+
+    try:
+        parsed = _parse_strict(raw)
+    except SchemaValidationError as se:
+        trace["schema_errors"].append(
+            {"provider": "openai", "detail": str(se)[:200]}
+        )
         raise
+    trace["providers_used"] = "openai"
+    return parsed, trace
 
 
 __all__ = [

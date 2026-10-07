@@ -79,10 +79,12 @@ class TestOrdemFallback:
     """OpenAI primeiro, Claude só se OpenAI falhar."""
 
     async def test_openai_valida_claude_nao_e_chamado(self):
+        """Fase 1b: ordem Gemini → Claude → OpenAI. Com Gemini=None e
+        Claude com resposta válida, Claude vence; OpenAI nem é chamado."""
         raw_valido = (FIX / "vision_response_coerente.json").read_text(encoding="utf-8")
 
-        mock_openai = AsyncMock(return_value=_mock_ai_response(raw_valido))
-        mock_claude = AsyncMock(return_value=_mock_ai_response("ignorado"))
+        mock_openai = AsyncMock(return_value=_mock_ai_response("ignorado"))
+        mock_claude = AsyncMock(return_value=_mock_ai_response(raw_valido))
 
         class _Prov:
             def __init__(self, fn):
@@ -91,6 +93,7 @@ class TestOrdemFallback:
         with patch(
             "engines.plans_pro.semantic.llm_structured.ai_router"
         ) as router:
+            router.gemini = None
             router.openai_vision = _Prov(mock_openai)
             router.openai_coach = None
             router.claude = _Prov(mock_claude)
@@ -101,8 +104,9 @@ class TestOrdemFallback:
                 image_data_uri=None,
                 project_hint=None,
             )
-        assert trace["providers_used"] == "openai"
-        assert mock_claude.await_count == 0
+        assert trace["providers_used"] == "claude"
+        assert mock_claude.await_count == 1
+        assert mock_openai.await_count == 0
         assert analise.plan_id == "pln_test_coer"
 
     async def test_openai_malformado_cai_para_claude(self):
@@ -119,6 +123,7 @@ class TestOrdemFallback:
         with patch(
             "engines.plans_pro.semantic.llm_structured.ai_router"
         ) as router:
+            router.gemini = None
             router.openai_vision = _Prov(mock_openai)
             router.openai_coach = None
             router.claude = _Prov(mock_claude)
@@ -129,11 +134,12 @@ class TestOrdemFallback:
                 image_data_uri=None,
                 project_hint=None,
             )
+        # Nota Fase 1b: ordem agora é Gemini → Claude → OpenAI. Com
+        # Gemini=None, Claude responde primeiro (válido) e vence.
         assert trace["providers_used"] == "claude"
-        assert mock_openai.await_count == 1
         assert mock_claude.await_count == 1
-        # OpenAI schema error deve estar registado no trace
-        assert any(err.get("provider") == "openai" for err in trace["schema_errors"])
+        # OpenAI não foi preciso porque Claude já respondeu bem
+        assert mock_openai.await_count == 0
 
     async def test_ambos_malformados_levantam_schema_error(self):
         raw_mal = (FIX / "vision_response_malformado.json").read_text(encoding="utf-8")
@@ -148,6 +154,7 @@ class TestOrdemFallback:
         with patch(
             "engines.plans_pro.semantic.llm_structured.ai_router"
         ) as router:
+            router.gemini = None
             router.openai_vision = _Prov(mock_openai)
             router.openai_coach = None
             router.claude = _Prov(mock_claude)
@@ -164,6 +171,7 @@ class TestOrdemFallback:
         with patch(
             "engines.plans_pro.semantic.llm_structured.ai_router"
         ) as router:
+            router.gemini = None
             router.openai_vision = None
             router.openai_coach = None
             router.claude = None

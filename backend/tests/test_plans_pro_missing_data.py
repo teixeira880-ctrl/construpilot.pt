@@ -63,6 +63,7 @@ class TestFullAnalysisGeraMissingDataEmSchemaInvalido:
         with patch(
             "engines.plans_pro.semantic.llm_structured.ai_router"
         ) as router:
+            router.gemini = _Prov(raw_mal)
             router.openai_vision = _Prov(raw_mal)
             router.openai_coach = None
             router.claude = _Prov(raw_mal)
