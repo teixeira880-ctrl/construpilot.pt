@@ -1,6 +1,14 @@
 """Rotas do Solver BTP · ConstruPilot (PT).
 
-- POST /api/btp-solver/solve      · análise completa síncrona
+DEPRECATED Fase A — o motor foi substituído por `engines/btp_assistant/`
+que oferece function calling autónomo, grounding Google Search, suporte
+de anexos (imagem/PDF) e streaming SSE nativo.
+
+Esta rota é mantida activa para retrocompatibilidade com o frontend
+actual. Será removida numa Fase B dedicada ao update do frontend. Para
+novos consumidores: usar `POST /api/btp-assistant/chat`.
+
+- POST /api/btp-solver/solve      · análise completa síncrona (legado)
 - GET  /api/btp-solver/history    · últimas análises do utilizador
 - GET  /api/btp-solver/{id}       · detalhe de uma análise
 """
