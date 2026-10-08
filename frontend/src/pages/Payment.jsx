@@ -32,8 +32,8 @@ export function PaymentSuccess() {
         setRec(data);
         if (data.payment_status === "paid") {
           setStatus("ok");
-          refresh?.();  // met à jour le tier dans toute l'app (débloque les options)
-          checkAuth?.();  // rafraîchit account_type (particulier -> pro) après upgrade
+          refresh?.();  // actualiza o tier em toda a aplicação (desbloqueia as opções)
+          checkAuth?.();  // actualiza account_type (particular → pro) após upgrade
           return;
         }
         if (tries++ < 15) setTimeout(poll, 2000);
@@ -44,49 +44,49 @@ export function PaymentSuccess() {
     return () => { cancelled = true; };
   }, [sessionId, refresh, checkAuth]);
 
-  const planName = PLAN_LABELS[rec?.plan_id] || (rec?.mode === "subscription" ? "Votre abonnement" : "Votre achat");
+  const planName = PLAN_LABELS[rec?.plan_id] || (rec?.mode === "subscription" ? "A sua subscrição" : "A sua compra");
 
   return (
     <div className="max-w-lg mx-auto surface p-8 mt-16 grid gap-6 text-center" data-testid="payment-success-page">
       {status === "checking" && (
         <>
           <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
-          <p className="font-display text-2xl font-bold">Confirmation du paiement…</p>
-          <p className="text-sm text-muted-foreground">Ne fermez pas cette fenêtre.</p>
+          <p className="font-display text-2xl font-bold">A confirmar o pagamento…</p>
+          <p className="text-sm text-muted-foreground">Não feche esta janela.</p>
         </>
       )}
       {status === "ok" && (
         <>
           <CheckCircle2 className="h-14 w-14 mx-auto text-emerald-500" />
           <div>
-            <p className="font-display text-2xl font-bold" data-testid="ps-plan-activated">🎉 {planName} activé</p>
+            <p className="font-display text-2xl font-bold" data-testid="ps-plan-activated">🎉 {planName} activado</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Votre {rec?.mode === "subscription" ? "abonnement" : "achat"} est confirmé.
-              Toutes les fonctionnalités de votre formule sont désormais débloquées sur votre compte.
+              A sua {rec?.mode === "subscription" ? "subscrição" : "compra"} está confirmada.
+              Todas as funcionalidades do seu plano estão agora desbloqueadas na sua conta.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">
             <Button onClick={() => navigate("/dashboard")} data-testid="ps-cta-dashboard" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              Aller au tableau de bord <ArrowRight className="h-4 w-4" />
+              Ir para o painel de controlo <ArrowRight className="h-4 w-4" />
             </Button>
-            <Link to="/estimateur"><Button variant="outline" className="rounded-sm">Créer un projet</Button></Link>
+            <Link to="/estimativa"><Button variant="outline" className="rounded-sm">Criar um projecto</Button></Link>
           </div>
         </>
       )}
       {status === "pending" && (
         <>
           <Loader2 className="h-10 w-10 mx-auto text-amber-500" />
-          <p className="font-display text-xl font-bold">Paiement en cours de traitement</p>
+          <p className="font-display text-xl font-bold">Pagamento em processamento</p>
           <p className="text-sm text-muted-foreground">
-            Votre banque traite le paiement. Vous recevrez un email dès qu'il est confirmé.
+            O seu banco está a processar o pagamento. Receberá um e-mail assim que estiver confirmado.
           </p>
         </>
       )}
       {status === "error" && (
         <>
           <XCircle className="h-14 w-14 mx-auto text-red-500" />
-          <p className="font-display text-xl font-bold">Session introuvable</p>
-          <Link to="/tarifs"><Button variant="outline" className="rounded-sm">Retour aux tarifs</Button></Link>
+          <p className="font-display text-xl font-bold">Sessão não encontrada</p>
+          <Link to="/planos"><Button variant="outline" className="rounded-sm">Voltar aos planos</Button></Link>
         </>
       )}
     </div>
@@ -97,11 +97,11 @@ export function PaymentCancel() {
   return (
     <div className="max-w-lg mx-auto surface p-8 mt-16 grid gap-4 text-center" data-testid="payment-cancel-page">
       <XCircle className="h-14 w-14 mx-auto text-muted-foreground" />
-      <p className="font-display text-2xl font-bold">Paiement annulé</p>
-      <p className="text-sm text-muted-foreground">Aucun montant n'a été prélevé. Vous pouvez reprendre à tout moment.</p>
+      <p className="font-display text-2xl font-bold">Pagamento cancelado</p>
+      <p className="text-sm text-muted-foreground">Nenhum valor foi cobrado. Pode retomar a qualquer momento.</p>
       <div className="flex justify-center gap-3">
-        <Link to="/tarifs"><Button className="rounded-sm hover:bg-orange-600 hover:text-white">Revoir les formules</Button></Link>
-        <Link to="/"><Button variant="outline" className="rounded-sm">Retour à l'accueil</Button></Link>
+        <Link to="/planos"><Button className="rounded-sm hover:bg-orange-600 hover:text-white">Rever os planos</Button></Link>
+        <Link to="/"><Button variant="outline" className="rounded-sm">Voltar à página inicial</Button></Link>
       </div>
     </div>
   );

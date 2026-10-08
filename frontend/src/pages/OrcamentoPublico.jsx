@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { BotaoWhatsApp } from "@/components/btp/BotaoWhatsApp";
 import { API } from "@/lib/api";
 
 const fmtEUR = (v) =>
@@ -197,7 +198,7 @@ export default function OrcamentoPublico() {
         </section>
 
         {/* Acções */}
-        <section className="flex flex-wrap gap-2 justify-end">
+        <section className="flex flex-wrap gap-2 justify-end" data-testid="orc-publico-acoes">
           <Button
             variant="outline"
             className="rounded-sm gap-2"
@@ -206,6 +207,12 @@ export default function OrcamentoPublico() {
           >
             <Copy className="h-4 w-4" /> Copiar ligação
           </Button>
+          <BotaoWhatsApp
+            url={typeof window !== "undefined" ? window.location.href : ""}
+            mensagem={`Orçamento ${d.numero || ""} — ConstruPilot`}
+            variant="outline"
+            testid="orc-publico-whatsapp"
+          />
           <a
             href={`${API}/public/orcamentos/${token}/pdf`}
             target="_blank"

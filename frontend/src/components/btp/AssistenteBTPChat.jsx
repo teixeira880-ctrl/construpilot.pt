@@ -44,6 +44,7 @@ export default function AssistenteBTPChat({ conversationId: initialConvId = null
   const [conversationId, setConversationId] = useState(initialConvId);
   const [confirmacao, setConfirmacao] = useState(null); // {toolCallId, name, args}
   const [confirmPending, setConfirmPending] = useState(false);
+  const [linkPublicoGerado, setLinkPublicoGerado] = useState(null); // {url, titulo}
   const abortRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -271,6 +272,17 @@ export default function AssistenteBTPChat({ conversationId: initialConvId = null
           title: "Acção executada",
           description: r?.user_message_pt || "Concluído.",
         });
+        // Fase C — se gerou link público, mantém o modal aberto a mostrar
+        // o link + botões Copiar/WhatsApp. Caso contrário, fecha.
+        const publicUrl = r?.payload?.public_link_url;
+        if (publicUrl) {
+          setLinkPublicoGerado({
+            url: publicUrl,
+            titulo: confirmacao?.args?.titulo || "",
+          });
+          setConfirmPending(false);
+          return;
+        }
       } else {
         _append({ pills: [{
           nome: `✗ ${confirmacao.name} cancelado`, estado: "erro",
@@ -285,8 +297,15 @@ export default function AssistenteBTPChat({ conversationId: initialConvId = null
       });
     } finally {
       setConfirmPending(false);
-      setConfirmacao(null);
+      // Só fecha o modal se não ficou nenhum link para apresentar.
+      // (Em caso de erro / cancelamento, fecha sempre.)
+      setConfirmacao((prev) => (linkPublicoGerado ? prev : null));
     }
+  };
+
+  const fecharModalConfirmacao = () => {
+    setLinkPublicoGerado(null);
+    setConfirmacao(null);
   };
 
 
@@ -381,8 +400,10 @@ export default function AssistenteBTPChat({ conversationId: initialConvId = null
         nomeFerramenta={confirmacao?.name}
         argumentos={confirmacao?.args}
         pending={confirmPending}
+        linkPublico={linkPublicoGerado}
         onConfirmar={() => executarConfirmacao(true)}
         onCancelar={() => executarConfirmacao(false)}
+        onFechar={fecharModalConfirmacao}
       />
     </div>
   );

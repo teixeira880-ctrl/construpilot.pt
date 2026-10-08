@@ -13,10 +13,10 @@ const CURL_EST = `curl -X POST https://pilot-build-demo.preview.emergentagent.co
     "project_type": "renovation_complete",
     "surface": 80,
     "finish_level": "standard",
-    "country": "FR",
-    "region": "Île-de-France",
-    "building_type": "appartement",
-    "condition": "bon"
+    "country": "PT",
+    "region": "Lisboa",
+    "building_type": "apartamento",
+    "condition": "bom"
   }'`;
 
 const CURL_PRICES = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/prices \\
@@ -39,7 +39,7 @@ const api = axios.create({
 });
 
 const { data } = await api.post("/estimation", {
-  project_type: "renovation_partielle",
+  project_type: "renovacao_parcial",
   surface: 45,
   finish_level: "standard",
 });
@@ -47,19 +47,19 @@ console.log(data.data.total_avg);`;
 
 const USE_CASES = [
   { icon: Package, title: "Distribuidor de materiais",
-    desc: "Ajoutez un simulateur de rénovation à votre site marchand. Convertissez les visiteurs en paniers moyens supérieurs grâce à l'estimation avant achat." },
-  { icon: Zap, title: "Constructeur / Franchise",
-    desc: "Estimez instantanément le budget d'un client dans votre showroom, générez un PDF marqué avec votre logo et transformez sur place." },
-  { icon: Search, title: "Agence immobilière",
-    desc: "Chiffrez les rénovations d'un bien lors de la visite. Vendez mieux en montrant le coût réel des travaux." },
-  { icon: Calculator, title: "Assureur",
-    desc: "Estimez les sinistres et rénovations post-incident via notre moteur. Réduisez les délais d'expertise." },
+    desc: "Acrescente um simulador de renovação ao seu site de vendas. Converta visitantes em cestos médios superiores graças à estimativa antes da compra." },
+  { icon: Zap, title: "Construtor / Franchising",
+    desc: "Estime instantaneamente o orçamento de um cliente no seu showroom, gere um PDF com o seu logótipo e feche a venda no local." },
+  { icon: Search, title: "Agência imobiliária",
+    desc: "Orce as obras de um imóvel durante a visita. Venda melhor mostrando o custo real das obras ao potencial comprador." },
+  { icon: Calculator, title: "Seguradora",
+    desc: "Estime sinistros e obras pós-incidente através do nosso motor. Reduza os prazos de peritagem e acelere os processos." },
 ];
 
 const CodeBlock = ({ code, testid }) => {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); toast.success("Copié"); }
+    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); toast.success("Copiado"); }
     catch { toast.error("Cópia impossível"); }
   };
   return (
@@ -67,7 +67,7 @@ const CodeBlock = ({ code, testid }) => {
       <pre className="text-xs bg-secondary/40 border border-border p-4 rounded-sm overflow-x-auto" data-testid={testid}>
         <code>{code}</code>
       </pre>
-      <button onClick={copy} className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-sm bg-background/80 hover:bg-primary hover:text-primary-foreground transition-colors opacity-0 group-hover:opacity-100" aria-label="Copier">
+      <button onClick={copy} className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-sm bg-background/80 hover:bg-primary hover:text-primary-foreground transition-colors opacity-0 group-hover:opacity-100" aria-label="Copiar">
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </button>
     </div>
@@ -77,9 +77,9 @@ const CodeBlock = ({ code, testid }) => {
 export default function Docs() {
   return (
     <div className="grid gap-12">
-      <SectionTitle over="ConstruPilot Developers" title="Intégrez notre moteur d'estimation en 15 minutes">
-        Une API REST simple, documentée, prête pour la production. Prototypage en Starter (99 €/mois),
-        volumes élevés en Business (299 €) ou Scale (999 €). Sandbox illimitée pendant l'intégration.
+      <SectionTitle over="ConstruPilot Developers" title="Integre o nosso motor de estimativa em 15 minutos">
+        Uma API REST simples, documentada, pronta para produção. Protótipos em Starter (99 €/mês),
+        volumes elevados em Business (299 €) ou Scale (999 €). Sandbox ilimitada durante a integração.
       </SectionTitle>
 
       <div className="grid md:grid-cols-4 gap-4" data-testid="docs-usecases">
@@ -97,46 +97,46 @@ export default function Docs() {
       <div className="surface p-8 grid gap-6">
         <div className="flex items-center gap-3">
           <Code2 className="h-5 w-5 text-primary" />
-          <p className="overline">Démarrer</p>
+          <p className="overline">Começar</p>
         </div>
         <ol className="grid gap-4 text-sm">
           <li className="flex gap-3">
             <span className="num h-7 w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">1</span>
-            <span>Souscrivez au plan <Link to="/tarifs" className="text-primary underline">API Starter, Business ou Scale</Link> depuis la page Tarifs.</span>
+            <span>Subscreva o plano <Link to="/planos" className="text-primary underline">API Starter, Business ou Scale</Link> a partir da página Planos.</span>
           </li>
           <li className="flex gap-3">
             <span className="num h-7 w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">2</span>
-            <span>Générez votre première clé depuis l'<Link to="/developpeurs" className="text-primary underline">Espace Développeurs</Link>. Elle commence par <code className="bg-secondary px-1 rounded-sm">ckp_live_</code>.</span>
+            <span>Gere a sua primeira chave a partir do <Link to="/developpeurs" className="text-primary underline">Espaço Programadores</Link>. Começa por <code className="bg-secondary px-1 rounded-sm">ckp_live_</code>.</span>
           </li>
           <li className="flex gap-3">
             <span className="num h-7 w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">3</span>
-            <span>Envoyez votre première requête (exemples ci-dessous). Passez la clé dans le header <code className="bg-secondary px-1 rounded-sm">X-API-Key</code>.</span>
+            <span>Envie o seu primeiro pedido (exemplos em baixo). Passe a chave no cabeçalho <code className="bg-secondary px-1 rounded-sm">X-API-Key</code>.</span>
           </li>
         </ol>
       </div>
 
       <Tabs defaultValue="estimation" data-testid="docs-tabs">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="estimation" className="rounded-sm" data-testid="docs-tab-estimation">Estimation</TabsTrigger>
-          <TabsTrigger value="prices" className="rounded-sm" data-testid="docs-tab-prices">Prix matériaux</TabsTrigger>
-          <TabsTrigger value="calculators" className="rounded-sm" data-testid="docs-tab-calculators">Calculateurs</TabsTrigger>
+          <TabsTrigger value="estimation" className="rounded-sm" data-testid="docs-tab-estimation">Estimativa</TabsTrigger>
+          <TabsTrigger value="prices" className="rounded-sm" data-testid="docs-tab-prices">Preços de materiais</TabsTrigger>
+          <TabsTrigger value="calculators" className="rounded-sm" data-testid="docs-tab-calculators">Calculadoras</TabsTrigger>
           <TabsTrigger value="js" className="rounded-sm" data-testid="docs-tab-js">Node.js / axios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="estimation" className="mt-6 grid gap-4">
           <h3 className="font-display font-bold text-lg">POST /api/v1/public/estimation</h3>
-          <p className="text-sm text-muted-foreground">Retourne le coût total, la ventilation par lot, le planning et les indicateurs de risque.</p>
+          <p className="text-sm text-muted-foreground">Devolve o custo total, a repartição por lote, o cronograma e os indicadores de risco.</p>
           <CodeBlock code={CURL_EST} testid="docs-code-estimation" />
         </TabsContent>
         <TabsContent value="prices" className="mt-6 grid gap-4">
           <h3 className="font-display font-bold text-lg">POST /api/v1/public/prices</h3>
-          <p className="text-sm text-muted-foreground">Prix matériaux en temps réel sur les 10 principales enseignes françaises via Tavily.</p>
+          <p className="text-sm text-muted-foreground">Preços de materiais em tempo real nas 10 principais cadeias portuguesas via Tavily.</p>
           <CodeBlock code={CURL_PRICES} testid="docs-code-prices" />
         </TabsContent>
         <TabsContent value="calculators" className="mt-6 grid gap-4">
           <h3 className="font-display font-bold text-lg">POST /api/v1/public/calculators</h3>
           <p className="text-sm text-muted-foreground">
-            Types : <code className="bg-secondary px-1 rounded-sm">paint</code>,{" "}
+            Tipos: <code className="bg-secondary px-1 rounded-sm">paint</code>,{" "}
             <code className="bg-secondary px-1 rounded-sm">tile</code>,{" "}
             <code className="bg-secondary px-1 rounded-sm">drywall</code>,{" "}
             <code className="bg-secondary px-1 rounded-sm">concrete</code>,{" "}
@@ -145,21 +145,21 @@ export default function Docs() {
           <CodeBlock code={CURL_CALC} testid="docs-code-calc" />
         </TabsContent>
         <TabsContent value="js" className="mt-6 grid gap-4">
-          <h3 className="font-display font-bold text-lg">Client Node.js</h3>
+          <h3 className="font-display font-bold text-lg">Cliente Node.js</h3>
           <CodeBlock code={JS_SNIPPET} testid="docs-code-js" />
         </TabsContent>
       </Tabs>
 
       <div className="surface p-8 grid md:grid-cols-2 gap-6 items-center">
         <div>
-          <p className="font-display text-2xl font-extrabold tracking-tighter">Prêt à intégrer ?</p>
+          <p className="font-display text-2xl font-extrabold tracking-tighter">Pronto para integrar?</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Démarrez avec <b>API Starter à 99 €/mois</b> — 1 000 appels inclus, upgrade instantané.
+            Comece com o <b>API Starter a 99 €/mês</b> — 1 000 chamadas incluídas, upgrade instantâneo.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 justify-end">
-          <Link to="/tarifs"><Button data-testid="docs-cta-pricing" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">Voir les tarifs API <ArrowRight className="h-4 w-4" /></Button></Link>
-          <Link to="/enterprise"><Button variant="outline" className="rounded-sm">Parler à un expert</Button></Link>
+          <Link to="/planos"><Button data-testid="docs-cta-pricing" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">Ver os planos de API <ArrowRight className="h-4 w-4" /></Button></Link>
+          <Link to="/enterprise"><Button variant="outline" className="rounded-sm">Falar com um especialista</Button></Link>
         </div>
       </div>
     </div>
