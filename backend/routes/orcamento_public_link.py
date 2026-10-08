@@ -83,6 +83,9 @@ class CriarPublicLinkIn(BaseModel):
         description="Quando False, apenas gera o token (sem envio).",
     )
 
+    # Permite body vazio: todos os campos são opcionais.
+    model_config = {"extra": "ignore"}
+
 
 class CriarPublicLinkOut(BaseModel):
     token: str
@@ -125,16 +128,41 @@ async def _buscar_orcamento(orcamento_id: str, user_id: str) -> dict | None:
 
 
 async def _buscar_dados_empresa(user_id: str) -> dict:
-    """Devolve branding mínimo do Pro (apenas dados não-PII do cliente final)."""
+    """Devolve branding mínimo do Pro (apenas dados não-PII do cliente final).
+
+    Nunca devolve nome vazio: aplica cascata de fallback
+    `company_name → company.name → name → first_name+last_name →
+    email@domínio → "ConstruPilot"`.
+    """
     u = await db.users.find_one(
         {"user_id": user_id},
-        {"_id": 0, "company_name": 1, "company_logo_url": 1, "nif": 1},
+        {
+            "_id": 0, "company_name": 1, "company": 1, "company_logo_url": 1,
+            "nif": 1, "name": 1, "first_name": 1, "last_name": 1, "email": 1,
+        },
     ) or {}
+    nome = (
+        u.get("company_name")
+        or (u.get("company") or {}).get("name")
+        or u.get("name")
+        or " ".join(filter(None, [u.get("first_name"), u.get("last_name")])).strip()
+        or _email_para_nome(u.get("email"))
+        or "ConstruPilot"
+    )
     return {
-        "nome": u.get("company_name") or "",
+        "nome": nome,
         "logo_url": u.get("company_logo_url") or "",
         "nif": u.get("nif") or "",
     }
+
+
+def _email_para_nome(email: str | None) -> str:
+    """Deriva um nome razoável de um e-mail (ex: `joao.silva@x.pt` → `Joao Silva`)."""
+    if not email or "@" not in email:
+        return ""
+    local = email.split("@", 1)[0]
+    palavras = [p for p in local.replace("_", ".").replace("-", ".").split(".") if p]
+    return " ".join(p.capitalize() for p in palavras) if palavras else ""
 
 
 def _sanitizar_para_publico(orcamento: dict, empresa: dict) -> dict:
@@ -178,9 +206,11 @@ def _sanitizar_para_publico(orcamento: dict, empresa: dict) -> dict:
 )
 async def criar_public_link(
     orcamento_id: str,
-    body: CriarPublicLinkIn,
+    body: CriarPublicLinkIn | None = None,
     user=Depends(current_user),
 ) -> CriarPublicLinkOut:
+    # Body é opcional: `POST sem corpo` ou `{}` equivale aos defaults.
+    body = body or CriarPublicLinkIn()
     user_id = user.get("user_id") or user.get("sub") or ""
     doc = await _buscar_orcamento(orcamento_id, user_id)
     if not doc:
