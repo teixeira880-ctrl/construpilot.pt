@@ -240,7 +240,7 @@ class AutodeskClient:
             raise AutodeskError(f"manifest falhou ({r.status_code})", status=r.status_code)
         return r.json()
 
-    async def thumbnail(self, urn: str, *, width: int = 400, height: int = 400) -> bytes | None:
+    async def thumbnail(self, urn: str, *, width: int = 1600, height: int = 1600) -> bytes | None:
         token = await self.access_token()
         async with httpx.AsyncClient(timeout=30.0) as client:
             r = await client.get(

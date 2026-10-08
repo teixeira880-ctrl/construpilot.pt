@@ -198,3 +198,60 @@ async def generate_pdf(body: PdfIn, user=Depends(current_user)):
             "X-Stair-Score": str(doc.get("conforto_score")),
         },
     )
+
+
+@router.get("/{analysis_id}/pdf")
+async def pdf_por_analysis_id(analysis_id: str, user=Depends(current_user)):
+    """Fase D — PDF do dossier pelo `analysis_id` (ou `plan_id` legacy)."""
+    doc = await db.stair_analyses.find_one(
+        {
+            "user_id": user["user_id"],
+            "$or": [{"analysis_id": analysis_id}, {"plan_id": analysis_id}],
+        },
+        {"_id": 0},
+    )
+    if not doc:
+        raise HTTPException(404, "Análise não encontrada.")
+    branding = await db.users.find_one(
+        {"user_id": user["user_id"]},
+        {"_id": 0, "brand_company_name": 1, "brand_nif": 1},
+    ) or {}
+    # Suporta documentos criados pela tool `calcular_escada` (campo `result`)
+    # e documentos criados pela rota legacy (campos achatados).
+    if "result" in doc:
+        r = doc["result"] or {}
+        data = {
+            "inputs": doc.get("inputs", {}),
+            "dimensoes": r.get("dimensoes", {}),
+            "conforto_score": r.get("conforto_score") or 0,
+            "verificacoes": r.get("verificacoes") or [],
+            "resumo_verificacoes": r.get("resumo_verificacoes") or {},
+            "alertas": r.get("alertas") or [],
+            "patamares": r.get("patamares") or [],
+        }
+    else:
+        data = {
+            "inputs": doc.get("inputs", {}),
+            "dimensoes": doc.get("dimensoes", {}),
+            "conforto_score": doc.get("conforto_score", 0),
+            "verificacoes": doc.get("verificacoes", []),
+            "resumo_verificacoes": doc.get("resumo_verificacoes", {}),
+            "alertas": doc.get("alertas", []),
+            "patamares": doc.get("patamares", []),
+        }
+    try:
+        pdf_bytes = build_pdf(
+            data, project_name=doc.get("project_name") or "Escada",
+            ia_text=doc.get("ia_text"), branding=branding,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception("PDF falhou")
+        raise HTTPException(500, f"PDF falhou: {type(e).__name__}") from None
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="escada_{analysis_id[-8:]}.pdf"',
+            "Cache-Control": "private, no-store",
+        },
+    )

@@ -75,7 +75,7 @@ export default function Comparatif() {
         title="ConstruPilot vs Costructor, Obat, Tolteck, Graneet, Batigest, OptimBTP & ProGBat"
         description="Comparatif complet des logiciels BTP 2026. ConstruPilot combine IA, rendu 3D, multi-langue et marketing intégré, gratuit pour démarrer. Découvrez pourquoi il se démarque."
         canonical="/comparatif"
-        keywords="logiciel BTP, comparatif, devis, facturation, Costructor, Obat, Tolteck, Graneet, Batigest, OptimBTP, ProGBat, ConstruPilot"
+        keywords="software BTP, comparativo, orçamento, facturação, Costructor, Obat, Tolteck, Graneet, Batigest, OptimBTP, ProGBat, ConstruPilot"
         jsonLd={jsonLd}
       />
 

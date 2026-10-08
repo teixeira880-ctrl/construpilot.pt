@@ -51,7 +51,7 @@ export default function QuoteEditor() {
 
   const [clientId, setClientId] = useState(sp.get("client") || "");
   const [srcPlanId, setSrcPlanId] = useState(sp.get("plan") || "");
-  // P2 — création d'un client à la volée desde l'editor de devis
+  // P2 — criação de um cliente ao vôo desde o editor de orçamentos
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [ncBusy, setNcBusy] = useState(false);
   const [nc, setNc] = useState({ first_name: "", last_name: "", company: "", email: "", phone: "", address: "" });
@@ -67,7 +67,7 @@ export default function QuoteEditor() {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoPreviews, setPhotoPreviews] = useState([]);
 
-  // Photo → devis : lit une ou plusieurs photos EN PARALLÈLE via l'IA et ajoute les lignes
+  // Fotografia → orçamento: lê uma ou várias fotografias EM PARALELO via a IA e adiciona as linhas
   const addPhotosFromFiles = async (fileList) => {
     const files = Array.from(fileList || []).filter((f) => f && f.type.startsWith("image/"));
     if (!files.length) { toast.error(t("crm.t_need_photo")); return; }

@@ -234,7 +234,7 @@ export default function PlanTakeoff() {
   const [multiProjectName, setMultiProjectName] = useState("");
   const [multiBusy, setMultiBusy] = useState(false);
   const [allPlans, setAllPlans] = useState([]);
-  // Phase A — devis consolidado : sous-traitance (0% TVA) par plan + lien ferraillage
+  // Fase A — orçamento consolidado: subcontratação (0% IVA) por plano + ligação armaduras
   const [subcontractSel, setSubcontractSel] = useState([]);
   const [consolidatedBusy, setConsolidatedBusy] = useState(false);
   // Quote sends (envois + tracking)
@@ -341,7 +341,7 @@ export default function PlanTakeoff() {
     }
   }, [plan?.plan_id]);
 
-  // Deep-link ?open=<plan_id> (desde le Painel PC / création de devis)
+  // Deep-link ?open=<plan_id> (desde o Painel PC / criação de orçamento)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const pid = params.get("open");
@@ -459,7 +459,7 @@ export default function PlanTakeoff() {
       }
       setPoints(next);
     } else if (tool === TOOLS.COUNTER) {
-      // Ajoute un marqueur au compteur actif (créer un compteur par défaut si nenhum)
+      // Adiciona um marcador ao contador activo (cria um contador por omissão se nenhum)
       let counterId = activeCounterId;
       let list = annotations.counters;
       if (!counterId || !list.find(c => c.id === counterId)) {
@@ -769,7 +769,7 @@ export default function PlanTakeoff() {
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/pc-study/recompute`);
       await refreshPlan();
-      toast.success(`Orçamento recalculé avec vos definições — ${data.totals?.ttc ?? 0} € TTC`);
+      toast.success(`Orçamento recalculado com as suas definições — ${data.totals?.ttc ?? 0} € c/ IVA`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Recálculo impossível"); }
   };
 
@@ -862,7 +862,7 @@ export default function PlanTakeoff() {
     }
   };
 
-  // Vague C — Geração devis compartimento (calculators.py)
+  // Vaga C — Geração do orçamento por compartimento (calculators.py)
   const generateRoomEstimate = async (roomId) => {
     if (!plan?.plan_id) return;
     setEstimateLoading(true);
@@ -977,7 +977,7 @@ export default function PlanTakeoff() {
     toast.success("Compartimento supprimée");
   };
 
-  // Efface TOUTES les mesures/annotations de la page avant de passer au devis
+  // Apaga TODAS as medições/anotações da página antes de passar ao orçamento
   const clearAllMeasures = async () => {
     if (!plan?.plan_id) return;
     const roomCount = rooms.length;
@@ -1428,7 +1428,7 @@ export default function PlanTakeoff() {
       const parts = [];
       if (struct) parts.push(`${struct.wall_count || 0} paredes · ${struct.column_count || 0} poteaux · ${struct.beam_count || 0} poutres · ${struct.floor_count || 0} dalles`);
       if (aiRooms.length) parts.push(`${aiRooms.length} compartimento(s)`);
-      toast.success(`Plan analysé automatiquement — ${parts.join(" · ") || "terminé"}. Medição, compartimentos et estimation prêts.`, { duration: 8000 });
+      toast.success(`Plano analisado automaticamente — ${parts.join(" · ") || "terminado"}. Medição, compartimentos e estimativa prontos.`, { duration: 8000 });
     } catch (e) {
       toast.dismiss(tid);
       toast.error(e?.response?.data?.detail || "Análise impossível");
@@ -1976,7 +1976,7 @@ export default function PlanTakeoff() {
 
   const proceedToDevis = () => {
     if (!estimateResult) return;
-    // Reprend la finish choisie pour l'estimation dans le dialog devis
+    // Reutiliza o acabamento escolhido para a estimativa no diálogo de orçamento
     setQuoteFinish(estFinishLevel === "standard" ? "std"
                     : estFinishLevel === "premium" ? "premium" : "eco");
     setEstimateDialog(false);
@@ -2229,7 +2229,7 @@ export default function PlanTakeoff() {
     finally { setMultiBusy(false); }
   };
 
-  // Phase A — créer UN devis éditable consolidado (gros œuvre + maison + ferraillage)
+  // Fase A — cria UM orçamento editável consolidado (betão armado + casa + armaduras)
   const createConsolidatedQuote = async () => {
     if (multiSelected.length === 0) return toast.error("Selecione pelo menos 1 plano");
     setConsolidatedBusy(true);
@@ -3337,7 +3337,7 @@ export default function PlanTakeoff() {
                  data-testid="walls-summary-card">
               <div className="flex items-center justify-between mb-2">
                 <p className="overline">Paredes detetados {reclassifyMode && (
-                  <span className="text-primary">· cliquez sur un parede pour cycler son type</span>
+                  <span className="text-primary">· clique numa parede para alternar o seu tipo</span>
                 )}</p>
                 <Badge variant="outline" className="rounded-sm text-[10px] num">
                   {detectedWalls.segment_count} segments
@@ -3477,13 +3477,13 @@ export default function PlanTakeoff() {
                       </button>
                     ))}
                   </div>
-                  {/* Presets de definições béton par chantier */}
+                  {/* Predefinições de betão por tipo de obra */}
                   <div className="flex items-center gap-2 mb-1.5">
                     <select value={selectedPreset}
                             onChange={(e) => { if (e.target.value) applyBetonPreset(e.target.value); else setSelectedPreset(""); }}
                             data-testid="beton-preset-select"
                             className="flex-1 h-7 text-[11px] rounded-sm border border-input bg-background px-1">
-                      <option value="">Escolher un definição (chantier)…</option>
+                      <option value="">Escolher uma definição (betão)…</option>
                       {betonPresets.map((p) => (
                         <option key={p.name} value={p.name}>{p.name}{p.builtin ? " (type)" : ""}</option>
                       ))}
@@ -4100,7 +4100,7 @@ export default function PlanTakeoff() {
                             toast.error(e?.response?.data?.detail || "Création impossível");
                           }
                         }}>
-                        <Wand2 className="h-3 w-3" /> Criar client + devis
+                        <Wand2 className="h-3 w-3" /> Criar cliente + orçamento
                       </Button>
                     </div>
                   )}
@@ -4564,7 +4564,7 @@ export default function PlanTakeoff() {
           <DialogHeader>
             <DialogTitle>Ouverture sur {openingsDialog?.room_name}</DialogTitle>
             <DialogDescription>
-              Largura mesurée desde vos 2 clics. Ajustez le type et la altura ci-dessous.
+              Largura medida a partir dos seus 2 cliques. Ajuste o tipo e a altura abaixo.
               La surface sera automatiquement déduite des paredes nets.
             </DialogDescription>
           </DialogHeader>
@@ -4697,7 +4697,7 @@ export default function PlanTakeoff() {
         <DialogContent className="sm:max-w-lg" data-testid="beton-compare-dialog">
           <DialogHeader>
             <DialogTitle>Comparer les definições béton</DialogTitle>
-            <DialogDescription>Medição du plan courant selon chaque type de chantier — pour aider au choix.</DialogDescription>
+            <DialogDescription>Medição do plano actual conforme cada tipo de obra — para ajudar na escolha.</DialogDescription>
           </DialogHeader>
           {compareBusy && <p className="text-sm text-primary animate-pulse">Calcul en cours…</p>}
           {!compareBusy && compareData && (
@@ -4754,7 +4754,7 @@ export default function PlanTakeoff() {
           </DialogHeader>
           <div className="max-h-72 overflow-auto space-y-2 rounded-sm border border-border p-2 bg-muted/30" data-testid="ai-assistant-messages">
             {aiMessages.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nenhum échange pour l'instant. Donnez votre première instrução ci-dessous.</p>
+              <p className="text-xs text-muted-foreground">Nenhuma mensagem por agora. Dê a sua primeira instrução abaixo.</p>
             )}
             {aiMessages.map((m, i) => (
               <div key={i} className={`text-xs rounded-sm px-2 py-1.5 ${m.role === "user" ? "bg-primary/10 ml-6" : m.ok === false ? "bg-destructive/10 mr-6" : "bg-background border border-border mr-6"}`}>

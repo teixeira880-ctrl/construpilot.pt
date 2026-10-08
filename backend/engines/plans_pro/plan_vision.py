@@ -134,6 +134,33 @@ async def full_analysis(
     else:
         trace["has_thumbnail"] = False
 
+    # 1b. OCR Tesseract-PT (Fase E) — pré-processa a thumbnail e extrai texto
+    # PT para enriquecer o prompt do LLM com sinais deterministas.
+    ocr_texto_para_llm = ""
+    if thumbnail_bytes:
+        from engines.plans_pro.semantic.ocr_tesseract import extrair_texto_thumbnail
+        from engines.plans_pro.semantic.materials_pt import (
+            reconhecer_material, extrair_dimensao,
+        )
+        try:
+            ocr = extrair_texto_thumbnail(thumbnail_bytes)
+            trace["ocr_disponivel"] = ocr.disponivel
+            trace["ocr_confidence_media"] = round(ocr.confidence_media, 1)
+            trace["ocr_linhas_count"] = len(ocr.linhas)
+            if ocr.disponivel and ocr.texto_completo:
+                ocr_texto_para_llm = ocr.texto_completo
+                mat = reconhecer_material(ocr.texto_completo)
+                dims = extrair_dimensao(ocr.texto_completo)
+                trace["ocr_material_detectado"] = (
+                    mat.model_dump() if mat else None
+                )
+                trace["ocr_dimensoes_count"] = len(dims)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("integração OCR falhou (continua sem OCR): %s", e)
+            trace["ocr_disponivel"] = False
+    else:
+        trace["ocr_disponivel"] = False
+
     # 2. Chamar LLM com structured output
     missing_bloqueante: list[MissingDataRequest] = []
     try:
@@ -142,7 +169,11 @@ async def full_analysis(
             filename=filename,
             metadata=metadata,
             image_data_uri=data_uri,
-            project_hint=project_hint,
+            project_hint=(
+                (project_hint or "")
+                + (f"\n\nTexto detectado por OCR na planta:\n{ocr_texto_para_llm}"
+                   if ocr_texto_para_llm else "")
+            ) or None,
         )
         trace.update(llm_trace)
     except SchemaValidationError as e:

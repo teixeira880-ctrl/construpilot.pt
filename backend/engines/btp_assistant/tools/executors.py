@@ -430,38 +430,89 @@ async def exec_exportar_excel(call: ToolCall, *, user_id: str) -> ToolResult:
 
 
 # ---------------------------------------------------------------------------
-# 9. calcular_escada — Stair Engine em pausa
+# 9. calcular_escada — Stair Engine (Fase D · ligado ao motor real)
 # ---------------------------------------------------------------------------
 async def exec_calcular_escada(call: ToolCall, *, user_id: str) -> ToolResult:
-    h = float(call.arguments.get("altura_total_m") or 0)
-    e = float(call.arguments.get("espaco_horizontal_m") or 0)
-    # Verifica se o Stair Engine está disponível
-    try:
-        from engines.stair_engine import calcular as _stair_calc  # type: ignore
-    except Exception:
-        _stair_calc = None
-    if _stair_calc is None:
+    altura = float(call.arguments.get("altura_total_m") or 0)
+    espaco = float(call.arguments.get("espaco_horizontal_m") or 0)
+    pe_direito = float(call.arguments.get("pe_direito_m") or altura or 2.70)
+    if altura <= 0:
         return _needs_input(
             call,
             [MissingDataRequest(
-                question_pt=(
-                    "O motor dedicado de escadas está em finalização "
-                    "(Sprint 5). Quer que eu faça uma estimativa "
-                    "rápida com RGEU (contrahuella 17 cm, pisada 28 cm)?"
-                ),
-                field="escada.motor_dedicado", unit=None, element_id=None,
-                suggested_default=None, criticidade="importante",
+                question_pt="Qual é a altura total a vencer (do piso inferior ao superior, em metros)?",
+                field="altura_total_m", unit="m", element_id=None,
+                suggested_default="2.70", criticidade="bloqueante",
             )],
-            "Motor dedicado de escadas ainda não disponível — posso fazer estimativa simplificada.",
+            "Preciso da altura total para dimensionar a escada.",
         )
-    # Caso o Stair Engine esteja disponível no futuro
     try:
-        res = _stair_calc(altura_total_m=h, espaco_horizontal_m=e,
-                          **{k: v for k, v in call.arguments.items()
-                             if k not in ("altura_total_m", "espaco_horizontal_m")})
+        from engines.stair_engine import StairInputs, calculate_stair  # type: ignore
+    except Exception as e:  # noqa: BLE001
+        return _err(
+            call, "Motor de escadas indisponível.",
+            detail=f"{type(e).__name__}: {e}",
+        )
+    try:
+        inp = StairInputs(
+            altura_total_m=altura,
+            pe_direito_m=pe_direito,
+            largura_m=float(call.arguments.get("largura_m") or 1.0),
+            num_degraus=call.arguments.get("num_degraus"),
+            uso=call.arguments.get("uso") or "habitacao",
+            material=call.arguments.get("material") or "betao",
+            acessibilidade=bool(call.arguments.get("acessibilidade") or False),
+        )
+        result = calculate_stair(inp)
     except Exception as ex:  # noqa: BLE001
         return _err(call, "Cálculo de escada falhou.", detail=f"{type(ex).__name__}")
-    return _ok(call, "Escada dimensionada com sucesso.", res or {})
+
+    # Persiste a análise para posterior geração de PDF
+    import uuid as _uuid
+    analysis_id = f"stair_{_uuid.uuid4().hex[:12]}"
+    try:
+        await db.stair_analyses.insert_one({
+            "analysis_id": analysis_id,
+            "user_id": user_id,
+            "inputs": {
+                "altura_total_m": altura, "pe_direito_m": pe_direito,
+                "largura_m": inp.largura_m, "uso": inp.uso,
+                "material": inp.material, "num_degraus": inp.num_degraus,
+                "acessibilidade": inp.acessibilidade,
+                "espaco_horizontal_m": espaco,
+            },
+            "result": result,
+            "created_at": datetime.now(timezone.utc),
+        })
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Payload amigável para a UI/LLM (keys reais em `result["dimensoes"]`)
+    dim = result.get("dimensoes") or {}
+    resumo = result.get("resumo_verificacoes") or {}
+    payload = {
+        "analysis_id": analysis_id,
+        "altura_degrau_cm": dim.get("altura_degrau_cm"),
+        "cobertor_cm": dim.get("profundidade_cobertor_cm"),
+        "nr_degraus": dim.get("num_degraus"),
+        "inclinacao_graus": dim.get("inclinacao_graus"),
+        "blondel_cm": dim.get("blondel"),
+        "blondel_ok": 60.0 <= float(dim.get("blondel") or 0) <= 64.0,
+        "normas_conformes": resumo.get("overall") == "conforme"
+                            and int(resumo.get("nao_conforme") or 0) == 0,
+        "alertas": result.get("alertas") or [],
+        "conforto_score": result.get("conforto_score"),
+        "pdf_url": f"/api/stair-engine/{analysis_id}/pdf",
+    }
+    mensagem = (
+        f"Escada dimensionada: {payload['nr_degraus']} degraus · "
+        f"espelho {payload['altura_degrau_cm']} cm · "
+        f"cobertor {payload['cobertor_cm']} cm · "
+        f"inclinação {payload['inclinacao_graus']}°. "
+        f"Blondel {payload['blondel_cm']} cm "
+        f"({'OK' if payload['blondel_ok'] else 'fora do intervalo'})."
+    )
+    return _ok(call, mensagem, payload)
 
 
 # ---------------------------------------------------------------------------

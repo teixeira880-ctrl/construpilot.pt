@@ -16,6 +16,8 @@ import pytest
 
 _MODULOS_COM_DB_IMPORTADO = (
     "routes.orcamento_public_link",
+    "routes.resend_webhook",
+    "routes.stair_engine",
     "engines.btp_assistant.tools.executors",
     "engines.emailer",
     "engines.alerting",
