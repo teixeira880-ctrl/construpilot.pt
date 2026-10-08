@@ -54,7 +54,7 @@ export default function SiteTracking() {
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Acompanhamento de obra</h1>
         <p className="text-muted-foreground mt-3">Contas-renders, réserves et checklists d'avancement — réservé au <b>pack Empresa</b>.</p>
-        <Button className="rounded-sm mt-6" onClick={() => navigate("/tarifs")} data-testid="site-upgrade-btn">Passer au pack Empresa</Button>
+        <Button className="rounded-sm mt-6" onClick={() => navigate("/planos")} data-testid="site-upgrade-btn">Passer au pack Empresa</Button>
       </div>
     );
   }

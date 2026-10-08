@@ -196,7 +196,8 @@ function AppRouter() {
       <Route path="/stair-engine" element={<Shell><StairEngine /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
-      <Route path="/pricing" element={<Navigate to="/tarifs" replace />} />
+      <Route path="/planos" element={<Shell><Pricing /></Shell>} />
+      <Route path="/pricing" element={<Navigate to="/planos" replace />} />
       <Route path="/comparatif" element={<Shell><Comparatif /></Shell>} />
       <Route path="/blog" element={<Shell><Blog /></Shell>} />
       <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />

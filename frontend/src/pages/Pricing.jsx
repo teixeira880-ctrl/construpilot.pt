@@ -141,7 +141,7 @@ export default function Pricing() {
         title="Preços — Grátis para particulares, Pro desde 99 €/mês"
         description="Estimativa, calculadoras, comparador de preços e Coach IA para particulares. Orçamentos PDF ilimitados, IVA PT auto, render 3D, assinatura cliente, CRM e faturação para profissionais. Pro desde 99 €/mês, sem compromisso."
         keywords="preço software orçamentos, tarifário construpilot, assinatura profissional, software construção civil gratuito, preço ferramenta estimativa de obras"
-        canonical="/tarifs"
+        canonical="/planos"
       />
       <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
         {t("pricing.subtitle")}

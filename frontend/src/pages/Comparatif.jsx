@@ -93,7 +93,7 @@ export default function Comparatif() {
             <Link to="/inscription">Experimentar gratuitamente <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild variant="outline" className="rounded-sm" data-testid="comparatif-cta-pricing">
-            <Link to="/tarifs">Ver os planos</Link>
+            <Link to="/planos">Ver os planos</Link>
           </Button>
         </div>
       </section>

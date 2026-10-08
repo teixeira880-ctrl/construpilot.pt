@@ -58,7 +58,7 @@ export default function Calculators() {
       return false;
     }
     toast.info("Função Premium — passe para uma oferta paga para a utilizar 🔒");
-    navigate("/tarifs");
+    navigate("/planos");
     return false;
   };
   const [calcs, setCalcs] = useState([]);
@@ -354,7 +354,7 @@ export default function Calculators() {
 
                 <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
                   {!isPremium && (
-                    <button onClick={() => navigate("/tarifs")} data-testid="calc-premium-banner"
+                    <button onClick={() => navigate("/planos")} data-testid="calc-premium-banner"
                       className="w-full mb-1 flex items-center gap-2 text-sm bg-primary/10 border border-primary/30 text-primary rounded-sm px-4 py-2.5 hover:bg-primary/15 transition-colors">
                       <Lock className="h-4 w-4" />
                       <span>Exportação PDF, orçamento e partilha são <b>Premium</b> — desbloqueie-os.</span>

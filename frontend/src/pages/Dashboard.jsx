@@ -89,7 +89,7 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-wrap gap-3">
             {tier === "free" && (
-              <Button onClick={() => navigate("/tarifs")} data-testid="upgrade-cta" variant="outline" className="rounded-sm gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground">
+              <Button onClick={() => navigate("/planos")} data-testid="upgrade-cta" variant="outline" className="rounded-sm gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground">
                 <TrendingUp className="h-4 w-4" />
                 {t("dash.upgrade")} {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} ${t("dash.days_free")}` : ""}
               </Button>

@@ -78,7 +78,7 @@ export const SoftPaywall = ({ context = "default", compact = false }) => {
             Essayer Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} jours offerts` : ""}
           </Button>
         </Link>
-        <Link to="/tarifs">
+        <Link to="/planos">
           <Button variant="outline" className="rounded-sm">
             Ou Project Pass — 19,90 €
           </Button>
