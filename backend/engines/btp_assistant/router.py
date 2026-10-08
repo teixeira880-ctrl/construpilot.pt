@@ -30,6 +30,12 @@ from engines.btp_assistant.gemini_client import (
     gerar_com_ferramentas,
     gerar_stream,
 )
+from engines.btp_assistant.pricing import (
+    acumular_usage,
+    custo_eur,
+    extrair_usage,
+    novo_acumulador,
+)
 from engines.btp_assistant.system_prompt import SYSTEM_PROMPT_PT
 from engines.btp_assistant.tools.executors import executar_tool_call
 from engines.btp_assistant.tools.registry import (
@@ -99,8 +105,16 @@ async def _gravar_metrica(
     tool_results: list[dict[str, Any]],
     had_error: bool,
     attachments_count: int,
+    usage_tokens: dict[str, int] | None = None,
 ) -> None:
-    """Grava 1 doc em `btp_assistant_metrics`. ZERO PII (sem prompt/texto)."""
+    """Grava 1 doc em `btp_assistant_metrics`. ZERO PII (sem prompt/texto).
+
+    Fase B — `usage_tokens` traz os valores REAIS devolvidos pelo SDK
+    `google-genai` (via `response.usage_metadata`). Quando disponível,
+    gravamos os campos `tokens_input_real`, `tokens_output_real`,
+    `thinking_tokens_real`, `cached_tokens_real` + `cost_estimate_eur`
+    calculado pela tabela oficial Gemini.
+    """
     duracao_s = (final_ev.data.get("duration_s") if final_ev else None) or 0.0
     duracao_ms = int(float(duracao_s) * 1000)
     tools_called = [
@@ -125,6 +139,21 @@ async def _gravar_metrica(
     except Exception:  # noqa: BLE001
         pass
 
+    # ----- Fase B: tokens REAIS do SDK + custo exacto EUR -----
+    usage_tokens = usage_tokens or {}
+    tokens_input_real = int(usage_tokens.get("prompt_token_count", 0) or 0)
+    tokens_output_real = int(usage_tokens.get("candidates_token_count", 0) or 0)
+    thinking_tokens_real = int(usage_tokens.get("thoughts_token_count", 0) or 0)
+    cached_tokens_real = int(usage_tokens.get("cached_content_token_count", 0) or 0)
+    total_tokens_real = int(usage_tokens.get("total_token_count", 0) or 0)
+    cost_eur = custo_eur(
+        modelo,
+        tokens_input=tokens_input_real,
+        tokens_output=tokens_output_real,
+        thinking_tokens=thinking_tokens_real,
+        cached_tokens=cached_tokens_real,
+    )
+
     doc = {
         "conversation_id": conv_id,
         "user_id": user_id,  # NÃO é PII — é ID interno aleatório; já guardado em outras colecções
@@ -139,6 +168,16 @@ async def _gravar_metrica(
         "missing_data_count": missing_data_count,
         "attachments_count": attachments_count,
         "status": status,
+        # ----- Tokens REAIS (Fase B) -----
+        "tokens_input_real": tokens_input_real,
+        "tokens_output_real": tokens_output_real,
+        "thinking_tokens_real": thinking_tokens_real,
+        "cached_tokens_real": cached_tokens_real,
+        "total_tokens_real": total_tokens_real,
+        "cost_estimate_eur": cost_eur,
+        # Aliases retrocompat (campos antigos esperados por testes/relatórios)
+        "tokens_input": tokens_input_real,
+        "tokens_output": tokens_output_real,
         "created_at": datetime.now(timezone.utc),
     }
     await db.btp_assistant_metrics.insert_one(doc)
@@ -204,6 +243,8 @@ async def _executar_modo_conversa(
     t0 = time.time()
     yield _ev("thinking", mode="conversa", model=MODELO_FLASH)
     acc = []
+    usage_acc = novo_acumulador()
+    last_usage: dict[str, int] = {}
     try:
         async for chunk in gerar_stream(
             modelo=MODELO_FLASH,
@@ -219,12 +260,19 @@ async def _executar_modo_conversa(
             if texto:
                 acc.append(texto)
                 yield _ev("text_chunk", text=texto)
+            # Em streaming Gemini o `usage_metadata` chega no último chunk
+            # (acumulativo). Guardamos sempre o mais recente.
+            chunk_usage = extrair_usage(chunk)
+            if chunk_usage.get("total_token_count", 0) > 0:
+                last_usage = chunk_usage
     except Exception as e:  # noqa: BLE001
         logger.exception("modo conversa falhou")
         yield _ev("error", message_pt=(
             "Falha temporária ao gerar resposta. Tente novamente."
         ), detail=f"{type(e).__name__}")
         return
+    if last_usage:
+        usage_acc = last_usage  # streaming: valor final é acumulativo
     texto_final = "".join(acc).strip()
     yield _ev(
         "final",
@@ -234,6 +282,7 @@ async def _executar_modo_conversa(
         mode="conversa",
         model=MODELO_FLASH,
         duration_s=round(time.time() - t0, 3),
+        usage=usage_acc,
     )
 
 
@@ -258,6 +307,7 @@ async def _executar_modo_com_ferramentas(
     tool_results_acc: list[ToolResult] = []
     missing_data_acc: list[MissingDataRequest] = []
     texto_final = ""
+    usage_acc = novo_acumulador()
 
     for ronda in range(max_rondas):
         try:
@@ -279,6 +329,9 @@ async def _executar_modo_com_ferramentas(
                 "Falha temporária ao gerar resposta. Tente novamente."
             ), detail=f"{type(e).__name__}")
             return
+
+        # Acumular tokens reais devolvidos pelo SDK (uma vez por ronda).
+        acumular_usage(usage_acc, extrair_usage(response))
 
         fcs = _extrair_function_calls(response)
         texto_parcial = _extrair_texto(response)
@@ -340,6 +393,7 @@ async def _executar_modo_com_ferramentas(
                     tool_calls_count=len(tool_calls_acc),
                     missing_data_count=len(missing_data_acc),
                     awaiting_confirmation=True,
+                    usage=usage_acc,
                 )
                 return
 
@@ -376,6 +430,7 @@ async def _executar_modo_com_ferramentas(
         duration_s=round(time.time() - t0, 3),
         tool_calls_count=len(tool_calls_acc),
         missing_data_count=len(missing_data_acc),
+        usage=usage_acc,
     )
 
 
@@ -482,6 +537,7 @@ async def route_user_request(
 
     # Observabilidade — Fase C: gravar métricas (zero PII)
     try:
+        usage_tokens = (final_ev.data.get("usage") if final_ev else None) or {}
         await _gravar_metrica(
             conv_id=conv_id, user_id=user_id, modo=modo,
             modelo=agent_resp["model_used"],
@@ -490,6 +546,7 @@ async def route_user_request(
             tool_results=tool_results_final,
             had_error=any(e.type == "error" for e in acc_eventos),
             attachments_count=len(attachments or []),
+            usage_tokens=usage_tokens,
         )
     except Exception:  # noqa: BLE001
         logger.exception("falha a gravar métrica — não interrompe o turno")

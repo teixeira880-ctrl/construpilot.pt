@@ -76,6 +76,22 @@ FUNC_CRIAR_ORCAMENTO: dict[str, Any] = {
                 "type": "number",
                 "description": "Taxa de IVA (default 23 em PT continental).",
             },
+            "cliente_email": {
+                "type": "string",
+                "description": (
+                    "E-mail do cliente final. Opcional. Se fornecido com "
+                    "`convidar_cliente_portal=true`, o backend envia "
+                    "automaticamente a ligação pública por e-mail."
+                ),
+            },
+            "convidar_cliente_portal": {
+                "type": "boolean",
+                "description": (
+                    "Se `true`, gera uma ligação pública (link mágico) para "
+                    "o cliente consultar o orçamento sem conta ConstruPilot. "
+                    "Default `false`."
+                ),
+            },
         },
         "required": ["cliente_nome", "titulo", "items"],
     },

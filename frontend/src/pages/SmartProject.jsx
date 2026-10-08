@@ -24,7 +24,7 @@ export default function SmartProject() {
 
   const run = useCallback(async (text, height) => {
     if (!text || text.trim().length < 10) {
-      toast.error("Décrivez votre projet en quelques mots (10 caractères minimum)");
+      toast.error("Descreva o seu projecto em algumas palavras (10 caracteres no mínimo)");
       return;
     }
     setLoading(true);
@@ -34,9 +34,9 @@ export default function SmartProject() {
       if (height && height > 0) body.ceiling_height_m = height;
       const { data } = await api.post("/estimation/analyse", body);
       setResult(data);
-      // Sync le champ hauteur avec ce que l'IA a détecté (ou reçu en override)
+      // Sincroniza o campo altura com o que a IA detectou (ou recebeu em override)
       if (data.analysis?.ceiling_height_m) setCeilingHeight(data.analysis.ceiling_height_m);
-      setName(data.analysis?.summary?.slice(0, 48) || "Mon projet");
+      setName(data.analysis?.summary?.slice(0, 48) || "O meu projecto");
     } catch (e) {
       toast.error("A análise IA falhou. Tente novamente.");
     } finally {
@@ -62,15 +62,15 @@ export default function SmartProject() {
     try {
       const a = result.analysis;
       const { data } = await api.post("/projects", {
-        name: name || "Mon projet", description,
+        name: name || "O meu projecto", description,
         project_type: a.project_type, surface: a.surface, finish_level: a.finish_level,
         building_type: a.building_type, condition: a.condition, lots: a.lots,
         estimation: result.estimation,
       });
-      toast.success("Projet sauvegardé");
+      toast.success("Projecto guardado");
       navigate(`/projet/${data.project_id}`);
     } catch (e) {
-      toast.error("Salvaguarda impossível");
+      toast.error("Não foi possível guardar");
     } finally {
       setSaving(false);
     }
@@ -79,16 +79,16 @@ export default function SmartProject() {
   return (
     <div className="grid gap-12">
       <div>
-        <SEO title="Smart Project IA — Orçamento valorizado em 30 s" description="Décrivez votre projet en 2 lignes : ConstruPilot le décompose en lots, calcule les surfaces, chiffre chaque poste et trouve les meilleurs prix matériaux. Gratuit." keywords="devis IA, smart project BTP, estimation automatique, projet rénovation IA, chiffrage instantané" canonical="/smart-project" />
-        <SectionTitle as="h1" over="ConstruPilot Smart Project" title="Décrivez votre projet, l'IA fait le reste">
-          Liste des travaux, ordre d'exécution, budget, quantités, durée, ce que vous pouvez faire
-          vous-même, risques et économies possibles.
+        <SEO title="Smart Project IA — Orçamento valorizado em 30 s" description="Descreva o seu projecto em 2 linhas: o ConstruPilot decompõe em capítulos, calcula as áreas, orça cada rubrica e encontra os melhores preços de materiais. Gratuito." keywords="orçamento IA, smart project construção, estimativa automática, projecto remodelação IA, orçamentação instantânea" canonical="/smart-project" />
+        <SectionTitle as="h1" over="ConstruPilot Smart Project" title="Descreva o seu projecto, a IA faz o resto">
+          Lista de trabalhos, ordem de execução, orçamento, quantidades, duração, o que pode fazer
+          você mesmo, riscos e poupanças possíveis.
         </SectionTitle>
         <div className="surface p-2 relative">
           <Textarea
             data-testid="smart-project-input" rows={4} value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Ex : Je veux rénover complètement cette maison de 120 m²…"
+            placeholder="Ex: Quero remodelar completamente esta casa de 120 m²…"
             className="resize-none border-0 bg-transparent focus-visible:ring-0 text-base"
           />
           <div className="p-2 pt-0 flex gap-3 items-center flex-wrap">
@@ -97,10 +97,10 @@ export default function SmartProject() {
               className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
             >
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {loading ? "Analyse en cours…" : "Analyser mon projet"}
+              {loading ? "A analisar…" : "Analisar o meu projecto"}
             </Button>
             <div className="inline-flex items-center gap-2 rounded-sm border border-border px-3 py-1.5 bg-background">
-              <span className="text-xs text-muted-foreground">Hauteur sous plafond</span>
+              <span className="text-xs text-muted-foreground">Pé-direito</span>
               <Input
                 type="number" step="0.05" min="2.0" max="5.0"
                 value={ceilingHeight}
@@ -118,7 +118,7 @@ export default function SmartProject() {
         <div className="surface p-12 text-center" data-testid="smart-project-loading">
           <div className="h-8 w-8 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="mt-6 text-sm text-muted-foreground">
-            ConstruPilot analyse votre projet, décompose les lots et lance le moteur de calcul…
+            O ConstruPilot analisa o seu projecto, decompõe os capítulos e inicia o motor de cálculo…
           </p>
         </div>
       )}
@@ -127,7 +127,7 @@ export default function SmartProject() {
         <>
           <div className="grid lg:grid-cols-3 gap-4" data-testid="analysis-block">
             <div className="surface p-6 lg:col-span-2">
-              <p className="overline">Ce que ConstruPilot a compris</p>
+              <p className="overline">O que o ConstruPilot entendeu</p>
               <p className="mt-3 text-sm">{result.analysis.summary}</p>
               {result.analysis.diy_advice && (
                 <p className="mt-4 text-sm text-muted-foreground flex gap-2">

@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { Download, RefreshCw, Loader2 } from "lucide-react";
+import { Download, RefreshCw, Loader2, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -32,6 +32,24 @@ const PLANOS = [
   { v: "pro", label: "Pro" },
   { v: "pro_business", label: "Pro Business" },
 ];
+
+// Fase B — formatação de custo com 4 casas quando < 1 €
+function formatarCustoEUR(v) {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return "—";
+  const n = Number(v);
+  if (n <= 0) return "0,00 €";
+  if (n < 1) return `${n.toFixed(4).replace(".", ",")} €`;
+  return eur2(n);
+}
+
+// Formatação curta de tokens (1 234 → "1 234", 12 345 → "12,3k")
+function formatarTokens(v) {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return "—";
+  const n = Math.round(Number(v));
+  if (n < 1000) return String(n);
+  if (n < 10000) return `${(n / 1000).toFixed(1).replace(".", ",")}k`;
+  return `${Math.round(n / 1000)}k`;
+}
 
 
 export default function BTPMetrics() {
@@ -149,19 +167,55 @@ export default function BTPMetrics() {
 
       {/* KPI cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
-        <KPICard titulo="Chamadas totais" valor={agregados?.total_calls ?? "—"} />
+        <KPICard
+          titulo="Chamadas totais"
+          valor={agregados?.total_calls ?? "—"}
+          testId="kpi-total-calls"
+        />
         <KPICard
           titulo="Latência média"
           valor={agregados ? `${(agregados.avg_duration_ms / 1000).toFixed(2)} s` : "—"}
+          testId="kpi-latencia"
         />
         <KPICard
           titulo="Taxa de sucesso"
           valor={agregados ? `${(agregados.success_rate * 100).toFixed(1)} %` : "—"}
+          testId="kpi-success-rate"
         />
         <KPICard
           titulo="Custo estimado"
-          valor={agregados ? eur2(agregados.cost_estimate_eur) : "—"}
-          sub="EUR, estimativa"
+          valor={agregados ? formatarCustoEUR(agregados.cost_estimate_eur) : "—"}
+          sub={agregados?.eur_usd_rate ? `EUR · taxa ${agregados.eur_usd_rate}` : "EUR"}
+          testId="kpi-custo"
+        />
+      </div>
+
+      {/* KPI secundários — tokens reais Gemini (Fase B) */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+        <KPICard
+          titulo="Tokens input médios"
+          valor={agregados ? formatarTokens(agregados.avg_tokens_input) : "—"}
+          sub={agregados ? `${formatarTokens(agregados.total_tokens_input)} total` : null}
+          testId="kpi-tokens-input"
+        />
+        <KPICard
+          titulo="Tokens output médios"
+          valor={agregados ? formatarTokens(agregados.avg_tokens_output) : "—"}
+          sub={agregados ? `${formatarTokens(agregados.total_tokens_output)} total` : null}
+          testId="kpi-tokens-output"
+        />
+        <KPICard
+          titulo="Thinking (tokens médios)"
+          icone={<Brain className="h-4 w-4 opacity-70" />}
+          valor={agregados ? formatarTokens(agregados.avg_thinking_tokens) : "—"}
+          sub={agregados ? `${formatarTokens(agregados.total_thinking_tokens)} total` : null}
+          testId="kpi-thinking"
+        />
+        <KPICard
+          titulo="Cache hits médios"
+          valor={agregados ? formatarTokens(agregados.avg_cached_tokens) : "—"}
+          sub="−75% facturação"
+          testId="kpi-cached"
         />
       </div>
 
@@ -250,10 +304,16 @@ export default function BTPMetrics() {
   );
 }
 
-function KPICard({ titulo, valor, sub }) {
+function KPICard({ titulo, valor, sub, icone, testId }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-      <div className="text-xs opacity-70">{titulo}</div>
+    <div
+      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
+      data-testid={testId}
+    >
+      <div className="text-xs opacity-70 flex items-center gap-1.5">
+        {icone}
+        {titulo}
+      </div>
       <div className="text-2xl font-bold mt-1">{valor}</div>
       {sub && <div className="text-xs opacity-60 mt-0.5">{sub}</div>}
     </div>

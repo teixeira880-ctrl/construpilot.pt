@@ -1,6 +1,8 @@
-import React from "react";
-import { AlertCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { AlertCircle, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
@@ -9,6 +11,11 @@ import {
 /**
  * Modal de confirmação para `tool_call` com `requires_user_confirmation=true`.
  * Mostra resumo PT-PT da acção pendente e botões Confirmar/Cancelar.
+ *
+ * Fase D — quando `nomeFerramenta === "criar_orcamento"`, inclui uma
+ * checkbox "Enviar ligação ao cliente por e-mail" (default off). Se
+ * marcada, pede o e-mail do cliente e injecta `convidar_cliente_portal`
+ * + `cliente_email` nos argumentos finais ao confirmar.
  */
 export default function AcaoConfirmacao({
   aberto,
@@ -20,6 +27,29 @@ export default function AcaoConfirmacao({
   pending = false,
 }) {
   const resumo = resumoPt || _construirResumo(nomeFerramenta, argumentos);
+  const ehCriarOrcamento = nomeFerramenta === "criar_orcamento";
+
+  const [enviarEmail, setEnviarEmail] = useState(false);
+  const [emailCliente, setEmailCliente] = useState("");
+
+  useEffect(() => {
+    if (aberto) {
+      setEnviarEmail(false);
+      setEmailCliente("");
+    }
+  }, [aberto]);
+
+  const handleConfirmar = () => {
+    const extra = {};
+    if (ehCriarOrcamento && enviarEmail && emailCliente.trim()) {
+      extra.convidar_cliente_portal = true;
+      extra.cliente_email = emailCliente.trim();
+    } else if (ehCriarOrcamento && enviarEmail) {
+      // Marcou mas não forneceu e-mail → apenas gera o link sem enviar
+      extra.convidar_cliente_portal = true;
+    }
+    onConfirmar?.(extra);
+  };
 
   return (
     <Dialog open={aberto} onOpenChange={(v) => { if (!v) onCancelar?.(); }}>
@@ -54,6 +84,41 @@ export default function AcaoConfirmacao({
           )}
         </div>
 
+        {/* Fase D — convite ao cliente final */}
+        {ehCriarOrcamento && (
+          <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-3 space-y-2" data-testid="acao-portal-cliente">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <Checkbox
+                checked={enviarEmail}
+                onCheckedChange={(v) => setEnviarEmail(!!v)}
+                data-testid="acao-portal-toggle"
+                className="mt-0.5"
+              />
+              <div className="text-sm">
+                <div className="font-medium flex items-center gap-1.5">
+                  <Share2 className="h-3.5 w-3.5 text-primary" />
+                  Enviar ligação ao cliente por e-mail
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  Gera um link público (válido 60 dias) para o cliente ver o
+                  orçamento sem conta ConstruPilot. Pode também copiar o link
+                  depois.
+                </div>
+              </div>
+            </label>
+            {enviarEmail && (
+              <Input
+                type="email"
+                value={emailCliente}
+                onChange={(e) => setEmailCliente(e.target.value)}
+                placeholder="email@cliente.pt"
+                className="h-9"
+                data-testid="acao-portal-email-input"
+              />
+            )}
+          </div>
+        )}
+
         <DialogFooter className="gap-2 sm:gap-2">
           <Button
             variant="outline"
@@ -64,7 +129,7 @@ export default function AcaoConfirmacao({
             Cancelar
           </Button>
           <Button
-            onClick={onConfirmar}
+            onClick={handleConfirmar}
             disabled={pending}
             data-testid="btp-acao-confirmar"
           >

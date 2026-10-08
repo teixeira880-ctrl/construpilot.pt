@@ -48,6 +48,7 @@ import SupplierPortal from "@/pages/SupplierPortal";
 import Invite from "@/pages/Invite";
 import Team from "@/pages/Team";
 import SignQuote from "@/pages/SignQuote";
+import OrcamentoPublico from "@/pages/OrcamentoPublico";
 import PcSignPage from "@/pages/PcSignPage";
 import PcDashboard from "@/pages/PcDashboard";
 import Account from "@/pages/Account";
@@ -221,6 +222,7 @@ function AppRouter() {
       <Route path="/e/:token" element={<PublicEstimation />} />
       <Route path="/rendu/:token" element={<RenderShare />} />
       <Route path="/sign/:token" element={<SignQuote />} />
+      <Route path="/orcamento-publico/:token" element={<OrcamentoPublico />} />
       <Route path="/fiche/:shareId" element={<SharedCalc />} />
       <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />

@@ -27,7 +27,7 @@ export default function ClientPortal() {
       .then(({ data }) => setState({ loading: false, error: null, data }))
       .catch((e) => setState({
         loading: false,
-        error: e?.response?.data?.detail || "Lien invalide ou expiré.",
+        error: e?.response?.data?.detail || "Ligação inválida ou expirada.",
         data: null,
       }));
   }, [token]);
@@ -35,7 +35,7 @@ export default function ClientPortal() {
   if (state.loading) {
     return (
       <div className="mx-auto max-w-[900px] px-5 py-20 text-center text-sm text-muted-foreground">
-        Chargement de vos devis…
+        A carregar os seus orçamentos…
       </div>
     );
   }
@@ -44,10 +44,10 @@ export default function ClientPortal() {
     return (
       <div className="mx-auto max-w-[700px] px-5 py-20" data-testid="client-portal-error">
         <div className="surface p-10 text-center">
-          <h1 className="font-display text-2xl font-bold">Lien invalide</h1>
+          <h1 className="font-display text-2xl font-bold">Ligação inválida</h1>
           <p className="mt-3 text-sm text-muted-foreground">{state.error}</p>
           <p className="mt-6 text-xs text-muted-foreground">
-            Demandez un nouveau lien à l'artisan qui vous a envoyé le devis.
+            Peça uma nova ligação ao profissional que lhe enviou o orçamento.
           </p>
         </div>
       </div>
@@ -61,9 +61,9 @@ export default function ClientPortal() {
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-10" data-testid="client-portal">
       <div className="mb-8">
-        <p className="overline text-primary">Mon espace client</p>
+        <p className="overline text-primary">A minha área cliente</p>
         <h1 className="mt-2 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-          Vos devis reçus
+          Os seus orçamentos recebidos
         </h1>
         <p className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
           <Mail className="h-4 w-4" /> {email}
@@ -72,16 +72,16 @@ export default function ClientPortal() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         <Kpi label="Orçamentos recebidos" value={count} />
-        <Kpi label="Signés" value={signed} accent />
-        <Kpi label="En attente" value={pending} />
-        <Kpi label="Total montant" value={
+        <Kpi label="Assinados" value={signed} accent />
+        <Kpi label="A aguardar" value={pending} />
+        <Kpi label="Montante total" value={
           `${quotes.reduce((s, q) => s + (q.total_ttc || 0), 0).toLocaleString("pt-PT")} €`
         } small />
       </div>
 
       {quotes.length === 0 && (
         <div className="surface p-16 text-center text-sm text-muted-foreground">
-          Aucun devis reçu pour le moment.
+          Nenhum orçamento recebido por agora.
         </div>
       )}
 
@@ -92,9 +92,9 @@ export default function ClientPortal() {
       </div>
 
       <p className="mt-10 text-[11px] text-muted-foreground text-center">
-        Ce portail est sécurisé — ce lien est unique et personnel à votre adresse email.
+        Este portal é seguro — esta ligação é única e pessoal para o seu endereço de e-mail.
         <br />
-        Envoyé par <b>ConstruPilot</b> pour le compte de vos artisans.
+        Enviado pelo <b>ConstruPilot</b> em nome dos seus profissionais.
       </p>
     </div>
   );

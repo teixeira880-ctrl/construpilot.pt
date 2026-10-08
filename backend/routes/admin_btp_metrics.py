@@ -1,4 +1,4 @@
-"""Endpoints admin para métricas do Assistente BTP (Fase C).
+"""Endpoints admin para métricas do Assistente BTP (Fase C + Fase B tokens reais).
 
 GET  /api/admin/btp-assistant/metrics             — agregados
 GET  /api/admin/btp-assistant/metrics/recent      — últimas N chamadas
@@ -19,26 +19,14 @@ from fastapi.responses import Response
 
 from core.db import db
 from core.security import current_user
+from engines.btp_assistant.pricing import (
+    PRECOS_USD_POR_1M,
+    custo_eur,
+    taxa_eur_usd,
+)
 
 logger = logging.getLogger("admin.btp_metrics")
 router = APIRouter(prefix="/admin/btp-assistant", tags=["admin"])
-
-
-# ---------------------------------------------------------------------------
-# Preços Gemini (USD/1M tokens) — Oct 2026
-# ---------------------------------------------------------------------------
-PRECOS_USD = {
-    "gemini-pro-latest":   {"in": 1.25, "out": 10.00},
-    "gemini-3.1-pro-preview": {"in": 1.25, "out": 10.00},
-    "gemini-flash-latest": {"in": 0.075, "out": 0.30},
-}
-USD_PARA_EUR = 0.92
-
-
-def _custo_eur(modelo: str, in_tok: int, out_tok: int) -> float:
-    tabela = PRECOS_USD.get(modelo) or PRECOS_USD["gemini-pro-latest"]
-    custo_usd = (in_tok / 1_000_000.0) * tabela["in"] + (out_tok / 1_000_000.0) * tabela["out"]
-    return round(custo_usd * USD_PARA_EUR, 4)
 
 
 def _exige_admin(user: dict) -> None:
@@ -46,8 +34,8 @@ def _exige_admin(user: dict) -> None:
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
 
 
-def _janela(from_iso: str | None, to_iso: str | None, dias_default: int = 30) -> dict[str, Any]:
-    """Devolve query Mongo com filtro de datas."""
+def _janela(from_iso: str | None, to_iso: str | None, dias_default: int = 30) -> tuple[dict[str, Any], datetime, datetime]:
+    """Devolve query Mongo com filtro de datas + limites."""
     now = datetime.now(timezone.utc)
     try:
         t_to = datetime.fromisoformat(to_iso.replace("Z", "+00:00")) if to_iso else now
@@ -86,22 +74,45 @@ async def metrics(
             "avg_duration_by_mode": {}, "tools_usage": [],
             "success_rate": 0.0, "grounding_rate": 0.0,
             "missing_data_rate": 0.0, "cost_estimate_eur": 0.0,
+            "avg_tokens_input": 0, "avg_tokens_output": 0,
+            "avg_thinking_tokens": 0, "avg_cached_tokens": 0,
+            "total_tokens_input": 0, "total_tokens_output": 0,
+            "total_thinking_tokens": 0,
+            "eur_usd_rate": taxa_eur_usd(),
             "from": t_from.isoformat(), "to": t_to.isoformat(),
         }
 
-    # Agregações
+    # Agregação global (sucesso, grounding, duração, tokens reais)
+    # NOTA: usa `tokens_input_real` quando existe; fallback para `tokens_input`
     pipeline_global = [
         {"$match": base_query},
+        {"$addFields": {
+            "_tok_in": {"$ifNull": ["$tokens_input_real", {"$ifNull": ["$tokens_input", 0]}]},
+            "_tok_out": {"$ifNull": ["$tokens_output_real", {"$ifNull": ["$tokens_output", 0]}]},
+            "_tok_think": {"$ifNull": ["$thinking_tokens_real", 0]},
+            "_tok_cached": {"$ifNull": ["$cached_tokens_real", 0]},
+            "_cost_eur": {"$ifNull": ["$cost_estimate_eur", 0]},
+        }},
         {"$group": {
             "_id": None,
             "avg_dur": {"$avg": "$duracao_ms"},
             "ok": {"$sum": {"$cond": [{"$eq": ["$status", "success"]}, 1, 0]}},
             "grounded": {"$sum": {"$cond": ["$grounding_used", 1, 0]}},
             "with_missing": {"$sum": {"$cond": [{"$gt": ["$missing_data_count", 0]}, 1, 0]}},
+            "sum_in": {"$sum": "$_tok_in"},
+            "sum_out": {"$sum": "$_tok_out"},
+            "sum_think": {"$sum": "$_tok_think"},
+            "sum_cached": {"$sum": "$_tok_cached"},
+            "avg_in": {"$avg": "$_tok_in"},
+            "avg_out": {"$avg": "$_tok_out"},
+            "avg_think": {"$avg": "$_tok_think"},
+            "avg_cached": {"$avg": "$_tok_cached"},
+            "sum_cost": {"$sum": "$_cost_eur"},
+            "has_real": {"$sum": {"$cond": [{"$gt": ["$_tok_in", 0]}, 1, 0]}},
         }},
     ]
-    g = (await db.btp_assistant_metrics.aggregate(pipeline_global).to_list(1))
-    g = g[0] if g else {}
+    g_rows = await db.btp_assistant_metrics.aggregate(pipeline_global).to_list(1)
+    g = g_rows[0] if g_rows else {}
 
     pipeline_mode = [
         {"$match": base_query},
@@ -126,25 +137,33 @@ async def metrics(
         for r in await db.btp_assistant_metrics.aggregate(pipeline_tools).to_list(15)
     ]
 
-    # Custo estimado — heurística de tokens (duração como proxy quando
-    # tokens não estão disponíveis). Para já, estimamos:
-    #   * modo conversa: ~1200 in / ~800 out por turno
-    #   * modo calculo/plano: ~2000 in / ~1500 out
-    pipeline_model = [
-        {"$match": base_query},
-        {"$group": {"_id": {"modelo": "$modelo", "modo": "$modo"},
-                    "n": {"$sum": 1}}},
-    ]
-    total_eur = 0.0
-    for r in await db.btp_assistant_metrics.aggregate(pipeline_model).to_list(20):
-        modelo = r["_id"]["modelo"]
-        modo_r = r["_id"]["modo"]
-        n = r["n"]
-        if modo_r == "conversa":
-            in_tok, out_tok = 1200, 800
-        else:
-            in_tok, out_tok = 2000, 1500
-        total_eur += n * _custo_eur(modelo, in_tok, out_tok)
+    # Custo total EUR: usa `cost_estimate_eur` real quando existe. Caso contrário,
+    # recalcula com a heurística antiga (retrocompat para registos antigos).
+    total_cost_real = float(g.get("sum_cost") or 0.0)
+    docs_sem_real = total - int(g.get("has_real") or 0)
+    total_cost_heur = 0.0
+    if docs_sem_real > 0:
+        # Heurística para linhas antigas sem tokens reais
+        pipeline_model = [
+            {"$match": {**base_query, "$or": [
+                {"tokens_input_real": {"$exists": False}},
+                {"tokens_input_real": {"$lte": 0}},
+            ]}},
+            {"$group": {"_id": {"modelo": "$modelo", "modo": "$modo"},
+                        "n": {"$sum": 1}}},
+        ]
+        for r in await db.btp_assistant_metrics.aggregate(pipeline_model).to_list(20):
+            modelo_r = r["_id"]["modelo"]
+            modo_r = r["_id"]["modo"]
+            n = r["n"]
+            if modo_r == "conversa":
+                in_tok, out_tok = 1200, 800
+            else:
+                in_tok, out_tok = 2000, 1500
+            total_cost_heur += n * custo_eur(
+                modelo_r, tokens_input=in_tok, tokens_output=out_tok,
+            )
+    custo_total_eur = round(total_cost_real + total_cost_heur, 6)
 
     return {
         "total_calls": total,
@@ -154,7 +173,18 @@ async def metrics(
         "success_rate": round((g.get("ok", 0) / total) if total else 0.0, 3),
         "grounding_rate": round((g.get("grounded", 0) / total) if total else 0.0, 3),
         "missing_data_rate": round((g.get("with_missing", 0) / total) if total else 0.0, 3),
-        "cost_estimate_eur": round(total_eur, 2),
+        "cost_estimate_eur": custo_total_eur,
+        # Tokens reais agregados (Fase B)
+        "avg_tokens_input": int(g.get("avg_in") or 0),
+        "avg_tokens_output": int(g.get("avg_out") or 0),
+        "avg_thinking_tokens": int(g.get("avg_think") or 0),
+        "avg_cached_tokens": int(g.get("avg_cached") or 0),
+        "total_tokens_input": int(g.get("sum_in") or 0),
+        "total_tokens_output": int(g.get("sum_out") or 0),
+        "total_thinking_tokens": int(g.get("sum_think") or 0),
+        "total_cached_tokens": int(g.get("sum_cached") or 0),
+        "calls_with_real_tokens": int(g.get("has_real") or 0),
+        "eur_usd_rate": taxa_eur_usd(),
         "from": t_from.isoformat(),
         "to": t_to.isoformat(),
     }
@@ -193,6 +223,8 @@ async def metrics_export(user=Depends(current_user)):
         "created_at", "conversation_id", "user_plan", "modo", "modelo",
         "duracao_ms", "status", "tools_called", "tool_errors",
         "grounding_used", "missing_data_count", "attachments_count",
+        "tokens_input_real", "tokens_output_real", "thinking_tokens_real",
+        "cached_tokens_real", "cost_estimate_eur",
     ]
     w = csv.writer(buf)
     w.writerow(campos)
@@ -210,9 +242,24 @@ async def metrics_export(user=Depends(current_user)):
             r.get("grounding_used", False),
             r.get("missing_data_count", 0),
             r.get("attachments_count", 0),
+            r.get("tokens_input_real", r.get("tokens_input", 0)),
+            r.get("tokens_output_real", r.get("tokens_output", 0)),
+            r.get("thinking_tokens_real", 0),
+            r.get("cached_tokens_real", 0),
+            r.get("cost_estimate_eur", 0.0),
         ])
     return Response(
         content=buf.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="btp_assistant_metrics.csv"'},
     )
+
+
+@router.get("/metrics/pricing")
+async def metrics_pricing(user=Depends(current_user)):
+    """Devolve a tabela de preços actual (admin — útil para debug)."""
+    _exige_admin(user)
+    return {
+        "precos_usd_por_1m": PRECOS_USD_POR_1M,
+        "eur_usd_rate": taxa_eur_usd(),
+    }

@@ -84,6 +84,9 @@ async def exec_criar_orcamento(call: ToolCall, *, user_id: str) -> ToolResult:
     titulo = (call.arguments.get("titulo") or "").strip()
     items = call.arguments.get("items") or []
     iva = float(call.arguments.get("iva_pct") or 23.0)
+    # Fase D — portal cliente final (link mágico opcional)
+    convidar_portal = bool(call.arguments.get("convidar_cliente_portal") or False)
+    cliente_email = (call.arguments.get("cliente_email") or "").strip() or None
     if not cliente or not titulo or not items:
         missing: list[MissingDataRequest] = []
         if not cliente:
@@ -114,6 +117,7 @@ async def exec_criar_orcamento(call: ToolCall, *, user_id: str) -> ToolResult:
         "orcamento_id": orcamento_id,
         "user_id": user_id,
         "cliente_nome": cliente,
+        "cliente_email": cliente_email,
         "titulo": titulo,
         "items": items,
         "iva_pct": iva,
@@ -124,17 +128,84 @@ async def exec_criar_orcamento(call: ToolCall, *, user_id: str) -> ToolResult:
         "source": "btp_assistant",
     }
     await db.btp_assistant_orcamentos.insert_one(doc)
-    return _ok(
-        call,
-        f"Orçamento '{titulo}' criado para {cliente}: {total:.2f} EUR (c/ IVA {iva:.0f}%).",
-        {
-            "orcamento_id": orcamento_id,
-            "subtotal_eur": doc["subtotal_eur"],
-            "iva_eur": doc["iva_eur"],
-            "total_eur": doc["total_eur"],
-            "items_count": len(items),
-        },
+
+    # Payload base da resposta
+    payload: dict[str, Any] = {
+        "orcamento_id": orcamento_id,
+        "subtotal_eur": doc["subtotal_eur"],
+        "iva_eur": doc["iva_eur"],
+        "total_eur": doc["total_eur"],
+        "items_count": len(items),
+    }
+    mensagem = (
+        f"Orçamento '{titulo}' criado para {cliente}: {total:.2f} EUR "
+        f"(c/ IVA {iva:.0f}%)."
     )
+
+    # Fase D — gera link público opcional (fluxo síncrono, não bloqueia o turno)
+    if convidar_portal:
+        try:
+            import secrets
+            from datetime import timedelta
+            import os as _os
+            ttl = max(1, int(_os.environ.get("PUBLIC_LINK_TTL_DAYS", "60")))
+            app_url = (
+                _os.environ.get("PUBLIC_APP_URL")
+                or _os.environ.get("FRONTEND_URL")
+                or "https://construpilot.pt"
+            ).rstrip("/")
+            agora = datetime.now(timezone.utc)
+            token = f"mp_{secrets.token_urlsafe(32)}"
+            link_doc = {
+                "token": token,
+                "orcamento_id": orcamento_id,
+                "created_by_user_id": user_id,
+                "cliente_email": cliente_email,
+                "created_at": agora,
+                "expires_at": agora + timedelta(days=ttl),
+                "viewed_count": 0,
+                "last_viewed_at": None,
+            }
+            await db.orcamento_public_links.insert_one(link_doc)
+            public_url = f"{app_url}/orcamento-publico/{token}"
+            payload["public_link_token"] = token
+            payload["public_link_url"] = public_url
+            mensagem += f" Ligação pública criada: {public_url}"
+            # Envio por e-mail quando `cliente_email` presente
+            if cliente_email:
+                try:
+                    from engines.emailer import send_email
+                    html = (
+                        f"<p>Olá {cliente},</p>"
+                        f"<p>Enviamos-lhe o orçamento <b>{titulo}</b> "
+                        f"({total:.2f} €).</p>"
+                        f'<p><a href="{public_url}" style="background:#D9541E;'
+                        f'color:#fff;padding:10px 18px;text-decoration:none;'
+                        f'border-radius:4px">Ver o orçamento</a></p>'
+                        f'<p style="color:#999;font-size:11px">'
+                        f'Gerado com ConstruPilot.pt — IA para orçamentos de obras.</p>'
+                    )
+                    await send_email(
+                        to=cliente_email,
+                        subject=f"O seu orçamento ConstruPilot — {titulo}",
+                        html=html,
+                        campaign_id="orcamento_public_link_tool",
+                    )
+                    payload["email_enviado"] = True
+                    mensagem += " E-mail enviado ao cliente."
+                except Exception as e:  # noqa: BLE001
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        "e-mail do link público falhou: %s", e,
+                    )
+                    payload["email_enviado"] = False
+        except Exception as e:  # noqa: BLE001
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "geração de link público falhou: %s", e,
+            )
+
+    return _ok(call, mensagem, payload)
 
 
 # ---------------------------------------------------------------------------

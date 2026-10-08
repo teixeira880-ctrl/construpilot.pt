@@ -19,19 +19,19 @@ const IMG = {
   couple: "https://static.prod-images.emergentagent.com/jobs/24c1027c-3500-4369-9271-1f0502b94a6a/images/67832e234a33611ab2d1f47a5438bff370514f9f4bf9ecb83cc337f96ba24644.jpeg",
 };
 
-const EXAMPLE = "Je veux rénover mon appartement de 60 m² : refaire les peintures, changer le sol, rénover la salle de bain et la cuisine.";
+const EXAMPLE = "Quero renovar o meu apartamento de 60 m²: refazer as pinturas, mudar o pavimento, renovar a casa de banho e a cozinha.";
 
 const STEPS = [
-  { icon: Camera, title: "Décrivez votre projet", text: "En une phrase ou une photo de votre plan — c'est tout." },
-  { icon: Sparkles, title: "L'IA chiffre tout", text: "Estimation détaillée poste par poste en 30 secondes." },
-  { icon: Wallet, title: "Comparez et budgétez", text: "Preços dos materiais, intervalos realistas, nenhuma surpresa." },
+  { icon: Camera, title: "Descreva o seu projecto", text: "Numa frase ou com uma foto da sua planta — é só isso." },
+  { icon: Sparkles, title: "A IA orça tudo", text: "Estimativa detalhada rubrica a rubrica em 30 segundos." },
+  { icon: Wallet, title: "Compare e defina o orçamento", text: "Preços dos materiais, intervalos realistas, nenhuma surpresa." },
 ];
 
 const PERKS = [
-  { icon: Clock, title: "30 secondes", text: "Une estimation instantanée, sans rendez-vous ni attente." },
-  { icon: Wallet, title: "100 % gratuit", text: "Estimez votre budget rénovation sans engagement." },
-  { icon: ShieldCheck, title: "Prix réels du marché", text: "Baseado nas tarifas atuais de materiais e mão de obra." },
-  { icon: HomeIcon, title: "Pensé pour vous", text: "Pas de jargon : des chiffres clairs pour votre projet." },
+  { icon: Clock, title: "30 segundos", text: "Uma estimativa instantânea, sem marcações nem esperas." },
+  { icon: Wallet, title: "100 % gratuito", text: "Estime o seu orçamento de obra sem compromisso." },
+  { icon: ShieldCheck, title: "Preços reais do mercado", text: "Baseado nas tarifas actuais de materiais e mão de obra." },
+  { icon: HomeIcon, title: "Pensado para si", text: "Sem jargão: valores claros para o seu projecto." },
 ];
 
 const TESTIS = [];
@@ -76,9 +76,9 @@ export default function LandingParticuliers() {
   return (
     <>
       <SEO
-        title="Estimez votre budget rénovation en 30 secondes — ConstruPilot"
-        description="Vous rénovez votre maison ou appartement ? Obtenez une estimation de budget travaux gratuite et instantanée grâce à l'IA. Prix réels, poste par poste, sans engagement."
-        keywords="estimation travaux gratuite, budget rénovation maison, prix rénovation appartement, calcul coût travaux, devis rénovation particulier"
+        title="Estime o seu orçamento de obra em 30 segundos — ConstruPilot"
+        description="Vai renovar a sua casa ou apartamento? Obtenha uma estimativa de orçamento de obra gratuita e instantânea com IA. Preços reais, rubrica a rubrica, sem compromisso."
+        keywords="estimativa de obra gratuita, orçamento renovação casa, preços renovação apartamento, cálculo custo obra, orçamento renovação particular"
         canonical="/particuliers"
       />
       <Nav />
@@ -86,39 +86,39 @@ export default function LandingParticuliers() {
       {/* HERO */}
       <section className="relative overflow-hidden border-b border-border" data-testid="particuliers-hero">
         <div className="absolute inset-0">
-          <img src={IMG.hero} alt="Intérieur rénové lumineux" className="w-full h-full object-cover" />
+          <img src={IMG.hero} alt="Interior renovado luminoso" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/92 to-background/40" />
         </div>
         <div className="relative mx-auto max-w-6xl px-5 py-20 lg:py-28 grid lg:grid-cols-2 gap-10 items-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-bold text-primary mb-5" data-testid="particuliers-badge">
-              <Sparkles className="h-3.5 w-3.5" /> Spécial particuliers · 100 % gratuit
+              <Sparkles className="h-3.5 w-3.5" /> Especial particulares · 100 % gratuito
             </span>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight">
-              Votre budget rénovation,<br />
-              <span className="text-primary">estimé en 30 secondes.</span>
+              O seu orçamento de obra,<br />
+              <span className="text-primary">estimado em 30 segundos.</span>
             </h1>
             <p className="mt-5 text-base md:text-lg text-muted-foreground max-w-lg">
-              Maison, appartement, cuisine, salle de bain… Décrivez votre projet, notre IA vous donne une estimation chiffrée poste par poste. Sans rendez-vous, sans engagement.
+              Casa, apartamento, cozinha, casa de banho… Descreva o seu projecto e a nossa IA entrega uma estimativa detalhada rubrica a rubrica. Sem marcações, sem compromisso.
             </p>
 
             <div className="mt-7 surface p-4 rounded-xl max-w-lg space-y-3" data-testid="particuliers-form">
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Votre prénom"
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="O seu nome próprio"
                          className="pl-9 rounded-sm" data-testid="particuliers-name" />
                 </div>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Votre e-mail"
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="O seu e-mail"
                          className="pl-9 rounded-sm" data-testid="particuliers-email" />
                 </div>
               </div>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
                         placeholder={EXAMPLE} className="rounded-sm text-sm" data-testid="particuliers-description" />
               <Button onClick={launch} size="lg" className="w-full rounded-sm gap-2 text-base font-bold" data-testid="particuliers-cta">
-                Estimer mon projet gratuitement <ArrowRight className="h-5 w-5" />
+                Estimar o meu projecto gratuitamente <ArrowRight className="h-5 w-5" />
               </Button>
               <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-primary" /> Gratuito · Sem cartão bancário · Resultado imediato
@@ -129,19 +129,19 @@ export default function LandingParticuliers() {
         </div>
       </section>
 
-      {/* AVANT / APRÈS */}
+      {/* ANTES / DEPOIS */}
       <section className="mx-auto max-w-6xl px-5 py-16 lg:py-20 grid lg:grid-cols-2 gap-10 items-center">
         <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-          <img src={IMG.avantApres} alt="Avant et après rénovation" className="rounded-xl w-full shadow-lg" data-testid="particuliers-avant-apres" />
+          <img src={IMG.avantApres} alt="Antes e depois de uma renovação" className="rounded-xl w-full shadow-lg" data-testid="particuliers-avant-apres" />
         </motion.div>
         <div>
-          <p className="overline text-primary">Du rêve au chiffrage</p>
-          <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">Savez-vous vraiment combien va coûter votre projet ?</h2>
+          <p className="overline text-primary">Do sonho ao orçamento</p>
+          <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">Sabe mesmo quanto vai custar o seu projecto?</h2>
           <p className="mt-4 text-base text-muted-foreground">
-            Avant de vous lancer, obtenez une vision claire et réaliste de votre budget. ConstruPilot analyse votre description et vous donne une estimation détaillée — comme le ferait un professionnel, mais en quelques secondes.
+            Antes de avançar, tenha uma visão clara e realista do seu orçamento. O ConstruPilot analisa a sua descrição e entrega uma estimativa detalhada — como faria um profissional, mas em poucos segundos.
           </p>
           <ul className="mt-6 space-y-3">
-            {["Estimation poste par poste (peinture, sol, plomberie…)", "Fourchette de prix basse / moyenne / haute", "Preços dos materiais atualizados", "Exportável para comparar os orçamentos de profissionais"].map((t) => (
+            {["Estimativa rubrica a rubrica (pintura, pavimento, canalização…)", "Intervalo de preços baixo / médio / alto", "Preços dos materiais actualizados", "Exportável para comparar os orçamentos de profissionais"].map((t) => (
               <li key={t} className="flex items-start gap-2 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> {t}
               </li>
@@ -150,12 +150,12 @@ export default function LandingParticuliers() {
         </div>
       </section>
 
-      {/* COMMENT ÇA MARCHE */}
+      {/* COMO FUNCIONA */}
       <section className="bg-muted/40 border-y border-border py-16 lg:py-20" data-testid="particuliers-steps">
         <div className="mx-auto max-w-6xl px-5">
           <div className="text-center max-w-2xl mx-auto">
-            <p className="overline text-primary">Simple comme bonjour</p>
-            <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">3 étapes, zéro prise de tête</h2>
+            <p className="overline text-primary">Simples como bom dia</p>
+            <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">3 passos, zero complicações</h2>
           </div>
           <div className="mt-10 grid md:grid-cols-3 gap-6">
             {STEPS.map((s, i) => (
@@ -174,13 +174,13 @@ export default function LandingParticuliers() {
         </div>
       </section>
 
-      {/* POURQUOI */}
+      {/* PORQUÊ */}
       <section className="mx-auto max-w-6xl px-5 py-16 lg:py-20">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
-          <img src={IMG.couple} alt="Couple préparant sa rénovation" className="rounded-xl w-full shadow-lg order-2 lg:order-1" />
+          <img src={IMG.couple} alt="Casal a preparar a sua renovação" className="rounded-xl w-full shadow-lg order-2 lg:order-1" />
           <div className="order-1 lg:order-2">
-            <p className="overline text-primary">Pourquoi ConstruPilot</p>
-            <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">Reprenez le contrôle de votre budget travaux</h2>
+            <p className="overline text-primary">Porquê o ConstruPilot</p>
+            <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">Retome o controlo do seu orçamento de obra</h2>
             <div className="mt-6 grid sm:grid-cols-2 gap-4">
               {PERKS.map((p) => (
                 <div key={p.title} className="flex gap-3">
@@ -198,7 +198,7 @@ export default function LandingParticuliers() {
         </div>
       </section>
 
-      {/* TÉMOIGNAGES */}
+      {/* TESTEMUNHOS */}
       <section className="bg-muted/40 border-y border-border py-16">
         <div className="mx-auto max-w-6xl px-5">
           <div className="grid md:grid-cols-3 gap-6">
@@ -207,7 +207,7 @@ export default function LandingParticuliers() {
                 <div className="flex gap-0.5 text-primary/40">
                   {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
                 </div>
-                <p className="text-sm text-muted-foreground">Les avis de nos utilisateurs apparaîtront ici prochainement.</p>
+                <p className="text-sm text-muted-foreground">Os comentários dos nossos utilizadores aparecerão aqui em breve.</p>
               </div>
             ) : TESTIS.map((t) => (
               <div key={t.name} className="surface p-6 rounded-xl">
@@ -224,14 +224,14 @@ export default function LandingParticuliers() {
 
       {/* CTA FINAL */}
       <section className="mx-auto max-w-4xl px-5 py-20 text-center">
-        <h2 className="font-display text-3xl lg:text-5xl font-extrabold">Prêt à connaître votre budget ?</h2>
-        <p className="mt-4 text-base md:text-lg text-muted-foreground">C'est gratuit, immédiat et sans engagement.</p>
+        <h2 className="font-display text-3xl lg:text-5xl font-extrabold">Pronto para conhecer o seu orçamento?</h2>
+        <p className="mt-4 text-base md:text-lg text-muted-foreground">É gratuito, imediato e sem compromisso.</p>
         <Button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} size="lg"
                 className="mt-7 rounded-sm gap-2 text-base font-bold px-8" data-testid="particuliers-cta-final">
-          Estimer mon projet <ArrowRight className="h-5 w-5" />
+          Estimar o meu projecto <ArrowRight className="h-5 w-5" />
         </Button>
         <p className="mt-6 text-sm text-muted-foreground">
-          Vous êtes un professionnel du bâtiment ? <Link to="/" className="text-primary font-semibold underline">Découvrir l'offre Pro</Link>
+          É um profissional da construção? <Link to="/" className="text-primary font-semibold underline">Descobrir a oferta Pro</Link>
         </p>
       </section>
 

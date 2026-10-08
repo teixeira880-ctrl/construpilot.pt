@@ -103,8 +103,8 @@ export default function SignQuote() {
   const clear = () => { initCanvas(); setHasStroke(false); };
 
   const submit = async () => {
-    if (!hasStroke) return toast.error("Signez d'abord dans le cadre");
-    if (signerName.trim().length < 2) return toast.error("Indiquez votre nom complet");
+    if (!hasStroke) return toast.error("Assine primeiro no quadro");
+    if (signerName.trim().length < 2) return toast.error("Indique o seu nome completo");
     setSigning(true);
     try {
       const b64 = canvasRef.current.toDataURL("image/png").split(",")[1];
@@ -114,14 +114,14 @@ export default function SignQuote() {
       toast.success("Orçamento assinado com sucesso!");
       await reload();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Assinatura impossível");
+      toast.error(e?.response?.data?.detail || "Não foi possível assinar");
     } finally { setSigning(false); }
   };
 
   if (loading) return <div className="min-h-screen grid place-items-center bg-background">
-    <p className="text-muted-foreground">Chargement du devis…</p></div>;
+    <p className="text-muted-foreground">A carregar o orçamento…</p></div>;
   if (!data) return <div className="min-h-screen grid place-items-center bg-background">
-    <p className="text-destructive">Lien invalide ou expiré.</p></div>;
+    <p className="text-destructive">Ligação inválida ou expirada.</p></div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary/30 via-background to-primary/5 p-6">
@@ -140,17 +140,17 @@ export default function SignQuote() {
 
         <div className="surface p-8 space-y-4" data-testid="sign-summary">
           <div className="flex items-center justify-between">
-            <p className="overline">Récapitulatif</p>
+            <p className="overline">Resumo</p>
             <span className="text-[10px] num text-muted-foreground">Ref · {data.log_id}</span>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><p className="text-muted-foreground text-xs">Client</p>
+            <div><p className="text-muted-foreground text-xs">Cliente</p>
               <p className="font-bold">{data.client_name || data.client_email}</p></div>
-            <div><p className="text-muted-foreground text-xs">Gamme</p>
+            <div><p className="text-muted-foreground text-xs">Gama</p>
               <p className="font-bold capitalize">{data.finish || "std"} · {data.floor_material}</p></div>
           </div>
           <div className="bg-primary text-primary-foreground rounded-sm p-6 text-center">
-            <p className="text-xs uppercase tracking-widest opacity-90">Total TTC</p>
+            <p className="text-xs uppercase tracking-widest opacity-90">Total c/ IVA</p>
             <p className="num text-4xl font-extrabold mt-1" data-testid="sign-total">
               {Number(data.total_ttc || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2 })} €
             </p>
@@ -161,15 +161,15 @@ export default function SignQuote() {
           <div className="space-y-6">
             <div className="surface p-8 text-center space-y-4" data-testid="sign-done">
               <CheckCircle2 className="h-14 w-14 mx-auto text-primary" />
-              <p className="font-display text-xl font-bold">Merci — votre devis est signé.</p>
+              <p className="font-display text-xl font-bold">Obrigado — o seu orçamento está assinado.</p>
               <p className="text-xs text-muted-foreground">
-                Signé le {new Date(data.signed_at).toLocaleString("pt-PT")}
+                Assinado em {new Date(data.signed_at).toLocaleString("pt-PT")}
               </p>
               <a href={`${API}/quotes/public/sign/${token}/pdf`} target="_blank" rel="noopener noreferrer">
                 <button className="rounded-sm bg-primary text-primary-foreground px-6 py-3
                                    font-bold hover:bg-orange-600 transition inline-flex items-center gap-2"
                         data-testid="sign-download-pdf">
-                  <Download className="h-4 w-4" /> Télécharger le devis signé
+                  <Download className="h-4 w-4" /> Transferir o orçamento assinado
                 </button>
               </a>
             </div>
@@ -177,27 +177,27 @@ export default function SignQuote() {
             {data.deposit?.paid ? (
               <div className="surface p-6 text-center space-y-2 border-2 border-emerald-500/40 bg-emerald-500/5" data-testid="deposit-paid">
                 <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-600" />
-                <p className="font-display text-lg font-bold">Acompte réglé — merci !</p>
+                <p className="font-display text-lg font-bold">Sinal pago — obrigado!</p>
                 <p className="text-sm text-muted-foreground">
-                  {eur(data.deposit.paid_amount)} reçu{data.deposit.paid_at ? ` le ${new Date(data.deposit.paid_at).toLocaleDateString("pt-PT")}` : ""}. Votre chantier peut démarrer.
+                  {eur(data.deposit.paid_amount)} recebidos{data.deposit.paid_at ? ` em ${new Date(data.deposit.paid_at).toLocaleDateString("pt-PT")}` : ""}. A sua obra pode arrancar.
                 </p>
               </div>
             ) : data.deposit?.enabled ? (
               <div className="surface p-6 space-y-3 border-2 border-primary/30" data-testid="deposit-block">
                 <p className="font-display font-bold inline-flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-primary" /> Verser l'acompte pour lancer le chantier
+                  <CreditCard className="h-4 w-4 text-primary" /> Pagar o sinal para arrancar a obra
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Acompte de <b>{data.deposit.pct}%</b> soit <b className="text-primary">{eur(data.deposit.amount)}</b> —
-                  paiement 100% sécurisé par Stripe.
+                  Sinal de <b>{data.deposit.pct}%</b>, ou seja <b className="text-primary">{eur(data.deposit.amount)}</b> —
+                  pagamento 100% seguro pela Stripe.
                 </p>
                 <button onClick={payDeposit} disabled={payBusy} data-testid="deposit-pay-btn"
                         className="w-full rounded-sm bg-primary text-primary-foreground px-6 py-3 font-bold
                                    hover:bg-orange-600 transition disabled:opacity-50 inline-flex items-center justify-center gap-2">
                   {payBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                  {payBusy ? "Redirection vers le paiement…" : `Payer l'acompte de ${eur(data.deposit.amount)}`}
+                  {payBusy ? "A redireccionar para pagamento…" : `Pagar o sinal de ${eur(data.deposit.amount)}`}
                 </button>
-                <p className="text-[10px] text-muted-foreground text-center">Carte de test : 4242 4242 4242 4242 · date future · CVC quelconque</p>
+                <p className="text-[10px] text-muted-foreground text-center">Cartão de teste: 4242 4242 4242 4242 · data futura · CVC qualquer</p>
               </div>
             ) : null}
           </div>
@@ -205,11 +205,11 @@ export default function SignQuote() {
           <div className="surface p-8 space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <PenLine className="h-5 w-5 text-primary" />
-              <p className="font-display text-lg font-bold">Signez ci-dessous</p>
+              <p className="font-display text-lg font-bold">Assine abaixo</p>
             </div>
-            <label className="block text-xs text-muted-foreground mb-1">Votre nom complet *</label>
+            <label className="block text-xs text-muted-foreground mb-1">O seu nome completo *</label>
             <input value={signerName} onChange={(e) => setSignerName(e.target.value)}
-                   placeholder="Prénom Nom"
+                   placeholder="Nome e Apelido"
                    data-testid="sign-name-input"
                    className="w-full rounded-sm border border-border bg-background px-3 py-2 text-sm" />
             <div className="border-2 border-dashed border-border rounded-sm bg-white relative">
@@ -220,13 +220,13 @@ export default function SignQuote() {
                       onTouchStart={start} onTouchMove={move} onTouchEnd={end} />
               {!hasStroke && (
                 <p className="absolute inset-0 grid place-items-center text-muted-foreground
-                              text-xs pointer-events-none">Signez avec la souris ou votre doigt</p>
+                              text-xs pointer-events-none">Assine com o rato ou o dedo</p>
               )}
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={clear} data-testid="sign-clear-btn"
                       className="rounded-sm border border-border px-4 py-2 text-sm inline-flex items-center gap-2 hover:bg-secondary">
-                <RotateCcw className="h-3 w-3" /> Effacer
+                <RotateCcw className="h-3 w-3" /> Apagar
               </button>
               <button onClick={submit} disabled={signing || !hasStroke || !signerName.trim()}
                       data-testid="sign-submit-btn"
@@ -234,12 +234,12 @@ export default function SignQuote() {
                                  hover:bg-orange-600 transition disabled:opacity-40 disabled:cursor-not-allowed
                                  inline-flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
-                {signing ? "A enviar…" : "Bon pour accord"}
+                {signing ? "A enviar…" : "Confirmar aceitação"}
               </button>
             </div>
             <p className="text-[10px] text-muted-foreground border-t border-border pt-3">
-              En signant, vous acceptez le devis estimatif ci-dessus (non contractuel).
-              Un contrat détaillé pourra être établi ensuite pour la mise en œuvre.
+              Ao assinar, aceita o orçamento estimativo acima (não contratual).
+              Um contrato detalhado poderá ser estabelecido em seguida para a execução dos trabalhos.
             </p>
           </div>
         )}

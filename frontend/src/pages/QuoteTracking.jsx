@@ -188,9 +188,9 @@ export default function QuoteTracking() {
 
   const copySignLink = async (send) => {
     const raw = window.prompt(
-      "Sinal demandé à la signature (% du TTC) — laissez 30 par défaut, ou 0 pour désactiver :",
+      "Sinal pedido na assinatura (% do total c/ IVA) — deixe 30 por defeito, ou 0 para desactivar:",
       "30");
-    if (raw === null) return; // annulé
+    if (raw === null) return; // cancelado
     const pct = Math.max(0, Math.min(100, parseFloat(raw) || 0));
     try {
       const { data } = await api.post(
@@ -201,8 +201,8 @@ export default function QuoteTracking() {
         : `${window.location.origin}${data.url}`;
       await navigator.clipboard.writeText(fullUrl);
       toast.success(pct > 0
-        ? `Lien copiado — sinal ${pct}% à la signature`
-        : "Link de assinatura copiado (sem sinal)");
+        ? `Ligação copiada — sinal ${pct}% à assinatura`
+        : "Ligação de assinatura copiada (sem sinal)");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Geração impossível");
     }
@@ -214,7 +214,7 @@ export default function QuoteTracking() {
       setCompleted((prev) => new Set(prev).add(send.log_id));
       toast.success("Obra concluída — pedido de avaliação enviado ao cliente 🎉");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Action impossível");
+      toast.error(e?.response?.data?.detail || "Acção impossível");
     }
   };
 
@@ -229,17 +229,17 @@ export default function QuoteTracking() {
       const { data } = await api.post(`/quotes/sends/${send.log_id}/to-invoice`,
         { vat_rate: Number(invoiceVat) });
       toast.success(data.already
-        ? "Fatura déjà créée — ouverture de l'editor"
+        ? "Fatura já criada — a abrir o editor"
         : `Fatura ${data.number || ""} criada a partir do orçamento 🎉`);
       setInvoiceSend(null);
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Conversion impossível");
+      toast.error(e?.response?.data?.detail || "Conversão impossível");
     } finally { setInvoicing(null); }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
-  if (loading) return <div className="surface p-10 text-center">Chargement…</div>;
+  if (!user) return <div className="surface p-10 text-center">Inicie sessão.</div>;
+  if (loading) return <div className="surface p-10 text-center">A carregar…</div>;
 
   const notOpened = sends.filter(s => !s.opened && !s.signed);
   const opened = sends.filter(s => s.opened && !s.signed);
@@ -248,9 +248,9 @@ export default function QuoteTracking() {
   const fmtEur = (n) => (n || 0).toLocaleString("pt-PT", { minimumFractionDigits: 0 }) + " €";
   const daysSince = (iso) => {
     const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-    if (d === 0) return "aujourd'hui";
-    if (d === 1) return "hier";
-    return `il y a ${d} j`;
+    if (d === 0) return "hoje";
+    if (d === 1) return "ontem";
+    return `há ${d} dias`;
   };
 
   const Card = ({ send, colour, showComplete }) => {
@@ -270,7 +270,7 @@ export default function QuoteTracking() {
         <p className="num font-extrabold text-primary text-lg">{fmtEur(send.total_ttc)}</p>
         {send.email_status === "failed" && (
           <div className="flex items-center gap-2 pt-1" data-testid={`send-failed-${send.log_id}`}>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-red-500/15 text-red-600">Échec d'envoi</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-red-500/15 text-red-600">Falha no envio</span>
             <button onClick={() => retrySend(send)} disabled={retrying === send.log_id}
                     data-testid={`retry-send-${send.log_id}`}
                     className="text-[10px] px-2 py-0.5 rounded-sm border border-red-500/40 text-red-600 font-semibold">
@@ -279,20 +279,20 @@ export default function QuoteTracking() {
           </div>
         )}
         {send.email_status === "queued" && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-amber-500/15 text-amber-600" data-testid={`send-queued-${send.log_id}`}>Envoi en cours…</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-amber-500/15 text-amber-600" data-testid={`send-queued-${send.log_id}`}>A enviar…</span>
         )}
         <p className="text-[10px] num text-muted-foreground">
           Enviado {daysSince(send.created_at)}
-          {send.opened && send.opened_at && ` · ouvert ${daysSince(send.opened_at)}`}
-          {send.signed && send.signed_at && ` · signé ${daysSince(send.signed_at)}`}
-          {send.open_count > 1 && ` (${send.open_count} ouvertures)`}
+          {send.opened && send.opened_at && ` · aberto ${daysSince(send.opened_at)}`}
+          {send.signed && send.signed_at && ` · assinado ${daysSince(send.signed_at)}`}
+          {send.open_count > 1 && ` (${send.open_count} aberturas)`}
         </p>
         <div className="flex gap-1 pt-1 flex-wrap">
           {!send.signed && (
             <button onClick={() => copySignLink(send)}
                     data-testid={`copy-sign-${send.log_id}`}
                     className="text-[10px] text-primary hover:underline inline-flex items-center gap-1">
-              <Copy className="h-3 w-3" /> Lien signature
+              <Copy className="h-3 w-3" /> Ligação de assinatura
             </button>
           )}
           {send.signature_token && (
@@ -307,7 +307,7 @@ export default function QuoteTracking() {
           <button onClick={() => navigate(`/devis-editeur/${send.invoice_doc_id}`)}
                   data-testid={`open-invoice-${send.log_id}`}
                   className="w-full inline-flex items-center justify-center gap-1 rounded-sm border border-primary/40 text-primary text-[11px] h-7 mt-1 hover:bg-primary hover:text-primary-foreground transition-colors">
-            <Receipt className="h-3 w-3" /> Ver la facture
+            <Receipt className="h-3 w-3" /> Ver fatura
           </button>
         ) : (
           <Button size="sm" variant="outline"
@@ -316,7 +316,7 @@ export default function QuoteTracking() {
                   onClick={() => { setInvoiceVat("10"); setInvoiceSend(send); }}
                   data-testid={`convert-invoice-${send.log_id}`}>
             <Receipt className="h-3 w-3" />
-            {invoicing === send.log_id ? "Conversion…" : "Converter em fatura"}
+            {invoicing === send.log_id ? "A converter…" : "Converter em fatura"}
           </Button>
         )}
         {showComplete && (
@@ -331,7 +331,7 @@ export default function QuoteTracking() {
                     className="w-full rounded-sm gap-1 text-[11px] h-7 mt-1 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
                     onClick={() => markCompleted(send)}
                     data-testid={`worksite-complete-${send.log_id}`}>
-              <CheckCircle2 className="h-3 w-3" /> Obra terminé → demander un avis
+              <CheckCircle2 className="h-3 w-3" /> Obra terminada → pedir avaliação
             </Button>
           )
         )}
@@ -342,51 +342,51 @@ export default function QuoteTracking() {
   return (
     <div className="grid gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle over="Suivi Orçamento" title="Em que ponto estão os seus orçamentos enviados?">
-          Toutes les propositions envoyées à vos clients, organisées par état d'avancement.
-          Relancez au bon moment grâce au suivi d'ouverture et de signature.
+        <SectionTitle over="Seguimento Orçamento" title="Em que ponto estão os seus orçamentos enviados?">
+          Todas as propostas enviadas aos seus clientes, organizadas por estado de progresso.
+          Reactive na altura certa graças ao seguimento de abertura e assinatura.
         </SectionTitle>
         <Link to="/devis-editeur">
           <Button className="rounded-sm gap-2" data-testid="create-quote-btn">
-            <FileText className="h-4 w-4" /> Criar un devis
+            <FileText className="h-4 w-4" /> Criar orçamento
           </Button>
         </Link>
         <ImportDocumentsDialog triggerLabel="Importar PDF" onImported={load} />
         <label className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-sm px-3 py-2"
                data-testid="auto-remind-toggle" title="Relançamento automático por e-mail dos orçamentos enviados não assinados">
           <Switch checked={autoRemind} onCheckedChange={toggleAutoRemind} data-testid="auto-remind-switch" />
-          Relances auto
+          Relançamentos auto
           {autoRemind && (
             <span className="flex items-center gap-1 ml-1">
               <select value={remindDelay} onChange={(e) => saveRemind({ delay_days: Number(e.target.value) })}
                       className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs" data-testid="remind-delay-select">
-                <option value={3}>tous les 3 j</option>
-                <option value={5}>tous les 5 j</option>
-                <option value={7}>tous les 7 j</option>
+                <option value={3}>a cada 3 dias</option>
+                <option value={5}>a cada 5 dias</option>
+                <option value={7}>a cada 7 dias</option>
               </select>
               <select value={remindMax} onChange={(e) => saveRemind({ max_reminders: Number(e.target.value) })}
                       className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs" data-testid="remind-max-select">
-                <option value={1}>1 relance</option>
-                <option value={2}>2 relances</option>
-                <option value={3}>3 relances</option>
+                <option value={1}>1 relançamento</option>
+                <option value={2}>2 relançamentos</option>
+                <option value={3}>3 relançamentos</option>
               </select>
             </span>
           )}
         </label>
       </div>
 
-      {/* Chiffre d'affaires mensuel */}
+      {/* Volume de negócios mensal */}
       <RevenueChart />
 
-      {/* Orçamento enregistrés (brouillons, non encore envoyés) */}
+      {/* Orçamentos guardados (rascunhos ainda não enviados) */}
       <div className="surface p-5" data-testid="saved-drafts-section">
         <div className="flex items-center justify-between mb-3">
-          <p className="overline">Orçamento enregistrés</p>
+          <p className="overline">Orçamentos guardados</p>
           <span className="text-xs text-muted-foreground num">{quotes.length}</span>
         </div>
         {quotes.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Nenhum devis enregistré. Vos devis apparaîtront ici après « Guardar ».
+            Nenhum orçamento guardado. Os seus orçamentos aparecem aqui depois de « Guardar ».
           </p>
         ) : (
           <div className="grid gap-2">
@@ -412,26 +412,26 @@ export default function QuoteTracking() {
                           className="rounded-sm border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary shrink-0">
                     <option value="draft">Rascunho</option>
                     <option value="sent">Enviado</option>
-                    <option value="signed">Signé</option>
+                    <option value="signed">Assinado</option>
                     <option value="refused">Recusado</option>
                   </select>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => facturer(d)}
                           title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Transformar em fatura"}
                           data-testid={`quote-invoice-${d.doc_id}`}>
-                    <Receipt className="h-3.5 w-3.5" /> Facturer
+                    <Receipt className="h-3.5 w-3.5" /> Facturar
                   </Button>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => facturerAcompte(d)}
-                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Fatura d'sinal 30%"}
+                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Fatura de sinal 30%"}
                           data-testid={`quote-deposit-${d.doc_id}`}>
                     <Receipt className="h-3.5 w-3.5" /> Sinal 30%
                   </Button>
                   <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 shrink-0"
                           disabled={d.status !== "signed"} onClick={() => openBilling(d)}
-                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Décompte, situation, solde"}
+                          title={d.status !== "signed" ? "O orçamento tem de estar assinado" : "Auto, situação, saldo"}
                           data-testid={`quote-billing-${d.doc_id}`}>
-                    <Receipt className="h-3.5 w-3.5" /> Décompte / Situation
+                    <Receipt className="h-3.5 w-3.5" /> Auto / Situação
                   </Button>
                   <Button size="sm" variant="ghost" className="rounded-sm h-8 w-8 p-0 text-muted-foreground hover:text-red-600 shrink-0"
                           onClick={() => deleteQuote(d)} data-testid={`quote-delete-${d.doc_id}`}>
@@ -449,28 +449,28 @@ export default function QuoteTracking() {
         <div className="surface p-4" data-testid="kpi-sent">
           <div className="flex items-center gap-2 mb-1">
             <Send className="h-4 w-4 text-muted-foreground" />
-            <p className="overline">Envoyés</p>
+            <p className="overline">Enviados</p>
           </div>
           <p className="num font-display text-3xl font-extrabold">{stats.sent || 0}</p>
         </div>
         <div className="surface p-4" data-testid="kpi-opened">
           <div className="flex items-center gap-2 mb-1">
             <Eye className="h-4 w-4 text-emerald-500" />
-            <p className="overline">Ouverts</p>
+            <p className="overline">Abertos</p>
           </div>
           <p className="num font-display text-3xl font-extrabold">{stats.opened || 0}</p>
           <p className="text-[10px] text-muted-foreground num">
-            {stats.sent ? Math.round((stats.opened || 0) / stats.sent * 100) : 0} % taux d'ouverture
+            {stats.sent ? Math.round((stats.opened || 0) / stats.sent * 100) : 0} % taxa de abertura
           </p>
         </div>
         <div className="surface p-4" data-testid="kpi-signed">
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 className="h-4 w-4 text-primary" />
-            <p className="overline">Signés</p>
+            <p className="overline">Assinados</p>
           </div>
           <p className="num font-display text-3xl font-extrabold text-primary">{stats.signed || 0}</p>
           <p className="text-[10px] text-muted-foreground num">
-            {fmtEur(stats.total_ttc_signed)} conclus
+            {fmtEur(stats.total_ttc_signed)} fechados
           </p>
         </div>
         <div className="surface p-4" data-testid="kpi-pipeline">
@@ -479,16 +479,16 @@ export default function QuoteTracking() {
             <p className="overline">Pipeline</p>
           </div>
           <p className="num font-display text-3xl font-extrabold">{fmtEur(stats.total_ttc_pipeline)}</p>
-          <p className="text-[10px] text-muted-foreground">à conclure</p>
+          <p className="text-[10px] text-muted-foreground">por fechar</p>
         </div>
       </div>
 
-      {/* Export comptabilité */}
+      {/* Exportação contabilidade */}
       <div className="surface p-4 flex flex-wrap items-end gap-3" data-testid="accounting-export">
         <div>
-          <p className="overline">Export comptable</p>
+          <p className="overline">Exportação contabilística</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Relatório mensuel PDF pronto à envoyer à votre comptable, ou export CSV brut.
+            Relatório PDF mensal pronto a enviar ao contabilista, ou exportação CSV bruta.
           </p>
         </div>
         <div className="flex items-end gap-2 ml-auto flex-wrap">
@@ -514,11 +514,11 @@ export default function QuoteTracking() {
           </div>
           <Button onClick={exportRecapPdf} className="rounded-sm gap-2"
                   data-testid="export-recap-pdf-btn">
-            <FileDown className="h-4 w-4" /> Relatório PDF comptable
+            <FileDown className="h-4 w-4" /> Relatório PDF contabilidade
           </Button>
           <Button variant="outline" onClick={exportCsv} className="rounded-sm gap-2"
                   data-testid="export-csv-btn">
-            <Download className="h-4 w-4" /> Exporter CSV
+            <Download className="h-4 w-4" /> Exportar CSV
           </Button>
         </div>
       </div>
@@ -529,7 +529,7 @@ export default function QuoteTracking() {
         </p>
         <Button size="sm" variant="outline" onClick={load} data-testid="quote-tracking-refresh"
                 className="rounded-sm gap-1">
-          <RefreshCw className="h-3 w-3" /> Actualiser
+          <RefreshCw className="h-3 w-3" /> Actualizar
         </Button>
       </div>
 
@@ -537,60 +537,60 @@ export default function QuoteTracking() {
       {sends.length === 0 ? (
         <div className="surface p-10 text-center space-y-3">
           <Mail className="h-10 w-10 mx-auto text-muted-foreground" />
-          <p className="font-display font-bold">Nenhum devis envoyé pour l'instant</p>
+          <p className="font-display font-bold">Nenhum orçamento enviado por agora</p>
           <p className="text-sm text-muted-foreground">
-            Ouvrez un plan medição, cliquez sur <b>Orçamento PDF → Enviar au client</b>,
-            et suivez tout ici en temps réel.
+            Abra uma planta de medição, clique em <b>Orçamento PDF → Enviar ao cliente</b>,
+            e acompanhe tudo aqui em tempo real.
           </p>
         </div>
       ) : (
         <div className="grid md:grid-cols-3 gap-4">
-          {/* Col 1 : Non ouverts */}
+          {/* Col 1 : Por abrir */}
           <div className="space-y-3" data-testid="col-not-opened">
             <div className="flex items-center gap-2 border-b-2 border-muted-foreground/40 pb-2">
               <Send className="h-4 w-4 text-muted-foreground" />
-              <p className="font-display font-bold text-sm">Non ouverts</p>
+              <p className="font-display font-bold text-sm">Por abrir</p>
               <Badge variant="outline" className="ml-auto rounded-sm">{notOpened.length}</Badge>
             </div>
             {notOpened.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Tous vos devis ont été ouverts 🎉
+                Todos os seus orçamentos foram abertos 🎉
               </p>
             )}
             {notOpened.map(s => <Card key={s.log_id} send={s}
                                        colour="border-muted-foreground/20 bg-secondary/20" />)}
           </div>
 
-          {/* Col 2 : Ouverts */}
+          {/* Col 2 : Abertos */}
           <div className="space-y-3" data-testid="col-opened">
             <div className="flex items-center gap-2 border-b-2 border-emerald-500/60 pb-2">
               <Eye className="h-4 w-4 text-emerald-500" />
-              <p className="font-display font-bold text-sm">Ouverts (à relancer)</p>
+              <p className="font-display font-bold text-sm">Abertos (a reactivar)</p>
               <Badge variant="outline" className="ml-auto rounded-sm border-emerald-500/60 text-emerald-500">
                 {opened.length}
               </Badge>
             </div>
             {opened.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Nenhum devis lu sans signature.
+                Nenhum orçamento lido sem assinatura.
               </p>
             )}
             {opened.map(s => <Card key={s.log_id} send={s}
                                     colour="border-emerald-500/30 bg-emerald-500/5" />)}
           </div>
 
-          {/* Col 3 : Signés */}
+          {/* Col 3 : Assinados */}
           <div className="space-y-3" data-testid="col-signed">
             <div className="flex items-center gap-2 border-b-2 border-primary pb-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <p className="font-display font-bold text-sm">Signés</p>
+              <p className="font-display font-bold text-sm">Assinados</p>
               <Badge className="ml-auto rounded-sm bg-primary text-primary-foreground">
                 {signed.length}
               </Badge>
             </div>
             {signed.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Nenhuma signature pour l'instant.
+                Nenhuma assinatura por agora.
               </p>
             )}
             {signed.map(s => <Card key={s.log_id} send={s} showComplete
@@ -602,16 +602,16 @@ export default function QuoteTracking() {
       <Dialog open={!!invoiceSend} onOpenChange={(o) => !o && setInvoiceSend(null)}>
         <DialogContent className="max-w-sm" data-testid="invoice-vat-dialog">
           <DialogHeader>
-            <DialogTitle>Convertir en facture</DialogTitle>
+            <DialogTitle>Converter em fatura</DialogTitle>
             <DialogDescription>
-              Choisissez le taux de TVA à appliquer. Le montant TTC du devis est conservé
+              Escolha a taxa de IVA a aplicar. O montante c/ IVA do orçamento é mantido
               ({fmtEur(invoiceSend?.total_ttc)}).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
-            <label className="text-xs text-muted-foreground">Taux de TVA</label>
+            <label className="text-xs text-muted-foreground">Taxa de IVA</label>
             <div className="grid grid-cols-3 gap-2">
-              {[["5.5", "5,5 % — 1ère nécessité"], ["10", "10 % — Reabilitação"], ["20", "20 % — Neuf"]].map(([v, lbl]) => (
+              {[["6", "6 % — Reduzida"], ["13", "13 % — Intermédia"], ["23", "23 % — Normal"]].map(([v, lbl]) => (
                 <button key={v} onClick={() => setInvoiceVat(v)}
                   data-testid={`vat-opt-${v}`}
                   className={`rounded-sm border px-2 py-3 text-center transition-colors ${
@@ -628,7 +628,7 @@ export default function QuoteTracking() {
                     data-testid="invoice-vat-cancel">Cancelar</Button>
             <Button className="rounded-sm gap-2" onClick={convertToInvoice}
                     disabled={!!invoicing} data-testid="invoice-vat-confirm">
-              <Receipt className="h-4 w-4" /> Criar la facture
+              <Receipt className="h-4 w-4" /> Criar fatura
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -637,47 +637,47 @@ export default function QuoteTracking() {
       <Dialog open={!!billQuote} onOpenChange={(o) => !o && setBillQuote(null)}>
         <DialogContent className="max-w-lg" data-testid="billing-modal">
           <DialogHeader>
-            <DialogTitle>Décompte général — {billQuote?.number || billQuote?.title}</DialogTitle>
-            <DialogDescription>Facturez au prorata (situation) ou le solde. Les acomptes déjà facturés sont pris en compte.</DialogDescription>
+            <DialogTitle>Resumo geral — {billQuote?.number || billQuote?.title}</DialogTitle>
+            <DialogDescription>Facture ao prorata (situação) ou o saldo. Os sinais já facturados são tidos em conta.</DialogDescription>
           </DialogHeader>
           {recap ? (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="surface p-2 rounded-sm"><p className="num font-bold">{eur(recap.quote.ttc)}</p><p className="text-[11px] text-muted-foreground">Orçamento TTC</p></div>
-                <div className="surface p-2 rounded-sm"><p className="num font-bold text-emerald-500">{eur(recap.billed_ttc)}</p><p className="text-[11px] text-muted-foreground">Déjà facturé</p></div>
-                <div className="surface p-2 rounded-sm"><p className="num font-bold text-primary">{eur(recap.remaining_ttc)}</p><p className="text-[11px] text-muted-foreground">Reste à facturer</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold">{eur(recap.quote.ttc)}</p><p className="text-[11px] text-muted-foreground">Orçamento c/ IVA</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold text-emerald-500">{eur(recap.billed_ttc)}</p><p className="text-[11px] text-muted-foreground">Já facturado</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold text-primary">{eur(recap.remaining_ttc)}</p><p className="text-[11px] text-muted-foreground">Por facturar</p></div>
               </div>
-              <div className="text-xs text-muted-foreground">Avancement facturé : {recap.progress_pct}%</div>
+              <div className="text-xs text-muted-foreground">Avanço facturado: {recap.progress_pct}%</div>
               {recap.invoices.length > 0 && (
                 <div className="border border-border rounded-sm divide-y divide-border max-h-32 overflow-auto" data-testid="billing-recap-list">
                   {recap.invoices.map((i) => (
                     <div key={i.doc_id} className="flex justify-between px-3 py-1.5 text-xs">
-                      <span>{i.number || "—"} · {{ deposit: "Sinal", situation: "Situation", balance: "Solde" }[i.source] || "Fatura"}</span>
+                      <span>{i.number || "—"} · {{ deposit: "Sinal", situation: "Situação", balance: "Saldo" }[i.source] || "Fatura"}</span>
                       <span className="num">{eur(i.ttc)}</span>
                     </div>
                   ))}
                 </div>
               )}
               <div className="rounded-sm border border-border p-3 space-y-2">
-                <p className="font-semibold text-xs uppercase tracking-wide">Nova facture de situation</p>
+                <p className="font-semibold text-xs uppercase tracking-wide">Nova fatura de situação</p>
                 <div className="flex items-end gap-3">
-                  <label className="flex-1 text-xs">Avancement %
+                  <label className="flex-1 text-xs">Avanço %
                     <input type="number" min="1" max="100" value={sitPct} onChange={(e) => setSitPct(e.target.value)}
                            className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-pct" />
                   </label>
-                  <label className="flex-1 text-xs">Déduction sinal %
+                  <label className="flex-1 text-xs">Dedução sinal %
                     <input type="number" min="0" max="100" value={sitDeduct} onChange={(e) => setSitDeduct(e.target.value)}
                            className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-deduct" />
                   </label>
-                  <Button size="sm" className="h-9" onClick={makeSituation} data-testid="billing-make-situation">Criar situation</Button>
+                  <Button size="sm" className="h-9" onClick={makeSituation} data-testid="billing-make-situation">Criar situação</Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">0% = facture normale sans déduction d'sinal.</p>
+                <p className="text-[11px] text-muted-foreground">0% = fatura normal sem dedução de sinal.</p>
               </div>
             </div>
-          ) : <p className="text-sm text-muted-foreground py-6 text-center">Chargement du décompte…</p>}
+          ) : <p className="text-sm text-muted-foreground py-6 text-center">A carregar o resumo…</p>}
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setBillQuote(null)}>Fermer</Button>
-            <Button onClick={makeBalance} data-testid="billing-make-balance">Facturer le solde</Button>
+            <Button variant="outline" onClick={() => setBillQuote(null)}>Fechar</Button>
+            <Button onClick={makeBalance} data-testid="billing-make-balance">Facturar o saldo</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
