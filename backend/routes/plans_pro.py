@@ -30,6 +30,7 @@ from engines.plans_pro.semantic.exceptions import (
     SchemaValidationError,
     VisionAnalysisError,
 )
+from engines.plans_pro.semantic.schemas import AnalisePlanta, MissingDataRequest
 
 logger = logging.getLogger("plans_pro.routes")
 
@@ -186,7 +187,24 @@ class AnalyzeIn(BaseModel):
     include_web_norms: bool = True
 
 
-@router.post("/{plan_id}/analyze")
+class AnalyzeResponse(BaseModel):
+    """Contrato de saída oficial de ``POST /api/plans-pro/{plan_id}/analyze``.
+
+    Expõe o schema ``AnalisePlanta`` (e ``MissingDataRequest``) no
+    OpenAPI (``/api/openapi.json#/components/schemas``) para que
+    front-end e testes possam gerar tipos a partir do contrato real.
+    """
+
+    plan_id: str
+    analise: AnalisePlanta
+    missing_data: list[MissingDataRequest]
+    requires_human_review: bool
+    trace: dict[str, float | int | str | bool | None]
+    quantities: dict[str, float | int | str | None]
+    views_count: int
+
+
+@router.post("/{plan_id}/analyze", response_model=AnalyzeResponse)
 async def analyze(plan_id: str, body: AnalyzeIn, user=Depends(current_user)):
     """Executa a cascade IA — Fase 1 blindada.
 
