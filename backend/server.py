@@ -159,6 +159,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Camada defensiva anti-CF-520: garante que nenhum endpoint devolve body
+# vazio, headers malformados ou exceções nuas. Instalado DEPOIS do CORS
+# para que respostas de erro mantenham cabeçalhos CORS.
+from core.defensive_middleware import SafeResponseMiddleware, http_exception_safe_handler  # noqa: E402
+
+app.add_middleware(SafeResponseMiddleware)
+app.add_exception_handler(Exception, http_exception_safe_handler)
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
