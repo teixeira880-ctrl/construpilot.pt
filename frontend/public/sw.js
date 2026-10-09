@@ -1,22 +1,38 @@
-/* ConstruPilot Service Worker
-   - HTML / navigation : NETWORK-FIRST (garantit que la dernière version s'affiche toujours)
-   - Assets statiques (JS/CSS/img) : cache-first (les bundles sont hashés par le build)
+/* ConstruPilot Service Worker — v5
+   - HTML / navegação : NETWORK-FIRST (garante que a última versão é sempre entregue)
+   - Assets estáticos (JS/CSS/img) : cache-first (os bundles são hashed pelo build)
    - API : network-first, fallback cache
-   IMPORTANT : bumper CACHE à chaque déploiement pour purger l'ancien cache. */
-const CACHE = "construpilot-v4";
+   IMPORTANTE : bumpar CACHE a cada deploy para purgar cache antigo. */
+const CACHE = "construpilot-v5";
 const APP_SHELL = ["/manifest.json", "/logo192.png", "/logo512.png"];
 
 self.addEventListener("install", (e) => {
+  // Força activação imediata (não espera que todos os tabs fechem).
+  // Combinado com `clients.claim()` em activate + broadcast SW_UPDATED,
+  // garante que clientes com bundle antigo em cache saltam para a v5.
+  self.skipWaiting();
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) => c.addAll(APP_SHELL))
   );
 });
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    (async () => {
+      // 1) Limpa TODAS as caches antigas (v2, v3, v4, ou qualquer outra)
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))
+      );
+      // 2) Toma controlo imediato dos clientes abertos (tabs já carregados)
+      await self.clients.claim();
+      // 3) Notifica os clientes para fazerem reload (bundle main.*.js antigo
+      //    em memória deve ser substituído pelo novo).
+      const clients = await self.clients.matchAll({ type: "window" });
+      for (const client of clients) {
+        client.postMessage({ type: "SW_UPDATED", version: "v5" });
+      }
+    })()
   );
 });
 
@@ -25,10 +41,10 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // Ne gérer que les requêtes same-origin
+  // Só gere pedidos same-origin
   if (url.origin !== self.location.origin) return;
 
-  // 1) Navigation / HTML : network-first pour toujours servir la dernière version
+  // 1) Navegação / HTML : network-first para servir sempre a última versão
   if (req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html")) {
     e.respondWith(
       fetch(req)
@@ -58,7 +74,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 3) Assets statiques (JS/CSS/images hashés) : cache-first
+  // 3) Assets estáticos (JS/CSS/imagens hashed) : cache-first
   e.respondWith(
     caches.match(req).then((c) =>
       c ||
@@ -75,7 +91,7 @@ self.addEventListener("fetch", (e) => {
 
 // PUSH notifications
 self.addEventListener("push", (e) => {
-  let data = { title: "ConstruPilot", body: "Nouvelle notification", url: "/" };
+  let data = { title: "ConstruPilot", body: "Nova notificação", url: "/" };
   try { data = { ...data, ...(e.data && e.data.json()) }; } catch {}
   e.waitUntil(self.registration.showNotification(data.title, {
     body: data.body, icon: data.icon || "/logo192.png",

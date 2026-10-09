@@ -25,6 +25,40 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+/*
+ * Dedup cliente para GETs idênticos repetidos (janela de 2 s).
+ *
+ * Motivação: previne loops acidentais de rede causados por:
+ *   - bundles antigos em cache (service worker legacy)
+ *   - re-renders Reagir ciclo (useEffect sem deps correctas)
+ *   - polling demasiado agressivo
+ *
+ * Scope: SÓ GET. POST/PUT/PATCH/DELETE preservam o comportamento normal
+ * do axios (podem ter side effects legítimos que não devem ser deduped).
+ *
+ * Chave: `GET:${url}:${JSON.stringify(params)}`.
+ * Devolve: a mesma Promise do request anterior se dentro da janela.
+ */
+const _dedup = new Map();
+const _DEDUP_MS = 2000;
+
+const _axiosGet = api.get.bind(api);
+api.get = (url, config = {}) => {
+  const key = `GET:${url}:${JSON.stringify(config.params || {})}`;
+  const cached = _dedup.get(key);
+  if (cached && Date.now() - cached.ts < _DEDUP_MS) {
+    return cached.promise;
+  }
+  const promise = _axiosGet(url, config);
+  _dedup.set(key, { promise, ts: Date.now() });
+  promise
+    .catch(() => { /* ignora para o finally correr sempre */ })
+    .finally(() => {
+      setTimeout(() => _dedup.delete(key), _DEDUP_MS);
+    });
+  return promise;
+};
+
 export const eur = (v) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
     .format(Number(v || 0));

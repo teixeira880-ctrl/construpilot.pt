@@ -45,18 +45,36 @@ root.render(
   </React.StrictMode>,
 );
 
-// PWA : enregistrement du service worker (requis pour les push notifications)
+// PWA : registo do service worker (necessário para push notifications
+// + força reload quando o SW nova versão (v5+) toma controlo, para
+// eliminar bundles main.*.js antigos em cache que ainda executam
+// código legacy — ex. loops `/api/me?country=PT` do deploy anterior).
 if ("serviceWorker" in navigator) {
+  // Listener de mensagens do SW: quando o SW novo activa e envia
+  // SW_UPDATED, forçamos reload (guard sessionStorage evita loop).
+  navigator.serviceWorker.addEventListener("message", (ev) => {
+    if (ev?.data?.type !== "SW_UPDATED") return;
+    try {
+      if (sessionStorage.getItem("sw_reloaded") === "1") return;
+      sessionStorage.setItem("sw_reloaded", "1");
+    } catch { /* storage indisponível */ }
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then((reg) => {
-      // Force la vérification d'une nouvelle version à chaque chargement
+      // Força verificação de nova versão a cada load
       reg.update();
     }).catch(() => {});
-    // Quand un nouveau SW prend le contrôle, recharge une fois pour afficher la dernière version
+    // Quando um novo SW toma o controlo (controllerchange), recarrega 1×
     let refreshed = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (refreshed) return;
       refreshed = true;
+      try {
+        if (sessionStorage.getItem("sw_reloaded") === "1") return;
+        sessionStorage.setItem("sw_reloaded", "1");
+      } catch { /* storage indisponível */ }
       window.location.reload();
     });
   });
