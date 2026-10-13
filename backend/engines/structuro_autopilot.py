@@ -23,24 +23,24 @@ from engines import structuro_eurocode as eurocode
 VERSION = "autopilot-0.1.0"
 
 CONCRETE_DENSITY = 25.0            # kN/m³
-E_CONCRETE_KPA = 32_000_000.0     # kPa (C25/30, indicatif)
+E_CONCRETE_KPA = 32_000_000.0     # kPa (C25/30, indicativo)
 
-# Charges d'exploitation EN 1991-1-1 (valeurs usuelles NA FR, kN/m²) + catégorie EN 1990
-IMPOSED = {
-    "habitation": {"q": 1.5, "cat": "A"},
-    "bureau": {"q": 2.5, "cat": "B"},
-    "commerce": {"q": 5.0, "cat": "D"},
-    "parking": {"q": 2.5, "cat": "F"},
-    "industriel": {"q": 7.5, "cat": "E"},
-    "erp": {"q": 4.0, "cat": "C"},
-}
+# Sobrecargas EN 1991-1-1 — valores NP (AN PT) via `norms_pt`.
+from engines import norms_pt as _N  # noqa: E402
+
+# Compatibilidade: `IMPOSED` continua a existir com as chaves internas FR usadas
+# em todo o pipeline. Os valores vêm agora de `norms_pt` (AN PT).
+IMPOSED = {k: dict(v) for k, v in _N.IMPOSED_LOADS.items() if k in {
+    "habitation", "bureau", "commerce", "parking", "industriel", "erp",
+}}
 DEFAULT_DEST = "habitation"
-DEFAULT_FLOOR_PERM_EXTRA = 1.5    # revêtements + cloisons légères (hors poids propre dalle)
-DEFAULT_ROOF_PERM_EXTRA = 1.5     # étanchéité + isolation + protection
-DEFAULT_ROOF_VAR = 1.0            # toiture accessible entretien
+DEFAULT_FLOOR_PERM_EXTRA = 1.5    # revestimentos + divisórias leves (sem peso próprio da laje)
+DEFAULT_ROOF_PERM_EXTRA = 1.5     # impermeabilização + isolamento + proteção
+DEFAULT_ROOF_VAR = 1.0            # cobertura acessível para manutenção
 DEFAULT_SECTIONS = {"col_side_m": 0.30, "beam_width_m": 0.20, "beam_height_m": 0.40, "slab_thickness_m": 0.20}
-# Aucune contrainte de sol par défaut : une valeur inventée dimensionnerait des fondations
-# fictives. q_ELS/q_ELU viennent du rapport G2 (lecture vérifiée) ou d'une saisie confirmée.
+# Nenhum valor de capacidade resistente do terreno por omissão: um valor inventado
+# dimensiona fundações fictícias. q_ELS/q_ELU vêm do relatório G2 (leitura verificada)
+# ou de um dado introduzido e confirmado pelo projetista.
 DEFAULT_SOIL = {"q_els_kpa": None, "q_elu_kpa": None, "q_confirmed": False, "foundation_type": "isolee",
                 "anchorage_depth_m": 0.8, "water_table": False, "soil_class": "", "mode": "drained",
                 "phi_deg": 0.0, "c_kpa": 0.0, "cu_kpa": 0.0, "gamma_soil_kn_m3": 18.0}
@@ -101,7 +101,8 @@ def normalize_inputs(raw: dict | None) -> dict:
     d = default_inputs()
     raw = raw or {}
     b = raw.get("building") or {}
-    dest = (b.get("destination") or DEFAULT_DEST).strip().lower()
+    # Alias PT ↔ chave interna (habitacao→habitation, escritorios→bureau, …).
+    dest = _N.canonical_destination(b.get("destination") or DEFAULT_DEST)
     if dest not in IMPOSED:
         dest = DEFAULT_DEST
     d["building"]["destination"] = dest
@@ -192,9 +193,14 @@ def estimate_counts(inputs: dict) -> int:
 
 
 def _lvl_name(s: int, L: int) -> str:
+    """Devolve o rótulo PT-PT do nível estrutural (0=topo, L-1=R/C)."""
     if s == 0:
-        return "Toiture" if L > 1 else "Plancher haut"
-    return "RDC" if s == L - 1 else f"R+{L - 1 - s}"
+        return "Cobertura" if L > 1 else "Laje de teto"
+    if s == L - 1:
+        return "R/C"
+    # 1.º piso, 2.º piso, …
+    piso = L - 1 - s
+    return f"{piso}.º piso"
 
 
 def _build_frame(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
@@ -208,7 +214,7 @@ def _build_frame(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
     # Semelles isolées (une par noeud)
     for ix in range(nx + 1):
         for iy in range(ny + 1):
-            els.append(Element(id=f"F_{ix}_{iy}", kind="footing", level="Fondations",
+            els.append(Element(id=f"F_{ix}_{iy}", kind="footing", level="Fundações",
                 material="Betão C25/30", length_m=1.0, width_m=1.0, height_m=0.4,
                 x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                 source=src, mechanics_source=src, reviewed=True))
@@ -305,14 +311,14 @@ def _build_walls(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
     # Semelles filantes sous les files de murs porteurs sens X
     for iy in range(ny + 1):
         for ix in range(nx):
-            els.append(Element(id=f"SF_{ix}_{iy}", kind="footing", level="Fondations",
+            els.append(Element(id=f"SF_{ix}_{iy}", kind="footing", level="Fundações",
                 material="Betão C25/30", length_m=bx[ix], width_m=0.6, height_m=0.4,
                 x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                 source=src, mechanics_source=src, reviewed=True))
     # Semelles filantes sous les pignons/refends sens Y (périmètre fermé)
     for ix in range(nx + 1):
         for iy in range(ny):
-            els.append(Element(id=f"SFY_{ix}_{iy}", kind="footing", level="Fondations",
+            els.append(Element(id=f"SFY_{ix}_{iy}", kind="footing", level="Fundações",
                 material="Betão C25/30", length_m=by[iy], width_m=0.6, height_m=0.4,
                 x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                 source=src, mechanics_source=src, reviewed=True))
@@ -802,7 +808,7 @@ _MARK_PREFIX = {"beam": "PTR", "column": "POT", "wall": "VOI", "slab": "DAL", "f
 
 
 def _mark(kind: str, level: str) -> str:
-    code = {"Toiture": "COBERTURA", "Fondations": "FOND", "RDC": "RDC", "Plancher haut": "PH"}.get(level, level.replace("+", "").replace(" ", ""))
+    code = {"Cobertura": "COBERTURA", "Fundações": "FUND", "R/C": "RC", "Laje de teto": "PH"}.get(level, level.replace(".º piso", "P").replace(" ", ""))
     return f"{_MARK_PREFIX.get(kind, 'EL')}-{code}"
 
 
@@ -891,7 +897,7 @@ def metre(model: dict, result: dict, superstructure: dict, prices: dict) -> dict
     foot_ratio = 45.0
     foot_steel = round(vol.get("footing", 0.0) * foot_ratio, 1)
     steel_kg += foot_steel
-    schedule.append({"mark": "SEM-FOND", "type": "Sapatas", "level": "Fondations", "section": "—",
+    schedule.append({"mark": "SEM-FUND", "type": "Sapatas", "level": "Fundações", "section": "—",
                      "bars": f"forfait {int(foot_ratio)} kg/m³", "count": _count_by_kind(model, "footing"),
                      "unit_length_m": None, "weight_kg": foot_steel})
     steel_kg = round(steel_kg, 0)
@@ -915,11 +921,11 @@ _SYSTEM = (
 )
 
 _GEOM_PROMPT = (
-    "Analisas PLANTAS COTADAS e peças de PROJETOS DE LICENCIAMENTO (plantas de implantação, cortes, alçados, plantas de piso). Devolve ESTE JSON exato (valores enumerados inalterados):\n{\"building\":{\"destination\":\"habitation|bureau|commerce|parking|industriel|erp\",\"levels\":<nombre de niveaux porteurs entier>,\"storey_height_m\":<hauteur d\'étage courant>,\"ground_height_m\":<hauteur RDC>},\"system\":{\"structure\":\"portique|voiles\",\"wall_thickness_m\":<épaisseur mur porteur en m si lisible sinon null>},\"grid\":{\"bays_x_m\":[<portées successives entre files de poteaux/murs selon X, en m>],\"bays_y_m\":[<idem selon Y, en m>]},\"loads\":{\"floor_var_kn_m2\":<charge exploitation plancher si lisible sinon null>,\"roof_var_kn_m2\":<null si inconnu>},\"sections\":{\"col_side_m\":<section poteau si cotée sinon null>,\"beam_width_m\":<null>,\"beam_height_m\":<null>,\"slab_thickness_m\":<épaisseur dalle/plancher si cotée sinon null>},\"incertitudes\":[\"\"]}\nREGRAS:\n- Deduz o número de pisos do tipo (R/C+1 = 2 pisos estruturais, R/C+2 = 3, etc.), dos cortes/alçados ou das cotas (±0.00, +3.10, +5.90…). Conta também uma cave se for estrutural.\n- SISTEMA: moradia/edifício em ALVENARIA de blocos ou PAREDES de betão armado resistentes → structure=\'voiles\'; estrutura PILARES-VIGAS (BA ou aço) → structure=\'portique\'. Em Portugal, a maioria dos edifícios correntes é em pórtico de betão armado com paredes de alvenaria de enchimento → \'portique\', salvo paredes resistentes explícitas.\n- Lê as ALTURAS no CORTE: storey_height_m = diferença de cota entre dois pavimentos correntes sucessivos.\n- Utiliza a ESCALA indicada (ex.: 1/50, 1/100) E as cotas escritas para medir os vãos. Cada vão = distância de eixo a eixo entre dois alinhamentos consecutivos.\n- Se a malha for regular com N alinhamentos afastados de d, devolve [d, d, …] (N-1 valores).\n- Se a malha interior das paredes/alinhamentos estruturais NÃO estiver cotada (frequente nos projetos de licenciamento), deduz a IMPLANTAÇÃO fora a fora Lx x Ly a partir da planta de implantação/cobertura e devolve bays_x_m=[Lx], bays_y_m=[Ly], assinalando-o depois em \'incertitudes\'.\n- Devolve APENAS números em METROS. Põe null (nunca 0 inventado) quando um valor não for legível, e explica a dúvida em \'incertitudes\' (em português europeu). Não inventes nenhuma cota."
+    "Analisas PLANTAS COTADAS e peças de PROJETOS DE LICENCIAMENTO (plantas de implantação, cortes, alçados, plantas de piso). Devolve ESTE JSON exato (valores enumerados inalterados):\n{\"building\":{\"destination\":\"habitation|habitacao|bureau|escritorios|commerce|comercio|parking|estacionamento|industriel|industrial|erp|publico\",\"levels\":<número inteiro de pisos resistentes>,\"storey_height_m\":<pé-direito do piso corrente>,\"ground_height_m\":<pé-direito do R/C>},\"system\":{\"structure\":\"portique|voiles\",\"wall_thickness_m\":<espessura da parede resistente em m, ou null se ilegível>},\"grid\":{\"bays_x_m\":[<vãos sucessivos entre eixos de pilares/paredes segundo X, em m>],\"bays_y_m\":[<idem segundo Y, em m>]},\"loads\":{\"floor_var_kn_m2\":<sobrecarga de utilização em pavimento, ou null>,\"roof_var_kn_m2\":<null se não indicado>},\"sections\":{\"col_side_m\":<lado do pilar, ou null>,\"beam_width_m\":<null>,\"beam_height_m\":<null>,\"slab_thickness_m\":<espessura da laje, ou null>},\"incertitudes\":[\"\"]}\nREGRAS:\n- Deduz o número de pisos do tipo (R/C+1 = 2 pisos estruturais, R/C+2 = 3, etc.), dos cortes/alçados ou das cotas (±0.00, +3.10, +5.90…). Conta também uma cave se for estrutural.\n- SISTEMA: moradia/edifício em ALVENARIA de blocos ou PAREDES de betão armado resistentes → structure=\'voiles\'; estrutura PILARES-VIGAS (BA ou aço) → structure=\'portique\'. Em Portugal, a maioria dos edifícios correntes é em pórtico de betão armado com paredes de alvenaria de enchimento → \'portique\', salvo paredes resistentes explícitas.\n- Lê as ALTURAS no CORTE: storey_height_m = diferença de cota entre dois pavimentos correntes sucessivos.\n- Utiliza a ESCALA indicada (ex.: 1/50, 1/100) E as cotas escritas para medir os vãos. Cada vão = distância de eixo a eixo entre dois alinhamentos consecutivos.\n- Se a malha for regular com N alinhamentos afastados de d, devolve [d, d, …] (N-1 valores).\n- Se a malha interior das paredes/alinhamentos estruturais NÃO estiver cotada (frequente nos projetos de licenciamento), deduz a IMPLANTAÇÃO fora a fora Lx x Ly a partir da planta de implantação/cobertura e devolve bays_x_m=[Lx], bays_y_m=[Ly], assinalando-o depois em \'incertitudes\'.\n- Devolve APENAS números em METROS. Põe null (nunca 0 inventado) quando um valor não for legível, e explica a dúvida em \'incertitudes\' (em português europeu). Não inventes nenhuma cota."
 )
 
 _SOIL_PROMPT = (
-    "Analisas um RELATÓRIO GEOTÉCNICO (estudo geotécnico de projeto, NP EN 1997-1/-2) — são-te fornecidas VÁRIAS PÁGINAS. Devolve ESTE JSON exato (valores enumerados inalterados):\n{\"soil\":{\"q_els_kpa\":<contrainte admissible ELS en kPa ou null>,\"q_elu_kpa\":<ELU en kPa ou null>,\"foundation_type\":\"isolee|filante|radier\",\"anchorage_depth_m\":<profondeur d\'ancrage/encastrement D en m>,\"water_table\":<true/false nappe/eau rencontrée>,\"soil_class\":\"<nature/classe du sol d\'assise lue>\",\"phi_deg\":<angle de frottement phi\' ou null>,\"c_kpa\":<cohésion c\' ou null>,\"cu_kpa\":<cohésion non drainée cu ou null>,\"gamma_soil_kn_m3\":<poids volumique du sol ou null>},\"incertitudes\":[\"\"]}\nREGRAS:\n- Procura a \'tensão admissível\', \'qadm\', \'tensão de cálculo ELS/ELU\', \'qELS/qELU\', \'capacidade resistente do terreno\', ou uma fórmula do tipo \'Vd ≤ q × A\'\' (então q É a tensão admissível). Converte TUDO em kPa: 1 MPa = 1000 kPa, 1 bar = 100 kPa, 1 t/m2 = 10 kPa, 1 kgf/cm2 ≈ 100 kPa. Ex.: 0,300 MPa → 300 kPa; 0,492 MPa → 492 kPa.\n- Toma a tensão do ESTRATO DE FUNDAÇÃO das fundações superficiais (não a das escoras/contenções provisórias).\n- Deduz \'foundation_type\' da recomendação (sapatas isoladas / contínuas / ensoleiramento / estacas->radier). Para uma moradia em paredes resistentes, adota \'filante\' se forem citadas sapatas contínuas.\n- Põe null (nunca um valor inventado) quando não estiver escrito nas páginas fornecidas; lista as dúvidas em \'incertitudes\' (em português europeu). Não decidas entre dois valores contraditórios: assinala-os."
+    "Analisas um RELATÓRIO GEOTÉCNICO (estudo geotécnico de projeto, NP EN 1997-1/-2) — são-te fornecidas VÁRIAS PÁGINAS. Devolve ESTE JSON exato (valores enumerados inalterados):\n{\"soil\":{\"q_els_kpa\":<capacidade resistente admissível ELS, em kPa, ou null>,\"q_elu_kpa\":<ELU em kPa, ou null>,\"foundation_type\":\"isolee|filante|radier\",\"anchorage_depth_m\":<profundidade de encastramento D, em m>,\"water_table\":<true/false — nível freático detetado>,\"soil_class\":\"<natureza/classe do solo de assentamento lida>\",\"phi_deg\":<ângulo de atrito interno phi\', ou null>,\"c_kpa\":<coesão c\', ou null>,\"cu_kpa\":<coesão não drenada cu, ou null>,\"gamma_soil_kn_m3\":<peso volúmico do solo, ou null>},\"incertitudes\":[\"\"]}\nREGRAS:\n- Procura a \'tensão admissível\', \'qadm\', \'tensão de cálculo ELS/ELU\', \'qELS/qELU\', \'capacidade resistente do terreno\', ou uma fórmula do tipo \'Vd ≤ q × A\'\' (então q É a tensão admissível). Converte TUDO em kPa: 1 MPa = 1000 kPa, 1 bar = 100 kPa, 1 t/m² = 10 kPa, 1 kgf/cm² ≈ 100 kPa. Ex.: 0,300 MPa → 300 kPa; 0,492 MPa → 492 kPa.\n- Toma a tensão do ESTRATO DE FUNDAÇÃO das fundações superficiais (não a das escoras/contenções provisórias).\n- Deduz \'foundation_type\' da recomendação (sapatas isoladas / contínuas / ensoleiramento / estacas → radier). Para uma moradia em paredes resistentes, adota \'filante\' se forem citadas sapatas contínuas.\n- Põe null (nunca um valor inventado) quando não estiver escrito nas páginas fornecidas; lista as dúvidas em \'incertitudes\' (em português europeu). Não decidas entre dois valores contraditórios: assinala-os."
 )
 
 

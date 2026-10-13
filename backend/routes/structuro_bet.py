@@ -405,7 +405,7 @@ async def autopilot_generate(dossier_id: str, body: GenerateIn, user=Depends(cur
 
 @router.get("/studies/{dossier_id}/autopilot/coffrage.pdf")
 async def autopilot_coffrage(dossier_id: str, user=Depends(current_user)):
-    """Plans de coffrage cotés par niveau + nomenclature d'aciers (depuis l'étude générée)."""
+    """Plantas de cofragem cotadas por piso + mapa de armaduras (a partir do estudo gerado)."""
     d = await _get(dossier_id, user["user_id"])
     ap = d.get("autopilot") or {}
     sid = ap.get("calc_study_id")

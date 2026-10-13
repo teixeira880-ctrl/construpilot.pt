@@ -1,9 +1,9 @@
-"""Dossier d'exécution BET (coffrage + ferraillage) — rendu vectoriel déterministe A3.
+"""Dossier de execução BET (cofragem + armaduras) — desenho vetorial determinista A3.
 
-Depuis le modèle auto-pilote (éléments géométriques + ferraillage EC2 + métré), produit un
+A partir do modelo do autopiloto (elementos geométricos + armaduras EC2 + medição), produz um
 jeu de feuilles A3 paysage façon bureau d'études : cartouche CONSTRUPILOT, files d'axes cotées,
-plans de coffrage par niveau, coupes de ferraillage (semelles, poteaux, voiles, poutres),
-plans de nappes de dalles, ancrages/recouvrements, nomenclature et note de calcul.
+plantas de cofragem por piso, cortes de armaduras (sapatas, pilares, paredes resistentes, vigas),
+plantas de malhas de lajes, amarrações/recobrimentos, mapa de armaduras e nota de cálculo.
 
 NON EXÉCUTOIRE — PRÉ-DIMENSIONNEMENT À VISER PAR L'INGÉNIEUR / BUREAU DE CONTRÔLE.
 """
@@ -67,7 +67,7 @@ class Sheet:
         c.drawString(PAD + 14, top - 28, "CONSTRUPILOT")
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 8)
-        c.drawRightString(PAGE_W - PAD - 14, top - 24, "STRUCTURE / AUTO-PILOTE BET")
+        c.drawRightString(PAGE_W - PAD - 14, top - 24, "STRUCTURE / AUTOPILOTO BET")
         c.setFont("Helvetica-Bold", 15)
         c.drawString(PAD + 14, top - 52, title)
         c.setFont("Helvetica", 8.5)
@@ -415,7 +415,7 @@ def _coffrage_sheet(c, ctx, level, els, marks, code, feuille, foundation=False):
     if "beam" in kinds:
         nb.append(("Vigas", "Alturas abaixo da laje; armaduras na folha F-PTR."))
     if foundation:
-        nb.append(("Fondations", "Sapatas dimensionadas com base na tensão admissível do estudo geotécnico (ver memória de cálculo)."))
+        nb.append(("Fundações", "Sapatas dimensionadas com base na tensão admissível do estudo geotécnico (ver memória de cálculo)."))
     nb.append(("Laje", f"Espessura {(int(round((slabs[0].get('height_m') or 0.2) * 100)) if slabs else '—')} cm ; malhas na folha de armaduras de lajes."))
     nb.append(("Estado", "Pré-dimensionamento automático. Cotas lidas/estimadas a verificar na planta de arquitetura."))
     sh.notes(nb)
@@ -796,9 +796,9 @@ def _levels_bottom_up(model):
     seen = []
     for e in model.get("elements", []):
         lv = e.get("level", "?")
-        if lv != "Fondations" and lv not in seen:
+        if lv != "Fundações" and lv not in seen:
             seen.append(lv)
-    # seen est top-down (Toiture..RDC) → on remonte RDC -> Toiture
+    # seen est top-down (Cobertura..RDC) → on remonte RDC -> Cobertura
     return list(reversed(seen))
 
 
@@ -816,10 +816,10 @@ def build_coffrage_pdf(model: dict, revision: int, title: str, superstructure: d
     elements = model.get("elements", [])
 
     # 1) Coffrage fondations
-    fnd = [e for e in elements if e.get("level") == "Fondations"]
+    fnd = [e for e in elements if e.get("level") == "Fundações"]
     nsheet = 1
     if fnd:
-        _coffrage_sheet(c, ctx, "Fondations", fnd, marks, "C01", nsheet, foundation=True); c.showPage(); nsheet += 1
+        _coffrage_sheet(c, ctx, "Fundações", fnd, marks, "C01", nsheet, foundation=True); c.showPage(); nsheet += 1
     # 2) Coffrage par niveau (bas -> haut)
     for i, lv in enumerate(_levels_bottom_up(model), start=2):
         els = [e for e in elements if e.get("level") == lv]
