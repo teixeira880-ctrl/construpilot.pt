@@ -216,6 +216,7 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
         ))
 
     is_buildable = A.compute_is_buildable(alerts_all)
+    is_geometrically_possible = A.compute_is_geometrically_possible(alerts_all)
 
     oa = A.check_optimal(blondel, slope_deg, norms)
     if oa:
@@ -237,7 +238,7 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
             "turn_footprint_width_mm": round(turn_width, 2),
         },
         steps_per_flight=[num_lower_treads if inp.balancing == "straight" else num_lower, num_turn],
-        treads=treads, alerts=alerts_all, is_buildable=is_buildable,
+        treads=treads, alerts=alerts_all, is_buildable=is_buildable, is_geometrically_possible=is_geometrically_possible,
     )
 
 
@@ -248,5 +249,5 @@ def _dead(stair_type, code, msg):
         stair_run_mm=0, stair_length_mm=0, headroom_mm=0,
         required_stairwell_mm={}, steps_per_flight=[], treads=[],
         alerts=[Alert(level="red", code=code, message_fr=msg)],
-        is_buildable=False,
+        is_buildable=False, is_geometrically_possible=False,
     )

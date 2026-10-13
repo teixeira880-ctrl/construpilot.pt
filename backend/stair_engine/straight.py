@@ -146,7 +146,7 @@ def compute_straight(
                     message_fr="Altura entre pisos inválida ou impossível de dividir.",
                 )
             ],
-            is_buildable=False,
+            is_buildable=False, is_geometrically_possible=False,
         )
 
     num_treads = n_steps - 1  # convention : le dernier "riser" débouche sur le sol haut
@@ -226,6 +226,7 @@ def compute_straight(
 
     # 6. is_buildable
     is_buildable = A.compute_is_buildable(alerts_all)
+    is_geometrically_possible = A.compute_is_geometrically_possible(alerts_all)
 
     # 7. Optimal config (vert)
     opt_alert = A.check_optimal(blondel, slope_deg, norms)
@@ -273,7 +274,7 @@ def compute_straight(
         steps_per_flight=[n_steps],
         treads=treads,
         alerts=alerts_all,
-        is_buildable=is_buildable,
+        is_buildable=is_buildable, is_geometrically_possible=is_geometrically_possible,
     )
 
 

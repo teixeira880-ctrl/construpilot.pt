@@ -87,10 +87,15 @@ function ResultDetail({ r }) {
     <div className="space-y-3" data-testid="stair-result-detail">
       <div className="flex items-center gap-2">
         <Badge variant={r.is_buildable ? "default" : "destructive"} data-testid="stair-buildable-badge">
-          {r.is_buildable ? "Exequível" : "Não exequível"}
+          {r.is_buildable ? "Conforme" : "Não conforme"}
         </Badge>
         <span className="text-xs text-muted-foreground">{TYPE_LABEL[r.stair_type] || r.stair_type}</span>
       </div>
+      {!r.is_buildable && (
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700" data-testid="stair-nonconforming-banner">
+          Solução não conforme (RGEU / boas práticas) — não utilizar em habitação. Ver alertas vermelhos.
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {rows.map(([k, v]) => (
           <div key={k} className="flex justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
@@ -188,8 +193,8 @@ export default function StairCalculator() {
       const { data } = await api.post(`/stairs/calculate/${t.api}`, buildPayload(stairType));
       setResult(data);
       setTab("calc");
-      if (data.is_buildable) toast.success("Escada calculada — exequível");
-      else toast.warning("Escada calculada — não exequível tal como está (ver alertas)");
+      if (data.is_buildable) toast.success("Escada calculada — conforme");
+      else toast.warning("Escada calculada — NÃO conforme (ver alertas vermelhos)");
     } catch (e) {
       toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Cálculo impossível");
     }

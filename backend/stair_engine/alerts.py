@@ -46,9 +46,19 @@ def is_alert_blocking(alert: Alert) -> bool:
     return alert.level == "red" and alert.code in BLOCKING_CODES
 
 
-def compute_is_buildable(alerts: List[Alert]) -> bool:
-    """is_buildable = aucun blocker géométrique/sécurité."""
+def compute_is_geometrically_possible(alerts: List[Alert]) -> bool:
+    """Possível geometricamente = nenhum bloqueio físico (BLOCKING_CODES)."""
     return not any(is_alert_blocking(a) for a in alerts)
+
+
+def compute_is_buildable(alerts: List[Alert]) -> bool:
+    """Conforme / utilizável = NENHUM alerta vermelho (segurança ou regulamentar).
+
+    Uma escada com alerta vermelho (cobertor, inclinação, Blondel, espelho…) nunca é
+    apresentada como construível. Ver `compute_is_geometrically_possible` para o
+    critério puramente físico.
+    """
+    return not any(a.level == "red" for a in alerts)
 
 
 def check_blondel(blondel_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]:

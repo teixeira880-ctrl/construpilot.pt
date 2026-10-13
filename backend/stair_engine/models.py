@@ -130,4 +130,5 @@ class StairResult(BaseModel):
     treads: List[TreadDetail] = Field(default_factory=list)
     alerts: List[Alert]
     is_buildable: bool
+    is_geometrically_possible: bool = True
     computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

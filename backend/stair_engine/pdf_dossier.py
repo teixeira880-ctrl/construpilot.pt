@@ -248,7 +248,7 @@ def generate_dossier_pdf(
         ["Desenvolvimento real", f"{stair_result.get('stair_run_mm', '—')} mm"],
         ["Comprimento do lanço", f"{stair_result.get('stair_length_mm', '—')} mm"],
         ["Altura livre", f"{stair_result.get('headroom_mm', '—')} mm"],
-        ["Constructible", "Oui" if stair_result.get("is_buildable") else "Non"],
+        ["Conforme", "Sim" if stair_result.get("is_buildable") else "NÃO — não utilizar em habitação"],
     ]
     tbl = _kv_table(pairs)
     tbl.wrapOn(c, W - 30 * mm, y); tbl.drawOn(c, 15 * mm, y - tbl._height)

@@ -236,6 +236,7 @@ def _compute_qt_single(
 
     # is_buildable
     is_buildable = A.compute_is_buildable(alerts_all)
+    is_geometrically_possible = A.compute_is_geometrically_possible(alerts_all)
 
     # OPTIMAL
     opt_alert = A.check_optimal(blondel, slope_deg, norms)
@@ -266,7 +267,7 @@ def _compute_qt_single(
         steps_per_flight=[num_turn, num_upper],
         treads=treads,
         alerts=alerts_all,
-        is_buildable=is_buildable,
+        is_buildable=is_buildable, is_geometrically_possible=is_geometrically_possible,
     )
 
 
@@ -484,5 +485,5 @@ def _dead_result(stair_type: str, code: str, msg: str) -> StairResult:
         steps_per_flight=[],
         treads=[],
         alerts=[Alert(level="red", code=code, message_fr=msg)],
-        is_buildable=False,
+        is_buildable=False, is_geometrically_possible=False,
     )
