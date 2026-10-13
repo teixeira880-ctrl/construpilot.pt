@@ -580,6 +580,11 @@ async def seed():
         exists = await db.plans.find_one({"plan_id": plan["plan_id"]})
         if not exists:
             await db.plans.insert_one(plan)
+        else:
+            # construpilot.pt : textes du catalogue toujours alignés sur le code (PT-PT),
+            # la BD de production pouvait contenir les libellés FR d'origine.
+            await db.plans.update_one({"plan_id": plan["plan_id"]}, {"$set": {
+                k: plan[k] for k in ("name", "tagline", "description", "features", "badge") if k in plan}})
     # Migration prix (08/09/2026) : Premium 19€/190€ · Pro 149€/1570€ · Pro Business 249€/2490€
     # + Project Pass 19,90€ → 50€ (accès Plan 2D + 3 rendus 3D offerts)
     PRICE_MIGRATION = {
