@@ -24,12 +24,29 @@ from engines.radar_filters import (
 from engines.radar_zones import (
     DEPARTMENTS,
     department_of,
-    filter_zone,
-    normalize_departments,
 )
-from engines.sitadel_permits import window_start
-from engines.sitadel_sync import INITIAL_DEPARTMENTS, ensure_sync, sync_status
+from engines.radar_source import (
+    INITIAL_DEPARTMENTS,
+    SOURCE_KIND,
+    ensure_sync,
+    normalize_zones as normalize_departments,
+    refresh_classifications,
+    sync_status,
+    window_start,
+)
 from engines.sitadel_text import repair_cached_address
+
+
+def _filter_zone(items, profile, km=None, zone_mode=None, departments=None):
+    """Filtra oportunidades por zona (modo CML: aceita apenas "lisboa")."""
+    mode = zone_mode or profile["zone_mode"]
+    deps = normalize_departments(departments.split(",")) if departments is not None else profile["departments"]
+    radius = km if km is not None else profile["km"]
+    if mode == "departments":
+        filtered = [o for o in items if (o.get("dep") or "") in deps or department_of(o) in deps]
+    else:
+        filtered = [o for o in items if o.get("distance_km") is not None and o["distance_km"] <= radius]
+    return filtered, {"zone_mode": mode, "departments": deps, "radius_km": radius}
 from fastapi import (
     APIRouter,
     Depends,
@@ -125,7 +142,7 @@ def _build(permit, base, company_metiers):
     my_low = sum(l["low"] for l in my)
     my_high = sum(l["high"] for l in my)
     score = _score(permit, dist, company_metiers, my_low)
-    return {**permit, "classification": permit.get("classification") or classification(permit), "dep": department_of(permit), "promoteur": permit.get("promoteur"), "coordonnees_status": permit.get("coordonnees_status") or ("absent" if not permit.get("promoteur") else "partiel"),
+    return {**permit, "classification": permit.get("classification") or classification(permit), "dep": permit.get("dep") or department_of(permit), "promoteur": permit.get("promoteur"), "coordonnees_status": permit.get("coordonnees_status") or ("absent" if not permit.get("promoteur") else "partiel"),
             "distance_km": dist, "lots": lots,
             "estimate_low": tlo, "estimate_high": thi,
             "my_lot_low": my_low, "my_lot_high": my_high,
@@ -136,11 +153,10 @@ async def _get_permits(user=None):
     """Only successfully published official snapshots. Empty really means empty."""
     snapshots = await db.radar_sync.find({"active_run": {"$exists": True}}, {"_id": 0, "active_run": 1}).to_list(None)
     permits = await db.radar_permits.find({"ingest_run": {"$in": [s["active_run"] for s in snapshots]},
-        "source.kind": "sitadel_official", "source.verified": True, "is_demo": False,
-        "date_auth": {"$gte": window_start(), "$lte": datetime.now(timezone.utc).date().isoformat()}, "statut_code": {"$in": [2, 5]}}, {"_id": 0}).to_list(None)
+        "source.kind": {"$in": ["sitadel_official", "cml_official"]}, "source.verified": True, "is_demo": False,
+        "date_auth": {"$gte": window_start(), "$lte": datetime.now(timezone.utc).date().isoformat()}}, {"_id": 0}).to_list(None)
+    await refresh_classifications(permits)
     for permit in permits:
-        repair_cached_address(permit)
-        permit["classification"] = classification(permit)
         cj = str((permit.get("promoteur") or {}).get("categorie_juridique") or "")
         if permit.get("mo") == "PARTICULIER" and cj.isdigit() and len(cj) == 4 and not cj.startswith("1"):
             permit["mo"] = _norm_mo(cj)
@@ -182,8 +198,9 @@ async def _profile(user):
 @router.get("/profile")
 async def get_profile(user=Depends(current_user)):
     p = await _profile(user)
+    options = [{"code": "lisboa", "name": "Lisboa"}] if SOURCE_KIND == "cml_official" else [{"code": code, "name": name} for code, name in sorted(DEPARTMENTS.items())]
     return {**p, "filter_options": filter_options(), "metier_options": [{"key": k, "label": v} for k, v in METIER_LABELS.items()],
-            "department_options": [{"code": code, "name": name} for code, name in sorted(DEPARTMENTS.items())]}
+            "department_options": options}
 
 
 class ProfileIn(BaseModel):
@@ -233,7 +250,7 @@ async def list_opportunities(km: int | None = None, metier: str | None = None, f
     await ensure_sync(sync_deps)
     permits = await _get_permits(user)
     items = [_build(pm, p["base"], p["metiers"]) for pm in permits]
-    items, zone = filter_zone(items, p, km, zone_mode, departments)
+    items, zone = _filter_zone(items, p, km, zone_mode, departments)
     if metier:
         items = [x for x in items if metier in x["lots"] or any(l["metier"] == metier for l in x["lots"])]
     if favorites:

@@ -128,7 +128,7 @@ export default function RadarChantiers() {
     const points = data.map_points || [];
     points.forEach((o) => {
       const popup = document.createElement("div");
-      popup.textContent = `${o.commune} · ${o.count} licenças · centro do concelho`;
+      popup.textContent = `${o.commune} · ${o.count} licenças · centro da freguesia`;
       L.circleMarker([o.lat, o.lon], { radius: 9, color: scoreColor(o.score), fillColor: scoreColor(o.score), fillOpacity: 0.85, weight: 2 })
         .bindPopup(popup)
         .on("click", () => openDetail(o.id)).addTo(layer.current);
@@ -286,7 +286,7 @@ export default function RadarChantiers() {
             <span className="font-bold">Acompanhamento das campanhas</span>
             {campaigns && (
               <span className="text-muted-foreground flex items-center gap-3">
-                <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {campaigns.total_opens} ouvertures</span>
+                <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {campaigns.total_opens} aberturas</span>
                 <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {campaigns.total_leads} respostas</span>
               </span>
             )}
@@ -398,7 +398,7 @@ export default function RadarChantiers() {
 
       {data && data.count > 0 && <nav className="flex flex-wrap items-center justify-end gap-3 mt-4" aria-label="Páginas das licenças" data-testid="radar-pagination">
         <Button size="sm" variant="outline" disabled={loading || pageNumber <= 1} onClick={() => setPageNumber((p) => p - 1)} data-testid="radar-page-previous">Anterior</Button>
-        <span className="text-xs" data-testid="radar-page-number">Página {pageNumber} / {Math.max(1, Math.ceil(data.count / data.page_size))} · {data.count} permis</span>
+        <span className="text-xs" data-testid="radar-page-number">Página {pageNumber} / {Math.max(1, Math.ceil(data.count / data.page_size))} · {data.count} licenças</span>
         <Button size="sm" variant="outline" disabled={loading || pageNumber * data.page_size >= data.count} onClick={() => setPageNumber((p) => p + 1)} data-testid="radar-page-next">Seguinte</Button>
       </nav>}
 
@@ -417,13 +417,13 @@ export default function RadarChantiers() {
               </span>
             </div>
             <h2 className="font-display text-xl font-bold mt-3">{sel.batiment}</h2>
-            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1" data-testid="radar-detail-location"><MapPin className="h-4 w-4 shrink-0" /> {sel.commune} ({sel.cp}) · {sel.distance_km == null ? "Não localizado" : `≈ ${sel.distance_km} km · centre communal`}</p>
-            <p className="text-sm mt-2 break-words" data-testid="radar-real-site-address">Terrain : {[sel.adresse, sel.adresse_complement, sel.cp, sel.commune].filter(Boolean).join(", ")}</p>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1" data-testid="radar-detail-location"><MapPin className="h-4 w-4 shrink-0" /> {sel.commune} {sel.freguesia ? `· ${sel.freguesia}` : (sel.cp ? `(${sel.cp})` : "")} · {sel.distance_km == null ? "Não localizado" : `≈ ${sel.distance_km} km · centro da freguesia`}</p>
+            <p className="text-sm mt-2 break-words" data-testid="radar-real-site-address">Local da obra: {[sel.adresse, sel.adresse_complement, sel.cp, sel.commune].filter(Boolean).join(", ")}</p>
             {Object.keys(sel.source_text_corrections || {}).length > 0 && <p className="text-xs text-muted-foreground" data-testid="radar-address-encoding-note">Codificação do texto normalizada · original conservado na fonte.</p>}
             <RadarQualification key={`qualification-${sel.id}`} opp={sel} options={profile?.filter_options?.client_types || []} onUpdated={(o) => { setSel(o); load(km); }} />
             <RadarContactPanel key={sel.id} opp={sel} onUpdated={(o) => { setSel(o); load(km); }} />
             <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
-              {[["Tipo", sel.type], ["Natureza", sel.nature], ["Área publicada", sel.surf_created ? `${sel.surf_created} m²` : "Não utilizável"], ["Habitações", sel.logements], ["Autorização", sel.date_auth || "Não comunicada"], ["N°", sel.num], ["Estado SDES", sel.statut]].map(([l, v], i) => (
+              {[["Tipo", sel.type], ["Natureza", sel.nature], ["Área publicada", sel.surf_created ? `${sel.surf_created} m²` : "Não utilizável"], ["Habitações", sel.logements], ["Autorização", sel.date_auth || "Não comunicada"], ["N.º", sel.num], ["Estado", sel.statut]].map(([l, v], i) => (
                 <div key={i} className="surface rounded-md p-2 min-w-0" data-testid={`radar-permit-field-${i}`}><div className="text-[10px] uppercase text-muted-foreground">{l}</div><div className="font-semibold break-words">{v}</div></div>
               ))}
             </div>
@@ -501,7 +501,7 @@ export default function RadarChantiers() {
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground mt-3" data-testid="radar-permit-source">Fonte: {sel.source?.name} · publication {sel.source?.millesime}</p>
+            <p className="text-xs text-muted-foreground mt-3" data-testid="radar-permit-source">Fonte: {sel.source?.name}{sel.source?.millesime ? ` · publicação ${sel.source.millesime}` : ""}</p>
             {sel.source?.record_url && <a href={sel.source.record_url} target="_blank" rel="noopener noreferrer" className="inline-block text-xs text-primary underline mt-1" data-testid="radar-record-source-link">Ver a licença na fonte oficial</a>}
           </div>
         </div>

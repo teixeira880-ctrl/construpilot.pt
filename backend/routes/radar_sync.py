@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.security import current_user
-from engines.radar_zones import normalize_departments
-from engines.sitadel_sync import ensure_sync, sync_status
+from engines.radar_source import ensure_sync, normalize_zones, sync_status
 
 router = APIRouter(prefix="/radar", tags=["radar-official-source"])
 
@@ -34,6 +33,6 @@ class SyncOut(BaseModel):
 async def refresh_official(body: SyncIn, user=Depends(current_user)):
     if user.get("account_type") != "pro" and user.get("role") != "admin":
         raise HTTPException(403, "Radar reservado a profissionais.")
-    departments = normalize_departments(body.departments)
+    departments = normalize_zones(body.departments)
     await ensure_sync(departments, force=True)
     return await sync_status(departments)
