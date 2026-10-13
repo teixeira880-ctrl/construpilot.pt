@@ -337,9 +337,9 @@ function StudyDetail({ study, setStudy, onBack }) {
         <h1 className="text-2xl font-bold">{s.title}</h1>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant="outline">Revisão {s.revision}</Badge>
-          <Badge variant="outline">Piso: {LEVEL_LABEL[s.output_level] || s.output_level}</Badge>
+          <Badge variant="outline">Nível: {LEVEL_LABEL[s.output_level] || s.output_level}</Badge>
           <Badge variant="outline">Ciclo: {LIFECYCLE_LABEL[s.lifecycle] || s.lifecycle}</Badge>
-          {s.ai_engine && <Badge variant="outline">Lecture IA : {s.ai_engine}</Badge>}
+          {s.ai_engine && <Badge variant="outline">Leitura IA: {s.ai_engine}</Badge>}
         </div>
       </header>
 
