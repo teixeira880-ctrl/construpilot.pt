@@ -10,8 +10,9 @@ import NewsletterForm from "@/components/NewsletterForm";
 
 const dynToCard = (a) => ({
   slug: a.slug, title: a.title, excerpt: a.excerpt || a.meta_description || "",
-  cover: a.hero_image_url || "/og-image.jpg", category: a.seed_keyword || "Guide",
-  readingMinutes: a.reading_minutes || 4, publishedAt: a.published_at,
+  cover: a.hero_image_url || "/og-image.jpg",
+  category: a.audience === "pros" ? "Profissionais" : a.audience === "particuliers" ? "Particulares" : (a.seed_keyword || "Guia"),
+  readingMinutes: a.reading_minutes || 4, publishedAt: a.published_at, audience: a.audience,
 });
 
 const JSON_LD = {
@@ -33,6 +34,7 @@ export default function Blog() {
   const { lang } = useI18n();
   const isPT = lang === "pt";
   const [dyn, setDyn] = useState([]);
+  const [aud, setAud] = useState("all");
   useEffect(() => {
     api.get(`/blog/autoseo?lang=${isPT ? "pt" : "fr"}`)
       .then(({ data }) => setDyn((data.articles || []).map(dynToCard)))
@@ -40,7 +42,8 @@ export default function Blog() {
   }, [isPT]);
   const staticArticles = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
   const staticSlugs = new Set(staticArticles.map((a) => a.slug));
-  const articles = [...dyn.filter((a) => !staticSlugs.has(a.slug)), ...staticArticles];
+  const allArticles = [...dyn.filter((a) => !staticSlugs.has(a.slug)), ...staticArticles];
+  const articles = aud === "all" ? allArticles : allArticles.filter((a) => a.audience === aud);
   return (
     <>
       <SEO
@@ -70,6 +73,14 @@ export default function Blog() {
       </section>
 
       <section className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16">
+        <div className="mb-8 inline-flex rounded-md border border-border overflow-hidden" data-testid="blog-audience-filter">
+          {[["all", "Todos"], ["pros", "Profissionais"], ["particuliers", "Particulares"]].map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setAud(k)} data-testid={`blog-filter-${k}`}
+              className={`px-4 py-2 text-sm font-semibold ${aud === k ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary/50"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="blog-list">
           {articles.map((a) => (
             <Link

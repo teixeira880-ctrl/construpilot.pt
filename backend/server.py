@@ -701,6 +701,14 @@ async def seed():
     scheduler.add_job(blg_routes.run_scheduled_sync,
                       "interval", hours=2, id="babylovegrowth_sync",
                       max_instances=1, coalesce=True)
+    # Agente CEO : produção diária de artigos (06:00 Lisboa) + publicação automática agendada
+    from engines import ceo_daily
+    scheduler.add_job(ceo_daily.run_daily,
+                      CronTrigger(hour=6, minute=0, timezone="Europe/Lisbon"),
+                      id="ceo_daily_articles", max_instances=1, coalesce=True)
+    scheduler.add_job(ceo_daily.publish_due,
+                      "interval", minutes=15, id="ceo_daily_publish_due",
+                      max_instances=1, coalesce=True)
     # Résumé mensuel des surcoûts/économies fournisseurs — le 1er de chaque mois à 07:00 UTC
     scheduler.add_job(einvoicing_routes.run_monthly_overspend_reports,
                       CronTrigger(day=1, hour=7, minute=0),

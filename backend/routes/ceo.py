@@ -28,6 +28,7 @@ from core.db import db
 from core.security import admin_user
 from engines import storage
 from engines import ceo_media
+from engines import ceo_blog, ceo_daily
 from engines import emailer
 from engines.ai import _complete, _json
 from engines.expenses import cap
@@ -97,55 +98,55 @@ class BlogIn(BaseModel):
 @router.post("/blog/draft")
 async def blog_draft(body: BlogIn, admin=Depends(admin_user)) -> dict:
     bind(admin)
-    aud = AUDIENCE_LABEL.get(body.audience, AUDIENCE_LABEL["particuliers"])
-    system = (f'És o editor-chefe SEO do ConstruPilot, um SaaS de construção para o mercado português. Escreves para os {aud}. Artigos úteis, concretos e otimizados para SEO. REGRA ABSOLUTA: não inventes NENHUMA estatística, NENHUM montante de apoio, NENHUMA norma ou referência regulamentar precisa de que não tenhas a certeza; mantém-te geral e honesto, convida a verificar os montantes oficiais. Escreve em português europeu (nunca brasileiro).')
-    kw = ", ".join(body.keywords) if body.keywords else "(libre)"
-    prompt = (f'Tema: {body.topic}\nPalavras-chave alvo: {kw}\nAudience : {aud}\n\nRedige um artigo de blogue completo (600 a 900 palavras) em HTML semântico (<h2>, <h3>, <p>, <ul><li>) SEM <html>/<head>/<body> nem estilos inline. Introdução cativante, corpo estruturado, conclusão com um apelo à ação para o ConstruPilot.\n\nResponde APENAS em JSON: {{"title":..., "slug":... (curto, em-minusculas-com-hifens), "meta_description":... (máx. 155 caracteres), "keywords":[...], "content_html":"...", "hero_image_prompt":"descrição EM INGLÊS para gerar uma fotografia hero profissional (obra/reabilitação), sem qualquer texto na imagem"}}')
-    raw = await _complete(system, prompt, feature="ceo_blog")
-    data = _json(raw, {})
-    if not data.get("content_html") or not data.get("title"):
+    try:
+        return await ceo_blog.generate_article(body.topic, body.keywords, body.audience,
+                                               with_image=body.with_image,
+                                               created_by=admin.get("user_id"), origin="manual")
+    except ValueError:
         raise HTTPException(502, "Geração do artigo impossível, tente novamente.")
 
-    article_id = "ceo_" + secrets.token_hex(8)
-    slug = await _unique_slug(_slugify(data.get("slug") or data["title"]))
-    warnings: list[str] = []
-    hero_storage = hero_url = None
 
-    if body.with_image and (data.get("hero_image_prompt")):
-        ok, reason = await _budget_allows()
-        if not ok:
-            warnings.append(f'Imagem hero não gerada: {reason}')
-        else:
-            try:
-                img_prompt = ("Professional editorial hero photograph for a French construction/renovation blog. "
-                              f"{data['hero_image_prompt']}. Landscape 16:9, natural light, no text, no logo.")
-                img_bytes, ctype = await ceo_media.generate_image(img_prompt, session_id=article_id)
-                ext = "png" if "png" in ctype else "jpg"
-                hero_storage = f"{storage.APP_NAME}/ceo/{article_id}/hero.{ext}"
-                await run_in_threadpool(storage.put_object, hero_storage, img_bytes, ctype)
-                hero_url = f"/api/blog/media/{article_id}/hero"
-            except Exception as exc:  # noqa: BLE001
-                log.error("CEO hero image failed (%s)", type(exc).__name__)
-                warnings.append("Imagem hero não gerada (erro do gerador).")
+# ============================== Produção diária ==============================
 
-    doc = {
-        "autoseo_id": article_id, "source": "ceo_agent", "status": "draft",
-        "title": data["title"], "slug": slug,
-        "published_url": f"{SITE_URL}/blog/{slug}",
-        "meta_description": (data.get("meta_description") or "")[:160],
-        "content_html": data["content_html"], "content_markdown": None,
-        "hero_image_url": hero_url, "hero_image_storage": hero_storage,
-        "hero_image_alt": data.get("title"),
-        "keywords": data.get("keywords") or body.keywords or [],
-        "language_code": "fr", "audience": body.audience,
-        "topic": body.topic,
-        "created_at": _now(), "created_by": admin.get("user_id"),
-        "published_at": None, "received_at": _now(),
-    }
-    await db.autoseo_articles.insert_one(dict(doc))
-    doc.pop("_id", None)
-    doc["warnings"] = warnings
-    return doc
+class DailySettingsIn(BaseModel):
+    enabled: bool | None = None
+    count: int | None = Field(default=None, ge=0, le=30)
+    auto_publish: bool | None = None
+    max_auto_per_day: int | None = Field(default=None, ge=0, le=30)
+    with_image: bool | None = None
+
+
+@router.get("/daily")
+async def daily_overview() -> dict:
+    return {"settings": await ceo_daily.get_settings(), "stats": await ceo_daily.stats()}
+
+
+@router.put("/daily/settings")
+async def daily_settings(body: DailySettingsIn) -> dict:
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    return {"settings": await ceo_daily.save_settings(patch)}
+
+
+class DailyRunIn(BaseModel):
+    count: int | None = Field(default=None, ge=1, le=30)
+
+
+@router.post("/daily/run")
+async def daily_run(body: DailyRunIn, admin=Depends(admin_user)) -> dict:
+    """Lança já uma produção (em segundo plano). Não conta para o lock do dia."""
+    bind(admin)
+    asyncio.create_task(ceo_daily.run_daily(force=True, count=body.count))
+    return {"started": True, "count": body.count or (await ceo_daily.get_settings())["count"]}
+
+
+@router.post("/blog/publish-today")
+async def publish_today() -> dict:
+    today = datetime.now(ceo_daily.LISBON).date().isoformat()
+    now = _now()
+    res = await db.autoseo_articles.update_many(
+        {"source": "ceo_agent", "status": "draft", "daily_date": today},
+        {"$set": {"status": "published", "published_at": now, "updated_at": now}})
+    return {"published": res.modified_count}
 
 
 class CreativeIn(BaseModel):
@@ -484,30 +485,30 @@ async def asset_media(asset_id: str):
 
 # Thèmes saisonniers BTP par mois (1=janvier). Déterministe, pas d'appel IA.
 _SEASONAL = {
-    1: [("Reabilitação energética: por onde começar em 2026", "particuliers", ["reabilitação energética", "aides"]),
-        ("Isolamento do desvão: métodos e benefícios", "particuliers", ["isolation", "combles"])],
-    2: [("Remodelar a casa de banho: orçamento e etapas", "particuliers", ["salle de bain", "rénovation"]),
-        ("Orçamentos de construção: como orçamentar bem e depressa", "pros", ["devis", "chiffrage"])],
-    3: [("Reabilitação de fachadas: quando e como", "particuliers", ["façade", "ravalement"]),
-        ("Medição de plantas: ganhar tempo nas suas obras", "pros", ["métré", "plans"])],
-    4: [("Arranjar o terraço: orçamento e materiais", "particuliers", ["terrasse", "extérieur"]),
-        ("Organizar o planeamento de uma obra", "pros", ["planning", "chantier"])],
-    5: [("Ampliação de moradia: licenciamento e custos", "particuliers", ["agrandissement", "permis"]),
-        ("Faturação eletrónica: preparar-se", "pros", ["facturation électronique", "factur-x"])],
-    6: [("Conforto de verão: climatização e ventilação", "particuliers", ["climatisation", "confort"]),
-        ("Acompanhar a rentabilidade das suas obras", "pros", ["marge", "rentabilité"])],
-    7: [("Cobertura: diagnóstico antes do outono", "particuliers", ["toiture", "diagnostic"]),
-        ("Gerir os subempreiteiros com tranquilidade", "pros", ["sous-traitance", "chantier"])],
-    8: [("Regresso às obras: planear o seu projeto", "particuliers", ["travaux", "planification"]),
-        ("Preparar a carteira de encomendas de outono", "pros", ["prospection", "leads"])],
-    9: [("Isolamento antes do inverno: paredes e desvão", "particuliers", ["isolation", "hiver"]),
-        ("Comparar as plantas antes/depois de uma obra", "pros", ["comparaison plans", "avenant"])],
-    10: [("Aquecimento: bomba de calor ou caldeira?", "particuliers", ["bomba de calor", "chauffage"]),
-         ("Automatizar orçamentos com vários pisos", "pros", ["devis", "automatisation"])],
-    11: [("Casa de banho: tendências e remodelação de inverno", "particuliers", ["salle de bain", "tendances"]),
-         ("Fechar o ano: balanço e orçamento das obras", "pros", ["bilan", "budget"])],
-    12: [("Preparar as obras para o novo ano", "particuliers", ["travaux", "projet"]),
-         ("Objetivos comerciais de construção para o próximo ano", "pros", ["commercial", "objectifs"])],
+    1: [("Reabilitação energética: por onde começar em 2026", "particuliers", ["reabilitação energética", "apoios"]),
+        ("Isolamento do desvão: métodos e benefícios", "particuliers", ["isolamento", "desvão"])],
+    2: [("Remodelar a casa de banho: orçamento e etapas", "particuliers", ["casa de banho", "remodelação"]),
+        ("Orçamentos de construção: como orçamentar bem e depressa", "pros", ["orçamento", "orçamentar"])],
+    3: [("Reabilitação de fachadas: quando e como", "particuliers", ["fachada", "reabilitação"]),
+        ("Medição de plantas: ganhar tempo nas suas obras", "pros", ["medições", "plantas"])],
+    4: [("Arranjar o terraço: orçamento e materiais", "particuliers", ["terraço", "exterior"]),
+        ("Organizar o planeamento de uma obra", "pros", ["planeamento", "obra"])],
+    5: [("Ampliação de moradia: licenciamento e custos", "particuliers", ["ampliação", "licenciamento"]),
+        ("Faturação certificada AT: preparar-se", "pros", ["faturação certificada", "AT"])],
+    6: [("Conforto de verão: climatização e ventilação", "particuliers", ["climatização", "conforto"]),
+        ("Acompanhar a rentabilidade das suas obras", "pros", ["margem", "rentabilidade"])],
+    7: [("Cobertura: diagnóstico antes do outono", "particuliers", ["cobertura", "diagnóstico"]),
+        ("Gerir os subempreiteiros com tranquilidade", "pros", ["subempreitada", "obra"])],
+    8: [("Regresso às obras: planear o seu projeto", "particuliers", ["obras", "planeamento"]),
+        ("Preparar a carteira de encomendas de outono", "pros", ["angariação", "clientes"])],
+    9: [("Isolamento antes do inverno: paredes e desvão", "particuliers", ["isolamento", "inverno"]),
+        ("Comparar as plantas antes/depois de uma obra", "pros", ["comparar plantas", "trabalhos a mais"])],
+    10: [("Aquecimento: bomba de calor ou caldeira?", "particuliers", ["bomba de calor", "aquecimento"]),
+         ("Automatizar orçamentos com vários pisos", "pros", ["orçamentos", "automatização"])],
+    11: [("Casa de banho: tendências e remodelação de inverno", "particuliers", ["casa de banho", "tendências"]),
+         ("Fechar o ano: balanço e orçamento das obras", "pros", ["balanço", "orçamento"])],
+    12: [("Preparar as obras para o novo ano", "particuliers", ["obras", "projeto"]),
+         ("Objetivos comerciais de construção para o próximo ano", "pros", ["comercial", "objetivos"])],
 }
 
 

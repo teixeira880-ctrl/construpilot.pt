@@ -149,10 +149,12 @@ async def autoseo_webhook(
 
 
 @router.get("/blog/autoseo")
-async def list_autoseo_articles(lang: str | None = None):
+async def list_autoseo_articles(lang: str | None = None, audience: str | None = None):
     q: dict = {"status": "published"}
     if lang:
         q["language_code"] = lang
+    if audience in ("pros", "particuliers"):
+        q["audience"] = audience
     docs = await db.autoseo_articles.find(
         q, {"_id": 0, "content_html": 0, "content_markdown": 0, "hero_image_storage": 0,
             "infographic_image_storage": 0}

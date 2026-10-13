@@ -51,6 +51,8 @@ export default function CeoAgentPanel() {
   const [preview, setPreview] = useState(null);     // blog article
   const [copyPreview, setCopyPreview] = useState(null); // email / ad
   const [busy, setBusy] = useState("");
+  const [daily, setDaily] = useState(null);
+  const [runCount, setRunCount] = useState(10);
 
   const load = async () => {
     try {
@@ -58,6 +60,25 @@ export default function CeoAgentPanel() {
       setDrafts({ blog: [], assets: [], emails: [], ads: [], videos: [], ...(d.data || {}) });
       setCalendar(c.data?.slots || []);
     } catch { /* */ }
+    try { const { data } = await api.get("/ceo/daily"); setDaily(data); } catch { /* */ }
+  };
+
+  const saveDaily = async (patch) => {
+    try {
+      const { data } = await api.put("/ceo/daily/settings", patch);
+      setDaily((d) => ({ ...(d || {}), settings: data.settings }));
+      toast.success("Definições guardadas");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível guardar"); }
+  };
+
+  const runDailyNow = async () => {
+    setBusy("daily-run");
+    try {
+      const { data } = await api.post("/ceo/daily/run", { count: Number(runCount) || 10 });
+      toast.success(`Produção lançada: ${data.count} artigos`, { description: "Demora alguns minutos — os rascunhos aparecem abaixo." });
+      setTimeout(load, 60000); setTimeout(load, 180000);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível lançar"); }
+    finally { setBusy(""); }
   };
   useEffect(() => { load(); }, []);
 
@@ -172,13 +193,60 @@ export default function CeoAgentPanel() {
       <div className="flex items-start gap-3">
         <span className="h-11 w-11 rounded-lg bg-primary/10 grid place-items-center shrink-0"><Bot className="h-6 w-6 text-primary" /></span>
         <div>
-          <h2 className="font-display text-2xl font-bold">Agent CEO — Marketing</h2>
+          <h2 className="font-display text-2xl font-bold">Agente CEO — Marketing</h2>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            O agente redige <strong>brouillons</strong> (artigos de blogue SEO, visuais, folhetos, e-mails e anúncios) a partir de um simples assunto. Modo supervisionado: nada é publicado enquanto não validar.
+            O agente redige <strong>rascunhos</strong> (artigos de blogue SEO, visuais, folhetos, e-mails e anúncios) a partir de um simples assunto. Modo supervisionado: nada é publicado enquanto não validar.
           </p>
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Geração de imagens sujeita ao teto de custos (500 €).</p>
         </div>
       </div>
+
+      {/* Produção diária */}
+      {daily && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-5" data-testid="ceo-daily">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> Produção diária de artigos</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xl">Todos os dias às 06:00 (Lisboa) o agente escreve os artigos em PT-PT, metade para profissionais e metade para particulares, sem repetir temas já publicados.</p>
+            </div>
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input type="checkbox" checked={!!daily.settings?.enabled} onChange={(e) => saveDaily({ enabled: e.target.checked })} data-testid="ceo-daily-enabled" /> Ativa
+            </label>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 text-sm">
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-[10px] uppercase text-muted-foreground">Artigos por dia</p>
+              <Input type="number" min={0} max={30} defaultValue={daily.settings?.count}
+                onBlur={(e) => saveDaily({ count: Number(e.target.value) })} className="mt-1 h-9" data-testid="ceo-daily-count" />
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-[10px] uppercase text-muted-foreground">Hoje</p>
+              <p className="font-semibold mt-1">{daily.stats?.today?.articles || 0} artigos · {daily.stats?.today?.published || 0} publicados</p>
+              <p className="text-xs text-muted-foreground">{daily.stats?.today?.pros || 0} pros · {daily.stats?.today?.particuliers || 0} particulares · {(daily.stats?.today?.cost_eur || 0).toFixed(2)} €</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-[10px] uppercase text-muted-foreground">Este mês</p>
+              <p className="font-semibold mt-1">{daily.stats?.month?.articles || 0} artigos · {(daily.stats?.month?.cost_eur || 0).toFixed(2)} €</p>
+              <p className="text-xs text-muted-foreground">Temas por usar: {daily.stats?.topics_left?.pros ?? "—"} pros · {daily.stats?.topics_left?.particuliers ?? "—"} particulares</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <label className="flex items-center gap-2 font-medium cursor-pointer">
+                <input type="checkbox" checked={!!daily.settings?.auto_publish} onChange={(e) => saveDaily({ auto_publish: e.target.checked })} data-testid="ceo-daily-autopublish" /> Publicação automática
+              </label>
+              <p className="text-xs text-muted-foreground mt-1">Desligada = ficam em rascunho até validar. Ligada = máx. {daily.settings?.max_auto_per_day} por dia, espaçados entre as 08h e as 20h.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mt-4">
+            <Input type="number" min={1} max={30} value={runCount} onChange={(e) => setRunCount(e.target.value)} className="h-9 w-20" data-testid="ceo-daily-runcount" />
+            <Button size="sm" onClick={runDailyNow} disabled={busy === "daily-run"} className="gap-1" data-testid="ceo-daily-run">
+              {busy === "daily-run" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Gerar agora
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => act("/ceo/blog/publish-today", "Rascunhos de hoje publicados")} className="gap-1" data-testid="ceo-daily-publish-today">
+              <Check className="h-3.5 w-3.5" /> Publicar todos os de hoje
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Générateurs */}
       <div className="grid lg:grid-cols-2 gap-5">
@@ -276,7 +344,9 @@ export default function CeoAgentPanel() {
               <div key={a.autoseo_id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3 flex-wrap" data-testid={`ceo-blog-${a.autoseo_id}`}>
                 {a.hero_image_url && <img src={`${BACKEND}${a.hero_image_url}`} alt="" className="h-12 w-20 object-cover rounded border border-border" />}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2"><p className="font-semibold text-sm truncate">{a.title}</p><Badge s={a.status} /></div>
+                  <div className="flex items-center gap-2"><p className="font-semibold text-sm truncate">{a.title}</p><Badge s={a.status} />
+                    <span className="text-[10px] uppercase text-muted-foreground">{a.audience === "pros" ? "Profissionais" : "Particulares"}{a.word_count ? ` · ${a.word_count} palavras` : ""}</span></div>
+                  {a.quality_issues?.length > 0 && <p className="text-[11px] text-amber-600">A rever: {a.quality_issues.join("; ")}</p>}
                   <p className="text-xs text-muted-foreground truncate">{a.meta_description}</p>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setPreview(a)} data-testid={`ceo-blog-preview-${a.autoseo_id}`}><Eye className="h-3.5 w-3.5 mr-1" /> Reler</Button>
