@@ -641,7 +641,7 @@ async def upload_doc(file: UploadFile = File(...), kind: str = "", user=Depends(
     if not data:
         raise HTTPException(422, "Ficheiro vazio")
     if len(data) > DOC_MAX_MB * 1024 * 1024:
-        raise HTTPException(413, f'Ficheiro demasiado volumoso (> {DOC_MAX_MB} Mo)')
+        raise HTTPException(413, f'Ficheiro demasiado volumoso (> {DOC_MAX_MB} MB)')
     mime = file.content_type or ""
     name = file.filename or "document"
     ext = name.lower().rsplit(".", 1)[-1] if "." in name else ""

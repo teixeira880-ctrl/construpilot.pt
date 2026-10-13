@@ -71,7 +71,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
   const onLogoChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 400 * 1024) return toast.error("Logótipo demasiado grande (máx 400 Ko)");
+    if (file.size > 400 * 1024) return toast.error("Logótipo demasiado grande (máx 400 KB)");
     const reader = new FileReader();
     reader.onload = () => setLogoB64(reader.result);
     reader.readAsDataURL(file);
@@ -289,7 +289,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           </div>
 
           <div className="grid gap-2">
-            <Label>Logótipo (PNG/JPG, máx 400 Ko)</Label>
+            <Label>Logótipo (PNG/JPG, máx 400 KB)</Label>
             {logoB64 ? (
               <div className="flex items-center gap-3 border border-border rounded-sm p-3 bg-secondary/30">
                 <img src={logoB64.startsWith("data:") ? logoB64 : `data:image/png;base64,${logoB64}`}

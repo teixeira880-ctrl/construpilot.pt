@@ -3646,7 +3646,7 @@ export default function PlanTakeoff() {
                          className="h-9 w-24 shrink-0" placeholder="Piso" />
                 )}
                 <span className="text-[10px] text-muted-foreground truncate max-w-[120px]" title={it.file.name}>
-                  {it.file.name.split(".").pop()?.toUpperCase()} · {(it.file.size / (1024 * 1024)).toFixed(1)} Mo
+                  {it.file.name.split(".").pop()?.toUpperCase()} · {(it.file.size / (1024 * 1024)).toFixed(1)} MB
                 </span>
                 {!importingBatch && pendingFiles.length > 1 && (
                   <button onClick={() => setPendingFiles((prev) => prev.filter((p) => p.id !== it.id))}

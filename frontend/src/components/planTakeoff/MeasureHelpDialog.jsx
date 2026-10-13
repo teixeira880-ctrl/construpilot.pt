@@ -59,7 +59,7 @@ export function MeasureHelpDialog({ trigger }) {
             <ul className="list-disc pl-5 space-y-0.5">
               <li>Clique em <b>« Importar a minha planta »</b> (ou arraste e largue o ficheiro na zona).</li>
               <li>Importe o <b>planta do projeto</b> ou diretamente as plantas da sua <b>Licença de Construção (LC)</b>.</li>
-              <li>Formatos aceites: <b>PDF, DXF, JPG, PNG, WEBP</b> — até <b>20 Mo</b>.</li>
+              <li>Formatos aceites: <b>PDF, DXF, JPG, PNG, WEBP</b> — até <b>20 MB</b>.</li>
               <li>Planta de arquiteto, planta digitalizada ou até foto do smartphone: tudo funciona.</li>
               <li>O documento é apresentado; se tiver várias páginas (frequente num projeto de licenciamento), utilize as setas para mudar de página.</li>
             </ul>

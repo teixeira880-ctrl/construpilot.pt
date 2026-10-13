@@ -109,7 +109,7 @@ def _file_part(file_id: str) -> dict:
 
 async def _upload_pdf(client, pdf_bytes: bytes, filename: str) -> str:
     if len(pdf_bytes) > MAX_PDF_MB * 1024 * 1024:
-        raise StudiesError(f'PDF demasiado volumoso (> {MAX_PDF_MB} Mo)')
+        raise StudiesError(f'PDF demasiado volumoso (> {MAX_PDF_MB} MB)')
     f = await client.files.create(file=(filename or "plan.pdf", pdf_bytes, "application/pdf"), purpose="user_data")
     return f.id
 

@@ -189,7 +189,7 @@ export function QuoteDialog({
                          className="accent-primary h-4 w-4 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-xs font-bold">
-                      🎬 Anexar o tour vídeo 3D ({(latestVideo.size_bytes / 1024 / 1024).toFixed(1)} Mo)
+                      🎬 Anexar o tour vídeo 3D ({(latestVideo.size_bytes / 1024 / 1024).toFixed(1)} MB)
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1">
                       {latestVideo.duration_s}s · Estilos : {(latestVideo.styles || []).join(", ") || "—"}
