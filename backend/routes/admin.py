@@ -12,12 +12,13 @@ from core.account_purge import purge_user_data
 from engines.catalog import LOTS, REGIONS
 from engines import price_search
 from engines.postal_diagnostics import PostalDiagnostics
+from engines.postal_guard import ensure_postal_enabled
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(admin_user)])
 
 
 @router.get("/postal/diagnostics", response_model=PostalDiagnostics)
-async def postal_diagnostics():
+async def postal_diagnostics(_=Depends(ensure_postal_enabled)):
     from engines.postal_diagnostics import diagnose
     return await diagnose()
 

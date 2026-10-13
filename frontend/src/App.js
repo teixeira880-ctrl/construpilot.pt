@@ -125,12 +125,19 @@ import Entreprise from "@/pages/Entreprise";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
 import PostalPaymentReturn from "@/pages/PostalPaymentReturn";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import { I18nProvider } from "@/context/I18nContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 import CookieConsent from "@/components/CookieConsent";
 import { DomTranslator } from "@/components/DomTranslator";
+
+const PostalFeature = ({ children }) => {
+  const { config, ready } = useAppConfig();
+  if (!ready) return null;
+  return config.postal_enabled ? children : <Navigate to="/dashboard" replace />;
+};
 
 const Protected = ({ children, admin }) => {
   const { user, loading } = useAuth();
@@ -229,7 +236,7 @@ function AppRouter() {
       <Route path="/economies" element={<Shell><SavingsCalculator /></Shell>} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
       <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
-      <Route path="/radar/courrier/retour" element={<Protected><Shell><PostalPaymentReturn /></Shell></Protected>} />
+      <Route path="/radar/courrier/retour" element={<Protected><Shell><PostalFeature><PostalPaymentReturn /></PostalFeature></Shell></Protected>} />
       <Route path="/investisseurs" element={<Investors />} />
       <Route path="/fonctionnalites" element={<Features />} />
       <Route path="/login" element={<Login />} />

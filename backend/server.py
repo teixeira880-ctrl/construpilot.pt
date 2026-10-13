@@ -80,6 +80,8 @@ async def root():
 
 
 api_router.include_router(auth_routes.router)
+from routes import public_config as public_config_routes  # noqa: E402
+api_router.include_router(public_config_routes.router)
 api_router.include_router(estimation_routes.router)
 api_router.include_router(tools.router)
 api_router.include_router(prices.router)
@@ -632,9 +634,13 @@ async def seed():
                       CronTrigger(hour=8, minute=0),
                       id="daily_price_alerts", max_instances=1, coalesce=True)
     # Suivi quotidien des courriers postaux Merci Facteur (imprimé → posté → distribué / retour)
-    from engines import postal_tracking
-    scheduler.add_job(postal_tracking.refresh_all, CronTrigger(hour=7, minute=30),
-                      id="daily_postal_tracking", max_instances=1, coalesce=True)
+    from routes.public_config import postal_enabled
+    if postal_enabled():
+        from engines import postal_tracking
+        scheduler.add_job(postal_tracking.refresh_all, CronTrigger(hour=7, minute=30),
+                          id="daily_postal_tracking", max_instances=1, coalesce=True)
+    else:
+        logger.info("Correio postal desativado (POSTAL_ENABLED=false) — scheduler ignorado")
     # Email d'incitation Premium / Pro : J+3 après inscription, comptes gratuits, 1 seule fois (10:00 UTC)
     from engines.upsell import run_upsell_emails, run_upsell_j10_emails
     scheduler.add_job(run_upsell_emails, CronTrigger(hour=10, minute=0),

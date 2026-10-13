@@ -13,6 +13,7 @@ from typing import Literal
 from core.db import db
 from core.security import admin_user, current_user, optional_user, pro_required
 from engines.postal_offer import PostalOffer
+from engines.postal_guard import ensure_postal_enabled
 from engines.postal_sender import require_sender_branding
 from engines.radar_filters import (
     RadarFilters,
@@ -627,7 +628,7 @@ def _sender_from_branding(b: dict | None, fallback_name: str) -> dict:
 
 
 @router.get("/postal/status", response_model=PostalStatusOut)
-async def postal_status(user=Depends(pro_required)):
+async def postal_status(user=Depends(pro_required), _=Depends(ensure_postal_enabled)):
     from engines import mercifacteur as mf
     from engines.postal_offer import offer_for
     offer = await offer_for(user)
@@ -635,7 +636,8 @@ async def postal_status(user=Depends(pro_required)):
 
 
 @router.get("/postal/price")
-async def postal_price(mode: Literal["normal", "suivi", "lrar"] = "normal", _=Depends(pro_required)):
+async def postal_price(mode: Literal["normal", "suivi", "lrar"] = "normal",
+                       _=Depends(pro_required), __=Depends(ensure_postal_enabled)):
     from engines import mercifacteur as mf
     from engines.postal_delivery import provider_http_error
     if not mf.configured():
@@ -647,6 +649,7 @@ async def postal_price(mode: Literal["normal", "suivi", "lrar"] = "normal", _=De
 
 
 async def _postal_context(token, user):
+    ensure_postal_enabled()
     from engines import mercifacteur as mf
     if not mf.configured():
         raise HTTPException(503, "Envio postal não configurado")
@@ -709,19 +712,22 @@ async def postal_checkout(token: str, body: PostalCheckoutIn, user=Depends(pro_r
 
 
 @router.post("/postal/credits/checkout")
-async def postal_credits_checkout(body: PostalCreditsCheckoutIn, user=Depends(pro_required)):
+async def postal_credits_checkout(body: PostalCreditsCheckoutIn, user=Depends(pro_required),
+                                  _=Depends(ensure_postal_enabled)):
     from engines.postal_billing import create_credits_checkout
     return await create_credits_checkout(user=user, pack_id=body.pack_id, origin_url=body.origin_url)
 
 
 @router.get("/postal/payment/{session_id}")
-async def postal_payment(session_id: str, user=Depends(pro_required)):
+async def postal_payment(session_id: str, user=Depends(pro_required),
+                         _=Depends(ensure_postal_enabled)):
     from engines.postal_billing import payment_view
     return await payment_view(user, session_id)
 
 
 @router.get("/postal/sends")
-async def postal_sends(limit: int = 100, user=Depends(pro_required)):
+async def postal_sends(limit: int = 100, user=Depends(pro_required),
+                       _=Depends(ensure_postal_enabled)):
     """Tous les courriers de l'utilisateur avec leur étape de suivi (pour le radar)."""
     sends = await db.radar_postal.find({"user_id": user["user_id"]}, {"_id": 0, "tracking": 0, "history": 0}) \
         .sort("created_at", -1).to_list(min(max(limit, 1), 300))
@@ -729,7 +735,8 @@ async def postal_sends(limit: int = 100, user=Depends(pro_required)):
 
 
 @router.post("/postal/tracking/refresh")
-async def postal_tracking_refresh(user=Depends(pro_required)):
+async def postal_tracking_refresh(user=Depends(pro_required),
+                                   _=Depends(ensure_postal_enabled)):
     """Actualise le suivi Merci Facteur de tous les courriers non finalisés de l'utilisateur."""
     from engines import postal_tracking
     from engines.postal_tracking import FINAL
@@ -746,7 +753,8 @@ async def postal_tracking_refresh(user=Depends(pro_required)):
 
 
 @router.get("/prospection/{token}/postal", response_model=PostalHistoryOut)
-async def postal_list(token: str, refresh: bool = False, user=Depends(pro_required)):
+async def postal_list(token: str, refresh: bool = False, user=Depends(pro_required),
+                      _=Depends(ensure_postal_enabled)):
     from engines import mercifacteur as mf
     sends = await db.radar_postal.find({"token": token, "user_id": user["user_id"]},
                                        {"_id": 0, "tracking": 0}).sort("created_at", -1).to_list(50)

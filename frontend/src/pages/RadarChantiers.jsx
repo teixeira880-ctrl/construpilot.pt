@@ -12,6 +12,7 @@ import { RadarZoneFilter } from "@/components/radar/RadarZoneFilter";
 import { RadarOfficialSource } from "@/components/radar/RadarOfficialSource";
 import { RadarProjectFilters } from "@/components/radar/RadarProjectFilters";
 import { RadarQualification } from "@/components/radar/RadarQualification";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "react-router-dom";
@@ -33,6 +34,8 @@ function b64ToBlob(dataUrl) {
 
 export default function RadarChantiers() {
   const { user } = useAuth();
+  const { config } = useAppConfig();
+  const postalEnabled = config.postal_enabled;
   const [data, setData] = useState(null);
   const [km, setKm] = useState(30);
   const [sel, setSel] = useState(null);
@@ -309,10 +312,9 @@ export default function RadarChantiers() {
               ))}
             </div>
           )}
-          <PostalTrackingPanel />
+          {postalEnabled && <PostalTrackingPanel />}
         </div>
       )}
-
       {showSettings && profile && (
         <div className="surface rounded-xl p-4 my-4 grid gap-4" data-testid="radar-settings">
           <div>
@@ -493,11 +495,11 @@ export default function RadarChantiers() {
                     <Download className="h-3.5 w-3.5" /> Descarregar a carta
                   </Button>
                 </div>
-                <Button size="sm" variant="outline" className="rounded-sm gap-1 w-full mt-2 border-primary/40 text-primary" onClick={() => setPostalOpen(true)} data-testid="radar-campaign-postal">
-                  <Truck className="h-3.5 w-3.5" /> Enviar por correio (Merci Facteur)
+                <Button size="sm" variant="outline" className="rounded-sm gap-1 w-full mt-2 border-primary/40 text-primary" onClick={() => setPostalOpen(true)} data-testid="radar-campaign-postal" disabled={!postalEnabled}>
+                  <Truck className="h-3.5 w-3.5" /> {postalEnabled ? "Enviar por correio (Merci Facteur)" : "Envio por correio indisponível em Portugal"}
                 </Button>
-                <PostalSendDialog open={postalOpen} onClose={() => setPostalOpen(false)} campaign={campaign} opp={sel} />
-                <p className="text-[10px] text-muted-foreground mt-2">Imprima e envie a correspondência, ou deixe o Merci Facteur fazê-lo. O potencial cliente que digitaliza o QR ou abre o link pode pedir uma estimativa — o seu pedido chega a «Os meus pedidos».</p>
+                {postalEnabled && <PostalSendDialog open={postalOpen} onClose={() => setPostalOpen(false)} campaign={campaign} opp={sel} />}
+                <p className="text-[10px] text-muted-foreground mt-2">Imprima e envie a correspondência{postalEnabled ? ", ou deixe o Merci Facteur fazê-lo" : ""}. O potencial cliente que digitaliza o QR ou abre o link pode pedir uma estimativa — o seu pedido chega a «Os meus pedidos».</p>
               </div>
             )}
 

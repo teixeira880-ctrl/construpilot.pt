@@ -23,6 +23,7 @@ import BridgePanel from "@/components/admin/BridgePanel";
 import RadarSitadelPanel from "@/components/admin/RadarSitadelPanel";
 import MasonryConfigPanel from "@/components/admin/MasonryConfigPanel";
 import PostalAdminPanel from "@/components/admin/PostalAdminPanel";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import { ExpenseAdminPanel } from "@/components/admin/ExpenseAdminPanel";
 import SupportTicketsPanel from "@/components/admin/SupportTicketsPanel";
 import JourneyPanel from "@/components/admin/JourneyPanel";
@@ -48,6 +49,8 @@ import { TwoFaCard } from "@/components/account/TwoFaCard";
 export default function Admin() {
   const { text: expenseText } = useExpenseCopy();
   const { t } = useI18n();
+  const { config } = useAppConfig();
+  const postalEnabled = config.postal_enabled;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
@@ -195,8 +198,8 @@ export default function Admin() {
           <TabsTrigger value="apify" className="rounded-sm" data-testid="admin-tab-apify">Apify</TabsTrigger>
           <TabsTrigger value="learning" className="rounded-sm" data-testid="admin-tab-learning">Aprendizagem IA</TabsTrigger>
           <TabsTrigger value="bridge" className="rounded-sm" data-testid="admin-tab-bridge">Agent Ponte</TabsTrigger>
-          <TabsTrigger value="radar" className="rounded-sm" data-testid="admin-tab-radar">Radar / SITADEL</TabsTrigger>
-          <TabsTrigger value="postal" className="rounded-sm" data-testid="admin-tab-postal">Postal</TabsTrigger>
+          <TabsTrigger value="radar" className="rounded-sm" data-testid="admin-tab-radar">Radar oficial</TabsTrigger>
+          {postalEnabled && <TabsTrigger value="postal" className="rounded-sm" data-testid="admin-tab-postal">Postal</TabsTrigger>}
           <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Alvenaria</TabsTrigger>
           <TabsTrigger value="seoblog" className="rounded-sm" data-testid="admin-tab-seoblog">SEO / Blog</TabsTrigger>
           <TabsTrigger value="ceo" className="rounded-sm" data-testid="admin-tab-ceo">Agent CEO</TabsTrigger>
@@ -251,7 +254,7 @@ export default function Admin() {
           <RadarSitadelPanel />
         </TabsContent>
 
-        <TabsContent value="postal" className="mt-6"><PostalAdminPanel /></TabsContent>
+        <TabsContent value="postal" className="mt-6">{postalEnabled && <PostalAdminPanel />}</TabsContent>
         <TabsContent value="pilotage" className="mt-6"><PilotagePanel /></TabsContent>
         <TabsContent value="budget" className="mt-6"><BudgetCapPanel /></TabsContent>
 
