@@ -618,7 +618,7 @@ class MsgIn(BaseModel):
     web_enabled: bool | None = None
 
 
-DOC_MAX_MB = 20
+DOC_MAX_MB = 50
 DOC_MIMES = {"application/pdf", "image/png", "image/jpeg", "image/webp"}
 
 
