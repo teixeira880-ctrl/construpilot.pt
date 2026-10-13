@@ -12,27 +12,27 @@ import { useBilling } from "@/context/BillingContext";
  */
 const MESSAGES = {
   savings: {
-    title: "Desbloqueie a análise completa de poupanças",
+    title: "Débloquez l'analyse d'économies complète",
     body: "Voyez chaque euro potentiellement économisé sur votre projet : matériaux, alternatives, DIY, fournisseurs.",
   },
   price_search: {
-    title: "Compare todos os fornecedores e optimize o seu cesto",
+    title: "Comparez tous les fournisseurs et optimisez votre panier",
     body: "10 fournisseurs, historique des prix, alertes automatiques, panier optimisé.",
   },
   diy: {
-    title: "Descubra todas as tarefas que pode fazer sozinho",
+    title: "Découvrez toutes les tâches à réaliser vous-même",
     body: "Guides pas-à-pas, matériel requis, gains estimés, conseils sécurité — pour chaque lot.",
   },
   quote: {
-    title: "Análise ilimitada dos seus orçamentos",
+    title: "Analyse illimitée de vos devis",
     body: "L'IA compare vos devis à la base de prix ConstruPilot et détecte les surcoûts.",
   },
   pdf: {
     title: "Export PDF professionnel",
-    body: "Orçamento assinável, logótipo da empresa, discriminação por lote, planeamento incluído.",
+    body: "Devis signable, logo entreprise, ventilation par lot, planning inclus.",
   },
   default: {
-    title: "Funcionalidade premium",
+    title: "Fonctionnalité premium",
     body: "Débloquez toutes les fonctionnalités avec Premium ou un Project Pass unique.",
   },
 };

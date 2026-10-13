@@ -14,31 +14,14 @@ from pydantic import BaseModel, EmailStr, Field
 from core.db import db
 from core.security import current_user, hash_password, new_user_id, pro_required
 from engines import activity
+from core.permissions import FEATURES, ROLE_PERMISSIONS, permissions_for, require_feature
 
 router = APIRouter(prefix="/company", tags=["company"], dependencies=[Depends(pro_required)])
 
-# Features gérées par le frontend (nav + pages métier).
-FEATURES = ["dashboard", "devis", "factures", "situations", "chantier",
-            "rh", "catalogue", "entreprise", "pointage"]
-
-ROLE_PERMISSIONS: dict[str, dict] = {
-    "owner":         {f: True for f in FEATURES},
-    "admin":         {**{f: True for f in FEATURES}, "entreprise": True},
-    "chef_chantier": {"dashboard": True, "devis": True, "situations": True,
-                      "chantier": True, "rh": True, "catalogue": True,
-                      "factures": False, "entreprise": False, "pointage": False},
-    "comptable":     {"dashboard": True, "devis": True, "factures": True,
-                      "situations": True, "catalogue": True, "chantier": False,
-                      "rh": False, "entreprise": False, "pointage": False},
-    "member":        {"dashboard": True, "devis": True, "catalogue": True,
-                      "factures": False, "situations": False, "chantier": False,
-                      "rh": False, "entreprise": False, "pointage": False},
-    "ouvrier":       {f: False for f in FEATURES} | {"pointage": True},
-}
 ASSIGNABLE_ROLES = ["admin", "chef_chantier", "comptable", "member", "ouvrier"]
 ROLE_LABELS = {
-    "owner": "Proprietário", "admin": "Administrador", "chef_chantier": "Chefe de obra",
-    "comptable": "Contabilista", "member": "Membro", "ouvrier": "Trabalhador",
+    "owner": "Propriétaire", "admin": "Administrateur", "chef_chantier": "Chef de chantier",
+    "comptable": "Comptable", "member": "Membre", "ouvrier": "Ouvrier",
 }
 
 
@@ -49,7 +32,7 @@ def _now() -> str:
 def _perms_for(role: str, active: bool = True) -> dict:
     if not active:
         return {f: False for f in FEATURES}
-    return ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["member"])
+    return ROLE_PERMISSIONS.get(role, {f: False for f in FEATURES})
 
 
 async def _me(user: dict) -> dict:
@@ -59,6 +42,7 @@ async def _me(user: dict) -> dict:
 
 
 async def _require_manager(user: dict) -> dict:
+    require_feature(user, "entreprise")
     u = await _me(user)
     if not u.get("organization_id"):
         raise HTTPException(400, "Vous n'avez pas d'entreprise.")
@@ -67,21 +51,25 @@ async def _require_manager(user: dict) -> dict:
     return u
 
 
-@router.get("/me")
+class CompanyPermissions(BaseModel):
+    in_org: bool
+    role: str
+    active: bool
+    permissions: dict[str, bool]
+    role_label: str | None = None
+
+
+@router.get("/me", response_model=CompanyPermissions)
 async def company_me(user=Depends(current_user)) -> dict:
     """Rôle + permissions de l'utilisateur courant (utilisé pour le gating frontend)."""
     # Admin plateforme OU solo (sans org) → accès complet, pas de restriction.
     if user.get("role") == "admin":
         return {"in_org": False, "role": "owner", "active": True,
                 "permissions": {f: True for f in FEATURES}}
-    u = await _me(user)
-    if not u.get("organization_id"):
-        return {"in_org": False, "role": "owner", "active": True,
-                "permissions": {f: True for f in FEATURES}}
-    role = u.get("org_role", "member")
-    active = u.get("company_active", True)
-    return {"in_org": True, "role": role, "role_label": ROLE_LABELS.get(role, role),
-            "active": active, "permissions": _perms_for(role, active)}
+    role = user.get("org_role") if user.get("organization_id") else ("ouvrier" if user.get("role") == "worker" else "owner")
+    active = user.get("company_active") is not False and user.get("active") is not False
+    return {"in_org": bool(user.get("organization_id")), "role": role or "unknown", "role_label": ROLE_LABELS.get(role),
+            "active": active, "permissions": permissions_for(user)}
 
 
 @router.get("/dashboard")
@@ -218,6 +206,7 @@ async def remove_member(member_user_id: str, user=Depends(current_user)) -> dict
 @router.get("/activity")
 async def company_activity(action: str = "", actor_id: str = "", user=Depends(current_user)):
     """Journal d'activité de l'entreprise (qui a fait quoi). Réservé owner/admin en organisation."""
+    require_feature(user, "entreprise")
     u = await _me(user)
     if u.get("organization_id"):
         if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
@@ -232,6 +221,7 @@ async def company_activity(action: str = "", actor_id: str = "", user=Depends(cu
 async def export_activity(actor_id: str = "", user=Depends(current_user)):
     """Export CSV du journal d'activité (filtrable par employé)."""
     from fastapi import Response
+    require_feature(user, "entreprise")
     u = await _me(user)
     if u.get("organization_id"):
         if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
@@ -255,6 +245,7 @@ async def export_activity(actor_id: str = "", user=Depends(current_user)):
 @router.get("/activity/pdf")
 async def export_activity_pdf(actor_id: str = "", user=Depends(current_user)):
     """Export PDF du journal d'activité (remise officielle)."""
+    require_feature(user, "entreprise")
     import io
     from fastapi import Response
     from reportlab.lib import colors

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Cpu, Check, Loader2, Gauge, Coins, Sparkles, Bell } from "lucide-react";
+import { Cpu, Check, Loader2, Gauge, Coins, Sparkles, Bell, KeyRound, RefreshCw } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { api, num } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,26 @@ export default function AiModelTab() {
   const [alertEmail, setAlertEmail] = useState("");
   const [savingBudget, setSavingBudget] = useState(false);
   const [saving, setSaving] = useState("");
+  const [keyBusy, setKeyBusy] = useState("");
+  const [gemini, setGemini] = useState(null);
+  const [geminiBusy, setGeminiBusy] = useState("");
+
+  const toggleKey = async (action) => {
+    setKeyBusy(action);
+    try {
+      const { data: st } = await api.post(`/admin/ai-openai-key/${action}`);
+      setData((d) => ({ ...d, openai_key: st }));
+      toast.success(action === "reactivate" ? "Clé OpenAI réactivée — test de connexion réussi" : "Bascule sur la clé Emergent effectuée");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Opération impossible");
+    } finally {
+      setKeyBusy("");
+    }
+  };
 
   const load = () => {
     api.get("/admin/ai-model").then(({ data }) => setData(data));
+    api.get("/admin/ai-gemini-backend").then(({ data }) => setGemini(data)).catch(() => {});
     api.get("/admin/ai-usage").then(({ data }) => setUsage(data)).catch(() => {});
     api.get("/admin/ai-usage-daily?days=30").then(({ data }) => setDaily(data)).catch(() => {});
     api.get("/admin/ai-budget").then(({ data }) => {
@@ -79,7 +96,36 @@ export default function AiModelTab() {
     }
   };
 
+  const chooseGemini = async (backend) => {
+    if (!gemini || backend === gemini.current || geminiBusy) return;
+    setGeminiBusy(backend);
+    try {
+      const { data: res } = await api.put("/admin/ai-gemini-backend", { backend });
+      setGemini((g) => ({ ...g, current: res.current }));
+      toast.success(backend === "native" ? "L'Assistant BTP bascule sur le SDK Google natif" : "L'Assistant BTP bascule sur la clé Emergent");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Bascule impossible");
+    } finally {
+      setGeminiBusy("");
+    }
+  };
+
+  const testGeminiKey = async () => {
+    setGeminiBusy("test");
+    try {
+      const { data: res } = await api.post("/admin/ai-gemini-backend/test");
+      if (res.ok) toast.success("Clé Google valide — connexion réussie");
+      else toast.error(`Clé Google : ${res.status}`);
+    } catch {
+      toast.error("Test de la clé impossible");
+    } finally {
+      setGeminiBusy("");
+    }
+  };
+
   if (!data) return null;
+
+  const k = data.openai_key;
 
   return (
     <div className="max-w-3xl space-y-8" data-testid="admin-ai-section">
@@ -87,6 +133,43 @@ export default function AiModelTab() {
         Choisissez le modèle utilisé pour la génération de texte (estimation Smart Project,
         coach IA, analyses). L'analyse d'images utilise toujours un modèle vision dédié.
       </SectionTitle>
+
+      {k?.configured && (
+        <div
+          data-testid="admin-openai-key-status"
+          className={`rounded-sm border p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${k.active ? "border-border surface" : "border-amber-500/50 bg-amber-500/10"}`}
+        >
+          <div className="flex-1 text-sm">
+            <p className="font-semibold flex items-center gap-2">
+              <KeyRound className="h-4 w-4" />
+              Clé OpenAI de l'entreprise :{" "}
+              <span data-testid="admin-openai-key-state" className={k.active ? "text-primary" : "text-amber-700"}>
+                {k.active ? "active" : "désactivée — repli sur la clé Emergent"}
+              </span>
+            </p>
+            {!k.active && (
+              <p className="text-xs text-amber-800 mt-1" data-testid="admin-openai-key-reason">
+                Depuis le {k.since ? new Date(k.since).toLocaleString("fr-FR") : "—"} · motif : {k.reason || "—"}.
+                Rechargez le crédit sur platform.openai.com puis réactivez ; un test de connexion est effectué.
+              </p>
+            )}
+            {k.active && (
+              <p className="text-xs text-muted-foreground mt-1">
+                En cas de crédit épuisé, la bascule sur la clé universelle Emergent est automatique et vous êtes prévenu par e-mail.
+              </p>
+            )}
+          </div>
+          {k.active ? (
+            <Button variant="outline" size="sm" onClick={() => toggleKey("disable")} disabled={!!keyBusy} data-testid="admin-openai-key-disable-btn">
+              {keyBusy === "disable" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Basculer sur Emergent"}
+            </Button>
+          ) : (
+            <Button size="sm" onClick={() => toggleKey("reactivate")} disabled={!!keyBusy} data-testid="admin-openai-key-reactivate-btn">
+              {keyBusy === "reactivate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Réactiver la clé OpenAI</>}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-3 gap-4" data-testid="admin-ai-options">
         {data.options.map((o) => {
@@ -127,6 +210,66 @@ export default function AiModelTab() {
         Modèle actif : <strong>{data.options.find((o) => o.tier === data.current)?.label}</strong>.
         La modification est immédiate pour toutes les prochaines requêtes IA.
       </p>
+
+      {/* --- Backend Gemini : Emergent vs Google natif --- */}
+      {gemini && (
+        <div className="space-y-4" data-testid="admin-gemini-backend">
+          <SectionTitle over="Vision & plans" title="Moteur IA Assistant BTP (plans, métré)">
+            Choisissez comment sont exécutés les appels du moteur IA Assistant BTP : via la clé universelle Emergent,
+            ou directement sur Google avec votre propre clé (facturation Google, alias gemini pro/flash latest).
+          </SectionTitle>
+          <div className="grid sm:grid-cols-2 gap-4" data-testid="admin-gemini-options">
+            {gemini.options.map((o) => {
+              const active = o.backend === gemini.current;
+              const disabled = o.backend === "native" && !gemini.key_present;
+              return (
+                <button
+                  key={o.backend}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => chooseGemini(o.backend)}
+                  data-testid={`admin-gemini-option-${o.backend}`}
+                  className={`surface text-left p-5 rounded-sm border transition-colors relative disabled:opacity-50 disabled:cursor-not-allowed
+                    ${active ? "border-primary ring-1 ring-primary/40" : "border-border hover:border-primary/40"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <Cpu className="h-5 w-5 text-primary" />
+                    {geminiBusy === o.backend ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    ) : active ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-primary">
+                        <Check className="h-3.5 w-3.5" /> Actif
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="font-display font-extrabold tracking-tight mt-3">{o.label}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{o.desc}</p>
+                  {o.backend === "native" && (
+                    <p className="text-[11px] mt-3 font-mono text-muted-foreground/70">
+                      {gemini.models.pro} · {gemini.models.flash}
+                    </p>
+                  )}
+                  {disabled && (
+                    <p className="text-[11px] mt-2 text-amber-700" data-testid="admin-gemini-key-missing">
+                      Clé Google absente — ajoutez GOOGLE_GEMINI_API_KEY au backend.
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={testGeminiKey} disabled={!gemini.key_present || !!geminiBusy}
+                    className="rounded-sm gap-2" data-testid="admin-gemini-test-btn">
+              {geminiBusy === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Tester la clé Google
+            </Button>
+            <span className="text-xs text-muted-foreground" data-testid="admin-gemini-key-state">
+              Clé Google : {gemini.key_present ? "présente" : "absente"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* --- Suivi des coûts / usage IA --- */}
       <div className="space-y-4" data-testid="admin-ai-usage">

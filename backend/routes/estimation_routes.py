@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from core.db import db
-from core.security import optional_user
+from core.security import optional_user, admin_user
 from engines import estimation, ai, pdf
 from engines.catalog import (PROJECT_TYPES, LOTS, FINISH_LEVELS, REGIONS, DIFFICULTY,
                             CONDITION_COEF)
@@ -20,7 +20,7 @@ class EstimateIn(BaseModel):
     project_type: str = "renovation_complete"
     surface: float = 100
     finish_level: str = "standard"
-    country: str = "PT"
+    country: str = "FR"
     region: str | None = None
     city: str | None = None
     building_type: str = "maison"
@@ -73,6 +73,18 @@ def _price_for_audience(est: dict, user) -> None:
         est["client_markup_pct"] = 0
 
 
+async def _track_first_value(user, origin: str) -> None:
+    """Première estimation réussie = première valeur. Idempotent, jamais bloquant."""
+    if not user:
+        return
+    try:
+        from engines.journey import record_event
+        await record_event("first_value_estimation", user_id=user["user_id"],
+                           props={"origin": origin}, once_per_user=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @router.post("/compute")
 async def compute(body: EstimateIn, user=Depends(optional_user)):
     overrides = {d["key"]: d async for d in db.price_reference.find({}, {"_id": 0})}
@@ -86,7 +98,28 @@ async def compute(body: EstimateIn, user=Depends(optional_user)):
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)
     est["safety_alerts"] = estimation.safety_check("", [l["key"] for l in est["lots"]])
     _price_for_audience(est, user)
+    await _attach_pool_items(est, body, user)
+    await _track_first_value(user, "estimation_compute")
     return est
+
+
+async def _attach_pool_items(est: dict, body: EstimateIn, user) -> None:
+    """Projets piscine : propose le bordereau d'ouvrages de la bibliothèque ConstruPilot."""
+    from engines.catalog import PROJECT_TYPES_BY_KEY
+    from engines.pool import pool_lines
+    from routes.shared_library import get_shared_items_for_level
+    if not (PROJECT_TYPES_BY_KEY.get(body.project_type) or {}).get("pool"):
+        return
+    level = {"eco": "bas", "standard": "moyen", "premium": "haut"}.get(body.finish_level, "moyen")
+    lang = "pt" if (body.country or "FR").upper() == "PT" else "fr"
+    items = await get_shared_items_for_level(level, lang=lang)
+    data = pool_lines(body.project_type, body.surface, items)
+    if est.get("pricing_audience") == "particulier":
+        for l in data["lines"]:
+            l["unit_price_ht"] = round(l["unit_price_ht"] * estimation.PARTICULIER_MARKUP, 2)
+            l["total_ht"] = round(l["qty"] * l["unit_price_ht"], 2)
+        data["total_ht"] = round(sum(l["total_ht"] for l in data["lines"]), 2)
+    est["pool_items"] = data
 
 
 @router.post("/analyse")
@@ -113,6 +146,7 @@ async def analyse(body: DescribeIn, user=Depends(optional_user)) -> dict:
     # Enrichit l'analyse avec la hauteur effectivement utilisée
     analysis["ceiling_height_m"] = est["ceiling_height_m"]  # weighted-avg si multi-niveaux
     _price_for_audience(est, user)
+    await _track_first_value(user, "smart_project")
     return {"analysis": analysis, "estimation": est}
 
 
@@ -182,7 +216,7 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
     safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
     fmt = lambda v: f"{v:,.0f}".replace(",", " ")
     if b2c:
-        hello = f"Olá {body.client_name}," if body.client_name else "Olá,"
+        hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
         fourchette = (f"<li><b>Fourchette de budget</b> : {fmt(total_min)} € à {fmt(total_max)} €</li>"
                       if total_min and total_max else "")
         subject = f"Votre estimation travaux — {fmt(total)} € (indicatif)"
@@ -206,7 +240,7 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
                  if body.message else "")
         html = emailer.wrap_html(
             f"Votre estimation : {name}",
-            f"""<p>Olá,</p>
+            f"""<p>Bonjour,</p>
 <p>Vous trouverez en pièce jointe l'estimation détaillée générée par <b>ConstruPilot</b>.</p>
 <ul>
 <li><b>Surface</b> : {surface} m²</li>
@@ -222,11 +256,99 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
     return {"ok": True, "to": body.to}
 
 
+# ========= Config maçonnerie (ratios + blocs) — éditable par l'admin =========
+
+MASONRY_CONFIG_DEFAULT = {
+    "ratios": {
+        "loss_pct": 5.0,
+        "cement_kg_per_m2": 7.0,
+        "sand_m3_per_m2": 0.03,
+        "glue_kg_per_m2": 5.0,
+        "foam_m2_per_can": 8.0,
+        "render_kg_per_m2": 25.0,
+        "gobetis_kg_per_m2": 5.0,
+    },
+    "blocks": [
+        {"key": "parpaing_20", "label": "Parpaing creux 20×20×50", "material": "parpaing",
+         "blocks_per_m2": 10, "price": 1.20, "search": "parpaing creux 20x20x50"},
+        {"key": "parpaing_15", "label": "Parpaing creux 15×20×50", "material": "parpaing",
+         "blocks_per_m2": 10, "price": 1.00, "search": "parpaing creux 15x20x50"},
+        {"key": "brique_creuse_20", "label": "Brique creuse 20×20×50", "material": "brique",
+         "blocks_per_m2": 10, "price": 0.90, "search": "brique creuse 20x20x50"},
+        {"key": "brique_rouge", "label": "Brique rouge 22×10,5×6", "material": "brique",
+         "blocks_per_m2": 48, "price": 0.60, "search": "brique rouge pleine"},
+    ],
+}
+
+_RATIO_KEYS = ("loss_pct", "cement_kg_per_m2", "sand_m3_per_m2", "glue_kg_per_m2",
+               "foam_m2_per_can", "render_kg_per_m2", "gobetis_kg_per_m2")
+
+
+async def get_masonry_config() -> dict:
+    cfg = {"ratios": dict(MASONRY_CONFIG_DEFAULT["ratios"]),
+           "blocks": [dict(b) for b in MASONRY_CONFIG_DEFAULT["blocks"]]}
+    doc = await db.app_settings.find_one({"key": "masonry_config"}, {"_id": 0, "value": 1})
+    v = (doc or {}).get("value") or {}
+    if isinstance(v.get("ratios"), dict):
+        cfg["ratios"].update({k: float(v["ratios"][k]) for k in v["ratios"] if k in _RATIO_KEYS})
+    if isinstance(v.get("blocks"), list) and v["blocks"]:
+        cfg["blocks"] = v["blocks"]
+    return cfg
+
+
+def masonry_kwargs_from_config(cfg: dict, *, area: float, material: str,
+                               bond: str | None = None, block_key: str | None = None,
+                               include_render: bool = False) -> dict:
+    """Construit les kwargs pour calculators.masonry depuis la config admin."""
+    ratios = cfg["ratios"]
+    is_brique = str(material or "").lower().startswith("briq")
+    block = None
+    if block_key:
+        block = next((b for b in cfg["blocks"] if b.get("key") == block_key), None)
+    if not block:
+        want = "brique" if is_brique else "parpaing"
+        block = next((b for b in cfg["blocks"] if b.get("material") == want), None)
+    kwargs = {"area": area, "material": (block["material"] if block else material),
+              "bond": bond, "include_render": include_render}
+    kwargs.update({k: ratios[k] for k in _RATIO_KEYS})
+    if block:
+        kwargs.update({"blocks_per_m2": block.get("blocks_per_m2", 10),
+                       "block_label": block.get("label"),
+                       "block_search": block.get("search"),
+                       "block_price": block.get("price")})
+    return kwargs
+
+
+@router.get("/masonry-config")
+async def read_masonry_config(_=Depends(optional_user)) -> dict:
+    return await get_masonry_config()
+
+
+@router.put("/masonry-config")
+async def update_masonry_config(body: dict, _=Depends(admin_user)) -> dict:
+    value = {}
+    if isinstance(body.get("ratios"), dict):
+        value["ratios"] = {k: float(body["ratios"][k]) for k in body["ratios"] if k in _RATIO_KEYS}
+    if isinstance(body.get("blocks"), list):
+        value["blocks"] = body["blocks"]
+    await db.app_settings.update_one({"key": "masonry_config"},
+                                     {"$set": {"key": "masonry_config", "value": value}},
+                                     upsert=True)
+    return await get_masonry_config()
+
+
+@router.post("/masonry-config/reset")
+async def reset_masonry_config(_=Depends(admin_user)) -> dict:
+    await db.app_settings.delete_one({"key": "masonry_config"})
+    return await get_masonry_config()
+
+
 @router.post("/materials")
 async def materials_list(body: MaterialsIn) -> dict:
     """Panier de chantier intelligent : liste d'achats depuis les lots estimés."""
     from engines import calculators
     items = []
+    masonry_cfg = None
     for lot in body.lots:
         key, qty = lot.get("key"), float(lot.get("quantity") or 0)
         if qty <= 0:
@@ -266,6 +388,14 @@ async def materials_list(body: MaterialsIn) -> dict:
         elif key == "parquet":
             items.append({"name": "Parquet stratifié", "quantity": round(qty * 1.07, 2), "unit": "m²",
                           "search": "parquet stratifie clipsable"})
+        elif key in ("maconnerie", "parpaing", "brique", "mur_parpaing", "mur_brique"):
+            material = "brique" if "brique" in key else lot.get("material", "parpaing")
+            if masonry_cfg is None:
+                masonry_cfg = await get_masonry_config()
+            mk = masonry_kwargs_from_config(
+                masonry_cfg, area=qty, material=material, bond=lot.get("bond"),
+                block_key=lot.get("block"), include_render=bool(lot.get("include_render")))
+            items += calculators.masonry(**mk)["materials"]
         elif key == "menuiseries":
             items.append({"name": "Fenêtre PVC double vitrage", "quantity": round(qty), "unit": "u",
                           "search": "fenetre pvc double vitrage"})

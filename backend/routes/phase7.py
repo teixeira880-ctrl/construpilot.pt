@@ -3,6 +3,7 @@ import os
 import json
 import secrets
 import logging
+from typing import Literal
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -99,15 +100,28 @@ async def send_digests_now(admin=Depends(admin_user)) -> dict:
 class PrefsIn(BaseModel):
     weekly_digest: bool | None = None
     push_price_alerts: bool | None = None
+    target_margin_pct: float | None = Field(default=None, ge=0, le=90)
+    target_margins_by_lot: dict[str, float] | None = None
+    cctp_lots_kept: list[str] | None = None
+    cctp_lots_skipped: list[str] | None = None
+    price_library_mode: Literal["shared_first", "company_first", "company_only"] | None = None
 
 
 @router.put("/users/me/preferences")
 async def update_prefs(body: PrefsIn, user=Depends(current_user)):
     upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "target_margins_by_lot" in upd:
+        upd["target_margins_by_lot"] = {str(k).strip()[:80]: min(90.0, max(0.0, float(v)))
+                                        for k, v in upd["target_margins_by_lot"].items() if str(k).strip()}
+    for k in ("cctp_lots_kept", "cctp_lots_skipped"):
+        if k in upd:
+            upd[k] = list(dict.fromkeys(str(x).strip().lower()[:60] for x in upd[k] if str(x).strip()))[:100]
     if upd:
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
     fresh = await db.users.find_one({"user_id": user["user_id"]},
-                                    {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1})
+                                    {"_id": 0, "weekly_digest": 1, "push_price_alerts": 1, "target_margin_pct": 1,
+                                     "target_margins_by_lot": 1, "cctp_lots_kept": 1, "cctp_lots_skipped": 1,
+                                     "price_library_mode": 1})
     return fresh or {}
 
 
@@ -169,6 +183,7 @@ async def get_branding(user=Depends(current_user)) -> dict:
                                                  "brand_certifications": 1,
                                                  "brand_siret": 1, "brand_vat": 1,
                                                  "brand_nif": 1, "brand_alvara": 1,
+                                                 "brand_address": 1, "brand_city": 1, "brand_postal": 1,
                                                  "brand_country": 1,
                                                  "org_id": 1, "name": 1})
         if org:
@@ -185,6 +200,9 @@ async def get_branding(user=Depends(current_user)) -> dict:
                     "vat": org.get("brand_vat"),
                     "nif": org.get("brand_nif"),
                     "alvara": org.get("brand_alvara"),
+                    "address": org.get("brand_address"),
+                    "city": org.get("brand_city"),
+                    "postal_code": org.get("brand_postal"),
                     "country": org.get("brand_country"),
                     "default_email_message": u.get("brand_default_email_message"),
                     "service_zones": u.get("service_zones") or [],

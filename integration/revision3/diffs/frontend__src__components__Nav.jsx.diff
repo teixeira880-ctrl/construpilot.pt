@@ -1,0 +1,68 @@
+--- current/frontend/src/components/Nav.jsx
++++ zip/frontend/src/components/Nav.jsx
+@@ -105,7 +105,7 @@
+ 
+   return (
+     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
+-      <div className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8 min-h-16 py-2 lg:py-0 lg:h-16 flex flex-wrap lg:flex-nowrap items-center gap-2 lg:gap-4">
++      <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-4">
+         <Link to="/" className="flex items-center gap-2 shrink-0 group" data-testid="nav-logo">
+           <img src="/construpilot-icon.png" alt="ConstruPilot" className="h-9 w-9 rounded-xl object-cover shadow-md shadow-primary/30 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-3" />
+           <span className="font-display font-extrabold tracking-tight text-lg">
+@@ -113,19 +113,17 @@
+           </span>
+         </Link>
+ 
+-        <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0" data-testid="nav-desktop">
+-          <div className="flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+-            {NAV_MAIN.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro)).map((l) => (
+-              <Link key={l.to} to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} title={t(l.key, l.label)} className={pill(location.pathname === l.to)}>
+-                <l.icon className="h-4 w-4" /> <span className="hidden xl:inline">{t(l.key, l.label)}</span>
+-              </Link>
+-            ))}
+-          </div>
++        <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
++          {NAV_MAIN.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro)).map((l) => (
++            <Link key={l.to} to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className={pill(location.pathname === l.to)}>
++              <l.icon className="h-4 w-4" /> {t(l.key, l.label)}
++            </Link>
++          ))}
+ 
+           {user && proItems.length > 0 && (
+             <DropdownMenu>
+               <DropdownMenuTrigger asChild>
+-                <button data-testid="nav-pro-btn" className={pill(groupActive(NAV_PRO)) + " shrink-0"}>
++                <button data-testid="nav-pro-btn" className={pill(groupActive(NAV_PRO))}>
+                   <Building2 className="h-4 w-4" /> {t("nav.pro_space", "Espace Pro")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                 </button>
+               </DropdownMenuTrigger>
+@@ -146,7 +144,7 @@
+ 
+           <DropdownMenu>
+             <DropdownMenuTrigger asChild>
+-              <button data-testid="nav-more-btn" className={pill(groupActive(NAV_DISCOVER)) + " shrink-0"}>
++              <button data-testid="nav-more-btn" className={pill(groupActive(NAV_DISCOVER))}>
+                 <Sparkles className="h-4 w-4" /> {t("nav.discover", "Découvrir")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+               </button>
+             </DropdownMenuTrigger>
+@@ -172,7 +170,7 @@
+           </DropdownMenu>
+         </nav>
+ 
+-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2 max-w-full min-w-0" data-testid="nav-actions">
++        <div className="ml-auto flex items-center gap-2 shrink-0">
+           <button
+             onClick={toggleTheme}
+             data-testid="theme-toggle"
+@@ -231,9 +229,9 @@
+ 
+       {open && (
+         <div className="lg:hidden border-t border-border bg-background px-5 py-4 grid gap-1 max-h-[75vh] overflow-y-auto" data-testid="mobile-menu">
+-          {ALL_LINKS.filter((l, i, all) => all.findIndex((item) => item.to === l.to) === i).filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro) && (!NAV_PRO.includes(l) || isPro)).map((l) => (
++          {ALL_LINKS.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro) && (!NAV_PRO.includes(l) || isPro)).map((l) => (
+             <Link
+-              key={l.to} to={l.to} onClick={() => setOpen(false)} data-testid={`mobile-nav-link-${l.to.slice(1)}`}
++              key={l.to} to={l.to} onClick={() => setOpen(false)}
+               className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg hover:bg-secondary transition-colors"
+             >
+               <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span> {t(l.key, l.label)}

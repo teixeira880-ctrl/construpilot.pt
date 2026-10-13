@@ -18,10 +18,10 @@ const DAY = 24 * 60 * 60 * 1000;
 function fmtCell(key, val) {
   if (val == null || val === "") return "—";
   if (key.includes("created_at") || key.includes("granted_at") || key.includes("last_seen") || key === "created_at") {
-    try { return new Date(val).toLocaleDateString("pt-PT"); } catch { return String(val); }
+    try { return new Date(val).toLocaleDateString("fr-FR"); } catch { return String(val); }
   }
   if (key.includes("value_eur") || key.includes("amount_eur")) {
-    return (Number(val) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+    return (Number(val) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
   }
   return String(val);
 }
@@ -34,7 +34,7 @@ function toCSV(columns, rows) {
 }
 
 /** Drill-down d'un indicateur admin : liste + filtres + sélection + e-mail groupé + export CSV. */
-export default function AdminDrillDialog({ metric, onClose }) {
+export default function AdminDrillDialog({ metric, onClose, inbox = false, hours }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
@@ -51,11 +51,11 @@ export default function AdminDrillDialog({ metric, onClose }) {
     if (!metric) { setData(null); return; }
     setLoading(true);
     setQ(""); setPlanFilter("all"); setCityFilter(""); setInactiveOnly(false); setSelected(new Set());
-    api.get(`/admin/drill/${metric}`)
+    api.get(inbox ? `/admin/drill-inbox/${metric}` : `/admin/drill/${metric}`, { params: inbox && hours ? { hours } : undefined })
       .then(({ data }) => setData(data))
       .catch(() => toast.error("Détails indisponibles"))
       .finally(() => setLoading(false));
-  }, [metric]);
+  }, [metric, inbox, hours]);
 
   const emailKey = useMemo(() => {
     if (!data) return null;
@@ -146,6 +146,14 @@ export default function AdminDrillDialog({ metric, onClose }) {
             <DialogTitle data-testid="admin-drill-title">{data?.title || "Détails"}</DialogTitle>
             <DialogDescription>{data?.description || "Chargement…"}</DialogDescription>
           </DialogHeader>
+          {data?.conditions?.length > 0 && (
+            <div className="rounded-sm border border-border bg-secondary/40 px-3 py-2" data-testid="admin-drill-conditions">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Filter className="h-3 w-3" /> Conditions de comptage</p>
+              <ul className="mt-1 grid gap-0.5 text-xs">
+                {data.conditions.map((c, i) => <li key={i} className="flex gap-1.5"><span className="text-primary">•</span><span>{c}</span></li>)}
+              </ul>
+            </div>
+          )}
 
           {/* Recherche + actions */}
           <div className="flex flex-wrap items-center gap-2">

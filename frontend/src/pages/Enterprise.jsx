@@ -43,7 +43,7 @@ export default function Enterprise() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="ConstruPilot Enterprise" title="Parlez à notre équipe pour votre organisation">
+      <SectionTitle as="h1" over="ConstruPilot Enterprise" title="Parlez à notre équipe pour votre organisation">
         SSO, SLA, API dédiée, intégrations sur mesure, reporting avancé.
         Pour les promoteurs, distributeurs, assureurs et réseaux d'artisans.
       </SectionTitle>
@@ -52,7 +52,7 @@ export default function Enterprise() {
         {[
           { icon: Building2, title: "Grands comptes", desc: "Promoteurs, assureurs, franchisés, groupes immobiliers." },
           { icon: Server, title: "SSO & API dédiée", desc: "Authentification centralisée, endpoints privés, sandbox." },
-          { icon: Zap, title: "SLA garanti", desc: "99,9 % de disponibilité, support prioritaire, compte manager." },
+          { icon: Zap, title: "Engagement de service", desc: "Niveau de disponibilité, support prioritaire et interlocuteur dédié définis au contrat." },
         ].map((f, i) => (
           <div key={i} className="surface p-6 grid gap-3">
             <span className="h-10 w-10 grid place-items-center rounded-sm bg-primary/15 text-primary">

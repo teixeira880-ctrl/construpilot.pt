@@ -79,7 +79,7 @@ export default function ApiKeys() {
               <SelectContent>
                 {plans.map((p) => (
                   <SelectItem key={p.plan_id} value={p.plan_id}>
-                    {p.name} — {(p.amount_cents / 100).toFixed(0)} €/mois · {p.quotas?.api_calls_monthly?.toLocaleString("pt-PT")} appels
+                    {p.name} — {(p.amount_cents / 100).toFixed(0)} €/mois · {p.quotas?.api_calls_monthly?.toLocaleString("fr-FR")} appels
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -127,7 +127,7 @@ export default function ApiKeys() {
                 <TableCell>{k.name}</TableCell>
                 <TableCell className="font-mono text-xs">{k.prefix}…</TableCell>
                 <TableCell>{k.plan_id}</TableCell>
-                <TableCell className="num">{k.monthly_quota?.toLocaleString("pt-PT")}</TableCell>
+                <TableCell className="num">{k.monthly_quota?.toLocaleString("fr-FR")}</TableCell>
                 <TableCell>
                   <Badge variant={k.active ? "default" : "outline"} className="rounded-sm">
                     {k.active ? "Actif" : "Révoqué"}

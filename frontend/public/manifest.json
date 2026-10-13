@@ -1,83 +1,26 @@
 {
   "id": "/",
-  "name": "ConstruPilot — Estime, Compare, Construa",
+  "name": "ConstruPilot — Estimez, Comparez, Construisez",
   "short_name": "ConstruPilot",
-  "description": "O assistente de IA para as suas obras: estimativa, orçamento, comparador de preços, calculadoras de materiais.",
+  "description": "L'assistant IA de vos travaux : estimation, devis, comparateur de prix, calculateurs matériaux.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "minimal-ui"
-  ],
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0A0D14",
   "theme_color": "#0A0D14",
-  "lang": "pt-PT",
-  "categories": [
-    "business",
-    "productivity",
-    "utilities"
-  ],
+  "lang": "fr",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
-    {
-      "src": "/logo192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/logo192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/logo512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/logo512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "/logo192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/logo512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/logo512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    {
-      "name": "Novo orçamento",
-      "short_name": "Orçamento",
-      "url": "/devis-editeur",
-      "icons": [
-        {
-          "src": "/logo192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Painel",
-      "short_name": "Início",
-      "url": "/dashboard",
-      "icons": [
-        {
-          "src": "/logo192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Calculadoras",
-      "short_name": "Cálculos",
-      "url": "/calculateurs",
-      "icons": [
-        {
-          "src": "/logo192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
+    { "name": "Nouveau devis", "short_name": "Devis", "url": "/devis-editeur", "icons": [{ "src": "/logo192.png", "sizes": "192x192" }] },
+    { "name": "Tableau de bord", "short_name": "Accueil", "url": "/dashboard", "icons": [{ "src": "/logo192.png", "sizes": "192x192" }] },
+    { "name": "Calculateurs", "short_name": "Calculs", "url": "/calculateurs", "icons": [{ "src": "/logo192.png", "sizes": "192x192" }] }
   ]
 }

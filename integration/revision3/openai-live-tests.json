@@ -1,0 +1,235 @@
+[
+  {
+    "model": "gpt-6-astra",
+    "test": "vision",
+    "status": "completed",
+    "text": "Le rectangle mesure 4,00 m sur 3,00 m."
+  },
+  {
+    "model": "gpt-6-astra",
+    "test": "function",
+    "status": "completed",
+    "calls": 1
+  },
+  {
+    "model": "gpt-6-astra",
+    "test": "web_search",
+    "status": "completed",
+    "sources": [
+      {
+        "id": "ws_08bad3ad9c3ad744016aa6b98d817c87d283c2c475cefc2ce1",
+        "action": {
+          "query": "site.service-public.gouv.fr particuliers vosdroits F17578 déclaration préalable travaux",
+          "type": "search",
+          "queries": [
+            "site.service-public.gouv.fr particuliers vosdroits F17578 déclaration préalable travaux"
+          ],
+          "sources": [
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F17578?lang=fr&ori=mchmga"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F17578?ori=mchmga"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F17578?ori=vitrine891"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F17578"
+            },
+            {
+              "type": "url",
+              "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F17578"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F17578?ori=npc"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F17578?ori=squarehabitat"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F17578?numcr=80200&ori=vitrine"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/telecharger-pdf?path=aHR0cHM6Ly93d3cuc2VydmljZS1wdWJsaWMuZ291di5mci9wYXJ0aWN1bGllcnMvdm9zZHJvaXRzL0YxNzU3OA%3D%3D"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/telecharger-pdf?path=aHR0cHM6Ly93d3cuc2VydmljZS1wdWJsaWMuZ291di5mci9wYXJ0aWN1bGllcnMvdm9zZHJvaXRzL0YxNzU3OD9sYW5nPWVuJm9yaT1tY2htZ2E%3D"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/N319"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/R2028?gad=1"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/telecharger-pdf?path=aHR0cHM6Ly93d3cuc2VydmljZS1wdWJsaWMuZ291di5mci9wYXJ0aWN1bGllcnMvdm9zZHJvaXRzL0YzMTQ3Mw%3D%3D"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.gouv.fr/telecharger-pdf?path=aHR0cHM6Ly93d3cuc2VydmljZS1wdWJsaWMuZ291di5mci9wYXJ0aWN1bGllcnMvdm9zZHJvaXRzL1IyMDI4"
+            },
+            {
+              "type": "url",
+              "url": "https://entreprendre.service-public.gouv.fr/vosdroits/R2028"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F1992"
+            },
+            {
+              "type": "url",
+              "url": "https://fr.wikipedia.org/wiki/D%C3%A9claration_pr%C3%A9alable_de_travaux"
+            },
+            {
+              "type": "url",
+              "url": "https://fr.wikipedia.org/wiki/Service-public.gouv.fr"
+            },
+            {
+              "type": "url",
+              "url": "https://www.reddit.com/r/immobilier/comments/1lpqmlp/ipn_et_d%C3%A9claration_urbanisme/"
+            },
+            {
+              "type": "url",
+              "url": "https://www.reddit.com/r/conseiljuridique/comments/unxqwb"
+            },
+            {
+              "type": "url",
+              "url": "https://www.reddit.com/r/conseiljuridique/comments/1vsrvs2/permis_de_construire_abri_voiture_et_voisinage/"
+            },
+            {
+              "type": "url",
+              "url": "https://fr.wikipedia.org/wiki/D%C3%A9claration_d%27intention_de_commencement_de_travaux"
+            }
+          ]
+        },
+        "status": "completed",
+        "type": "web_search_call"
+      },
+      {
+        "id": "ws_08bad3ad9c3ad744016aa6b990342487d29b1a73c770c3efaa",
+        "action": {
+          "type": "open_page",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F17578"
+        },
+        "status": "completed",
+        "type": "web_search_call"
+      }
+    ],
+    "text": "La page officielle consultée est **« Déclaration préalable (DP) »**, sur Service-Public. Elle présente les travaux concernés, la constitution et le dépôt du dossier, ainsi que les délais d’instruction. ([service-public.gouv.fr](https://www.service-public.gouv.fr/particuliers/vosdroits/F17578))\n\n**Lien consulté :** [https://www.service-public.gouv.fr/particuliers/vosdroits/F17578](https://www.service-public.gouv.fr/particuliers/vosdroits/F17578)"
+  },
+  {
+    "model": "gpt-5.6-terra",
+    "test": "vision",
+    "status": "completed",
+    "text": "Le rectangle mesure 4,00 m × 3,00 m."
+  },
+  {
+    "model": "gpt-5.6-terra",
+    "test": "function",
+    "status": "completed",
+    "calls": 1
+  },
+  {
+    "model": "gpt-5.6-terra",
+    "test": "web_search",
+    "status": "completed",
+    "sources": [
+      {
+        "id": "ws_0a0531cdf3461e68016aa6b997533c87d2ad4a10bf0216c55f",
+        "action": {
+          "query": "site:service-public.fr déclaration préalable travaux",
+          "type": "search",
+          "queries": [
+            "site:service-public.fr déclaration préalable travaux"
+          ],
+          "sources": [
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/R1978"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F1986"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F1992"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F35742"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F17578?ori=npc"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F1997"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F36767"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F17578?gad=1&gbraid=0AAAAABva8eK-fZ-bqJBjsZMaWrY1kXoui%3Fgad%3D1&gbraid=0AAAAABva8eK-fZ-bqJBjsZMaWrY1kXoui%3Fgad%3D1%3Fgad%3D1%3Fgad_source%3D1"
+            },
+            {
+              "type": "url",
+              "url": "https://www.formulaires.service-public.fr/gf/cerfa_14824_01.do"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/R11646?wpappninja_v=qtzdjbor6&wpmobileexternal=true"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/R2028?wpappninja_v=odrmkis5i&wpmobileexternal=true"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F2698?lang=fr"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/R2028?wpappninja_v=tyte2hbwl&wpmobileexternal=true"
+            },
+            {
+              "type": "url",
+              "url": "https://www.formulaires.service-public.fr/gf/getNotice.do?cerfaFormulaire=16297&cerfaNotice=51434"
+            },
+            {
+              "type": "url",
+              "url": "https://www.formulaires.service-public.fr/gf/getNotice.do?cerfaFormulaire=13703&cerfaNotice=51434"
+            },
+            {
+              "type": "url",
+              "url": "https://www.formulaires.service-public.fr/gf/getNotice.do?cerfaFormulaire=13703&cerfaNotice=51434&wpappninja_v=bl09j6cpp&wpmobileexternal=true"
+            },
+            {
+              "type": "url",
+              "url": "https://www.service-public.fr/particuliers/vosdroits/F17578?ori=npc&utm_source=openai"
+            }
+          ]
+        },
+        "status": "completed",
+        "type": "web_search_call"
+      }
+    ],
+    "text": "La page officielle Service-Public relative à cette démarche est :\n\n**Déclaration préalable de travaux (DP)** — elle concerne notamment les petits travaux ou modifications sur une construction. ([service-public.fr](https://www.service-public.fr/particuliers/vosdroits/F17578?ori=npc&utm_source=openai))\n\nLien consulté :  \n`https://www.service-public.fr/particuliers/vosdroits/F17578`"
+  }
+]

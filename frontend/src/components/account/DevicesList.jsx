@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 const fmtDate = (iso) => {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
   } catch {
     return iso.slice(0, 16);
   }
@@ -41,8 +41,8 @@ export const DevicesList = () => {
   const logoutOthers = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post("/auth/logout-others");
-      if (data.token) localStorage.setItem("construpilot_token", data.token);
+      await api.post("/auth/logout-others");
+      // Auth par cookie httpOnly — pas de token côté client.
       toast.success("Tous les autres appareils ont été déconnectés");
       load();
     } catch {

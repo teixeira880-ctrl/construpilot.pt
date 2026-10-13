@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 
 // Bibliothèque de prix propre à l'entreprise (Excel/PDF) — utilisée en priorité pour chiffrer les DPGF.
 export const PriceLibrary = () => {

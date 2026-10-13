@@ -19,20 +19,21 @@ const STEPS = [
 
 const KEY = "construpilot_onboarded_v1";
 
-export const OnboardingTour = () => {
+export const OnboardingTour = ({ forceOpen = false, onClose }) => {
   const { user } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(forceOpen);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     const done = localStorage.getItem(KEY);
-    if (!done) setTimeout(() => setOpen(true), 700);
-  }, [user]);
+    // uniquement sur le tableau de bord : ne jamais interrompre une page de travail (assistant, plans…)
+    if (!forceOpen && !done && window.location.pathname === "/dashboard") { const timer = setTimeout(() => setOpen(true), 700); return () => clearTimeout(timer); }
+  }, [user, forceOpen]);
 
-  const close = () => { localStorage.setItem(KEY, new Date().toISOString()); setOpen(false); };
+  const close = () => { localStorage.setItem(KEY, new Date().toISOString()); setOpen(false); onClose?.(); };
   const next = () => {
     if (step === STEPS.length - 1) close();
     else setStep((s) => s + 1);
@@ -50,12 +51,12 @@ export const OnboardingTour = () => {
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm grid place-items-center p-4" data-testid="onboarding-overlay">
       <div className="surface p-8 max-w-lg w-full grid gap-6 relative animate-rise" data-testid="onboarding-tour">
-        <button onClick={skip} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-sm hover:bg-secondary" aria-label="Fechar" data-testid="onboarding-skip">
+        <button onClick={skip} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-sm hover:bg-secondary" aria-label="Fermer" data-testid="onboarding-skip">
           <X className="h-4 w-4" />
         </button>
         {step === 0 && chMsg && (
           <div className="rounded-sm bg-primary/10 border border-primary/20 px-4 py-2.5 text-sm text-primary font-semibold flex items-center gap-2" data-testid="onboarding-channel">
-            <Sparkles className="h-4 w-4" /> {chMsg} — profitez de l'accès <b>100% gratuit</b> pendant le lancement 🎉
+            <Sparkles className="h-4 w-4" /> {chMsg}
           </div>
         )}
         <div className="flex items-center gap-2 justify-center">

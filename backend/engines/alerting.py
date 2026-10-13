@@ -9,40 +9,20 @@ from engines import price_search, emailer
 logger = logging.getLogger(__name__)
 
 
-def _twilio_client():
-    """Devolve um cliente Twilio inicializado, ou None se credenciais faltam.
-
-    Usado por engines.sms_provider.get_sms_client() para wrapper unificado.
-    """
+def _send_sms(to: str, body: str) -> bool:
+    """Envoi SMS Twilio best-effort. Renvoie True si envoyé, False sinon (log warning)."""
     sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
     token = os.environ.get("TWILIO_AUTH_TOKEN", "")
-    if not (sid and token):
-        return None
+    from_ = os.environ.get("TWILIO_FROM_NUMBER", "")
+    if not (sid and token and from_ and to):
+        return False
     try:
         from twilio.rest import Client
-        return Client(sid, token)
-    except Exception as e:
-        logger.warning(f"Twilio client init failed: {e}")
-        return None
-
-
-def _send_sms(to: str, body: str) -> bool:
-    """Envio SMS via provider seleccionado (SMS_PROVIDER=twilio|smsto).
-
-    Best-effort: True se enviado com sucesso, False caso contrário.
-    """
-    if not to:
-        return False
-    from engines.sms_provider import get_sms_client
-    client = get_sms_client()
-    if client is None:
-        return False
-    resp = client.send(to=to, message=body[:320])
-    if resp.get("ok"):
+        Client(sid, token).messages.create(to=to, from_=from_, body=body[:320])
         return True
-    logger.warning(f"SMS alert failed provider={resp.get('provider')} "
-                   f"to={to[:-4] + '…' if len(to) > 6 else to}: {resp.get('reason') or resp.get('body')}")
-    return False
+    except Exception as e:
+        logger.warning(f"SMS alert failed to={to[:-4] + '…' if len(to) > 6 else to}: {e}")
+        return False
 
 
 async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
@@ -51,7 +31,7 @@ async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
     frontend = os.environ.get("FRONTEND_URL", "")
     html = emailer.wrap_html(
         "Un matériau vient d'atteindre votre prix cible",
-        f"""<p>Olá {user.get("name") or ""},</p>
+        f"""<p>Bonjour {user.get("name") or ""},</p>
 <p>Le matériau que vous surveillez sur ConstruPilot est disponible à un prix intéressant :</p>
 <ul>
 <li><b>Produit</b> : {alert.get("product") or alert.get("query")}</li>

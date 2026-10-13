@@ -1,0 +1,48 @@
+--- current/frontend/src/pages/Admin.jsx
++++ zip/frontend/src/pages/Admin.jsx
+@@ -1,5 +1,5 @@
+ import { useEffect, useState } from "react";
+-import { useNavigate, useSearchParams } from "react-router-dom";
++import { useNavigate } from "react-router-dom";
+ import { toast } from "sonner";
+ import { Shield, Save, Plus, Trash2, RefreshCw, Phone, Mail, CheckCircle2, Download } from "lucide-react";
+ import { Button } from "@/components/ui/button";
+@@ -35,7 +35,6 @@
+ export default function Admin() {
+   const { t } = useI18n();
+   const navigate = useNavigate();
+-  const [searchParams] = useSearchParams();
+   const confirm = useConfirm();
+   const [stats, setStats] = useState(null);
+   const [drill, setDrill] = useState(null);
+@@ -153,7 +152,7 @@
+       </div>
+       <AdminDrillDialog metric={drill} onClose={() => setDrill(null)} />
+ 
+-      <Tabs defaultValue={searchParams.get("tab") === "radar" ? "radar" : "prices"}>
++      <Tabs defaultValue="prices">
+         <TabsList className="rounded-sm flex-wrap h-auto">
+           <TabsTrigger value="prices" className="rounded-sm" data-testid="admin-tab-prices">{t("admin.t_prices")}</TabsTrigger>
+           <TabsTrigger value="regions" className="rounded-sm" data-testid="admin-tab-regions">{t("admin.t_regions")}</TabsTrigger>
+@@ -456,8 +455,8 @@
+                 </TableRow>
+               </TableHeader>
+               <TableBody>
+-                {projects.map((p, index) => (
+-                  <TableRow key={p.project_id || p.id || `legacy-project-${index}`} className="even:bg-muted/30">
++                {projects.map((p) => (
++                  <TableRow key={p.project_id} className="even:bg-muted/30">
+                     <TableCell className="font-medium">{p.name}</TableCell>
+                     <TableCell className="text-muted-foreground">{p.estimation?.project_type_name}</TableCell>
+                     <TableCell className="num text-right">{num(p.surface, 0)} m²</TableCell>
+@@ -526,8 +525,8 @@
+                 leadFilter === "all" ? true : leadFilter === "j2" ? l.j2_reminded : l.status === leadFilter);
+               return (<>
+                 {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Aucune demande.</p>}
+-                {shown.map((l, index) => (
+-              <div key={l.lead_id || l.id || `legacy-lead-${index}`} className="surface p-6 grid gap-3">
++                {shown.map((l) => (
++              <div key={l.lead_id} className="surface p-6 grid gap-3">
+                 <div className="flex flex-wrap items-center gap-4">
+                   <div>
+                     <p className="font-display font-semibold">{l.name || l.email}</p>

@@ -18,7 +18,7 @@ const CERTS = [
 
 /** Dialog de configuration du branding pro (logo + société + contact + certifications)
  *  utilisé dans les PDF Métré / Devis / Factures. */
-export function BrandingDialog({ trigger }) {
+export function BrandingDialog({ trigger, onSaved, contentClassName = "", overlayClassName }) {
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
@@ -95,8 +95,9 @@ export function BrandingDialog({ trigger }) {
         bank_details: bankDetails,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
-      toast.success("Identidade profissional guardada");
+      toast.success("Identité pro enregistrée");
       setOpen(false);
+      onSaved?.();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Sauvegarde impossible");
     } finally { setBusy(false); }
@@ -109,13 +110,13 @@ export function BrandingDialog({ trigger }) {
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" data-testid="branding-open-btn" className="rounded-sm gap-2">
-            <Building2 className="h-4 w-4" /> Identidade profissional
+            <Building2 className="h-4 w-4" /> Identité pro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="rounded-sm max-w-lg max-h-[88vh] overflow-y-auto" data-testid="branding-dialog">
+      <DialogContent className={`rounded-sm max-w-lg max-h-[88vh] overflow-y-auto ${contentClassName}`} overlayClassName={overlayClassName} data-testid="branding-dialog">
         <DialogHeader>
-          <DialogTitle>Identidade profissional & certificações</DialogTitle>
+          <DialogTitle>Identité pro & certifications</DialogTitle>
           <DialogDescription>
             {source === "organization"
               ? <>Identité partagée avec l'équipe <b>{orgName}</b>. {canEdit
@@ -278,7 +279,7 @@ export function BrandingDialog({ trigger }) {
           <div className="grid gap-2">
             <Label>Message d'accompagnement par défaut (e-mails devis/factures)</Label>
             <Textarea value={defaultEmailMsg} onChange={(e) => setDefaultEmailMsg(e.target.value)}
-                      placeholder={"Olá {client},\n\nSegue em anexo o seu orçamento n.º {numero}...\n\nCom os melhores cumprimentos,\n{entreprise}"}
+                      placeholder={"Bonjour {client},\n\nVeuillez trouver ci-joint votre devis n° {numero}...\n\nCordialement,\n{entreprise}"}
                       disabled={!canEdit}
                       data-testid="branding-default-msg-input"
                       className="rounded-sm text-sm" rows={5} maxLength={1500} />

@@ -5,7 +5,6 @@ Refactor iter53 : extrait de `routes/plans.py`.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import re
@@ -14,6 +13,8 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 from fastapi import Depends, HTTPException
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
@@ -28,7 +29,7 @@ from routes.plans_common import (
 
 logger = logging.getLogger(__name__)
 
-REMINDER_DELAY_DAYS = 5
+REMINDER_DELAY_DAYS = 7
 MAX_REMINDERS = 2
 QUOTE_DEPOSIT_DEFAULT_PCT = 30.0
 
@@ -241,6 +242,13 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
     if not p:
         raise HTTPException(404, "Plan introuvable")
 
+    if (p.get("pc_study") or {}).get("schema_version") == "construction-dossier-1":
+        from engines.study_dossier_xlsx import build_dossier_xlsx
+        import asyncio
+        content = await asyncio.to_thread(build_dossier_xlsx, p["pc_study"])
+        return Response(content=content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": f'attachment; filename="etude-{plan_id}.xlsx"'})
+
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor="1F2733")
     bold = Font(bold=True)
@@ -289,13 +297,15 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
     sheet_header(ws2, ["Libellé", "Type", "Page", "Longueur (m)", "Surface (m²)",
                        "Périmètre (m)", "Créée le"],
                  [28, 12, 6, 13, 13, 13, 18])
-    kind_fr = {"distance": "Distance", "polyline": "Polyligne", "polygon": "Surface"}
+    kind_fr = {"distance": "Distance", "polyline": "Polyligne", "polygon": "Surface", "cumulative": "Longueur cumulée",
+               "cumulative_area": "Surface cumulée", "manual_area": "Surface saisie",
+               "manual_linear": "Longueur saisie"}
     for m in p.get("measurements") or []:
-        is_poly = m.get("kind") == "polygon"
+        is_poly = m.get("kind") in ("polygon", "cumulative_area", "manual_area")
         ws2.append([m.get("label") or "",
                     kind_fr.get(m.get("kind"), m.get("kind") or ""),
                     (m.get("page_index") or 0) + 1,
-                    "" if is_poly else (m.get("value_m") or m.get("length_m") or ""),
+                    "" if is_poly else m.get("value_m", m.get("length_m", "")),
                     m.get("area_m2") if is_poly else "",
                     m.get("perimeter_m") if is_poly else "",
                     str(m.get("created_at") or "")[:16].replace("T", " ")])
@@ -481,7 +491,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
 
     from engines.emailer import wrap_company_html
     from routes.plans_common import deliver_email
-    hello = f"Olá {body.client_name}," if body.client_name else "Olá,"
+    hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
     intro_html = (f"<p>{body.intro}</p>" if body.intro
                    else "<p>Veuillez trouver ci-joint votre <b>devis estimatif</b>"
                         f" ({finish_label}) élaboré depuis votre plan.</p>")
@@ -689,7 +699,7 @@ async def _send_single_reminder(c: dict) -> None:
     branding = await _resolve_branding(c["user_id"]) or {}
     company = branding.get("company_name") or "ConstruPilot"
     company_email = branding.get("company_email")
-    hello = f"Olá {c['client_name']}," if c.get("client_name") else "Olá,"
+    hello = f"Bonjour {c['client_name']}," if c.get("client_name") else "Bonjour,"
     token = await _ensure_signature_token(c)
     sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{token}"
     portal_token = build_client_portal_token(c.get("client_email") or "")
@@ -787,8 +797,8 @@ async def trigger_reminders(user=Depends(admin_user)):
 
 class ReminderSettingsIn(BaseModel):
     enabled: bool
-    delay_days: int | None = None
-    max_reminders: int | None = None
+    delay_days: Literal[3, 5, 7] | None = None
+    max_reminders: Literal[1, 2, 3] | None = None
 
 
 @quote_router.get("/reminders/settings")
@@ -1314,7 +1324,7 @@ def _build_pro_signature_email(pro_name: str, signer: str, ttc: float,
         f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
         f"<h1 style='margin:0;font-size:22px'>✍️ Devis signé</h1></div>"
         f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
-        f"<p>Olá {pro_name or ''},</p>"
+        f"<p>Bonjour {pro_name or ''},</p>"
         f"<p><strong>{signer}</strong> vient de signer votre devis{ttc_html}.</p>"
         f"<p>Client : <em>{client_email}</em><br/>"
         f"Date : {_now()[:10]}</p>"
@@ -1327,105 +1337,6 @@ def _build_pro_signature_email(pro_name: str, signer: str, ttc: float,
         f"ConstruPilot · Estimez. Comparez. Construisez.</p>"
         f"</div></div>"
     )
-
-
-async def _send_client_receipt_pt(log: dict, signer: str, signed_at_iso: str) -> None:
-    """Envia o recibo PT-PT ao cliente após assinatura (fire-and-forget).
-
-    Idempotente via campo `receipt_sent_at` em `quote_sends`.
-    """
-    log_id = log.get("log_id")
-    client_email = (log.get("client_email") or "").strip()
-    if not client_email:
-        logger.info(f"Recibo PT skip (no client_email) log_id={log_id}")
-        return
-    existing = await db.quote_sends.find_one(
-        {"log_id": log_id, "receipt_sent_at": {"$exists": True, "$ne": None}},
-        {"_id": 0, "receipt_sent_at": 1},
-    )
-    if existing:
-        logger.info(f"Recibo PT skip (already sent) log_id={log_id}")
-        return
-    try:
-        from engines.quote_receipt import (
-            receipt_email_html_pt, receipt_subject_pt, receipt_filename,
-        )
-        from engines.emailer import send_email_with_pdf, send_email
-        user_id = log["user_id"]
-        branding = await _resolve_branding(user_id)
-        signature_block = {
-            "b64": log.get("signature_b64"),
-            "name": signer,
-            "at": signed_at_iso,
-            "client_email": client_email,
-        }
-        pdf_bytes: bytes
-        quote_number: str | None = None
-        quote_title: str | None = None
-        total_ttc: float = float(log.get("total_ttc") or 0)
-        client_name = (log.get("client_name") or "").strip()
-        if log.get("doc_id"):
-            from engines.pdf_docs import build_document_pdf
-            doc = await db.pro_documents.find_one(
-                {"doc_id": log["doc_id"], "user_id": user_id}, {"_id": 0})
-            if not doc:
-                logger.warning(f"Recibo PT skip (doc missing) doc_id={log.get('doc_id')}")
-                return
-            quote_number = doc.get("numero") or doc.get("number") or doc.get("doc_id")
-            quote_title = doc.get("title") or doc.get("object")
-            if not total_ttc:
-                total_ttc = float(doc.get("total_ttc") or 0)
-            if not client_name:
-                client_name = (doc.get("client_name")
-                               or (doc.get("client") or {}).get("name") or "").strip()
-            try:
-                pdf_bytes = build_document_pdf(doc, branding=branding,
-                                               signature=signature_block, lang="pt")
-            except TypeError:
-                pdf_bytes = build_document_pdf(doc, branding=branding, lang="pt")
-        elif log.get("plan_id"):
-            from engines.pdf_takeoff import build_quote_pdf
-            quote, _pdf = await _build_quote_and_pdf(
-                log["plan_id"], user_id, log.get("finish", "std"),
-                log.get("floor_material", "carrelage"),
-                True, True, True, True,
-            )
-            quote_number = str(log.get("plan_id"))[-8:]
-            quote_title = quote.get("title") if isinstance(quote, dict) else None
-            if not total_ttc:
-                total_ttc = float((quote or {}).get("total_ttc") or 0)
-            pdf_bytes = build_quote_pdf(quote, branding=branding, signature=signature_block)
-        else:
-            logger.warning(f"Recibo PT skip (no doc_id/plan_id) log_id={log_id}")
-            return
-        subject = receipt_subject_pt(quote_number)
-        html = receipt_email_html_pt(
-            client_name=client_name, quote_number=quote_number,
-            quote_title=quote_title, total_ttc=total_ttc,
-            signed_at_iso=signed_at_iso,
-        )
-        max_bytes = 10 * 1024 * 1024
-        if len(pdf_bytes) > max_bytes:
-            logger.info(f"Recibo PT: PDF too large ({len(pdf_bytes)} bytes) — sem anexo")
-            resp = await send_email(
-                client_email, subject,
-                html + "<p style='font-size:12px;color:#94A3B8'>Recibo em anexo "
-                       "omitido (tamanho excessivo). Contacte-nos para envio manual.</p>",
-            )
-        else:
-            filename = receipt_filename(quote_number)
-            resp = await send_email_with_pdf(
-                client_email, subject, html, pdf_bytes, filename=filename)
-        await db.quote_sends.update_one(
-            {"log_id": log_id},
-            {"$set": {"receipt_sent_at": _now(),
-                      "receipt_message_id": (resp or {}).get("id")}},
-        )
-        logger.info(f"Recibo PT enviado log_id={log_id} to={client_email} "
-                    f"resend_id={(resp or {}).get('id')}")
-    except Exception as e:
-        logger.error(f"Recibo PT envio falhou log_id={log_id}: {e}")
-
 
 
 async def _notify_pro_on_signature(log: dict, signer: str, client_email: str) -> None:
@@ -1449,6 +1360,42 @@ async def _notify_pro_on_signature(log: dict, signer: str, client_email: str) ->
             await emailer.send_email(pro["email"], f"✍️ {signer} a signé votre devis", html)
     except Exception as e:
         logger.warning(f"Email signature notify failed: {e}")
+
+
+async def _auto_deposit_after_signature(log: dict) -> dict | None:
+    """Facture d'acompte générée automatiquement si le pro a activé l'option.
+
+    Jamais bloquant : la signature reste enregistrée même si la facturation échoue.
+    """
+    if not log.get("doc_id"):
+        return None
+    owner = await db.users.find_one(
+        {"user_id": log["user_id"]},
+        {"_id": 0, "user_id": 1, "auto_deposit_invoice": 1, "auto_deposit_pct": 1, "role": 1,
+         "email": 1, "name": 1})
+    if not owner or not owner.get("auto_deposit_invoice"):
+        return None
+    quote = await db.pro_documents.find_one({"doc_id": log["doc_id"]},
+                                            {"_id": 0, "deposit_pct": 1, "number": 1})
+    pct = float((quote or {}).get("deposit_pct") or 0) or float(owner.get("auto_deposit_pct") or 30)
+    try:
+        from routes.documents import build_deposit_invoice
+        inv = await build_deposit_invoice(log["doc_id"], owner, pct)
+    except Exception as exc:  # noqa: BLE001 — l'échec est notifié au pro, pas au client
+        logging.getLogger(__name__).warning("auto deposit invoice failed: %s", exc)
+        await db.notifications.insert_one({
+            "notif_id": "n_" + secrets.token_hex(5), "user_id": log["user_id"],
+            "type": "deposit_invoice_failed", "log_id": log.get("log_id"),
+            "message": "Facture d'acompte automatique impossible après signature — à créer manuellement.",
+            "created_at": _now(), "read": False})
+        return None
+    await db.notifications.insert_one({
+        "notif_id": "n_" + secrets.token_hex(5), "user_id": log["user_id"],
+        "type": "deposit_invoice_created", "log_id": log.get("log_id"),
+        "message": f"Facture d'acompte {pct:g}% créée automatiquement ({inv['number']}) — à vérifier et envoyer.",
+        "created_at": _now(), "read": False})
+    return {"doc_id": inv["doc_id"], "number": inv["number"], "pct": pct,
+            "ttc": inv["totals"]["ttc"]}
 
 
 @quote_router.post("/public/sign/{token}")
@@ -1478,6 +1425,13 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
             {"doc_id": log["doc_id"], "user_id": log["user_id"]},
             {"$set": {"status": "signed", "signed": True,
                       "signed_at": _now(), "updated_at": _now()}})
+        try:
+            from routes.documents import _freeze_document
+            owner = await db.users.find_one({"user_id": log["user_id"]}, {"_id": 0})
+            if owner:
+                await _freeze_document(log["doc_id"], owner, reason="client_signature")
+        except Exception as exc:  # noqa: BLE001 — la signature est enregistrée, le gel est journalisé
+            logging.getLogger(__name__).warning("freeze after client signature failed: %s", exc)
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(5),
         "user_id": log["user_id"], "type": "quote_signed", "log_id": log["log_id"],
@@ -1485,11 +1439,8 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
         "created_at": _now(), "read": False,
     })
     await _notify_pro_on_signature(log, signer, client_email)
-    # Envio do recibo automático PT-PT ao cliente (fire-and-forget, idempotente)
-    signed_at_iso = _now()
-    if os.environ.get("RECEIPT_EMAIL_ENABLED", "true").lower() in ("1", "true", "yes"):
-        asyncio.create_task(_send_client_receipt_pt(log, signer, signed_at_iso))
-    return {"ok": True, "signed_at": signed_at_iso}
+    deposit = await _auto_deposit_after_signature(log)
+    return {"ok": True, "signed_at": _now(), "deposit_invoice": deposit}
 
 
 # ---- Acompte en ligne (Stripe Checkout, page publique de signature) --------
@@ -1584,7 +1535,7 @@ async def _apply_quote_deposit(rec: dict) -> None:
                     f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
                     f"<h1 style='margin:0;font-size:22px'>💶 Acompte reçu</h1></div>"
                     f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
-                    f"<p>Olá {pro.get('name') or ''},</p>"
+                    f"<p>Bonjour {pro.get('name') or ''},</p>"
                     f"<p>Un acompte de <strong>{amount} €</strong> vient d'être réglé en ligne "
                     f"sur un devis signé.</p>"
                     f"<p style='margin-top:24px'><a href='https://construpilot.fr/devis' "
@@ -1673,3 +1624,4 @@ async def get_signed_quote_pdf(token: str):
         headers={"Content-Disposition":
                  f'attachment; filename="devis-signe-{plan_id}.pdf"'}
     )
+

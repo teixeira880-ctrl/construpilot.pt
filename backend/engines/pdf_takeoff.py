@@ -7,7 +7,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, LongTable, TableStyle,
                                PageBreak)
 from reportlab.graphics.shapes import Drawing, Circle, String
 
@@ -45,6 +45,7 @@ def _preset_icon_drawing(kind: str) -> Drawing:
     return d
 
 ORANGE = colors.HexColor('#FF5A00')
+GREEN_BRAND = colors.HexColor('#18A858')
 DARK = colors.HexColor('#0A0D14')
 GREY = colors.HexColor('#64748B')
 LIGHT_GREY = colors.HexColor('#F1F5F9')
@@ -78,10 +79,18 @@ def _styles() -> dict:
 # ============ TAKEOFF PDF HELPERS ============
 # Each helper appends to `story` (mutates in place) — keeps the main builder flat.
 
-def _table(rows, col_widths, style_extras=None, repeat_rows=0):
-    """Small helper: build a Table with default border style + optional extras."""
-    t = Table(rows, colWidths=col_widths,
-              repeatRows=repeat_rows) if repeat_rows else Table(rows, colWidths=col_widths)
+def _table(rows, col_widths, style_extras=None, repeat_rows=0, splittable=False):
+    """Small helper: build a Table with default border style + optional extras.
+
+    splittable=True → use a LongTable that can split an oversized row across pages
+    (splitInRow) so a very long description cell never triggers a LayoutError.
+    """
+    if splittable:
+        t = LongTable(rows, colWidths=col_widths, repeatRows=repeat_rows,
+                      splitByRow=1, splitInRow=1)
+    else:
+        t = Table(rows, colWidths=col_widths,
+                  repeatRows=repeat_rows) if repeat_rows else Table(rows, colWidths=col_widths)
     base_style = [
         ("BOX", (0, 0), (-1, -1), 0.4, GREY),
         ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
@@ -311,7 +320,7 @@ def _story_footer(story: list, S: dict) -> None:
     story.append(Spacer(1, 20))
     story.append(Paragraph(
         "Métré généré par <b>ConstruPilot</b> — Estimez. Comparez. Construisez. "
-        "<br/>Estimations indicatives — ne constituent pas un devis contractuel.",
+        "<br/>Document de relevé de quantités (surfaces, linéaires, volumes) — sans prix.",
         S["muted"]))
 
 
@@ -650,7 +659,7 @@ def _story_quote_recap(story: list, quote: dict, S: dict) -> None:
     """Recap : sous-totaux, TVA, total TTC."""
     story.append(Spacer(1, 12))
     story.append(Paragraph("Récapitulatif", S["h2"]))
-    tva_pct = int(round(quote.get("tva_rate", 0.23) * 100))
+    tva_pct = int(round(quote.get("tva_rate", 0.10) * 100))
     tot_rows = [
         ["Sous-total matériaux", _fmt(quote.get("subtotal_material", 0), "€")],
         ["Sous-total main d'œuvre", _fmt(quote.get("subtotal_labour", 0), "€")],
@@ -824,7 +833,7 @@ def _pq_sub_quote(story: list, sq: dict, index: int, S: dict) -> None:
 def _pq_recap(story: list, project: dict, S: dict) -> None:
     story.append(Spacer(1, 8))
     story.append(Paragraph("Récapitulatif projet", S["h2"]))
-    tva_pct = int(round(project.get("tva_rate", 0.23) * 100))
+    tva_pct = int(round(project.get("tva_rate", 0.10) * 100))
     rows = [
         ["Sous-total matériaux", _fmt(project.get("subtotal_material", 0), "€")],
         ["Sous-total main d'œuvre", _fmt(project.get("subtotal_labour", 0), "€")],
@@ -880,6 +889,188 @@ def build_project_quote_pdf(project: dict, branding: dict | None = None) -> byte
 
 
 
+# ============ PAGE DE GARDE (dossier de chiffrage pro) ============
+
+def build_cover_story(branding: dict | None, project: dict, client: dict | None,
+                      reference: str, S: dict) -> list:
+    """Page de garde professionnelle : bandeau vert de marque (logo + société),
+    titre « Dossier de chiffrage », nom du projet, bloc client et métadonnées.
+
+    `project` = {"name", "levels_count", "total_ttc"} ; `client` = {"name",
+    "company", "address", "city", "email", "phone"}. Retourne les flowables
+    (terminés par un PageBreak) à préfixer au corps du rapport.
+    """
+    from reportlab.platypus import PageBreak
+    story: list = []
+
+    white_big = ParagraphStyle("cv_wb", fontName="Helvetica-Bold", fontSize=14,
+                               textColor=colors.white, leading=17)
+    white_small = ParagraphStyle("cv_ws", fontName="Helvetica", fontSize=8.5,
+                                 textColor=colors.white, leading=12)
+    label_style = ParagraphStyle("cv_lbl", fontName="Helvetica-Bold", fontSize=8,
+                                 textColor=GREEN_BRAND, leading=12, spaceAfter=2)
+    kicker_green = ParagraphStyle("cv_kick", fontName="Helvetica-Bold", fontSize=9,
+                                  textColor=GREEN_BRAND, leading=12, spaceAfter=2)
+
+    # --- Bandeau vert de marque : logo + identité société ---
+    logo = (_decode_brand_logo(branding["logo_b64"], size_mm=20)
+            if branding and branding.get("logo_b64") else "")
+    comp_lines = []
+    if branding:
+        if branding.get("company_name"):
+            comp_lines.append(Paragraph(branding["company_name"], white_big))
+        addr = " ".join(x for x in [branding.get("address"),
+                                     branding.get("postal_code"),
+                                     branding.get("city")] if x)
+        if addr:
+            comp_lines.append(Paragraph(addr, white_small))
+        if branding.get("contact_line"):
+            comp_lines.append(Paragraph(branding["contact_line"], white_small))
+        if branding.get("company_email"):
+            comp_lines.append(Paragraph(branding["company_email"], white_small))
+        fisc = []
+        if branding.get("siret"):
+            fisc.append("SIRET " + str(branding["siret"]))
+        if branding.get("vat"):
+            fisc.append("TVA " + str(branding["vat"]))
+        if fisc:
+            comp_lines.append(Paragraph(" · ".join(fisc), white_small))
+    if not comp_lines:
+        comp_lines = [Paragraph("ConstruPilot", white_big)]
+    banner = Table([[logo, comp_lines]], colWidths=[26 * mm, None])
+    banner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), GREEN_BRAND),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 14),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
+    ]))
+    story.append(banner)
+    if branding and branding.get("verified"):
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(
+            '<font color="#3F7D54"><b>&#10004; Pro vérifié</b></font> '
+            '<font color="#64748B">— identité et assurance contrôlées par ConstruPilot</font>',
+            S["muted"]))
+    story.append(Spacer(1, 34 * mm))
+
+    # --- Titre principal ---
+    story.append(Paragraph("DOSSIER DE CHIFFRAGE", kicker_green))
+    story.append(Paragraph(project.get("name") or "Projet", ParagraphStyle(
+        "cv_title", fontName="Helvetica-Bold", fontSize=28, textColor=DARK,
+        leading=32, spaceAfter=6)))
+    story.append(Paragraph(
+        f"Projet multi-niveaux · {project.get('levels_count', 0)} niveau(x)", S["muted"]))
+
+    ttc = project.get("total_ttc")
+    if ttc:
+        story.append(Spacer(1, 10 * mm))
+        amount_box = Table([[
+            [Paragraph("MONTANT ESTIMÉ TTC", ParagraphStyle(
+                "cv_ttc_lbl", fontName="Helvetica-Bold", fontSize=8.5,
+                textColor=colors.white, leading=11, spaceAfter=3)),
+             Paragraph(_fmt(ttc, "€"), ParagraphStyle(
+                "cv_ttc_val", fontName="Helvetica-Bold", fontSize=26,
+                textColor=colors.white, leading=30))]
+        ]], colWidths=[None])
+        amount_box.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), DARK),
+            ("LEFTPADDING", (0, 0), (-1, -1), 16),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 16),
+            ("TOPPADDING", (0, 0), (-1, -1), 12),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ]))
+        story.append(amount_box)
+    story.append(Spacer(1, 20 * mm))
+
+    # --- Bloc client + métadonnées (2 colonnes) ---
+    cli = client or {}
+    client_cell = [Paragraph("CLIENT", label_style)]
+    cname = cli.get("name") or cli.get("company")
+    if cname:
+        client_cell.append(Paragraph(f"<b>{cname}</b>", S["body"]))
+    if cli.get("company") and cli.get("name") and cli.get("company") != cli.get("name"):
+        client_cell.append(Paragraph(cli["company"], S["body"]))
+    for key in ("address", "city"):
+        if cli.get(key):
+            client_cell.append(Paragraph(cli[key], S["body"]))
+    contact = " · ".join(x for x in [cli.get("email"), cli.get("phone")] if x)
+    if contact:
+        client_cell.append(Paragraph(contact, S["muted"]))
+    if len(client_cell) == 1:
+        client_cell.append(Paragraph("—", S["muted"]))
+
+    date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    meta_cell = [
+        Paragraph("RÉFÉRENCE DOSSIER", label_style),
+        Paragraph(f"<b>{reference}</b>", S["body"]),
+        Spacer(1, 6),
+        Paragraph("ÉMIS LE", label_style),
+        Paragraph(date_str, S["body"]),
+        Spacer(1, 6),
+        Paragraph("VALIDITÉ", label_style),
+        Paragraph("Devis estimatif valable 30 jours", S["body"]),
+    ]
+    info = Table([[client_cell, meta_cell]], colWidths=[None, 62 * mm])
+    info.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOX", (0, 0), (-1, -1), 0.6, GREEN_BRAND),
+        ("LINEAFTER", (0, 0), (0, -1), 0.4, LIGHT_GREY),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F1FBF4")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 14),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
+    ]))
+    story.append(info)
+    story.append(Spacer(1, 16 * mm))
+    story.append(Paragraph(
+        "Document généré par <b>ConstruPilot</b> — métré et chiffrage déterministes. "
+        "Estimation indicative ne constituant pas un devis contractuel.", S["muted"]))
+    story.append(PageBreak())
+    return story
+
+
+def make_logo_watermark(logo_b64: str | None, alpha: float = 0.12):
+    """Retourne une fonction (canvas, doc) dessinant un filigrane du logo
+    centré sur chaque page — ou None si pas de logo exploitable.
+    alpha : opacité (0.12 = visible mais lisible sous le texte)."""
+    if not logo_b64:
+        return None
+    try:
+        import base64 as b64lib
+        from reportlab.lib.utils import ImageReader
+        from io import BytesIO as BIO
+        raw = b64lib.b64decode(logo_b64.split(",")[-1])
+        reader = ImageReader(BIO(raw))
+        iw, ih = reader.getSize()
+    except Exception:
+        return None
+    if not iw or not ih:
+        return None
+    ratio = ih / iw
+
+    def _draw(canvas, doc):
+        from reportlab.lib.pagesizes import A4
+        pw, ph = A4
+        w = 110 * mm
+        h = w * ratio
+        x = (pw - w) / 2
+        y = (ph - h) / 2
+        canvas.saveState()
+        try:
+            canvas.setFillAlpha(alpha)
+            canvas.setStrokeAlpha(alpha)
+        except Exception:
+            pass
+        canvas.drawImage(reader, x, y, width=w, height=h,
+                         mask="auto", preserveAspectRatio=True)
+        canvas.restoreState()
+
+    return _draw
+
+
 # ============ ATTESTATION TVA (Cerfa 1301-SD simplifié) ============
 
 @dataclass
@@ -893,7 +1084,7 @@ class TvaAttestationInput:
     company_name: str = ""
     company_address: str = ""
     branding: dict | None = None
-    tva_rate: float = 0.23
+    tva_rate: float = 0.10
 
 
 def _tva_header_and_intro(story: list, tva_pct: int, S: dict) -> None:
@@ -977,7 +1168,7 @@ def _coalesce_tva_input(data, kw) -> "TvaAttestationInput":
         company_name=kw.get("company_name", ""),
         company_address=kw.get("company_address", ""),
         branding=kw.get("branding"),
-        tva_rate=kw.get("tva_rate", 0.23),
+        tva_rate=kw.get("tva_rate", 0.10),
     )
 
 
@@ -992,7 +1183,7 @@ def build_tva_attestation_pdf(
     company_name: str = "",
     company_address: str = "",
     branding: dict | None = None,
-    tva_rate: float = 0.23,
+    tva_rate: float = 0.10,
 ) -> bytes:
     """Attestation simplifiée du client (art. 279-0 bis CGI) : logement > 2 ans.
 

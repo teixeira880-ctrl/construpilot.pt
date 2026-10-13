@@ -86,7 +86,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
                     </button>
                     <button onClick={() => deleteTemplate(t.template_id)}
                             className="text-muted-foreground hover:text-destructive transition"
-                            title="Eliminar este modelo"
+                            title="Supprimer ce modèle"
                             data-testid={`pc-msg-template-delete-${t.template_id}`}>
                       <X className="h-3 w-3" />
                     </button>
@@ -95,7 +95,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
               </div>
             )}
             <Textarea id="pc-send-message" rows={4}
-                      placeholder="Olá, segue em anexo o estudo de estrutura do seu projeto…"
+                      placeholder="Bonjour, veuillez trouver ci-joint l'étude gros œuvre de votre projet…"
                       value={message} onChange={(e) => setMessage(e.target.value)}
                       data-testid="pc-send-message-input" className="rounded-sm" />
             {message.trim() && (

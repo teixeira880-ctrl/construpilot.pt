@@ -12,9 +12,10 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user
+from core.permissions import feature_dependency
 from engines import storage, emailer
 
-router = APIRouter(prefix="/site", tags=["site"])
+router = APIRouter(prefix="/site", tags=["site"], dependencies=[Depends(feature_dependency("chantier"))])
 
 
 async def _store_photos(photos: list[str], folder: str, uid: str) -> list[str]:
@@ -41,10 +42,16 @@ async def _store_photos(photos: list[str], folder: str, uid: str) -> list[str]:
 
 
 @router.get("/file")
-async def serve_file(path: str):
+async def serve_file(path: str, user=Depends(current_user)):
+    query = {"user_id": user["user_id"], "photos": path}
+    owned = await db.site_reports.find_one(query, {"_id": 0, "report_id": 1})
+    if not owned:
+        owned = await db.site_reserves.find_one(query, {"_id": 0, "reserve_id": 1})
+    if not owned:
+        raise HTTPException(404, "Image introuvable")
     data, ct = await asyncio.to_thread(storage.get_object, path)
     return StreamingResponse(io.BytesIO(data), media_type=ct,
-                             headers={"Cache-Control": "public, max-age=86400"})
+                             headers={"Cache-Control": "private, no-store"})
 
 
 def _now():
@@ -58,6 +65,8 @@ def _uid(user):
 # ── Comptes-rendus de visite ──
 class ReportIn(BaseModel):
     project: str
+    doc_id: str | None = None
+    chantier_id: str | None = None
     title: str = ""
     notes: str = ""
     lots: list[dict] = []      # [{name, progress}]
@@ -91,6 +100,8 @@ async def delete_report(report_id: str, user=Depends(current_user)):
 # ── Réserves ──
 class ReserveIn(BaseModel):
     project: str
+    doc_id: str | None = None
+    chantier_id: str | None = None
     lot: str = ""
     description: str
     company: str = ""
@@ -138,6 +149,7 @@ async def delete_reserve(reserve_id: str, user=Depends(current_user)):
 # ── Checklist d'avancement ──
 class ChecklistIn(BaseModel):
     project: str
+    doc_id: str | None = None
     label: str
     lot: str = ""
 
@@ -258,7 +270,7 @@ async def remind_companies(project: str, user=Depends(current_user)):
     sent, skipped = 0, len(reserves)
     for email, grp in by_email.items():
         lis = "".join(f"<li>{r.get('lot','')} — {r.get('description','')}</li>" for r in grp["items"])
-        html = (f"<p>Olá {grp['company'] or ''},</p>"
+        html = (f"<p>Bonjour {grp['company'] or ''},</p>"
                 f"<p>Réserves à lever sur le chantier <b>{project}</b> :</p><ul>{lis}</ul>"
                 f"<p>Merci de planifier leur reprise au plus vite.</p><p>— {user.get('name') or 'ConstruPilot'}</p>")
         try:

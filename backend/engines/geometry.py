@@ -21,14 +21,16 @@ def compute_calibration(p1_px: Point, p2_px: Point, real_meters: float) -> dict:
     """À partir de 2 points en pixels et de la distance réelle connue en mètres,
     renvoie le ratio pixels_per_meter (et son inverse).
     """
-    if real_meters <= 0:
+    if not math.isfinite(real_meters) or real_meters <= 0:
         raise ValueError("La distance réelle doit être > 0")
     dx = p2_px[0] - p1_px[0]
     dy = p2_px[1] - p1_px[1]
     pixel_dist = math.hypot(dx, dy)
-    if pixel_dist < 1e-6:
+    if not math.isfinite(pixel_dist) or pixel_dist < 1e-6:
         raise ValueError("Les deux points doivent être distincts")
     ppm = pixel_dist / real_meters
+    if round(ppm, 6) <= 0 or not math.isfinite(ppm):
+        raise ValueError("Échelle invalide : choisissez une référence plus longue")
     return {
         "pixels_per_meter": round(ppm, 6),
         "meters_per_pixel": round(1.0 / ppm, 8),
@@ -134,7 +136,8 @@ def subtract_openings(wall_area_gross_m2: float, openings: Iterable[dict]) -> di
     for o in openings or []:
         w = float(o.get("width_m", 0) or 0)
         h = float(o.get("height_m", 0) or 0)
-        area = max(0.0, w * h)
+        count = max(0, int(o.get("count", 1)))
+        area = max(0.0, w) * max(0.0, h) * count
         total_open += area
         per_opening.append({**o, "area_m2": round(area, 3)})
     net = max(0.0, wall_area_gross_m2 - total_open)
@@ -230,3 +233,4 @@ def calibration_check(measured_m: float, expected_m: float) -> dict:
         else "Calibration à vérifier" if pct < 5.0
         else "Recalibration recommandée",
     }
+

@@ -75,7 +75,7 @@ export default function ClientPortal() {
         <Kpi label="Signés" value={signed} accent />
         <Kpi label="En attente" value={pending} />
         <Kpi label="Total montant" value={
-          `${quotes.reduce((s, q) => s + (q.total_ttc || 0), 0).toLocaleString("pt-PT")} €`
+          `${quotes.reduce((s, q) => s + (q.total_ttc || 0), 0).toLocaleString("fr-FR")} €`
         } small />
       </div>
 
@@ -148,7 +148,7 @@ function QuoteCard({ q }) {
       </div>
       <div className="text-right">
         <p className="num font-display text-xl font-extrabold">
-          {(q.total_ttc || 0).toLocaleString("pt-PT")} €
+          {(q.total_ttc || 0).toLocaleString("fr-FR")} €
         </p>
         <p className="text-[10px] text-muted-foreground">TTC</p>
       </div>

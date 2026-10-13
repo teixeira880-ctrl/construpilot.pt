@@ -104,7 +104,7 @@ export const SavingsCard = ({ estimation, projectId }) => {
           <Link to="/tarifs">
             <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white" data-testid="savings-upgrade-cta">
               <Sparkles className="h-4 w-4" />
-              Débloquer toutes les économies — dès 19,90 €
+              Débloquer toutes les économies — Premium 19 €/mois
             </Button>
           </Link>
           <p className="text-xs text-muted-foreground self-center">

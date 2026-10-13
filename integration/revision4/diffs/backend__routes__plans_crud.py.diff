@@ -1,0 +1,10 @@
+--- current/backend/routes/plans_crud.py
++++ zip4/backend/routes/plans_crud.py
+@@ -114,7 +114,6 @@
+             await save_plan_source(db, plan_id, user["user_id"], pdf, mime="application/pdf",
+                                    filename=parse_name.rsplit(".", 1)[0]+".pdf", source_kind="normalized_image",
+                                    original_filename=file.filename, original_sha256=hashlib.sha256(original_data).hexdigest(), created_at=_now())
+-            await save_cad_source(db, plan_id, user["user_id"], "original", original_data)
+     except BaseException as exc:
+         await db.plans_takeoff.delete_one({"plan_id": plan_id, "user_id": user["user_id"]})
+         await delete_plan_sources(db, plan_id, user["user_id"])

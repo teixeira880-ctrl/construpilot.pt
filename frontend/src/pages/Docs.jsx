@@ -22,7 +22,7 @@ const CURL_EST = `curl -X POST https://pilot-build-demo.preview.emergentagent.co
 const CURL_PRICES = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/prices \\
   -H "X-API-Key: ckp_live_..." \\
   -H "Content-Type: application/json" \\
-  -d '{"query":"azulejos 60x60","limit":10}'`;
+  -d '{"query":"carrelage 60x60","limit":10}'`;
 
 const CURL_CALC = `curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/calculators \\
   -H "X-API-Key: ckp_live_..." \\
@@ -77,7 +77,7 @@ const CodeBlock = ({ code, testid }) => {
 export default function Docs() {
   return (
     <div className="grid gap-12">
-      <SectionTitle over="ConstruPilot Developers" title="Intégrez notre moteur d'estimation en 15 minutes">
+      <SectionTitle as="h1" over="ConstruPilot Developers" title="Intégrez notre moteur d'estimation avec l'API">
         Une API REST simple, documentée, prête pour la production. Prototypage en Starter (99 €/mois),
         volumes élevés en Business (299 €) ou Scale (999 €). Sandbox illimitée pendant l'intégration.
       </SectionTitle>

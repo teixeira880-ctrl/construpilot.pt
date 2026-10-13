@@ -1,0 +1,27 @@
+--- current/backend/tests/test_assistant_workspace_regressions.py
++++ zip4/backend/tests/test_assistant_workspace_regressions.py
+@@ -3,7 +3,6 @@
+ import copy
+ import importlib.util
+ import json
+-import os
+ import re
+ import sys
+ import types
+@@ -121,15 +120,11 @@
+ 
+ class AssistantIsolation(unittest.IsolatedAsyncioTestCase):
+     async def asyncSetUp(self):
+-        self.model_env = patch.dict(os.environ, {"ASSISTANT_MODEL_THOROUGH": "test-thorough", "ASSISTANT_MODEL_FAST": "test-fast"})
+-        self.model_env.start()
+         self.db=Database();self.patch=patch.object(A,'db',self.db);self.patch.start()
+         self.user={'user_id':'owner','organization_id':'org-a','role':'owner'}
+         self.conv={'conversation_id':'conv-a','user_id':'owner','project_id':None,'title':'Dossier','_settings':{'web_enabled':True,'learning_mode':'suggest'}}
+         self.db.assistant_convs.rows=[self.conv]
+-    async def asyncTearDown(self):
+-        self.patch.stop()
+-        self.model_env.stop()
++    async def asyncTearDown(self):self.patch.stop()
+ 
+     async def test_project_memory_rejects_foreign_project(self):
+         self.db.projects.rows=[{'project_id':'foreign','user_id':'other'}]

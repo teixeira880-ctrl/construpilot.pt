@@ -1,0 +1,74 @@
+[
+  {
+    "path": "frontend/src/components/assistant/MessageBubble.jsx",
+    "live_hash": "4ab19966d2b64347795d6c7a61ff655de2d2622fa44fcca39912c638092215b0",
+    "revision4_hash": "930848dd4e186fa7c679203f3a3e511cca02980b8def9bc47c508306155ed281",
+    "older_zip_hash": "4ab19966d2b64347795d6c7a61ff655de2d2622fa44fcca39912c638092215b0"
+  },
+  {
+    "path": "frontend/src/pages/Assistant.jsx",
+    "live_hash": "c9ff076d3a5cf28b2c1f08940f79805a73e718e4f551d87d4859aa9863c5a959",
+    "revision4_hash": "18b289027c97c124e215c41d55f21c0c2295839c0b43f37249411d929f246284",
+    "older_zip_hash": "21f91d2940e261359e83b41d4289d9d1dc9989a7481620b9e4e889d98d6055a2"
+  },
+  {
+    "path": "frontend/src/App.js",
+    "live_hash": "337d7746040f588d43bebff1050981be4d9f72b3bfaa26e42934dbde8885c876",
+    "revision4_hash": "da05ad543e13d5511c89db57e276f50ca416d903349e540d758b661318b57b2a",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/components/Bits.jsx",
+    "live_hash": "c71014140a2e1b5e78b0fc4c9817842b78df62c45785d5b4bd4ff91b802ce072",
+    "revision4_hash": "35b291c9b77bad45e9cbb291e7f4459f216f57d82336984766c6eb0133380f8b",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/components/OnboardingTour.jsx",
+    "live_hash": "509ca9b0c77d91ed62f4e03e79cbcaf656d9eeb1acda8b27ee4c3e5a765e4a2f",
+    "revision4_hash": "259c191762a0e8224a51d1b867c54acc12104081701f346242fe7f8d704260a3",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/components/pwa/MobileTabBar.jsx",
+    "live_hash": "5d543c9960496f02395cb5f8866130c190e3b81b26d0f9689f7d69e549bb5562",
+    "revision4_hash": "09c93a1120e362f309759e305cdcbbdfc3bd9d6bcf9e2e7af1e130de37594cf6",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/pages/Dashboard.jsx",
+    "live_hash": "e0ede1873cb9f75d2b1626fa41ec241d3ff8e35f8fd03bb3b7a4c9e97d798ce8",
+    "revision4_hash": "7e4ecee70a0497a5c565bd1f8e59172da36bbda80c17df11846771d234702351",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/components/workspace/WorkspaceNavigation.jsx",
+    "live_hash": null,
+    "revision4_hash": "a10def0ee31140361cec374559ed895b5c158e8c0a54418fabd070a464a5e5cb",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/components/workspace/copy.js",
+    "live_hash": null,
+    "revision4_hash": "b572ba92f14f151761e1d1321e1ed43da13561947f899f369b8edccb2a6afd3f",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/components/workspace/navigation.js",
+    "live_hash": null,
+    "revision4_hash": "a50b8eed8af72c3e9e17a0c8c08296a3ad55e97a52becd5623c3addbcdc93fc9",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/src/styles/workspace.css",
+    "live_hash": null,
+    "revision4_hash": "1f75483083730d4e640a07054bc6ab7590c2a06cd444ad25297d4339f4c211cb",
+    "older_zip_hash": null
+  },
+  {
+    "path": "frontend/tests/workspace-browser.cjs",
+    "live_hash": null,
+    "revision4_hash": "8f843a5c6312dfbbe419c7b105e4d2f0d3701c0e8ae37fa07ae4292e0805058e",
+    "older_zip_hash": null
+  }
+]

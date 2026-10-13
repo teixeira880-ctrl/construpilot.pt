@@ -5,10 +5,11 @@
  * avec pour chacun les résultats + matériaux + budget estimé, et un total en bas.
  * Backend: POST /api/takeoffs/{plan_id}/rooms/{room_id}/estimate
  */
-import React from "react";
-import { X, Calculator, Palette, Grid3x3, Layers, Package, Ruler } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Calculator, Palette, Grid3x3, Layers, Package, Ruler, Blocks, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { api } from "@/lib/api";
 
 const TRADE_META = {
   paint:      { icon: Palette,    label: "Peinture",  color: "#eab308" },
@@ -16,13 +17,35 @@ const TRADE_META = {
   drywall:    { icon: Layers,     label: "Plâtrerie", color: "#22c55e" },
   insulation: { icon: Package,    label: "Isolation", color: "#a855f7" },
   plinths:    { icon: Ruler,      label: "Plinthes",  color: "#3b82f6" },
+  masonry:    { icon: Blocks,     label: "Maçonnerie", color: "#78716c" },
 };
 
-export default function RoomEstimateDialog({ open, estimate, planId, onClose, onAddToQuote }) {
+export default function RoomEstimateDialog({ open, estimate, planId, busy, onRecompute, onClose, onAddToQuote }) {
+  const [material, setMaterial] = useState("parpaing");
+  const [bond, setBond] = useState("");
+  const [block, setBlock] = useState("");
+  const [render, setRender] = useState(false);
+  const [cfg, setCfg] = useState(null);
+  const masonryRef = useRef(null);
+  const hasMasonry = !!(estimate?.trades?.masonry);
+  useEffect(() => {
+    if (hasMasonry && masonryRef.current) masonryRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [hasMasonry, estimate]);
+  useEffect(() => {
+    if (open && !cfg) api.get("/estimation/masonry-config").then(({ data }) => setCfg(data)).catch(() => {});
+  }, [open, cfg]);
   if (!open || !estimate) return null;
 
   const room = estimate.room || {};
   const trades = estimate.trades || {};
+  const ratios = cfg?.ratios || {};
+  const blocks = (cfg?.blocks || []).filter((b) => b.material === material);
+  const recompute = () => onRecompute?.({
+    includeMasonry: true, masonryMaterial: material,
+    masonryBond: bond || (material === "brique" ? "colle" : "mortier"),
+    masonryBlock: block || blocks[0]?.key || null, masonryRender: render,
+  });
+  const fmt = (v, d = 0) => (v == null ? "—" : Number(v).toLocaleString("fr-FR", { maximumFractionDigits: d }));
 
   return (
     <div
@@ -53,11 +76,68 @@ export default function RoomEstimateDialog({ open, estimate, planId, onClose, on
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="surface p-4 rounded-md" data-testid="masonry-control">
+            <div className="flex items-center gap-2 mb-3">
+              <Blocks className="h-4 w-4" style={{ color: "#78716c" }} />
+              <p className="font-display font-bold text-sm">Maçonnerie (murs parpaing / brique)</p>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-xs">
+                <span className="block text-muted-foreground mb-1">Matériau</span>
+                <select value={material} onChange={(e) => { setMaterial(e.target.value); setBond(""); setBlock(""); }}
+                  data-testid="masonry-material"
+                  className="h-9 rounded-md border border-border bg-background text-sm px-2">
+                  <option value="parpaing">Parpaing (sable + ciment)</option>
+                  <option value="brique">Brique</option>
+                </select>
+              </label>
+              {blocks.length > 0 && (
+                <label className="text-xs">
+                  <span className="block text-muted-foreground mb-1">Dimension du bloc</span>
+                  <select value={block || blocks[0].key} onChange={(e) => setBlock(e.target.value)}
+                    data-testid="masonry-block"
+                    className="h-9 rounded-md border border-border bg-background text-sm px-2">
+                    {blocks.map((b) => (
+                      <option key={b.key} value={b.key}>{b.label} · {b.blocks_per_m2}/m²</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {material === "brique" && (
+                <label className="text-xs">
+                  <span className="block text-muted-foreground mb-1">Liant</span>
+                  <select value={bond || "colle"} onChange={(e) => setBond(e.target.value)}
+                    data-testid="masonry-bond"
+                    className="h-9 rounded-md border border-border bg-background text-sm px-2">
+                    <option value="colle">Mortier-colle (joint mince)</option>
+                    <option value="mousse">Mousse polyuréthane</option>
+                  </select>
+                </label>
+              )}
+              <label className="flex items-center gap-2 text-xs h-9 cursor-pointer select-none">
+                <input type="checkbox" checked={render} onChange={(e) => setRender(e.target.checked)}
+                  data-testid="masonry-render" className="h-4 w-4 accent-orange-500" />
+                Enduit de façade (gobetis + corps d'enduit)
+              </label>
+              <Button size="sm" onClick={recompute} disabled={busy}
+                data-testid="masonry-include-btn" className="rounded-sm gap-2">
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Blocks className="h-4 w-4" />}
+                {hasMasonry ? "Recalculer la maçonnerie" : "Inclure la maçonnerie"}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2" data-testid="masonry-ratios-hint">
+              Parpaing : ~{fmt(ratios.cement_kg_per_m2 ?? 7)} kg de ciment et {fmt(ratios.sand_m3_per_m2 ?? 0.03, 3)} m³ de sable par m² de mur.
+              Brique : mortier-colle (~{fmt(ratios.glue_kg_per_m2 ?? 5)} kg/m²) ou mousse PU (~1 pour {fmt(ratios.foam_m2_per_can ?? 8)} m²).
+              {" "}Enduit : gobetis {fmt(ratios.gobetis_kg_per_m2 ?? 5)} kg/m² + corps d'enduit {fmt(ratios.render_kg_per_m2 ?? 25)} kg/m². Pertes {fmt(ratios.loss_pct ?? 5)} %.
+            </p>
+          </div>
+
           {Object.entries(trades).map(([key, r]) => {
             const meta = TRADE_META[key] || { icon: Calculator, label: key, color: "#71717a" };
             const Ic = meta.icon;
             return (
-              <div key={key} className="surface p-5" data-testid={`estimate-trade-${key}`}>
+              <div key={key} className="surface p-5" data-testid={`estimate-trade-${key}`}
+                   ref={key === "masonry" ? masonryRef : null}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Ic className="h-4 w-4" style={{ color: meta.color }} />

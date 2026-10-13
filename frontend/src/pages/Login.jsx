@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { Hammer, ArrowLeft, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,11 @@ export default function Login() {
   const { login, register, verify2fa, user } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const refCodeFromUrl = params.get("ref") || "";
   const [busy, setBusy] = useState(false);
-  const [tfa, setTfa] = useState(null);
+  const [tfa, setTfa] = useState(() => location.state?.twoFactor || null);
   const [tfaCode, setTfaCode] = useState("");
   const [form, setForm] = useState({ name: "", email: params.get("email") || "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -330,3 +331,4 @@ export default function Login() {
     </div>
   );
 }
+

@@ -1,0 +1,27 @@
+export const WORKSPACE_EXTRA = {
+  fr: {
+    permissionsLoading: "Vérification des accès…", permissionsError: "Accès professionnels temporairement bloqués : vérification des permissions indisponible.", accessDenied: "Votre rôle ne permet pas cet accès.",
+    thinking: "ConstruPilot réfléchit…", assistantError: "Assistant indisponible", transcriptionError: "Transcription impossible", microphoneError: "Micro indisponible", documentAdded: "Document ajouté au contexte", importError: "Import impossible", copyError: "Copie indisponible", sources: "Sources Internet", interrupted: "Réponse interrompue.",
+    leadTitle: "Demande ConstruPilot", budget: "Budget", address: "Adresse", availability: "Disponibilité", trade: "Métier", description: "Description", call: "Appeler", days: "j", newLead: "Nouveau", leadSubject: "Votre demande ConstruPilot", personalMore: "Nouveau projet et estimation.",
+  },
+  pt: {
+    permissionsLoading: "A verificar os acessos…", permissionsError: "Acessos profissionais temporariamente bloqueados: não foi possível verificar as permissões.", accessDenied: "A sua função não permite este acesso.",
+    thinking: "O ConstruPilot está a analisar…", assistantError: "Assistente indisponível", transcriptionError: "Não foi possível transcrever", microphoneError: "Microfone indisponível", documentAdded: "Documento adicionado ao contexto", importError: "Não foi possível importar", copyError: "Não foi possível copiar", sources: "Fontes da Internet", interrupted: "Resposta interrompida.",
+    leadTitle: "Pedido ConstruPilot", budget: "Orçamento", address: "Morada", availability: "Disponibilidade", trade: "Especialidade", description: "Descrição", call: "Ligar", days: "dias", newLead: "Novo", leadSubject: "O seu pedido ConstruPilot", personalMore: "Novo projeto e estimativa.",
+  },
+  en: {
+    permissionsLoading: "Checking access…", permissionsError: "Professional access temporarily blocked: permissions could not be verified.", accessDenied: "Your role does not allow this access.",
+    thinking: "ConstruPilot is thinking…", assistantError: "Assistant unavailable", transcriptionError: "Transcription failed", microphoneError: "Microphone unavailable", documentAdded: "Document added to context", importError: "Import failed", copyError: "Copy unavailable", sources: "Web sources", interrupted: "Response interrupted.",
+    leadTitle: "ConstruPilot enquiry", budget: "Budget", address: "Address", availability: "Availability", trade: "Trade", description: "Description", call: "Call", days: "days", newLead: "New", leadSubject: "Your ConstruPilot enquiry", personalMore: "New project and estimate.",
+  },
+};
+
+const TOOL_LABELS = {
+  pt: {
+    factures: "Faturas", clients: "Clientes", situations: "Autos de medição", "controle-cotes": "Verificação de cotas", "suivi-chantier": "Acompanhamento de obra", "plan/compare": "Comparar plantas", appro: "Análise técnica e aprovisionamento IA", "rendu-ia": "Renderização IA (antes/depois)", "etudes-pc": "Estudos de licenciamento", "mesure-photo": "Medir numa fotografia", prix: "Preços dos materiais", calculateurs: "Calculadoras", "scanner-devis": "Analisar orçamentos", entreprise: "Espaço da empresa", equipe: "Equipa", rh: "RH — Registo de ponto", "mon-catalogue": "Catálogo de preços", bibliotheque: "Biblioteca", rentabilite: "Relatório de rentabilidade", "factures-electroniques": "Faturação eletrónica", "mes-demandes": "Os meus pedidos", radar: "Radar de obras", "mes-avis": "Avaliações de clientes", fournisseur: "Espaço do fornecedor", photo: "Análise de fotografias", coach: "Orientador IA", diy: "Faço eu mesmo", marketplace: "Encontrar um profissional", blog: "Blogue", fonctionnalites: "Funcionalidades", comparatif: "Comparação", docs: "API e programadores", developpeurs: "Chaves API", inviter: "Recomendar", investisseurs: "Investidores", admin: "Administração",
+  },
+  en: {
+    factures: "Invoices", clients: "Clients", situations: "Progress claims", "controle-cotes": "Dimension checks", "suivi-chantier": "Site tracking", "plan/compare": "Compare plans", appro: "Technical analysis and AI procurement", "rendu-ia": "AI rendering (before/after)", "etudes-pc": "Planning studies", "mesure-photo": "Measure a photo", prix: "Material prices", calculateurs: "Calculators", "scanner-devis": "Quote analysis", entreprise: "Company workspace", equipe: "Team", rh: "HR — Time tracking", "mon-catalogue": "Price catalogue", bibliotheque: "Library", rentabilite: "Profitability report", "factures-electroniques": "Electronic invoicing", "mes-demandes": "My enquiries", radar: "Construction radar", "mes-avis": "Customer reviews", fournisseur: "Supplier workspace", photo: "Photo analysis", coach: "AI coach", diy: "Do it myself", marketplace: "Find a professional", blog: "Blog", fonctionnalites: "Features", comparatif: "Comparison", docs: "API and developers", developpeurs: "API keys", inviter: "Refer a friend", investisseurs: "Investors", admin: "Administration",
+  },
+};
+export const translatedToolLabel = (item, lang, t) => item.to === "/admin/despesas" ? ({ pt: "Despesas das APIs", en: "API expenses", fr: "Dépenses des API" }[lang] || item.label) : TOOL_LABELS[lang]?.[item.to.slice(1)] || t(item.key || "", item.label);

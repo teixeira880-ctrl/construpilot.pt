@@ -29,7 +29,7 @@ export default function Diy() {
       setGuide(data);
       setOptim(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch { toast.error("Guia indisponível"); }
+    } catch { toast.error("Guide indisponible"); }
     finally { setBusy(false); }
   };
 
@@ -40,7 +40,7 @@ export default function Diy() {
         items: guide.materials.map((m) => ({ query: m.search, quantity: Math.ceil(m.quantity), name: m.name })),
       });
       setOptim(data);
-    } catch { toast.error("Pesquisa impossível"); }
+    } catch { toast.error("Recherche impossible"); }
     finally { setBusy(false); }
   };
 
@@ -75,7 +75,7 @@ export default function Diy() {
           <Alert className={`rounded-md ${guide.pro_recommended ? "border-red-500/50 bg-red-500/5" : "border-amber-500/40 bg-amber-500/5"}`} data-testid="guide-safety">
             <ShieldAlert className={`h-5 w-5 ${guide.pro_recommended ? "text-red-500" : "text-amber-500"}`} />
             <AlertTitle className="font-display">
-              {guide.pro_recommended ? "Intervenção de profissional fortemente recomendada" : "Sécurité"}
+              {guide.pro_recommended ? "Intervention d'un professionnel fortement recommandée" : "Sécurité"}
             </AlertTitle>
             <AlertDescription>
               <ul className="mt-2 grid gap-1 text-sm">{guide.safety.map((s, i) => <li key={i}>• {s}</li>)}</ul>
@@ -184,7 +184,7 @@ export default function Diy() {
   return (
     <div className="grid gap-10">
       <SEO title="Guide DIY travaux — Je le fais moi-même" description="Vous voulez faire les travaux vous-même ? ConstruPilot vous calcule les matériaux exacts et vous donne le guide étape par étape pour peindre, poser du carrelage, isoler, etc." keywords="DIY travaux, guide bricolage, faire ses travaux soi-même, poser carrelage soi-même, peindre soi-même" canonical="/diy" />
-      <SectionTitle as="h1" over="DIY — Faço eu mesmo os trabalhos" title="Materiais calculados, guia de profissional">
+      <SectionTitle as="h1" over="DIY — Je réalise les travaux moi-même" title="Matériaux calculés, guide de professionnel">
         Choisissez un travail : ConstruPilot calcule les quantités (marges incluses), détaille chaque étape,
         les conseils, les erreurs à éviter et vous alerte quand un professionnel est nécessaire.
       </SectionTitle>

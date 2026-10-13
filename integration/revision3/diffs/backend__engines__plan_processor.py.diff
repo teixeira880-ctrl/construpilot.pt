@@ -1,0 +1,74 @@
+--- current/backend/engines/plan_processor.py
++++ zip/backend/engines/plan_processor.py
+@@ -129,39 +129,16 @@
+         # --- Extraction vectorielle (lignes / rectangles / dessins) ---
+         vectors = []
+         try:
+-            drawings = page.get_drawings()
+-            for d in drawings:
+-                for item in d.get("items", []):
+-                    op = item[0]
+-                    if op == "l":  # line
+-                        p1, p2 = item[1], item[2]
+-                        vectors.append({"type": "line",
+-                                        "p1": [p1.x, p1.y], "p2": [p2.x, p2.y]})
+-                    elif op == "re":  # rectangle
+-                        r = item[1]
+-                        vectors.append({"type": "rect",
+-                                        "x": r.x0, "y": r.y0,
+-                                        "w": r.width, "h": r.height})
++            from engines.plan_vector_pdf import pdf_lines
++            vectors = pdf_lines(page)
+         except Exception as e:
+             logger.warning(f"vector extract failed p{i}: {e}")
+ 
+         # --- Textes localisés (pour OCR-like sans OCR) ---
+         text_blocks = []
+         try:
+-            for t in page.get_text("dict").get("blocks", []):
+-                if t.get("type") != 0:  # text block
+-                    continue
+-                for line in t.get("lines", []):
+-                    for span in line.get("spans", []):
+-                        s = (span.get("text") or "").strip()
+-                        if not s:
+-                            continue
+-                        bbox = span.get("bbox", [0, 0, 0, 0])
+-                        text_blocks.append({
+-                            "text": s,
+-                            "x": bbox[0], "y": bbox[1],
+-                            "w": bbox[2] - bbox[0], "h": bbox[3] - bbox[1],
+-                        })
++            from engines.plan_vector_pdf import pdf_text_blocks
++            text_blocks = pdf_text_blocks(page)
+         except Exception as e:
+             logger.warning(f"text extract failed p{i}: {e}")
+ 
+@@ -199,6 +176,9 @@
+             "image_png_b64": img_b64,
+             "img_mime": img_mime,
+             "vectors": vectors[:2500],   # cap pour éviter payloads énormes (limite BSON 16 Mo)
++            "vectors_truncated": len(vectors) > 2500,
++            "vectors_total": len(vectors),
++            "geometry_version": 2,
+             "text_blocks": text_blocks[:2000],
+             "dimensions_count": len(DIM_PATTERN.findall(text)),
+             "raw_text_length": len(text),
+@@ -243,7 +223,7 @@
+     }
+ 
+ 
+-def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False) -> dict:
++def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False, cad_unit: str | None = None) -> dict:
+     """Point d'entrée : dispatch vers PDF / DXF / image selon le mime type.
+     Si `deskew` est True et que c'est une image, tente une correction de perspective.
+     """
+@@ -252,7 +232,7 @@
+         return process_pdf(data)
+     if lower.endswith(".dxf") or mime in ("application/dxf", "image/vnd.dxf"):
+         from engines.plan_dxf import process_dxf  # lazy import
+-        return process_dxf(data, filename)
++        return process_dxf(data, filename, unit_override=cad_unit)
+     if lower.endswith(".dwg") or mime in ("application/acad", "image/vnd.dwg"):
+         from engines.plan_dxf import process_dwg
+         return process_dwg(data, filename)  # raises helpful ValueError

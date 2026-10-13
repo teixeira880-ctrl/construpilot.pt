@@ -1,0 +1,42 @@
+--- current/backend/server.py
++++ zip/backend/server.py
+@@ -11,7 +11,6 @@
+ load_dotenv(ROOT_DIR / '.env')
+ 
+ from core.db import db, client  # noqa: E402
+-from core.cors_origin import CanonicalOriginMiddleware
+ from core.security import hash_password, new_user_id  # noqa: E402
+ from engines import storage, alerting  # noqa: E402
+ from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
+@@ -98,10 +97,6 @@
+ from routes import ads as ads_routes
+ from routes import radar as radar_routes
+ api_router.include_router(radar_routes.router)
+-from routes import radar_contacts
+-api_router.include_router(radar_contacts.router)
+-from routes import radar_sync
+-api_router.include_router(radar_sync.router)
+ from routes import assistant as assistant_routes
+ api_router.include_router(assistant_routes.router)
+ api_router.include_router(assistant_routes.public_router)
+@@ -142,19 +137,15 @@
+     CORSMiddleware,
+     allow_credentials=True,
+     # SEC-002 : allowlist explicite — jamais '*' avec credentials
+-    allow_origins=[o.strip() for o in os.environ["CORS_ORIGINS"].split(",")
++    allow_origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",")
+                    if o.strip() and o.strip() != "*"],
+     allow_methods=["*"],
+     allow_headers=["*"],
+ )
+-app.add_middleware(CanonicalOriginMiddleware,
+-                   proxy_origin=os.environ["CORS_PROXY_ORIGIN"],
+-                   public_origin=os.environ["FRONTEND_URL"].rstrip("/"))
+ 
+ logging.basicConfig(level=logging.INFO,
+                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ logger = logging.getLogger(__name__)
+-
+ 
+ ADMIN_EMAIL = "admin@construpilot.fr"
+ DEMO_EMAIL = "demo@construpilot.fr"

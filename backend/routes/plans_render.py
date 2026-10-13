@@ -28,18 +28,19 @@ class Render3DIn(BaseModel):
 
 
 _STYLE_PROMPTS = {
-    "photoreal": "photorealistic 3D architectural render, natural daylight, "
-                  "realistic materials (wood floor, painted walls, ceramic tiles), "
-                  "shallow depth of field, high detail",
-    "isometric": "clean isometric 3D architectural rendering, 45° angle, no "
-                  "perspective distortion, soft ambient lighting, colored floors "
-                  "per room type, blueprint aesthetic",
-    "axonometric": "axonometric cutaway 3D render showing walls in section, "
-                    "colored floor tiles per room, precise architectural style, "
-                    "white walls, cool ambient lighting",
-    "interior": "photorealistic interior view of the largest living room in this "
+    "photoreal": "photorealistic 3D DOLLHOUSE render (roof removed) seen from a high "
+                  "35° bird's-eye angle, every wall extruded vertically with real "
+                  "thickness, realistic materials (wood floor, painted walls, ceramic "
+                  "tiles), natural daylight, soft shadows, clear depth and perspective",
+    "isometric": "clean ISOMETRIC 3D dollhouse rendering (roof removed), ~35° bird's-eye "
+                  "angle, walls extruded vertically with visible thickness, colored floors "
+                  "per room type, soft ambient occlusion shadows, architectural model look",
+    "axonometric": "axonometric 3D CUTAWAY render showing extruded walls in section, "
+                    "colored floor tiles per room, white walls with real height, cool "
+                    "ambient lighting, strong sense of volume and depth",
+    "interior": "photorealistic interior 3D view of the largest living room in this "
                  "floor plan, modern French residential style, warm daylight through "
-                 "windows, natural materials",
+                 "windows, natural materials, real perspective",
 }
 
 
@@ -94,13 +95,21 @@ def _ai_context_hint(ai: dict) -> str:
 def _build_render_prompt(style: str, include_furniture: bool, rooms: list[dict],
                          ai_analysis: dict, extra_prompt: str | None) -> str:
     style_prompt = _STYLE_PROMPTS.get(style, _STYLE_PROMPTS["photoreal"])
-    furniture = "with realistic furniture" if include_furniture else "empty, no furniture"
+    furniture = "Add simple realistic furniture per room." if include_furniture else "Leave rooms empty (no furniture)."
     extra = f"\nAdditional instructions: {extra_prompt}" if extra_prompt else ""
     return (
-        f"Convert this 2D architectural floor plan into a {style_prompt}, "
-        f"{furniture}. Preserve the room layout, walls, doors, windows and "
-        f"staircases EXACTLY as shown — do not invent structure. Do NOT return "
-        f"a 2D plan — generate a full 3D visualization."
+        f"Transform this 2D architectural floor plan into a {style_prompt}.\n"
+        f"CRITICAL — the output MUST be clearly THREE-DIMENSIONAL with depth, height, "
+        f"perspective and shadows. Extrude every wall vertically to a realistic ~2.7 m "
+        f"ceiling height with visible thickness; add floor slabs. Show it as a dollhouse / "
+        f"cutaway (roof removed) viewed from above at an angle. NEVER output a flat "
+        f"top-down 2D line drawing — if the result looks like the original plan, it is wrong.\n"
+        f"IGNORE and DO NOT reproduce any of these 2D-drawing elements: dimension lines and "
+        f"measurement numbers, text labels and room-area annotations (m²), hatching/filling "
+        f"patterns, the north arrow, the title block, surrounding site/garden/tree drawings, "
+        f"and any red/pink/colored annotation lines. Reproduce ONLY the building itself "
+        f"(walls, doors, windows, stairs) as real 3D geometry — preserve the room layout and "
+        f"wall positions EXACTLY, do not invent or remove rooms. {furniture}"
         f"{_room_context_hint(rooms)}{_ai_context_hint(ai_analysis or {})}{extra}"
     )
 
@@ -110,7 +119,9 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
                              ai_analysis: dict | None = None,
                              extra_prompt: str | None = None) -> tuple[str, str, str]:
     """Core Gemini Nano Banana call — returns (b64_out, mime, prompt_used)."""
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    from emergentintegrations.llm.chat import ImageContent, UserMessage
+
+    from engines.expenses.metering import MeteredChat as LlmChat
 
     api_key = os.getenv("EMERGENT_LLM_KEY")
     if not api_key:
@@ -119,7 +130,7 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
     prompt = _build_render_prompt(style, include_furniture, rooms,
                                     ai_analysis or {}, extra_prompt)
     try:
-        chat = (LlmChat(api_key=api_key,
+        chat = (LlmChat(api_key=api_key, expense_feature="plan_3d_image",
                         session_id=f"render3d_{plan_id}_{page_index}_{style}",
                         system_message="You are an architectural visualization AI.")
                 .with_model("gemini", "gemini-2.5-flash-image"))

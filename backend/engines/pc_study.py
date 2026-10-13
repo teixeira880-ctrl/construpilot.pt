@@ -21,6 +21,8 @@ import math
 import os
 import re
 from datetime import datetime, timezone
+from engines.llm_keys import studies_key
+from engines.plan_ai import plan_model
 
 logger = logging.getLogger(__name__)
 
@@ -159,14 +161,16 @@ RÈGLES :
 
 async def analyze_pc_page(image_b64_png: str) -> dict:
     """Analyse UNE page d'un PC via GPT-Vision. Retourne toujours un dict."""
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    api_key = studies_key(plan_model()[0])
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent", "confidence": 0.0}
     try:
-        from emergentintegrations.llm.chat import ImageContent, LlmChat, UserMessage
-        chat = LlmChat(api_key=api_key, session_id="pc-study",
+        from emergentintegrations.llm.chat import ImageContent, UserMessage
+
+        from engines.expenses.metering import MeteredChat as LlmChat
+        chat = LlmChat(api_key=api_key, session_id="pc-study", expense_feature="planning_study",
                        system_message="Tu réponds toujours en JSON strict, sans markdown.",
-                       ).with_model("openai", "gpt-4o")
+                       ).with_model(*plan_model())
         msg = UserMessage(text=PC_PROMPT,
                           file_contents=[ImageContent(image_base64=image_b64_png)])
         raw = await chat.send_message(msg)

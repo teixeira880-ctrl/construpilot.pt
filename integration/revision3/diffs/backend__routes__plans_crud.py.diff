@@ -1,0 +1,157 @@
+--- current/backend/routes/plans_crud.py
++++ zip/backend/routes/plans_crud.py
+@@ -16,6 +16,7 @@
+ from core.db import db
+ from core.security import current_user
+ from engines import geometry as G
++from engines.plan_sources import save_plan_source, save_cad_source, delete_plan_sources, copy_plan_sources, image_plan_pdf
+ from engines.plan_processor import auto_calibration_from_pdf_scale, process_upload
+ 
+ from routes.plans_common import (
+@@ -32,13 +33,18 @@
+     file: UploadFile = File(...),
+     project_id: str | None = Form(None),
+     deskew: bool = Form(False),
++    cad_unit: Literal["mm", "cm", "m", "inches", "feet"] | None = Form(None),
+     user=Depends(current_user),
+ ):
+     # Accès Plan ouvert à tous les utilisateurs connectés (rendus 3D payants à l'unité)
+-    data = await file.read()
++    data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
+     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
+         raise HTTPException(413, f"Fichier trop volumineux (>{MAX_UPLOAD_MB} Mo)")
+ 
++    if not data: raise HTTPException(422, "Fichier vide")
++    if project_id and not await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 1}):
++        raise HTTPException(403, "Chantier inaccessible pour ce compte")
++    original_data = data
+     mime = (file.content_type or "").lower()
+     lower_name = (file.filename or "").lower()
+     is_cad = lower_name.endswith((".dxf", ".dwg"))
+@@ -62,7 +68,7 @@
+         parse_name = file.filename or "plan"
+ 
+     try:
+-        parsed = await asyncio.to_thread(process_upload, data, parse_name, mime, deskew)
++        parsed = await asyncio.to_thread(process_upload, data, parse_name, mime, deskew, cad_unit)
+     except Exception as e:
+         logger.exception("plan process failed")
+         raise HTTPException(422, f"Impossible de lire le fichier : {e}")
+@@ -75,11 +81,12 @@
+         "user_id": user["user_id"],
+         "project_id": project_id,
+         "filename": file.filename,
+-        "size_bytes": len(data),
++        "size_bytes": len(original_data),
+         "kind": parsed["kind"],
+         "page_count": parsed["page_count"],
+         "detected_scale_denominator": parsed.get("detected_scale_denominator"),
+         "structural_metre": parsed.get("structural_metre"),
++        "cad_import": parsed.get("cad_import"),
+         "pages": parsed["pages"],
+         "calibrations": calibrations,
+         "rooms": [],
+@@ -89,12 +96,29 @@
+         "updated_at": _now(),
+     }
+     await _insert_plan_safe(doc)
+-    if parsed["kind"] == "pdf":  # source conservée pour ré-extraction vectorielle sans réimport
++    try:
+         import base64
+-        await db.plan_sources.update_one(
+-            {"plan_id": plan_id}, {"$set": {"plan_id": plan_id, "user_id": user["user_id"], "mime": "application/pdf",
+-                                            "filename": file.filename, "data_b64": base64.b64encode(data).decode("ascii"),
+-                                            "created_at": _now()}}, upsert=True)
++        import hashlib
++        if parsed["kind"] == "pdf":
++            await save_plan_source(db, plan_id, user["user_id"], data, mime="application/pdf",
++                                   filename=file.filename, source_kind="original_pdf", created_at=_now())
++        elif parsed["kind"] == "dxf":
++            await save_plan_source(db, plan_id, user["user_id"], base64.b64decode(parsed["analysis_pdf_b64"]),
++                                   mime="application/pdf", filename=parse_name.rsplit(".", 1)[0]+".pdf", source_kind="cad_render",
++                                   original_filename=file.filename, original_sha256=hashlib.sha256(original_data).hexdigest(), created_at=_now())
++            await save_cad_source(db, plan_id, user["user_id"], "original", original_data)
++            if lower_name.endswith(".dwg"):
++                await save_cad_source(db, plan_id, user["user_id"], "converted_dxf", data)
++        elif parsed["kind"] == "image":
++            pdf = await asyncio.to_thread(image_plan_pdf, parsed["pages"][0])
++            await save_plan_source(db, plan_id, user["user_id"], pdf, mime="application/pdf",
++                                   filename=parse_name.rsplit(".", 1)[0]+".pdf", source_kind="normalized_image",
++                                   original_filename=file.filename, original_sha256=hashlib.sha256(original_data).hexdigest(), created_at=_now())
++    except BaseException as exc:
++        await db.plans_takeoff.delete_one({"plan_id": plan_id, "user_id": user["user_id"]})
++        await delete_plan_sources(db, plan_id, user["user_id"])
++        if isinstance(exc, asyncio.CancelledError): raise
++        raise HTTPException(503, "Import non enregistré entièrement. Réessayez l’import.") from None
+     return _plan_summary(doc)
+ 
+ 
+@@ -335,33 +359,16 @@
+ 
+ 
+ def _auto_calibrate_dxf(parsed: dict) -> dict:
+-    """Calibration automatique d'un DXF/DWG : pixels_per_meter = dxf_ratio × unités/m.
+-    Le DXF porte des coordonnées réelles → l'échelle est déduite exactement (pas besoin
+-    d'une mention « 1:100 »). $INSUNITS étant souvent faux/absent, on valide toujours
+-    la cohérence via l'étendue géométrique (un plan mesure 0,5–1000 m)."""
+-    units = (parsed.get("dxf_units") or "").lower()
+-    calibs: dict = {}
+-    for pg in parsed["pages"]:
+-        ratio = pg.get("dxf_ratio")  # pixels par unité DXF
+-        if not ratio:
+-            continue
+-        span = _dxf_span_units(pg)
+-        upm = _UNITS_PER_METER.get(units)
+-        # Contrôle de plausibilité : la plus grande dimension réelle doit être crédible
+-        real_span_m = (span / upm) if upm else 0
+-        if upm and 0.5 <= real_span_m <= 1000:
+-            method, conf, unit_label = "auto_dxf_units", 0.92, units
+-        else:
+-            upm, unit_label = _guess_units_per_meter(pg)
+-            method, conf = "auto_dxf_guess", 0.6
+-        calibs[str(pg["index"])] = {
+-            "pixels_per_meter": round(ratio * upm, 4),
+-            "method": method,
+-            "dxf_units": unit_label,
+-            "confidence": conf,
+-            "created_at": _now(),
+-        }
+-    return calibs
++    """L'unité déclarée ou choisie est la référence, quelle que soit l'emprise."""
++    result={}
++    for page in parsed["pages"]:
++        ratio,unit=page.get("dxf_ratio"),page.get("unit_to_m")
++        if not ratio or not unit or unit<=0:continue
++        ppm=ratio/unit
++        result[str(page["index"])]={"pixels_per_meter":ppm,"meters_per_pixel":1/ppm,
++                                    "method":"auto_dxf_units","confidence":.99,"dxf_units":parsed.get("dxf_units"),
++                                    "created_at":_now()}
++    return result
+ 
+ 
+ def _auto_calibrate_pages(parsed: dict) -> dict:
+@@ -435,6 +442,7 @@
+     res = await db.plans_takeoff.delete_one({"plan_id": plan_id, "user_id": user["user_id"]})
+     if res.deleted_count == 0:
+         raise HTTPException(404, "Plan introuvable")
++    await delete_plan_sources(db, plan_id, user["user_id"])
+     return {"ok": True}
+ 
+ 
+@@ -484,8 +492,15 @@
+         "created_at": _now(),
+         "updated_at": _now(),
+         "duplicated_from": plan_id,
++        "cad_import": src.get("cad_import"),
++        "structural_metre": src.get("structural_metre"),
+     }
+-    await db.plans_takeoff.insert_one(dup)
++    try:
++        await copy_plan_sources(db, plan_id, new_id, user["user_id"])
++        await _insert_plan_safe(dup)
++    except BaseException:
++        await delete_plan_sources(db, new_id, user["user_id"])
++        raise
+     return {"ok": True, "plan_id": new_id, "duplicated_from": plan_id,
+             "filename": dup["filename"], "rooms": len(dup["rooms"])}
+ 

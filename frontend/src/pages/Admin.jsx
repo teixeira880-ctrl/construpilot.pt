@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Shield, Save, Plus, Trash2, RefreshCw, Phone, Mail, CheckCircle2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,22 @@ import { Stat, SectionTitle } from "@/components/Bits";
 import AdminDrillDialog from "@/components/AdminDrillDialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import CampaignsPanel from "@/components/admin/CampaignsPanel";
+import ApifyPanel from "@/components/admin/ApifyPanel";
+import LearningPanel from "@/components/admin/LearningPanel";
+import BridgePanel from "@/components/admin/BridgePanel";
+import RadarSitadelPanel from "@/components/admin/RadarSitadelPanel";
+import MasonryConfigPanel from "@/components/admin/MasonryConfigPanel";
+import PostalAdminPanel from "@/components/admin/PostalAdminPanel";
+import { ExpenseAdminPanel } from "@/components/admin/ExpenseAdminPanel";
+import SupportTicketsPanel from "@/components/admin/SupportTicketsPanel";
+import JourneyPanel from "@/components/admin/JourneyPanel";
+import InvestorDeckCard from "@/components/admin/InvestorDeckCard";
+import BudgetCapPanel from "@/components/admin/BudgetCapPanel";
+import PilotagePanel from "@/components/admin/PilotagePanel";
+import { useExpenseCopy } from "@/components/admin/expenses/copy";
+import SeoBlogPanel from "@/components/admin/SeoBlogPanel";
+import CeoAgentPanel from "@/components/admin/CeoAgentPanel";
+import CalcAuditorPanel from "@/components/admin/CalcAuditorPanel";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
 import AdminSharedLibraryTab from "@/components/AdminSharedLibraryTab";
@@ -30,8 +46,10 @@ import { DevicesList } from "@/components/account/DevicesList";
 import { TwoFaCard } from "@/components/account/TwoFaCard";
 
 export default function Admin() {
+  const { text: expenseText } = useExpenseCopy();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const confirm = useConfirm();
   const [stats, setStats] = useState(null);
   const [drill, setDrill] = useState(null);
@@ -52,13 +70,13 @@ export default function Admin() {
       const snap = l.project_snapshot || {};
       const notes = [l.description, snap.name ? `Projet: ${snap.name} ${snap.surface || ""} m²` : "", l.availability ? `Dispo: ${l.availability}` : ""].filter(Boolean).join(" — ");
       const { data } = await api.post("/clients", {
-        first_name: first, last_name: last || first || "Cliente",
+        first_name: first, last_name: last || first || "Client",
         email: l.email || "", phone: l.phone || "", address: l.address || "", notes,
       });
-      toast.success("Cliente criado a partir do pedido — a abrir o editor de orçamento");
+      toast.success("Client créé depuis la demande — ouverture de l'éditeur de devis");
       navigate(`/devis-editeur?client=${data.client_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Création impossível");
+      toast.error(e?.response?.data?.detail || "Création impossible");
     }
   };
   const [suppliers, setSuppliers] = useState({ builtin: [], custom: [] });
@@ -66,16 +84,16 @@ export default function Admin() {
 
   const deleteUser = async (u) => {
     if (!(await confirm({
-      title: "Eliminar définitivement ce compte ?",
+      title: "Supprimer définitivement ce compte ?",
       description: `Le compte ${u.email} et TOUTES ses données (projets, devis, factures, demandes, abonnements) seront supprimés définitivement. Cette action est irréversible.`,
-      confirmLabel: "Eliminar définitivement",
+      confirmLabel: "Supprimer définitivement",
       destructive: true,
     }))) return;
     try {
       const { data } = await api.delete(`/admin/users/${u.user_id}`);
-      toast.success(`Conta ${u.email} supprimé · ${data.purged_total} enregistrement(s) purgé(s)`);
+      toast.success(`Compte ${u.email} supprimé · ${data.purged_total} enregistrement(s) purgé(s)`);
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Eliminação impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
   };
 
   const load = () => {
@@ -96,7 +114,7 @@ export default function Admin() {
     await api.put(`/admin/prices/${key}`, Object.fromEntries(
       Object.entries(body).map(([k, v]) => [k, Number(v)])
     ));
-    toast.success("Prix de referência mis à jour");
+    toast.success("Prix de référence mis à jour");
     setEdits({ ...edits, [key]: undefined });
     load();
   };
@@ -108,11 +126,11 @@ export default function Admin() {
   };
 
   const addSupplier = async () => {
-    if (!newSup.key || !newSup.name || !newSup.domain) return toast.error("Clé, nom et domaine obrigatório");
+    if (!newSup.key || !newSup.name || !newSup.domain) return toast.error("Clé, nom et domaine requis");
     await api.post("/admin/suppliers", {
       ...newSup, shipping: Number(newSup.shipping), free_from: Number(newSup.free_from),
     });
-    toast.success("Fornecedor ajouté");
+    toast.success("Fournisseur ajouté");
     setNewSup({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
     load();
   };
@@ -130,12 +148,12 @@ export default function Admin() {
           onClick={async () => {
             try {
               const { data } = await api.post("/admin/demo-unlock");
-              toast.success(`Modo de demonstração ativado — ${data.tier} · todas as opções desbloqueadas`);
+              toast.success(`Mode démo activé — ${data.tier} · toutes les options débloquées`);
               setTimeout(() => window.location.reload(), 900);
-            } catch { toast.error("Ativação do modo de demonstração impossível"); }
+            } catch { toast.error("Activation du mode démo impossible"); }
           }}
           className="shrink-0 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 text-sm font-semibold transition-colors">
-          🎬 Modo de demonstração — desbloquear tudo
+          🎬 Mode démo — tout débloquer
           <span className="block text-[11px] font-normal text-muted-foreground">Stripe test · carte 4242 4242 4242 4242</span>
         </button>
       </div>
@@ -149,8 +167,9 @@ export default function Admin() {
       </div>
       <AdminDrillDialog metric={drill} onClose={() => setDrill(null)} />
 
-      <Tabs defaultValue="prices">
+      <Tabs defaultValue={["radar", "postal", "despesas", "ai", "support", "journey", "budget", "pilotage"].includes(searchParams.get("tab")) ? searchParams.get("tab") : "journey"}>
         <TabsList className="rounded-sm flex-wrap h-auto">
+          <TabsTrigger value="journey" className="rounded-sm" data-testid="admin-tab-journey">Comptes & parcours</TabsTrigger>
           <TabsTrigger value="prices" className="rounded-sm" data-testid="admin-tab-prices">{t("admin.t_prices")}</TabsTrigger>
           <TabsTrigger value="regions" className="rounded-sm" data-testid="admin-tab-regions">{t("admin.t_regions")}</TabsTrigger>
           <TabsTrigger value="suppliers" className="rounded-sm" data-testid="admin-tab-suppliers">{t("admin.t_suppliers")}</TabsTrigger>
@@ -164,14 +183,27 @@ export default function Admin() {
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">{t("admin.t_affiliate")}</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
+          <TabsTrigger value="pilotage" className="rounded-sm" data-testid="admin-tab-pilotage">Pilotage IA</TabsTrigger>
+          <TabsTrigger value="budget" className="rounded-sm" data-testid="admin-tab-budget">Plafond 500 €</TabsTrigger>
+          <TabsTrigger value="despesas" className="rounded-sm" data-testid="admin-tab-despesas">{expenseText("title")}</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
           <TabsTrigger value="evolution" className="rounded-sm" data-testid="admin-tab-evolution">AI Evolution Lab</TabsTrigger>
-          <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Biblioteca</TabsTrigger>
-          <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Trabalhos compostos</TabsTrigger>
-          <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicidade</TabsTrigger>
-          <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campanhas de email</TabsTrigger>
+          <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Bibliothèque</TabsTrigger>
+          <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Ouvrages composés</TabsTrigger>
+          <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicité</TabsTrigger>
+          <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campagnes e-mail</TabsTrigger>
+          <TabsTrigger value="apify" className="rounded-sm" data-testid="admin-tab-apify">Apify</TabsTrigger>
+          <TabsTrigger value="learning" className="rounded-sm" data-testid="admin-tab-learning">Apprentissage IA</TabsTrigger>
+          <TabsTrigger value="bridge" className="rounded-sm" data-testid="admin-tab-bridge">Agent Ponte</TabsTrigger>
+          <TabsTrigger value="radar" className="rounded-sm" data-testid="admin-tab-radar">Radar / SITADEL</TabsTrigger>
+          <TabsTrigger value="postal" className="rounded-sm" data-testid="admin-tab-postal">Postal</TabsTrigger>
+          <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Maçonnerie</TabsTrigger>
+          <TabsTrigger value="seoblog" className="rounded-sm" data-testid="admin-tab-seoblog">SEO / Blog</TabsTrigger>
+          <TabsTrigger value="ceo" className="rounded-sm" data-testid="admin-tab-ceo">Agent CEO</TabsTrigger>
+          <TabsTrigger value="calcaudit" className="rounded-sm" data-testid="admin-tab-calcaudit">Auditeur calculs</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
+          <TabsTrigger value="support" className="rounded-sm" data-testid="admin-tab-support">Assistance</TabsTrigger>
           <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">{t("admin.t_account")}</TabsTrigger>
         </TabsList>
 
@@ -191,11 +223,54 @@ export default function Admin() {
           <AdminParamLibraryTab />
         </TabsContent>
 
+        <TabsContent value="journey" className="mt-6">
+          <JourneyPanel />
+          <InvestorDeckCard />
+        </TabsContent>
+
         <TabsContent value="ads" className="mt-6">          <AdsPanel />
         </TabsContent>
 
         <TabsContent value="campaigns" className="mt-6">
           <CampaignsPanel />
+        </TabsContent>
+
+        <TabsContent value="apify" className="mt-6">
+          <ApifyPanel />
+        </TabsContent>
+
+        <TabsContent value="learning" className="mt-6">
+          <LearningPanel />
+        </TabsContent>
+
+        <TabsContent value="bridge" className="mt-6">
+          <BridgePanel />
+        </TabsContent>
+
+        <TabsContent value="radar" className="mt-6">
+          <RadarSitadelPanel />
+        </TabsContent>
+
+        <TabsContent value="postal" className="mt-6"><PostalAdminPanel /></TabsContent>
+        <TabsContent value="pilotage" className="mt-6"><PilotagePanel /></TabsContent>
+        <TabsContent value="budget" className="mt-6"><BudgetCapPanel /></TabsContent>
+
+        <TabsContent value="despesas" className="mt-6"><ExpenseAdminPanel /></TabsContent>
+
+        <TabsContent value="masonry" className="mt-6">
+          <MasonryConfigPanel />
+        </TabsContent>
+
+        <TabsContent value="seoblog" className="mt-6">
+          <SeoBlogPanel />
+        </TabsContent>
+
+        <TabsContent value="ceo" className="mt-6">
+          <CeoAgentPanel />
+        </TabsContent>
+
+        <TabsContent value="calcaudit" className="mt-6">
+          <CalcAuditorPanel />
         </TabsContent>
 
         <TabsContent value="proskyc" className="mt-6">
@@ -204,8 +279,8 @@ export default function Admin() {
 
         <TabsContent value="account" className="mt-6">
           <div className="max-w-lg space-y-6" data-testid="admin-account-section">
-            <SectionTitle over="Administrador" title="A minha conta">
-              Gérez vos informations de profil et votre palavra-passe.
+            <SectionTitle over="Administrateur" title="Mon compte">
+              Gérez vos informations de profil et votre mot de passe.
             </SectionTitle>
             <ProfileForm />
             <TwoFaCard />
@@ -220,7 +295,7 @@ export default function Admin() {
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Lot</TableHead>
-                  <TableHead>Unidade</TableHead>
+                  <TableHead>Unité</TableHead>
                   <TableHead className="w-28">Éco</TableHead>
                   <TableHead className="w-28">Standard</TableHead>
                   <TableHead className="w-28">Premium</TableHead>
@@ -284,14 +359,14 @@ export default function Admin() {
               </div>
             ))}
             <Button onClick={addSupplier} data-testid="add-supplier-btn" className="rounded-sm gap-2 sm:col-span-5 w-fit hover:bg-orange-600 hover:text-white">
-              <Plus className="h-4 w-4" /> Adicionar le fournisseur
+              <Plus className="h-4 w-4" /> Ajouter le fournisseur
             </Button>
           </div>
           <div className="surface overflow-x-auto">
             <Table data-testid="admin-suppliers-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Fornecedor</TableHead>
+                  <TableHead>Fournisseur</TableHead>
                   <TableHead>Domaine</TableHead>
                   <TableHead className="text-right">Livraison</TableHead>
                   <TableHead className="text-right">Franco</TableHead>
@@ -326,7 +401,8 @@ export default function Admin() {
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Nom</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Função</TableHead>
+                  <TableHead>Type de compte</TableHead>
+                  <TableHead>Rôle</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Auth</TableHead>
                   <TableHead>2FA</TableHead>
@@ -339,9 +415,27 @@ export default function Admin() {
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell className="num text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Select
+                          value={u.account_type || "particulier"}
+                          onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { account_type: v }); toast.success("Type de compte mis à jour"); load(); }}
+                        >
+                          <SelectTrigger className="rounded-sm h-9 w-36" data-testid={`admin-accttype-${u.user_id}`}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="particulier">Particulier</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="pro_business">Business</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full w-fit font-medium ${u.role === "admin" || u.account_type === "pro_business" ? "bg-primary/15 text-primary" : u.account_type === "pro" ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+                          Espace {u.role === "admin" ? "Business (admin)" : u.account_type === "pro_business" ? "Business" : u.account_type === "pro" ? "Pro" : "Particulier"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <Select
                         value={u.role}
-                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { role: v }); toast.success("Função atualizada"); load(); }}
+                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { role: v }); toast.success("Rôle mis à jour"); load(); }}
                       >
                         <SelectTrigger className="rounded-sm h-9 w-32" data-testid={`admin-role-${u.user_id}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -372,11 +466,11 @@ export default function Admin() {
                             data-testid={`admin-disable-2fa-${u.user_id}`}
                             onClick={async () => {
                               await api.put(`/admin/users/${u.user_id}`, { two_fa_enabled: false });
-                              toast.success("2FA desativada para " + u.email);
+                              toast.success("2FA désactivée pour " + u.email);
                               load();
                             }}
                           >
-                            Desativar 2FA
+                            Désactiver 2FA
                           </Button>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
@@ -388,8 +482,8 @@ export default function Admin() {
                           data-testid={`admin-set-2fa-email-${u.user_id}`}
                           onClick={async () => {
                             const val = window.prompt(
-                              "Email de receção dos códigos 2FA para " + u.email +
-                              "\n(deixe vazio = email da conta)", u.two_fa_email || "");
+                              "E-mail de réception des codes 2FA pour " + u.email +
+                              "\n(laisser vide = e-mail du compte)", u.two_fa_email || "");
                             if (val === null) return;
                             const { data } = await api.put(`/admin/users/${u.user_id}`, { two_fa_email: val });
                             toast.success(data.two_fa_email
@@ -412,7 +506,7 @@ export default function Admin() {
                           data-testid={`admin-delete-user-${u.user_id}`}
                           onClick={() => deleteUser(u)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                          <Trash2 className="h-3.5 w-3.5" /> Supprimer
                         </Button>
                       )}
                     </TableCell>
@@ -430,22 +524,22 @@ export default function Admin() {
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Projet</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Superfície</TableHead>
+                  <TableHead className="text-right">Surface</TableHead>
                   <TableHead className="text-right">Budget</TableHead>
                   <TableHead>Ville</TableHead>
                   <TableHead>Créé le</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projects.map((p) => (
-                  <TableRow key={p.project_id} className="even:bg-muted/30">
+                {projects.map((p, index) => (
+                  <TableRow key={p.project_id || p.id || `legacy-project-${index}`} className="even:bg-muted/30">
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="text-muted-foreground">{p.estimation?.project_type_name}</TableCell>
                     <TableCell className="num text-right">{num(p.surface, 0)} m²</TableCell>
                     <TableCell className="num text-right font-semibold">{eur(p.budget)}</TableCell>
                     <TableCell>{p.city || "—"}</TableCell>
                     <TableCell className="num text-xs text-muted-foreground">
-                      {new Date(p.created_at).toLocaleDateString("pt-PT")}
+                      {new Date(p.created_at).toLocaleDateString("fr-FR")}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -462,7 +556,7 @@ export default function Admin() {
                 { label: "Via page d'accueil", value: leadStats.landing, accent: false },
                 { label: "Particuliers", value: leadStats.particulier, accent: true },
                 { label: "Pros", value: leadStats.pro, accent: true },
-                { label: "Novos", value: leadStats.novo, accent: false },
+                { label: "Nouveaux", value: leadStats.nouveau, accent: false },
                 { label: "Gagnés", value: leadStats.gagne, accent: false },
               ].map((s) => (
                 <div key={s.label}
@@ -477,10 +571,10 @@ export default function Admin() {
           {leadStats && (
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6" data-testid="admin-lead-assign-stats">
               {[
-                { label: "Novos (não atribuídos)", value: leadStats.nouveaux ?? leadStats.novo, cls: "text-foreground" },
-                { label: "Atribuídos", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
-                { label: "Pendente pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
-                { label: "Assumido", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
+                { label: "Nouveaux (non assignés)", value: leadStats.nouveaux ?? leadStats.nouveau, cls: "text-foreground" },
+                { label: "Assignés", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
+                { label: "En attente pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
+                { label: "Pris en charge", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
                 { label: "Refusés", value: leadStats.refuses ?? 0, cls: "text-red-500" },
                 { label: "Taux de conversion", value: `${leadStats.conversion ?? 0}%`, cls: "text-primary" },
               ].map((s) => (
@@ -492,8 +586,8 @@ export default function Admin() {
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="admin-leads-filter">
-            {[["all", "Tous"], ["novo", "Novos"], ["contacté", "Contactés"],
-              ["devis envoyé", "Orçamento envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
+            {[["all", "Tous"], ["nouveau", "Nouveaux"], ["contacté", "Contactés"],
+              ["devis envoyé", "Devis envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
               ["j2", "Relancés J+2"]].map(([v, lbl]) => (
               <button key={v} onClick={() => setLeadFilter(v)} data-testid={`admin-leads-filter-${v}`}
                 className={`px-3 py-1.5 rounded-sm text-xs font-semibold border transition-colors ${leadFilter === v ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/40"}`}>
@@ -506,9 +600,9 @@ export default function Admin() {
               const shown = leads.filter((l) =>
                 leadFilter === "all" ? true : leadFilter === "j2" ? l.j2_reminded : l.status === leadFilter);
               return (<>
-                {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Nenhuma demande.</p>}
-                {shown.map((l) => (
-              <div key={l.lead_id} className="surface p-6 grid gap-3">
+                {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Aucune demande.</p>}
+                {shown.map((l, index) => (
+              <div key={l.lead_id || l.id || `legacy-lead-${index}`} className="surface p-6 grid gap-3">
                 <div className="flex flex-wrap items-center gap-4">
                   <div>
                     <p className="font-display font-semibold">{l.name || l.email}</p>
@@ -535,11 +629,11 @@ export default function Admin() {
                   {l.budget ? <p className="num ml-auto text-lg font-bold text-primary">{eur(l.budget)}</p> : <span className="ml-auto" />}
                   <Select
                     value={l.status}
-                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { status: v }); toast.success("Estado mis à jour"); load(); }}
+                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { status: v }); toast.success("Statut mis à jour"); load(); }}
                   >
                     <SelectTrigger className="rounded-sm h-9 w-40" data-testid={`admin-lead-status-${l.lead_id}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["novo", "contacté", "visite planifiée", "devis envoyé", "gagné", "perdu"].map((s) => (
+                      {["nouveau", "contacté", "visite planifiée", "devis envoyé", "gagné", "perdu"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
@@ -558,9 +652,9 @@ export default function Admin() {
                     <p className="font-semibold uppercase tracking-wide text-[10px]">Historique d'attribution</p>
                     {l.assignment_log.slice(-6).map((e, i) => (
                       <p key={i}>
-                        {{ proposee: "→ Proposée à", acceptee: "✔ Aceite par", refusee: "✕ Recusada par", assignee_manuelle: "→ Assignée à", en_cours: "… Em curso par" }[e.action] || e.action}{" "}
+                        {{ proposee: "→ Proposée à", acceptee: "✔ Acceptée par", refusee: "✕ Refusée par", assignee_manuelle: "→ Assignée à", en_cours: "… En cours par" }[e.action] || e.action}{" "}
                         <span className="font-medium">{e.user_name || "—"}</span>
-                        {" · "}{new Date(e.at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        {" · "}{new Date(e.at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     ))}
                   </div>
@@ -568,10 +662,10 @@ export default function Admin() {
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border mt-1">
                   <Select
                     value={l.assigned_to || "none"}
-                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { assigned_to: v === "none" ? "" : v }); toast.success(v === "none" ? "Assignation removida" : "Pedido atribuído — o profissional foi notificado"); load(); }}
+                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { assigned_to: v === "none" ? "" : v }); toast.success(v === "none" ? "Assignation retirée" : "Demande assignée — le pro est notifié"); load(); }}
                   >
                     <SelectTrigger className="rounded-sm h-8 w-48" data-testid={`admin-lead-assign-${l.lead_id}`}>
-                      <SelectValue placeholder="Atribuir a um profissional" />
+                      <SelectValue placeholder="Assigner à un pro" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— Non assignée —</SelectItem>
@@ -582,11 +676,11 @@ export default function Admin() {
                   </Select>
                   <Button size="sm" className="rounded-sm gap-2 h-8" onClick={() => createQuoteForLead(l)}
                           data-testid={`admin-lead-create-quote-${l.lead_id}`}>
-                    <Plus className="h-3.5 w-3.5" /> Criar un devis
+                    <Plus className="h-3.5 w-3.5" /> Créer un devis
                   </Button>
                   {l.email && (
                     <>
-                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Invitation envoyée à ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); } }}
+                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Invitation envoyée à ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); } }}
                               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
                               data-testid={`admin-lead-invite-send-${l.lead_id}`}>
                         <Mail className="h-3.5 w-3.5" /> Inviter à créer un compte{l.invited_at ? " ✓" : ""}
@@ -620,7 +714,7 @@ export default function Admin() {
           <div className="surface p-6">
             <p className="overline">Produits les plus recherchés</p>
             <div className="mt-5 grid gap-2" data-testid="admin-top-searches">
-              {stats.top_searches.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma recherche enregistrée.</p>}
+              {stats.top_searches.length === 0 && <p className="text-sm text-muted-foreground">Aucune recherche enregistrée.</p>}
               {stats.top_searches.map((s) => (
                 <div key={s.query} className="flex items-center justify-between border-b border-border pb-2 text-sm">
                   <span>{s.query}</span>
@@ -658,6 +752,9 @@ export default function Admin() {
         <TabsContent value="errors" className="mt-6">
           <ClientErrorsPanel />
         </TabsContent>
+        <TabsContent value="support" className="mt-6">
+          <SupportTicketsPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -674,7 +771,7 @@ function PromoCodesPanel() {
 
   const create = async () => {
     if (!form.code || (!form.percent_off && !form.amount_off_cents)) {
-      return toast.error("Code + réduction (% ou €) obrigatório");
+      return toast.error("Code + réduction (% ou €) requis");
     }
     setBusy(true);
     try {
@@ -687,11 +784,11 @@ function PromoCodesPanel() {
         max_redemptions: form.max_redemptions ? Number(form.max_redemptions) : null,
       };
       await api.post("/admin/promo-codes", payload);
-      toast.success("Código criado no Stripe e ativado");
+      toast.success("Code créé sur Stripe et activé");
       setForm({ code: "", percent_off: "", amount_off_cents: "", max_redemptions: "", duration: "once", name: "" });
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Création impossível");
+      toast.error(err?.response?.data?.detail || "Création impossible");
     } finally { setBusy(false); }
   };
 
@@ -699,13 +796,13 @@ function PromoCodesPanel() {
     try {
       await api.patch(`/admin/promo-codes/${c.code}?active=${active}`);
       load();
-    } catch { toast.error("Impossível"); }
+    } catch { toast.error("Impossible"); }
   };
 
   return (
     <div className="grid gap-6">
       <div className="surface p-6 grid gap-4" data-testid="promo-form">
-        <p className="overline">Criar un code promo</p>
+        <p className="overline">Créer un code promo</p>
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="grid gap-1.5">
             <Label className="text-xs">Code (ex: LANCEMENT10)</Label>
@@ -740,7 +837,7 @@ function PromoCodesPanel() {
           </div>
         </div>
         <Button onClick={create} disabled={busy} data-testid="promo-create-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-          <Plus className="h-4 w-4" /> Criar le code
+          <Plus className="h-4 w-4" /> Créer le code
         </Button>
       </div>
 
@@ -749,7 +846,7 @@ function PromoCodesPanel() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>Code</TableHead><TableHead>Réduction</TableHead><TableHead>Utilisations max</TableHead>
-            <TableHead>Estado</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody data-testid="promo-list">
             {codes.map((c) => (
@@ -762,18 +859,18 @@ function PromoCodesPanel() {
                 <TableCell className="num">{c.max_redemptions || "illimité"}</TableCell>
                 <TableCell>
                   <Badge variant={c.active ? "default" : "outline"} className="rounded-sm">
-                    {c.active ? "Actif" : "Desativado"}
+                    {c.active ? "Actif" : "Désactivé"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant="outline" onClick={() => toggle(c, !c.active)} className="rounded-sm">
-                    {c.active ? "Desativar" : "Ativar"}
+                    {c.active ? "Désactiver" : "Activer"}
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
             {codes.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">Nenhum code promo</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">Aucun code promo</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -803,7 +900,7 @@ function PlansRevenuePanel() {
     try {
       await api.put("/admin/feature-flags", flags);
       toast.success("Flags sauvegardés");
-    } catch { toast.error("Impossível"); }
+    } catch { toast.error("Impossible"); }
     finally { setBusy(false); }
   };
 
@@ -813,7 +910,7 @@ function PlansRevenuePanel() {
       await api.post("/admin/plans/sync-stripe");
       toast.success("Catalogue Stripe synchronisé");
       load();
-    } catch { toast.error("Sync Stripe impossível"); }
+    } catch { toast.error("Sync Stripe impossible"); }
     finally { setBusy(false); }
   };
 
@@ -899,7 +996,7 @@ function KycPanel() {
   useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (user_id, approve, reason) => {
     try { await api.post("/admin/kyc/review", { user_id, approve, reason: reason || null }); load(); }
-    catch { toast.error("Impossível"); }
+    catch { toast.error("Impossible"); }
   };
   return (
     <div className="grid gap-4">
@@ -914,8 +1011,8 @@ function KycPanel() {
       <div className="surface p-6" data-testid="kyc-list">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Empresa</TableHead><TableHead>SIREN</TableHead><TableHead>Métiers</TableHead>
-            <TableHead>Estado</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Entreprise</TableHead><TableHead>SIREN</TableHead><TableHead>Métiers</TableHead>
+            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {rows.map((r) => (
@@ -931,14 +1028,14 @@ function KycPanel() {
                 <TableCell className="text-right space-x-2">
                   {!r.verified && (
                     <>
-                      <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Validar</Button>
-                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motivo du rejeição ?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
+                      <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Valider</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motif du refus ?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
                     </>
                   )}
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">Nenhum dossier</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">Aucun dossier</TableCell></TableRow>}
           </TableBody>
         </Table>
       </div>
@@ -950,6 +1047,7 @@ function KycPanel() {
 function InboxPanel() {
   const { t } = useI18n();
   const [hours, setHours] = useState(168);
+  const [drill, setDrill] = useState(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -957,7 +1055,7 @@ function InboxPanel() {
     setLoading(true);
     api.get(`/admin/inbox?hours=${hours}`)
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Não foi possível carregar"))
+      .catch(() => toast.error("Chargement impossible"))
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
@@ -969,11 +1067,11 @@ function InboxPanel() {
 
   const approveReview = async (id) => {
     try { await api.post(`/reviews/site/${id}/approve`); toast.success("Avis publié"); loadPendingReviews(); }
-    catch { toast.error("Action impossível"); }
+    catch { toast.error("Action impossible"); }
   };
   const deleteReview = async (id) => {
     try { await api.delete(`/reviews/site/${id}`); toast.success("Avis supprimé"); loadPendingReviews(); }
-    catch { toast.error("Action impossível"); }
+    catch { toast.error("Action impossible"); }
   };
 
   const exportDeckCsv = async () => {
@@ -983,23 +1081,24 @@ function InboxPanel() {
       const a = document.createElement("a");
       a.href = url; a.download = "leads-investisseurs.csv"; a.click();
       URL.revokeObjectURL(url);
-      toast.success("Exportação CSV descarregada");
+      toast.success("Export CSV téléchargé");
     } catch {
-      toast.error("Export impossível");
+      toast.error("Export impossible");
     }
   };
 
   return (
     <div className="grid gap-6" data-testid="admin-inbox-panel">
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Stat label={t("admin.k_new_leads")} value={num(data?.counts?.new_leads || 0)} accent={data?.counts?.new_leads > 0} />
-        <Stat label={t("admin.k_new_users")} value={num(data?.counts?.new_users || 0)} />
-        <Stat label={t("admin.k_quotes_sent")} value={num(data?.counts?.quotes_sent || 0)} />
-        <Stat label={t("admin.k_quotes_signed")} value={num(data?.counts?.quotes_signed || 0)} accent />
-        <Stat label={t("admin.k_quotes_opened")} value={num(data?.counts?.quotes_opened || 0)} />
-        <Stat label={t("admin.k_client_errors")} value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} />
-        <Stat label="Deck investisseurs" value={num(data?.counts?.deck_downloads || 0)} accent={data?.counts?.deck_downloads > 0} />
+        <Stat label={t("admin.k_new_leads")} value={num(data?.counts?.new_leads || 0)} accent={data?.counts?.new_leads > 0} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("new_leads")} testId="inbox-stat-new_leads" />
+        <Stat label={t("admin.k_new_users")} value={num(data?.counts?.new_users || 0)} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("new_users")} testId="inbox-stat-new_users" />
+        <Stat label={t("admin.k_quotes_sent")} value={num(data?.counts?.quotes_sent || 0)} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("quotes_sent")} testId="inbox-stat-quotes_sent" />
+        <Stat label={t("admin.k_quotes_signed")} value={num(data?.counts?.quotes_signed || 0)} accent sub="Cliquer : qui et pourquoi" onClick={() => setDrill("quotes_signed")} testId="inbox-stat-quotes_signed" />
+        <Stat label={t("admin.k_quotes_opened")} value={num(data?.counts?.quotes_opened || 0)} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("quotes_opened")} testId="inbox-stat-quotes_opened" />
+        <Stat label={t("admin.k_client_errors")} value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} sub="Cliquer : détail" onClick={() => setDrill("client_errors")} testId="inbox-stat-client_errors" />
+        <Stat label="Deck investisseurs" value={num(data?.counts?.deck_downloads || 0)} accent={data?.counts?.deck_downloads > 0} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("deck_downloads")} testId="inbox-stat-deck_downloads" />
       </div>
+      <AdminDrillDialog metric={drill} inbox hours={hours} onClose={() => setDrill(null)} />
 
       <div className="surface p-4 flex gap-2 items-center flex-wrap">
         <span className="text-xs text-muted-foreground mr-2">Fenêtre :</span>
@@ -1024,17 +1123,17 @@ function InboxPanel() {
 
       {data && (
         <>
-          <InboxSection title="Leads reçus" items={data.leads || []} empty="Nenhum lead no período.">
+          <InboxSection title="Leads reçus" items={data.leads || []} empty="Aucun lead sur la période.">
             {(l) => <LeadRow lead={l} onUpdated={load} />}
           </InboxSection>
 
-          <InboxSection title="Novas contas" items={data.new_users || []} empty="Nenhum novo utilizador.">
+          <InboxSection title="Nouveaux comptes" items={data.new_users || []} empty="Aucun nouvel utilisateur.">
             {(u) => (
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold truncate">{u.name || u.email}</p>
                   <p className="text-muted-foreground truncate">
-                    {u.email} · função <b>{u.role || "user"}</b> · plano {u.plan || "free"}
+                    {u.email} · rôle <b>{u.role || "user"}</b> · plan {u.plan || "free"}
                   </p>
                 </div>
                 <span className="text-[10px] text-muted-foreground ml-2">
@@ -1044,13 +1143,13 @@ function InboxPanel() {
             )}
           </InboxSection>
 
-          <InboxSection title="Orçamento récents (activité pros)" items={data.recent_sends || []} empty="Nenhum orçamento enviado no período.">
+          <InboxSection title="Devis récents (activité pros)" items={data.recent_sends || []} empty="Aucun devis envoyé sur la période.">
             {(s) => (
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold truncate">→ {s.client_email}</p>
                   <p className="text-muted-foreground truncate">
-                    {s.client_name || "—"} · <span className="num">{(s.total_ttc || 0).toLocaleString("pt-PT")} €</span>
+                    {s.client_name || "—"} · <span className="num">{(s.total_ttc || 0).toLocaleString("fr-FR")} €</span>
                   </p>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-sm border ml-2 whitespace-nowrap
@@ -1066,7 +1165,7 @@ function InboxPanel() {
           <div className="surface p-5" data-testid="pending-reviews-section">
             <p className="overline mb-3">Avis clients en attente ({pendingReviews.length})</p>
             {pendingReviews.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhum avis à modérer.</p>
+              <p className="text-xs text-muted-foreground">Aucun avis à modérer.</p>
             ) : (
               <div className="grid gap-2">
                 {pendingReviews.map((r) => (
@@ -1087,7 +1186,7 @@ function InboxPanel() {
             )}
           </div>
 
-          <InboxSection title="Descargas do pitch deck (VC)" items={data.deck_downloads || []} empty="Nenhuma descarga do pitch deck no período."
+          <InboxSection title="Téléchargements pitch deck (VC)" items={data.deck_downloads || []} empty="Aucun téléchargement du pitch deck sur la période."
             action={
               <Button size="sm" variant="outline" className="rounded-sm gap-2 h-8"
                       data-testid="deck-export-csv-btn" onClick={exportDeckCsv}>
@@ -1112,7 +1211,7 @@ function InboxPanel() {
             )}
           </InboxSection>
 
-          <InboxSection title="Erreurs client (extrait)" items={(data.recent_errors || []).slice(0, 10)} empty="Nenhum erro no período.">
+          <InboxSection title="Erreurs client (extrait)" items={(data.recent_errors || []).slice(0, 10)} empty="Aucune erreur sur la période.">
             {(e) => (
               <div className="text-xs">
                 <p className="font-mono font-semibold break-all">{e.message}</p>
@@ -1154,7 +1253,7 @@ function InboxSection({ title, items, empty, children, action }) {
 
 /* ---------- LeadRow with direct actions (call / email / mark handled) ---------- */
 function LeadRow({ lead, onUpdated }) {
-  const [status, setStatus] = useState(lead.status || "novo");
+  const [status, setStatus] = useState(lead.status || "nouveau");
   const [busy, setBusy] = useState(false);
 
   const setLeadStatus = async (next) => {
@@ -1162,9 +1261,9 @@ function LeadRow({ lead, onUpdated }) {
     try {
       await api.put(`/admin/leads/${lead.lead_id}`, { status: next });
       setStatus(next);
-      toast.success(`Estado : ${next}`);
+      toast.success(`Statut : ${next}`);
       if (onUpdated) onUpdated();
-    } catch { toast.error("Actualização impossível"); }
+    } catch { toast.error("Mise à jour impossible"); }
     setBusy(false);
   };
 
@@ -1226,7 +1325,7 @@ function LeadRow({ lead, onUpdated }) {
               data-testid={`lead-inprogress-${lead.lead_id}`}
               className="rounded-sm h-7 text-[10px]"
             >
-              Em curso
+              En cours
             </Button>
             <Button
               size="sm"
@@ -1242,7 +1341,7 @@ function LeadRow({ lead, onUpdated }) {
           <Button
             size="sm" variant="outline"
             disabled={busy}
-            onClick={() => setLeadStatus("novo")}
+            onClick={() => setLeadStatus("nouveau")}
             className="rounded-sm h-7 text-[10px]"
           >
             Rouvrir
@@ -1253,7 +1352,7 @@ function LeadRow({ lead, onUpdated }) {
   );
 }
 
-/* ---------- Cliente Errors (ErrorBoundary reports) ---------- */
+/* ---------- Client Errors (ErrorBoundary reports) ---------- */
 function ClientErrorsPanel() {
   const { t } = useI18n();
   const [hours, setHours] = useState(24);
@@ -1266,7 +1365,7 @@ function ClientErrorsPanel() {
     setLoading(true);
     api.get(`/errors/admin/list?hours=${hours}&limit=200`)
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Não foi possível carregar"))
+      .catch(() => toast.error("Chargement impossible"))
       .finally(() => setLoading(false));
     api.get(`/errors/admin/trend?days=14`).then(({ data }) => setTrend(data)).catch(() => {});
   };
@@ -1332,14 +1431,14 @@ function ClientErrorsPanel() {
             <p className="overline mb-4">Top 10 des messages (regroupés)</p>
             {(data.top_messages || []).length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                Nenhuma erro sur la période — tout va bien.
+                Aucune erreur sur la période — tout va bien.
               </p>
             ) : (
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Message</TableHead>
                   <TableHead className="w-24 text-right">Occurrences</TableHead>
-                  <TableHead className="w-24 text-right">Utilizadores</TableHead>
+                  <TableHead className="w-24 text-right">Utilisateurs</TableHead>
                   <TableHead className="w-40">Dernière fois</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -1413,7 +1512,7 @@ function AffiliatePanel() {
   useEffect(() => { load(); }, []);
   const toggle = async (cfg, enabled) => {
     try { await api.post("/admin/affiliate/configs", { ...cfg, affiliate_enabled: enabled }); load(); }
-    catch { toast.error("Impossível"); }
+    catch { toast.error("Impossible"); }
   };
   return (
     <div className="grid gap-6" data-testid="affiliate-panel">
@@ -1429,7 +1528,7 @@ function AffiliatePanel() {
         <p className="overline mb-4">Configurations partenaires</p>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Fornecedor</TableHead><TableHead>Rede</TableHead>
+            <TableHead>Fournisseur</TableHead><TableHead>Réseau</TableHead>
             <TableHead>Commission</TableHead><TableHead>Cookie</TableHead>
             <TableHead>Actif</TableHead>
           </TableRow></TableHeader>

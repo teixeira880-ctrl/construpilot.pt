@@ -68,7 +68,7 @@ async def pro_verified_public(user_id: str) -> dict:
 
 async def _send_review_request_email(to: str, client_name: str, company: str, url: str) -> None:
     from engines.emailer import send_email, wrap_html
-    hello = f"Olá {client_name}," if client_name else "Olá,"
+    hello = f"Bonjour {client_name}," if client_name else "Bonjour,"
     inner = (
         f"<p>{hello}</p>"
         f"<p>Votre chantier avec <b>{company}</b> est terminé. Nous espérons que "

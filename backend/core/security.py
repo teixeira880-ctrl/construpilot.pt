@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import Depends, HTTPException, Request
 
 from core.db import db
+from engines.expenses.context import bind as bind_expense_actor
 
 JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGO = 'HS256'
@@ -38,7 +39,8 @@ def new_user_id() -> str:
 
 async def _user_from_jwt(token: str):
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO],
+                             options={"require": ["exp", "sub"]})
     except Exception:
         return None
     user = await db.users.find_one({"user_id": payload.get('sub')}, {"_id": 0})
@@ -53,10 +55,15 @@ async def _user_from_session(token: str):
         return None
     expires_at = session.get('expires_at')
     if isinstance(expires_at, str):
-        expires_at = datetime.fromisoformat(expires_at)
-    if expires_at and expires_at.tzinfo is None:
+        try:
+            expires_at = datetime.fromisoformat(expires_at)
+        except ValueError:
+            return None
+    if not isinstance(expires_at, datetime):
+        return None
+    if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at and expires_at < datetime.now(timezone.utc):
+    if expires_at <= datetime.now(timezone.utc):
         return None
     return await db.users.find_one({"user_id": session['user_id']}, {"_id": 0})
 
@@ -71,13 +78,19 @@ async def optional_user(request: Request):
         return None
     user = await _user_from_session(token)
     if user:
+        bind_expense_actor(user)
         return user
-    return await _user_from_jwt(token)
+    user = await _user_from_jwt(token)
+    if user:
+        bind_expense_actor(user)
+    return user
 
 
 async def current_user(user=Depends(optional_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Non authentifié")
+    if user.get('active') is False:
+        raise HTTPException(status_code=403, detail="Compte désactivé")
     return user
 
 
@@ -88,15 +101,23 @@ async def admin_user(user=Depends(current_user)):
 
 
 async def pro_required(user=Depends(current_user)):
-    """Réserve la ressource aux comptes professionnels.
+    """Réserve la ressource aux offres professionnelles (pro / business).
 
-    Bloque uniquement les comptes explicitement « particulier » (y compris via l'API).
-    Les comptes existants sans `account_type` et les administrateurs conservent l'accès
-    (pas de verrouillage des pros historiques).
+    Le niveau est calculé de façon centralisée (account_type + abonnement). Les comptes
+    sans `account_type` sont traités comme particuliers (pas d'accès pro par défaut).
     """
     if user.get('role') == 'admin':
         return user
-    if user.get('account_type') == 'particulier':
+    from engines.access import compute_level, meets
+    level = await compute_level(user)
+    if not meets(level, 'pro'):
         raise HTTPException(status_code=403,
                             detail="Fonction réservée aux professionnels. Passez en compte Pro pour y accéder.")
+    if user.get('company_active') is False or user.get('active') is False:
+        raise HTTPException(status_code=403, detail="Accès professionnel désactivé.")
+    if user.get('organization_id'):
+        from core.permissions import ROLE_PERMISSIONS
+        if user.get('org_role') not in ROLE_PERMISSIONS:
+            raise HTTPException(status_code=403, detail="Rôle d'entreprise non reconnu.")
     return user
+

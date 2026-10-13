@@ -80,6 +80,9 @@ RULES_TEXT = ("Règles fixes appliquées : semelles filantes 60 × 30 cm (périm
 
 def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
                  start_date: str | None = None) -> bytes:
+    if study.get("schema_version") == "construction-dossier-1":
+        from engines.study_dossier_pdf import build_dossier_pdf
+        return build_dossier_pdf(plan, study, branding)
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
                             topMargin=16 * mm, bottomMargin=16 * mm)
@@ -193,6 +196,9 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
 def build_pc_docx(plan: dict, study: dict, branding: dict | None = None,
                   start_date: str | None = None) -> bytes:
     """Export Word (.docx) de l'étude PC — même contenu que le PDF."""
+    if study.get("schema_version") == "construction-dossier-1":
+        from engines.study_dossier_pdf import build_dossier_docx
+        return build_dossier_docx(plan, study, branding)
     from docx import Document
     from docx.shared import Pt, RGBColor
 

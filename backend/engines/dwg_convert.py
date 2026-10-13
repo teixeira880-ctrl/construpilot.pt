@@ -1,4 +1,4 @@
-"""Conversion DWG → DXF via l'API CloudConvert v2.
+"""Conversion DWG → DXF : ODA local, Autodesk si activé, puis CloudConvert historique.
 
 Le DWG est un format AutoCAD propriétaire binaire qu'aucune lib Python ne lit
 directement. On délègue la conversion à CloudConvert : création d'un job
@@ -14,16 +14,36 @@ import httpx
 
 logger = logging.getLogger("dwg_convert")
 
-API_BASE = "https://api.cloudconvert.com/v2"
-SYNC_BASE = "https://sync.api.cloudconvert.com/v2"
+API_BASE = os.environ["CLOUDCONVERT_API_BASE"].rstrip("/")
+SYNC_BASE = os.environ["CLOUDCONVERT_SYNC_BASE"].rstrip("/")
 
 
 def is_configured() -> bool:
-    return bool(os.environ.get("CLOUDCONVERT_API_KEY"))
+    return bool(os.environ.get("ODA_FILE_CONVERTER") or os.environ.get("CLOUDCONVERT_API_KEY") or
+                (os.environ.get("APS_DWG_ENABLED") == "true" and os.environ.get("APS_ACTIVITY_QUALIFIED")))
 
 
-async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg") -> bytes:
+async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg", *, user_id=None, provenance=None) -> bytes:
     """Convertit des octets DWG en octets DXF. Lève RuntimeError si échec."""
+    import asyncio
+    import re
+    if not re.match(rb"AC10[0-9]{2}",dwg_bytes[:6]):
+        raise RuntimeError("Le fichier ne porte pas une signature DWG AutoCAD reconnue")
+    if os.environ.get("ODA_FILE_CONVERTER"):
+        output = await asyncio.to_thread(_local_dwg_to_dxf,dwg_bytes)
+        if provenance is not None: provenance.update(provider="oda", status="converted")
+        return output
+    if os.environ.get("APS_DWG_ENABLED") == "true":
+        from engines.autodesk_client import AutodeskError
+        from engines.autodesk_dwg import convert
+        try:
+            output, metadata = await convert(dwg_bytes, user_id=user_id)
+            if provenance is not None: provenance.update(metadata)
+            return output
+        except AutodeskError as exc:
+            if not exc.fallback_safe or os.environ.get("APS_DWG_FALLBACK_ENABLED") != "true":
+                raise
+            if provenance is not None: provenance.update(fallback_reason=exc.code)
     api_key = os.environ.get("CLOUDCONVERT_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -52,42 +72,80 @@ async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg") -> bytes:
         if create.status_code == 429:
             raise RuntimeError("Service de conversion DWG saturé — réessayez dans un instant.")
         if not create.is_success:
-            logger.error("CloudConvert job creation failed %s: %s", create.status_code, create.text[:300])
+            logger.error("CloudConvert job creation failed %s: %s", create.status_code, "payload masqué")
             raise RuntimeError("Conversion DWG impossible (création du job).")
 
         job = create.json()["data"]
         job_id = job["id"]
-        upload_task = next(t for t in job["tasks"] if t["name"] == "upload-dwg")
-        form = upload_task["result"]["form"]
+        try:
+            upload_task = next(t for t in job["tasks"] if t["name"] == "upload-dwg")
+            form = upload_task["result"]["form"]
+    
+            form_data = {str(k): str(v) for k, v in form["parameters"].items()}
+            up_name = filename if filename.lower().endswith(".dwg") else "input.dwg"
+            files = {"file": (up_name, dwg_bytes, "application/acad")}
+            uploaded = await client.post(form["url"], data=form_data, files=files)
+            if not uploaded.is_success:
+                logger.error("CloudConvert upload failed %s: %s", uploaded.status_code, "payload masqué")
+                raise RuntimeError("Conversion DWG impossible (envoi du fichier).")
+    
+            waited = await client.get(f"{SYNC_BASE}/jobs/{job_id}", headers=headers)
+            if not waited.is_success:
+                logger.error("CloudConvert wait failed %s: %s", waited.status_code, "payload masqué")
+                raise RuntimeError("Conversion DWG impossible (attente).")
+    
+            finished = waited.json()["data"]
+            if finished.get("status") != "finished":
+                errs = [
+                    f"{t.get('name')}: {t.get('code') or t.get('message') or t.get('status')}"
+                    for t in finished.get("tasks", []) if t.get("status") == "error"
+                ]
+                logger.error("CloudConvert conversion failed (details withheld)")
+                raise RuntimeError("Le fichier DWG n'a pas pu être converti (fichier corrompu ou non supporté).")
+    
+            export_task = next(t for t in finished["tasks"] if t["name"] == "export-dxf")
+            out_files = export_task.get("result", {}).get("files", [])
+            if not out_files or not out_files[0].get("url"):
+                raise RuntimeError("Conversion DWG impossible (aucun DXF produit).")
+    
+            async with client.stream("GET",out_files[0]["url"]) as download:
+                if not download.is_success:raise RuntimeError("Conversion DWG impossible (téléchargement du DXF).")
+                chunks=[];size=0
+                async for chunk in download.aiter_bytes():
+                    size+=len(chunk)
+                    if size>50*1024*1024:raise RuntimeError("DXF converti trop volumineux (>50 Mo)")
+                    chunks.append(chunk)
+                result=b"".join(chunks)
+            _validate_dxf(result)
+            if provenance is not None: provenance.update(provider="cloudconvert", status="converted")
+            return result
+        finally:
+            try: await client.delete(f"{API_BASE}/jobs/{job_id}",headers=headers)
+            except httpx.HTTPError: logger.warning("Nettoyage du job de conversion différé")
 
-        form_data = {str(k): str(v) for k, v in form["parameters"].items()}
-        up_name = filename if filename.lower().endswith(".dwg") else "input.dwg"
-        files = {"file": (up_name, dwg_bytes, "application/acad")}
-        uploaded = await client.post(form["url"], data=form_data, files=files)
-        if not uploaded.is_success:
-            logger.error("CloudConvert upload failed %s: %s", uploaded.status_code, uploaded.text[:300])
-            raise RuntimeError("Conversion DWG impossible (envoi du fichier).")
 
-        waited = await client.get(f"{SYNC_BASE}/jobs/{job_id}", headers=headers)
-        if not waited.is_success:
-            logger.error("CloudConvert wait failed %s: %s", waited.status_code, waited.text[:300])
-            raise RuntimeError("Conversion DWG impossible (attente).")
+def _validate_dxf(data):
+    if not data or (b"SECTION" not in data[:4096] and not data.startswith(b"AutoCAD Binary DXF")):
+        raise RuntimeError("Le convertisseur n'a pas produit un fichier DXF reconnu")
 
-        finished = waited.json()["data"]
-        if finished.get("status") != "finished":
-            errs = [
-                f"{t.get('name')}: {t.get('code') or t.get('message') or t.get('status')}"
-                for t in finished.get("tasks", []) if t.get("status") == "error"
-            ]
-            logger.error("CloudConvert conversion error: %s", "; ".join(errs))
-            raise RuntimeError("Le fichier DWG n'a pas pu être converti (fichier corrompu ou non supporté).")
 
-        export_task = next(t for t in finished["tasks"] if t["name"] == "export-dxf")
-        out_files = export_task.get("result", {}).get("files", [])
-        if not out_files or not out_files[0].get("url"):
-            raise RuntimeError("Conversion DWG impossible (aucun DXF produit).")
-
-        download = await client.get(out_files[0]["url"])
-        if not download.is_success:
-            raise RuntimeError("Conversion DWG impossible (téléchargement du DXF).")
-        return download.content
+def _local_dwg_to_dxf(data):
+    """ODA installé par l'administrateur ; aucun téléchargement ou shell implicite."""
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    executable=Path(os.environ["ODA_FILE_CONVERTER"])
+    if not executable.is_absolute() or not executable.is_file():
+        raise RuntimeError("Chemin ODA_FILE_CONVERTER invalide côté serveur")
+    with tempfile.TemporaryDirectory(prefix="cp-cad-") as temp:
+        source=Path(temp)/"input";destination=Path(temp)/"output"
+        source.mkdir();destination.mkdir();(source/"plan.dwg").write_bytes(data)
+        try:
+            subprocess.run([str(executable),str(source),str(destination),"ACAD2018","DXF","0","1","plan.dwg"],
+                           check=True,timeout=120,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        except (OSError,subprocess.SubprocessError):
+            raise RuntimeError("Conversion DWG locale impossible : vérifier le convertisseur ODA installé") from None
+        outputs=list(destination.glob("*.dxf"))+list(destination.glob("*.DXF"))
+        if len(outputs)!=1:raise RuntimeError("Le convertisseur local n'a pas produit un DXF unique")
+        if outputs[0].stat().st_size>50*1024*1024:raise RuntimeError("DXF converti trop volumineux")
+        result=outputs[0].read_bytes();_validate_dxf(result);return result

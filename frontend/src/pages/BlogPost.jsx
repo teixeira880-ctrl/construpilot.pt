@@ -7,6 +7,7 @@ import { ARTICLE_BODIES } from "@/lib/blogBodies";
 import { BLOG_ARTICLES_PT, getArticlePT, ARTICLE_BODIES_PT } from "@/lib/blogPortugal";
 import { useI18n } from "@/context/I18nContext";
 import AutoSeoBlogPost from "@/components/AutoSeoBlogPost";
+import NewsletterForm from "@/components/NewsletterForm";
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -87,7 +88,7 @@ export default function BlogPost() {
         <div className="mt-5 flex items-center gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {new Date(article.published).toLocaleDateString("pt-PT", { day:"numeric", month:"long", year:"numeric" })}
+            {new Date(article.published).toLocaleDateString("fr-FR", { day:"numeric", month:"long", year:"numeric" })}
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3 w-3" /> {article.readingMinutes} {isPT ? "min de leitura" : "min de lecture"}
@@ -139,6 +140,7 @@ export default function BlogPost() {
             </Link>
           )}
         </nav>
+        <div className="mt-10"><NewsletterForm source={`article:${slug}`} /></div>
       </article>
     </>
   );

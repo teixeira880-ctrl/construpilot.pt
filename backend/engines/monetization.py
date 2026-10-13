@@ -263,7 +263,7 @@ async def sync_status(session_id: str) -> dict:
         s = stripe.checkout.Session.retrieve(session_id)
     except Exception:
         return rec
-    if s.payment_status == "paid" or s.status == "complete":
+    if s.payment_status in ("paid", "no_payment_required"):
         await _mark_paid(session_id, s)
     return await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
 
@@ -298,6 +298,10 @@ async def _apply_pro_credit_topup(rec: dict) -> None:
 
 
 async def _mark_paid(session_id: str, s) -> None:
+    # Completing Checkout does not settle delayed payment methods. Free trials
+    # and zero-total orders explicitly report no_payment_required.
+    if s.get("payment_status") not in ("paid", "no_payment_required"):
+        return
     upd = await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
         {"$set": {"status": "completed", "payment_status": "paid",
@@ -325,6 +329,14 @@ async def _mark_paid(session_id: str, s) -> None:
 
     if rec.get("type") == "pro_credit_topup":
         await _apply_pro_credit_topup(rec)
+        return
+
+    if rec.get("type") in ("postal_letter", "postal_credits"):
+        from engines import postal_billing
+        if rec["type"] == "postal_letter":
+            await postal_billing.apply_letter_payment(rec)
+        else:
+            await postal_billing.apply_credits_payment(rec)
         return
 
     plan = await db.plans.find_one({"plan_id": rec["plan_id"]}, {"_id": 0})
@@ -631,3 +643,4 @@ async def credits_3d_summary(user: dict) -> dict:
             "free_render_remaining": free_remaining,
             "credits": {k: int(credits.get(k, 0) or 0) for k in CREDIT_KINDS},
             "prices_cents": prices, "credit_plans": plans}
+

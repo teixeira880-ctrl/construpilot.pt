@@ -78,7 +78,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
               rows={4} value={form.message}
               onChange={(e) => setForm({ ...form, message: e.target.value })}
               data-testid="email-pdf-message"
-              placeholder="Olá, segue em anexo a estimativa detalhada dos seus trabalhos..."
+              placeholder="Bonjour, voici l'estimation détaillée de vos travaux..."
               className="rounded-sm"
             />
           </div>

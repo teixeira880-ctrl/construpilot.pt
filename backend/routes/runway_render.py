@@ -237,8 +237,8 @@ async def generate(file: UploadFile = File(None),
 
     task_id = getattr(created, "id", None)
     doc = {
-        "render_id": render_id, "user_id": user["user_id"], "task_id": task_id,
-        "kind": kind, "prompt": clean_prompt, "ratio": ratio,
+        "render_id": render_id, "user_id": user["user_id"], "company_id": user.get("organization_id"), "task_id": task_id,
+        "kind": kind, "model": "gen4_turbo" if kind == "video" else "gen4_image", "prompt": clean_prompt, "ratio": ratio,
         "duration": duration if kind == "video" else None,
         "status": "processing", "input_path": input_path,
         "output_path": None, "content_type": None, "error": None,

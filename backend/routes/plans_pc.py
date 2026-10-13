@@ -93,6 +93,8 @@ async def _team_members(owner_id: str) -> list[dict]:
 
 
 class PcStudyIn(BaseModel):
+    request: str = Field("Gros œuvre avec infrastructure, enduits et maçonnerie de clôture ; hors charpente-couverture et second œuvre", max_length=2000)
+    request_id: str | None = Field(None, max_length=80)
     pages: list[int] | None = None
     wall_height_m: float | None = None
     levels: int | None = None
@@ -114,48 +116,14 @@ async def _archive_pc_version(plan_id: str, user_id: str, study: dict,
         "briques_u": t.get("briques_u"), "total_days": pl.get("total_days")})
 
 
-@router.post("/{plan_id}/pc-study")
+@router.post("/{plan_id}/pc-study", status_code=202)
 async def run_pc_study(plan_id: str, body: PcStudyIn, user=Depends(current_user)) -> dict:
-    owner_id = await _pc_owner_id(plan_id, user, write=True)
-    p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id},
-        {"_id": 0, "pages": 1, "rooms": 1, "pc_study": 1})
-    if not p:
-        raise HTTPException(404, "Plan introuvable")
-    pages = p.get("pages") or []
-    if not pages:
-        raise HTTPException(400, "Aucune page à analyser")
-
-    indices = body.pages if body.pages else list(range(len(pages)))
-    indices = [i for i in indices if 0 <= i < len(pages)][:MAX_PC_PAGES]
-    images = [(i, pages[i].get("image_png_b64")) for i in indices
-              if pages[i].get("image_png_b64")]
-    if not images:
-        raise HTTPException(500, "Images des pages manquantes")
-
-    analyses = await asyncio.gather(
-        *[asyncio.wait_for(analyze_pc_page(img), timeout=90) for _, img in images],
-        return_exceptions=True)
-    analyses = [a if isinstance(a, dict) else {"error": f"timeout/erreur: {type(a).__name__}",
-                                               "confidence": 0.0} for a in analyses]
-    merged = merge_pc_analyses(list(analyses))
-    if merged["pages_ok"] == 0:
-        first_err = next((a.get("error") for a in analyses if a.get("error")), "IA indisponible")
-        raise HTTPException(502, f"Analyse IA échouée sur toutes les pages : {first_err}")
-
-    rooms_surface = round(sum(float(r.get("surface_m2") or 0)
-                              for r in (p.get("rooms") or [])), 2)
-    overrides = {k: v for k, v in body.dict().items() if k != "pages"}
-    settings = await _load_pc_settings(owner_id)
-    study = build_study(merged, overrides, rooms_surface,
-                        pages_analyzed=[i for i, _ in images],
-                        settings=settings)
-    if p.get("pc_study"):
-        await _archive_pc_version(plan_id, owner_id, p["pc_study"], "analyse")
-    await db.plans_takeoff.update_one(
-        {"plan_id": plan_id},
-        {"$set": {"pc_study": study, "updated_at": _now()}})
-    return study
+    """New studies use the traceable dossier pipeline, on a persistent queue."""
+    from engines.study_dossier_jobs import enqueue_study
+    legacy = ("wall_height_m", "levels", "perimeter_m", "refends_m", "surface_m2")
+    if any(getattr(body, key) is not None for key in legacy):
+        raise HTTPException(422, "Lancez l’étude puis corrigez ses mesures sourcées dans le panneau de contrôle.")
+    return await enqueue_study(plan_id, body.model_dump(), user)
 
 
 @router.get("/{plan_id}/pc-study")
@@ -171,6 +139,9 @@ async def recompute_pc_study(plan_id: str, user=Depends(current_user)) -> dict:
     p = await _plan_and_study(plan_id, user, write=True)
     owner_id = p["user_id"]
     study = p["pc_study"]
+    if study.get("schema_version") == "construction-dossier-1":
+        from routes.study_dossier import revise_dossier, DossierRevisionIn
+        return await revise_dossier(plan_id, DossierRevisionIn(expected_revision=study["revision"]), user)
     await _archive_pc_version(plan_id, owner_id, study, "recalcul")
     settings = await _load_pc_settings(owner_id)
     prices = merge_unit_prices(settings.get("unit_prices"))
@@ -197,7 +168,7 @@ async def get_pc_history(plan_id: str, user=Depends(current_user)) -> dict:
     await _pc_owner_id(plan_id, user)
     rows = await db.pc_study_history.find(
         {"plan_id": plan_id},
-        {"_id": 0}).sort("saved_at", -1).to_list(20)
+        {"_id": 0, "study": 0}).sort("saved_at", -1).to_list(20)
     return {"history": rows}
 
 
@@ -329,7 +300,7 @@ async def create_pc_situation(plan_id: str, body: PcSituationIn,
                 f"Facture {label} {invoice_no} — {amount} € · {filename}",
                 wrap_html(
                     f"Facture {label} — {invoice_no}",
-                    f"<p>Olá {_html.escape(entry.get('accepted_by') or '')},</p>"
+                    f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
                     f"<p>Les travaux du chantier « {_html.escape(filename)} » avancent"
                     f"{'' if sit['is_final'] else f' ({pct_cumul:g} % réalisés)'} : "
                     f"vous trouverez en pièce jointe la facture {label} de "
@@ -409,7 +380,7 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
         notes_html = ("<p><b>Notes :</b><br/>"
                       f"{_html.escape(body.notes.strip()).replace(chr(10), '<br/>')}</p>")
     html_body = (
-        f"<p>Olá{' ' + _html.escape(body.supplier_name) if body.supplier_name else ''},</p>"
+        f"<p>Bonjour{' ' + _html.escape(body.supplier_name) if body.supplier_name else ''},</p>"
         f"<p>Veuillez trouver ci-joint notre <b>bon de commande {ref}</b> pour la phase "
         f"« {_html.escape(lvl['name'])} » de notre chantier "
         f"« {_html.escape(p.get('filename') or 'construction')} » — "
@@ -443,7 +414,7 @@ async def _plan_and_study(plan_id: str, user: dict, write: bool = False) -> dict
     await _pc_owner_id(plan_id, user, write=write)
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id},
-        {"_id": 0, "filename": 1, "pc_study": 1, "user_id": 1})
+        {"_id": 0, "filename": 1, "pc_study": 1, "user_id": 1, "updated_at": 1})
     if not p:
         raise HTTPException(404, "Plan introuvable")
     if not p.get("pc_study"):
@@ -469,7 +440,21 @@ async def export_pc_pdf(plan_id: str, start: str | None = None,
                         user=Depends(current_user)):
     p = await _plan_and_study(plan_id, user)
     branding = await _resolve_branding(p["user_id"])
-    pdf = build_pc_pdf(p, p["pc_study"], branding, start_date=_valid_date(start))
+    p["plan_id"] = plan_id
+    if p["pc_study"].get("schema_version") == "construction-dossier-1":
+        import base64
+        from engines.study_dossier_pdf import build_dossier_pdf
+        stored = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": p["user_id"]}, {"_id": 0, "pages.image_png_b64": 1})
+        pages = (stored or {}).get("pages") or []
+        selected = [a for a in p["pc_study"].get("page_analyses", []) if a.get("kind") in ("plan", "coupe", "structure")][:3]
+        images = []
+        for a in selected:
+            index = a.get("page", 0)-1
+            if 0 <= index < len(pages) and pages[index].get("image_png_b64"):
+                images.append((f"Page {index+1} - {a.get('kind')} (pièce source, sans validation automatique)", base64.b64decode(pages[index]["image_png_b64"])))
+        pdf = await asyncio.to_thread(build_dossier_pdf, p, p["pc_study"], branding, images)
+    else:
+        pdf = await asyncio.to_thread(build_pc_pdf, p, p["pc_study"], branding, start_date=_valid_date(start))
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition":
                              f'attachment; filename="etude-pc-{plan_id}.pdf"'})
@@ -503,6 +488,8 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
 
     p = await _plan_and_study(plan_id, user, write=True)
     study = p["pc_study"]
+    if study.get("schema_version") == "construction-dossier-1":
+        raise HTTPException(409, "Cette étude estimative s’exporte en PDF. Créez un devis commercial contrôlé avant envoi pour signature.")
     branding = await _resolve_branding(p["user_id"])
     start = _valid_date(body.start_date)
     pdf = build_pc_pdf(p, study, branding, start_date=start)
@@ -669,7 +656,7 @@ async def _notify_study_opened(track_id: str) -> None:
     if mode in ("email", "both") and u and u.get("email"):
         html = wrap_html(
             "Votre étude vient d'être ouverte",
-            f"<p>Olá {_html.escape(u.get('name') or '')},</p>"
+            f"<p>Bonjour {_html.escape(u.get('name') or '')},</p>"
             f"<p>Bonne nouvelle : <b>{_html.escape(client)}</b> vient d'ouvrir "
             f"l'étude gros œuvre du chantier « {_html.escape(filename)} ».</p>"
             "<p>C'est le bon moment pour le rappeler.</p>")
@@ -723,7 +710,7 @@ async def _send_pc_reminder(p: dict, s: dict) -> None:
     t = (p["pc_study"].get("totals") or {})
     filename = p.get("filename") or "permis de construire"
     html_body = (
-        "<p>Olá,</p>"
+        "<p>Bonjour,</p>"
         f"<p>Petit rappel : l'<b>étude gros œuvre</b> de votre projet "
         f"« {_html.escape(filename)} » vous attend. Vous la trouverez de nouveau "
         "en pièce jointe de cet email.</p>"
@@ -755,7 +742,7 @@ async def _send_deposit_reminder(p: dict, s: dict, pct: float, amount: float) ->
         f"Rappel — acompte de {amount} € à régler · {filename}",
         wrap_html(
             "Votre chantier n'attend plus que l'acompte",
-            f"<p>Olá {_html.escape(s.get('accepted_by') or '')},</p>"
+            f"<p>Bonjour {_html.escape(s.get('accepted_by') or '')},</p>"
             f"<p>Vous avez accepté l'étude gros œuvre du chantier "
             f"« {_html.escape(filename)} » — il ne reste que l'acompte de "
             f"<b>{pct:g} %</b>, soit <b>{amount} €</b>, à régler par carte "
@@ -905,6 +892,8 @@ async def get_pc_sign(token: str) -> dict:
         raise HTTPException(404, "Lien invalide ou expiré")
     entry = (p.get("sent_reports") or [{}])[0]
     study = p["pc_study"]
+    if study.get("schema_version") == "construction-dossier-1":
+        raise HTTPException(409, "Cette étude estimative s’exporte en PDF. Créez un devis commercial contrôlé avant envoi pour signature.")
     branding = await _resolve_branding(p["user_id"])
     t = study.get("totals") or {}
     settings = await _load_pc_settings(p["user_id"])
@@ -1126,7 +1115,7 @@ async def _apply_pc_deposit(rec: dict) -> None:
                 entry["to_email"],
                 f"Votre facture d'acompte {invoice_no} · {filename}",
                 wrap_html("Facture d'acompte — merci !",
-                          f"<p>Olá {_html.escape(entry.get('accepted_by') or '')},</p>"
+                          f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
                           f"<p>Nous avons bien reçu votre acompte de <b>{amount} €</b> "
                           f"pour le chantier « {_html.escape(filename)} ». "
                           f"Votre facture d'acompte <b>{invoice_no}</b> est en pièce "
@@ -1470,7 +1459,7 @@ async def _send_weekly_pc_report_email(u: dict, rows: list[dict]) -> None:
     name = _html.escape(u.get("name") or "")
     html = wrap_html(
         "Rapport hebdo — Études PC",
-        f"<p>Olá {name},</p>"
+        f"<p>Bonjour {name},</p>"
         f"<p>Le point du lundi sur vos <b>{len(rows)} études PC</b> :</p>"
         f"<ul><li><b>{len(accepted)}</b> acceptée(s)</li>"
         f"<li><b>{len(opened)}</b> ouverte(s) par le client mais pas encore "

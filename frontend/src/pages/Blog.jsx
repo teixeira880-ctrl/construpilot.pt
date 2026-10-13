@@ -1,9 +1,18 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Clock, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { BLOG_ARTICLES } from "@/lib/blogArticles";
 import { BLOG_ARTICLES_PT } from "@/lib/blogPortugal";
 import { useI18n } from "@/context/I18nContext";
+import { api } from "@/lib/api";
+import NewsletterForm from "@/components/NewsletterForm";
+
+const dynToCard = (a) => ({
+  slug: a.slug, title: a.title, excerpt: a.excerpt || a.meta_description || "",
+  cover: a.hero_image_url || "/og-image.jpg", category: a.seed_keyword || "Guide",
+  readingMinutes: a.reading_minutes || 4, publishedAt: a.published_at,
+});
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -23,7 +32,15 @@ const JSON_LD = {
 export default function Blog() {
   const { lang } = useI18n();
   const isPT = lang === "pt";
-  const articles = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
+  const [dyn, setDyn] = useState([]);
+  useEffect(() => {
+    api.get(`/blog/autoseo?lang=${isPT ? "pt" : "fr"}`)
+      .then(({ data }) => setDyn((data.articles || []).map(dynToCard)))
+      .catch(() => setDyn([]));
+  }, [isPT]);
+  const staticArticles = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
+  const staticSlugs = new Set(staticArticles.map((a) => a.slug));
+  const articles = [...dyn.filter((a) => !staticSlugs.has(a.slug)), ...staticArticles];
   return (
     <>
       <SEO
@@ -87,6 +104,7 @@ export default function Blog() {
             </Link>
           ))}
         </div>
+        <div className="mt-12 max-w-2xl"><NewsletterForm source="blog-list" /></div>
       </section>
     </>
   );

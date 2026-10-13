@@ -17,7 +17,7 @@ def _frontend_url() -> str:
 
 
 def _welcome_html(name: str, email: str = "") -> str:
-    hello = f"Olá {name}," if name else "Olá,"
+    hello = f"Bonjour {name}," if name else "Bonjour,"
     from urllib.parse import quote
     signup = f"{_frontend_url()}/inscription?email={quote(email)}" if email else f"{_frontend_url()}/inscription"
     return f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">
@@ -101,7 +101,16 @@ async def create_lead(body: LeadIn, user=Depends(optional_user)):
     # Alerte admin (cloche + e-mail) + tentative d'assignation automatique par zone
     asyncio.create_task(_notify_new_lead_admins(doc))
     asyncio.create_task(_auto_assign_lead(doc))
+    asyncio.create_task(_bridge_process(doc))
     return doc
+
+
+async def _bridge_process(lead: dict) -> None:
+    try:
+        from engines.bridge import process_lead_bridge
+        await process_lead_bridge(lead)
+    except Exception:
+        pass
 
 
 async def _notify_new_lead_admins(lead: dict) -> None:
@@ -145,7 +154,7 @@ async def _notify_lead_pro(pro: dict, lead: dict) -> None:
     try:
         from engines.emailer import send_email, wrap_html
         html = wrap_html("Une demande vous a été assignée",
-                         f"<p>Olá,</p><p>Une demande de travaux ({name}) vous a été assignée. "
+                         f"<p>Bonjour,</p><p>Une demande de travaux ({name}) vous a été assignée. "
                          f"Retrouvez-la dans votre espace « Mes demandes ».</p>",
                          cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Voir mes demandes")
         if pro.get("email"):
@@ -261,7 +270,7 @@ async def run_signup_followups() -> int:
         if await db.pro_documents.count_documents({"user_id": u["user_id"]}) > 0:
             await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"welcome_followup": True}})
             continue
-        html = (f"<p>Olá {u.get('name') or ''},</p>"
+        html = (f"<p>Bonjour {u.get('name') or ''},</p>"
                 "<p>Vous avez rejoint <b>ConstruPilot</b> il y a quelques jours 🙂</p>"
                 "<p>Créez votre premier devis en 2 minutes — c'est <b>100% gratuit pendant le lancement</b>. "
                 "Nos calculateurs, prix matériaux et rendu 3D vous attendent !</p>"
@@ -435,7 +444,7 @@ async def mark_mine_viewed(user=Depends(current_user)) -> dict:
 
 
 def _j2_reminder_html(name: str) -> str:
-    hello = f"Olá {name}," if name else "Olá,"
+    hello = f"Bonjour {name}," if name else "Bonjour,"
     return f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">

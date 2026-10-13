@@ -1,0 +1,7 @@
+file '/app/.media/clips/s01.mp4'
+file '/app/.media/clips/b0.mp4'
+file '/app/.media/clips/b1.mp4'
+file '/app/.media/clips/b2.mp4'
+file '/app/.media/clips/b3.mp4'
+file '/app/.media/clips/c01.mp4'
+file '/app/.media/clips/c02.mp4'

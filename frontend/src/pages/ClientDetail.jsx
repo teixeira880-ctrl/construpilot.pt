@@ -14,8 +14,10 @@ import {
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
+import { ChantierFormDialog } from "@/components/chantiers/ChantierFormDialog";
+import { HardHat } from "lucide-react";
 
-const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const STATUS_KEY = {
   draft: "crm.st_e_draft", sent: "crm.st_e_sent", signed: "crm.st_e_signed", refused: "crm.st_e_refused",
   partial: "crm.st_partial", paid: "crm.st_paid", issued: "crm.st_issued",
@@ -31,6 +33,7 @@ export default function ClientDetail() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [client, setClient] = useState(null);
+  const [chantierOpen, setChantierOpen] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -115,7 +118,7 @@ export default function ClientDetail() {
       <St s={d.status} />
       <span className="num font-bold text-sm w-24 text-right">{eur(d.totals?.ttc)}</span>
       <div className="flex gap-1 shrink-0">
-        <Button size="icon" variant="ghost" className="h-7 w-7" title="Abrir"
+        <Button size="icon" variant="ghost" className="h-7 w-7" title="Ouvrir"
                 onClick={() => nav(`/devis-editeur/${d.doc_id}`)} data-testid={`doc-open-${d.doc_id}`}>
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
@@ -160,10 +163,14 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" className="rounded-sm gap-2" onClick={() => setChantierOpen(true)} data-testid="clientdetail-new-chantier">
+            <HardHat className="h-4 w-4" /> Nouveau chantier
+          </Button>
           <Button className="rounded-sm gap-2" onClick={() => nav(`/devis-editeur?client=${clientId}`)} data-testid="clientdetail-new-quote">
             <Plus className="h-4 w-4" /> {t("crm.new_quote")}
           </Button>
         </div>
+        <ChantierFormDialog open={chantierOpen} onOpenChange={setChantierOpen} clientId={clientId} onSaved={(c) => nav(`/chantiers/${c.chantier_id}`)} />
       </div>
 
       {/* KPIs */}

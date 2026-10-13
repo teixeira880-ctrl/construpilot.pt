@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Layers, Lock, ArrowRight, Plus, Trash2, FileText, Percent, TrendingUp,
-  Wallet, ShieldCheck, Bell, CalendarClock, CheckCircle2,
+  Wallet, ShieldCheck, Bell, CalendarClock, CheckCircle2, FileCheck, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SectionTitle } from "@/components/Bits";
@@ -32,10 +33,15 @@ export default function Situations() {
   const [pcts, setPcts] = useState({});
   const [prevPct, setPrevPct] = useState({});
   const [retention, setRetention] = useState(0);
+  const [depMode, setDepMode] = useState("prorata");
+  const [depManual, setDepManual] = useState(0);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState(null);
   const [prorata, setProrata] = useState(null);
   const [retentions, setRetentions] = useState([]);
+  const [dgd, setDgd] = useState(null);
+  const [dgdDeposit, setDgdDeposit] = useState(true);
+  const [dgdRelease, setDgdRelease] = useState(false);
 
   useEffect(() => {
     if (!isProBusiness) return;
@@ -45,20 +51,54 @@ export default function Situations() {
 
   const loadRetentions = () => api.get("/situations/retentions").then(({ data }) => setRetentions(data)).catch(() => {});
 
+  const createDgd = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post("/situations/dgd", {
+        marche_id: marcheId, impute_deposit: dgdDeposit, release_retention: dgdRelease,
+      });
+      toast.success(`Décompte général définitif créé — facture ${data.number}`);
+      await loadMarche(marcheId);
+      loadRetentions();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Génération impossible");
+    } finally { setBusy(false); }
+  };
+
+  const cancelDgd = async () => {
+    try {
+      await api.delete(`/situations/dgd/${marcheId}`);
+      toast.success("Décompte général annulé");
+      await loadMarche(marcheId);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Annulation impossible"); }
+  };
+
+  const dgdPdf = async () => {
+    try {
+      const { data } = await api.get(`/situations/dgd-pdf?marche_id=${marcheId}`, { responseType: "blob" });
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url; a.download = "decompte-general-definitif.pdf"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("PDF indisponible"); }
+  };
+
   const loadMarche = async (id) => {
     setMarcheId(id);
     setPcts({});
-    if (!id) { setBaseLines([]); setSituations([]); setPrevPct({}); setSummary(null); setProrata(null); return; }
-    const [{ data: doc }, { data: sits }, { data: sum }, { data: pro }] = await Promise.all([
+    if (!id) { setBaseLines([]); setSituations([]); setPrevPct({}); setSummary(null); setProrata(null); setDgd(null); return; }
+    const [{ data: doc }, { data: sits }, { data: sum }, { data: pro }, { data: dg }] = await Promise.all([
       api.get(`/documents/${id}`),
       api.get(`/situations?marche_id=${id}`),
       api.get(`/situations/summary?marche_id=${id}`),
       api.get(`/situations/${id}/prorata`),
+      api.get(`/situations/dgd?marche_id=${id}`),
     ]);
     setBaseLines(doc.lines || []);
     setSituations(sits);
     setSummary(sum);
     setProrata(pro);
+    setDgd(dg);
     const last = sits.length ? sits[sits.length - 1] : null;
     const pp = {};
     if (last?.cumul_pct) Object.entries(last.cumul_pct).forEach(([k, v]) => { pp[k] = Number(v); });
@@ -76,21 +116,41 @@ export default function Situations() {
     return Math.round(lineContract(l) * delta / 100 * 100) / 100;
   };
   const totalHT = baseLines.reduce((s, l, i) => s + lineSituation(l, i), 0);
+  const dep = summary?.deposit || null;
+  const depAvailable = dep ? Number(dep.available_ht || 0) : 0;
+  const depPaidHt = dep ? Number(dep.paid_ht || 0) : 0;
+  const depImputed = dep ? Number(dep.imputed_ht || 0) : 0;
+  const contractHt = Number(summary?.totals?.contract_ht || 0);
+  const billedBefore = Number(summary?.totals?.billed_ht || 0);
+  const cumulRatio = contractHt ? Math.min((billedBefore + totalHT) / contractHt, 1) : 0;
+  const depDeduct = (() => {
+    if (!depAvailable || totalHT <= 0 || depMode === "none") return 0;
+    let want;
+    if (depMode === "full") want = depAvailable;
+    else if (depMode === "manual") want = Number(depManual) || 0;
+    else want = Math.round((depPaidHt * cumulRatio - depImputed) * 100) / 100;
+    return Math.round(Math.max(0, Math.min(want, depAvailable, totalHT)) * 100) / 100;
+  })();
+  const invoiceHt = Math.round((totalHT - depDeduct) * 100) / 100;
   const retentionAmt = Math.round(totalHT * (retention || 0) / 100 * 100) / 100;
 
   const submit = async () => {
     const lines = baseLines.map((_, i) => ({ idx: i, pct: Math.max(Number(pcts[i] || 0), prevPct[i] || 0) }));
     setBusy(true);
     try {
-      const { data } = await api.post("/situations", { marche_id: marcheId, lines, retention_pct: Number(retention) || 0 });
-      toast.success(`Situation n°${data.seq} créée — facture ${data.invoice_number}`);
+      const { data } = await api.post("/situations", {
+        marche_id: marcheId, lines, retention_pct: Number(retention) || 0,
+        deposit_mode: depMode, deposit_amount_ht: Number(depManual) || 0,
+      });
+      toast.success(`Situation n°${data.seq} créée — facture ${data.invoice_number}`
+        + (data.deposit_imputed_ht ? ` · acompte déduit ${data.deposit_imputed_ht} € HT` : ""));
       await refreshMarche(); loadRetentions();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Création impossible"); }
     finally { setBusy(false); }
   };
   const del = async (id) => {
     try { await api.delete(`/situations/${id}`); toast.success("Situation supprimée"); refreshMarche(); loadRetentions(); }
-    catch { toast.error("Eliminação impossível"); }
+    catch { toast.error("Suppression impossible"); }
   };
   const downloadSituationPdf = async (s) => {
     try {
@@ -99,7 +159,7 @@ export default function Situations() {
       const a = document.createElement("a");
       a.href = url; a.download = `decompte-situation-${s.seq}.pdf`; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Geração do auto impossível"); }
+    } catch { toast.error("Génération du décompte impossible"); }
   };
   const downloadCertificate = async (s) => {
     try {
@@ -108,15 +168,15 @@ export default function Situations() {
       const a = document.createElement("a");
       a.href = url; a.download = `certificat-paiement-${s.seq}.pdf`; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Geração do certificado impossível"); }
+    } catch { toast.error("Génération du certificat impossible"); }
   };
 
   // ---- Prorata ----
   const saveProrata = async (cfg) => {
     try {
       const { data } = await api.put(`/situations/${marcheId}/prorata`, cfg);
-      setProrata(data); toast.success("Conta rateada guardada");
-    } catch { toast.error("Erro"); }
+      setProrata(data); toast.success("Compte prorata enregistré");
+    } catch { toast.error("Erreur"); }
   };
   const addExpense = () => setProrata({ ...prorata, expenses: [...(prorata.expenses || []), { label: "", amount: 0 }] });
   const updExpense = (i, k, v) => {
@@ -127,72 +187,90 @@ export default function Situations() {
   // ---- Retenues ----
   const setReception = async (mid, date) => {
     if (!date) return;
-    try { await api.post(`/situations/${mid}/reception`, { reception_date: date }); toast.success("Data de recepção guardada"); loadRetentions(); }
-    catch { toast.error("Erro"); }
+    try { await api.post(`/situations/${mid}/reception`, { reception_date: date }); toast.success("Date de réception enregistrée"); loadRetentions(); }
+    catch { toast.error("Erreur"); }
   };
   const releaseRet = async (mid) => {
     try { await api.post(`/situations/retentions/${mid}/release`); toast.success("Retenue libérée"); loadRetentions(); }
-    catch { toast.error("Erro"); }
+    catch { toast.error("Erreur"); }
   };
   const remindRet = async (mid) => {
-    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Relance envoyée à ${data.to}` : "Email não enviado (cliente sem email ou serviço indisponível)"); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
+    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Relance envoyée à ${data.to}` : "E-mail non envoyé (client sans e-mail ou service indispo)"); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
   };
 
-  if (in_org && !can("situations")) return <NoAccess title="Autos de medição não autorizados" />;
+  if (in_org && !can("situations")) return <NoAccess title="Situations non autorisées" />;
   if (!isProBusiness) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="situations-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Facturation à l'avancement</h1>
-        <p className="text-muted-foreground mt-3">Autos de medição, adiantamento acumulado, retenção de garantia e conta prorata — reservado ao <b>pack Empresa</b>.</p>
-        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="situations-upgrade-btn">Passer au pack Empresa <ArrowRight className="h-4 w-4" /></Button>
+        <p className="text-muted-foreground mt-3">Situations de travaux, avancement cumulé, retenue de garantie et compte prorata — réservé au <b>pack Business</b>.</p>
+        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="situations-upgrade-btn">Passer au pack Business <ArrowRight className="h-4 w-4" /></Button>
       </div>
     );
   }
 
   const RetStatus = ({ s }) => {
-    const map = { released: ["Libérée", "text-muted-foreground border-border"], due: ["À libérer", "text-red-500 border-red-500/30"], pending: ["Em curso", "text-amber-500 border-amber-500/30"], held: ["Détenue", "text-primary border-primary/30"] };
+    const map = { released: ["Libérée", "text-muted-foreground border-border"], due: ["À libérer", "text-red-500 border-red-500/30"], pending: ["En cours", "text-amber-500 border-amber-500/30"], held: ["Détenue", "text-primary border-primary/30"] };
     const [l, c] = map[s] || map.held;
     return <Badge variant="outline" className={`rounded-sm ${c}`}>{l}</Badge>;
   };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-6" data-testid="situations-page">
-      <SectionTitle over="Pack Business" title="Autos de medição">
+      <SectionTitle over="Pack Business" title="Situations de travaux">
         Facturez vos marchés à l'avancement, pilotez le cumul, la retenue de garantie et le compte prorata.
       </SectionTitle>
 
       <div className="grid gap-1.5 max-w-md">
-        <label className="text-xs text-muted-foreground">Mercado de referência (devis ou facture)</label>
+        <label className="text-xs text-muted-foreground">Marché de référence (devis ou facture)</label>
         <Select value={marcheId} onValueChange={loadMarche}>
-          <SelectTrigger className="rounded-sm" data-testid="situation-marche-select"><SelectValue placeholder="Escolher um mercado…" /></SelectTrigger>
+          <SelectTrigger className="rounded-sm" data-testid="situation-marche-select"><SelectValue placeholder="Choisir un marché…" /></SelectTrigger>
           <SelectContent>
             {marches.map((m) => (
               <SelectItem key={m.doc_id} value={m.doc_id} data-testid={`marche-opt-${m.doc_id}`}>
-                {(m.number || "Rascunho")} · {m.title || "Sem título"} — {eur(m.total_ht)} HT
+                {(m.number || "Brouillon")} · {m.title || "Sans titre"} — {eur(m.total_ht)} HT
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
+      {summary && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3" data-testid="marche-banner">
+          <Kpi label="Montant marché HT" value={eur(summary.totals.contract_ht)} />
+          <Kpi label="Acompte encaissé TTC" value={eur(summary.totals.deposit_paid_ttc)} />
+          <Kpi label="Facturé à ce jour HT" value={eur(summary.totals.billed_ht)} accent />
+          <Kpi label="Retenue détenue" value={eur(summary.totals.retention_held)} />
+          <Kpi label="Reste à facturer HT" value={eur(summary.totals.remaining_ht)} />
+        </div>
+      )}
+      {summary && dep && (dep.invoiced_ttc > 0) && (
+        <p className="text-xs text-muted-foreground" data-testid="marche-deposit-note">
+          Acompte facturé {eur(dep.invoiced_ttc)} TTC · encaissé {eur(dep.paid_ttc)} TTC
+          {dep.unpaid_ttc > 0 ? ` · non encaissé ${eur(dep.unpaid_ttc)} (non déductible)` : ""}
+          {" "}· déjà imputé {eur(dep.imputed_ht)} HT · disponible {eur(dep.available_ht)} HT
+        </p>
+      )}
+
       <Tabs defaultValue="situation" className="w-full">
         <TabsList className="rounded-sm flex-wrap h-auto" data-testid="situations-tabs">
-          <TabsTrigger value="situation" data-testid="tab-situation">Nova situation</TabsTrigger>
+          <TabsTrigger value="situation" data-testid="tab-situation">Nouvelle situation</TabsTrigger>
           <TabsTrigger value="avancement" data-testid="tab-avancement">Avancement</TabsTrigger>
-          <TabsTrigger value="prorata" data-testid="tab-prorata">Conta prorata</TabsTrigger>
+          <TabsTrigger value="prorata" data-testid="tab-prorata">Compte prorata</TabsTrigger>
           <TabsTrigger value="retenue" data-testid="tab-retenue">Retenue de garantie</TabsTrigger>
+          <TabsTrigger value="dgd" data-testid="tab-dgd">Décompte final</TabsTrigger>
         </TabsList>
 
-        {/* ---------- Nova situation ---------- */}
+        {/* ---------- Nouvelle situation ---------- */}
         <TabsContent value="situation" className="space-y-4 mt-4">
-          {!marcheId ? <Empty text="Escolha uma empreitada para criar um auto." /> : (
+          {!marcheId ? <Empty text="Choisissez un marché pour créer une situation." /> : (
             <>
               <div className="surface rounded-md overflow-hidden" data-testid="situation-lines">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Poste</th><th className="p-3 text-right">Mercado HT</th>
+                    <th className="p-3">Poste</th><th className="p-3 text-right">Marché HT</th>
                     <th className="p-3 text-center">% préc.</th><th className="p-3 text-center">% cumulé</th>
                     <th className="p-3 text-right">Cette situation HT</th></tr></thead>
                   <tbody>
@@ -221,12 +299,37 @@ export default function Situations() {
                     <Button variant="ghost" size="sm" className="rounded-sm text-xs" onClick={() => setRetention(5)} data-testid="retention-5">5%</Button>
                   </div>
                 </div>
+                <div className="grid gap-1.5">
+                  <label className="text-xs text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Acompte déjà versé</label>
+                  <div className="flex items-center gap-2">
+                    <Select value={depMode} onValueChange={setDepMode}>
+                      <SelectTrigger className="rounded-sm h-10 w-52" data-testid="situation-deposit-mode"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="prorata" data-testid="dep-mode-prorata">Au prorata de l'avancement</SelectItem>
+                        <SelectItem value="full" data-testid="dep-mode-full">En totalité maintenant</SelectItem>
+                        <SelectItem value="manual" data-testid="dep-mode-manual">Montant manuel</SelectItem>
+                        <SelectItem value="none" data-testid="dep-mode-none">Ne pas déduire</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {depMode === "manual" && (
+                      <Input type="number" min={0} max={depAvailable} value={depManual}
+                        onChange={(e) => setDepManual(e.target.value)}
+                        className="rounded-sm h-10 w-28 num" data-testid="situation-deposit-manual" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground" data-testid="situation-deposit-info">
+                    {depAvailable > 0
+                      ? <>Disponible : {eur(depAvailable)} HT · déduction : <b className="text-foreground">-{eur(depDeduct)}</b></>
+                      : "Aucun acompte encaissé à déduire sur ce marché."}
+                  </p>
+                </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Total HT situation</p>
-                  <p className="num text-2xl font-extrabold text-primary" data-testid="situation-total-ht">{eur(totalHT)}</p>
+                  <p className="text-xs text-muted-foreground">Travaux {eur(totalHT)} HT</p>
+                  <p className="num text-2xl font-extrabold text-primary" data-testid="situation-total-ht">{eur(invoiceHt)}</p>
+                  <p className="text-[11px] text-muted-foreground">Facture HT après acompte</p>
                 </div>
                 <Button className="rounded-sm gap-2" disabled={busy || totalHT <= 0} onClick={submit} data-testid="situation-create-btn">
-                  <Plus className="h-4 w-4" /> Criar la situation n°{situations.length + 1}
+                  <Plus className="h-4 w-4" /> Créer la situation n°{situations.length + 1}
                 </Button>
               </div>
               {situations.length > 0 && (
@@ -237,12 +340,12 @@ export default function Situations() {
                       <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center"><TrendingUp className="h-4 w-4 text-primary" /></div>
                       <div>
                         <p className="font-semibold">Situation n°{s.seq} · {s.invoice_number}</p>
-                        <p className="text-xs text-muted-foreground">{eur(s.total_ttc)} TTC{s.retention_amount ? ` · retenue ${eur(s.retention_amount)} · net ${eur(s.net_due)}` : ""}</p>
+                        <p className="text-xs text-muted-foreground">{eur(s.total_ttc)} TTC{s.deposit_imputed_ht ? ` · acompte déduit ${eur(s.deposit_imputed_ht)} HT` : ""}{s.retention_amount ? ` · retenue ${eur(s.retention_amount)} · net ${eur(s.net_due)}` : ""}</p>
                       </div>
                       <div className="ml-auto flex gap-2">
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" onClick={() => downloadSituationPdf(s)} data-testid={`situation-pdf-${s.situation_id}`}><FileText className="h-4 w-4" /> Décompte PDF</Button>
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => downloadCertificate(s)} data-testid={`situation-cert-${s.situation_id}`}><ShieldCheck className="h-4 w-4" /> Certificat</Button>
-                        <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => nav(`/devis-editeur/${s.invoice_doc_id}`)} data-testid={`situation-open-${s.situation_id}`}><FileText className="h-4 w-4" /> Fatura</Button>
+                        <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => nav(`/devis-editeur/${s.invoice_doc_id}`)} data-testid={`situation-open-${s.situation_id}`}><FileText className="h-4 w-4" /> Facture</Button>
                         <Button size="sm" variant="ghost" className="rounded-sm text-red-500" onClick={() => del(s.situation_id)} data-testid={`situation-del-${s.situation_id}`}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
@@ -255,13 +358,13 @@ export default function Situations() {
 
         {/* ---------- Avancement (cumulé) ---------- */}
         <TabsContent value="avancement" className="space-y-4 mt-4">
-          {!summary ? <Empty text="Escolha uma empreitada para ver o avanço." /> : (
+          {!summary ? <Empty text="Choisissez un marché pour voir son avancement." /> : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="avancement-kpis">
-                <Kpi label="Montante marché HT" value={eur(summary.totals.contract_ht)} />
+                <Kpi label="Montant marché HT" value={eur(summary.totals.contract_ht)} />
                 <Kpi label="Déjà facturé HT" value={eur(summary.totals.billed_ht)} accent />
-                <Kpi label="Restante a facturar" value={eur(summary.totals.remaining_ht)} />
-                <Kpi label="Caução retida" value={eur(summary.totals.retention_held)} />
+                <Kpi label="Restant à facturer" value={eur(summary.totals.remaining_ht)} />
+                <Kpi label="Retenue détenue" value={eur(summary.totals.retention_held)} />
               </div>
               <div className="surface rounded-md p-5">
                 <div className="flex items-center justify-between text-sm mb-2">
@@ -271,12 +374,12 @@ export default function Situations() {
                 <div className="h-3 rounded-full bg-secondary overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(summary.totals.pct_global, 100)}%` }} data-testid="avancement-bar" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">{summary.totals.situations_count} situation(s) emitida(s) · {eur(summary.totals.billed_ttc)} TTC facturés</p>
+                <p className="text-xs text-muted-foreground mt-2">{summary.totals.situations_count} situation(s) émise(s) · {eur(summary.totals.billed_ttc)} TTC facturés</p>
               </div>
               <div className="surface rounded-md overflow-hidden" data-testid="avancement-lines">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Lot</th><th className="p-3 text-right">Mercado HT</th>
+                    <th className="p-3">Lot</th><th className="p-3 text-right">Marché HT</th>
                     <th className="p-3 text-center">Avancement</th><th className="p-3 text-right">Facturé HT</th>
                     <th className="p-3 text-right">Restant HT</th></tr></thead>
                   <tbody>
@@ -301,9 +404,9 @@ export default function Situations() {
           )}
         </TabsContent>
 
-        {/* ---------- Conta prorata ---------- */}
+        {/* ---------- Compte prorata ---------- */}
         <TabsContent value="prorata" className="space-y-4 mt-4">
-          {!prorata ? <Empty text="Escolha uma empreitada para gerir a conta rateada." /> : (
+          {!prorata ? <Empty text="Choisissez un marché pour gérer son compte prorata." /> : (
             <>
               <div className="surface rounded-md p-4 flex flex-wrap items-end gap-4">
                 <div className="grid gap-1.5">
@@ -317,12 +420,12 @@ export default function Situations() {
                   <p className="text-xs text-muted-foreground">Cagnotte prorata totale</p>
                   <p className="num text-2xl font-extrabold text-primary" data-testid="prorata-pot">{eur(prorata.pot)}</p>
                 </div>
-                <Button className="rounded-sm gap-2" onClick={() => saveProrata({ rate_pct: prorata.rate_pct, expenses: prorata.expenses })} data-testid="prorata-save"><CheckCircle2 className="h-4 w-4" /> Guardar</Button>
+                <Button className="rounded-sm gap-2" onClick={() => saveProrata({ rate_pct: prorata.rate_pct, expenses: prorata.expenses })} data-testid="prorata-save"><CheckCircle2 className="h-4 w-4" /> Enregistrer</Button>
               </div>
 
               <div className="surface rounded-md p-4 space-y-2" data-testid="prorata-expenses">
                 <div className="flex items-center justify-between"><p className="overline">Dépenses communes</p>
-                  <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={addExpense} data-testid="prorata-add-expense"><Plus className="h-4 w-4" /> Adicionar</Button></div>
+                  <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={addExpense} data-testid="prorata-add-expense"><Plus className="h-4 w-4" /> Ajouter</Button></div>
                 {(prorata.expenses || []).map((e, i) => (
                   <div key={i} className="flex items-center gap-2" data-testid={`prorata-exp-${i}`}>
                     <Input value={e.label} onChange={(ev) => updExpense(i, "label", ev.target.value)} placeholder="Ex. benne, nettoyage, gardiennage" className="rounded-sm h-9 flex-1" />
@@ -336,7 +439,7 @@ export default function Situations() {
               <div className="surface rounded-md overflow-hidden" data-testid="prorata-participants">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Lot</th><th className="p-3 text-right">Montante lot HT</th>
+                    <th className="p-3">Lot</th><th className="p-3 text-right">Montant lot HT</th>
                     <th className="p-3 text-center">Quote-part</th><th className="p-3 text-right">Contribution prorata</th></tr></thead>
                   <tbody>
                     {prorata.participants.map((p, i) => (
@@ -356,19 +459,19 @@ export default function Situations() {
 
         {/* ---------- Retenue de garantie ---------- */}
         <TabsContent value="retenue" className="space-y-3 mt-4" data-testid="retenue-list">
-          {retentions.length === 0 ? <Empty text="Nenhuma caução retida. Aparecerão assim que for criado um auto com caução." /> : (
+          {retentions.length === 0 ? <Empty text="Aucune retenue de garantie détenue. Elles apparaissent dès qu'une situation avec retenue est créée." /> : (
             retentions.map((r) => (
               <div key={r.marche_id} className="surface rounded-md p-4 flex flex-wrap items-center gap-4" data-testid={`retenue-${r.marche_id}`}>
                 <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center"><ShieldCheck className="h-5 w-5 text-primary" /></div>
                 <div className="min-w-0">
                   <p className="font-semibold">{r.label} <RetStatus s={r.status} /></p>
-                  <p className="text-xs text-muted-foreground">Retenue détenue : <b className="text-foreground num">{eur(r.held)}</b>{r.release_due ? ` · libération prévue le ${r.release_due}` : " · receção non renseignée"}</p>
+                  <p className="text-xs text-muted-foreground">Retenue détenue : <b className="text-foreground num">{eur(r.held)}</b>{r.release_due ? ` · libération prévue le ${r.release_due}` : " · réception non renseignée"}</p>
                 </div>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   {!r.released && (
                     <div className="flex items-center gap-1">
                       <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                      <Input type="date" defaultValue={r.reception_date || ""} onChange={(e) => setReception(r.marche_id, e.target.value)} className="rounded-sm h-9 w-40 num" data-testid={`retenue-reception-${r.marche_id}`} title="Date de receção des travaux" />
+                      <Input type="date" defaultValue={r.reception_date || ""} onChange={(e) => setReception(r.marche_id, e.target.value)} className="rounded-sm h-9 w-40 num" data-testid={`retenue-reception-${r.marche_id}`} title="Date de réception des travaux" />
                     </div>
                   )}
                   {!r.released && r.client?.email && (
@@ -384,12 +487,57 @@ export default function Situations() {
             ))
           )}
         </TabsContent>
+
+        {/* ---------- Décompte général définitif ---------- */}
+        <TabsContent value="dgd" className="space-y-4 mt-4">
+          {!marcheId ? <Empty text="Choisissez un marché pour établir son décompte général définitif." /> : !dgd ? <Empty text="Chargement…" /> : (
+            <div className="surface rounded-md p-5 space-y-4" data-testid="dgd-panel">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Kpi label="Montant marché HT" value={eur(dgd.totals.contract_ht)} />
+                <Kpi label="Déjà facturé HT" value={eur(dgd.totals.billed_ht)} />
+                <Kpi label="Solde de travaux HT" value={eur(dgd.totals.remaining_ht)} accent />
+                <Kpi label="Retenue détenue" value={eur(dgd.totals.retention_held)} />
+              </div>
+              <div className="text-sm space-y-1">
+                <p>Acompte encaissé restant à imputer : <b className="num">{eur(dgd.totals.deposit_available_ht)}</b> HT</p>
+                <p>Solde à facturer : <b className="num text-primary">{eur(dgd.totals.dgd_ht)}</b> HT
+                  {" · "}{eur(dgd.totals.dgd_ttc)} TTC (TVA {dgd.totals.vat_rate}%)</p>
+                <p>Total dû au titre du DGD : <b className="num">{eur(dgd.totals.dgd_due)}</b></p>
+              </div>
+              {dgd.dgd_doc_id ? (
+                <div className="flex flex-wrap items-center gap-2" data-testid="dgd-done">
+                  <Badge variant="outline" className="rounded-sm">DGD établi le {(dgd.dgd_at || "").slice(0, 10)}</Badge>
+                  <Button size="sm" variant="outline" className="rounded-sm" onClick={() => nav(`/devis-editeur/${dgd.dgd_doc_id}`)} data-testid="dgd-open-invoice">Ouvrir la facture de solde</Button>
+                  <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={dgdPdf} data-testid="dgd-pdf-btn"><Download className="h-4 w-4" /> Décompte PDF</Button>
+                  <Button size="sm" variant="ghost" className="rounded-sm text-destructive" onClick={cancelDgd} data-testid="dgd-cancel-btn">Annuler le DGD</Button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-end gap-4">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Switch checked={dgdDeposit} onCheckedChange={setDgdDeposit} data-testid="dgd-deposit-switch" /> Déduire l'acompte restant
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Switch checked={dgdRelease} onCheckedChange={setDgdRelease} data-testid="dgd-release-switch" /> Libérer la retenue de garantie
+                  </label>
+                  <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={dgdPdf} data-testid="dgd-preview-pdf"><Download className="h-4 w-4" /> Aperçu PDF</Button>
+                  <Button className="rounded-sm gap-2 ml-auto" onClick={createDgd} disabled={busy} data-testid="dgd-create-btn">
+                    <FileCheck className="h-4 w-4" /> Générer le décompte général
+                  </Button>
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Le DGD solde le marché : travaux restants, acompte déjà versé déduit et, si vous le
+                choisissez, libération de la retenue de garantie. Une seule facture de solde par marché.
+              </p>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {marches.length === 0 && (
         <div className="surface rounded-md p-10 text-center">
           <Layers className="h-10 w-10 mx-auto text-muted-foreground/50" />
-          <p className="mt-4 font-semibold">Nenhum marché disponível</p>
+          <p className="mt-4 font-semibold">Aucun marché disponible</p>
           <p className="text-sm text-muted-foreground mt-1">Créez d'abord un devis ou une facture avec des lignes.</p>
         </div>
       )}

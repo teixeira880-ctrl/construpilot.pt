@@ -25,12 +25,38 @@ async def list_plans(audience: str | None = None, lang: str | None = None) -> di
         from engines.plan_i18n import localize_plan
         plans = [localize_plan(p, lang) for p in plans]
     flags = await db.feature_flags.find_one({"_id": "global"}, {"_id": 0}) or {}
-    return {"plans": plans, "flags": {
+    return {"plans": plans, "offer": await public_offer(), "flags": {
         "trial_enabled": flags.get("trial_enabled", True),
         "trial_days": flags.get("trial_days", 7),
         "paywall_mode": flags.get("paywall_mode", "soft"),
         "promo_codes_enabled": flags.get("promo_codes_enabled", True),
     }}
+
+
+@router.get("/offer")
+async def public_offer() -> dict:
+    """Source unique de vérité de l'offre commerciale réellement appliquée.
+
+    Les pages publiques (accueil, tarifs, FAQ, onboarding) doivent s'aligner sur cette
+    réponse au lieu de coder l'offre en dur.
+    """
+    import os
+    free_promo = os.environ.get("FREE_PROMO_MODE") == "true"
+    flags = await db.feature_flags.find_one({"_id": "global"}, {"_id": 0}) or {}
+    plans = await db.plans.find(
+        {"active": True, "kind": "subscription"},
+        {"_id": 0, "plan_id": 1, "audience": 1, "amount_cents": 1, "interval": 1}).to_list(50)
+    monthly = [p for p in plans if p.get("interval") == "month" and p.get("amount_cents")]
+    by_aud: dict[str, int] = {}
+    for p in monthly:
+        aud = p.get("audience") or "pro"
+        cents = p["amount_cents"]
+        by_aud[aud] = min(by_aud.get(aud, cents), cents)
+    return {
+        "free_promo": free_promo,
+        "trial_days": flags.get("trial_days", 7) if flags.get("trial_enabled", True) else 0,
+        "entry_price_eur": {k: v / 100 for k, v in by_aud.items()},
+    }
 
 
 # ---------- Checkout ----------
@@ -51,6 +77,14 @@ async def checkout(body: CheckoutIn, user=Depends(current_user)):
     try:
         result = await monetization.create_checkout(user, plan, body.origin_url, body.promo_code)
     except Exception as e:
+        if body.promo_code and "promotion code" in str(e).lower():
+            logger.warning(f"Promo {body.promo_code} non applicable ({str(e)[:120]}) — checkout sans remise")
+            try:
+                result = await monetization.create_checkout(user, plan, body.origin_url, None)
+                result["promo_rejected"] = True
+                return result
+            except Exception as e2:  # noqa: BLE001
+                e = e2
         logger.exception("Checkout error")
         raise HTTPException(status_code=502, detail=f"Stripe indisponible: {e}")
     return result
@@ -103,7 +137,20 @@ async def my_billing(user=Depends(current_user)) -> dict:
     history = await db.payment_transactions.find(
         {"user_id": user["user_id"]}, {"_id": 0}
     ).sort("created_at", -1).to_list(50)
-    return {"tier": tier, "active": active, "history": history}
+    level = await _level_for(user, tier)
+    return {"tier": tier, "level": level, "account_type": user.get("account_type"),
+            "active": active, "history": history}
+
+
+async def _level_for(user: dict, tier: str) -> str:
+    """Niveau d'accès en tenant compte du tier déjà résolu (héritage entreprise inclus)."""
+    if user.get("role") == "admin":
+        return "business"
+    from engines.access import RANK, _TIER_TO_LEVEL
+    base = "pro" if user.get("account_type") == "pro" else "particulier_gratuit"
+    from_tier = _TIER_TO_LEVEL.get(tier)
+    cands = [base] + ([from_tier] if from_tier else [])
+    return max(cands, key=lambda lv: RANK[lv])
 
 
 @router.get("/billing/credits-3d")

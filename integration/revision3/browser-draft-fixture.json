@@ -1,0 +1,13 @@
+{
+  "conversation_id": "conv_9ddd675b59",
+  "draft_id": "work_e3fe7f2610794917878ce3d35117b516",
+  "revision": 2,
+  "doc_id": "doc_e966a9efd7",
+  "tools": [
+    "read_document",
+    "calculate",
+    "read_work_draft",
+    "update_work_draft",
+    "inspect_document_region"
+  ]
+}

@@ -15,6 +15,7 @@ from core.db import db
 from core.security import current_user, hash_password, new_user_id, pro_required
 from engines import storage
 from engines.monetization import require_pro_business
+from core.permissions import require_feature
 
 router = APIRouter(prefix="/hr", tags=["hr"], dependencies=[Depends(pro_required)])
 
@@ -43,10 +44,12 @@ def _check_zone(project: dict, gps: dict | None) -> dict:
 
 
 async def _require_employer(user: dict) -> None:
+    require_feature(user, "rh")
     await require_pro_business(user)
 
 
 def _require_worker(user: dict) -> None:
+    require_feature(user, "pointage")
     if user.get("role") != "worker":
         raise HTTPException(403, "Réservé aux comptes ouvriers")
 
@@ -628,7 +631,7 @@ async def run_forgotten_clockouts() -> int:
         emp = await db.users.find_one({"user_id": ts["employer_id"]},
                                       {"_id": 0, "email": 1, "lang": 1})
         if emp and emp.get("email"):
-            html = (f"<p>Olá,</p><p>L'ouvrier <b>{ts.get('worker_name')}</b> a pointé "
+            html = (f"<p>Bonjour,</p><p>L'ouvrier <b>{ts.get('worker_name')}</b> a pointé "
                     f"son entrée le {ts['clock_in'][:16].replace('T',' ')} sur le chantier "
                     f"<b>{ts.get('project_name')}</b> mais n'a jamais pointé sa sortie.</p>"
                     f"<p>Vérifiez le pointage dans votre espace RH.</p><p>— ConstruPilot</p>")
@@ -647,6 +650,10 @@ async def run_forgotten_clockouts() -> int:
 
 @router.get("/selfie")
 async def get_selfie(path: str = Query(...), user=Depends(current_user)):
+    if user.get("role") == "worker":
+        _require_worker(user)
+    else:
+        await _require_employer(user)
     rec = await db.hr_files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
     if not rec:
         raise HTTPException(404, "Image introuvable")

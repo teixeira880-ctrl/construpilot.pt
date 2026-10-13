@@ -362,7 +362,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
                   onClick={() => { const u = controlsRef.current?.dataUrl(); if (u) onAttach(u); }}
                   data-testid="cam-attach-btn"
                   className="rounded-sm gap-1 h-7 text-xs">
-            <Paperclip className="h-3 w-3" /> Joindre au devis
+            <Paperclip className="h-3 w-3" /> {t("plan3d.attach")}
           </Button>
         )}
       </div>
@@ -371,7 +371,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
            style={{ height: imageHeight, cursor: "grab" }} />
       <p className="text-[10px] text-muted-foreground text-center">
         <Move3d className="h-3 w-3 inline mr-1" />
-        Clic-glisser pour orbiter · Molette pour zoomer
+        {t("plan3d.controls")}
       </p>
     </div>
   );

@@ -99,8 +99,11 @@ async def delete_client(client_id: str, user=Depends(current_user)) -> dict:
     if n_docs:
         raise HTTPException(
             400, f"Ce client a {n_docs} document(s) lié(s). Supprimez d'abord ses devis/factures.")
+    from routes.trash import trash_record
+    client = await db.clients.find_one({"client_id": client_id, "user_id": user["user_id"]}, {"_id": 0})
+    res = await trash_record("client", client, user["user_id"])
     await db.clients.delete_one({"client_id": client_id, "user_id": user["user_id"]})
-    return {"ok": True}
+    return res
 
 
 @router.post("/from-plan/{plan_id}")

@@ -31,7 +31,7 @@ export default function ResetPassword() {
   const doReset = async (e) => {
     e.preventDefault();
     if (pwd.length < 8) return toast.error("Mot de passe : 8 caractères minimum");
-    if (pwd !== confirm) return toast.error("A confirmação não coincide");
+    if (pwd !== confirm) return toast.error("La confirmation ne correspond pas");
     setBusy(true);
     try {
       await api.post("/auth/reset-password", { token, new_password: pwd });
@@ -39,7 +39,7 @@ export default function ResetPassword() {
       navigate("/login");
     } catch (err) {
       const d = err?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Reposição impossível");
+      toast.error(typeof d === "string" ? d : "Réinitialisation impossible");
     } finally { setBusy(false); }
   };
 
@@ -102,7 +102,7 @@ export default function ResetPassword() {
             </div>
             <Button type="submit" disabled={busy} className="rounded-sm w-full h-11"
                     data-testid="forgot-submit-btn">
-              {busy ? "…" : "Enviar-me o link de reposição"}
+              {busy ? "…" : "M'envoyer le lien de réinitialisation"}
             </Button>
           </form>
         )}

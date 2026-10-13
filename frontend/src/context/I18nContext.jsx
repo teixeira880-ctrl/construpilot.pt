@@ -10,17 +10,22 @@ const TRANSLATIONS = {
   fr: {
     "nav.dashboard": "Tableau de bord",
     "nav.estimator": "Estimateur",
-    "nav.plan2d": "Mesurer",
+    "nav.plan2d": "Éditeur de plans",
     "nav.calculators": "Calculateurs",
     "nav.prices": "Prix matériaux",
     "nav.diy": "Je le fais moi-même",
     "nav.photo": "Analyse photo",
     "nav.scanner": "Scanner de devis",
+    "nav.solver": "Résoudre un problème",
+    "nav.myPage": "Ma page & mes documents",
+    "nav.chantiers": "Dossiers chantier",
+    "nav.plansPro": "Analyse de plan Pro",
     "nav.coach": "Coach IA",
     "nav.marketplace": "Trouver un pro",
     "nav.docs": "API & Développeurs",
     "nav.blog": "Blog",
     "nav.pricing": "Tarifs",
+    "nav.help": "Aide & assistance",
     "nav.team": "Équipe",
     "nav.tracking": "Suivi devis",
     "nav.referral": "Parrainer",
@@ -37,6 +42,7 @@ const TRANSLATIONS = {
     "common.download": "Télécharger",
     "common.language": "Langue",
     "plan3d.wall_height": "Hauteur murs :", "plan3d.reset": "Reset", "plan3d.top_view": "Vue dessus",
+    "plan3d.attach": "Joindre au devis", "plan3d.controls": "Clic-glisser pour orbiter · Molette pour zoomer",
     "cookie.text": "Nous utilisons des cookies nécessaires au fonctionnement du site et, avec votre accord, des cookies de mesure d'audience et publicité. En savoir plus dans notre",
     "cookie.policy": "politique de confidentialité",
     "cookie.refuse": "Refuser", "cookie.accept": "Tout accepter",
@@ -70,20 +76,21 @@ const TRANSLATIONS = {
     "landing.hero.placeholder": "Décrivez votre projet — ex : « Je veux rénover une maison de 150 m², refaire les murs, plafonds, électricité, plomberie, deux salles de bain et remplacer les fenêtres. »",
     "landing.hero.example_btn": "Utiliser l'exemple",
     "landing.hero.submit": "Générer mon estimation",
-    "landing.hero.trust_title": "Rejoignez 10 000+ pros",
-    "landing.hero.trust_subtitle": "Artisans & Architectes équipés",
+    "landing.hero.trust_title": "Pensé pour les pros du BTP",
+    "landing.hero.trust_subtitle": "Artisans, architectes et particuliers",
     "landing.social.stat_value": "142 devis",
     "landing.social.stat_label": "Générés cette semaine",
     "landing.social.subtitle": "Utilisé par des pros du BTP en France",
-    "landing.promo": "🎉 100% GRATUIT pendant la phase de lancement — toutes les fonctionnalités Pro débloquées, sans carte bancaire.",
-    "landing.promo_cta": "J'en profite →",
+    "landing.promo": "Phase de lancement : toutes les fonctions Pro sont débloquées, sans carte bancaire.",
+    "landing.promo_terms": "Voir les tarifs applicables ensuite",
+    "landing.promo_cta": "Créer mon compte →",
     "landing.features.overline": "L'arsenal complet",
     "landing.features.title_a": "Des outils de professionnel,",
     "landing.features.title_b": "repensés pour l'efficacité.",
     "landing.cta.start": "Commencer",
     "landing.cta.explore": "Explorer",
     "landing.for_pro": "Artisans BTP",
-    "landing.for_pro_text": "Générez vos devis client en 30 s avec attestation TVA 10 %, signature électronique et suivi ouverture.",
+    "landing.for_pro_text": "Générez vos devis client avec attestation TVA 10 %, signature électronique et suivi ouverture.",
     "landing.for_particulier": "Particuliers",
     "landing.for_particulier_text": "Estimez votre rénovation avant de contacter un pro. Comparez les devis reçus.",
     "coach.over": "Coach IA ConstruPilot",
@@ -109,17 +116,22 @@ const TRANSLATIONS = {
   en: {
     "nav.dashboard": "Dashboard",
     "nav.estimator": "Estimator",
-    "nav.plan2d": "Measure",
+    "nav.plan2d": "Plan editor",
     "nav.calculators": "Calculators",
     "nav.prices": "Material prices",
     "nav.diy": "Do it myself",
     "nav.photo": "Photo analysis",
     "nav.scanner": "Quote scanner",
+    "nav.solver": "Solve a problem",
+    "nav.myPage": "My page & documents",
+    "nav.chantiers": "Site files",
+    "nav.plansPro": "Pro plan analysis",
     "nav.coach": "AI coach",
     "nav.marketplace": "Find a pro",
     "nav.docs": "API & Developers",
     "nav.blog": "Blog",
     "nav.pricing": "Pricing",
+    "nav.help": "Help & support",
     "nav.team": "Team",
     "nav.tracking": "Quote tracking",
     "nav.referral": "Refer",
@@ -157,8 +169,8 @@ const TRANSLATIONS = {
     "landing.hero.placeholder": "Describe your project — e.g. \"I want to renovate a 150 m² house, redo walls, ceilings, electrics, plumbing, two bathrooms and replace windows.\"",
     "landing.hero.example_btn": "Use the example",
     "landing.hero.submit": "Generate my estimate",
-    "landing.hero.trust_title": "Join 10,000+ pros",
-    "landing.hero.trust_subtitle": "Craftsmen & Architects equipped",
+    "landing.hero.trust_title": "Built for construction pros",
+    "landing.hero.trust_subtitle": "Tradespeople, architects and homeowners",
     "landing.social.stat_value": "142 quotes",
     "landing.social.stat_label": "Generated this week",
     "landing.social.subtitle": "Used by construction pros in France",
@@ -168,7 +180,7 @@ const TRANSLATIONS = {
     "landing.cta.start": "Start",
     "landing.cta.explore": "Explore",
     "landing.for_pro": "Construction pros",
-    "landing.for_pro_text": "Generate client quotes in 30 s with VAT 10% attestation, e-signature and open tracking.",
+    "landing.for_pro_text": "Generate client quotes with a 10% VAT attestation, e-signature and open tracking.",
     "landing.for_particulier": "Homeowners",
     "landing.for_particulier_text": "Estimate your renovation before contacting a pro. Compare quotes you receive.",
     "coach.over": "ConstruPilot AI Coach",
@@ -194,17 +206,22 @@ const TRANSLATIONS = {
   es: {
     "nav.dashboard": "Panel",
     "nav.estimator": "Estimador",
-    "nav.plan2d": "Medir",
+    "nav.plan2d": "Editor de plantas",
     "nav.calculators": "Calculadoras",
     "nav.prices": "Precios materiales",
     "nav.diy": "Lo hago yo mismo",
     "nav.photo": "Análisis foto",
     "nav.scanner": "Escáner presupuestos",
+    "nav.solver": "Resolver un problema",
+    "nav.myPage": "Mi página y documentos",
+    "nav.chantiers": "Expedientes de obra",
+    "nav.plansPro": "Análisis de plano Pro",
     "nav.coach": "Coach IA",
     "nav.marketplace": "Buscar un pro",
     "nav.docs": "API y Desarrolladores",
     "nav.blog": "Blog",
     "nav.pricing": "Tarifas",
+    "nav.help": "Ayuda y soporte",
     "nav.team": "Equipo",
     "nav.tracking": "Seguimiento presupuestos",
     "nav.referral": "Recomendar",
@@ -242,8 +259,8 @@ const TRANSLATIONS = {
     "landing.hero.placeholder": "Describa su proyecto — ej: \"Quiero reformar una casa de 150 m², rehacer paredes, techos, electricidad, fontanería, dos baños y sustituir ventanas.\"",
     "landing.hero.example_btn": "Usar el ejemplo",
     "landing.hero.submit": "Generar mi estimación",
-    "landing.hero.trust_title": "Únase a más de 10 000 pros",
-    "landing.hero.trust_subtitle": "Artesanos y Arquitectos equipados",
+    "landing.hero.trust_title": "Pensado para profesionales",
+    "landing.hero.trust_subtitle": "Artesanos, arquitectos y particulares",
     "landing.social.stat_value": "142 presupuestos",
     "landing.social.stat_label": "Generados esta semana",
     "landing.social.subtitle": "Usado por profesionales de la construcción en Francia",
@@ -253,7 +270,7 @@ const TRANSLATIONS = {
     "landing.cta.start": "Empezar",
     "landing.cta.explore": "Explorar",
     "landing.for_pro": "Profesionales BTP",
-    "landing.for_pro_text": "Genere sus presupuestos para clientes en 30 s con certificado IVA 10 %, firma electrónica y seguimiento de apertura.",
+    "landing.for_pro_text": "Genere sus presupuestos para clientes con certificado de IVA 10 %, firma electrónica y seguimiento de apertura.",
     "landing.for_particulier": "Particulares",
     "landing.for_particulier_text": "Estime su reforma antes de contactar a un profesional. Compare los presupuestos recibidos.",
     "coach.over": "Coach IA ConstruPilot",
@@ -279,17 +296,22 @@ const TRANSLATIONS = {
   pt: {
     "nav.dashboard": "Painel",
     "nav.estimator": "Estimador",
-    "nav.plan2d": "Medir",
+    "nav.plan2d": "Editor de plantas",
     "nav.calculators": "Calculadoras",
     "nav.prices": "Preços de materiais",
     "nav.diy": "Faço eu mesmo",
     "nav.photo": "Análise de foto",
     "nav.scanner": "Scanner de orçamentos",
+    "nav.solver": "Resolver um problema",
+    "nav.myPage": "A minha página & documentos",
+    "nav.chantiers": "Dossiers de obra",
+    "nav.plansPro": "Análise de planta Pro",
     "nav.coach": "Coach IA",
     "nav.marketplace": "Encontrar um profissional",
     "nav.docs": "API e Programadores",
-    "nav.blog": "Blogue",
+    "nav.blog": "Blog",
     "nav.pricing": "Preços",
+    "nav.help": "Ajuda e assistência",
     "nav.team": "Equipa",
     "nav.tracking": "Acompanhar orçamentos",
     "nav.referral": "Indicar",
@@ -306,6 +328,7 @@ const TRANSLATIONS = {
     "common.download": "Descarregar",
     "common.language": "Idioma",
     "plan3d.wall_height": "Altura das paredes:", "plan3d.reset": "Repor", "plan3d.top_view": "Vista de cima",
+    "plan3d.attach": "Anexar ao orçamento", "plan3d.controls": "Arraste para orbitar · Roda do rato para ampliar",
     "cookie.text": "Utilizamos cookies necessários ao funcionamento do site e, com o seu consentimento, cookies de medição de audiência e publicidade. Saiba mais na nossa",
     "cookie.policy": "política de privacidade",
     "cookie.refuse": "Recusar", "cookie.accept": "Aceitar tudo",
@@ -339,15 +362,15 @@ const TRANSLATIONS = {
     "landing.hero.placeholder": "Descreva o seu projeto — ex.: «Quero renovar uma casa de 150 m², refazer paredes, tetos, eletricidade, canalização, duas casas de banho e substituir as janelas.»",
     "landing.hero.example_btn": "Usar o exemplo",
     "landing.hero.submit": "Gerar a minha estimativa",
-    "landing.hero.trust_title": "Junte-se a mais de 10 000 profissionais",
-    "landing.hero.trust_subtitle": "Artesãos e Arquitetos equipados",
+    "landing.hero.trust_title": "Feito para profissionais de obra",
+    "landing.hero.trust_subtitle": "Artesãos, arquitetos e particulares",
     "landing.social.stat_value": "142 orçamentos",
     "landing.social.stat_label": "Gerados esta semana",
     "landing.social.subtitle": "Usado por profissionais da construção em Portugal",
     "landing.master_video.overline": "Descubra o ConstruPilot",
     "landing.master_video.title_a": "A estimativa de obras,",
     "landing.master_video.title_b": "reinventada.",
-    "landing.master_video.subtitle": "Em 30 segundos, veja como orçamentar, editar e gerir as suas obras com IA.",
+    "landing.master_video.subtitle": "Veja como orçamentar, editar e gerir as suas obras com IA.",
     "landing.master_video.unmute": "Ativar o som",
     "landing.master_video.sound": "Som",
     "landing.video.overline": "Em 1 minuto",
@@ -359,15 +382,16 @@ const TRANSLATIONS = {
     "landing.video.step3": "Análise automática: divisões, paredes, pilares, vigas, escadas",
     "landing.video.step4": "Medição orçamentada (betão, cofragem, aço) e orçamento num clique",
     "landing.video.cta": "Experimentar gratuitamente",
-    "landing.promo": "🎉 100% GRÁTIS durante a fase de lançamento — todas as funcionalidades Pro desbloqueadas, sem cartão de crédito.",
-    "landing.promo_cta": "Aproveitar →",
+    "landing.promo": "Fase de lançamento: todas as funções Pro estão desbloqueadas, sem cartão de crédito.",
+    "landing.promo_terms": "Ver os planos aplicáveis depois",
+    "landing.promo_cta": "Criar conta →",
     "landing.features.overline": "O arsenal completo",
     "landing.features.title_a": "Ferramentas profissionais,",
     "landing.features.title_b": "repensadas para a eficácia.",
     "landing.cta.start": "Começar",
     "landing.cta.explore": "Explorar",
     "landing.for_pro": "Profissionais da construção",
-    "landing.for_pro_text": "Gere os seus orçamentos para clientes em 30 s com IVA à taxa correta (23% ou 6% na reabilitação), assinatura eletrónica e rastreio de abertura.",
+    "landing.for_pro_text": "Gere os seus orçamentos para clientes com IVA à taxa correta (23% ou 6% na reabilitação), assinatura eletrónica e rastreio de abertura.",
     "landing.for_particulier": "Particulares",
     "landing.for_particulier_text": "Estime a sua renovação antes de contactar um profissional. Compare os orçamentos recebidos.",
     "coach.over": "Coach IA ConstruPilot",
@@ -393,17 +417,22 @@ const TRANSLATIONS = {
   it: {
     "nav.dashboard": "Cruscotto",
     "nav.estimator": "Stimatore",
-    "nav.plan2d": "Misurare",
+    "nav.plan2d": "Editor di piani",
     "nav.calculators": "Calcolatori",
     "nav.prices": "Prezzi materiali",
     "nav.diy": "Faccio da solo",
     "nav.photo": "Analisi foto",
     "nav.scanner": "Scanner preventivi",
+    "nav.solver": "Risolvere un problema",
+    "nav.myPage": "La mia pagina e documenti",
+    "nav.chantiers": "Fascicoli cantiere",
+    "nav.plansPro": "Analisi piano Pro",
     "nav.coach": "Coach IA",
     "nav.marketplace": "Trova un professionista",
     "nav.docs": "API e Sviluppatori",
     "nav.blog": "Blog",
     "nav.pricing": "Prezzi",
+    "nav.help": "Aiuto e assistenza",
     "nav.team": "Team",
     "nav.tracking": "Monitoraggio preventivi",
     "nav.referral": "Invita",
@@ -441,8 +470,8 @@ const TRANSLATIONS = {
     "landing.hero.placeholder": "Descrivi il tuo progetto — es.: «Voglio ristrutturare una casa di 150 m², rifare pareti, soffitti, impianto elettrico, idraulico, due bagni e sostituire le finestre.»",
     "landing.hero.example_btn": "Usa l'esempio",
     "landing.hero.submit": "Genera la mia stima",
-    "landing.hero.trust_title": "Unisciti a oltre 10.000 pro",
-    "landing.hero.trust_subtitle": "Artigiani e Architetti attrezzati",
+    "landing.hero.trust_title": "Pensato per i professionisti",
+    "landing.hero.trust_subtitle": "Artigiani, architetti e privati",
     "landing.social.stat_value": "142 preventivi",
     "landing.social.stat_label": "Generati questa settimana",
     "landing.social.subtitle": "Usato dai professionisti dell'edilizia in Francia",
@@ -478,17 +507,22 @@ const TRANSLATIONS = {
   de: {
     "nav.dashboard": "Dashboard",
     "nav.estimator": "Kalkulator",
-    "nav.plan2d": "Messen",
+    "nav.plan2d": "Plan-Editor",
     "nav.calculators": "Rechner",
     "nav.prices": "Materialpreise",
     "nav.diy": "Selber machen",
     "nav.photo": "Fotoanalyse",
     "nav.scanner": "Angebotsscanner",
+    "nav.solver": "Problem lösen",
+    "nav.myPage": "Meine Seite & Dokumente",
+    "nav.chantiers": "Baustellenakten",
+    "nav.plansPro": "Pro-Plananalyse",
     "nav.coach": "KI-Coach",
     "nav.marketplace": "Profi finden",
     "nav.docs": "API & Entwickler",
     "nav.blog": "Blog",
     "nav.pricing": "Preise",
+    "nav.help": "Hilfe & Support",
     "nav.team": "Team",
     "nav.tracking": "Angebotsverfolgung",
     "nav.referral": "Empfehlen",
@@ -526,8 +560,8 @@ const TRANSLATIONS = {
     "landing.hero.placeholder": "Beschreiben Sie Ihr Projekt — z. B.: „Ich möchte ein 150 m² großes Haus renovieren, Wände, Decken, Elektrik, Sanitär, zwei Badezimmer erneuern und die Fenster austauschen.“",
     "landing.hero.example_btn": "Beispiel verwenden",
     "landing.hero.submit": "Meine Schätzung erstellen",
-    "landing.hero.trust_title": "Über 10.000 Profis dabei",
-    "landing.hero.trust_subtitle": "Handwerker & Architekten ausgestattet",
+    "landing.hero.trust_title": "Für Bau-Profis entwickelt",
+    "landing.hero.trust_subtitle": "Handwerker, Architekten und Privatkunden",
     "landing.social.stat_value": "142 Angebote",
     "landing.social.stat_label": "Diese Woche erstellt",
     "landing.social.subtitle": "Von Bauprofis in Frankreich genutzt",
@@ -537,7 +571,7 @@ const TRANSLATIONS = {
     "landing.cta.start": "Starten",
     "landing.cta.explore": "Entdecken",
     "landing.for_pro": "Bauprofis",
-    "landing.for_pro_text": "Erstellen Sie Kundenangebote in 30 s mit MwSt.-Nachweis 10 %, elektronischer Signatur und Öffnungsverfolgung.",
+    "landing.for_pro_text": "Erstellen Sie Kundenangebote mit MwSt.-Nachweis 10 %, elektronischer Signatur und Öffnungsverfolgung.",
     "landing.for_particulier": "Privatpersonen",
     "landing.for_particulier_text": "Schätzen Sie Ihre Renovierung, bevor Sie einen Profi kontaktieren. Vergleichen Sie erhaltene Angebote.",
     "coach.over": "ConstruPilot KI-Coach",
@@ -563,17 +597,22 @@ const TRANSLATIONS = {
   ar: {
     "nav.dashboard": "لوحة التحكم",
     "nav.estimator": "المُقدِّر",
-    "nav.plan2d": "القياس",
+    "nav.plan2d": "محرر المخططات",
     "nav.calculators": "الحاسبات",
     "nav.prices": "أسعار المواد",
     "nav.diy": "أفعلها بنفسي",
     "nav.photo": "تحليل الصور",
     "nav.scanner": "ماسح العروض",
+    "nav.solver": "حل مشكلة",
+    "nav.myPage": "صفحتي ومستنداتي",
+    "nav.chantiers": "ملفات المواقع",
+    "nav.plansPro": "تحليل المخطط برو",
     "nav.coach": "مدرب الذكاء الاصطناعي",
     "nav.marketplace": "ابحث عن محترف",
     "nav.docs": "API والمطوّرون",
     "nav.blog": "المدونة",
     "nav.pricing": "الأسعار",
+    "nav.help": "المساعدة والدعم",
     "nav.team": "الفريق",
     "nav.tracking": "تتبّع العروض",
     "nav.referral": "أوصِ بنا",
@@ -611,8 +650,8 @@ const TRANSLATIONS = {
     "landing.hero.placeholder": "صِف مشروعك — مثال: «أريد تجديد منزل بمساحة 150 م²، إعادة الجدران والأسقف والكهرباء والسباكة وحمامين واستبدال النوافذ.»",
     "landing.hero.example_btn": "استخدم المثال",
     "landing.hero.submit": "أنشئ تقديري",
-    "landing.hero.trust_title": "انضم إلى أكثر من 10,000 محترف",
-    "landing.hero.trust_subtitle": "حرفيون ومعماريون مجهّزون",
+    "landing.hero.trust_title": "مصمم لمهنيي البناء",
+    "landing.hero.trust_subtitle": "حرفيون ومعماريون وأفراد",
     "landing.social.stat_value": "142 عرضًا",
     "landing.social.stat_label": "أُنشئت هذا الأسبوع",
     "landing.social.subtitle": "يستخدمه محترفو البناء في فرنسا",
@@ -1264,48 +1303,48 @@ for (const l of Object.keys(EST_TRANSLATIONS)) {
 }
 
 const NAV_TRANSLATIONS = {
-  fr: { "nav.more": "Plus", "nav.start": "Commencer", "nav.login": "Connexion", "nav.admin": "Admin",
-        "nav.reviews": "Avis clients", "nav.clients": "Clients", "nav.library": "Bibliothèque",
+  fr: { "nav.more": "Plus", "nav.start": "Commencer", "nav.admin": "Admin",
+        "nav.reviews": "Avis clients", "nav.clients": "Clients", "nav.trash": "Corbeille", "nav.library": "Bibliothèque",
         "nav.studies": "Études PC", "nav.account": "Mon compte",
         "nav.pro_space": "Espace Pro", "nav.discover": "Découvrir", "nav.company": "Espace Entreprise",
         "nav.invoices": "Factures", "nav.situations": "Situations de travaux", "nav.site": "Suivi de chantier",
-        "nav.catalog": "Catalogue prix", "nav.compare": "Comparatif", "nav.newquote": "Nouveau devis", "nav.investors": "Investisseurs" },
-  en: { "nav.more": "More", "nav.start": "Get started", "nav.login": "Sign in", "nav.admin": "Admin",
-        "nav.reviews": "Client reviews", "nav.clients": "Clients", "nav.library": "Library",
+        "nav.catalog": "Catalogue prix", "nav.compare": "Comparatif", "nav.newquote": "Nouveau devis" },
+  en: { "nav.more": "More", "nav.start": "Get started", "nav.admin": "Admin",
+        "nav.reviews": "Client reviews", "nav.clients": "Clients", "nav.trash": "Trash", "nav.library": "Library",
         "nav.studies": "Permit studies", "nav.account": "My account",
         "nav.pro_space": "Pro space", "nav.discover": "Discover", "nav.company": "Company space",
         "nav.invoices": "Invoices", "nav.situations": "Progress billing", "nav.site": "Site tracking",
-        "nav.catalog": "Price catalogue", "nav.compare": "Comparison", "nav.investors": "Investors" },
-  es: { "nav.more": "Más", "nav.start": "Empezar", "nav.login": "Iniciar sesión", "nav.admin": "Admin",
-        "nav.reviews": "Opiniones", "nav.clients": "Clientes", "nav.library": "Biblioteca",
+        "nav.catalog": "Price catalogue", "nav.compare": "Comparison" },
+  es: { "nav.more": "Más", "nav.start": "Empezar", "nav.admin": "Admin",
+        "nav.reviews": "Opiniones", "nav.clients": "Clientes", "nav.trash": "Lixeira", "nav.library": "Biblioteca",
         "nav.studies": "Estudios de licencia", "nav.account": "Mi cuenta",
         "nav.pro_space": "Espacio pro", "nav.discover": "Descubrir", "nav.company": "Espacio empresa",
         "nav.invoices": "Facturas", "nav.situations": "Certificaciones de obra", "nav.site": "Seguimiento de obra",
-        "nav.catalog": "Catálogo de precios", "nav.compare": "Comparativa", "nav.investors": "Inversores" },
-  pt: { "nav.more": "Mais", "nav.start": "Começar", "nav.login": "Iniciar sessão", "nav.admin": "Admin",
+        "nav.catalog": "Catálogo de precios", "nav.compare": "Comparativa" },
+  pt: { "nav.more": "Mais", "nav.start": "Começar", "nav.admin": "Admin",
         "nav.reviews": "Avaliações", "nav.clients": "Clientes", "nav.library": "Biblioteca",
         "nav.studies": "Estudos de licença", "nav.account": "A minha conta",
         "nav.pro_space": "Espaço pro", "nav.discover": "Descobrir", "nav.company": "Espaço empresa",
         "nav.invoices": "Faturas", "nav.situations": "Autos de medição", "nav.site": "Acompanhamento de obra",
-        "nav.catalog": "Catálogo de preços", "nav.compare": "Comparativo", "nav.newquote": "Novo orçamento", "nav.investors": "Investidores" },
-  it: { "nav.more": "Altro", "nav.start": "Inizia", "nav.login": "Accedi", "nav.admin": "Admin",
+        "nav.catalog": "Catálogo de preços", "nav.compare": "Comparativo", "nav.newquote": "Novo orçamento" },
+  it: { "nav.more": "Altro", "nav.start": "Inizia", "nav.admin": "Admin",
         "nav.reviews": "Recensioni", "nav.clients": "Clienti", "nav.library": "Libreria",
         "nav.studies": "Studi permessi", "nav.account": "Il mio account",
         "nav.pro_space": "Area pro", "nav.discover": "Scopri", "nav.company": "Area azienda",
         "nav.invoices": "Fatture", "nav.situations": "Stati avanzamento lavori", "nav.site": "Monitoraggio cantiere",
-        "nav.catalog": "Catalogo prezzi", "nav.compare": "Confronto", "nav.investors": "Investitori" },
-  de: { "nav.more": "Mehr", "nav.start": "Loslegen", "nav.login": "Anmelden", "nav.admin": "Admin",
+        "nav.catalog": "Catalogo prezzi", "nav.compare": "Confronto" },
+  de: { "nav.more": "Mehr", "nav.start": "Loslegen", "nav.admin": "Admin",
         "nav.reviews": "Kundenbewertungen", "nav.clients": "Kunden", "nav.library": "Bibliothek",
         "nav.studies": "Genehmigungsstudien", "nav.account": "Mein Konto",
         "nav.pro_space": "Pro-Bereich", "nav.discover": "Entdecken", "nav.company": "Unternehmensbereich",
         "nav.invoices": "Rechnungen", "nav.situations": "Abschlagsrechnungen", "nav.site": "Baustellenverfolgung",
-        "nav.catalog": "Preiskatalog", "nav.compare": "Vergleich", "nav.investors": "Investoren" },
-  ar: { "nav.more": "المزيد", "nav.start": "ابدأ", "nav.login": "تسجيل الدخول", "nav.admin": "المشرف",
+        "nav.catalog": "Preiskatalog", "nav.compare": "Vergleich" },
+  ar: { "nav.more": "المزيد", "nav.start": "ابدأ", "nav.admin": "المشرف",
         "nav.reviews": "آراء العملاء", "nav.clients": "العملاء", "nav.library": "المكتبة",
         "nav.studies": "دراسات الرخص", "nav.account": "حسابي",
         "nav.pro_space": "مساحة المحترفين", "nav.discover": "اكتشف", "nav.company": "مساحة الشركة",
         "nav.invoices": "الفواتير", "nav.situations": "مستخلصات الأعمال", "nav.site": "متابعة الورشة",
-        "nav.catalog": "كتالوج الأسعار", "nav.compare": "مقارنة", "nav.investors": "المستثمرون" },
+        "nav.catalog": "كتالوج الأسعار", "nav.compare": "مقارنة" },
 };
 
 for (const l of Object.keys(NAV_TRANSLATIONS)) {
@@ -1486,28 +1525,22 @@ const RTL_LANGS = ["ar"];
 function detectLang() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && SUPPORTED.includes(stored)) return stored;
-  // Ordem de precedência :
-  //  1) escolha manual do utilizador (localStorage) — tratada acima
-  //  2) domínio .pt → PT
-  //  3) navigator.language começa por 'pt' → PT
-  //  4) navigator.language começa por 'fr' → FR (único caso não-PT auto)
-  //  5) default absoluto : PT-PT (100% PT-PT policy)
+  // Détection par DOMAINE uniquement :
+  //  - construpilot.pt (et tout .pt) → ouvre en PT-PT
+  //  - construpilot.fr et tout le reste → FR par défaut (comportement inchangé)
+  // L'utilisateur peut toujours changer de langue manuellement (mémorisé ensuite).
   try {
     const host = (window.location.hostname || "").toLowerCase();
     if (host.endsWith(".pt")) return "pt";
-    const nav = (navigator.language || "").toLowerCase();
-    if (nav.startsWith("pt")) return "pt";
-    if (nav.startsWith("fr")) return "fr";
   } catch { /* SSR / navigateur restreint */ }
-  return "pt";
+  return "fr";
 }
 
 export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(detectLang);
 
   const applyDir = (l) => {
-    // Use ISO regional code for pt (pt-PT) — better SEO alignment with hreflang.
-    document.documentElement.lang = l === "pt" ? "pt-PT" : l;
+    document.documentElement.lang = l;
     document.documentElement.dir = RTL_LANGS.includes(l) ? "rtl" : "ltr";
   };
 
@@ -1516,7 +1549,7 @@ export function I18nProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, l);
     applyDir(l);
     // Sync best-effort vers le backend si l'utilisateur est connecté (emails multilingues).
-    if (localStorage.getItem("construpilot_token")) {
+    if (localStorage.getItem("construpilot_session") === "1") {
       import("@/lib/api").then(({ api }) => api.put("/auth/language", { lang: l }).catch(() => {}));
     }
   };
@@ -1539,7 +1572,7 @@ export function useI18n() {
   return ctx;
 }
 
-export function LangToggle() {
+export function LangToggle({ testId = "lang-toggle" }) {
   const { lang, setLang } = useI18n();
   const LANGS = [
     { code: "fr", label: "FR", full: "Français" },
@@ -1551,11 +1584,11 @@ export function LangToggle() {
     { code: "ar", label: "AR", full: "العربية" },
   ];
   return (
-    <div className="relative inline-block" data-testid="lang-toggle-wrapper">
+    <div className="relative inline-block" data-testid={`${testId}-wrapper`}>
       <select
         value={lang}
         onChange={(e) => setLang(e.target.value)}
-        data-testid="lang-toggle"
+        data-testid={testId}
         aria-label="Language"
         className="rounded-sm border border-border bg-transparent px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest hover:bg-primary hover:text-white hover:border-primary transition cursor-pointer appearance-none pr-6"
         style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6' fill='none'%3e%3cpath d='M1 1l3 3 3-3' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e\")",
@@ -1575,10 +1608,10 @@ export function LangToggle() {
 export function MarketToggle() {
   const { lang, setLang } = useI18n();
   const MARKETS = [
-    { code: "pt", flag: "🇵🇹", label: "PT" },
     { code: "fr", flag: "🇫🇷", label: "FR" },
+    { code: "pt", flag: "🇵🇹", label: "PT" },
   ];
-  const active = lang === "fr" ? "fr" : "pt";
+  const active = lang === "pt" ? "pt" : "fr";
   return (
     <div className="inline-flex items-center rounded-full border border-border overflow-hidden" data-testid="market-toggle">
       {MARKETS.map((m) => (

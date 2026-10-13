@@ -193,7 +193,7 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
              region: str | None = None, building_type: str = "maison", condition: str = "bon",
              construction_year: int | None = None, lot_keys: list[str] | None = None,
              ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M,
-             levels: list[dict] | None = None) -> dict:
+             levels: list[dict] | None = None, _with_model: bool = True) -> dict:
     """Moteur d'estimation. Si `levels` est fourni ([{label, surface_m2, ceiling_height_m}]),
     la hauteur retenue pour les lots muraux est la moyenne pondérée par surface,
     permettant de bien chiffrer les bâtiments à HSP mixtes (RDC 2.60 + R+1 2.20 + combles 1.80).
@@ -246,10 +246,11 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
         "price_per_sqm": round(total_avg / surface, 2) if surface else 0,
         "total_hours": fin["hours"],
         "duration_weeks": max(1, math.ceil(fin["hours"] / 70)),
-        "price_model": _price_model(PricingRequest(
+        "price_model": (_price_model(PricingRequest(
             project_type=project_type, surface=surface, country=country, region=region,
             building_type=building_type, condition=condition,
-            construction_year=construction_year, lot_keys=lot_keys)),
+            construction_year=construction_year, lot_keys=lot_keys,
+            ceiling_height_m=ceiling_height_m, levels=levels)) if _with_model else None),
     }
 
 
@@ -277,28 +278,20 @@ def apply_client_markup(obj, factor: float = PARTICULIER_MARKUP):
 
 
 def _price_model(req: PricingRequest) -> dict:
-    """Totaux eco/standard/premium pour un même projet (fourchette de finitions)."""
+    """Totaux eco/standard/premium pour un même projet (fourchette de finitions).
+
+    Calculés avec EXACTEMENT le même moteur que l'estimation (mêmes lots, hauteur sous plafond,
+    frais annexes et aléas) : le total « standard » du modèle est égal au total moyen affiché.
+    L'ancienne formule simplifiée (×1,145, matériaux × coef. région, sans hauteur ni lots ajoutés)
+    donnait un « standard » différent du total moyen."""
     out = {}
     for lvl in ("eco", "standard", "premium"):
-        tpl = PROJECT_TYPES_BY_KEY.get(req.project_type) or PROJECT_TYPES_BY_KEY["renovation_complete"]
-        finish_cfg = FINISH_BY_KEY[lvl]
-        rc = region_coef(req.country, req.region)
-        coef = (rc * CONDITION_COEF.get(req.condition, 1.0)
-                * BUILDING_COEF.get(req.building_type, 1.0) * year_coef(req.construction_year))
-        sel = (tpl["lots"] if not req.lot_keys
-               else {k: v for k, v in tpl["lots"].items() if k in req.lot_keys})
-        labour_only = bool(tpl.get("labour_only"))
-        tot = 0.0
-        for key, factor in sel.items():
-            lot = LOTS_BY_KEY.get(key)
-            if not lot:
-                continue
-            qty = req.surface * factor
-            mat = 0.0 if labour_only else _mat_price(lot, lvl)
-            tot += qty * (mat * rc + lot["labour"] * coef * finish_cfg["coef"] ** 0.4)
-        tot *= 1.145
-        out[lvl] = {"total": round(tot, 2),
-                    "per_sqm": round(tot / req.surface, 2) if req.surface else 0}
+        r = estimate(project_type=req.project_type, surface=req.surface, finish=lvl,
+                     country=req.country, region=req.region, building_type=req.building_type,
+                     condition=req.condition, construction_year=req.construction_year,
+                     lot_keys=req.lot_keys, ceiling_height_m=req.ceiling_height_m,
+                     levels=req.levels, _with_model=False)
+        out[lvl] = {"total": r["total_avg"], "per_sqm": r["price_per_sqm"]}
     return out
 
 

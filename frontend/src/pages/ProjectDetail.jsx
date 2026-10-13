@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Download, Sparkles, ShoppingCart, Plus, Wallet, AlertTriangle, RefreshCw, Package,
+  Download, Sparkles, ShoppingCart, Plus, Wallet, AlertTriangle, RefreshCw, Package, CloudOff, Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, API, eur, eur2, num } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { fetchProject, patchProject } from "@/lib/offlineProjects";
 import { EstimationView } from "@/components/EstimationView";
+import { ProjectArtisanSection } from "@/components/ProjectArtisanSection";
 import { LeadDialog } from "@/components/LeadDialog";
 import { EmailPdfDialog } from "@/components/EmailPdfDialog";
 import { WhatsAppShare } from "@/components/WhatsAppShare";
@@ -25,28 +29,52 @@ const LABEL = { todo: "⏳ À faire", doing: "🔄 En cours", done: "✅ Termin�
 
 export default function ProjectDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [p, setP] = useState(null);
   const [budget, setBudget] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [optim, setOptim] = useState(null);
   const [busy, setBusy] = useState("");
   const [exp, setExp] = useState({ label: "", amount: "" });
+  const [offline, setOffline] = useState(false);
+  const [notes, setNotes] = useState("");
 
   const load = async () => {
-    const { data } = await api.get(`/projects/${id}`);
-    setP(data);
-    setMaterials(data.materials || []);
-    const b = await api.get(`/projects/${id}/budget`);
-    setBudget(b.data);
+    const { project, offline: off } = await fetchProject(user?.user_id, id);
+    setOffline(off);
+    if (project) { setP(project); setMaterials(project.materials || []); setNotes(project.notes || ""); }
+    if (!off) {
+      try { const b = await api.get(`/projects/${id}/budget`); setBudget(b.data); } catch { /* budget skipped offline */ }
+    }
   };
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id, user?.user_id]);
+  useEffect(() => {
+    const onSynced = () => load();
+    window.addEventListener("construpilot-offline-synced", onSynced);
+    return () => window.removeEventListener("construpilot-offline-synced", onSynced);
+    /* eslint-disable-next-line */
+  }, [id, user?.user_id]);
 
   if (!p) return <div className="h-40 grid place-items-center"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   const toggle = async (key) => {
-    const progress = { ...p.progress, [key]: NEXT[p.progress[key] || "todo"] };
-    await api.patch(`/projects/${id}`, { progress });
-    load();
+    const cur = p.progress || {};
+    const progress = { ...cur, [key]: NEXT[cur[key] || "todo"] };
+    try {
+      const { project, queued } = await patchProject(user?.user_id, id, { progress }, `Progression ${key}`);
+      if (project) setP(project);
+      if (queued) toast.info("Modification enregistrée hors connexion.");
+    } catch { toast.error("Mise à jour impossible."); }
+  };
+
+  const saveNotes = async () => {
+    setBusy("notes");
+    try {
+      const { project, queued } = await patchProject(user?.user_id, id, { notes }, "Notes de chantier");
+      if (project) setP(project);
+      toast[queued ? "info" : "success"](queued ? "Notes enregistrées hors connexion." : "Notes enregistrées.");
+    } catch { toast.error("Enregistrement impossible."); }
+    finally { setBusy(""); }
   };
 
   const genAdvice = async () => {
@@ -171,6 +199,8 @@ export default function ProjectDetail() {
 
       <SavingsCard projectId={p.project_id} estimation={p.estimation} />
 
+      <ProjectArtisanSection project={p} onChange={(block) => setP((prev) => ({ ...prev, artisan: block }))} />
+
       <Tabs defaultValue="works">
         <TabsList className="rounded-sm flex-wrap h-auto">
           <TabsTrigger value="works" className="rounded-sm" data-testid="pd-tab-works">Travaux & progression</TabsTrigger>
@@ -196,6 +226,17 @@ export default function ProjectDetail() {
                 <p className="num mt-1 text-xs text-muted-foreground">{num(l.quantity, 2)} {l.unit} · {num(l.hours, 1)} h</p>
               </button>
             ))}
+          </div>
+          <div className="surface p-5 mt-5" data-testid="chantier-notes-card">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display font-semibold">Notes de chantier</h3>
+              {offline && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" data-testid="chantier-notes-offline"><CloudOff className="h-3.5 w-3.5" /> hors connexion</span>}
+            </div>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Observations, relevés, points à vérifier sur le chantier…"
+              className="mt-3" data-testid="chantier-notes-input" />
+            <Button onClick={saveNotes} disabled={busy === "notes" || notes === (p.notes || "")} className="mt-3 gap-2" data-testid="chantier-notes-save">
+              <Save className="h-4 w-4" /> {busy === "notes" ? "Enregistrement…" : "Enregistrer les notes"}
+            </Button>
           </div>
         </TabsContent>
 
@@ -286,7 +327,7 @@ export default function ProjectDetail() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Source : connecteur de démonstration (mode {optim.mode}) — frais de livraison et minimums de
-                commande inclus. Vérifié le {new Date(optim.checked_at).toLocaleString("pt-PT")}.
+                commande inclus. Vérifié le {new Date(optim.checked_at).toLocaleString("fr-FR")}.
               </p>
             </div>
           )}

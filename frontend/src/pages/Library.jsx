@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Plus, Search, Pencil, Trash2, Library as LibIcon, Loader2, RotateCcw, Package, Hammer,
+  Plus, Search, Pencil, Trash2, Library as LibIcon, Loader2, RotateCcw, Package, Hammer, FileUp, Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,48 +15,56 @@ import { SectionTitle } from "@/components/Bits";
 import SharedLibraryPanel from "@/components/SharedLibraryPanel";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import LibraryImportDialog from "@/components/library/LibraryImportDialog";
+import LibraryDuplicatesDialog from "@/components/library/LibraryDuplicatesDialog";
+import LearnedPricesPanel from "@/components/library/LearnedPricesPanel";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
 const VAT_RATES = [10, 20, 5.5];
 const EMPTY = {
   type: "ouvrage", category: "", designation: "", unit: "m²",
-  unit_price_ht: "", vat_rate: 10, notes: "",
+  unit_price_ht: "", cost_price_ht: "", vat_rate: 10, notes: "",
 };
-const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
 export default function Library() {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [sources, setSources] = useState([]);
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [dupOpen, setDupOpen] = useState(false);
 
-  const load = async (search = q, type = typeFilter) => {
+  const load = async (search = q, type = typeFilter, source = sourceFilter) => {
     setLoading(true);
     try {
       const { data } = await api.get(
-        `/library?q=${encodeURIComponent(search)}&type=${type}`);
+        `/library?q=${encodeURIComponent(search)}&type=${type}&source=${encodeURIComponent(source)}`);
       setItems(data.items || []);
       setCategories(data.categories || []);
+      setSources(data.sources || []);
     } catch { toast.error("Impossible de charger la bibliothèque"); }
     finally { setLoading(false); }
   };
   useEffect(() => { if (user) load(); }, [user]);
   useEffect(() => {
-    const id = setTimeout(() => { if (user) load(q, typeFilter); }, 300);
+    const id = setTimeout(() => { if (user) load(q, typeFilter, sourceFilter); }, 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, typeFilter]);
+  }, [q, typeFilter, sourceFilter]);
 
   const openNew = () => { setEditing(null); setForm(EMPTY); setOpen(true); };
   const openEdit = (it) => {
     setEditing(it.item_id);
-    setForm({ ...EMPTY, ...it, unit_price_ht: String(it.unit_price_ht ?? "") });
+    setForm({ ...EMPTY, ...it, unit_price_ht: String(it.unit_price_ht ?? ""), cost_price_ht: String(it.cost_price_ht || "") });
     setOpen(true);
   };
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -68,7 +76,8 @@ export default function Library() {
       const payload = {
         type: form.type, category: form.category, designation: form.designation,
         unit: form.unit, unit_price_ht: parseFloat(form.unit_price_ht) || 0,
-        vat_rate: parseFloat(form.vat_rate) || 10, notes: form.notes,
+        cost_price_ht: parseFloat(form.cost_price_ht) || 0,
+        vat_rate: (form.vat_rate === "" || form.vat_rate == null) ? 10 : parseFloat(form.vat_rate), notes: form.notes,
       };
       if (editing) await api.put(`/library/${editing}`, payload);
       else await api.post("/library", payload);
@@ -100,7 +109,15 @@ export default function Library() {
           Vos ouvrages et matériaux avec vos prix. Réutilisez-les dans vos devis en un clic —
           chaque nouvel élément saisi est enregistré ici automatiquement.
         </SectionTitle>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setImportOpen(true)} className="rounded-sm gap-2 border-primary/40 text-primary"
+                  data-testid="library-import-btn">
+            <FileUp className="h-4 w-4" /> Reprendre mes anciens devis
+          </Button>
+          <Button variant="outline" onClick={() => setDupOpen(true)} className="rounded-sm gap-2"
+                  data-testid="library-duplicates-btn">
+            <Copy className="h-4 w-4" /> Nettoyer les doublons
+          </Button>
           <Button variant="outline" onClick={resetCatalogue} className="rounded-sm gap-2"
                   data-testid="library-reset-btn">
             <RotateCcw className="h-4 w-4" /> Catalogue de départ
@@ -112,6 +129,9 @@ export default function Library() {
       </div>
 
       <SharedLibraryPanel />
+      <LearnedPricesPanel onValidated={() => load()} />
+      <LibraryImportDialog open={importOpen} onClose={() => setImportOpen(false)} onDone={() => load()} />
+      <LibraryDuplicatesDialog open={dupOpen} onClose={() => setDupOpen(false)} onDone={() => load()} />
 
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[240px] max-w-md">
@@ -130,6 +150,22 @@ export default function Library() {
           ))}
         </div>
       </div>
+
+      {sources.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 items-center" data-testid="library-source-filter">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mr-1">Origine</span>
+          <button onClick={() => setSourceFilter("")} data-testid="library-source-all"
+                  className={`px-3 py-1 text-xs rounded-sm border transition ${sourceFilter === "" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+            Toutes
+          </button>
+          {sources.map((s) => (
+            <button key={s.key} onClick={() => setSourceFilter(s.key)} data-testid={`library-source-${s.key}`}
+                    className={`px-3 py-1 text-xs rounded-sm border transition ${sourceFilter === s.key ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+              {s.label} <span className="opacity-70 num">({s.count})</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="surface p-10 text-center animate-pulse">Chargement…</div>
@@ -222,6 +258,12 @@ export default function Library() {
               <Input type="number" step="0.01" min="0" value={form.unit_price_ht}
                      onChange={set("unit_price_ht")} className="rounded-sm mt-1 num"
                      data-testid="library-price" placeholder="0,00" />
+            </div>
+            <div>
+              <Label>Coût de revient HT (€) — MO + fournitures</Label>
+              <Input type="number" step="0.01" min="0" value={form.cost_price_ht}
+                     onChange={set("cost_price_ht")} className="rounded-sm mt-1 num"
+                     data-testid="library-cost" placeholder="optionnel · sert au calcul de marge" />
             </div>
             <div>
               <Label>TVA</Label>

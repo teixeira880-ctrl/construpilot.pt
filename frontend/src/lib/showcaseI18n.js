@@ -6,7 +6,7 @@ export const SHOWCASE_I18N = {
     sub: "Découvrez comment ConstruPilot transforme un plan en métré, en maquette 3D et en devis chiffré — en quelques secondes.",
     cta: "Découvrir", tryTitle: "Prêt à chiffrer plus vite ?",
     trySub: "Créez votre compte gratuitement et générez votre premier devis en quelques minutes.",
-    tryCta: "Essai gratuit", tryNote: "100% gratuit pendant le lancement · sans carte bancaire",
+    tryCta: "Essai gratuit", tryNote: "Sans carte bancaire — conditions détaillées sur la page Tarifs",
     items: [
       { overline: "Analyse IA des plans", title: "Un plan → un métré béton complet",
         text: "Détectez automatiquement murs, ouvertures, poteaux, poutres, semelles et planchers. Volumes de béton (m³) et aciers (kg) calculés instantanément.",

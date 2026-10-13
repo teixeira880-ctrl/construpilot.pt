@@ -18,10 +18,12 @@ import { MarketingTeaser } from "@/components/MarketingTeaser";
 import { FeatureShowcase } from "@/components/FeatureShowcase";
 import { Interactive3D } from "@/components/Interactive3D";
 import { ParamLibraryPromo } from "@/components/ParamLibraryPromo";
+import { DemoShowcase } from "@/components/DemoShowcase";
 import { SoroBlog } from "@/components/SoroBlog";
 import { LandingInstallBanner } from "@/components/pwa/LandingInstallBanner";
 import { api, IMAGES, eur } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
+import { OfferNotice, useOffer, offerSentence } from "@/components/OfferNotice";
 
 const EXAMPLE =
   "Je veux rénover une maison de 150 m², refaire les murs, plafonds, électricité, plomberie, deux salles de bain et remplacer les fenêtres.";
@@ -58,12 +60,12 @@ const STEPS = [
   { icon: Calculator, title: "Le moteur calcule", text: "Quantités et prix déterministes, vérifiables." },
   { icon: Search, title: "Je trouve les meilleurs prix", text: "Comparaison multi-fournisseurs et panier optimisé." },
   { icon: Wrench, title: "Je sais quoi faire moi-même", text: "Guides pas à pas et niveaux de difficulté." },
-  { icon: Hammer, title: "J'appelle un pro si besoin", text: "Proposition professionnelle en 48 h." },
+  { icon: Hammer, title: "J'appelle un pro si besoin", text: "Mise en relation avec un professionnel vérifié." },
 ];
 
 const FEATURES = [
   { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculateurs pros", dKey: "landing.feat.calc_d", text: "Peinture, carrelage, placo, béton, isolation : quantités exactes avec marges.", to: "/calculateurs", span: "md:col-span-4" },
-  { icon: Search, tKey: "landing.feat.price_t", title: "Comparateur de prix", dKey: "landing.feat.price_d", text: "10 fournisseurs, livraison, stock, historique et alertes prix.", to: "/prix", span: "md:col-span-4" },
+  { icon: Search, tKey: "landing.feat.price_t", title: "Comparateur de prix", dKey: "landing.feat.price_d", text: "Prix relevés chez les enseignes du BTP, avec date du relevé, historique de vos recherches et alertes.", to: "/prix", span: "md:col-span-4" },
   { icon: Cuboid, tKey: "landing.feat.threed_t", title: "Génération 3D", dKey: "landing.feat.threed_d", text: "Visualisez votre projet en trois dimensions à partir d'un simple plan 2D.", to: "/plan", span: "md:col-span-8 lg:col-span-4" },
   { icon: Wrench, tKey: "landing.feat.diy_t", title: "Mode « je le fais moi-même »", dKey: "landing.feat.diy_d", text: "Matériaux calculés + guide professionnel étape par étape.", to: "/diy", span: "md:col-span-4 lg:col-span-4" },
   { icon: Camera, tKey: "landing.feat.photo_t", title: "Estimation par photo", dKey: "landing.feat.photo_d", text: "L'IA identifie la pièce, son état et les travaux probables.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
@@ -71,7 +73,7 @@ const FEATURES = [
 ];
 
 const AUDIENCES = [
-  { icon: HardHat, key: "landing.for_pro", title: "Artisans BTP", textKey: "landing.for_pro_text", text: "Générez vos devis client en 30 s avec attestation TVA 10 %, signature électronique et suivi ouverture." },
+  { icon: HardHat, key: "landing.for_pro", title: "Artisans BTP", textKey: "landing.for_pro_text", text: "Générez vos devis client avec attestation TVA 10 %, signature électronique et suivi d'ouverture." },
   { icon: HomeIcon, key: "landing.for_particulier", title: "Particuliers", textKey: "landing.for_particulier_text", text: "Estimez votre rénovation avant de contacter un pro. Comparez les devis reçus." },
   { icon: Building2, key: "landing.aud.arch_t", title: "Architectes", textKey: "landing.aud.arch_d", text: "Métré 2D auto depuis vos plans PDF/DXF, chiffrage instantané par lot, rendu 3D pour vos clients." },
   { icon: Store, key: "landing.aud.merch_t", title: "Marchands", textKey: "landing.aud.merch_d", text: "Vos prix, comparés en temps réel. Générez la liste de courses depuis un plan." },
@@ -80,11 +82,11 @@ const AUDIENCES = [
 ];
 
 const FAQ = [
-  { qKey: "landing.faq.q1", q: "Combien coûte une rénovation complète au m² en 2026 ?", aKey: "landing.faq.a1", a: "En rénovation lourde en France, comptez 900 à 1 800 €/m² selon la région et la gamme. ConstruPilot calcule votre estimation exacte en 30 secondes." },
-  { qKey: "landing.faq.q2", q: "ConstruPilot est-il gratuit ?", aKey: "landing.faq.a2", a: "Oui pour les particuliers. Une offre Pro (devis PDF illimités, signature client, rendu 3D IA, tour vidéo) est disponible pour les artisans dès 39 €/mois." },
+  { qKey: "landing.faq.q1", q: "Combien coûte une rénovation complète au m² en 2026 ?", aKey: "landing.faq.a1", a: "En rénovation lourde en France, comptez 900 à 1 800 €/m² selon la région et la gamme. Ces fourchettes sont indicatives : ConstruPilot calcule une estimation détaillée à partir de vos surfaces et de votre niveau de finition." },
+  { qKey: "landing.faq.q2", q: "ConstruPilot est-il gratuit ?", aKey: "landing.faq.a2", a: "Il existe une offre gratuite (2 projets, 3 estimations par mois). Côté particulier, Premium est à 19 €/mois. Côté artisan, l'offre Pro démarre à 149 €/mois et Pro Business à 249 €/mois, avec 7 jours d'essai." },
   { qKey: "landing.faq.q3", q: "Comment fonctionne le métré 2D automatique ?", aKey: "landing.faq.a3", a: "Uploadez votre plan (PDF, PNG, DXF). Notre moteur détecte automatiquement les murs, les portes et calcule les surfaces." },
   { qKey: "landing.faq.q4", q: "Puis-je générer un devis avec attestation TVA à 10 % ?", aKey: "landing.faq.a4", a: "Oui. ConstruPilot génère l'attestation requise pour la rénovation de logement de plus de 2 ans. Le client la signe en ligne." },
-  { qKey: "landing.faq.q5", q: "Vos prix matériaux sont-ils à jour ?", aKey: "landing.faq.a5", a: "Nous croisons les catalogues des principales enseignes du BTP mis à jour hebdomadairement, avec l'historique 12 mois." },
+  { qKey: "landing.faq.q5", q: "Vos prix matériaux sont-ils à jour ?", aKey: "landing.faq.a5", a: "Les prix sont relevés en direct sur les sites publics des enseignes au moment de votre recherche, avec la date du relevé affichée. Si aucun prix public n'est trouvé, une fourchette indicative est affichée et signalée comme telle." },
   { qKey: "landing.faq.q6", q: "L'IA remplace-t-elle un artisan ?", aKey: "landing.faq.a6", a: "Non. Elle fournit une estimation instantanée. Pour un chantier complexe, un professionnel reste indispensable." },
 ];
 
@@ -103,9 +105,9 @@ const HERO_CONTENT = {
   particulier: {
     badgeKey: "landing.hero.badge_part", badge: "Pour les particuliers",
     h1aKey: "landing.hero.h1a_part", h1a: "Estimez le coût de",
-    h1bKey: "landing.hero.h1b_part", h1b: "vos travaux en 30 s.",
+    h1bKey: "landing.hero.h1b_part", h1b: "vos travaux, poste par poste.",
     subKey: "landing.hero.sub_part",
-    sub: "Décrivez votre projet de rénovation. ConstruPilot calcule instantanément une estimation détaillée, poste par poste — avant même de contacter un artisan.",
+    sub: "Décrivez votre projet de rénovation. ConstruPilot calcule une estimation détaillée, poste par poste — avant même de contacter un artisan.",
     ctaKey: "landing.hero.cta_part", cta: "Estimer mes travaux",
     dest: "/smart-project",
   },
@@ -147,6 +149,7 @@ export default function Landing() {
   };
   const navigate = useNavigate();
   const { t, lang } = useI18n();
+  const offer = useOffer();
 
   useEffect(() => {
     api.get("/estimation/catalog").then(({ data }) => setTypes(data.project_types)).catch(() => {});
@@ -177,7 +180,7 @@ export default function Landing() {
     const utm_campaign = sessionStorage.getItem("construpilot_utm_campaign") || "";
     const source = utm_source || `landing-hero-${audience}`;
     const leadPayload = { email: mail, description: text, source, utm_source, utm_medium, utm_campaign };
-    const isLoggedIn = !!localStorage.getItem("construpilot_token");
+    const isLoggedIn = localStorage.getItem("construpilot_session") === "1";
     if (isLoggedIn) {
       if (mail && mail.includes("@")) api.post("/leads", leadPayload).catch(() => {});
       navigate(hero.dest);
@@ -192,26 +195,34 @@ export default function Landing() {
     <>
       <SEO
         title={null}
-        description="ConstruPilot : l'assistant IA du BTP. Générez un devis chiffré en 30 s, comparez les prix matériaux, calculez vos quantités exactes et éditez vos devis clients PDF avec tour vidéo 3D."
+        description="ConstruPilot : l'assistant IA du BTP. Chiffrez un devis, comparez les prix matériaux, calculez vos quantités et éditez vos devis clients PDF avec plan 3D interactif."
         keywords="devis travaux, estimation rénovation, calculateur matériaux, comparateur prix BTP, logiciel devis artisan, plan 2D 3D, prix rénovation maison"
         canonical="/"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "FAQPage",
-          "mainEntity": FAQ.map(({ q, a }) => ({
+          "mainEntity": FAQ.map(({ q, a, qKey }) => ({
             "@type": "Question",
             "name": q,
-            "acceptedAnswer": { "@type": "Answer", "text": a },
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": qKey === "landing.faq.q2" && offer ? offerSentence(offer, "fr") : a,
+            },
           }))
         }}
       />
       <Nav />
 
-      <div className="bg-primary text-primary-foreground text-center text-sm font-semibold px-4 py-2.5 flex items-center justify-center gap-2" data-testid="promo-banner">
-        <Sparkles className="h-4 w-4" />
-        {t("landing.promo")}
-        <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">{t("landing.promo_cta")}</Link>
-      </div>
+      {offer?.free_promo && (
+        <div className="bg-primary text-primary-foreground text-center text-sm font-semibold px-4 py-2.5 flex flex-wrap items-center justify-center gap-2" data-testid="promo-banner">
+          <Sparkles className="h-4 w-4" />
+          {t("landing.promo")}
+          <Link to="/tarifs" className="underline underline-offset-2 hover:opacity-80 font-normal">
+            {t("landing.promo_terms", "Voir les tarifs applicables ensuite")}
+          </Link>
+          <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">{t("landing.promo_cta")}</Link>
+        </div>
+      )}
       <SignupCounter />
       <LandingInstallBanner />
 
@@ -313,6 +324,15 @@ export default function Landing() {
                   <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                   {t("landing.hero.reassurance", "Gratuit et sans engagement — résultat en 30 secondes.")}
                 </p>
+                {audience === "pro" && (
+                  <button
+                    onClick={() => navigate("/pro")}
+                    data-testid="hero-pro-offer-link"
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4"
+                  >
+                    Découvrir l'offre Pro (essai 7 jours) <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
               <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
@@ -359,61 +379,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── VIDÉO DE PRÉSENTATION (16:9) ──────────────────────── */}
-      <section className="border-b border-border bg-background" data-testid="master-video-section">
-        <div className="mx-auto max-w-[1200px] px-6 lg:px-10 py-20 lg:py-28">
-          <motion.div
-            className="text-center max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="overline">{t("landing.master_video.overline", "Découvrez ConstruPilot")}</p>
-            <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-              {t("landing.master_video.title_a", "L'estimation BTP,")}{" "}
-              <span className="text-primary italic">{t("landing.master_video.title_b", "réinventée.")}</span>
-            </h2>
-            <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed">
-              {t("landing.master_video.subtitle", "En 30 secondes, découvrez comment chiffrer, éditer et piloter vos chantiers avec l'IA.")}
-            </p>
-          </motion.div>
-
-          <motion.div
-            className="relative mt-12 mx-auto w-full max-w-[960px]"
-            initial={{ opacity: 0, scale: 0.97 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.7 }}
-          >
-            <div className="absolute -inset-4 bg-primary/15 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
-            <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video">
-              {lang !== "pt" && (
-                <video
-                  ref={masterVideoRef}
-                  className="h-full w-full object-cover"
-                  src="/master.mp4"
-                  autoPlay
-                  muted
-                  loop
-                  controls
-                  playsInline
-                  data-testid="master-video-player"
-                />
-              )}
-              <button
-                onClick={toggleMasterSound}
-                data-testid="master-video-sound-toggle"
-                aria-label={masterMuted ? "Activer le son" : "Couper le son"}
-                className="absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3.5 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
-              >
-                {masterMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                {masterMuted ? t("landing.master_video.unmute", "Activer le son") : t("landing.master_video.sound", "Son")}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <DemoShowcase />
 
 
       {/* ── VIDÉO EXPLICATIVE : lecture des plans ─────────────── */}
@@ -467,32 +433,28 @@ export default function Landing() {
                 <div className="absolute -inset-3 bg-primary/20 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
                 {/* Cadre type téléphone pour la vidéo verticale 9:16 */}
                 <div className="relative rounded-[2rem] border-[6px] border-foreground/85 bg-black shadow-2xl overflow-hidden aspect-[9/16]">
-                  {lang !== "pt" && (
-                    <video
-                      ref={videoRef}
-                      className="h-full w-full object-cover"
-                      src="/demo-plans.mp4"
-                      poster="/demo-plans-poster.jpg"
-                      autoPlay
-                      muted
-                      loop
-                      controls
-                      playsInline
-                      data-testid="intro-video-player"
-                    />
-                  )}
+                  <video
+                    ref={videoRef}
+                    className="h-full w-full object-cover"
+                    src={lang === "pt" ? "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4" : "/docs/ConstruPilot_Demo_Courte_9x16.mp4"}
+                    poster="/docs/demo-poster-9x16.jpg"
+                    autoPlay
+                    muted
+                    loop
+                    controls
+                    playsInline
+                    data-testid="intro-video-player"
+                  />
                   {/* Bouton activer/couper le son (la vidéo démarre en muet) */}
-                  {lang !== "pt" && (
-                    <button
-                      onClick={toggleVideoSound}
-                      data-testid="video-sound-toggle"
-                      aria-label={videoMuted ? t("landing.master_video.unmute", "Activer le son") : "Couper le son"}
-                      className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
-                    >
-                      {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                      {videoMuted ? t("landing.master_video.unmute", "Activer le son") : t("landing.master_video.sound", "Son")}
-                    </button>
-                  )}
+                  <button
+                    onClick={toggleVideoSound}
+                    data-testid="video-sound-toggle"
+                    aria-label={videoMuted ? t("landing.master_video.unmute", "Activer le son") : "Couper le son"}
+                    className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
+                  >
+                    {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    {videoMuted ? t("landing.master_video.unmute", "Activer le son") : t("landing.master_video.sound", "Son")}
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -502,7 +464,7 @@ export default function Landing() {
 
 
       {/* ── MARKETING TEASER (mobile mockup) ─────────────── */}
-      {lang !== "pt" && <MarketingTeaser />}
+      <MarketingTeaser />
 
       {/* ── TRUST & LOGOS ───────────────────────────────── */}
       <TrustSection />
@@ -712,6 +674,8 @@ export default function Landing() {
             </h2>
           </div>
           
+          <OfferNotice lang={lang} className="mb-8" />
+
           <div className="grid gap-4">
             {FAQ.map((item, i) => {
               const open = openFaq === i;
@@ -733,7 +697,9 @@ export default function Landing() {
                     className={`overflow-hidden transition-all duration-300 ease-in-out ${open ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
                   >
                     <div className="px-6 pb-6 pt-2 text-base text-muted-foreground leading-relaxed border-t border-border/50">
-                      {t(item.aKey, item.a)}
+                      {item.qKey === "landing.faq.q2" && offer
+                        ? offerSentence(offer, lang)
+                        : t(item.aKey, item.a)}
                     </div>
                   </div>
                 </div>

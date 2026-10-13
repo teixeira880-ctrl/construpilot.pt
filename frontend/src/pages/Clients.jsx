@@ -1,3 +1,4 @@
+import { useExperienceCopy } from "@/components/workspace/experienceCopy";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -26,6 +27,7 @@ const EMPTY = {
 export default function Clients() {
   const { user } = useAuth();
   const { t } = useI18n();
+  const experience = useExperienceCopy();
   const nav = useNavigate();
   const confirm = useConfirm();
   const [clients, setClients] = useState([]);
@@ -91,9 +93,9 @@ export default function Clients() {
   if (!user) return <div className="surface p-10 text-center">{t("crm.login")}</div>;
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle over={t("crm.over")} title={t("crm.clients_title")}>
+    <div className="grid gap-6 workspace-collection" data-testid="clients-page">
+      <div className="workspace-page-heading">
+        <SectionTitle as="h1" over={t("crm.over")} title={t("crm.clients_title")}>
           {t("crm.clients_sub")}
         </SectionTitle>
         <Button onClick={openNew} className="rounded-sm gap-2" data-testid="client-new-btn">
@@ -104,7 +106,7 @@ export default function Clients() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)}
-               placeholder={t("crm.search_ph")}
+               aria-label={t("crm.search_ph")} placeholder={t("crm.search_ph")}
                className="pl-9 rounded-sm" data-testid="client-search-input" />
       </div>
 
@@ -121,7 +123,7 @@ export default function Clients() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="clients-grid">
           {clients.map((c) => (
-            <div key={c.client_id} className="surface p-4 flex flex-col gap-2"
+            <div key={c.client_id} className="surface p-5 flex flex-col gap-3 workspace-client-card"
                  data-testid={`client-card-${c.client_id}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -148,14 +150,14 @@ export default function Clients() {
               </div>
               <div className="text-xs text-muted-foreground grid gap-1">
                 {c.email && (
-                  <span className="flex items-center gap-1 truncate">
+                  <a href={`mailto:${c.email}`} className="workspace-client-contact">
                     <Mail className="h-3 w-3 shrink-0" />{c.email}
-                  </span>
+                  </a>
                 )}
                 {c.phone && (
-                  <span className="flex items-center gap-1">
+                  <a href={`tel:${c.phone}`} className="workspace-client-contact">
                     <Phone className="h-3 w-3 shrink-0" />{c.phone}
-                  </span>
+                  </a>
                 )}
                 {(c.address || c.city) && (
                   <span className="flex items-center gap-1 truncate">
@@ -171,11 +173,11 @@ export default function Clients() {
                   {t("crm.quote_btn")}
                 </Button>
                 <Button size="sm" variant="outline" className="rounded-sm"
-                        onClick={() => openEdit(c)} data-testid={`client-edit-${c.client_id}`}>
+                        aria-label={`${experience("edit")} : ${name(c)}`} onClick={() => openEdit(c)} data-testid={`client-edit-${c.client_id}`}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" variant="ghost" className="rounded-sm text-destructive"
-                        onClick={() => remove(c)} data-testid={`client-delete-${c.client_id}`}>
+                        aria-label={`${t("common.delete", "Supprimer")} : ${name(c)}`} onClick={() => remove(c)} data-testid={`client-delete-${c.client_id}`}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -190,36 +192,36 @@ export default function Clients() {
             <DialogTitle>{editing ? t("crm.edit_client") : t("crm.new_client")}</DialogTitle>
           </DialogHeader>
           <div className="grid sm:grid-cols-2 gap-3">
-            <div><Label>{t("crm.firstname")}</Label>
+            <div><Label htmlFor="client-firstname">{t("crm.firstname")}</Label>
               <Input value={form.first_name} onChange={set("first_name")}
-                     className="rounded-sm mt-1" data-testid="client-firstname" /></div>
-            <div><Label>{t("crm.lastname")}</Label>
+                     className="rounded-sm mt-1" id="client-firstname" data-testid="client-firstname" /></div>
+            <div><Label htmlFor="client-lastname">{t("crm.lastname")}</Label>
               <Input value={form.last_name} onChange={set("last_name")}
-                     className="rounded-sm mt-1" data-testid="client-lastname" /></div>
-            <div className="sm:col-span-2"><Label>{t("crm.company_opt")}</Label>
+                     className="rounded-sm mt-1" id="client-lastname" data-testid="client-lastname" /></div>
+            <div className="sm:col-span-2"><Label htmlFor="client-company">{t("crm.company_opt")}</Label>
               <Input value={form.company} onChange={set("company")}
-                     className="rounded-sm mt-1" data-testid="client-company" /></div>
-            <div><Label>{t("crm.email")}</Label>
+                     className="rounded-sm mt-1" id="client-company" data-testid="client-company" /></div>
+            <div><Label htmlFor="client-email">{t("crm.email")}</Label>
               <Input value={form.email} onChange={set("email")} type="email"
-                     className="rounded-sm mt-1" data-testid="client-email" /></div>
-            <div><Label>{t("crm.phone")}</Label>
+                     className="rounded-sm mt-1" id="client-email" data-testid="client-email" /></div>
+            <div><Label htmlFor="client-phone">{t("crm.phone")}</Label>
               <Input value={form.phone} onChange={set("phone")}
-                     className="rounded-sm mt-1" data-testid="client-phone" /></div>
-            <div className="sm:col-span-2"><Label>{t("crm.address")}</Label>
+                     className="rounded-sm mt-1" id="client-phone" data-testid="client-phone" /></div>
+            <div className="sm:col-span-2"><Label htmlFor="client-address">{t("crm.address")}</Label>
               <Input value={form.address} onChange={set("address")}
-                     className="rounded-sm mt-1" data-testid="client-address" /></div>
-            <div><Label>{t("crm.postal")}</Label>
+                     className="rounded-sm mt-1" id="client-address" data-testid="client-address" /></div>
+            <div><Label htmlFor="client-postal">{t("crm.postal")}</Label>
               <Input value={form.postal_code} onChange={set("postal_code")}
-                     className="rounded-sm mt-1" data-testid="client-postal" /></div>
-            <div><Label>{t("crm.city")}</Label>
+                     className="rounded-sm mt-1" id="client-postal" data-testid="client-postal" /></div>
+            <div><Label htmlFor="client-city">{t("crm.city")}</Label>
               <Input value={form.city} onChange={set("city")}
-                     className="rounded-sm mt-1" data-testid="client-city" /></div>
-            <div className="sm:col-span-2"><Label>{t("crm.siret_opt")}</Label>
+                     className="rounded-sm mt-1" id="client-city" data-testid="client-city" /></div>
+            <div className="sm:col-span-2"><Label htmlFor="client-siret">{t("crm.siret_opt")}</Label>
               <Input value={form.siret} onChange={set("siret")}
-                     className="rounded-sm mt-1" data-testid="client-siret" /></div>
-            <div className="sm:col-span-2"><Label>{t("crm.notes")}</Label>
+                     className="rounded-sm mt-1" id="client-siret" data-testid="client-siret" /></div>
+            <div className="sm:col-span-2"><Label htmlFor="client-notes">{t("crm.notes")}</Label>
               <Textarea value={form.notes} onChange={set("notes")} rows={2}
-                        className="rounded-sm mt-1 resize-none" data-testid="client-notes" /></div>
+                        className="rounded-sm mt-1 resize-none" id="client-notes" data-testid="client-notes" /></div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} className="rounded-sm">
@@ -235,3 +237,4 @@ export default function Clients() {
     </div>
   );
 }
+

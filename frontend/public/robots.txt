@@ -1,4 +1,4 @@
-# robots.txt for construpilot.pt
+# robots.txt for construpilot.fr
 User-agent: *
 Allow: /
 
@@ -23,4 +23,4 @@ Allow: /
 Crawl-delay: 2
 
 # Sitemap
-Sitemap: https://construpilot.pt/sitemap.xml
+Sitemap: https://construpilot.fr/sitemap.xml

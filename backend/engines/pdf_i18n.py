@@ -6,6 +6,9 @@ PDF_LABELS = {
     "fr": {
         "doc_quote": "DEVIS", "doc_invoice": "FACTURE", "doc_credit": "AVOIR", "doc_generic": "DOCUMENT",
         "addressed_to": "Adressé à", "client": "Client",
+        "p_client": "CLIENT", "p_site": "CHANTIER", "p_validity": "VALIDITÉ",
+        "p_duration": "Durée", "p_start": "Démarrage", "p_valid_until": "Valable jusqu'au",
+        "schedule_title": "Règlement prévisionnel", "schedule_stage": "Échéance", "schedule_amount": "Montant TTC",
         "lines_title": "Détail des prestations",
         "c_designation": "Désignation", "c_qty": "Qté", "c_unit": "Unité",
         "c_pu_ht": "PU HT", "c_vat": "TVA", "c_total_ht": "Total HT", "no_line": "Aucune ligne",
@@ -18,6 +21,9 @@ PDF_LABELS = {
     "en": {
         "doc_quote": "QUOTE", "doc_invoice": "INVOICE", "doc_credit": "CREDIT NOTE", "doc_generic": "DOCUMENT",
         "addressed_to": "Billed to", "client": "Client",
+        "p_client": "CLIENT", "p_site": "PROJECT", "p_validity": "VALIDITY",
+        "p_duration": "Duration", "p_start": "Start", "p_valid_until": "Valid until",
+        "schedule_title": "Payment schedule", "schedule_stage": "Stage", "schedule_amount": "Amount incl. VAT",
         "lines_title": "Line items",
         "c_designation": "Description", "c_qty": "Qty", "c_unit": "Unit",
         "c_pu_ht": "Unit price", "c_vat": "VAT", "c_total_ht": "Total excl.", "no_line": "No line",
@@ -42,6 +48,9 @@ PDF_LABELS = {
     "pt": {
         "doc_quote": "ORÇAMENTO", "doc_invoice": "FATURA", "doc_credit": "NOTA DE CRÉDITO", "doc_generic": "DOCUMENTO",
         "addressed_to": "Faturar a", "client": "Cliente",
+        "p_client": "CLIENTE", "p_site": "OBRA", "p_validity": "VALIDADE",
+        "p_duration": "Duração", "p_start": "Início", "p_valid_until": "Válido até",
+        "schedule_title": "Plano de pagamento", "schedule_stage": "Fase", "schedule_amount": "Montante c/ IVA",
         "lines_title": "Detalhe dos serviços",
         "c_designation": "Designação", "c_qty": "Qtd.", "c_unit": "Un.",
         "c_pu_ht": "PU s/ IVA", "c_vat": "IVA", "c_total_ht": "Total s/ IVA", "no_line": "Sem linhas",

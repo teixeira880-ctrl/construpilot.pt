@@ -40,7 +40,7 @@ export const PcSituations = ({ planId }) => {
   return (
     <section data-testid="pc-situations-section">
       <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-        <Receipt className="h-4 w-4 text-primary" /> Autos de medição & saldo
+        <Receipt className="h-4 w-4 text-primary" /> Situations de travaux & solde
       </h3>
       <div className="rounded-sm border border-border p-2.5 space-y-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -74,7 +74,7 @@ export const PcSituations = ({ planId }) => {
                     <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 hover:bg-emerald-500/15"
                            data-testid={`pc-situation-${s.sit_no}-status`}>
                       <CheckCircle2 className="h-3 w-3" />
-                      Payée le {new Date(s.paid_at).toLocaleDateString("pt-PT")}
+                      Payée le {new Date(s.paid_at).toLocaleDateString("fr-FR")}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-amber-600 border-amber-500/40"

@@ -1,0 +1,47 @@
+--- current/frontend/src/pages/Preferences.jsx
++++ zip/frontend/src/pages/Preferences.jsx
+@@ -7,7 +7,7 @@
+ import { useAuth } from "@/context/AuthContext";
+ 
+ const SCOPE = { user: "Moi", project: "Chantier", company: "Entreprise" };
+-const SOURCE = { assistant: "Assistant (avec accord)", manual: "Saisie manuelle" };
++const SOURCE = { automatic_style: "Habitude automatique", style_proposal: "Habitude proposée", assistant_proposal: "Proposition à valider", assistant: "Assistant (avec accord)", manual: "Saisie manuelle" };
+ const fmt = (d) => (d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
+ 
+ function PrefRow({ p, onChange }) {
+@@ -79,9 +79,11 @@
+ 
+ export default function Preferences() {
+   const { user } = useAuth();
++  const [settings, setSettings] = useState(null);
++  const saveSettings = async next => { try { const r = await api.put("/assistant/settings", next); setSettings(r.data); toast.success("Réglages enregistrés"); } catch { toast.error("Réglages non enregistrés"); } };
+   const [prefs, setPrefs] = useState(null);
+   const load = () => api.get("/assistant/preferences").then((r) => setPrefs(r.data)).catch(() => setPrefs([]));
+-  useEffect(() => { load(); }, []);
++  useEffect(() => { load(); api.get("/assistant/settings").then(r => setSettings(r.data)).catch(() => {}); }, []);
+ 
+   const onChange = (updated, deletedId) => setPrefs((cur) => deletedId ? cur.filter((p) => p.pref_id !== deletedId) : cur.map((p) => (p.pref_id === updated.pref_id ? updated : p)));
+   const exportJson = async () => {
+@@ -93,7 +95,7 @@
+     if (!window.confirm("Effacer TOUTE la mémoire de l'assistant pour votre compte ? Cette action est irréversible.")) return;
+     const r = await api.delete("/assistant/preferences"); toast.success(`${r.data.deleted} préférence(s) effacée(s)`); load();
+   };
+-  const canCompany = user?.account_type !== "particulier" && ["admin", "owner", "manager"].includes(user?.role);
++  const canCompany = !!user?.organization_id && user?.account_type !== "particulier" && ["admin", "owner", "manager"].includes(user?.role);
+   const active = (prefs || []).filter((p) => p.active).length;
+ 
+   return (
+@@ -106,6 +108,13 @@
+           appliquée à chaque réponse sauf instruction contraire ponctuelle. Vous pouvez la modifier, la désactiver, la supprimer ou tout effacer.
+         </p>
+       </header>
++      {settings && <section className="border rounded-md p-4 grid gap-3" aria-label="Apprentissage">
++        <label className="text-sm">Apprentissage de mes habitudes <select className="ml-2 border bg-background rounded-sm p-2" value={settings.learning_mode} onChange={e => saveSettings({ ...settings, learning_mode: e.target.value })}>
++          <option value="off">Désactivé</option><option value="suggest">Me proposer les habitudes à retenir</option><option value="automatic">Mémoriser automatiquement le ton, la langue et la longueur</option>
++        </select></label>
++        <p className="text-xs text-muted-foreground">Le mode automatique retient les préférences simples que vous formulez explicitement dans le chat. Les règles métier sont proposées pour validation. Les données clients et les documents ne servent pas à cet apprentissage. Vos réglages restent propres à votre compte ; les règles d'entreprise sont gérées par ses administrateurs.</p>
++        <label className="text-sm flex gap-2"><input type="checkbox" checked={settings.web_enabled} onChange={e => saveSettings({ ...settings, web_enabled: e.target.checked })} /> Autoriser les recherches Internet</label>
++      </section>}
+       <div className="flex flex-wrap items-center gap-2">
+         <span className="text-sm" data-testid="prefs-count">{prefs ? `${active} active(s) · ${prefs.length} au total` : "Chargement…"}</span>
+         <div className="ml-auto flex flex-wrap gap-2">

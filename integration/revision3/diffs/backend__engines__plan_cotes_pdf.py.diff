@@ -1,0 +1,85 @@
+--- current/backend/engines/plan_cotes_pdf.py
++++ zip/backend/engines/plan_cotes_pdf.py
+@@ -376,20 +376,36 @@
+         "Les hypothèses de correction ne modifient jamais le plan.", S["muted"]))
+ 
+ 
+-def _story_interior(story, report, S, overlay_png: bytes | None = None):
++def _story_interior(story, report, S, overlay_png: bytes | None = None, width: float | None = None):
+     """Tableau « dimensions intérieures mur à mur » + fermetures + annexe graphique ; bloc « analyse incomplète » si nécessaire."""
++    from reportlab.lib.styles import ParagraphStyle
++    W = width if width is not None else landscape(A4)[0] - 28 * mm
++    def table(rows, fractions, status_col=None, statuses=None):
++        # Les cellules longues doivent rester dans la largeur réelle de la page.
++        cells = []
++        for i, row in enumerate(rows):
++            converted = []
++            for j, value in enumerate(row):
++                color = colors.white if i == 0 else DARK
++                if i and statuses and j == status_col:
++                    color = RL_COL[statuses[i - 1]]
++                style = ParagraphStyle("interior-cell", parent=S["body"], fontSize=6.5, leading=8,
++                                       textColor=color, fontName="Helvetica-Bold" if i == 0 else "Helvetica")
++                converted.append(Paragraph(_e(tr(str(value))), style) if not isinstance(value, Paragraph) else value)
++            cells.append(converted)
++        return _tbl(cells, [W * f / sum(fractions) for f in fractions], S, status_col, statuses)
+     it = report.get("interior") or {}
+     story.append(Spacer(1, 3 * mm))
+     story.append(Paragraph(tr("Dimensions intérieures mur à mur (nu intérieur → nu intérieur)"), S["h2"]))
+     if not it or not it.get("walls"):
+         story.append(_scope_box(tr("Analyse incomplète : les dimensions intérieures mur à mur n'ont pas toutes été établies. "
+                                    "Le rapport final ne peut pas encore être validé.") + " " +
+-                                tr("Aucun mur à deux faces n'a pu être établi sur les vecteurs de cette page."), S))
++                                tr("Aucun mur à deux faces n'a pu être établi sur les vecteurs de cette page."), S, W))
+         return
+     val = it.get("validation") or {}
+     if not val.get("complete"):
+         story.append(_scope_box("<b>" + tr(val.get("message") or "Analyse incomplète") + "</b><br/>" +
+-                                tr("Contrôles en échec") + " : " + _e("; ".join(val.get("failed_checks") or [])), S))
++                                tr("Contrôles en échec") + " : " + _e("; ".join(val.get("failed_checks") or [])), S, W))
+         story.append(Spacer(1, 2 * mm))
+     st = it.get("stats") or {}
+     story.append(Paragraph(tr("{w} mur(s) à deux faces ({a} ambigu(s)) · {m} mesure(s) intérieure(s) · {c} confirmée(s) par une cote écrite · "
+@@ -400,17 +416,17 @@
+     REF = {"inside_face_to_inside_face": "nu int. → nu int.", "outside_face_to_outside_face": "nu ext. → nu ext.", "axis_to_axis": "axe → axe",
+            "axis_to_face": "axe → nu", "wall_thickness": "épaisseur", "cumulative": "cumulée", "partial_anchor": "partielle", "unresolved": "non rattachée"}
+     STL = {"confirmed": "confirmée", "probable": "probable", "to_confirm": "à confirmer", "unreadable": "illisible"}
++    FACE = {"interior_right": "nu int. droit", "interior_left": "nu int. gauche", "interior_top": "nu int. haut", "interior_bottom": "nu int. bas"}
+     rows = [[tr("Zone"), tr("Direction"), tr("Mur de départ"), tr("Mur d'arrivée"), tr("Référence"), tr("Cote lue"), tr("Mesure"), tr("Écart"), tr("Confiance"), tr("Statut")]]
+     statuses = []
+     for m in it.get("interior_measurements") or []:
+         w = m.get("written_dimension_m")
+-        rows.append([m["measurement_id"], tr("horizontale" if m["direction"] == "horizontal" else "verticale"),
+-                     f"{m['from_wall']} ({tr(m['from_face'])})", f"{m['to_wall']} ({tr(m['to_face'])})", tr(REF.get(m["reference_type"], m["reference_type"])),
++        rows.append([m["measurement_id"], tr("horiz." if m["direction"] == "horizontal" else "vert."),
++                     f"{m['from_wall']} ({tr(FACE.get(m['from_face'], m['from_face']))})", f"{m['to_wall']} ({tr(FACE.get(m['to_face'], m['to_face']))})", tr(REF.get(m["reference_type"], m["reference_type"])),
+                      f"{w:.2f} m" if w is not None else "—", f"{m['geometric_dimension_m']:.3f} m",
+                      f"{m['difference_m'] * 1000:+.0f} mm" if m.get("difference_m") is not None else "—", f"{m['confidence']:.0%}", tr(STL.get(m["status"], m["status"]))])
+         statuses.append({"confirmed": "ok", "probable": "ok", "to_confirm": "warn", "unreadable": "ko"}[m["status"]])
+-    W = landscape(A4)[0] - 28 * mm
+-    story.append(_tbl(rows, [W * f for f in (0.09, 0.08, 0.13, 0.13, 0.12, 0.08, 0.09, 0.08, 0.09, 0.11)], S, status_col=9, statuses=statuses))
++    story.append(table(rows, (0.09, 0.08, 0.13, 0.13, 0.12, 0.08, 0.09, 0.08, 0.09, 0.11), status_col=9, statuses=statuses))
+     per = it.get("peripheral") or {}
+     if per.get("chains"):
+         story.append(Spacer(1, 3 * mm))
+@@ -422,9 +438,9 @@
+             rws.append([c["chain_id"], tr(c["side"]), Paragraph(_e(" + ".join(f"{x['value_m']:.2f}" for x in c["partials"])), S["body"]), f"{c['sum_m']:.2f} m",
+                         (f"{tot:.2f} m" + ("" if c.get("total_m") is not None else " " + tr("(voisin, chaîne partielle)"))) if tot is not None else "—",
+                         f"{c['difference_mm']:+.0f} mm" if c.get("difference_mm") is not None else "—",
+-                        tr({"ok": "cohérente", "warn": "écart", "ko": "incohérente", "no_total": "sans total"}[c["status"]])])
++                        tr({"ok": "OK", "warn": "écart", "ko": "à vérifier", "no_total": "sans total"}[c["status"]])])
+             sts.append({"ok": "ok", "warn": "warn", "ko": "ko", "no_total": "warn"}[c["status"]])
+-        story.append(_tbl(rws, [W * f for f in (0.09, 0.09, 0.42, 0.1, 0.14, 0.08, 0.08)], S, status_col=6, statuses=sts))
++        story.append(table(rws, (0.09, 0.09, 0.42, 0.1, 0.14, 0.08, 0.08), status_col=6, statuses=sts))
+         for x in per.get("inconsistencies") or []:
+             story.append(Paragraph(f"<font color='{'#dc2626' if x['status'] == 'ko' else '#d97706'}'><b>{tr('Incohérence' if x['status'] == 'ko' else 'À vérifier')}</b></font> — {_e(x['detail'])}", S["body"]))
+         if not per.get("inconsistencies"):
+@@ -441,7 +457,7 @@
+                         f"{r['difference_m'] * 1000:+.0f} mm" if r.get("difference_m") is not None else "—",
+                         tr({"closed": "fermée", "open": "ouverte", "not_compared": "non comparée"}[r["status"]])])
+             sts.append({"closed": "ok", "open": "ko", "not_compared": "warn"}[r["status"]])
+-        story.append(_tbl(rws, [W * f for f in (0.1, 0.5, 0.1, 0.1, 0.1, 0.1)], S, status_col=5, statuses=sts))
++        story.append(table(rws, (0.1, 0.5, 0.1, 0.1, 0.1, 0.1), status_col=5, statuses=sts))
+     if overlay_png:
+         story.append(PageBreak())
+         story.append(Paragraph(tr("Annexe graphique — dimensions intérieures mur à mur"), S["h2"]))

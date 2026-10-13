@@ -1,6 +1,7 @@
 // PlanCanvas — canvas de dessin du Plan 2D (extrait de PlanTakeoff.jsx, iter66)
 import { useEffect, useRef, useState, useCallback } from "react";
 import { TOOLS, ROOM_COLORS, pointSegDist } from "./planConstants";
+import { drawMeasureTarget } from "./measureCursor";
 
 export default function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
@@ -11,10 +12,16 @@ export default function PlanCanvas({
   dimensionLines = [], showDimensionLines = false,
   annotations = { counters: [], notes: [], angles: [], pitched_surfaces: [] },
   measurements = [],
+  highlightIds = null,
+  cumulSegments = [],
+  cumulColor = "#dc2626",
   activeCounterId = null,
   focusRequest = null,  // {px, py, ts} — quand ts change, centrer sur (px, py)
   selectedCoteIndex = null,
   onCoteClick = null,
+  checkedCotes = [],            // cotes contrôlées (px image + statut) — remplace l'affichage des cotes IA
+  selectedCheckedIndex = null,
+  onCheckedCoteClick = null,
   onCanvasDoubleClick = null,
   showDeltas = true,
   contrast = 1,
@@ -83,14 +90,18 @@ export default function PlanCanvas({
     if (!focusRequest || focusRequest.ts == null) return;
     const c = canvasRef.current;
     if (!c) return;
-    const rect = c.getBoundingClientRect();
     const targetZoom = Math.max(1.0, Math.min(2.5, focusRequest.zoom ?? 1.5));
     const cx = focusRequest.px ?? 0;
     const cy = focusRequest.py ?? 0;
-    // (px*zoom + offset.x) = rect.width/2 => offset.x = rect.width/2 - px*zoom
+    // Transform du rendu : écran = centre + offset + R(rotation) · zoom · (p − centreImage)
+    // → pour centrer p : offset = −R · zoom · (p − centreImage)
+    const img = imgRef.current;
+    const vx = (cx - (img?.width || 0) / 2) * targetZoom;
+    const vy = (cy - (img?.height || 0) / 2) * targetZoom;
+    const a = ((rotation || 0) * Math.PI) / 180;
     const newOffset = {
-      x: rect.width / 2 - cx * targetZoom,
-      y: rect.height / 2 - cy * targetZoom,
+      x: -(vx * Math.cos(a) - vy * Math.sin(a)),
+      y: -(vx * Math.sin(a) + vy * Math.cos(a)),
     };
     onZoomChange(targetZoom);
     onOffsetChange(newOffset);
@@ -253,9 +264,50 @@ export default function PlanCanvas({
       });
     }
 
+    // COTES CONTRÔLÉES (rapport « Contrôle des cotes ») : vert / orange / rouge
+    if (showDimensionLines && checkedCotes?.length) {
+      const COLS = { ok: "rgba(22,163,74,0.95)", warn: "rgba(234,88,12,0.95)", ko: "rgba(220,38,38,0.95)" };
+      ctx.save();
+      checkedCotes.forEach((c) => {
+        if (c.ignored) return;
+        const isSel = c.index === selectedCheckedIndex;
+        let eff = c.status;
+        [c.facade_status, c.chain_status].forEach((x) => { if (x === "ko" || (x === "warn" && eff === "ok")) eff = x; });
+        const col = COLS[eff] || COLS.ok;
+        ctx.strokeStyle = isSel ? "rgba(245, 158, 11, 1)" : col;
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = (isSel ? 4 : 2.5) / zoom;
+        if (isSel) { ctx.shadowColor = "rgba(245, 158, 11, 0.9)"; ctx.shadowBlur = 12 / zoom; }
+        ctx.beginPath(); ctx.moveTo(c.x1, c.y1); ctx.lineTo(c.x2, c.y2); ctx.stroke();
+        const tick = 6 / zoom;
+        const dx = c.x2 - c.x1, dy = c.y2 - c.y1, len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len, ny = dx / len;
+        [[c.x1, c.y1], [c.x2, c.y2]].forEach(([x, y]) => {
+          ctx.beginPath(); ctx.moveTo(x + nx * tick, y + ny * tick); ctx.lineTo(x - nx * tick, y - ny * tick); ctx.stroke();
+        });
+        const label = c.status === "ok" && eff !== "ok"
+          ? `#${c.index} ${Number(c.indicated_m).toFixed(2)} ${c.facade_status ? "FAÇADE" : "CHAÎNE"} ${eff === "ko" ? "KO" : "?"}`
+          : c.status === "ok"
+          ? `#${c.index} ${Number(c.measured_m).toFixed(2)}`
+          : `#${c.index} ${Number(c.indicated_m).toFixed(2)}→${Number(c.measured_m).toFixed(2)} (${c.delta_cm > 0 ? "+" : ""}${Math.round(c.delta_cm)} cm)`;
+        const cx = (c.x1 + c.x2) / 2, cy = (c.y1 + c.y2) / 2;
+        ctx.font = `bold ${(isSel ? 14 : 11) / zoom}px system-ui`;
+        const w = ctx.measureText(label).width + 8 / zoom, h = (isSel ? 19 : 15) / zoom;
+        const vertical = Math.abs(dy) > Math.abs(dx);
+        const lx = vertical ? cx + tick + 4 / zoom + w / 2 : cx;
+        const ly = vertical ? cy : cy - tick - h / 2 - 2 / zoom;
+        ctx.fillRect(lx - w / 2, ly - h / 2, w, h);
+        ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(label, lx, ly);
+        ctx.textBaseline = "alphabetic";
+        ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+      });
+      ctx.restore();
+    }
+
     // AI DIMENSION LINES OVERLAY (traits de cote détectés par l'IA)
     // Coordonnées normalisées 0-1 → converties dans l'espace image
-    if (showDimensionLines && dimensionLines?.length && imgRef.current) {
+    if (showDimensionLines && !checkedCotes?.length && dimensionLines?.length && imgRef.current) {
       const W = imgRef.current.naturalWidth;
       const H = imgRef.current.naturalHeight;
       ctx.save();
@@ -369,45 +421,89 @@ export default function PlanCanvas({
       });
     });
 
-    // MESURES ENREGISTRÉES (iter65) — teal, gérées via le volet Objets
+    // MESURES ENREGISTRÉES (iter65) — couleur personnalisable par cote (plancher, murs…)
+    const hexToRgba = (hex, a) => {
+      const h = String(hex || "#0d9488").replace("#", "");
+      const f = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+      const n = parseInt(f, 16);
+      return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+    };
     (measurements || []).forEach((m) => {
-      const pts = m.points || [];
-      if (pts.length < 2) return;
+      const col = m.color || "#0d9488";
+      const isHi = highlightIds && m.measurement_id && highlightIds.has(m.measurement_id);
       const isPoly = m.kind === "polygon";
-      ctx.strokeStyle = "rgba(13, 148, 136, 0.95)";
-      ctx.lineWidth = 2 / zoom;
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      pts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1])));
-      if (isPoly) {
-        ctx.closePath();
-        ctx.fillStyle = "rgba(13, 148, 136, 0.16)";
-        ctx.fill();
-      }
-      ctx.stroke();
-      ctx.fillStyle = "rgba(13, 148, 136, 1)";
-      pts.forEach((p) => {
+      // Cumul mur : chaque tronçon dessiné séparément (les fenêtres = trous)
+      const isCumul = m.kind === "cumulative" && Array.isArray(m.segments) && m.segments.length;
+      // Cumul surface : plusieurs zones remplies additionnées
+      const isCumulArea = m.kind === "cumulative_area" && Array.isArray(m.polygons) && m.polygons.length;
+      const fillPoly = isPoly || isCumulArea;
+      const segs = isCumul ? m.segments : isCumulArea ? m.polygons : [m.points || []];
+      let allPts = [];
+      segs.forEach((pts) => {
+        if (!pts || pts.length < 2) return;
+        allPts = allPts.concat(pts);
+        if (isHi) {
+          ctx.strokeStyle = "rgba(245,158,11,0.85)";
+          ctx.lineWidth = (isCumul ? 10 : 8) / zoom;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          pts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1])));
+          ctx.stroke();
+        }
+        ctx.strokeStyle = hexToRgba(col, 0.95);
+        ctx.lineWidth = (isCumul ? 3 : 2) / zoom;
+        ctx.setLineDash([]);
         ctx.beginPath();
-        ctx.arc(p[0], p[1], 3 / zoom, 0, Math.PI * 2);
-        ctx.fill();
+        pts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1])));
+        if (fillPoly) {
+          ctx.closePath();
+          ctx.fillStyle = hexToRgba(col, 0.20);
+          ctx.fill();
+        }
+        ctx.stroke();
+        ctx.fillStyle = hexToRgba(col, 1);
+        pts.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], 3 / zoom, 0, Math.PI * 2);
+          ctx.fill();
+        });
       });
+      // Ouvertures déduites (fenêtres/portes) — trait blanc par-dessus le mur
+      (m.openings || []).forEach((op) => {
+        const opp = op.points;
+        if (Array.isArray(opp) && opp.length === 2) {
+          ctx.strokeStyle = "rgba(255,255,255,0.95)";
+          ctx.lineWidth = 5 / zoom;
+          ctx.beginPath();
+          ctx.moveTo(opp[0][0], opp[0][1]);
+          ctx.lineTo(opp[1][0], opp[1][1]);
+          ctx.stroke();
+        }
+      });
+      if (allPts.length < 2) return;
       let mx, my;
-      if (isPoly) {
-        mx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
-        my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+      if (fillPoly) {
+        mx = allPts.reduce((s, p) => s + p[0], 0) / allPts.length;
+        my = allPts.reduce((s, p) => s + p[1], 0) / allPts.length;
+      } else if (isCumul) {
+        const first = segs[0];
+        mx = (first[0][0] + first[first.length - 1][0]) / 2;
+        my = (first[0][1] + first[first.length - 1][1]) / 2;
       } else {
+        const pts = segs[0];
         const midIdx = Math.floor((pts.length - 1) / 2);
         const [ax, ay] = pts[midIdx];
         const [bx, by] = pts[Math.min(midIdx + 1, pts.length - 1)];
         mx = (ax + bx) / 2; my = (ay + by) / 2;
       }
-      const val = isPoly
+      const val = fillPoly
         ? `${Number(m.area_m2 ?? 0).toFixed(2)} m²`
         : `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
-      const label = m.label ? `${m.label} · ${val}` : val;
+      const suffix = isCumul ? ` (${segs.length} tronçons)` : isCumulArea ? ` (${segs.length} zones)` : "";
+      const label = (m.label ? `${m.label} · ${val}` : val) + suffix;
       ctx.font = `bold ${12 / zoom}px system-ui`;
       const w = ctx.measureText(label).width + 8 / zoom;
-      ctx.fillStyle = "rgba(13, 148, 136, 0.95)";
+      ctx.fillStyle = isHi ? "rgba(245,158,11,0.98)" : hexToRgba(col, 0.95);
       ctx.fillRect(mx - w / 2, my - 9 / zoom, w, 18 / zoom);
       ctx.fillStyle = "#fff";
       ctx.textAlign = "center";
@@ -415,6 +511,36 @@ export default function PlanCanvas({
       ctx.fillText(label, mx, my);
       ctx.textBaseline = "alphabetic";
     });
+
+    // CUMUL EN COURS — tronçons/zones mémorisés mais pas encore enregistrés
+    if (cumulSegments && cumulSegments.length) {
+      const cc = cumulColor || "#dc2626";
+      const isAreaPreview = tool === TOOLS.SURFACE;
+      cumulSegments.forEach((seg, si) => {
+        if (!seg || seg.length < 2) return;
+        ctx.strokeStyle = hexToRgba(cc, 0.95);
+        ctx.lineWidth = 3 / zoom;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        seg.forEach((p, i) => (i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1])));
+        if (isAreaPreview && seg.length >= 3) {
+          ctx.closePath();
+          ctx.fillStyle = hexToRgba(cc, 0.18);
+          ctx.fill();
+        }
+        ctx.stroke();
+        ctx.fillStyle = hexToRgba(cc, 1);
+        seg.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], 3.5 / zoom, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        const [bx, by] = seg[0];
+        ctx.font = `bold ${11 / zoom}px system-ui`;
+        ctx.fillStyle = hexToRgba(cc, 1);
+        ctx.fillText(`${isAreaPreview ? "Z" : "T"}${si + 1}`, bx + 6 / zoom, by - 6 / zoom);
+      });
+    }
 
     // ============ QUOTERPLAN-LIKE ANNOTATIONS ============
 
@@ -677,6 +803,17 @@ export default function PlanCanvas({
     }
     ctx.restore();
 
+    // Draw the snapped measurement target in image space, above every overlay.
+    if (hoverPoint && tool !== TOOLS.SELECT) {
+      ctx.save();
+      ctx.translate(c.width / 2 + offset.x, c.height / 2 + offset.y);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-imgRef.current.width / 2, -imgRef.current.height / 2);
+      drawMeasureTarget(ctx, hoverPoint, zoom);
+      ctx.restore();
+    }
+
     // LÉGENDE ÉCARTS (iter65) — espace écran, coin bas-gauche
     if (showDeltas && rooms.some((r) => r.surface_delta_pct != null)) {
       ctx.save();
@@ -701,11 +838,11 @@ export default function PlanCanvas({
       ctx.textBaseline = "alphabetic";
       ctx.restore();
     }
-  }, [pageData, points, rooms, zoom, offset, rotation, hoverPoint, tool,
+  }, [points, rooms, zoom, offset, rotation, hoverPoint, tool,
        calibration, detectedWalls, showWalls, pixelsPerMeter,
        dimensionLines, showDimensionLines, annotations, activeCounterId,
-       selectedCoteIndex, showDeltas, measurements,
-       structure, showStructure, selectedStruct, contrast, brightness]);
+       selectedCoteIndex, showDeltas, measurements, checkedCotes, selectedCheckedIndex,
+       structure, showStructure, selectedStruct, contrast, brightness, cumulSegments, cumulColor, highlightIds]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -731,6 +868,18 @@ export default function PlanCanvas({
         const hit = hitStructItem(rx, ry);
         if (hit) { onStructSelect({ type: hit.type, id: hit.id }); return; }
         onStructSelect(null);
+      }
+      // Cotes contrôlées cliquables (priorité sur les cotes IA)
+      if (onCheckedCoteClick && showDimensionLines && checkedCotes?.length) {
+        const tolC = 12 / zoom;
+        let bestC = null, bestDC = Infinity;
+        checkedCotes.forEach((c) => {
+          if (c.ignored) return;
+          const dd = pointSegDist(rx, ry, c.x1, c.y1, c.x2, c.y2);
+          if (dd < tolC && dd < bestDC) { bestC = c.index; bestDC = dd; }
+        });
+        onCheckedCoteClick(bestC);
+        return;
       }
       // Cotes IA cliquables : hit-test au clic (pas au drag)
       if (!onCoteClick) return;
@@ -848,9 +997,11 @@ export default function PlanCanvas({
   const cursorClass =
     tool === TOOLS.SELECT ? "cursor-grab" : "cursor-crosshair";
 
-  // Double-clic gauche = terminer la mesure en cours (le clic suivant en reprend une nouvelle)
+  // Double-clic gauche = terminer la mesure en cours (le clic suivant en reprend une nouvelle).
+  // Note : on n'exige PAS le déverrouillage — les clics de mesure fonctionnent même verrouillé,
+  // donc le double-clic de fin doit aussi fonctionner (cohérence + fix « impossible de mémoriser »).
   const handleDoubleClick = (e) => {
-    if (locked || tool === TOOLS.SELECT || !onCanvasDoubleClick) return;
+    if (tool === TOOLS.SELECT || !onCanvasDoubleClick) return;
     e.preventDefault();
     onCanvasDoubleClick();
   };
@@ -866,7 +1017,8 @@ export default function PlanCanvas({
       onMouseUp={handleMouseUp}
       onMouseLeave={() => { handleMouseUp(); handleMouseLeave(); }}
       className={`w-full block bg-secondary/30 ${cursorClass} touch-none select-none`}
-      style={{ minHeight: 500 }}
+      style={{ minHeight: 500, cursor: tool === TOOLS.SELECT ? (locked ? "default" : "grab") : 'url("/plan-measure-cursor.svg") 16 16, crosshair' }}
+      data-cursor-mode={tool === TOOLS.SELECT ? (locked ? "locked-pan" : "pan") : "high-contrast-measure"}
       data-testid="plan-canvas"
     />
   );

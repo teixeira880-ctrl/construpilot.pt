@@ -3,38 +3,39 @@ import {
   Calculator, Sparkles, Camera, FileText, Search, MessageSquare, ShieldCheck,
   Ruler, Home as HomeIcon, HardHat, Layers, Building2, Droplets, Waves,
   Truck, PenTool, FileSignature, CreditCard, CalendarRange, Users, Boxes,
-  Cuboid, ArrowRight, CheckCircle2, Smartphone,
+  Cuboid, ArrowRight, CheckCircle2, Smartphone, Download, PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Nav, Footer } from "@/components/Nav";
 import { SEO } from "@/components/SEO";
+import { FeatureClips } from "@/components/FeatureClips";
 import HelpChatbot from "@/components/HelpChatbot";
 
 const PARTICULIER = [
-  { icon: Calculator, title: "Estimador de obras", desc: "Orçamento instantâneo de materiais + mão de obra, por tipo de projeto." },
-  { icon: Sparkles, title: "Smart Project", desc: "Descreva «reabilitar casa de banho 8 m²» → lotes, materiais e orçamento gerados pela IA." },
-  { icon: Camera, title: "Análise de photo", desc: "Envie uma foto de um compartimento ou de um defeito e a IA propõe soluções." },
-  { icon: FileText, title: "Scanner de devis", desc: "Importe um orçamento em PDF: a IA explica-o e verifica os montantes." },
-  { icon: Ruler, title: "Calculateurs", desc: "Superfícies, volumes, quantités (peinture, carrelage, béton…)." },
-  { icon: Search, title: "Pesquisa de preços", desc: "Ordens de grandeza de preços de materiais e serviços." },
-  { icon: MessageSquare, title: "Coach IA travaux", desc: "Um assistente que responde às suas dúvidas de obra, em português." },
-  { icon: CalendarRange, title: "Planeamento das fases", desc: "Visualize a ordem das etapas da sua obra." },
-  { icon: ShieldCheck, title: "Sécurité d'abord", desc: "Gás, eletricidade, paredes estruturais: a app encaminha sempre para um profissional." },
+  { icon: Calculator, title: "Estimateur de travaux", desc: "Chiffrage instantané matériaux + main d'œuvre, par type de projet." },
+  { icon: Sparkles, title: "Smart Project", desc: "Décrivez « rénover salle de bain 8 m² » → lots, matériaux et budget générés par l'IA." },
+  { icon: Camera, title: "Analyse de photo", desc: "Envoyez une photo d'une pièce ou d'un défaut, l'IA propose des pistes." },
+  { icon: FileText, title: "Scanner de devis", desc: "Importez un devis PDF : l'IA l'explique et vérifie les montants." },
+  { icon: Ruler, title: "Calculateurs", desc: "Surfaces, volumes, quantités (peinture, carrelage, béton…)." },
+  { icon: Search, title: "Recherche de prix", desc: "Ordres de grandeur de prix matériaux et prestations." },
+  { icon: MessageSquare, title: "Coach IA travaux", desc: "Un assistant qui répond à vos questions chantier, en français." },
+  { icon: CalendarRange, title: "Planning des phases", desc: "Visualisez l'ordre des étapes de votre chantier." },
+  { icon: ShieldCheck, title: "Sécurité d'abord", desc: "Gaz, électricité, murs porteurs : l'app oriente toujours vers un pro." },
 ];
 
 const PRO = [
-  { icon: Cuboid, title: "Análise de plans DWG/DXF/PDF", desc: "Render fidèle (cotes, textes) et medição exact : paredes, planchers, escaliers, poutres, poteaux." },
-  { icon: Building2, title: "Medição béton & structure", desc: "Quantités béton et devis détaillé par corps d'état, marges et sinal." },
-  { icon: HardHat, title: "Ferraillage / Acier", desc: "Extração de varões e malhas → mapa de aços e quantidades para encomenda." },
+  { icon: Cuboid, title: "Analyse de plans DWG/DXF/PDF", desc: "Rendu fidèle (cotes, textes) et métré exact : murs, planchers, escaliers, poutres, poteaux." },
+  { icon: Building2, title: "Métré béton & structure", desc: "Quantités béton et devis détaillé par corps d'état, marges et acompte." },
+  { icon: HardHat, title: "Ferraillage / Acier", desc: "Extraction des barres HA et treillis → bordereau et quantités commandables." },
   { icon: Droplets, title: "Étanchéité", desc: "Toiture-terrasse : bordereau par couche → rouleaux, bidons, panneaux." },
   { icon: Layers, title: "Toiture", desc: "Tuiles/ardoises/bac acier, écran, liteaux, faîtage, noues, gouttières." },
-  { icon: Waves, title: "VRD / Réseaux", desc: "Águas pluviais, esgotos, AA, telecom, gás + medição das valas (escavação, areia, aterro, reposição)." },
-  { icon: Boxes, title: "Biblioteca de preços DPGF", desc: "Importe o seu Excel/BPU para sobrepor os preços da IA." },
-  { icon: Truck, title: "Aprovisionamento & fornecedores", desc: "Orçamentação, destaque no plano, exportação CSV e nota de encomenda por email." },
-  { icon: FileSignature, title: "Orçamento signables en ligne", desc: "Os seus clientes aceitam e assinam o orçamento à distância." },
-  { icon: CreditCard, title: "Sinal Stripe", desc: "Cobre 30% de sinal na assinatura do orçamento." },
-  { icon: Users, title: "Equipa & portail Pro", desc: "Collaborateurs, rôles, portail dédié et gestion de projets." },
-  { icon: Smartphone, title: "Application mobile (PWA)", desc: "Instale o ConstruPilot no telemóvel para usar em obra." },
+  { icon: Waves, title: "VRD / Réseaux", desc: "EP, EU, AEP, télécom, gaz + métré des tranchées (déblai, sable, remblai, réfection)." },
+  { icon: Boxes, title: "Bibliothèque de prix DPGF", desc: "Importez votre Excel/BPU pour surcharger les prix de l'IA." },
+  { icon: Truck, title: "Approvisionnement & fournisseurs", desc: "Chiffrage, surlignage sur le plan, export CSV et bon de commande par e-mail." },
+  { icon: FileSignature, title: "Devis signables en ligne", desc: "Vos clients acceptent et signent le devis à distance." },
+  { icon: CreditCard, title: "Acompte Stripe", desc: "Encaissez 30 % d'acompte à la signature du devis." },
+  { icon: Users, title: "Équipe & portail Pro", desc: "Collaborateurs, rôles, portail dédié et gestion de projets." },
+  { icon: Smartphone, title: "Application mobile (PWA)", desc: "Installez ConstruPilot sur mobile pour le chantier." },
 ];
 
 const Card = ({ icon: Icon, title, desc, tid }) => (
@@ -50,22 +51,24 @@ const Card = ({ icon: Icon, title, desc, tid }) => (
 export default function Features() {
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Fonctionnalités" description="Toutes les fonctionnalités ConstruPilot pour particuliers et professionnels du bâtiment : estimation IA, análise de plans DWG, medição, devis, approvisionnement." canonical="/fonctionnalites" />
+      <SEO title="Fonctionnalités" description="Toutes les fonctionnalités ConstruPilot pour particuliers et professionnels du bâtiment : estimation IA, analyse de plans DWG, métré, devis, approvisionnement." canonical="/fonctionnalites" />
       <Nav />
 
       <section className="max-w-6xl mx-auto px-4 pt-16 pb-10 text-center">
         <span className="overline text-primary">Fonctionnalités</span>
         <h1 className="mt-3 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-          Todo o ConstruPilot, <span className="text-primary">num relance</span>
+          Tout ConstruPilot, <span className="text-primary">en un coup d'œil</span>
         </h1>
         <p className="mt-5 text-base text-muted-foreground max-w-2xl mx-auto">
-          Des outils simples pour les particuliers, une suite technique puissante pour les pros du bâtiment. Estimativa, plans, medição, devis et approvisionnement — propulsés par l'IA.
+          Des outils simples pour les particuliers, une suite technique puissante pour les pros du bâtiment. Estimation, plans, métré, devis et approvisionnement — propulsés par l'IA.
         </p>
         <div className="mt-8 flex flex-wrap gap-3 justify-center">
           <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-start">Commencer gratuitement <ArrowRight className="h-4 w-4" /></Button></Link>
-          <Link to="/tarifs"><Button variant="outline" className="rounded-sm h-11" data-testid="features-cta-pricing">Ver preços</Button></Link>
+          <Link to="/tarifs"><Button variant="outline" className="rounded-sm h-11" data-testid="features-cta-pricing">Voir les tarifs</Button></Link>
         </div>
       </section>
+
+      <FeatureClips />
 
       <section className="max-w-6xl mx-auto px-4 py-10">
         <div className="flex items-center gap-3 mb-6">
@@ -83,22 +86,58 @@ export default function Features() {
           <h2 className="font-display text-2xl font-bold">Pour les professionnels</h2>
           <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Offre Pro</span>
         </div>
-        <p className="text-sm text-muted-foreground mb-6">Medição exact desde vos plans, approvisionnement chantier et devis professionnels.</p>
+        <p className="text-sm text-muted-foreground mb-6">Métré exact depuis vos plans, approvisionnement chantier et devis professionnels.</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="features-pro">
           {PRO.map((f, i) => <Card key={i} {...f} tid={`feature-pro-${i}`} />)}
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 py-10" data-testid="features-downloads">
+        <div className="surface p-6 rounded-xl">
+          <h2 className="font-display text-xl font-bold flex items-center gap-2"><Download className="h-5 w-5 text-primary" /> Toutes les fonctionnalités en PDF et PowerPoint</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Brochure commerciale (1 offre par page) et catalogue exhaustif — Particuliers, Premium, Pro, Pro Business, Blog & SEO, Radar Chantiers, API. En français.</p>
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              ["Brochure (PDF)", "/docs/ConstruPilot_Brochure_Fonctionnalites.pdf", "features-dl-brochure-pdf"],
+              ["Brochure (PowerPoint)", "/docs/ConstruPilot_Brochure_Fonctionnalites.pptx", "features-dl-brochure-pptx"],
+              ["Catalogue complet (PDF)", "/docs/ConstruPilot_Catalogue_Complet.pdf", "features-dl-catalogue-pdf"],
+              ["Catalogue complet (PowerPoint)", "/docs/ConstruPilot_Catalogue_Complet.pptx", "features-dl-catalogue-pptx"],
+            ].map(([label, href, tid]) => (
+              <a key={tid} href={href} download data-testid={tid}
+                 className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
+                <FileText className="h-4 w-4 text-primary shrink-0" />{label}
+              </a>
+            ))}
+          </div>
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="features-videos">
+            {[
+              ["Vidéo démo courte 16:9 (2 min)", "/docs/ConstruPilot_Demo_Courte_16x9.mp4", "features-video-short-169"],
+              ["Vidéo démo courte 9:16 (réels)", "/docs/ConstruPilot_Demo_Courte_9x16.mp4", "features-video-short-916"],
+              ["Vidéo démo complète 16:9 (4 min)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
+              ["Vidéo démo complète 9:16", "/docs/ConstruPilot_Demo_Complete_9x16.mp4", "features-video-full-916"],
+              ["Vídeo demo curta PT 16:9", "/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4", "features-video-pt-short-169"],
+              ["Vídeo demo curta PT 9:16", "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4", "features-video-pt-short-916"],
+              ["Vídeo demo completa PT 16:9", "/docs/ConstruPilot_Demo_Completa_PT_16x9.mp4", "features-video-pt-full-169"],
+            ].map(([label, href, tid]) => (
+              <a key={tid} href={href} target="_blank" rel="noreferrer" data-testid={tid}
+                 className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
+                <PlayCircle className="h-4 w-4 text-primary shrink-0" />{label}
+              </a>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="max-w-4xl mx-auto px-4 py-14 text-center">
         <div className="surface p-8 rounded-xl">
           <PenTool className="h-8 w-8 text-primary mx-auto" />
-          <h2 className="mt-4 font-display text-2xl font-bold">Pronto à estimer votre premier chantier ?</h2>
-          <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">Créez un compte en 30 secondes, ou testez avec un compte démo. Nenhuma carte bancaire obrigatória pour commencer.</p>
+          <h2 className="mt-4 font-display text-2xl font-bold">Prêt à estimer votre premier chantier ?</h2>
+          <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">Créez un compte en 30 secondes, ou testez avec un compte démo. Aucune carte bancaire requise pour commencer.</p>
           <div className="mt-6 flex flex-wrap gap-3 justify-center">
-            <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-bottom">Criar mon compte <ArrowRight className="h-4 w-4" /></Button></Link>
+            <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-bottom">Créer mon compte <ArrowRight className="h-4 w-4" /></Button></Link>
           </div>
           <div className="mt-6 flex flex-wrap gap-4 justify-center text-xs text-muted-foreground">
-            {["Sem compromisso", "Contas démo disponíveis", "Support en français"].map((t, i) => (
+            {["Sans engagement", "Comptes démo disponibles", "Support en français"].map((t, i) => (
               <span key={i} className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />{t}</span>
             ))}
           </div>

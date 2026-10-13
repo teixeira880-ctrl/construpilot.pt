@@ -36,7 +36,7 @@ export default function PhotoAnalyse() {
   };
 
   const analyse = async () => {
-    if (!b64) return toast.error("Importe uma fotografia");
+    if (!b64) return toast.error("Importez une photo");
     setBusy(true);
     try {
       const { data } = await api.post("/vision/photo", { image_base64: b64, note });
@@ -44,7 +44,7 @@ export default function PhotoAnalyse() {
       const d = data.analysis.estimated_dimensions || {};
       setDims({ length_m: d.length_m || "", width_m: d.width_m || "", height_m: d.height_m || "" });
     } catch {
-      toast.error("Análise impossível");
+      toast.error("Analyse impossible");
     } finally {
       setBusy(false);
     }
@@ -52,7 +52,7 @@ export default function PhotoAnalyse() {
 
   const recompute = async () => {
     const area = Number(dims.length_m) * Number(dims.width_m);
-    if (!area) return toast.error("Preencha comprimento e largura");
+    if (!area) return toast.error("Renseignez longueur et largeur");
     setBusy(true);
     try {
       const room = (result.analysis.room_type || "").toLowerCase();
@@ -63,15 +63,15 @@ export default function PhotoAnalyse() {
         lots: (result.analysis.recommended_works || []).map((w) => w.lot).filter(Boolean),
       });
       setResult({ ...result, estimation: data, confirmed: true });
-      toast.success("Estimativa recalculada com as suas dimensões confirmadas");
-    } catch { toast.error("Recálculo impossível"); }
+      toast.success("Estimation recalculée avec vos dimensions confirmées");
+    } catch { toast.error("Recalcul impossible"); }
     finally { setBusy(false); }
   };
 
   return (
     <div className="grid gap-10">
       <SEO title="Analyse photo chantier IA" description="Prenez une photo de votre pièce : l'IA ConstruPilot identifie l'état, les travaux nécessaires et chiffre la rénovation en 30 secondes. Gratuit." keywords="analyse photo travaux, estimation par photo, IA rénovation photo, chantier photo estimation" canonical="/photo" />
-      <SectionTitle as="h1" over="Estimativa por IA a partir de fotografias" title="Fotografe, a IA identifica os trabalhos">
+      <SectionTitle as="h1" over="Estimation par IA à partir de photos" title="Photographiez, l'IA identifie les travaux">
         Murs, sols, plafonds, ouvertures, sanitaires, état général : l'IA propose les travaux probables.
         Les mesures sont approximatives — confirmez-les avant tout calcul définitif.
       </SectionTitle>
@@ -182,7 +182,7 @@ export default function PhotoAnalyse() {
           <div className="flex items-center gap-3">
             <Camera className="h-5 w-5 text-primary" />
             <h2 className="font-display text-2xl font-bold tracking-tight">
-              Estimativa {result.confirmed ? "confirmada" : "preliminar"}
+              Estimation {result.confirmed ? "confirmée" : "préliminaire"}
             </h2>
           </div>
           <EstimationView est={result.estimation} />

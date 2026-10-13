@@ -1,0 +1,11 @@
+--- current/backend/engines/plan_pdf_i18n.py
++++ zip/backend/engines/plan_pdf_i18n.py
+@@ -12,6 +12,8 @@
+ LANG: contextvars.ContextVar[str] = contextvars.ContextVar("plan_pdf_lang", default="fr")
+ 
+ FR_PT: dict[str, str] = {
++    "nu int. droit": "face int. direita", "nu int. gauche": "face int. esquerda",
++    "nu int. haut": "face int. superior", "nu int. bas": "face int. inferior",
+     # phrases longues
+     "Analyse automatique de cohérence du plan — contrôle géométrique et dimensionnel": "Análise automática de coerência da planta — controlo geométrico e dimensional",
+     "Chaque cote inscrite sur le plan est mesurée à l'échelle et comparée à sa valeur indiquée.": "Cada cota inscrita na planta é medida à escala e comparada com o valor indicado.",

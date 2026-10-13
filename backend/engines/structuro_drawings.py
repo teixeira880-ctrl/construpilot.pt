@@ -1,0 +1,288 @@
+"""Project-based drawing geometry. No structural design or engineering approval.
+
+All coordinates are metres. Openings and bar paths use the element's local
+x/y/z frame, z=0 at its base. Only rectangular prismatic members/openings.
+Bar points are theoretical intersections; bends are circular centreline fillets.
+"""
+from __future__ import annotations
+import hashlib
+import json
+import math
+import textwrap
+from typing import Annotated, Literal
+from pydantic import BaseModel, ConfigDict, Field, model_validator, model_serializer
+
+VERSION = "drawing-dossier-1.1.0"
+ID = Annotated[str, Field(pattern=r"^[A-Za-z][A-Za-z0-9_-]{0,59}$")]
+Coord = Annotated[float, Field(ge=-10000, le=10000)]
+Size = Annotated[float, Field(gt=0, le=10000)]
+Text = Annotated[str, Field(max_length=600)]
+
+
+class Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+
+class Point(Strict):
+    x: Coord
+    y: Coord
+    z: Coord
+
+    def xyz(self):
+        return (self.x, self.y, self.z)
+
+
+class Placement(Strict):
+    element_id: ID
+    base_z_m: Coord
+    source: Text = ""
+    generated_by: Literal["auto-drafting-1.0.0"] | None = None
+
+    @model_serializer(mode="wrap")
+    def serialize(self, handler):
+        data = handler(self)
+        if self.generated_by is None: data.pop("generated_by", None)
+        return data
+
+
+class Opening(Strict):
+    id: ID
+    element_id: ID
+    x_m: Coord
+    y_m: Coord
+    z_m: Coord
+    length_m: Size
+    width_m: Size
+    height_m: Size
+    source: Text = ""
+
+    def box(self):
+        return ((self.x_m, self.y_m, self.z_m),
+                (self.x_m+self.length_m, self.y_m+self.width_m, self.z_m+self.height_m))
+
+
+class Cut(Strict):
+    id: ID
+    axis: Literal["x", "y"]  # horizontal section coordinate; other axis is fixed
+    at_m: Coord
+
+
+class BarGroup(Strict):
+    mark: ID
+    element_id: ID
+    diameter_mm: float = Field(ge=4, le=40)
+    count: int = Field(ge=1, le=500)
+    points: list[Point] = Field(min_length=2, max_length=12)
+    repeat: Point  # translation between identical bars; count includes first
+    bend_radius_mm: float = Field(ge=0, le=1000)
+    cover_mm: float = Field(ge=0, le=300)
+    source: Text = ""
+    role: Text = ""
+    generated_by: Literal["auto-drafting-1.0.0"] | None = None
+
+    @model_serializer(mode="wrap")
+    def preserve_manual(self,handler):
+        data=handler(self)
+        if self.generated_by is None:data.pop("generated_by",None)
+        return data
+
+
+class DrawingStudy(Strict):
+    basis: Literal["design_draft", "demonstration"] = "design_draft"
+    placements: list[Placement] = Field(default_factory=list, max_length=200)
+    openings: list[Opening] = Field(default_factory=list, max_length=100)
+    cuts: list[Cut] = Field(default_factory=list, max_length=12)
+    bars: list[BarGroup] = Field(default_factory=list, max_length=80)
+    notes: list[Text] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def uniqueness(self):
+        for rows, key in ((self.placements,"element_id"),(self.openings,"id"),(self.cuts,"id"),(self.bars,"mark")):
+            values=[getattr(r,key) for r in rows]
+            if len(values)!=len(set(values)):
+                raise ValueError(f"Repères du dossier en double : {key}")
+        if sum(b.count for b in self.bars)>4000:
+            raise ValueError("Maximum 4 000 barres dessinées par dossier")
+        work=sum(b.count*(2+42*(len(b.points)-2))*(1+sum(o.element_id==b.element_id for o in self.openings)) for b in self.bars)
+        if work>2_000_000:
+            raise ValueError("Dossier trop complexe : répartissez les aciers et réservations dans plusieurs études")
+        return self
+
+
+def add(a,b): return tuple(x+y for x,y in zip(a,b))
+def sub(a,b): return tuple(x-y for x,y in zip(a,b))
+def mul(a,s): return tuple(x*s for x in a)
+def dot(a,b): return sum(x*y for x,y in zip(a,b))
+def unit(a): return mul(a,1/math.sqrt(dot(a,a)))
+
+
+def bar_geometry(bar):
+    """Exact developed length + tessellated 3D circular centreline for drawing.
+
+    Positive turns require an explicit centreline radius. No default mandrel,
+    hooks, anchorage or lap is invented. A closed polyline isn't an end closure.
+    """
+    pts=[p.xyz() for p in bar.points]
+    lengths=[math.dist(a,b) for a,b in zip(pts,pts[1:])]
+    if min(lengths)<1e-6:
+        raise ValueError("Deux points de barre sont confondus")
+    radius=bar.bend_radius_mm/1000
+    trims=[0.]*len(lengths); bends={}; adjustment=0.
+    for i in range(1,len(pts)-1):
+        u=unit(sub(pts[i],pts[i-1])); v=unit(sub(pts[i+1],pts[i]))
+        theta=math.acos(max(-1.,min(1.,dot(u,v))))
+        if theta<1e-7: continue
+        if math.pi-theta<1e-6: raise ValueError("Demi-tour à décrire par plusieurs points")
+        if radius<=bar.diameter_mm/2000:
+            raise ValueError("Rayon à l'axe supérieur au demi-diamètre requis pour un pli")
+        cut=radius*math.tan(theta/2)
+        trims[i-1]+=cut;trims[i]+=cut;adjustment+=radius*theta-2*cut
+        start=sub(pts[i],mul(u,cut)); end=add(pts[i],mul(v,cut))
+        normal=unit(sub(v,mul(u,math.cos(theta))))
+        center=add(start,mul(normal,radius))
+        a=sub(start,center)
+        steps=max(2,math.ceil(theta/(math.pi/36)))
+        angles={theta*j/steps for j in range(steps+1)}
+        for k in range(3):
+            extremum=math.atan2(u[k]*radius,a[k])
+            for j in range(-2,3):
+                candidate=extremum+j*math.pi
+                if 0<candidate<theta:angles.add(candidate)
+        arc=[add(center,add(mul(a,math.cos(t)),mul(u,radius*math.sin(t)))) for t in sorted(angles)]
+        arc[0]=start;arc[-1]=end
+        bends[i]=arc
+    if any(t>length+1e-8 for t,length in zip(trims,lengths)):
+        raise ValueError("Le rayon de pli ne tient pas entre les points")
+    path=[pts[0]]
+    for i in range(1,len(pts)-1): path.extend(bends.get(i,[pts[i]]))
+    path.append(pts[-1])
+    return sum(lengths)+adjustment,path
+
+
+def world(e, point, base=0.):
+    a=math.radians(e.angle_deg);x,y,z=point
+    return (e.x_m+x*math.cos(a)-y*math.sin(a),e.y_m+x*math.sin(a)+y*math.cos(a),base+z)
+
+
+def outline(e, box=None):
+    lo,hi=box or ((0.,0.,0.),(e.length_m,e.width_m,e.height_m))
+    return [world(e,(x,y,lo[2]))[:2] for x,y in ((lo[0],lo[1]),(hi[0],lo[1]),(hi[0],hi[1]),(lo[0],hi[1]))]
+
+
+def section_interval(poly, cut):
+    """Intersection of a convex footprint with x/y section line, including rotation."""
+    horizontal=0 if cut.axis=="x" else 1; other=1-horizontal
+    coords=[]
+    for a,b in zip(poly,poly[1:]+poly[:1]):
+        da=a[other]-cut.at_m;db=b[other]-cut.at_m
+        if abs(da)<1e-8:coords.append(a[horizontal])
+        if da*db<0:
+            t=da/(da-db);coords.append(a[horizontal]+t*(b[horizontal]-a[horizontal]))
+    return (min(coords),max(coords)) if coords and max(coords)-min(coords)>1e-8 else None
+
+
+def segment_hits_box(a,b,box,margin=0.):
+    """Slab intersection, including endpoints; expanded opening catches bar radius."""
+    lo,hi=box;t0,t1=0.,1.
+    for k in range(3):
+        low,high=lo[k]-margin,hi[k]+margin;d=b[k]-a[k]
+        if abs(d)<1e-12:
+            if a[k]<low or a[k]>high:return False
+        else:
+            q1,q2=sorted(((low-a[k])/d,(high-a[k])/d));t0=max(t0,q1);t1=min(t1,q2)
+            if t0>t1:return False
+    return True
+
+
+def compile_dossier(model, revision=1):
+    """Manifest, checks and nomenclature recomputed from this saved model only."""
+    from engines.structuro_calc import calculate
+    result=calculate(model);d=model.drawings
+    errors=[];warnings=[];rows=[];sheets=[]
+    def issue(code,ref,message): errors.append(dict(code=code,ref=ref,message=message))
+    if model.automation_generated_hash or (d and any(b.generated_by for b in d.bars)):
+        from engines.structuro_automation import generation_hash
+        if model.automation_generated_hash!=generation_hash(model):
+            issue("automation_stale","Automatisation","Données modifiées : relancer la génération automatique avant l'export.")
+    if not d:issue("missing_dossier","Dossier","Activez le dossier plans et renseignez les altitudes.")
+    if not model.elements:issue("missing_elements","Modèle","Aucun élément à dessiner.")
+    es={e.id:e for e in model.elements}
+    places={p.element_id:p for p in d.placements} if d else {}
+    valid=set()
+    for e in es.values():
+        if any(v is None for v in (e.x_m,e.y_m,e.length_m,e.width_m,e.height_m)):
+            issue("geometry",e.id,"Coordonnées x/y et trois dimensions requises.")
+        elif e.id not in places:issue("elevation",e.id,"Altitude de base manquante.")
+        else:valid.add(e.id)
+        if not e.reviewed:warnings.append(f"{e.id} : saisie de l'élément à contrôler.")
+    if d:
+        for p in d.placements:
+            if p.element_id not in es:issue("unknown_element",p.element_id,"Implantation sans élément correspondant.")
+            if not p.source.strip():warnings.append(f"{p.element_id} : source de l'altitude à renseigner.")
+        for o in d.openings:
+            e=es.get(o.element_id)
+            if o.element_id not in valid:issue("opening_element",o.id,"Réservation : élément absent ou géométrie incomplète.");continue
+            lo,hi=o.box();dims=(e.length_m,e.width_m,e.height_m)
+            if any(a<-1e-8 or b>size+1e-8 for a,b,size in zip(lo,hi,dims)):
+                issue("opening_outside",o.id,"La réservation sort du volume de son élément.")
+            if not o.source.strip():warnings.append(f"{o.id} : source de la réservation à renseigner.")
+        for b in d.bars:
+            if b.element_id not in valid:issue("bar_element",b.mark,"Barre : élément absent ou géométrie incomplète.");continue
+            try:length,path=bar_geometry(b)
+            except ValueError as ex:issue("bar_shape",b.mark,str(ex));continue
+            e=es[b.element_id];dims=(e.length_m,e.width_m,e.height_m)
+            cover=(b.cover_mm+b.diameter_mm/2)/1000
+            vec=b.repeat.xyz()
+            if b.count>1 and math.sqrt(dot(vec,vec))<b.diameter_mm/1000-1e-9:
+                issue("bar_repeat",b.mark,"Répétition trop faible : barres superposées.")
+            outside=False;hit=False
+            for i in range(b.count):
+                ps=[add(p,mul(vec,i)) for p in path]
+                # Arcs are sampled at <=5 degrees. Extra 1 mm tolerance envelope
+                # conservatively catches their deviation from the straight chords.
+                if any(p[k]<cover-1e-8 or p[k]>dims[k]-cover+1e-8 for p in ps for k in range(3)):
+                    outside=True
+                for o in d.openings:
+                    if o.element_id==b.element_id and any(segment_hits_box(a,c,o.box(),cover+.001) for a,c in zip(ps,ps[1:])):hit=True
+            if outside:issue("bar_cover",b.mark,"Une barre sort de l'élément ou de l'enrobage déclaré.")
+            if hit:issue("bar_opening",b.mark,"Une barre traverse une réservation ou son enrobage déclaré.")
+            if not b.source.strip():warnings.append(f"{b.mark} : justification du ferraillage à renseigner.")
+            mass=math.pi*(b.diameter_mm/1000)**2/4*7850*length*b.count
+            rows.append(dict(mark=b.mark,element_id=b.element_id,diameter_mm=b.diameter_mm,count=b.count,
+                developed_length_m=length,total_length_m=length*b.count,mass_kg=mass,
+                bend_radius_mm=b.bend_radius_mm,cover_mm=b.cover_mm,source=b.source,role=b.role))
+        for cut in d.cuts:
+            if not any(section_interval(outline(es[eid]),cut) for eid in valid):
+                issue("empty_cut",cut.id,"La coupe ne traverse aucun élément.")
+        if not d.cuts:warnings.append("Aucune coupe définie.")
+        if not d.bars:warnings.append("Aucun acier dessiné : pas de ferraillage ni de nomenclature générés.")
+        if d.openings:warnings.append("Les réservations sont dessinées ; le moteur gravitaire conserve les volumes bruts et ne modélise pas leur effet sur la résistance. Adaptez le schéma porteur.")
+    if result["status"]=="blocked":warnings.append("Calcul gravitaire incomplet : les plans ne sont pas justifiés par une descente de charges complète.")
+    if d and any(b.generated_by for b in d.bars):
+        warnings.append("Sections béton saisies ; choix automatique des aciers limité aux poutres simples et dalles pleines. Murs, poteaux, épaisseur et aciers des semelles non dimensionnés par cette chaîne.")
+        warnings.append("Longueurs d'ancrage et recouvrement calculées dans la note automatique ; implantation dans les appuis, assemblages et interactions entre groupes à vérifier.")
+    else:
+        warnings.append("Sections et aciers saisis : aucun dimensionnement global automatique. Ancrages, recouvrements, interactions entre groupes et règles constructives restent à vérifier.")
+    levels=list(dict.fromkeys(e.level for e in model.elements))
+    # Ordered, stable sheet families. Catalogue pagination never hides warnings.
+    lines=[]
+    for msg in warnings+(d.notes if d else []):
+        lines.extend(textwrap.wrap("• "+msg,width=90,subsequent_indent="  ") or [""])
+        lines.append("")
+    for i in range(0,max(1,len(lines)),28):
+        sheets.append(dict(id=f"G{i//28+1:02}",kind="general",title="Dossier et contrôles",lines=lines[i:i+28]))
+    for n,lev in enumerate(levels,1):sheets.append(dict(id=f"C{n:02}",kind="formwork",title=f"Coffrage - {lev}",level=lev))
+    for i in range(0,len(model.elements),12):sheets.append(dict(id=f"R{i//12+1:02}",kind="members",title="Repérage et dimensions du coffrage",offset=i))
+    if d:
+        for i in range(0,len(d.openings),12):sheets.append(dict(id=f"O{i//12+1:02}",kind="openings",title="Repérage et dimensions des réservations",offset=i))
+        for n,c in enumerate(d.cuts,1):sheets.append(dict(id=f"S{n:02}",kind="section",title=f"Coupe {c.id}",cut=c.id))
+        for n,lev in enumerate(levels,1):
+            if any(es.get(b.element_id) and es[b.element_id].level==lev for b in d.bars):sheets.append(dict(id=f"F{n:02}",kind="reinforcement",title=f"Ferraillage - {lev}",level=lev))
+        for n,b in enumerate(d.bars,1):sheets.append(dict(id=f"D{n:02}",kind="detail",title=f"Détail {b.mark} - {b.element_id}",mark=b.mark))
+        for i in range(0,len(rows),19):sheets.append(dict(id=f"N{i//19+1:02}",kind="schedule",title="Nomenclature des aciers",offset=i))
+    normalized=type(model).model_validate_json(model.model_dump_json()).model_dump(mode="json")
+    digest=hashlib.sha256(json.dumps(dict(version=VERSION,model=normalized),sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()).hexdigest()
+    return dict(version=VERSION,revision=revision,input_hash=result["input_hash"],drawing_hash=digest,
+        execution_ready=False,status="blocked" if errors else "demonstration" if d and d.basis=="demonstration" else "design_draft",
+        can_export=not errors,errors=errors,warnings=warnings,sheets=sheets,schedule=rows,
+        total_mass_kg=sum(r["mass_kg"] for r in rows),mechanical_status=result["status"])

@@ -14,6 +14,8 @@ import logging
 import os
 import re
 import uuid
+from engines.llm_keys import studies_key
+from engines.plan_ai import plan_model
 
 logger = logging.getLogger(__name__)
 
@@ -237,13 +239,15 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
 
 async def detect_structure(image_b64_png: str, width_px: int, height_px: int) -> dict:
     """Retourne {walls:[...], openings:[...]} en pixels. Toujours un dict."""
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    api_key = studies_key("gemini")
     if not api_key:
         return {"walls": [], "openings": [], "error": "EMERGENT_LLM_KEY absent"}
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        from emergentintegrations.llm.chat import ImageContent, UserMessage
+
+        from engines.expenses.metering import MeteredChat as LlmChat
         chat = LlmChat(
-            api_key=api_key, session_id="plan-structure",
+            api_key=api_key, session_id="plan-structure", expense_feature="plan_structure",
             system_message="Tu réponds toujours en JSON strict, sans markdown.",
         ).with_model("gemini", "gemini-3-flash-preview")
         raw = await chat.send_message(UserMessage(
@@ -291,7 +295,7 @@ async def refine_structure(image_b64_png: str, width_px: int, height_px: int,
     L'IA reçoit l'image + la structure actuelle + la consigne, et renvoie la structure
     COMPLÈTE mise à jour + un champ "reply" (phrase FR expliquant ce qui a changé).
     """
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    api_key = studies_key("gemini")
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent", "reply": "Clé IA absente."}
     cur_norm = _px_to_norm(current or {}, width_px, height_px)
@@ -312,9 +316,11 @@ async def refine_structure(image_b64_png: str, width_px: int, height_px: int,
           "\"reply\": \"...\" contenant UNE phrase en français expliquant ce que tu as modifié."
     )
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        from emergentintegrations.llm.chat import ImageContent, UserMessage
+
+        from engines.expenses.metering import MeteredChat as LlmChat
         chat = LlmChat(
-            api_key=api_key, session_id="plan-structure-refine",
+            api_key=api_key, session_id="plan-structure-refine", expense_feature="plan_structure_refine",
             system_message="Tu réponds toujours en JSON strict, sans markdown.",
         ).with_model("gemini", "gemini-3-flash-preview")
         raw = await chat.send_message(UserMessage(

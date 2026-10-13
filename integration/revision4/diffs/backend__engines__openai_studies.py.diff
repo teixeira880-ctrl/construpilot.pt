@@ -1,0 +1,13 @@
+--- current/backend/engines/openai_studies.py
++++ zip4/backend/engines/openai_studies.py
+@@ -24,8 +24,8 @@
+ 
+ logger = logging.getLogger("studies")
+ 
+-MODEL_ANALYSIS = os.environ["STUDIES_MODEL_ANALYSIS"]
+-MODEL_LIGHT = os.environ["STUDIES_MODEL_LIGHT"]
++MODEL_ANALYSIS = os.environ.get("STUDIES_MODEL_ANALYSIS", "gpt-6-astra")
++MODEL_LIGHT = os.environ.get("STUDIES_MODEL_LIGHT", "gpt-5.6-terra")
+ MAX_PDF_MB = 25
+ MAX_PAGES = 20
+ MAX_PER_HOUR = int(os.environ.get("STUDIES_MAX_PER_HOUR", "10"))

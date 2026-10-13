@@ -76,7 +76,7 @@ def build_pro_receipt_pdf(*, receipt_no: str, plan_name: str, interval: str,
 
 def welcome_email_html(*, customer_name: str, plan_name: str, amount_ttc: float,
                        dashboard_url: str) -> str:
-    name = (customer_name or "").split(" ")[0] or "Olá"
+    name = (customer_name or "").split(" ")[0] or "Bonjour"
     amt = _eur(amount_ttc)
     return f"""
 <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A0D14">

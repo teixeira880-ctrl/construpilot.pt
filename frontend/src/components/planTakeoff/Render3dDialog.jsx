@@ -118,6 +118,19 @@ export function Render3dDialog({
 
         {render3dMode === "ai" && (
           <div className="grid gap-4">
+            <div className="flex items-start gap-2 border border-amber-300/60 bg-amber-50 text-amber-900 rounded-sm p-3 text-xs"
+                 data-testid="render-3d-ai-hint">
+              <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>
+                Le <strong>Rendu IA</strong> produit une image colorée vue de dessus (illustration). Pour une
+                <strong> vraie 3D navigable</strong> (murs en volume, orbite, zoom, hauteur réglable), utilisez la{" "}
+                <button type="button" className="underline font-semibold hover:text-amber-700"
+                        data-testid="render-3d-ai-hint-interactive"
+                        onClick={() => (onInteractiveMode ? onInteractiveMode() : setRender3dMode("interactive"))}>
+                  Maquette interactive
+                </button>.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1">
                 <Label className="text-xs">Style de rendu</Label>
@@ -190,7 +203,7 @@ export function Render3dDialog({
                             data-testid={`render-3d-history-${r.render_id}`}
                             className="text-[10px] px-2 py-1 border border-border rounded-sm
                                        hover:bg-primary/10 hover:border-primary">
-                      {r.style} · {new Date(r.created_at).toLocaleDateString("pt-PT")}
+                      {r.style} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
                     </button>
                   ))}
                 </div>
@@ -209,7 +222,7 @@ export function Render3dDialog({
             <p className="text-xs text-muted-foreground border border-primary/30 p-3 rounded-sm bg-primary/5">
               Génère 4 rendus IA du plan (isométrique, photoréaliste, axonométrique, intérieur)
               et les assemble en une vidéo MP4 de 20 secondes à joindre à votre devis.
-              Effet <b>wow</b> garanti auprès de vos clients.
+              Un rendu visuel à joindre à vos devis client.
             </p>
 
             <div className="grid grid-cols-2 gap-2">
@@ -274,7 +287,7 @@ export function Render3dDialog({
                             data-testid={`render-video-history-${v.video_id}`}
                             className="text-[10px] px-2 py-1 border border-border rounded-sm
                                        hover:bg-primary/10 hover:border-primary">
-                      {new Date(v.created_at).toLocaleDateString("pt-PT")} · {v.duration_s}s
+                      {new Date(v.created_at).toLocaleDateString("fr-FR")} · {v.duration_s}s
                     </button>
                   ))}
                 </div>

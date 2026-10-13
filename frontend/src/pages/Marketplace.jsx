@@ -51,7 +51,7 @@ export default function Marketplace() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Marketplace ConstruPilot" title="Trouvez un professionnel vérifié pour vos travaux">
+      <SectionTitle as="h1" over="Marketplace ConstruPilot" title="Trouvez un professionnel vérifié pour vos travaux">
         Décrivez votre projet — nous le transmettons à des artisans ConstruPilot Verified de votre
         région. Vous recevez les propositions directement dans votre boîte mail.
       </SectionTitle>

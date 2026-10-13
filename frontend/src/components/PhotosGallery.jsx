@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Trash2, Upload, ImageIcon, GitCompareArrows } from "lucide-react";
+import { Camera, Trash2, Upload, ImageIcon, GitCompareArrows, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { api, API } from "@/lib/api";
 import { compressImage } from "@/lib/imageCompress";
+import { useAuth } from "@/context/AuthContext";
+import { uploadProjectPhoto } from "@/lib/offlineProjects";
 
 const KIND_LABEL = { before: "Avant", after: "Après", progress: "Chantier" };
 const KIND_STYLE = {
@@ -60,7 +62,7 @@ const PhotoThumb = ({ projectId, photo, onDelete }) => {
           onClick={() => onDelete(photo)}
           data-testid={`photo-delete-${photo.photo_id}`}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 shrink-0"
-          aria-label="Eliminar"
+          aria-label="Supprimer"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -124,21 +126,29 @@ const CompareSlider = ({ projectId, before, after }) => {
 };
 
 export const PhotosGallery = ({ projectId, lots = [] }) => {
+  const { user } = useAuth();
   const [photos, setPhotos] = useState([]);
   const [kind, setKind] = useState("before");
   const [lot, setLot] = useState("");
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pairLot, setPairLot] = useState("");
+  const [pendingPhotos, setPendingPhotos] = useState([]);
   const inputRef = useRef(null);
 
   const load = async () => {
     try {
       const { data } = await api.get(`/projects/${projectId}/photos`);
       setPhotos(data.photos || []);
-    } catch { /* ignore */ }
+    } catch { /* ignore (offline) */ }
   };
   useEffect(() => { load(); }, [projectId]);
+  useEffect(() => {
+    const onSynced = () => { setPendingPhotos([]); load(); };
+    window.addEventListener("construpilot-offline-synced", onSynced);
+    return () => window.removeEventListener("construpilot-offline-synced", onSynced);
+    /* eslint-disable-next-line */
+  }, [projectId]);
 
   const upload = async (rawFile) => {
     if (!rawFile) return;
@@ -152,17 +162,15 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
       const gain = rawFile.size > file.size
         ? ` (compressée : ${Math.round((1 - file.size / rawFile.size) * 100)} %)`
         : "";
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("kind", kind);
-      if (lot) fd.append("lot", lot);
-      if (caption) fd.append("caption", caption);
-      await api.post(`/projects/${projectId}/photos`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { queued } = await uploadProjectPhoto(user?.user_id, projectId, file, { kind, lot, caption });
       setCaption("");
-      toast.success(`Photo ajoutée${gain}`);
-      load();
+      if (queued) {
+        setPendingPhotos((p) => [...p, { tmp: `tmp_${Date.now()}`, url: URL.createObjectURL(file), kind, lot, caption }]);
+        toast.info("Photo enregistrée hors connexion — sera envoyée au retour du réseau.");
+      } else {
+        toast.success(`Photo ajoutée${gain}`);
+        load();
+      }
     } catch {
       toast.error("Upload impossible");
     } finally {
@@ -260,7 +268,19 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
         </TabsList>
 
         <TabsContent value="gallery" className="mt-6">
-          {photos.length === 0 ? (
+          {pendingPhotos.length > 0 && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" data-testid="photos-pending-grid">
+              {pendingPhotos.map((pp) => (
+                <div key={pp.tmp} className="relative rounded-lg overflow-hidden border border-dashed border-amber-500/60" data-testid="photo-pending">
+                  <img src={pp.url} alt="" className="w-full h-44 object-cover opacity-80" />
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-amber-500 text-white">
+                    <CloudOff className="h-3 w-3" /> En attente
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {photos.length === 0 && pendingPhotos.length === 0 ? (
             <div className="surface p-10 text-center text-muted-foreground text-sm" data-testid="photos-empty">
               Aucune photo pour l'instant. Ajoutez des photos « Avant » puis « Après » pour construire un comparatif de votre chantier.
             </div>

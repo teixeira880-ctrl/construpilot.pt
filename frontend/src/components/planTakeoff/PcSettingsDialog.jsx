@@ -10,25 +10,25 @@ import {
 import { api } from "@/lib/api";
 
 const PRICE_LABELS = {
-  installation_chantier: ["Instalação de obra (contentor social, vedação, contentor de resíduos)", "forfait"],
+  installation_chantier: ["Installation chantier (base vie, clôture, benne)", "forfait"],
   engins_levage: ["Engins & machines (grue, bétonnière)", "forfait"],
   echafaudage: ["Échafaudage (location + montage)", "forfait"],
   protection_securite: ["Protection collective & sécurité (garde-corps, filets, PPSPS)", "forfait"],
   terrassement_complet: ["Terrassement complet (fouilles, remblais)", "forfait"],
   beton_proprete: ["Béton de propreté", "m³"],
   beton_semelle: ["Béton semelles C25/30", "m³"],
-  acier_semelle: ["Aços semelles", "kg"],
+  acier_semelle: ["Aciers semelles", "kg"],
   fondations_moe: ["Mise en œuvre fondations", "forfait"],
   beton_dalle: ["Béton dallage RDC", "m³"],
   treillis_dalle: ["Treillis ST25C", "kg"],
   coffrage_rive: ["Coffrage de rives", "ml"],
   plancher_etage: ["Plancher d'étage complet", "forfait/niv."],
-  mur_isobrique: ["Parede brique isobrique 20", "m²"],
+  mur_isobrique: ["Mur brique isobrique 20", "m²"],
   chainage_beton: ["Béton chaînages", "m³"],
-  acier_chainage: ["Aços chaînages", "kg"],
+  acier_chainage: ["Aciers chaînages", "kg"],
   linteau: ["Linteaux BA", "ml"],
   escalier_beton: ["Béton escalier", "m³"],
-  acier_escalier: ["Aços escalier", "kg"],
+  acier_escalier: ["Aciers escalier", "kg"],
   charpente_trad: ["Charpente traditionnelle", "forfait"],
   couverture_tuiles: ["Couverture tuiles", "forfait"],
   menuiseries_ext: ["Menuiseries ext. (fenêtres)", "forfait"],
@@ -71,7 +71,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       setReminderDays(s.reminder_days ?? d.reminder_days ?? 3);
       setNotifyMode(s.notify_on_open ?? d.notify_on_open ?? "email");
       setNotifyPhone(s.notify_phone ?? "");
-    }).catch(() => toast.error("Carregamento das definições impossível"));
+    }).catch(() => toast.error("Chargement des réglages impossible"));
   }, [open]);
 
   const setP = (key, field, val) =>
@@ -97,10 +97,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         notify_on_open: notifyMode,
         notify_phone: notifyPhone.trim() || null,
       });
-      toast.success("Definições enregistrés");
+      toast.success("Réglages enregistrés");
       onSaved?.();
       onClose();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossible"); }
     finally { setBusy(false); }
   };
 
@@ -108,10 +108,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
     setBusy(true);
     try {
       await api.delete("/pc/settings");
-      toast.success("Definições reinicializadas para os valores por omissão");
+      toast.success("Réglages réinitialisés aux valeurs par défaut");
       onSaved?.();
       onClose();
-    } catch { toast.error("Réinitialisation impossível"); }
+    } catch { toast.error("Réinitialisation impossible"); }
     finally { setBusy(false); }
   };
 
@@ -120,10 +120,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       <DialogContent className="rounded-sm max-w-2xl max-h-[85vh] overflow-y-auto"
                      data-testid="pc-settings-dialog">
         <DialogHeader>
-          <DialogTitle>Definições de l'estudo PC</DialogTitle>
+          <DialogTitle>Réglages de l'étude PC</DialogTitle>
           <DialogDescription>
             Vos prix unitaires (€ HT), la taille d'équipe et le taux horaire sont
-            appliqués à toutes vos prochaines études — et recalculés sur l'estudo en cours.
+            appliqués à toutes vos prochaines études — et recalculés sur l'étude en cours.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,13 +147,13 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
                    data-testid="pc-settings-margin-input" className="rounded-sm num" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-deposit" className="text-xs">Sinal en ligne (%) — 0 = désactivé</Label>
+            <Label htmlFor="pc-deposit" className="text-xs">Acompte en ligne (%) — 0 = désactivé</Label>
             <Input id="pc-deposit" type="number" min="0" max="100" value={depositPct}
                    onChange={(e) => setDepositPct(e.target.value)}
                    data-testid="pc-settings-deposit-input" className="rounded-sm num" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-dep-reminder" className="text-xs">Relance sinal impayé (jours) — 0 = jamais</Label>
+            <Label htmlFor="pc-dep-reminder" className="text-xs">Relance acompte impayé (jours) — 0 = jamais</Label>
             <Input id="pc-dep-reminder" type="number" min="0" max="30" value={depReminderDays}
                    onChange={(e) => setDepReminderDays(e.target.value)}
                    data-testid="pc-settings-deposit-reminder-input" className="rounded-sm num" />
@@ -161,7 +161,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={weeklyReport} onChange={(e) => setWeeklyReport(e.target.checked)}
                    data-testid="pc-settings-weekly-checkbox" className="accent-primary" />
-            Relatório hebdo par email (chaque lundi)
+            Rapport hebdo par email (chaque lundi)
           </label>
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={teamShare} onChange={(e) => setTeamShare(e.target.checked)}
@@ -175,14 +175,14 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
           </label>
           <div className="grid gap-1.5 col-span-2">
             <Label htmlFor="pc-reminder" className="text-xs">
-              Relance auto du client si l'estudo n'est pas ouverte après (jours) — 0 = désactivée
+              Relance auto du client si l'étude n'est pas ouverte après (jours) — 0 = désactivée
             </Label>
             <Input id="pc-reminder" type="number" min="0" max="30" value={reminderDays}
                    onChange={(e) => setReminderDays(e.target.value)}
                    data-testid="pc-settings-reminder-input" className="rounded-sm num w-32" />
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-xs">Me prévenir quand le client ouvre l'estudo</Label>
+            <Label className="text-xs">Me prévenir quand le client ouvre l'étude</Label>
             <select value={notifyMode} onChange={(e) => setNotifyMode(e.target.value)}
                     data-testid="pc-settings-notify-select"
                     className="h-9 rounded-sm border border-input bg-background px-2 text-sm">
@@ -194,7 +194,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
           </div>
           {(notifyMode === "sms" || notifyMode === "both") && (
             <div className="grid gap-1.5">
-              <Label htmlFor="pc-notify-phone" className="text-xs">Número pour les SMS (+33…)</Label>
+              <Label htmlFor="pc-notify-phone" className="text-xs">Numéro pour les SMS (+33…)</Label>
               <Input id="pc-notify-phone" type="tel" placeholder="+33612345678"
                      value={notifyPhone} onChange={(e) => setNotifyPhone(e.target.value)}
                      data-testid="pc-settings-phone-input" className="rounded-sm num" />
@@ -236,13 +236,13 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={reset} disabled={busy}
                   className="rounded-sm gap-2 mr-auto" data-testid="pc-settings-reset-btn">
-            <RotateCcw className="h-3.5 w-3.5" /> Reinicializar
+            <RotateCcw className="h-3.5 w-3.5" /> Réinitialiser
           </Button>
           <Button variant="outline" onClick={onClose} className="rounded-sm"
-                  data-testid="pc-settings-cancel">Cancelar</Button>
+                  data-testid="pc-settings-cancel">Annuler</Button>
           <Button onClick={save} disabled={busy} className="rounded-sm gap-2"
                   data-testid="pc-settings-save-btn">
-            <Save className="h-3.5 w-3.5" /> {busy ? "…" : "Guardar"}
+            <Save className="h-3.5 w-3.5" /> {busy ? "…" : "Enregistrer"}
           </Button>
         </DialogFooter>
       </DialogContent>

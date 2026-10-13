@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Hammer, Ruler, FileText, ArrowRight, ArrowLeft, CheckCircle2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { OfferNotice } from "@/components/OfferNotice";
 
 const STEPS = [
   {
     icon: Rocket,
     title: "Bienvenue sur ConstruPilot 🎉",
-    text: "Votre compte est actif — et 100% gratuit pendant la phase de lancement. Que vous soyez particulier ou professionnel, voici comment démarrer en quelques étapes.",
+    text: "Votre compte est actif. Que vous soyez particulier ou professionnel, voici comment démarrer en quelques étapes.",
+    offer: true,
   },
   {
     icon: Hammer,
@@ -20,7 +22,7 @@ const STEPS = [
     icon: Ruler,
     title: "2. Mesurez un plan et chiffrez",
     text: "Importez un plan (PDF, photo ou DWG), laissez l'IA détecter les pièces et les surfaces, puis obtenez le métré automatiquement.",
-    cta: { label: "Mesurer un plan", to: "/plan" },
+    cta: { label: "Éditeur de plans", to: "/plan" },
   },
   {
     icon: FileText,
@@ -61,6 +63,7 @@ export default function Welcome() {
           {step === 0 && user?.name ? `Bienvenue, ${user.name.split(" ")[0]} 🎉` : s.title}
         </h1>
         <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{s.text}</p>
+        {s.offer && <OfferNotice className="mt-4 text-left" />}
 
         {s.cta && (
           <Button variant="outline" className="mt-6 rounded-lg gap-2"

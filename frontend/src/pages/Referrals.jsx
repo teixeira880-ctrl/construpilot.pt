@@ -139,7 +139,7 @@ export default function Referrals() {
                   <p className="text-[11px] text-muted-foreground">{r.email_masked}</p>
                 </div>
                 <span className="text-[10px] text-muted-foreground num">
-                  {r.joined_at ? new Date(r.joined_at).toLocaleDateString("pt-PT") : "—"}
+                  {r.joined_at ? new Date(r.joined_at).toLocaleDateString("fr-FR") : "—"}
                 </span>
               </div>
             ))}

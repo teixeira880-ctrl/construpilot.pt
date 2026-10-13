@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
+import { OfferNotice } from "@/components/OfferNotice";
 
 const ICON = {
   FREE: Sparkles, PROJECT_PASS: Zap,
@@ -102,6 +103,11 @@ export default function Pricing() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const promo = useMemo(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("promo")?.trim().slice(0, 40) || "";
+    if (fromUrl) sessionStorage.setItem("cp_promo", fromUrl);
+    return fromUrl || sessionStorage.getItem("cp_promo") || "";
+  }, []);
   const [plans, setPlans] = useState([]);
   const [flags, setFlags] = useState({});
   const [audience, setAudience] = useState("particulier");
@@ -127,7 +133,9 @@ export default function Pricing() {
       const { data } = await api.post("/billing/checkout", {
         plan_id: plan.plan_id,
         origin_url: window.location.origin,
+        promo_code: promo || undefined,
       });
+      if (data.promo_rejected) toast.info("Code promo réservé aux premiers abonnements — paiement au tarif normal.");
       window.location.href = data.url;
     } catch (err) {
       toast.error(err?.response?.data?.detail || t("pricing.checkout_fail"));
@@ -138,14 +146,21 @@ export default function Pricing() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Tarifs — Gratuit pour les particuliers, Premium dès 19 €/mois"
-        description="Estimation, calculateurs, comparateur de prix et coach IA pour les particuliers. Devis PDF illimités, TVA 10 % auto, rendu 3D, signature client, CRM et facturation pour les pros. Premium dès 19 €/mois, sans engagement."
+        title="Tarifs et abonnements ConstruPilot"
+        description="Offre gratuite pour démarrer, Premium pour les particuliers, Pro et Pro Business pour les artisans : détail des fonctions incluses dans chaque plan, sans engagement."
         keywords="prix logiciel devis, tarif construpilot, abonnement artisan, logiciel BTP gratuit, prix outil estimation travaux"
         canonical="/tarifs"
       />
       <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
         {t("pricing.subtitle")}
       </SectionTitle>
+      <OfferNotice lang={lang} className="max-w-2xl mx-auto -mt-4" />
+      {promo && (
+        <div className="surface border-primary/40 rounded-md p-4 text-center max-w-xl mx-auto -mt-4" data-testid="pricing-promo-banner">
+          <p className="text-sm">Votre code promo <b className="num tracking-wider text-primary">{promo}</b> sera appliqué automatiquement au paiement.</p>
+          <p className="text-xs text-muted-foreground mt-1">Choisissez votre plan ci-dessous : la réduction apparaît directement sur la page de paiement sécurisée.</p>
+        </div>
+      )}
 
       <Tabs value={audience} onValueChange={setAudience}>
         <TabsList className="rounded-sm mx-auto">
@@ -165,6 +180,18 @@ export default function Pricing() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {audience === "pro" && (
+        <div className="surface p-5 rounded-sm border-primary/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-3xl mx-auto" data-testid="pricing-pro-offer-banner">
+          <div>
+            <p className="font-display font-bold">Vous êtes un pro du BTP ?</p>
+            <p className="text-sm text-muted-foreground">Découvrez le détail de l'offre Pro, l'essai de 7 jours et les conditions de facturation.</p>
+          </div>
+          <Button className="rounded-sm gap-2 shrink-0" data-testid="pricing-see-pro-offer" onClick={() => navigate("/pro")}>
+            Voir l'offre Pro <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {audience === "pro" && (
         <div className="surface p-6 md:p-8 rounded-sm border-primary/30 flex flex-col md:flex-row md:items-center gap-6" data-testid="invoicing-addon-banner">

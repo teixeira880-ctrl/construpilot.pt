@@ -4,8 +4,8 @@ import { Label } from "@/components/ui/label";
 
 const isWE = (d) => d.getDay() === 0 || d.getDay() === 6;
 const skipWE = (d) => { const x = new Date(d); while (isWE(x)) x.setDate(x.getDate() + 1); return x; };
-const fmt = (d) => d.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" });
-const fmtLong = (d) => d.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const fmt = (d) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+const fmtLong = (d) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const COLORS = ["#f59e0b", "#f97316", "#0ea5e9", "#10b981", "#8b5cf6"];
 
 export const computeSchedule = (planning, start) => {

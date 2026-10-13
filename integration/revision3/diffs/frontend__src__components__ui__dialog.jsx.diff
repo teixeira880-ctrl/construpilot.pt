@@ -1,0 +1,22 @@
+--- current/frontend/src/components/ui/dialog.jsx
++++ zip/frontend/src/components/ui/dialog.jsx
+@@ -23,9 +23,9 @@
+ ))
+ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+ 
+-const DialogContent = React.forwardRef(({ className, overlayClassName, children, ...props }, ref) => (
++const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
+   <DialogPortal>
+-    <DialogOverlay className={overlayClassName} data-testid={props["data-testid"] ? `${props["data-testid"]}-overlay` : undefined} />
++    <DialogOverlay />
+     <DialogPrimitive.Content
+       ref={ref}
+       className={cn(
+@@ -35,7 +35,6 @@
+       {...props}>
+       {children}
+       <DialogPrimitive.Close
+-        data-testid={props["data-testid"] ? `${props["data-testid"]}-close` : undefined}
+         className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+         <X className="h-4 w-4" />
+         <span className="sr-only">Close</span>

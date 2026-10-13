@@ -28,7 +28,7 @@ const COMPARE_CONFIG = {
       { plate_length: 300, plate_width: 120 },
     ],
     label: (v) => `${v.plate_length}×${v.plate_width} cm`,
-    metric: { title: "Placas necessárias", match: /plaque/i },
+    metric: { title: "Plaques nécessaires", match: /plaque/i },
     caption: "Ossature, vis et enduit inclus. Le format le moins cher est surligné.",
   },
   tile: {
@@ -105,7 +105,7 @@ export default function Calculators() {
       setResult(data);
       setOptim(null);
       setCompare(null);
-    } catch { toast.error("Cálculo impossível"); }
+    } catch { toast.error("Calcul impossible"); }
     finally { setBusy(false); }
   };
 
@@ -124,7 +124,7 @@ export default function Calculators() {
           }))
       ));
       setCompare({ rows: runs, cfg });
-    } catch { toast.error("Comparação impossível"); }
+    } catch { toast.error("Comparaison impossible"); }
     finally { setBusy(false); }
   };
 
@@ -149,7 +149,7 @@ export default function Calculators() {
       }
       const { data } = await api.post("/calculators-share", payload);
       setShareUrl(`${window.location.origin}/fiche/${data.share_id}`);
-    } catch { toast.error("Partilha impossível"); }
+    } catch { toast.error("Partage impossible"); }
     finally { setSharing(false); }
   };
 
@@ -164,7 +164,7 @@ export default function Calculators() {
 
   const buildGroupedQuote = async () => {
     if (!gate()) return;
-    if (!user) { toast.info("Inicie sessão para criar um orçamento"); navigate("/login"); return; }
+    if (!user) { toast.info("Connectez-vous pour créer un devis"); navigate("/login"); return; }
     setAddingQuote(true);
     try {
       const lines = cart.flatMap((entry) => entry.materials.map((m) => ({
@@ -176,7 +176,7 @@ export default function Calculators() {
       });
       toast.success("Devis groupé créé — complétez les prix");
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch { toast.error("Não foi possível criar o orçamento"); }
+    } catch { toast.error("Création du devis impossible"); }
     finally { setAddingQuote(false); }
   };
 
@@ -214,7 +214,7 @@ export default function Calculators() {
   const addToQuote = async () => {
     if (!gate()) return;
     if (!user) {
-      toast.info("Inicie sessão para criar um orçamento");
+      toast.info("Connectez-vous pour créer un devis");
       navigate("/login");
       return;
     }
@@ -229,7 +229,7 @@ export default function Calculators() {
       });
       toast.success("Devis créé — complétez les prix");
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch { toast.error("Não foi possível criar o orçamento"); }
+    } catch { toast.error("Création du devis impossible"); }
     finally { setAddingQuote(false); }
   };
 
@@ -242,7 +242,7 @@ export default function Calculators() {
         items: result.materials.map((m) => ({ query: m.search, quantity: Math.ceil(m.quantity), name: m.name })),
       });
       setOptim(data);
-    } catch { toast.error("Pesquisa impossível"); }
+    } catch { toast.error("Recherche impossible"); }
     finally { setBusy(false); }
   };
 
@@ -250,9 +250,9 @@ export default function Calculators() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Calculadoras de materiais de construção" description="Calcule as quantidades exactas de tinta, azulejos, Pladur, betão e isolamento para as suas obras. Margens de segurança incluídas. Gera a lista de compras de materiais." keywords="calculadora tinta, calculadora azulejos, calculadora pladur, calculadora betão, calculadora isolamento, quantidade materiais" canonical="/calculateurs" />
-      <SectionTitle as="h1" over="Calculadora de materiais" title="Quantidades exactas, margens incluídas">
-        Cálculos determinísticos e verificáveis: superfícies, volumes, perdas de aplicação e embalagens.
+      <SEO title="Calculateurs matériaux BTP" description="Calculez les quantités exactes de peinture, carrelage, placo, béton et isolation pour vos chantiers. Marges de sécurité incluses. Génère la liste de courses matériaux." keywords="calculateur peinture, calculateur carrelage, calculateur placo, calculateur béton, calculateur isolation, quantité matériaux" canonical="/calculateurs" />
+      <SectionTitle as="h1" over="Calculateur de matériaux" title="Les quantités exactes, marges incluses">
+        Calculs déterministes et vérifiables : surfaces, volumes, pertes de pose et conditionnements.
       </SectionTitle>
 
       <div className="flex flex-wrap gap-2" data-testid="calculator-tabs">

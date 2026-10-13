@@ -27,7 +27,7 @@ export default function CookieConsent() {
       className="fixed bottom-0 inset-x-0 z-[100] p-3 sm:p-4"
       data-testid="cookie-consent-banner"
       role="dialog"
-      aria-label="Consentimento de cookies"
+      aria-label="Consentement aux cookies"
     >
       <div className="mx-auto max-w-3xl rounded-xl border border-border bg-background/95 backdrop-blur shadow-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-start gap-3 flex-1">

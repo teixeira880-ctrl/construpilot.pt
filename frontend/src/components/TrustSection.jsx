@@ -15,13 +15,13 @@ const BADGES_FR = [
   { icon: ShieldCheck, label: "Conforme Factur-X", sub: "Facture électronique 2026" },
   { icon: CreditCard, label: "Paiements sécurisés", sub: "Propulsé par Stripe" },
   { icon: Globe, label: "Hébergé en Europe", sub: "Conforme RGPD" },
-  { icon: Sparkles, label: "IA dernière génération", sub: "Gemini · Claude · Whisper" },
+  { icon: Sparkles, label: "IA dernière génération", sub: "Assistant BTP · Vision · Voix" },
 ];
 const BADGES_PT = [
   { icon: ShieldCheck, label: "Faturação conforme", sub: "e-Fatura / IVA 2026" },
   { icon: CreditCard, label: "Pagamentos seguros", sub: "Powered by Stripe" },
   { icon: Globe, label: "Alojado na Europa", sub: "Conforme RGPD" },
-  { icon: Sparkles, label: "IA de última geração", sub: "Gemini · Claude · Whisper" },
+  { icon: Sparkles, label: "IA de última geração", sub: "Assistente BTP · Vision · Voz" },
 ];
 
 const ReviewDialog = ({ open, onOpenChange }) => {

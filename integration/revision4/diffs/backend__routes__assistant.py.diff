@@ -1,0 +1,71 @@
+--- current/backend/routes/assistant.py
++++ zip4/backend/routes/assistant.py
+@@ -47,6 +47,7 @@
+ Préférences mémorisées (à appliquer sauf instruction contraire) : {prefs}"""
+ 
+ TOOLS = [
++    {"type": "web_search"},
+     {"type": "function", "name": "define_analysis_scope", "description": "Résume le périmètre d'une analyse de plan avant de la lancer.",
+      "parameters": {"type": "object", "properties": {
+          "plan_id": {"type": "string"}, "page_index": {"type": "integer"}, "include": {"type": "array", "items": {"type": "string"}},
+@@ -235,11 +236,6 @@
+             return {"ok": False, "error": "Page de plan inexistante"}
+     if name == "calculate":
+         return {"ok": True, **args, "result": calculate(args["expression"])}
+-    if name == "search_technical_web":
+-        if not (await _settings(uid))["web_enabled"] or conv.get("_web_allowed") is False:
+-            raise HTTPException(403, "Recherche Internet désactivée pour cette conversation")
+-        from engines.assistant_web import technical_search
+-        return await technical_search(args["topic"])
+     if name in ("read_document", "inspect_document_region"):
+         ident = args["document_id"]
+         if ident.startswith("plan_"):
+@@ -851,11 +847,10 @@
+     instructions = instructions.replace("\n[[lang=pt]]", "")
+     settings = conv.get("_settings") or await _settings(user["user_id"])
+     available = tools_for(user)
+-    conv["_web_allowed"] = settings["web_enabled"] and body.web_enabled is not False
+     if not settings["web_enabled"] or body.web_enabled is False:
+-        available = [t for t in available if t.get("type") != "web_search" and t.get("name") != "search_technical_web"]
++        available = [t for t in available if t.get("type") != "web_search"]
+         instructions += "\nRecherche Internet désactivée : ne prétends pas avoir vérifié des sources en ligne."
+-    model = os.environ["ASSISTANT_MODEL_THOROUGH"] if body.response_mode == "thorough" else os.environ["ASSISTANT_MODEL_FAST"]
++    model = os.environ.get("ASSISTANT_MODEL_THOROUGH", MODEL_ANALYSIS) if body.response_mode == "thorough" else os.environ.get("ASSISTANT_MODEL_FAST", MODEL_LIGHT)
+     effort = "high" if body.response_mode == "thorough" else body.effort
+     actions, sources, cache = [], [], {}
+     client, st, nxt, task = None, None, None, None
+@@ -868,9 +863,7 @@
+             yield {"type": "action", "action": action}
+         for step in range(10):
+             kwargs = dict(model=model, reasoning={"effort": effort}, instructions=instructions,
+-                          input=inputs, tools=available, max_output_tokens=12000, store=False)
+-            if any(tool.get("type") == "web_search" for tool in available):
+-                kwargs["include"] = ["web_search_call.action.sources"]
++                          input=inputs, tools=available, max_output_tokens=12000)
+             if stream:
+                 st = await client.responses.create(**kwargs, stream=True)
+                 r = None
+@@ -906,12 +899,6 @@
+             await _log_usage(user["user_id"], conv.get("project_id"), "assistant_chat", model, r.usage, None)
+             calls = [o for o in r.output if o.type == "function_call"]
+             for o in r.output:
+-                if o.type == "web_search_call":
+-                    action = getattr(o, "action", None)
+-                    for source in getattr(action, "sources", None) or []:
+-                        url = getattr(source, "url", "")
+-                        if url.startswith(("https://", "http://")) and not any(s["url"] == url for s in sources):
+-                            sources.append({"title": getattr(source, "title", None) or url, "url": url, "consulted_at": _now()})
+                 if o.type == "message":
+                     for c in o.content:
+                         for citation in getattr(c, "annotations", None) or []:
+@@ -954,10 +941,6 @@
+                 await db.assistant_actions.insert_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"],
+                     "tool": call.name, "ok": result.get("ok"), "preview": result.get("preview", False), "created_at": _now()})
+                 action = {"tool": call.name, "args": args, "result": result}
+-                if call.name == "search_technical_web":
+-                    for source in result.get("sources", []):
+-                        if not any(s["url"] == source["url"] for s in sources):
+-                            sources.append({**source, "consulted_at": _now()})
+                 actions.append(action)
+                 yield {"type": "action", "action": action}
+                 encoded = json.dumps(result, ensure_ascii=False, allow_nan=False)

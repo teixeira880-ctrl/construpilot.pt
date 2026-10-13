@@ -20,10 +20,9 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
     setBusy(true);
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
-      const token = localStorage.getItem("construpilot_token");
       const qs = new URLSearchParams({ level: levelIndex, supplier, notes }).toString();
       const res = await fetch(`${base}/api/takeoffs/${planId}/pc-study/purchase-order?${qs}`,
-        { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
+        { credentials: "include" });
       if (!res.ok) throw new Error((await res.json())?.detail || "Génération impossible");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

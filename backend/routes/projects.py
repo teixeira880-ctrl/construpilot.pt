@@ -73,7 +73,10 @@ async def list_projects(user=Depends(current_user)):
 
 @router.get("/{project_id}")
 async def get_project(project_id: str, user=Depends(current_user)):
-    return await _get(project_id, user)
+    p = await _get(project_id, user)
+    from routes.project_quotes import project_artisan_block
+    p["artisan"] = await project_artisan_block(p)
+    return p
 
 
 class UpdateIn(BaseModel):
@@ -83,6 +86,7 @@ class UpdateIn(BaseModel):
     city: str | None = None
     region: str | None = None
     progress: dict | None = None
+    notes: str | None = None
     materials: list | None = None
     advice: str | None = None
     status: str | None = None
@@ -100,9 +104,11 @@ async def update_project(project_id: str, body: UpdateIn, user=Depends(current_u
 
 @router.delete("/{project_id}")
 async def delete_project(project_id: str, user=Depends(current_user)) -> dict:
-    await _get(project_id, user)
+    from routes.trash import trash_record
+    project = await _get(project_id, user)
+    res = await trash_record("project", project, user["user_id"])
     await db.projects.delete_one({"project_id": project_id})
-    return {"ok": True}
+    return res
 
 
 class ExpenseIn(BaseModel):

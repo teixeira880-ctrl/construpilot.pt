@@ -1,0 +1,44 @@
+{
+ "verified": true,
+ "notes": "Valores lidos confirmados provisoriamente pelo utilizador (15/09/2026) — correções a comunicar no chat; revisão final pendente após leitura do relatório.",
+ "document": {
+  "revision_index": "0",
+  "revision_date": "09/06/2023",
+  "declared_scale": "1/50",
+  "document_code": "GO-B3-R0-303"
+ },
+ "rebar": {
+  "ha_rows": 63,
+  "ha_mass_kg": 461.4,
+  "mesh_rows": 71,
+  "mesh_mass_kg": 2473.4,
+  "mass_laid_kg": 2476.0,
+  "rows": {
+   "2": {
+    "total_count": 14.0,
+    "unit_length_cm": 220.0,
+    "total_length_cm": 3080.0
+   },
+   "3": {
+    "total_count": 22.0,
+    "unit_length_cm": 220.0,
+    "total_length_cm": 4840.0
+   },
+   "4": {
+    "total_count": 17.0,
+    "unit_length_cm": 220.0,
+    "total_length_cm": 3740.0
+   },
+   "5": {
+    "total_count": 18.0,
+    "unit_length_cm": 170.0,
+    "total_length_cm": 3060.0
+   },
+   "6": {
+    "total_count": 10.0,
+    "unit_length_cm": 216.0,
+    "total_length_cm": 2160.0
+   }
+  }
+ }
+}

@@ -10,16 +10,17 @@ import logging
 import secrets
 from typing import Literal
 
-from fastapi import Depends, File, Form, HTTPException, UploadFile
+from fastapi import Request, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
 from engines import geometry as G
-from engines.plan_processor import auto_calibration_from_pdf_scale, process_upload
+from engines.plan_sources import save_plan_source, save_cad_source, delete_plan_sources, copy_plan_sources, image_plan_pdf
+from engines.plan_processor import process_upload
 
 from routes.plans_common import (
-    ALLOWED_MIMES, MAX_UPLOAD_MB, _now, _plan_summary, _snapshot, router,
+    ALLOWED_MIMES, MAX_UPLOAD_MB, _now, _plan_summary, _snapshot, _apply_new_calibration, router,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,18 +28,11 @@ logger = logging.getLogger(__name__)
 
 # ============ UPLOAD ============
 
-@router.post("/upload")
-async def upload_plan(
-    file: UploadFile = File(...),
-    project_id: str | None = Form(None),
-    deskew: bool = Form(False),
-    user=Depends(current_user),
-):
-    # Accès Plan ouvert à tous les utilisateurs connectés (rendus 3D payants à l'unité)
-    data = await file.read()
-    if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
-        raise HTTPException(413, f"Fichier trop volumineux (>{MAX_UPLOAD_MB} Mo)")
-
+async def _process_and_store(data: bytes, filename: str, content_type: str, user: dict, project_id: str | None,
+                             deskew: bool, cad_unit: str | None, display_name: str | None = None) -> dict:
+    """Traitement complet (conversion DWG, lecture, calibration, stockage). Peut dépasser 2 min : exécuté en tâche de fond."""
+    file = type("F", (), {"filename": filename, "content_type": content_type})()
+    original_data = data
     mime = (file.content_type or "").lower()
     lower_name = (file.filename or "").lower()
     is_cad = lower_name.endswith((".dxf", ".dwg"))
@@ -46,11 +40,16 @@ async def upload_plan(
         if mime != "application/octet-stream":
             raise HTTPException(415, f"Format non supporté : {mime}")
 
-    # DWG (format AutoCAD propriétaire) → conversion en DXF via CloudConvert
+    conversion = {}
+    # DWG → DXF through the configured provider; the analysis pipeline is unchanged.
     if lower_name.endswith(".dwg"):
         from engines.dwg_convert import dwg_to_dxf
         try:
-            data = await dwg_to_dxf(data, file.filename or "plan.dwg")
+            from core.permissions import require_feature
+            require_feature(user, "dashboard")
+            data = await dwg_to_dxf(data, file.filename or "plan.dwg", user_id=user["user_id"], provenance=conversion)
+        except HTTPException:
+            raise
         except RuntimeError as e:
             raise HTTPException(422, str(e))
         except Exception:
@@ -62,10 +61,15 @@ async def upload_plan(
         parse_name = file.filename or "plan"
 
     try:
-        parsed = await asyncio.to_thread(process_upload, data, parse_name, mime, deskew)
+        parsed = await asyncio.to_thread(process_upload, data, parse_name, mime, deskew, cad_unit)
     except Exception as e:
         logger.exception("plan process failed")
         raise HTTPException(422, f"Impossible de lire le fichier : {e}")
+
+    if conversion:
+        parsed.setdefault("cad_import", {})["conversion"] = conversion
+        for page in parsed.get("pages", []):
+            page.setdefault("cad_import", {})["conversion"] = conversion
 
     plan_id = "plan_" + secrets.token_hex(6)
     calibrations = _auto_calibrate_pages(parsed)
@@ -74,12 +78,13 @@ async def upload_plan(
         "plan_id": plan_id,
         "user_id": user["user_id"],
         "project_id": project_id,
-        "filename": file.filename,
-        "size_bytes": len(data),
+        "filename": (display_name.strip()[:120] if (display_name and display_name.strip()) else file.filename),
+        "size_bytes": len(original_data),
         "kind": parsed["kind"],
         "page_count": parsed["page_count"],
         "detected_scale_denominator": parsed.get("detected_scale_denominator"),
         "structural_metre": parsed.get("structural_metre"),
+        "cad_import": parsed.get("cad_import"),
         "pages": parsed["pages"],
         "calibrations": calibrations,
         "rooms": [],
@@ -89,7 +94,86 @@ async def upload_plan(
         "updated_at": _now(),
     }
     await _insert_plan_safe(doc)
-    return _plan_summary(doc)
+    try:
+        import base64
+        import hashlib
+        if parsed["kind"] == "pdf":
+            await save_plan_source(db, plan_id, user["user_id"], data, mime="application/pdf",
+                                   filename=file.filename, source_kind="original_pdf", created_at=_now())
+        elif parsed["kind"] == "dxf":
+            await save_plan_source(db, plan_id, user["user_id"], base64.b64decode(parsed["analysis_pdf_b64"]),
+                                   mime="application/pdf", filename=parse_name.rsplit(".", 1)[0]+".pdf", source_kind="cad_render",
+                                   original_filename=file.filename, original_sha256=hashlib.sha256(original_data).hexdigest(), created_at=_now())
+            await save_cad_source(db, plan_id, user["user_id"], "original", original_data)
+            if lower_name.endswith(".dwg"):
+                await save_cad_source(db, plan_id, user["user_id"], "converted_dxf", data)
+        elif parsed["kind"] == "image":
+            pdf = await asyncio.to_thread(image_plan_pdf, parsed["pages"][0])
+            await save_plan_source(db, plan_id, user["user_id"], pdf, mime="application/pdf",
+                                   filename=parse_name.rsplit(".", 1)[0]+".pdf", source_kind="normalized_image",
+                                   original_filename=file.filename, original_sha256=hashlib.sha256(original_data).hexdigest(), created_at=_now())
+            await save_cad_source(db, plan_id, user["user_id"], "original", original_data)
+    except BaseException as exc:
+        await db.plans_takeoff.delete_one({"plan_id": plan_id, "user_id": user["user_id"]})
+        await delete_plan_sources(db, plan_id, user["user_id"])
+        if isinstance(exc, asyncio.CancelledError): raise
+        raise HTTPException(503, "Import non enregistré entièrement. Réessayez l’import.") from None
+    return doc
+
+
+@router.post("/upload")
+async def upload_plan(
+    request: Request,
+    file: UploadFile = File(...),
+    project_id: str | None = Form(None),
+    deskew: bool = Form(False),
+    cad_unit: Literal["mm", "cm", "m", "inches", "feet"] | None = Form(None),
+    wait: bool = Form(False),
+    display_name: str | None = Form(None),
+    user=Depends(current_user),
+):
+    """Par défaut synchrone (API publique, scripts, tests). Avec l'en-tête `X-Async-Upload: 1` (front) : validation
+    immédiate puis traitement en tâche de fond (le proxy coupe à 120 s) et 202 {job_id} à suivre sur /upload-jobs/{job_id}."""
+    data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
+    if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(413, f"Fichier trop volumineux (>{MAX_UPLOAD_MB} Mo)")
+    if not data: raise HTTPException(422, "Fichier vide")
+    if project_id and not await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 1}):
+        raise HTTPException(403, "Chantier inaccessible pour ce compte")
+    mime = (file.content_type or "").lower()
+    lower_name = (file.filename or "").lower()
+    if mime and mime not in ALLOWED_MIMES and not lower_name.endswith((".dxf", ".dwg")) and mime != "application/octet-stream":
+        raise HTTPException(415, f"Format non supporté : {mime}")
+    if wait or request.headers.get("x-async-upload") != "1":
+        return _plan_summary(await _process_and_store(data, file.filename or "plan", mime, user, project_id, deskew, cad_unit, display_name))
+    job_id = "pjob_" + secrets.token_hex(6)
+    await db.plan_upload_jobs.insert_one({"job_id": job_id, "user_id": user["user_id"], "filename": display_name or file.filename, "size_bytes": len(data),
+                                          "status": "processing", "created_at": _now(), "updated_at": _now()})
+    asyncio.create_task(_run_upload_job(job_id, data, file.filename or "plan", mime, user, project_id, deskew, cad_unit, display_name))
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"job_id": job_id, "status": "processing"}, status_code=202)
+
+
+async def _run_upload_job(job_id, data, filename, mime, user, project_id, deskew, cad_unit, display_name=None):
+    try:
+        doc = await _process_and_store(data, filename, mime, user, project_id, deskew, cad_unit, display_name)
+        await db.plan_upload_jobs.update_one({"job_id": job_id}, {"$set": {"status": "done", "plan_id": doc["plan_id"], "updated_at": _now()}})
+    except HTTPException as e:
+        await db.plan_upload_jobs.update_one({"job_id": job_id}, {"$set": {"status": "error", "status_code": e.status_code, "detail": e.detail, "updated_at": _now()}})
+    except Exception as e:  # noqa: BLE001
+        logger.exception("plan upload job failed")
+        await db.plan_upload_jobs.update_one({"job_id": job_id}, {"$set": {"status": "error", "status_code": 500, "detail": f"Import impossible : {type(e).__name__}", "updated_at": _now()}})
+
+
+@router.get("/upload-jobs/{job_id}")
+async def upload_job(job_id: str, user=Depends(current_user)):
+    j = await db.plan_upload_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not j:
+        raise HTTPException(404, "Import introuvable")
+    if j["status"] == "done" and j.get("kind") is None:
+        p = await db.plans_takeoff.find_one({"plan_id": j["plan_id"], "user_id": user["user_id"]}, {"_id": 0})
+        j["plan"] = _plan_summary(p) if p else None
+    return j
 
 
 # ============ MÉTRÉ STRUCTURE (DWG/DXF) ============
@@ -329,54 +413,25 @@ def _guess_units_per_meter(pg: dict) -> tuple[float, str]:
 
 
 def _auto_calibrate_dxf(parsed: dict) -> dict:
-    """Calibration automatique d'un DXF/DWG : pixels_per_meter = dxf_ratio × unités/m.
-    Le DXF porte des coordonnées réelles → l'échelle est déduite exactement (pas besoin
-    d'une mention « 1:100 »). $INSUNITS étant souvent faux/absent, on valide toujours
-    la cohérence via l'étendue géométrique (un plan mesure 0,5–1000 m)."""
-    units = (parsed.get("dxf_units") or "").lower()
-    calibs: dict = {}
-    for pg in parsed["pages"]:
-        ratio = pg.get("dxf_ratio")  # pixels par unité DXF
-        if not ratio:
-            continue
-        span = _dxf_span_units(pg)
-        upm = _UNITS_PER_METER.get(units)
-        # Contrôle de plausibilité : la plus grande dimension réelle doit être crédible
-        real_span_m = (span / upm) if upm else 0
-        if upm and 0.5 <= real_span_m <= 1000:
-            method, conf, unit_label = "auto_dxf_units", 0.92, units
-        else:
-            upm, unit_label = _guess_units_per_meter(pg)
-            method, conf = "auto_dxf_guess", 0.6
-        calibs[str(pg["index"])] = {
-            "pixels_per_meter": round(ratio * upm, 4),
-            "method": method,
-            "dxf_units": unit_label,
-            "confidence": conf,
-            "created_at": _now(),
-        }
-    return calibs
+    """L'unité déclarée ou choisie est la référence, quelle que soit l'emprise."""
+    result={}
+    for page in parsed["pages"]:
+        ratio,unit=page.get("dxf_ratio"),page.get("unit_to_m")
+        if not ratio or not unit or unit<=0:continue
+        ppm=ratio/unit
+        result[str(page["index"])]={"pixels_per_meter":ppm,"meters_per_pixel":1/ppm,
+                                    "method":"auto_dxf_units","confidence":.99,"dxf_units":parsed.get("dxf_units"),
+                                    "created_at":_now()}
+    return result
 
 
 def _auto_calibrate_pages(parsed: dict) -> dict:
     """Try to derive an initial pixels_per_meter per page from the detected scale."""
     if parsed.get("kind") == "dxf":
         return _auto_calibrate_dxf(parsed)
-    scale = parsed.get("detected_scale_denominator")
-    if not scale:
-        return {}
-    calibs: dict = {}
-    for pg in parsed["pages"]:
-        ppm = auto_calibration_from_pdf_scale(scale, pg.get("dpi", 150))
-        if ppm:
-            calibs[str(pg["index"])] = {
-                "pixels_per_meter": ppm,
-                "method": "auto_pdf_scale",
-                "scale_denominator": scale,
-                "confidence": 0.75,
-                "created_at": _now(),
-            }
-    return calibs
+    from engines.plan_page_context import initial_pdf_calibrations
+    return initial_pdf_calibrations(parsed, _now())
+
 
 
 # ============ LIST / GET / DELETE ============
@@ -384,7 +439,7 @@ def _auto_calibrate_pages(parsed: dict) -> dict:
 @router.get("")
 async def list_plans(user=Depends(current_user)) -> dict:
     docs = await db.plans_takeoff.find(
-        {"user_id": user["user_id"]},
+        {"user_id": user["user_id"], "trashed_at": {"$exists": False}},
         {"_id": 0, "pages.image_png_b64": 0}
     ).sort("created_at", -1).to_list(100)
     return {"plans": docs}
@@ -414,12 +469,71 @@ async def get_plan_page(plan_id: str, page_index: int, user=Depends(current_user
     return pages[page_index]
 
 
+@router.get("/{plan_id}/thumb")
+async def plan_thumbnail(plan_id: str, user=Depends(current_user)):
+    """Vignette JPEG (~240 px) de la page 1 du plan — mise en cache sur le plan."""
+    import base64
+    from io import BytesIO
+    from fastapi.responses import Response
+    cached = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "thumb_b64": 1})
+    if cached is None:
+        raise HTTPException(404, "Plan introuvable")
+    b64 = cached.get("thumb_b64")
+    if not b64:
+        doc = await db.plans_takeoff.find_one(
+            {"plan_id": plan_id, "user_id": user["user_id"]},
+            {"_id": 0, "pages": {"$slice": 1}})
+        pages = (doc or {}).get("pages") or []
+        img_b64 = pages[0].get("image_png_b64") if pages else None
+        if not img_b64:
+            raise HTTPException(404, "Aperçu indisponible")
+        try:
+            from PIL import Image
+            im = Image.open(BytesIO(base64.b64decode(img_b64))).convert("RGB")
+            im.thumbnail((240, 240))
+            out = BytesIO()
+            im.save(out, format="JPEG", quality=70)
+            b64 = base64.b64encode(out.getvalue()).decode()
+        except Exception:
+            raise HTTPException(404, "Aperçu indisponible")
+        await db.plans_takeoff.update_one(
+            {"plan_id": plan_id, "user_id": user["user_id"]}, {"$set": {"thumb_b64": b64}})
+    return Response(content=base64.b64decode(b64), media_type="image/jpeg",
+                    headers={"Cache-Control": "private, max-age=86400"})
+
+
+class BulkTrashIn(BaseModel):
+    plan_ids: list[str] = Field(default_factory=list)
+    all: bool = False
+
+
+@router.post("/bulk-trash")
+async def bulk_trash_plans(body: BulkTrashIn, user=Depends(current_user)) -> dict:
+    """Met plusieurs plans (ou tous) à la corbeille d'un seul coup (récupérables 30 jours)."""
+    from routes.trash import trash_record
+    q = {"user_id": user["user_id"], "trashed_at": {"$exists": False}}
+    if not body.all:
+        if not body.plan_ids:
+            raise HTTPException(400, "Aucun plan sélectionné")
+        q["plan_id"] = {"$in": body.plan_ids}
+    plans = await db.plans_takeoff.find(
+        q, {"_id": 0, "pages": 0, "rooms": 0, "measurements": 0}
+    ).to_list(2000)
+    count = 0
+    for p in plans:
+        await trash_record("plan", p, user["user_id"])
+        count += 1
+    return {"ok": True, "trashed": count}
+
+
 @router.delete("/{plan_id}")
 async def delete_plan(plan_id: str, user=Depends(current_user)) -> dict:
-    res = await db.plans_takeoff.delete_one({"plan_id": plan_id, "user_id": user["user_id"]})
-    if res.deleted_count == 0:
+    plan = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 0, "rooms": 0, "measurements": 0})
+    if not plan:
         raise HTTPException(404, "Plan introuvable")
-    return {"ok": True}
+    from routes.trash import trash_record
+    return await trash_record("plan", plan, user["user_id"])
 
 
 def _duplicate_filename(name: str) -> str:
@@ -468,8 +582,15 @@ async def duplicate_plan(plan_id: str, user=Depends(current_user)) -> dict:
         "created_at": _now(),
         "updated_at": _now(),
         "duplicated_from": plan_id,
+        "cad_import": src.get("cad_import"),
+        "structural_metre": src.get("structural_metre"),
     }
-    await db.plans_takeoff.insert_one(dup)
+    try:
+        await copy_plan_sources(db, plan_id, new_id, user["user_id"])
+        await _insert_plan_safe(dup)
+    except BaseException:
+        await delete_plan_sources(db, new_id, user["user_id"])
+        raise
     return {"ok": True, "plan_id": new_id, "duplicated_from": plan_id,
             "filename": dup["filename"], "rooms": len(dup["rooms"])}
 
@@ -496,10 +617,7 @@ async def calibrate_plan(plan_id: str, body: CalibIn, user=Depends(current_user)
         raise HTTPException(422, str(e))
     payload = {**calib, "method": body.method, "confidence": 0.95,
                "p1": list(body.p1), "p2": list(body.p2), "created_at": _now()}
-    await db.plans_takeoff.update_one(
-        {"plan_id": plan_id},
-        {"$set": {f"calibrations.{body.page_index}": payload, "updated_at": _now()}}
-    )
+    await _apply_new_calibration(plan_id, user["user_id"], body.page_index, payload)
     await _snapshot(plan_id, user["user_id"], "calibrate",
                     {"page": body.page_index, "ppm": payload["pixels_per_meter"]})
     return {"ok": True, "page_index": body.page_index, "calibration": payload}
@@ -658,3 +776,4 @@ async def save_annotations(plan_id: str, body: AnnotationsIn, user=Depends(curre
                        "notes": len(payload["notes"]),
                        "angles": len(payload["angles"]),
                        "pitched_surfaces": len(payload["pitched_surfaces"])}}
+

@@ -1,11 +1,50 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Loader2, Mail, Users, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { Loader2, Mail, Users, CheckCircle2, XCircle, RefreshCw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import MarketingEmailsPanel from "@/components/admin/MarketingEmailsPanel";
+
+function UpsellStats() {
+  const [st, setSt] = useState(null);
+  useEffect(() => { api.get("/admin/campaigns/upsell/stats").then(({ data }) => setSt(data)).catch(() => setSt({ weeks: [], total: null })); }, []);
+  if (!st) return null;
+  const pct = (v) => (v == null ? "—" : `${v} %`);
+  return (
+    <div className="border-t border-border/50 pt-3" data-testid="admin-upsell-stats">
+      <p className="overline text-[10px] mb-2">Conversion en abonnements payants — par semaine d'envoi</p>
+      {st.total && (
+        <p className="text-xs mb-2" data-testid="admin-upsell-stats-total">
+          Total : J+3 <b className="num">{st.total.j3_sent}</b> envoyés → <b className="num text-emerald-600">{st.total.conv_j3}</b> abonnements ({pct(st.total.rate_j3)}) ·
+          J+10 <b className="num">{st.total.j10_sent}</b> envoyés → <b className="num text-emerald-600">{st.total.conv_j10}</b> abonnements ({pct(st.total.rate_j10)})
+        </p>
+      )}
+      {st.weeks.length === 0 ? <p className="text-xs text-muted-foreground">Aucun envoi automatique pour le moment.</p> : (
+        <table className="w-full text-xs">
+          <thead><tr className="text-left text-muted-foreground border-b border-border">
+            <th className="py-1 pr-3 font-medium">Semaine</th><th className="py-1 pr-3 font-medium text-right">J+3 envoyés</th><th className="py-1 pr-3 font-medium text-right">→ payants</th>
+            <th className="py-1 pr-3 font-medium text-right">J+10 envoyés</th><th className="py-1 pr-3 font-medium text-right">→ payants</th></tr></thead>
+          <tbody>
+            {st.weeks.map((w) => (
+              <tr key={w.week} className="border-b border-border/40" data-testid={`admin-upsell-week-${w.week}`}>
+                <td className="py-1 pr-3 num">{w.week}</td>
+                <td className="py-1 pr-3 text-right num">{w.j3_sent}</td>
+                <td className="py-1 pr-3 text-right num text-emerald-600">{w.conv_j3} <span className="text-muted-foreground">({pct(w.rate_j3)})</span></td>
+                <td className="py-1 pr-3 text-right num">{w.j10_sent}</td>
+                <td className="py-1 pr-3 text-right num text-emerald-600">{w.conv_j10} <span className="text-muted-foreground">({pct(w.rate_j10)})</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
 
 export default function CampaignsPanel() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -15,8 +54,61 @@ export default function CampaignsPanel() {
   };
   useEffect(() => { load(); }, []);
 
+  const preview = async (audience, step) => {
+    setBusy(`p-${audience}-${step}`);
+    try {
+      const { data } = await api.post(`/admin/campaigns/upsell/preview?audience=${audience}&step=${step}`);
+      toast.success(`Aperçu envoyé à ${data.to}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi de l'aperçu impossible"); }
+    finally { setBusy(""); }
+  };
+  const runNow = async (step) => {
+    if (!window.confirm(step === "j10" ? "Envoyer la relance J+10 (code promo) à tous les comptes gratuits éligibles maintenant ?" : "Envoyer l'email d'incitation J+3 à tous les comptes gratuits éligibles maintenant ?")) return;
+    setBusy(`r-${step}`);
+    try {
+      const { data } = await api.post(`/admin/campaigns/upsell/run?step=${step}`);
+      toast.success(`${data.sent} envoyé(s) · ${data.failed} échec(s) · ${data.candidates} éligible(s)${data.code ? ` · code ${data.code}` : ""}`);
+      load();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    finally { setBusy(""); }
+  };
+
+  const Btn = ({ id, onClick, children, variant = "outline" }) => (
+    <Button variant={variant} size="sm" className="rounded-sm gap-2" onClick={onClick} disabled={!!busy} data-testid={`admin-upsell-${id}`}>
+      {busy === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {children}
+    </Button>
+  );
+
   return (
     <div className="space-y-4" data-testid="admin-campaigns-panel">
+      <MarketingEmailsPanel />
+      <div className="surface rounded-md p-5 space-y-3" data-testid="admin-upsell-panel">
+        <div>
+          <h3 className="font-display font-bold text-lg">Emails d'incitation automatiques</h3>
+          <p className="text-sm text-muted-foreground">J+3 après inscription : Premium (19 €) pour les particuliers, Pro (149 €) pour les artisans — 10:00 UTC. J+10 : relance avec code promo -20 % pendant 3 mois, valable 7 jours — 10:20 UTC. Un seul envoi par compte, opt-out respecté.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4 text-xs">
+          <div className="space-y-2">
+            <p className="overline text-[10px]">J+3 — Incitation</p>
+            <div className="flex flex-wrap gap-2">
+              <Btn id="p-pro-j3" onClick={() => preview("pro", "j3")}>Aperçu email Pro</Btn>
+              <Btn id="p-particulier-j3" onClick={() => preview("particulier", "j3")}>Aperçu email Particulier</Btn>
+              <Btn id="r-j3" variant="default" onClick={() => runNow("j3")}>Envoyer maintenant</Btn>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="overline text-[10px]">J+10 — Relance code promo</p>
+            <div className="flex flex-wrap gap-2">
+              <Btn id="p-pro-j10" onClick={() => preview("pro", "j10")}>Aperçu Pro (promo)</Btn>
+              <Btn id="p-particulier-j10" onClick={() => preview("particulier", "j10")}>Aperçu Particulier (promo)</Btn>
+              <Btn id="r-j10" variant="default" onClick={() => runNow("j10")}>Envoyer maintenant</Btn>
+            </div>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Les aperçus sont envoyés à votre adresse admin. Les envois réels sont journalisés ci-dessous (types auto_upsell_j3 / auto_upsell_j10).</p>
+        <UpsellStats />
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-display font-bold text-lg">Historique des campagnes e-mail</h3>
@@ -43,7 +135,7 @@ export default function CampaignsPanel() {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold truncate">{c.subject}</p>
                 <p className="text-xs text-muted-foreground">
-                  {c.created_at ? new Date(c.created_at).toLocaleString("pt-PT") : ""}
+                  {c.created_at ? new Date(c.created_at).toLocaleString("fr-FR") : ""}
                   {c.sent_by ? ` · par ${c.sent_by}` : ""}
                 </p>
               </div>

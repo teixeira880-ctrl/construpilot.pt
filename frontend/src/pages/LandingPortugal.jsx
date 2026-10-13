@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Calculator, ShieldCheck, ReceiptText, Users, FileCheck2, MapPin, ArrowRight, Check,
@@ -21,7 +21,7 @@ const DISTRICTS = [
 ];
 
 const FEATURES = [
-  { icon: Calculator, title: "Estimativa em 5 minutos", text: "Descreva a sua obra e a IA calcula lotes, materiais, mão de obra e orçamento — sem ser especialista." },
+  { icon: Calculator, title: "Estimativa detalhada", text: "Descreva a sua obra e a IA calcula lotes, materiais, mão de obra e totais indicativos — sem ser especialista." },
   { icon: ShieldCheck, title: "Verifique orçamentos", text: "O scanner deteta preços inflacionados ou lotes em falta nos orçamentos dos seus profissionais." },
   { icon: ReceiptText, title: "IVA de Portugal", text: "23% de taxa normal e 6% (Verba 2.27) na reabilitação de habitação elegível — aplicado automaticamente." },
   { icon: FileCheck2, title: "Faturas com NIF", text: "Orçamentos e faturas com o seu NIF e Alvará, prontos para clientes em Portugal." },
@@ -31,24 +31,13 @@ const FEATURES = [
 
 export default function LandingPortugal() {
   const { setLang } = useI18n();
-  const heroRef = useRef(null);
   useEffect(() => { setLang("pt"); /* landing sempre em PT-PT */ /* eslint-disable-next-line */ }, []);
-  useEffect(() => {
-    // React não serializa fiavelmente o atributo `muted` — força via ref para autoplay funcionar
-    // em todos os browsers (Chromium/Safari bloqueiam autoplay não-mute).
-    const v = heroRef.current;
-    if (!v) return;
-    v.muted = true;
-    v.playsInline = true;
-    const p = v.play();
-    if (p && typeof p.catch === "function") p.catch(() => {});
-  }, []);
 
   return (
     <div className="grid gap-16 pb-16" data-testid="landing-portugal">
       <SEO
         title="ConstruPilot Portugal — Estimativa de obras grátis"
-        description="Estime o custo das suas obras em Portugal em 5 minutos, verifique orçamentos, calcule materiais e IVA (23% ou 6% na reabilitação). Preços €/m² por distrito. Grátis."
+        description="Estime o custo das suas obras em Portugal, verifique orçamentos, calcule materiais e IVA (23% ou 6% na reabilitação). Valores indicativos €/m² por distrito. Plano inicial grátis."
         keywords="estimativa obras Portugal, preço renovação casa, orçamento obras, IVA reabilitação 6%, custo remodelação, comparador materiais"
         image="https://static.prod-images.emergentagent.com/jobs/24c1027c-3500-4369-9271-1f0502b94a6a/images/fbaf496274fa11a9c5394225aca188f1a65432f532c0018128117c37f0228ffc.jpeg"
         canonical="/portugal"
@@ -66,21 +55,6 @@ export default function LandingPortugal() {
           O ConstruPilot ajuda particulares e profissionais em Portugal a estimar o custo de obras,
           verificar orçamentos, calcular materiais e emitir orçamentos e faturas com IVA e NIF — em minutos.
         </p>
-        <div className="mt-6 rounded-xl overflow-hidden border border-border bg-black/5 aspect-video">
-          <video
-            ref={heroRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="w-full h-full object-cover"
-            aria-label="Demonstração ConstruPilot"
-            data-testid="pt-hero-video"
-          >
-            <source src="/hero-pt.mp4" type="video/mp4" />
-          </video>
-        </div>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link to="/estimation">
             <Button className="rounded-sm gap-2 h-12 px-6 text-base" data-testid="pt-hero-estimate">
@@ -98,6 +72,21 @@ export default function LandingPortugal() {
           <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> IVA 23% / 6% automático</span>
           <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> 16 distritos cobertos</span>
         </div>
+      </section>
+
+      {/* VÍDEO DEMO PT */}
+      <section className="grid gap-4" data-testid="pt-demo-video">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Veja em 2 minutos</p>
+          <h2 className="font-display text-base md:text-lg font-bold mt-1">O ConstruPilot em ação — ecrãs reais, narração em português</h2>
+        </div>
+        <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video max-w-4xl">
+          <video className="h-full w-full object-cover" src="/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4"
+                 controls playsInline preload="metadata" data-testid="pt-demo-video-player" />
+        </div>
+        <a href="/docs/ConstruPilot_Demo_Completa_PT_16x9.mp4" target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline" data-testid="pt-demo-video-full">
+          Ver a demonstração completa (5 min) →
+        </a>
       </section>
 
       {/* FEATURES */}
@@ -126,7 +115,7 @@ export default function LandingPortugal() {
           <h2 className="mt-1 font-display font-bold text-2xl sm:text-3xl">Quanto custa renovar em Portugal?</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Valores indicativos de <b>reabilitação</b> (€/m², sem IVA), consoante o distrito e o nível de acabamento.
-            Obtenha a sua estimativa exata em segundos.
+            Obtenha a sua estimativa detalhada na aplicação.
           </p>
         </div>
         <div className="surface rounded-xl overflow-hidden">
@@ -154,14 +143,14 @@ export default function LandingPortugal() {
         </p>
       </section>
 
-      {/* SOCIAL PROOF / TRUST */}
+      {/* CAPACIDADES VERIFICÁVEIS (sem números não comprovados) */}
       <section className="grid gap-6" data-testid="pt-social-proof">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
           {[
-            { k: "16", v: "distritos cobertos" },
-            { k: "6% / 23%", v: "IVA aplicado corretamente" },
-            { k: "30 s", v: "para uma estimativa" },
-            { k: "100%", v: "grátis para começar" },
+            { k: "16", v: "distritos com coeficientes de mercado" },
+            { k: "6% / 23%", v: "taxas de IVA aplicadas automaticamente" },
+            { k: "NIF", v: "orçamentos e faturas com os seus dados" },
+            { k: "Grátis", v: "plano inicial sem cartão" },
           ].map((s, i) => (
             <div key={i} className="surface rounded-xl p-4" data-testid={`pt-stat-${i}`}>
               <div className="font-display font-extrabold text-2xl sm:text-3xl text-primary">{s.k}</div>
@@ -171,45 +160,20 @@ export default function LandingPortugal() {
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { q: "Fiz a estimativa da remodelação do meu T3 em Lisboa em 5 minutos. Ajudou-me a perceber se o orçamento do empreiteiro era justo.", n: "Sofia M.", c: "Lisboa" },
-            { q: "Como empreiteiro no Porto, faço os orçamentos com IVA e NIF em minutos. Os clientes adoram receber tudo por e-mail.", n: "Ricardo A.", c: "Porto" },
-            { q: "Detetou lotes em falta no orçamento que recebi para a minha moradia no Algarve. Poupou-me uma discussão desagradável.", n: "João P.", c: "Faro" },
-          ].map((tst, i) => (
-            <figure key={i} className="surface rounded-xl p-5 flex flex-col gap-3" data-testid={`pt-testimonial-${i}`}>
-              <div className="text-primary text-lg leading-none">★★★★★</div>
-              <blockquote className="text-sm text-foreground/90 leading-relaxed flex-1">“{tst.q}”</blockquote>
-              <figcaption className="text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">{tst.n}</span> · {tst.c}
-              </figcaption>
-            </figure>
+            { t: "Estimativa detalhada", d: "Lotes, materiais, mão de obra e totais calculados a partir das suas áreas e nível de acabamento. Valores indicativos, não um orçamento formal." },
+            { t: "Verificação de orçamentos", d: "Carregue um orçamento recebido: cada linha é comparada com referências de mercado e os lotes em falta são assinalados." },
+            { t: "Orçamentos e faturas", d: "Documentos com o seu NIF, alvará e IVA à taxa aplicável, prontos para enviar ao cliente em PDF." },
+          ].map((f, i) => (
+            <div key={i} className="surface rounded-xl p-5 grid gap-2" data-testid={`pt-capability-${i}`}>
+              <p className="font-semibold text-base">{f.t}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{f.d}</p>
+            </div>
           ))}
         </div>
         <p className="text-[11px] text-center text-muted-foreground">
-          Testemunhos ilustrativos da fase de lançamento em Portugal.
+          O ConstruPilot está em fase de lançamento em Portugal. Publicamos apenas avaliações reais de
+          utilizadores, com a sua autorização.
         </p>
-      </section>
-
-      {/* Demonstração vídeo */}
-      <section className="max-w-5xl mx-auto py-16 px-6" data-testid="pt-demo-section">
-        <p className="overline text-center">Demonstração</p>
-        <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold text-center tracking-tight">
-          Ver o ConstruPilot em acção
-        </h2>
-        <p className="mt-3 text-sm text-muted-foreground text-center max-w-2xl mx-auto">
-          Da planta ao orçamento com IVA em poucos minutos. Carregue no vídeo para ver o fluxo completo.
-        </p>
-        <div className="mt-8 rounded-xl overflow-hidden border border-border shadow-lg bg-black/5">
-          <video
-            controls
-            playsInline
-            preload="metadata"
-            className="w-full"
-            aria-label="Demonstração ConstruPilot Portugal"
-            data-testid="pt-demo-video"
-          >
-            <source src="/demo-pt.mp4" type="video/mp4" />
-          </video>
-        </div>
       </section>
 
       {/* CTA */}

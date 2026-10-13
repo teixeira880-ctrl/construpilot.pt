@@ -1,10 +1,11 @@
+import { AssistantIcon } from "@/components/workspace/navigation";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 import {
-  Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
-  FileSearch, Shield, Menu, X, LogOut, LogIn, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
-  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers, Wand2, Inbox, Truck,
-} from "lucide-react";
+  Bot, Hammer, LayoutDashboard, Calculator, Search, Wrench, MessageSquare, Camera,
+  FileSearch, Shield, Menu, X, LogOut, Sun, Moon, Sparkles, Handshake, Ruler, KeyRound,
+  Users, LineChart, ChevronDown, Contact, Library, FileText, Tag, HardHat, Building2, Layers, Wand2, Inbox, Truck, Radar, Brain, Globe, LifeBuoy, FileSpreadsheet, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -12,13 +13,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { MarketToggle, useI18n } from "@/context/I18nContext";
+import { LangToggle, MarketToggle, useI18n } from "@/context/I18nContext";
 import { usePermissions } from "@/context/PermissionContext";
 
 // Nav v2 — menus groupés + relief (fin du débordement header)
+// Séparation stricte des offres : particulier_gratuit < particulier_payant < pro < business.
+const RANK = { particulier_gratuit: 0, particulier_payant: 1, pro: 2, business: 3 };
+const LEVEL_LABELS = { particulier_payant: "Particulier Payant", pro: "Pro", business: "Business" };
+
 const NAV_MAIN = [
-  { to: "/dashboard", label: "Painel", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
-  { to: "/devis-editeur", label: "Novo devis", key: "nav.newquote", icon: FileText, auth: true, pro: true },
+  { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
+  { to: "/devis-editeur", label: "Nouveau devis", key: "nav.newquote", icon: FileText, auth: true, min: "pro" },
+  { to: "/assistant", label: "Assistant BTP", key: "nav.assistant", icon: AssistantIcon, auth: true, min: "particulier_payant" },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
@@ -26,40 +32,48 @@ const NAV_MAIN = [
 ];
 
 const NAV_PRO = [
-  { to: "/entreprise", label: "Espaço Empresa", key: "nav.company", icon: Building2, perm: "entreprise" },
-  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, perm: "devis" },
-  { to: "/factures", label: "Faturas", key: "nav.invoices", icon: FileText, perm: "factures" },
-  { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations" },
-  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier" },
-  { to: "/rendu-ia", label: "Render IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, pro: true },
-  { to: "/appro", label: "Análise technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, pro: true, badge: "Novo" },
-  { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh" },
-  { to: "/clients", label: "Clientes", key: "nav.clients", icon: Contact },
-  { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox },
-  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue" },
-  { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library },
-  { to: "/equipe", label: "Equipa", key: "nav.team", icon: Users },
-  { to: "/etudes-pc", label: "Estudos PC", key: "nav.studies", icon: FileSearch, hint: "Permis de construire" },
+  { to: "/entreprise", label: "Espace Entreprise", key: "nav.company", icon: Building2, perm: "entreprise", min: "business" },
+  { to: "/ma-page", label: "Ma page & mes documents", key: "nav.myPage", icon: Globe, auth: true, min: "pro" },
+  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, perm: "devis", min: "pro" },
+  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, perm: "factures", min: "pro" },
+  { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations", min: "business" },
+  { to: "/dpgf", label: "DPGF architecte → devis", key: "nav.dpgf", icon: FileSpreadsheet, perm: "devis", badge: "Nouveau", min: "pro" },
+  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier", min: "pro" },
+  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, badge: "Nouveau", min: "pro" },
+  { to: "/controle-cotes", label: "Analyser cotes des plans", key: "nav.cotes", icon: Ruler, auth: true, badge: "Nouveau", min: "pro" },
+  { to: "/radar", label: "Radar Chantiers", key: "nav.radar", icon: Radar, auth: true, badge: "Nouveau", min: "pro" },
+  { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh", min: "business" },
+  { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact, min: "pro" },
+  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue", min: "pro" },
+  { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library, min: "pro" },
+  { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users, min: "business" },
+  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch, hint: "Permis de construire", min: "pro" },
+  { to: "/plans-pro", label: "Analyse de plan Pro", key: "nav.plansPro", icon: Layers, auth: true, min: "pro" },
 ];
 
 const NAV_DISCOVER = [
   { to: "/fonctionnalites", label: "Fonctionnalités", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
-  { to: "/plan", label: "Mesurer 2D", key: "nav.plan2d", icon: Ruler, auth: true, pro: true },
-  { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true, pro: true },
-  { to: "/photo", label: "Análise photo", key: "nav.photo", icon: Camera },
+  { to: "/rendu-ia", label: "Rendu IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, min: "particulier_payant" },
+  { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true, min: "particulier_payant" },
+  { to: "/plan", label: "Éditeur de plans", key: "nav.plan2d", icon: Ruler, auth: true, min: "pro" },
+  { to: "/btp-solver", label: "Résoudre un problème", key: "nav.solver", icon: Wrench, auth: true },
+  { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox, auth: true },
+  { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
   { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
   { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
   { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
   { to: "/marketplace", label: "Trouver un pro", key: "nav.marketplace", icon: Wrench },
-  { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch },
+  { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch, min: "business" },
 ];
 
 const ACCOUNT_LINKS = [
   { to: "/tarifs", label: "Tarifs & abonnement", key: "nav.pricing", icon: Sparkles },
-  { to: "/investisseurs", label: "Investidores", key: "nav.investors", icon: Handshake },
+  { to: "/aide", label: "Aide & assistance", key: "nav.help", icon: LifeBuoy },
+  { to: "/investisseurs", label: "Investisseurs", key: "nav.investors", icon: Handshake },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
+  { to: "/preferences", label: "Mémoire et préférences", key: "nav.preferences", icon: Brain, auth: true },
   { to: "/compte", label: "Mon compte", key: "nav.account", icon: KeyRound },
 ];
 
@@ -79,7 +93,13 @@ export const Nav = () => {
     const isDark = document.documentElement.classList.contains("dark");
     localStorage.setItem("construpilot_theme", isDark ? "dark" : "light");
     setDark(isDark);
+    if (user) api.put("/auth/theme", { theme: isDark ? "dark" : "light" }).catch(() => {});
   };
+  useEffect(() => {
+    const sync = () => setDark(document.documentElement.classList.contains("dark"));
+    window.addEventListener("construpilot-theme", sync);
+    return () => window.removeEventListener("construpilot-theme", sync);
+  }, []);
 
   const pill = (active) =>
     `px-3 py-2 rounded-lg text-sm inline-flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 ${
@@ -87,13 +107,31 @@ export const Nav = () => {
         ? "bg-primary text-primary-foreground shadow-md shadow-primary/30 font-semibold"
         : "text-muted-foreground hover:text-primary hover:bg-secondary/70 hover:-translate-y-0.5"}`;
   const groupActive = (items) => items.some((l) => location.pathname === l.to);
-  const isPro = user?.account_type !== "particulier" || user?.role === "admin";
-  const proItems = isPro ? NAV_PRO.filter((l) => !l.perm || can(l.perm)) : [];
-  const discoverItems = NAV_DISCOVER.filter((l) => (!l.auth || user) && (!l.pro || isPro));
+  const [level, setLevel] = useState("particulier_gratuit");
+  useEffect(() => {
+    if (!user) { setLevel("particulier_gratuit"); return; }
+    if (user.role === "admin") { setLevel("business"); return; }
+    api.get("/billing/me").then(({ data }) => setLevel(data.level || "particulier_gratuit")).catch(() => {
+      setLevel(user.account_type === "pro" ? "pro" : "particulier_gratuit");
+    });
+  }, [user]);
+  // Paid/pro links stay visible to logged-in users as locked upsells (→ /tarifs).
+  const stateOf = (l) => {
+    if (l.auth && !user) return "hidden";
+    const tierOk = !l.min || RANK[level] >= RANK[l.min];
+    if (!tierOk) return user ? "locked" : "hidden";
+    if (l.perm && !can(l.perm)) return "hidden";
+    return "ok";
+  };
+  const annotate = (arr) => arr.map((l) => ({ ...l, _state: stateOf(l) })).filter((l) => l._state !== "hidden");
+  const mainItems = annotate(NAV_MAIN);
+  const proItems = annotate(NAV_PRO);
+  const discoverItems = annotate(NAV_DISCOVER);
+  const lockHint = (l) => `Fonction ${LEVEL_LABELS[l.min] || ""} — cliquez pour débloquer`;
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
-      <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-4">
+      <div className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8 min-h-16 py-2 lg:py-0 lg:h-16 flex flex-wrap lg:flex-nowrap items-center gap-2 lg:gap-4">
         <Link to="/" className="flex items-center gap-2 shrink-0 group" data-testid="nav-logo">
           <img src="/construpilot-icon.png" alt="ConstruPilot" className="h-9 w-9 rounded-xl object-cover shadow-md shadow-primary/30 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-3" />
           <span className="font-display font-extrabold tracking-tight text-lg">
@@ -101,52 +139,63 @@ export const Nav = () => {
           </span>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
-          {NAV_MAIN.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro)).map((l) => (
-            <Link key={l.to} to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className={pill(location.pathname === l.to)}>
-              <l.icon className="h-4 w-4" /> {t(l.key, l.label)}
-            </Link>
-          ))}
+        <nav className="hidden lg:flex items-center gap-1 flex-1 min-w-0" data-testid="nav-desktop">
+          <div className="flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {mainItems.map((l) => {
+              const locked = l._state === "locked";
+              return (
+              <Link key={l.to} to={locked ? "/tarifs" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : t(l.key, l.label)} className={pill(!locked && location.pathname === l.to)}>
+                <l.icon className="h-4 w-4" /> <span className="hidden xl:inline">{t(l.key, l.label)}</span>{locked && <Lock className="h-3 w-3 opacity-70" />}
+              </Link>
+            );})}
+          </div>
 
           {user && proItems.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button data-testid="nav-pro-btn" className={pill(groupActive(NAV_PRO))}>
+                <button data-testid="nav-pro-btn" className={pill(groupActive(NAV_PRO)) + " shrink-0"}>
                   <Building2 className="h-4 w-4" /> {t("nav.pro_space", "Espace Pro")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-pro-menu">
-                {proItems.map((l) => (
+                {proItems.map((l) => {
+                  const locked = l._state === "locked";
+                  return (
                   <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
-                    <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} title={l.hint || undefined} className="flex items-center gap-2.5">
+                    <Link to={locked ? "/tarifs" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : (l.hint || undefined)} className="flex items-center gap-2.5">
                       <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
                       {t(l.key, l.label)}
-                      {l.badge && <span data-testid={`nav-badge-${l.to.slice(1)}`} className="ml-1.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>}
-                      {l.hint && <span className="ml-auto text-[10px] text-muted-foreground">{l.hint}</span>}
+                      {locked ? <Lock data-testid={`nav-lock-${l.to.slice(1)}`} className="ml-auto h-3.5 w-3.5 text-primary/70" /> : <>
+                        {l.badge && <span data-testid={`nav-badge-${l.to.slice(1)}`} className="ml-1.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>}
+                        {l.hint && <span className="ml-auto text-[10px] text-muted-foreground">{l.hint}</span>}
+                      </>}
                     </Link>
                   </DropdownMenuItem>
-                ))}
+                );})}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button data-testid="nav-more-btn" className={pill(groupActive(NAV_DISCOVER))}>
+              <button data-testid="nav-more-btn" className={pill(groupActive(NAV_DISCOVER)) + " shrink-0"}>
                 <Sparkles className="h-4 w-4" /> {t("nav.discover", "Découvrir")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-more-menu">
-              {discoverItems.map((l) => (
+              {discoverItems.map((l) => {
+                const locked = l._state === "locked";
+                return (
                 <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
-                  <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
+                  <Link to={locked ? "/tarifs" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : undefined} className="flex items-center gap-2.5">
                     <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
                     {t(l.key, l.label)}
+                    {locked && <Lock data-testid={`nav-lock-${l.to.slice(1)}`} className="ml-auto h-3.5 w-3.5 text-primary/70" />}
                   </Link>
                 </DropdownMenuItem>
-              ))}
+              );})}
               <DropdownMenuSeparator />
-              {ACCOUNT_LINKS.filter((l) => ["/tarifs", "/investisseurs"].includes(l.to)).map((l) => (
+              {ACCOUNT_LINKS.filter((l) => ["/tarifs", "/investisseurs"].includes(l.to) || (l.to === "/preferences" && user)).map((l) => (
                 <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
                   <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
                     <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
@@ -158,11 +207,11 @@ export const Nav = () => {
           </DropdownMenu>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 shrink-0">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2 max-w-full min-w-0" data-testid="nav-actions">
           <button
             onClick={toggleTheme}
             data-testid="theme-toggle"
-            aria-label="Mudar tema"
+            aria-label="Changer de thème"
             className="h-9 w-9 grid place-items-center rounded-sm border border-border hover:border-primary transition-colors"
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -177,6 +226,7 @@ export const Nav = () => {
           {user ? (
             <>
               <MarketToggle />
+              <LangToggle />
               <NotificationsBell />
               <Link to="/compte" data-testid="nav-account-link" className="hidden 2xl:flex items-center gap-2 text-sm text-muted-foreground max-w-[170px] hover:text-primary transition-colors">
                 {user.picture && (
@@ -195,11 +245,7 @@ export const Nav = () => {
           ) : (
             <>
               <MarketToggle />
-              <Link to="/login" data-testid="nav-signin-btn">
-                <Button variant="outline" size="sm" className="rounded-sm gap-2 hidden sm:inline-flex">
-                  <LogIn className="h-4 w-4" /> {t("nav.login")}
-                </Button>
-              </Link>
+              <LangToggle />
               <Link to="/login" data-testid="nav-login-btn">
                 <Button size="sm" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
                   <Sparkles className="h-4 w-4" /> {t("nav.start")}
@@ -220,24 +266,17 @@ export const Nav = () => {
 
       {open && (
         <div className="lg:hidden border-t border-border bg-background px-5 py-4 grid gap-1 max-h-[75vh] overflow-y-auto" data-testid="mobile-menu">
-          {ALL_LINKS.filter((l) => (!l.auth || user) && (!l.perm || can(l.perm)) && (!l.pro || isPro) && (!NAV_PRO.includes(l) || isPro)).map((l) => (
+          {annotate(ALL_LINKS.filter((l, i, all) => all.findIndex((item) => item.to === l.to) === i)).map((l) => {
+            const locked = l._state === "locked";
+            return (
             <Link
-              key={l.to} to={l.to} onClick={() => setOpen(false)}
+              key={l.to} to={locked ? "/tarifs" : l.to} onClick={() => setOpen(false)} data-testid={`mobile-nav-link-${l.to.slice(1)}`} data-locked={locked || undefined}
               className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg hover:bg-secondary transition-colors"
             >
               <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span> {t(l.key, l.label)}
-              {l.badge && <span className="ml-auto text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>}
+              {locked ? <Lock className="ml-auto h-4 w-4 text-primary/70" /> : (l.badge && <span className="ml-auto text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{l.badge}</span>)}
             </Link>
-          ))}
-          {!user && (
-            <Link
-              to="/login" onClick={() => setOpen(false)}
-              data-testid="mobile-nav-login"
-              className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg border border-border hover:bg-secondary transition-colors mt-2"
-            >
-              <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><LogIn className="h-4 w-4 text-primary" /></span> {t("nav.login")}
-            </Link>
-          )}
+          );})}
         </div>
       )}
     </header>
@@ -250,18 +289,25 @@ export const Footer = () => (
       <p className="font-display font-bold tracking-tight">
         Constru<span className="text-primary">Pilot</span>
         <span className="ml-3 text-sm font-sans font-normal text-muted-foreground">
-          Estime. Compare. Construa.
+          Estimez. Comparez. Construisez.
         </span>
       </p>
       <div className="flex flex-col md:items-end gap-1">
         <a
-          href="mailto:info@construpilot.pt"
+          href="mailto:info@construpilot.fr"
           className="text-xs text-primary hover:underline"
           data-testid="footer-contact-email"
         >
-          info@construpilot.pt
+          info@construpilot.fr
         </a>
         <div className="flex items-center gap-3">
+          <Link
+            to="/aide"
+            className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
+            data-testid="footer-help-link"
+          >
+            Aide & assistance
+          </Link>
           <Link
             to="/portugal"
             className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
@@ -270,14 +316,14 @@ export const Footer = () => (
             🇵🇹 Portugal
           </Link>
           <Link
-            to="/investidores"
+            to="/investisseurs"
             className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
             data-testid="footer-investors-link"
           >
-            Investidores
+            Investisseurs
           </Link>
           <span className="text-[11px] text-muted-foreground">
-            Estimativas indicativas — não constituem orçamento contratual.
+            Estimations indicatives — ne constituent pas un devis contractuel.
           </span>
         </div>
       </div>
@@ -285,12 +331,14 @@ export const Footer = () => (
     <div className="border-t border-border">
       <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-4 text-center" data-testid="footer-legal">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-2 text-[11px]">
-          <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Menções legais</a>
-          <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Política de privacidade</a>
-          <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">Termos e Condições</a>
+          <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Mentions légales</a>
+          <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Politique de confidentialité</a>
+          <a href="/suppression-compte" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-compte">Supprimer mon compte</a>
+          <a href="/suppression-donnees" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-donnees">Supprimer mes données</a>
+          <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">CGU / CGV</a>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          © {new Date().getFullYear()} ConstruPilot — Todos os direitos reservados · Patente n.º FR261104
+          © {new Date().getFullYear()} ConstruPilot — Tous droits réservés · Brevet n° FR2611044
         </p>
       </div>
     </div>

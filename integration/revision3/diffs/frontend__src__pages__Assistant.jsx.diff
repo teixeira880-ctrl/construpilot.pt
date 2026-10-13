@@ -1,0 +1,153 @@
+--- current/frontend/src/pages/Assistant.jsx
++++ zip/frontend/src/pages/Assistant.jsx
+@@ -7,7 +7,14 @@
+ import { MessageBubble } from "@/components/assistant/MessageBubble";
+ import { streamAssistant } from "@/lib/assistantStream";
+ 
++import { CadImportInfo, CadUnitPicker } from "@/components/planTakeoff/CadImportInfo";
++
+ export default function Assistant() {
++  const [cadFile, setCadFile] = useState(null);
++  const [mode, setMode] = useState("thorough");
++  const [webEnabled, setWebEnabled] = useState(true);
++  const sendLock = useRef(false);
++  const recorderRef = useRef(null);
+   const [convs, setConvs] = useState([]);
+   const [conv, setConv] = useState(null);
+   const [plans, setPlans] = useState([]);
+@@ -28,20 +35,23 @@
+   const loadConvs = () => api.get("/assistant/conversations").then((r) => setConvs(r.data)).catch(() => {});
+   useEffect(() => {
+     loadConvs();
++    api.get("/assistant/settings").then(r => setWebEnabled(r.data.web_enabled)).catch(() => {});
+     api.get("/takeoffs").then((r) => setPlans(r.data.plans || r.data.items || (Array.isArray(r.data) ? r.data : []))).catch(() => {});
+     api.get("/assistant/preferences").then((r) => setPrefs(r.data)).catch(() => {});
+     api.get("/assistant/documents").then((r) => setDocs(r.data)).catch(() => {});
+   }, []);
++  useEffect(() => () => { abortRef.current?.abort(); if (recorderRef.current) { recorderRef.current.onstop = null; recorderRef.current.stream.getTracks().forEach(t => t.stop()); } }, []);
+   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [conv?.messages?.length, live?.content, live?.actions?.length]);
+ 
+-  const open = async (id) => { const r = await api.get(`/assistant/conversations/${id}`); setConv(r.data); setActivePlans(r.data.active_plans || []); setActiveDocs(r.data.active_docs || []); setPending([]); };
+-  const create = async () => { const r = await api.post("/assistant/conversations", {}); await loadConvs(); setConv({ ...r.data, messages: [] }); setActivePlans([]); setActiveDocs([]); setPending([]); };
++  const open = async (id) => { if (sendLock.current) return; const r = await api.get(`/assistant/conversations/${id}`); setConv(r.data); setActivePlans(r.data.active_plans || []); setActiveDocs(r.data.active_docs || []); setPending([]); };
++  const create = async () => { if (sendLock.current) return; const r = await api.post("/assistant/conversations", {}); await loadConvs(); setConv({ ...r.data, messages: [] }); setActivePlans([]); setActiveDocs([]); setPending([]); };
+   const nameOf = (id) => plans.find((p) => p.plan_id === id)?.filename || docs.find((d) => d.doc_id === id)?.filename || id;
+ 
+   const send = async () => {
+-    if (!text.trim() || busy) return;
++    if (!text.trim() || sendLock.current || uploading) return;
++    sendLock.current = true; setBusy(true);
+     let c = conv;
+-    if (!c) { const r = await api.post("/assistant/conversations", {}); c = { ...r.data, messages: [] }; setConv(c); }
++    if (!c) { try { const r = await api.post("/assistant/conversations", {}); c = { ...r.data, messages: [] }; setConv(c); } catch { sendLock.current = false; setBusy(false); toast.error("Conversation indisponible"); return; } }
+     const mine = { role: "user", content: text, attachments: pending.map((id) => ({ plan_id: id, filename: nameOf(id) })), created_at: new Date().toISOString() };
+     setConv({ ...c, messages: [...(c.messages || []), mine] }); setText(""); setBusy(true);
+     const draft = { role: "assistant", content: "", actions: [], sources: [], status: "ConstruPilot réfléchit…" };
+@@ -49,12 +59,15 @@
+     const ctrl = new AbortController(); abortRef.current = ctrl;
+     let acc = { ...draft };
+     try {
+-      await streamAssistant({ conversation_id: c.conversation_id, text: mine.content, plan_ids: activePlans, doc_ids: activeDocs, attachments: pending }, {
++      await streamAssistant({ conversation_id: c.conversation_id, text: mine.content, response_mode: mode, web_enabled: webEnabled, plan_ids: activePlans, doc_ids: activeDocs, attachments: pending }, {
+         signal: ctrl.signal,
+         onEvent: (ev) => {
+           if (ev.type === "delta") acc = { ...acc, content: acc.content + ev.text, status: null };
+           else if (ev.type === "status") acc = { ...acc, status: ev.text };
+-          else if (ev.type === "action") acc = { ...acc, actions: [...acc.actions, ev.action], status: null };
++          else if (ev.type === "action") {
++            acc = { ...acc, actions: [...acc.actions, ev.action], status: null };
++            if (ev.action?.tool === "update_work_draft" && ev.action.result?.ok) window.dispatchEvent(new CustomEvent("construpilot:draft-updated", { detail: ev.action.result.draft }));
++          }
+           else if (ev.type === "error") throw new Error(ev.error);
+           else if (ev.type === "done") acc = ev.message;
+           setLive({ ...acc });
+@@ -65,7 +78,7 @@
+     } catch (e) {
+       if (e.name === "AbortError") setConv((cur) => ({ ...cur, messages: [...cur.messages, { ...acc, status: null, interrupted: true }] }));
+       else toast.error(e.message || "Assistant indisponible");
+-    } finally { setBusy(false); setLive(null); abortRef.current = null; }
++    } finally { sendLock.current = false; setBusy(false); setLive(null); abortRef.current = null; }
+   };
+ 
+   const stop = () => abortRef.current?.abort();
+@@ -81,17 +94,17 @@
+         const fd = new FormData(); fd.append("file", new Blob(chunks, { type: "audio/webm" }), "dictee.webm");
+         try { const r = await api.post("/assistant/transcribe", fd); setText((t) => (t ? t + " " : "") + r.data.text); } catch { toast.error("Transcription impossible"); }
+       };
+-      mr.start(); setRec(mr);
++      mr.start(); recorderRef.current = mr; setRec(mr);
+     } catch { toast.error("Micro indisponible"); }
+   };
+ 
+-  const upload = async (file, as) => {
+-    const fd = new FormData(); fd.append("file", file); setUploading(true); setPickFile(null);
++  const upload = async (file, as, cadUnit) => {
++    const fd = new FormData(); fd.append("file", file); if (cadUnit) fd.append("cad_unit", cadUnit); setUploading(true); setPickFile(null); setCadFile(null);
+     try {
+       if (as === "plan") { const r = await api.post("/takeoffs/upload", fd); setPlans((p) => [r.data, ...p]); setActivePlans((a) => [...a, r.data.plan_id]); setPending((a) => [...a, r.data.plan_id]); }
+       else { const r = await api.post("/assistant/documents", fd); setDocs((d) => [r.data, ...d]); setActiveDocs((a) => [...a, r.data.doc_id]); setPending((a) => [...a, r.data.doc_id]); }
+       toast.success("Document ajouté au contexte");
+-    } catch (e) { toast.error(e?.response?.data?.detail || "Import impossible"); }
++    } catch (e) { const detail = e?.response?.data?.detail; if (typeof detail === "string" && detail.includes("CAD_UNIT_REQUIRED")) setCadFile(file); else toast.error(typeof detail === "string" ? detail : "Import impossible"); }
+     finally { setUploading(false); }
+   };
+   const onPick = (file) => { const ext = file.name.toLowerCase().split(".").pop(); if (["dxf", "dwg"].includes(ext)) upload(file, "plan"); else setPickFile(file); };
+@@ -100,9 +113,9 @@
+   return (
+     <div className="max-w-7xl mx-auto px-4 py-6 grid gap-4 lg:grid-cols-[260px_1fr]" data-testid="assistant-page">
+       <aside className="grid gap-2 content-start">
+-        <Button size="sm" className="justify-start gap-2 rounded-sm" onClick={create} data-testid="assistant-new-btn"><Plus className="h-4 w-4" /> Nouvelle conversation</Button>
++        <Button size="sm" className="justify-start gap-2 rounded-sm" disabled={busy} onClick={create} data-testid="assistant-new-btn"><Plus className="h-4 w-4" /> Nouvelle conversation</Button>
+         {convs.map((c) => (
+-          <button key={c.conversation_id} onClick={() => open(c.conversation_id)} className={`text-left text-sm px-2 py-1.5 rounded-sm border truncate transition-colors hover:bg-muted ${conv?.conversation_id === c.conversation_id ? "bg-primary/10 border-primary" : ""}`} data-testid="assistant-conv-item">{c.title}</button>
++          <button key={c.conversation_id} disabled={busy} onClick={() => open(c.conversation_id)} className={`text-left text-sm px-2 py-1.5 rounded-sm border truncate transition-colors hover:bg-muted ${conv?.conversation_id === c.conversation_id ? "bg-primary/10 border-primary" : ""}`} data-testid="assistant-conv-item">{c.title}</button>
+         ))}
+         <Link to="/preferences" className="mt-2 text-xs flex items-center gap-1.5 px-2 py-1.5 rounded-sm border hover:bg-muted transition-colors" data-testid="assistant-prefs-link">
+           <Brain className="h-3.5 w-3.5 text-primary" /> Mémoire et préférences <span className="ml-auto rounded-full bg-primary/10 px-1.5" data-testid="assistant-prefs-count">{activePrefs.length}</span>
+@@ -111,6 +124,8 @@
+       <section className="grid gap-3 content-start min-h-[70vh]">
+         <header className="flex flex-wrap items-center gap-2 text-xs border rounded-sm px-3 py-2 bg-muted/40" data-testid="assistant-context">
+           <Bot className="h-4 w-4 text-primary" /> <b>Assistant BTP ConstruPilot</b>
++          <label>Réponse <select aria-label="Niveau de réponse" disabled={busy} value={mode} onChange={e => setMode(e.target.value)} className="border bg-background rounded-sm p-1"><option value="thorough">Approfondie</option><option value="fast">Rapide</option></select></label>
++          <label className="flex gap-1 items-center"><input type="checkbox" checked={webEnabled} disabled={busy} onChange={e => setWebEnabled(e.target.checked)} /> Internet</label>
+           <span className="ml-auto">Documents actifs :</span>
+           <select className="h-7 text-xs border rounded-sm bg-background" value="" onChange={(e) => e.target.value && setActivePlans((a) => a.includes(e.target.value) ? a : [...a, e.target.value])} data-testid="assistant-plan-select">
+             <option value="">+ plan importé…</option>
+@@ -123,6 +138,8 @@
+           {activePlans.map((id) => <span key={id} className="px-1.5 py-0.5 rounded-sm bg-primary/10 border text-[11px]" data-testid="assistant-active-plan">{nameOf(id)} <button onClick={() => { setActivePlans((a) => a.filter((x) => x !== id)); setPending((a) => a.filter((x) => x !== id)); }}>×</button></span>)}
+           {activeDocs.map((id) => <span key={id} className="px-1.5 py-0.5 rounded-sm bg-amber-500/10 border border-amber-500/30 text-[11px]" data-testid="assistant-active-doc"><FileText className="inline h-3 w-3 mr-0.5" />{nameOf(id)} <button onClick={() => { setActiveDocs((a) => a.filter((x) => x !== id)); setPending((a) => a.filter((x) => x !== id)); }}>×</button></span>)}
+         </header>
++        {activePlans.map(id => <CadImportInfo key={id} info={plans.find(p => p.plan_id === id)?.cad_import} />)}
++        {cadFile && <CadUnitPicker file={cadFile} onChoose={unit => upload(cadFile, "plan", unit)} onCancel={() => setCadFile(null)} />}
+         {activePrefs.length > 0 && (
+           <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground" data-testid="assistant-active-prefs">
+             <Brain className="h-3.5 w-3.5" /> Préférences appliquées :
+@@ -131,8 +148,13 @@
+           </div>
+         )}
+         <div className="grid gap-3 flex-1 overflow-y-auto max-h-[58vh] pr-1 content-start" data-testid="assistant-messages">
+-          {!conv?.messages?.length && !live && <p className="text-sm text-muted-foreground p-4">Écrivez ou dictez : « Analyse uniquement les murs du vide sanitaire, ne contrôle pas les semelles », « Explique-moi l'écart de 4 cm », « Prépare un brouillon de devis… », « Recherche le DTU applicable… », « Combien coûte la rénovation d'une salle de bain de 6 m² ? ».</p>}
+-          {(conv?.messages || []).map((m, i) => <MessageBubble key={i} m={m} />)}
++          {!conv?.messages?.length && !live && <div className="p-4 grid gap-3"><p className="text-sm text-muted-foreground">Décrivez votre besoin, joignez vos pièces ou dictez votre demande.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{[
++            ["Répondre à un mail", "Prépare une réponse professionnelle à ce mail. Destinataire et objectif : \nMail reçu : "],
++            ["Analyser un plan", "Analyse les murs intérieurs mur à mur du plan joint. Identifie les faces, vérifie les cotes et indique ce qui reste à confirmer. Périmètre : "],
++            ["Compte rendu de chantier", "Rédige un compte rendu avec faits constatés, décisions, actions, responsables et dates connues. Mes notes : "],
++            ["Résoudre un problème", "Aide-moi à résoudre ce problème de chantier. Vérifie les pièces, explique les causes possibles et propose les prochaines actions : "],
++          ].map(([label, prompt]) => <button key={label} className="border rounded-md px-3 py-3 text-left text-sm hover:bg-muted" onClick={() => setText(prompt)}>{label}</button>)}</div></div>}
++          {(conv?.messages || []).map((m, i) => <MessageBubble key={i} m={m} onCorrect={() => setText(`Concernant votre réponse « ${m.content.slice(0, 120)}… », voici la correction à vérifier : `)} />)}
+           {live && <MessageBubble m={live} live />}
+           <div ref={endRef} />
+         </div>
+@@ -155,10 +177,10 @@
+             <input type="file" className="hidden" accept=".pdf,.dxf,.dwg,.png,.jpg,.jpeg,.webp" onChange={(e) => { if (e.target.files[0]) onPick(e.target.files[0]); e.target.value = ""; }} data-testid="assistant-upload-input" />
+           </label>
+           <Button variant={rec ? "destructive" : "outline"} size="icon" className="h-9 w-9 rounded-sm" onClick={toggleMic} data-testid="assistant-mic-btn">{rec ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button>
+-          <textarea className="flex-1 min-h-[36px] max-h-40 border rounded-sm px-3 py-2 text-sm bg-background" rows={1} placeholder="Votre demande…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} data-testid="assistant-input" />
++          <textarea className="flex-1 min-h-[36px] max-h-40 border rounded-sm px-3 py-2 text-sm bg-background" rows={1} placeholder="Votre demande…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} data-testid="assistant-input" />
+           {busy
+             ? <Button variant="destructive" className="h-9 rounded-sm gap-1" onClick={stop} data-testid="assistant-stop-btn"><StopCircle className="h-4 w-4" /> Interrompre</Button>
+-            : <Button className="h-9 rounded-sm gap-1" disabled={!text.trim()} onClick={send} data-testid="assistant-send-btn"><Send className="h-4 w-4" /> Envoyer</Button>}
++            : <Button className="h-9 rounded-sm gap-1" disabled={!text.trim() || uploading} onClick={send} data-testid="assistant-send-btn"><Send className="h-4 w-4" /> Envoyer</Button>}
+         </div>
+       </section>
+     </div>

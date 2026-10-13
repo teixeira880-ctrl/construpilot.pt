@@ -2,12 +2,13 @@ import uuid
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user, optional_user
+from core.rate_limit import limiter
 from engines import ai, estimation
 
 router = APIRouter(tags=["ai"])
@@ -20,7 +21,8 @@ class ChatIn(BaseModel):
 
 
 @router.post("/chat")
-async def chat(body: ChatIn, user=Depends(optional_user)):
+@limiter.limit("20/minute")
+async def chat(body: ChatIn, request: Request, response: Response, user=Depends(optional_user)):
     session_id = body.session_id or f"chat_{uuid.uuid4().hex[:12]}"
     history = await db.chat_messages.find({"session_id": session_id}, {"_id": 0}) \
         .sort("created_at", 1).to_list(50)

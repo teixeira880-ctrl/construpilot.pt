@@ -17,8 +17,11 @@ from core.db import db
 from core.security import current_user, pro_required
 from routes.documents import _compute_totals, _next_number, _now, _client_snapshot
 from engines import emailer, activity
+from engines.deposit_credit import deposit_state, imputation_amount, deduction_lines
 
-router = APIRouter(prefix="/situations", tags=["situations"], dependencies=[Depends(pro_required)])
+from core.permissions import feature_dependency
+
+router = APIRouter(prefix="/situations", tags=["situations"], dependencies=[Depends(feature_dependency("situations"))])
 
 
 def _uid(u):
@@ -71,6 +74,8 @@ class SituationIn(BaseModel):
     marche_id: str
     lines: list[SitLineIn]
     retention_pct: float = Field(default=0, ge=0, le=10)
+    deposit_mode: str = Field(default="prorata")  # none | prorata | full | manual
+    deposit_amount_ht: float = Field(default=0, ge=0)
 
 
 @router.post("")
@@ -89,8 +94,11 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
     seq = (prev[0]["seq"] + 1) if prev else 1
 
     sit_lines, inv_lines, cumul_map = [], [], {}
+    contract_total = billed_before = 0.0
     for i, bl in enumerate(base_lines):
         contract_ht = round((bl.get("qty") or 0) * (bl.get("unit_price_ht") or 0), 2)
+        contract_total += contract_ht
+        billed_before += round(contract_ht * float(prev_pct.get(i, 0)) / 100, 2)
         cum = float(pct_map.get(i, prev_pct.get(i, 0)))
         pv = float(prev_pct.get(i, 0))
         if cum < pv:
@@ -111,12 +119,22 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
     if not inv_lines:
         raise HTTPException(400, "Aucun avancement à facturer (delta nul sur toutes les lignes)")
 
+    works_totals = _compute_totals(inv_lines, 0)
+    works_ht = works_totals["ht"]
+    dep_state = await deposit_state(_uid(user), body.marche_id)
+    cumul_ratio = ((billed_before + works_ht) / contract_total) if contract_total else 0.0
+    deposit_ht = imputation_amount(body.deposit_mode, dep_state, cumul_ratio,
+                                   works_ht, body.deposit_amount_ht)
+    inv_lines += deduction_lines(deposit_ht, dep_state)
+
     totals = _compute_totals(inv_lines, 0)
-    retention_amount = round(totals["ht"] * (body.retention_pct or 0) / 100, 2)
+    retention_amount = round(works_ht * (body.retention_pct or 0) / 100, 2)
     net_due = round(totals["ttc"] - retention_amount, 2)
     marche_label = base.get("number") or base.get("title") or base["doc_id"]
 
     note = f"Situation de travaux n°{seq} — marché {marche_label}."
+    if deposit_ht:
+        note += f" Acompte déjà versé déduit : -{deposit_ht:.2f} € HT."
     if retention_amount:
         note += (f" Retenue de garantie {body.retention_pct:g}% : -{retention_amount:.2f} € · "
                  f"Net à payer : {net_due:.2f} € TTC.")
@@ -134,6 +152,7 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
         "source": "situation", "is_situation": True, "marche_id": body.marche_id,
         "situation_seq": seq, "retention_pct": body.retention_pct or 0,
         "retention_amount": retention_amount, "net_due": net_due,
+        "works_ht": works_ht, "deposit_imputed_ht": deposit_ht,
         "created_at": _now(), "updated_at": _now(),
     }
     await db.pro_documents.insert_one(dict(inv))
@@ -144,6 +163,11 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
         "marche_id": body.marche_id, "marche_label": marche_label, "seq": seq,
         "lines": sit_lines, "cumul_pct": cumul_map,
         "total_ht": totals["ht"], "total_ttc": totals["ttc"],
+        "works_ht": works_ht,
+        "deposit_mode": body.deposit_mode,
+        "deposit_imputed_ht": deposit_ht,
+        "deposit_paid_ht": dep_state["paid_ht"],
+        "deposit_remaining_ht": round(dep_state["available_ht"] - deposit_ht, 2),
         "retention_pct": body.retention_pct or 0, "retention_amount": retention_amount,
         "net_due": net_due, "invoice_doc_id": inv["doc_id"],
         "invoice_number": number, "created_at": _now(),
@@ -229,12 +253,14 @@ async def marche_summary(marche_id: str, user=Depends(current_user)):
 
     retention_held = round(sum(s.get("retention_amount", 0) for s in sits), 2)
     total_ttc = round(sum(s.get("total_ttc", 0) for s in sits), 2)
+    dep = await deposit_state(_uid(user), marche_id)
     return {
         "marche": {"doc_id": base["doc_id"], "number": base.get("number"),
                    "title": base.get("title"), "client": base.get("client"),
                    "reception_date": base.get("reception_date"),
                    "retention_released": base.get("retention_released", False)},
         "lines": lines,
+        "deposit": dep,
         "totals": {
             "contract_ht": round(total_contract, 2),
             "billed_ht": round(total_billed, 2),
@@ -243,9 +269,14 @@ async def marche_summary(marche_id: str, user=Depends(current_user)):
             "situations_count": len(sits),
             "billed_ttc": total_ttc,
             "retention_held": retention_held,
+            "deposit_paid_ttc": dep["paid_ttc"],
+            "deposit_invoiced_ttc": dep["invoiced_ttc"],
+            "deposit_imputed_ht": dep["imputed_ht"],
+            "deposit_available_ht": dep["available_ht"],
         },
         "situations": [{"seq": s["seq"], "invoice_number": s.get("invoice_number"),
                         "total_ttc": s.get("total_ttc"), "retention_amount": s.get("retention_amount"),
+                        "deposit_imputed_ht": s.get("deposit_imputed_ht", 0),
                         "created_at": s.get("created_at")} for s in sits],
     }
 
@@ -331,7 +362,7 @@ async def remind_retention(marche_id: str, user=Depends(current_user)):
     held = round(sum(s.get("retention_amount", 0) for s in sits), 2)
     label = base.get("number") or base.get("title") or marche_id
     due = base.get("retention_release_due") or "—"
-    html = (f"<p>Olá,</p><p>La retenue de garantie du marché <b>{label}</b> "
+    html = (f"<p>Bonjour,</p><p>La retenue de garantie du marché <b>{label}</b> "
             f"d'un montant de <b>{held:.2f} €</b> arrive à échéance de libération le <b>{due}</b>.</p>"
             f"<p>Nous vous remercions de bien vouloir procéder à sa libération.</p>"
             f"<p>Cordialement.</p>")
@@ -369,7 +400,7 @@ async def run_retention_reminders() -> int:
             continue
         label = m.get("number") or m.get("title") or m["doc_id"]
         due = m.get("retention_release_due")
-        html = (f"<p>Olá,</p><p>La retenue de garantie du marché <b>{label}</b> "
+        html = (f"<p>Bonjour,</p><p>La retenue de garantie du marché <b>{label}</b> "
                 f"({held:.2f} €) arrive à échéance de libération le <b>{due}</b>.</p>"
                 f"<p>Merci de bien vouloir procéder à sa libération.</p><p>Cordialement.</p>")
         try:
@@ -431,3 +462,147 @@ async def save_prorata(marche_id: str, body: ProrataIn, user=Depends(current_use
         {"$set": {"rate_pct": body.rate_pct, "expenses": expenses, "updated_at": _now()}},
         upsert=True)
     return _prorata_view(base, {"rate_pct": body.rate_pct, "expenses": expenses})
+
+
+# ─────────────────────────  4. Décompte général définitif (DGD)  ─────────────────────────
+
+async def _dgd_recap(marche_id: str, user: dict) -> dict:
+    """Bilan complet du marché : travaux, acompte restant, retenue, solde à facturer."""
+    summary = await marche_summary(marche_id, user)
+    t = summary["totals"]
+    base = await _base_doc(marche_id, user)
+    remaining_ht = t["remaining_ht"]
+    deposit_left = t["deposit_available_ht"]
+    dgd_ht = round(max(0.0, remaining_ht - deposit_left), 2)
+    rate = 0.0
+    for ln in base.get("lines") or []:
+        rate = float(ln.get("vat_rate") or 0)
+        break
+    dgd_ttc = round(dgd_ht * (1 + rate / 100), 2)
+    released = bool(base.get("retention_released"))
+    held = t["retention_held"]
+    summary["totals"] = {**t, "vat_rate": rate, "dgd_ht": dgd_ht, "dgd_ttc": dgd_ttc,
+                         "retention_released": released,
+                         "dgd_due": round(dgd_ttc + (held if released else 0), 2)}
+    summary["dgd_doc_id"] = base.get("dgd_doc_id")
+    summary["dgd_at"] = base.get("dgd_at")
+    return summary
+
+
+@router.get("/dgd")
+async def dgd_recap(marche_id: str, user=Depends(current_user)):
+    return await _dgd_recap(marche_id, user)
+
+
+class DgdIn(BaseModel):
+    marche_id: str
+    impute_deposit: bool = True
+    release_retention: bool = False
+
+
+@router.post("/dgd")
+async def create_dgd(body: DgdIn, user=Depends(current_user)):
+    """Génère la facture de solde (décompte général définitif) du marché."""
+    base = await _base_doc(body.marche_id, user)
+    if base.get("dgd_doc_id"):
+        raise HTTPException(400, "Un décompte général définitif existe déjà pour ce marché")
+    recap = await _dgd_recap(body.marche_id, user)
+    sits = await db.situations.find(
+        {"user_id": _uid(user), "marche_id": body.marche_id}, {"_id": 0}).sort("seq", 1).to_list(500)
+    last = sits[-1] if sits else None
+    cumul = {int(k): float(v) for k, v in (last.get("cumul_pct") or {}).items()} if last else {}
+
+    lines, works_ht = [], 0.0
+    for i, bl in enumerate(base.get("lines") or []):
+        qty = float(bl.get("qty") or 0)
+        pu = float(bl.get("unit_price_ht") or 0)
+        left_pct = round(100 - cumul.get(i, 0), 4)
+        if left_pct <= 0 or qty <= 0 or pu <= 0:
+            continue
+        q = round(qty * left_pct / 100, 4)
+        works_ht = round(works_ht + q * pu, 2)
+        lines.append({"designation": f"{bl.get('designation', f'Poste {i + 1}')} — solde ({left_pct:g}%)",
+                      "description": "", "unit": bl.get("unit") or "u", "qty": q,
+                      "unit_price_ht": pu, "vat_rate": float(bl.get("vat_rate") or 0),
+                      "category": "Solde de marché"})
+
+    dep = await deposit_state(_uid(user), body.marche_id)
+    deposit_ht = 0.0
+    if body.impute_deposit and dep["available_ht"] > 0 and works_ht > 0:
+        deposit_ht = imputation_amount("full", dep, 1.0, works_ht)
+        lines += deduction_lines(deposit_ht, dep)
+
+    held = recap["totals"]["retention_held"]
+    if body.release_retention and held > 0:
+        lines.append({"designation": "Libération de la retenue de garantie",
+                      "description": "Retenue conservée sur les situations, libérée au DGD",
+                      "unit": "forfait", "qty": 1, "unit_price_ht": held, "vat_rate": 0,
+                      "category": "Retenue de garantie"})
+    if not lines:
+        raise HTTPException(400, "Rien à facturer : marché soldé et retenue déjà libérée")
+
+    totals = _compute_totals(lines, 0)
+    number = await _next_number(_uid(user), "invoice")
+    marche_label = base.get("number") or base.get("title") or body.marche_id
+    notes = [f"Décompte général définitif du marché {marche_label}.",
+             f"Travaux du marché : {recap['totals']['contract_ht']:.2f} € HT — "
+             f"déjà facturé : {recap['totals']['billed_ht']:.2f} € HT."]
+    if deposit_ht:
+        notes.append(f"Acompte déjà versé déduit : -{deposit_ht:.2f} € HT.")
+    if body.release_retention and held:
+        notes.append(f"Retenue de garantie libérée : {held:.2f} €.")
+    elif held:
+        notes.append(f"Retenue de garantie détenue : {held:.2f} € (libérable à l'échéance légale).")
+
+    inv = {
+        "doc_id": "doc_" + secrets.token_hex(6), "user_id": _uid(user), "doc_type": "invoice",
+        "number": number, "title": f"Décompte général définitif — {marche_label}",
+        "client_id": base.get("client_id"),
+        "client": await _client_snapshot(base.get("client_id"), user) or base.get("client"),
+        "status": "draft", "lines": lines, "notes": "\n".join(notes)[:3000],
+        "payment_terms": base.get("payment_terms") or "", "deposit_pct": 0, "totals": totals,
+        "issue_date": None, "due_date": None,
+        "source": "dgd", "is_dgd": True, "marche_id": body.marche_id,
+        "deposit_imputed_ht": deposit_ht, "works_ht": works_ht,
+        "retention_released_amount": held if body.release_retention else 0,
+        "created_at": _now(), "updated_at": _now(),
+    }
+    await db.pro_documents.insert_one(dict(inv))
+    inv.pop("_id", None)
+    update = {"dgd_doc_id": inv["doc_id"], "dgd_at": _now()}
+    if body.release_retention and held > 0:
+        update.update({"retention_released": True, "retention_released_at": _now()})
+    await db.pro_documents.update_one({"doc_id": body.marche_id, "user_id": _uid(user)},
+                                      {"$set": update})
+    await activity.log(user, "dgd.create", "document", inv["title"],
+                       {"doc_id": inv["doc_id"], "marche_id": body.marche_id})
+    return {"doc_id": inv["doc_id"], "number": number, "totals": totals,
+            "works_ht": works_ht, "deposit_imputed_ht": deposit_ht,
+            "retention_released": bool(body.release_retention and held > 0)}
+
+
+@router.delete("/dgd/{marche_id}")
+async def cancel_dgd(marche_id: str, user=Depends(current_user)):
+    """Annule le DGD (supprime la facture de solde) pour pouvoir le régénérer."""
+    base = await _base_doc(marche_id, user)
+    doc_id = base.get("dgd_doc_id")
+    if not doc_id:
+        raise HTTPException(404, "Aucun décompte général à annuler")
+    await db.pro_documents.delete_one({"doc_id": doc_id, "user_id": _uid(user)})
+    await db.pro_documents.update_one({"doc_id": marche_id, "user_id": _uid(user)},
+                                     {"$unset": {"dgd_doc_id": "", "dgd_at": ""}})
+    return {"ok": True}
+
+
+@router.get("/dgd-pdf")
+async def dgd_pdf(marche_id: str, user=Depends(current_user)):
+    """Décompte général définitif en PDF (bilan du marché)."""
+    from fastapi import Response
+    from engines.situation_pdf import build_dgd_pdf
+    from routes.plans_common import _resolve_branding
+    recap = await _dgd_recap(marche_id, user)
+    branding = await _resolve_branding(user["user_id"])
+    pdf = build_dgd_pdf(recap, branding, (recap.get("marche") or {}).get("client"))
+    label = (recap.get("marche") or {}).get("number") or marche_id
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="dgd-{label}.pdf"'})

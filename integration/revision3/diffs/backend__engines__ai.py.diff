@@ -1,0 +1,57 @@
+--- current/backend/engines/ai.py
++++ zip/backend/engines/ai.py
+@@ -32,15 +32,6 @@
+     "haiku": {"provider": "anthropic", "model": "claude-haiku-4-5-20251001",
+               "label": "Claude Haiku 4.5", "desc": "Rapide & économique · qualité moindre",
+               "quality": 1, "speed": 3, "cost": 1},
+-    "gpt_astra": {"provider": "openai", "model": "gpt-6-astra",
+-                  "label": "ChatGPT · GPT-6 Astra", "desc": "Clé OpenAI de l'entreprise · raisonnement maximal · plus lent",
+-                  "quality": 3, "speed": 1, "cost": 3},
+-    "gpt_terra": {"provider": "openai", "model": "gpt-5.6-terra",
+-                  "label": "ChatGPT · GPT-5.6 Terra", "desc": "Clé OpenAI de l'entreprise · équilibré · recommandé pour le chat",
+-                  "quality": 2, "speed": 2, "cost": 2},
+-    "gpt_mini": {"provider": "openai", "model": "gpt-5.4-mini",
+-                 "label": "ChatGPT · GPT-5.4 Mini", "desc": "Clé OpenAI de l'entreprise · rapide & économique",
+-                 "quality": 1, "speed": 3, "cost": 1},
+ }
+ DEFAULT_TEXT_TIER = "sonnet"
+ _TEXT_TIER: str | None = None  # cache mémoire, chargé depuis db.app_settings au 1er appel
+@@ -138,18 +129,6 @@
+                    system_message=system).with_model(provider, model)
+ 
+ 
+-async def _openai_responses(system: str, prompt: str, model: str, images: list[str] | None = None):
+-    """Modèles ChatGPT via la clé OpenAI de l'entreprise (Responses API) — flux de deltas texte."""
+-    from engines.openai_studies import _client
+-    content = [{"type": "input_text", "text": prompt}] + [{"type": "input_image", "image_url": f"data:image/png;base64,{i}", "detail": "high"}
+-                                                          for i in (images or [])]
+-    client = _client()
+-    st = await client.responses.create(model=model, instructions=system, input=[{"role": "user", "content": content}], stream=True)
+-    async for ev in st:
+-        if ev.type == "response.output_text.delta":
+-            yield ev.delta
+-
+-
+ async def _complete(system: str, text: str, images: list[str] | None = None,
+                     session_id: str | None = None, feature: str = "misc") -> str:
+     # Claude (texte) par défaut ; bascule vision OpenAI si des images sont fournies.
+@@ -158,8 +137,6 @@
+     else:
+         provider, model = await _text_provider_model()
+     await _log_usage(feature, provider, model)
+-    if provider == "openai" and not images:
+-        return "".join([d async for d in _openai_responses(system, text, model)])
+     chat = _chat(system, session_id, provider, model)
+     contents = [ImageContent(image_base64=i) for i in (images or [])]
+     out = []
+@@ -179,10 +156,6 @@
+               if convo else message)
+     chat_provider, chat_model = await _text_provider_model()
+     await _log_usage("coach", chat_provider, chat_model)
+-    if chat_provider == "openai":
+-        async for d in _openai_responses(system, prompt, chat_model):
+-            yield d
+-        return
+     chat = _chat(system, session_id, chat_provider, chat_model)
+     async for ev in chat.stream_message(UserMessage(text=prompt)):
+         if isinstance(ev, TextDelta):

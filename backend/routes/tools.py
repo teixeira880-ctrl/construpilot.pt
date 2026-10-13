@@ -26,22 +26,11 @@ async def run_calculator(key: str, body: CalcIn):
     cfg = calculators.CALCULATORS.get(key)
     if not cfg:
         raise HTTPException(status_code=404, detail="Calculateur inconnu")
-    allowed = {f["name"] for f in cfg["fields"]}
-    args = {}
-    for f in cfg["fields"]:
-        v = body.params.get(f["name"], f.get("default"))
-        if v is None or v == "":
-            continue
-        if f["type"] == "number":
-            try:
-                v = float(v)
-            except (TypeError, ValueError):
-                continue
-        if f["type"] == "boolean":
-            v = bool(v)
-        args[f["name"]] = v
-    args = {k: v for k, v in args.items() if k in allowed}
-    return cfg["fn"](**args)
+    from engines.calculator_validation import run_validated
+    try:
+        return run_validated(key, body.params)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
 
 
 class CalcPdfIn(BaseModel):

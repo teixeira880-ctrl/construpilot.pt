@@ -65,20 +65,20 @@ export default function QuoteScanner() {
     reader.readAsDataURL(file);
   };
 
-  const análise = async () => {
+  const analyse = async () => {
     if (!b64 && !pdfB64 && text.trim().length < 20) {
-      return toast.error("Importe uma foto, un PDF ou collez le texte du devis");
+      return toast.error("Importez une photo, un PDF ou collez le texte du devis");
     }
     setBusy(true);
     try {
-      const { data } = await api.post("/quotes/análise", {
+      const { data } = await api.post("/quotes/analyse", {
         text, image_base64: b64, pdf_base64: pdfB64, company,
       });
       setResult(data);
       loadSaved();
-      toast.success("Orçamento analysé");
+      toast.success("Devis analysé");
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Análise impossível");
+      toast.error(err?.response?.data?.detail || "Analyse impossible");
     } finally {
       setBusy(false);
     }
@@ -90,7 +90,7 @@ export default function QuoteScanner() {
     try {
       const { data } = await api.post("/quotes/compare", { quote_ids: selected });
       setComparison(data);
-    } catch { toast.error("Comparaison impossível"); }
+    } catch { toast.error("Comparaison impossible"); }
     finally { setBusy(false); }
   };
 
@@ -99,27 +99,27 @@ export default function QuoteScanner() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Scanner de devis travaux IA" description="Uploadez votre devis PDF : ConstruPilot compare chaque ligne aux prix France 2026 et vous dit si le devis est bas, correct ou trop élevé. Gratuit et sans inscription." keywords="análise devis travaux, vérifier prix devis, comparateur devis, devis trop cher, IA análise devis" canonical="/scanner-devis" />
+      <SEO title="Scanner de devis travaux IA" description="Uploadez votre devis PDF : ConstruPilot compare chaque ligne aux prix France 2026 et vous dit si le devis est bas, correct ou trop élevé. Gratuit et sans inscription." keywords="analyse devis travaux, vérifier prix devis, comparateur devis, devis trop cher, IA analyse devis" canonical="/scanner-devis" />
       <SectionTitle as="h1" over="Scanner de factures et devis" title="Ce prix est-il correct ?">
         L'IA lit le devis, extrait les lignes et compare avec la base de prix ConstruPilot :
-        prix bas, correct, élevé ou très élevé, avec les elementos potentiellement oubliés.
+        prix bas, correct, élevé ou très élevé, avec les éléments potentiellement oubliés.
       </SectionTitle>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="surface p-6 grid gap-5">
           <div className="grid gap-2">
-            <Label>Empresa</Label>
+            <Label>Entreprise</Label>
             <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nom de l'entreprise" data-testid="quote-company-input" className="rounded-sm" />
           </div>
           <div className="grid gap-2">
             <Label>Photo, PDF ou capture du devis</Label>
             <label htmlFor="quote-file" className="border border-dashed border-border rounded-sm p-6 text-center cursor-pointer hover:border-primary transition-colors" data-testid="quote-dropzone">
               {preview ? (
-                <img src={preview} alt="Orçamento" className="max-h-52 mx-auto object-contain rounded-sm" />
+                <img src={preview} alt="Devis" className="max-h-52 mx-auto object-contain rounded-sm" />
               ) : pdfB64 ? (
                 <div className="flex items-center justify-center gap-3 text-sm">
                   <FileSearch className="h-6 w-6 text-primary" />
-                  <span className="font-medium">{pdfName || "Orçamento.pdf"}</span>
+                  <span className="font-medium">{pdfName || "Devis.pdf"}</span>
                   <Badge variant="outline" className="rounded-sm">PDF</Badge>
                 </div>
               ) : (
@@ -136,8 +136,8 @@ export default function QuoteScanner() {
             <Label>Ou collez le texte du devis</Label>
             <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} data-testid="quote-text-input" className="rounded-sm" placeholder="Prestation, quantités, prix unitaires, total…" />
           </div>
-          <Button onClick={análise} disabled={busy} data-testid="análise-quote-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Sparkles className="h-4 w-4" /> {busy ? "Análise…" : "Analisar ce devis"}
+          <Button onClick={analyse} disabled={busy} data-testid="analyse-quote-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+            <Sparkles className="h-4 w-4" /> {busy ? "Analyse…" : "Analyser ce devis"}
           </Button>
         </div>
 
@@ -145,7 +145,7 @@ export default function QuoteScanner() {
           <div className="surface p-6 grid gap-5" data-testid="quote-analysis-result">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="overline">{a.company || company || "Empresa"}</p>
+                <p className="overline">{a.company || company || "Entreprise"}</p>
                 <p className="num mt-2 text-2xl font-bold">{eur(a.total_ttc || a.total_ht)}</p>
               </div>
               <Badge variant="outline" className={`rounded-sm ${v.cls}`} data-testid="quote-verdict">{v.label}</Badge>
@@ -153,7 +153,7 @@ export default function QuoteScanner() {
             <p className="text-sm text-muted-foreground">{a.verdict_label}</p>
             {a.delta_vs_reference_pct !== undefined && a.delta_vs_reference_pct !== null && (
               <p className="num text-sm">
-                Écart vs prix de referência ConstruPilot :{" "}
+                Écart vs prix de référence ConstruPilot :{" "}
                 <span className={a.delta_vs_reference_pct > 0 ? "text-red-500 font-semibold" : "text-emerald-500 font-semibold"}>
                   {a.delta_vs_reference_pct > 0 ? "+" : ""}{num(a.delta_vs_reference_pct, 1)} %
                 </span>
@@ -183,7 +183,7 @@ export default function QuoteScanner() {
                 </Table>
               </div>
             )}
-            {[["Elementos potentiellement oubliés", a.missing_items], ["Exclusions", a.exclusions],
+            {[["Éléments potentiellement oubliés", a.missing_items], ["Exclusions", a.exclusions],
               ["Garanties", a.warranties], ["Conseils de négociation", a.negotiation_tips]].map(([label, arr]) =>
               arr?.length > 0 ? (
                 <div key={label}>
@@ -218,7 +218,7 @@ export default function QuoteScanner() {
                   onClick={() => setSelected(on ? selected.filter((x) => x !== q.quote_id) : [...selected, q.quote_id])}
                   className={`surface p-5 text-left transition-colors ${on ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}
                 >
-                  <p className="overline text-muted-foreground">{q.company || "Empresa"}</p>
+                  <p className="overline text-muted-foreground">{q.company || "Entreprise"}</p>
                   <p className="num mt-2 text-lg font-bold">{eur(q.analysis?.total_ttc || q.analysis?.total_ht)}</p>
                   <Badge variant="outline" className={`mt-3 rounded-sm ${(VERDICT[q.analysis?.verdict] || VERDICT.correct).cls}`}>
                     {(VERDICT[q.analysis?.verdict] || VERDICT.correct).label}
@@ -246,11 +246,11 @@ export default function QuoteScanner() {
               </div>
               {comparison.best_value && (
                 <p className="text-sm">
-                  <span className="text-muted-foreground">Meilleur relatório qualité/prix : </span>
+                  <span className="text-muted-foreground">Meilleur rapport qualité/prix : </span>
                   <span className="font-semibold text-primary">{comparison.best_value}</span>
                 </p>
               )}
-              {[["Différences importantes", comparison.differences], ["Elementos oubliés", comparison.missing_items]]
+              {[["Différences importantes", comparison.differences], ["Éléments oubliés", comparison.missing_items]]
                 .map(([label, arr]) => arr?.length > 0 ? (
                   <div key={label}>
                     <p className="overline text-muted-foreground">{label}</p>

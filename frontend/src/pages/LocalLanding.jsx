@@ -25,11 +25,6 @@ export default function LocalLanding() {
     },
     "geo": { "@type": "GeoCoordinates", "latitude": c.lat, "longitude": c.lng },
     "priceRange": `${c.priceRange} €/m²`,
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "reviewCount": Math.max(30, Math.floor(c.artisans / 100)),
-    },
     "hasOfferCatalog": {
       "@type": "OfferCatalog",
       "name": `Services BTP ${c.name}`,
@@ -45,8 +40,8 @@ export default function LocalLanding() {
   return (
     <>
       <SEO
-        title={`Devis travaux ${c.name} — Estimation rénovation en 30 s`}
-        description={`Estimez vos travaux à ${c.name} en 30 secondes. Prix moyen rénovation ${c.name} : ${c.priceRange} €/m². Devis IA gratuit, ${c.artisans.toLocaleString("pt-PT")} artisans référencés en ${c.region}.`}
+        title={`Devis travaux ${c.name} — Estimation rénovation`}
+        description={`Estimez vos travaux à ${c.name} avec ConstruPilot. Ordre de grandeur rénovation ${c.name} : ${c.priceRange} €/m² selon la gamme. Estimation détaillée, prix matériaux et devis PDF.`}
         keywords={`devis travaux ${c.name}, prix rénovation ${c.name}, artisan ${c.name}, devis rénovation ${c.department}, coût travaux ${c.name}, ${c.region} BTP`}
         canonical={`/devis-travaux-${c.slug}`}
         image={c.heroImage}
@@ -69,7 +64,7 @@ export default function LocalLanding() {
           </h1>
           <p className="mt-5 text-base md:text-lg text-muted-foreground max-w-2xl">
             Rénovation appartement, maison, salle de bain, cuisine ou construction neuve à{" "}
-            <strong>{c.name} ({c.department})</strong> : ConstruPilot chiffre votre projet en 30 s
+            <strong>{c.name} ({c.department})</strong> : ConstruPilot chiffre votre projet
             avec les prix réels France 2026 ajustés au marché local.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -91,12 +86,12 @@ export default function LocalLanding() {
       {/* Stats */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("pt-PT")} €`}
+          <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("fr-FR")} €`}
                 label="Rénovation standard / m²" />
-          <Stat icon={Users} value={c.artisans.toLocaleString("pt-PT")}
-                label={`Artisans en ${c.region}`} />
+          <Stat icon={Users} value={`~${c.artisans.toLocaleString("fr-FR")}`}
+                label={`Artisans du bâtiment en ${c.region} (estimation)`} />
           <Stat icon={Building2} value={c.surface} label={`Surface ${c.name}`} />
-          <Stat icon={Zap} value="30 s" label="Devis chiffré instantané" />
+          <Stat icon={Zap} value="PDF" label="Devis chiffré téléchargeable" />
         </div>
       </section>
 
@@ -110,7 +105,7 @@ export default function LocalLanding() {
           <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
             Le marché de la rénovation à <strong>{c.name}</strong> est particulièrement dynamique.
             Le prix moyen d'une rénovation standard s'établit autour de{" "}
-            <strong>{c.priceStandard.toLocaleString("pt-PT")} €/m²</strong>, dans une fourchette de{" "}
+            <strong>{c.priceStandard.toLocaleString("fr-FR")} €/m²</strong>, dans une fourchette de{" "}
             <strong>{c.priceRange} €/m²</strong> selon la gamme (éco / standard / premium). Un chantier
             type dans la région, par exemple <em>{c.typicalProject}</em>, se chiffre en moyenne
             entre <strong>{c.typicalPrice}</strong>.
@@ -147,7 +142,7 @@ export default function LocalLanding() {
             Chiffrez votre projet {c.name}
           </h3>
           <p className="mt-3 text-xs text-muted-foreground">
-            Gratuit, sans inscription. Résultat en 30 secondes avec prix ajustés à{" "}
+            Gratuit pour démarrer. Estimation détaillée avec des prix ajustés à{" "}
             {c.region}.
           </p>
           <Link to="/smart-project" className="block mt-5">

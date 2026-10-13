@@ -40,7 +40,7 @@ export const MentionsLegales = () => (
     <p>
       L'ensemble des contenus, marques, logos, textes, interfaces et technologies présents sur
       {" "}{EDITOR} sont protégés par le droit de la propriété intellectuelle. Technologie protégée
-      par le brevet n° FR261104. Toute reproduction ou représentation, totale ou partielle, sans
+      par le brevet n° FR2611044. Toute reproduction ou représentation, totale ou partielle, sans
       autorisation écrite est interdite.
     </p>
 

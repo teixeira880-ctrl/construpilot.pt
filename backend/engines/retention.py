@@ -52,7 +52,7 @@ async def build_digest(user: dict) -> dict:
 
 
 def _fmt_digest_html(digest: dict) -> str:
-    body = f"<p>Olá {digest.get('user_name') or ''},</p>"
+    body = f"<p>Bonjour {digest.get('user_name') or ''},</p>"
     body += "<p>Votre récap hebdomadaire ConstruPilot :</p>"
     w = digest.get("watched") or []
     if w:

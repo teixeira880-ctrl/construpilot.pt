@@ -1,0 +1,44 @@
+{
+ "GO-B3-R0-301_poutre_BN_PV.pdf": {
+  "plan_id": "plan_f9c41827c6ce",
+  "page_count": 38,
+  "kind": "pdf",
+  "uploaded_at": "2026-09-15T21:28:38.887663+00:00",
+  "cad_import": false
+ },
+ "GO-B3-R0-302_nappe_inferieure.pdf": {
+  "plan_id": "plan_ad337e8be1a2",
+  "page_count": 1,
+  "kind": "pdf",
+  "uploaded_at": "2026-09-15T21:28:42.721633+00:00",
+  "cad_import": false
+ },
+ "GO-B3-R0-303_nappe_superieure.pdf": {
+  "plan_id": "plan_7e64a501abf7",
+  "page_count": 1,
+  "kind": "pdf",
+  "uploaded_at": "2026-09-15T21:28:47.109692+00:00",
+  "cad_import": false
+ },
+ "RDC.bak": {
+  "plan_id": "plan_2c335a8b9af5",
+  "page_count": 1,
+  "kind": "dwg",
+  "uploaded_at": "2026-09-15T21:29:21.703519+00:00",
+  "cad_import": true
+ },
+ "GO-B3-R0-100_coffrage_PH_RDC_indC.pdf": {
+  "plan_id": "plan_55f380aa53e0",
+  "page_count": 1,
+  "kind": "pdf",
+  "uploaded_at": "2026-09-15T23:17:41.323255+00:00",
+  "cad_import": false
+ },
+ "J206-10-22_PH_RDC_B3_Coupes_indD.pdf": {
+  "plan_id": "plan_fe5158005b96",
+  "page_count": 11,
+  "kind": "pdf",
+  "uploaded_at": "2026-09-15T23:17:46.370924+00:00",
+  "cad_import": false
+ }
+}

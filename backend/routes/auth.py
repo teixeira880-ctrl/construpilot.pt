@@ -1,16 +1,19 @@
 import uuid
 import asyncio
+from typing import Literal
 import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Response, Request, Depends, UploadFile, File, Form
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 import httpx
 
 from core.db import db
 from core.security import (hash_password, verify_password, make_jwt, new_user_id,
                           current_user, optional_user, admin_user)
+from core.rate_limit import limiter
+from core.account_purge import purge_user_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -23,6 +26,7 @@ class RegisterIn(BaseModel):
     lang: str | None = None
     account_type: str | None = "particulier"
     siret: str | None = None
+    attribution: dict | None = None
 
 
 def _valid_siret(value: str) -> bool:
@@ -50,11 +54,9 @@ def _public(u: dict) -> dict:
     out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
-                                  "lang", "language", "country", "timezone", "created_at",
-                                  "account_type", "kyc_status", "siret")}
-    if not out.get("timezone"):
-        # Default por país : PT -> Europe/Lisbon, FR -> Europe/Paris.
-        out["timezone"] = "Europe/Lisbon" if (out.get("country") or "").upper() == "PT" else "Europe/Paris"
+                                  "lang", "created_at", "account_type", "kyc_status",
+                                  "siret", "target_margin_pct", "target_margins_by_lot",
+                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode", "theme", "nav_favorites")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
     return out
@@ -119,7 +121,8 @@ async def _record_failed_login(identifier: str) -> None:
 
 
 @router.post("/register")
-async def register(body: RegisterIn, response: Response) -> dict:
+@limiter.limit("5/minute")
+async def register(body: RegisterIn, request: Request, response: Response) -> dict:
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
@@ -148,14 +151,25 @@ async def register(body: RegisterIn, response: Response) -> dict:
         "email_verify_token": uuid.uuid4().hex,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    if body.attribution:
+        user["attribution"] = {k: str(body.attribution.get(k) or "")[:300] for k in ("landing_path", "referrer", "utm_source", "utm_medium", "utm_campaign", "qr", "ref", "first_seen")}
     await db.users.insert_one(user)
+    # Instrumentation du parcours (jamais bloquante) : inscription + provenance
+    try:
+        from engines.journey import record_event
+        attr = user.get("attribution") or {}
+        await record_event("signup_completed", user_id=user["user_id"], source={
+            **attr, "ref": user.get("referred_by") or "",
+        }, props={"account_type": user.get("account_type") or "", "lang": user.get("lang") or ""})
+    except Exception:  # noqa: BLE001
+        pass
     # E-mail de bienvenue (best-effort, ne bloque jamais l'inscription)
     try:
         import os
         from engines import emailer
         verify_url = f"{os.getenv('FRONTEND_URL', '')}/verifier-email/{user['email_verify_token']}"
         body_html = (
-            f"<p>Olá {body.name.split(' ')[0] if body.name else ''},</p>"
+            f"<p>Bonjour {body.name.split(' ')[0] if body.name else ''},</p>"
             "<p>Bienvenue sur <b>ConstruPilot</b> ! Merci de <b>confirmer votre adresse e-mail</b> "
             "en cliquant sur le bouton ci-dessous pour activer toutes les fonctionnalités.</p>"
             "<p>Pour bien démarrer :</p>"
@@ -163,6 +177,10 @@ async def register(body: RegisterIn, response: Response) -> dict:
             "<li><b>Particulier</b> : estimez le coût de vos travaux et comparez les prix</li>"
             "<li><b>Professionnel</b> : mesurez un plan et générez un devis client</li>"
             "</ul>"
+            f"<table role='presentation' style='margin:14px 0;border-collapse:collapse'><tr>"
+            f"<td style='padding-right:12px;vertical-align:middle'><img src='{os.getenv('FRONTEND_URL', '')}/assistant-btp-icon.png' width='56' height='56' alt='Assistant BTP' style='display:block'/></td>"
+            "<td style='vertical-align:middle;font-size:14px'><b>Assistant BTP</b> — votre assistant d'œuvres IA : devis, lecture de plans, "
+            "réglementation et comptes rendus, en langage naturel.</td></tr></table>"
             "<p>À très vite,<br/>L'équipe ConstruPilot</p>"
         )
         html = emailer.wrap_html(
@@ -244,7 +262,7 @@ async def run_signup_followups():
         try:
             first = (u.get("name") or "").split(" ")[0]
             body_html = (
-                f"<p>Olá {first},</p>"
+                f"<p>Bonjour {first},</p>"
                 "<p>Vous avez créé votre compte ConstruPilot il y a quelques jours, "
                 "mais vous n'avez pas encore commencé. On est là pour vous aider !</p>"
                 "<p>En quelques minutes, vous pouvez :</p>"
@@ -266,6 +284,7 @@ async def run_signup_followups():
 
 
 @router.post("/login")
+@limiter.limit("10/minute")
 async def login(body: LoginIn, request: Request, response: Response) -> dict:
     email = body.email.lower()
     identifier = f"{_client_ip(request)}:{email}"
@@ -275,6 +294,8 @@ async def login(body: LoginIn, request: Request, response: Response) -> dict:
         await _record_failed_login(identifier)
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     await db.login_attempts.delete_one({"identifier": identifier})
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Compte désactivé")
     if user.get("role") == "admin" and user.get("two_fa_enabled"):
         return await _start_2fa(user)
     await _register_device(user, request)
@@ -311,7 +332,9 @@ async def change_password(body: ChangePasswordIn, request: Request,
         {"user_id": user["user_id"]},
         {"$set": {"password_hash": hash_password(body.new_password),
                   "must_change_password": False,
-                  "password_changed_at": datetime.now(timezone.utc).isoformat()}})
+                  "password_changed_at": datetime.now(timezone.utc).isoformat()},
+         "$inc": {"token_version": 1}})
+    await db.two_fa_codes.delete_many({"user_id": user["user_id"]})
     # Révoque toutes les autres sessions (garde la session courante)
     current = request.cookies.get("session_token")
     if not current:
@@ -384,6 +407,29 @@ async def set_language(body: LanguageIn, user=Depends(current_user)) -> dict:
     lang = norm_lang(body.lang)
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"lang": lang}})
     return {"lang": lang}
+
+
+class ThemeIn(BaseModel):
+    theme: Literal["light", "dark"]
+
+
+class NavFavoritesIn(BaseModel):
+    favorites: list[str] = Field(default_factory=list, max_length=30)
+
+
+@router.put("/nav-favorites")
+async def set_nav_favorites(body: NavFavoritesIn, user=Depends(current_user)) -> dict:
+    """Favoris du menu (chemins d'outils), synchronisés entre appareils."""
+    favs = list(dict.fromkeys(f for f in body.favorites if isinstance(f, str) and f.startswith("/") and len(f) <= 80))
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"nav_favorites": favs}})
+    return {"nav_favorites": favs}
+
+
+@router.put("/theme")
+async def set_theme(body: ThemeIn, user=Depends(current_user)) -> dict:
+    """Mémorise le thème jour/nuit sur le compte (retrouvé sur tous les appareils)."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"theme": body.theme}})
+    return {"theme": body.theme}
 
 
 class PhotoIn(BaseModel):
@@ -512,7 +558,7 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
         first = (u.get("name") or "").split(" ")[0]
         if body.approve:
             body_html = (
-                f"<p>Olá {first},</p>"
+                f"<p>Bonjour {first},</p>"
                 "<p>Bonne nouvelle : votre compte professionnel ConstruPilot vient d'être "
                 "<b>validé</b> ✅.</p>"
                 "<p>Vos justificatifs (K-bis, assurance décennale) sont conformes. "
@@ -526,7 +572,7 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
         else:
             reason = upd["kyc_rejection_reason"]
             body_html = (
-                f"<p>Olá {first},</p>"
+                f"<p>Bonjour {first},</p>"
                 "<p>Après vérification, nous ne pouvons pas valider votre compte professionnel "
                 "pour le moment.</p>"
                 f"<p><b>Motif :</b> {reason}</p>"
@@ -569,7 +615,8 @@ class ResetIn(BaseModel):
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotIn, request: Request) -> dict:
+@limiter.limit("3/minute")
+async def forgot_password(body: ForgotIn, request: Request, response: Response) -> dict:
     """Envoie un lien de réinitialisation (réponse identique que le compte existe
     ou non — anti-énumération). Max 3 demandes/heure par email."""
     import os
@@ -618,7 +665,8 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
 
 
 @router.post("/reset-password")
-async def reset_password(body: ResetIn) -> dict:
+@limiter.limit("5/minute")
+async def reset_password(body: ResetIn, request: Request, response: Response) -> dict:
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail="Nouveau mot de passe : 8 caractères minimum")
     th = hashlib.sha256(body.token.encode()).hexdigest()
@@ -630,12 +678,21 @@ async def reset_password(body: ResetIn) -> dict:
         exp = exp.replace(tzinfo=timezone.utc)
     if exp < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Lien expiré — refaites une demande")
+    password_hash = hash_password(body.new_password)
+    consumed = await db.password_reset_tokens.update_one(
+        {"_id": rec["_id"], "used": False, "expires_at": {"$gt": datetime.now(timezone.utc)}},
+        {"$set": {"used": True}})
+    if consumed.modified_count != 1:
+        raise HTTPException(status_code=400, detail="Lien invalide ou déjà utilisé")
     await db.users.update_one(
         {"user_id": rec["user_id"]},
-        {"$set": {"password_hash": hash_password(body.new_password),
+        {"$set": {"password_hash": password_hash,
                   "must_change_password": False,
-                  "password_changed_at": datetime.now(timezone.utc).isoformat()}})
-    await db.password_reset_tokens.update_one({"_id": rec["_id"]}, {"$set": {"used": True}})
+                  "password_changed_at": datetime.now(timezone.utc).isoformat()},
+         "$inc": {"token_version": 1}})
+    await db.two_fa_codes.delete_many({"user_id": rec["user_id"]})
+    await db.password_reset_tokens.update_many(
+        {"user_id": rec["user_id"], "used": False}, {"$set": {"used": True}})
     await db.user_sessions.delete_many({"user_id": rec["user_id"]})
     return {"ok": True}
 
@@ -659,7 +716,7 @@ async def _register_device(user: dict, request: Request) -> None:
     if user.get("role") != "admin":
         return
     html = (
-        f"<p>Olá {user.get('name') or ''},</p>"
+        f"<p>Bonjour {user.get('name') or ''},</p>"
         f"<p>Une connexion à votre compte <b>administrateur ConstruPilot</b> vient d'avoir lieu "
         f"depuis un nouvel appareil :</p>"
         f"<ul><li><b>Adresse IP</b> : {ip}</li>"
@@ -730,6 +787,7 @@ class TwoFaVerifyIn(BaseModel):
 
 
 @router.post("/verify-2fa")
+@limiter.limit("10/minute")
 async def verify_2fa(body: TwoFaVerifyIn, request: Request, response: Response) -> dict:
     rec = await db.two_fa_codes.find_one({"pending_token": body.pending_token})
     if not rec:
@@ -747,10 +805,16 @@ async def verify_2fa(body: TwoFaVerifyIn, request: Request, response: Response) 
     if hashlib.sha256(body.code.strip().encode()).hexdigest() != rec["code_hash"]:
         await db.two_fa_codes.update_one({"_id": rec["_id"]}, {"$inc": {"attempts": 1}})
         raise HTTPException(status_code=401, detail="Code incorrect")
-    await db.two_fa_codes.delete_one({"_id": rec["_id"]})
+    consumed = await db.two_fa_codes.delete_one(
+        {"_id": rec["_id"], "code_hash": rec["code_hash"],
+         "attempts": {"$lt": 5}, "expires_at": {"$gt": datetime.now(timezone.utc)}})
+    if consumed.deleted_count != 1:
+        raise HTTPException(status_code=401, detail="Code expiré ou déjà utilisé")
     user = await db.users.find_one({"user_id": rec["user_id"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=401, detail="Compte introuvable")
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Compte désactivé")
     await _register_device(user, request)
     token = await _set_session(response, user["user_id"])
     return {"user": _public(user),
@@ -852,6 +916,7 @@ async def google_session(request: Request, response: Response) -> dict:
         user = {
             "user_id": new_user_id(), "email": email, "name": data.get("name") or email,
             "picture": data.get("picture"), "role": "user", "plan": "free",
+            "account_type": "particulier",
             "auth_provider": "google", "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.users.insert_one(user)
@@ -859,7 +924,11 @@ async def google_session(request: Request, response: Response) -> dict:
         await db.users.update_one({"user_id": user["user_id"]},
                                   {"$set": {"picture": data.get("picture") or user.get("picture"),
                                             "name": data.get("name") or user.get("name")}})
-    token = await _set_session(response, user["user_id"], data.get("session_token"))
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Compte désactivé")
+    if user.get("role") == "admin" and user.get("two_fa_enabled"):
+        return await _start_2fa(user)
+    token = await _set_session(response, user["user_id"])
     await _register_device(user, request)
     return {"user": _public(user), "session_token": token}
 
@@ -876,3 +945,34 @@ async def logout(request: Request, response: Response, user=Depends(optional_use
         await db.user_sessions.delete_many({"session_token": token})
     response.delete_cookie("session_token", path="/", secure=True, samesite="lax")
     return {"ok": True}
+
+
+
+class DeleteAccountIn(BaseModel):
+    password: str | None = None
+    confirm: str
+
+
+@router.delete("/account")
+@limiter.limit("5/hour")
+async def delete_my_account(body: DeleteAccountIn, request: Request, response: Response,
+                            user=Depends(current_user)) -> dict:
+    """Auto-suppression définitive du compte et de toutes ses données (RGPD / Google Play)."""
+    if (body.confirm or "").strip().upper() != "SUPPRIMER":
+        raise HTTPException(400, "Tapez SUPPRIMER pour confirmer")
+    if user.get("role") == "admin":
+        raise HTTPException(403, "Un compte administrateur ne peut pas être supprimé ici")
+    full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if full and full.get("password_hash"):
+        if not body.password or not verify_password(body.password, full["password_hash"]):
+            raise HTTPException(400, "Mot de passe incorrect")
+    purged = await purge_user_data(user["user_id"])
+    await db.users.delete_one({"user_id": user["user_id"]})
+    await db.deleted_accounts.insert_one({
+        "email_hash": hashlib.sha256((full or {}).get("email", "").encode()).hexdigest(),
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "purged_total": sum(purged.values()),
+    })
+    response.delete_cookie("session_token", path="/", secure=True, samesite="lax")
+    return {"ok": True, "purged_total": sum(purged.values())}
+

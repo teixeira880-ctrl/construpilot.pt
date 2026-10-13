@@ -1,0 +1,19 @@
+--- current/backend/engines/assistant_workspace.py
++++ zip4/backend/engines/assistant_workspace.py
+@@ -6,7 +6,6 @@
+ import json
+ import re
+ from decimal import Decimal, localcontext
+-from engines.assistant_web import TOPICS
+ 
+ 
+ def function(name, description, properties):
+@@ -17,8 +16,6 @@
+ 
+ S = {"type": "string"}
+ EXTRA_TOOLS = [
+-    function("search_technical_web", "Rechercher des informations BTP sur Internet. Choisir seulement le thème technique : le serveur crée une requête générique sans noms, adresses, montants confidentiels ni contenu des documents. Citer uniquement les sources renvoyées.",
+-             {"topic": {"type": "string", "enum": list(TOPICS)}}),
+     function("read_document", "Lire les pages d'un document ou plan accessible. Pages numérotées depuis 1, maximum 3 par appel. Renvoie aussi les images pour les plans et scans. Continuer avec next_page si nécessaire.",
+              {"document_id": S, "first_page": {"type": "integer", "minimum": 1},
+               "page_count": {"type": "integer", "minimum": 1, "maximum": 3}}),

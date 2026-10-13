@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileDown, FileText, Link2 } from "lucide-react";
+import { FileDown, FileText, Link2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,12 +14,28 @@ export function MultiPlanDialog({
   allPlans, plan,
   quoteFinish, quoteFloor,
   multiBusy, downloadMultiQuote,
+  downloadMultiMetre = () => {},
   subcontractSel = [], setSubcontractSel = () => {},
   consolidatedBusy = false, createConsolidatedQuote = () => {},
   linkFerraillage = () => {},
 }) {
   const [linkOpenFor, setLinkOpenFor] = useState(null);
   const [query, setQuery] = useState("");
+  const [dragIdx, setDragIdx] = useState(null);
+
+  const planName = (pid) => {
+    const p = allPlans.find((x) => x.plan_id === pid);
+    return p?.filename || pid;
+  };
+  const moveItem = (from, to) => {
+    if (from == null || to == null || from === to) return;
+    setMultiSelected((prev) => {
+      const arr = [...prev];
+      const [it] = arr.splice(from, 1);
+      arr.splice(to, 0, it);
+      return arr;
+    });
+  };
 
   const toggleSel = (pid, on) =>
     setMultiSelected((prev) => (on ? [...prev, pid] : prev.filter((id) => id !== pid)));
@@ -34,10 +50,11 @@ export function MultiPlanDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-sm max-w-lg" data-testid="multi-quote-dialog">
         <DialogHeader>
-          <DialogTitle>Devis projet multi-plans</DialogTitle>
+          <DialogTitle>Projet multi-plans</DialogTitle>
           <DialogDescription>
-            Combinez plusieurs plans (gros œuvre, étages maison, extensions…) en un seul devis.
-            TVA appliquée par ligne : 20 % gros œuvre, 10 % maison, 0 % sous-traitance.
+            Combinez plusieurs plans (gros œuvre, étages maison, extensions…) en un seul document.
+            <br /><b>Métré groupé</b> = uniquement les cotes calculées (m² / ml), sans prix ni TVA.
+            <br /><b>Devis</b> = métré + chiffrage (TVA par ligne : 20 % gros œuvre, 10 % maison, 0 % sous-traitance).
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
@@ -48,6 +65,26 @@ export function MultiPlanDialog({
                    maxLength={160}
                    data-testid="multi-project-name" className="rounded-sm h-10" />
           </div>
+          {multiSelected.length > 1 && (
+            <div>
+              <p className="overline mb-2">Ordre d'export (glisser pour réordonner)</p>
+              <div className="grid gap-1" data-testid="multi-order-list">
+                {multiSelected.map((pid, i) => (
+                  <div key={pid} draggable
+                       onDragStart={() => setDragIdx(i)}
+                       onDragOver={(e) => e.preventDefault()}
+                       onDrop={() => { moveItem(dragIdx, i); setDragIdx(null); }}
+                       onDragEnd={() => setDragIdx(null)}
+                       data-testid={`multi-order-item-${pid}`}
+                       className={`flex items-center gap-2 rounded-sm border px-2 py-1.5 cursor-grab active:cursor-grabbing text-sm ${dragIdx === i ? "border-primary bg-primary/10" : "border-border bg-secondary/40"}`}>
+                    <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="num text-xs text-muted-foreground w-5">{i + 1}.</span>
+                    <span className="truncate flex-1">{planName(pid)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <p className="overline mb-2">Plans à inclure ({multiSelected.length} sélectionné{multiSelected.length > 1 ? "s" : ""})</p>
             {allPlans.length > 6 && (
@@ -142,12 +179,19 @@ export function MultiPlanDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-sm">
             Annuler
           </Button>
+          <Button variant="outline" onClick={downloadMultiMetre}
+                  disabled={multiBusy || multiSelected.length === 0}
+                  data-testid="multi-metre-download-btn"
+                  className="rounded-sm gap-2 border-primary/50 text-primary hover:bg-primary hover:text-white">
+            <FileDown className="h-4 w-4" />
+            {multiBusy ? "Génération…" : "Métré groupé (sans prix)"}
+          </Button>
           <Button variant="outline" onClick={downloadMultiQuote}
                   disabled={multiBusy || multiSelected.length === 0}
                   data-testid="multi-quote-download-btn"
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" />
-            {multiBusy ? "Génération…" : "PDF groupé"}
+            {multiBusy ? "Génération…" : "Devis PDF groupé"}
           </Button>
           <Button onClick={createConsolidatedQuote}
                   disabled={consolidatedBusy || multiSelected.length === 0}

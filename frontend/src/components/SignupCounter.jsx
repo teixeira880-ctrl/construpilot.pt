@@ -21,7 +21,7 @@ export const SignupCounter = () => {
         <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
       </span>
       <Users className="h-3.5 w-3.5 text-primary" />
-      <b className="text-foreground num">{count.toLocaleString("pt-PT")}</b> professionnels du BTP ont déjà rejoint ConstruPilot
+      <b className="text-foreground num">{count.toLocaleString("fr-FR")}</b> professionnels du BTP ont déjà rejoint ConstruPilot
     </div>
   );
 };

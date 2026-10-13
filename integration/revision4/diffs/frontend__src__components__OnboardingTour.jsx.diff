@@ -1,0 +1,29 @@
+--- current/frontend/src/components/OnboardingTour.jsx
++++ zip4/frontend/src/components/OnboardingTour.jsx
+@@ -19,21 +19,21 @@
+ 
+ const KEY = "construpilot_onboarded_v1";
+ 
+-export const OnboardingTour = () => {
++export const OnboardingTour = ({ forceOpen = false, onClose }) => {
+   const { user } = useAuth();
+   const { t } = useI18n();
+   const navigate = useNavigate();
+-  const [open, setOpen] = useState(false);
++  const [open, setOpen] = useState(forceOpen);
+   const [step, setStep] = useState(0);
+ 
+   useEffect(() => {
+     if (!user) return;
+     const done = localStorage.getItem(KEY);
+     // uniquement sur le tableau de bord : ne jamais interrompre une page de travail (assistant, plans…)
+-    if (!done && window.location.pathname === "/dashboard") setTimeout(() => setOpen(true), 700);
+-  }, [user]);
++    if (!forceOpen && !done && window.location.pathname === "/dashboard") { const timer = setTimeout(() => setOpen(true), 700); return () => clearTimeout(timer); }
++  }, [user, forceOpen]);
+ 
+-  const close = () => { localStorage.setItem(KEY, new Date().toISOString()); setOpen(false); };
++  const close = () => { localStorage.setItem(KEY, new Date().toISOString()); setOpen(false); onClose?.(); };
+   const next = () => {
+     if (step === STEPS.length - 1) close();
+     else setStep((s) => s + 1);
