@@ -4,233 +4,233 @@
   "chapters": [
     {
       "key": "home",
-      "title": "Bienvenue sur ConstruPilot",
+      "title": "Bem-vindo ao ConstruPilot",
       "start": 0.0,
-      "narration": "Bienvenue sur ConstruPilot, la plateforme tout-en-un de chiffrage et de gestion pour les professionnels du bâtiment. Suivez la visite : chaque fonction est montrée en action.",
+      "narration": "Bem-vindo ao ConstruPilot, a plataforma tudo-em-um de orçamentação e gestão para os profissionais da construção. Siga a visita: cada função é mostrada em ação.",
       "image": null
     },
     {
       "key": "estimation",
-      "title": "Estimateur",
+      "title": "Estimador",
       "start": 13.89,
-      "narration": "L'estimateur génère un chiffrage détaillé de votre projet, poste par poste, à partir d'une simple description en langage courant.",
+      "narration": "O estimador gera uma orçamentação detalhada do seu projeto, artigo a artigo, a partir de uma simples descrição em linguagem corrente.",
       "image": null
     },
     {
       "key": "metre",
-      "title": "Métré sur plan",
+      "title": "Medições em planta",
       "start": 25.99,
-      "narration": "Le métré sur plan est le cœur de ConstruPilot. Importez un plan réel et nommez-le. Calibrez-le en indiquant une seule distance connue : toutes vos mesures deviennent alors précises au centimètre. Tracez une surface pour obtenir instantanément les mètres carrés. Tracez un périmètre pour vos linéaires de plinthes ou de cloisons. Tracez une distance pour un métré linéaire simple. Dessinez enfin une pièce, puis déduisez automatiquement portes et fenêtres de vos surfaces. Aucun calcul manuel, aucune erreur possible.",
+      "narration": "As medições em planta são o coração do ConstruPilot. Importe uma planta real e dê-lhe um nome. Calibre-a indicando uma única distância conhecida: todas as suas medidas ficam precisas ao centímetro. Trace uma área para obter instantaneamente os metros quadrados. Trace um perímetro para os lineares de rodapés ou divisórias. Trace uma distância para uma medição linear simples. Por fim, desenhe uma divisão e deduza automaticamente portas e janelas das suas áreas. Sem cálculos manuais, sem erros possíveis.",
       "image": null
     },
     {
       "key": "plans_pro",
-      "title": "Analyse de plan Pro",
+      "title": "Análise de plantas Pro",
       "start": 72.12,
-      "narration": "L'analyse de plan Pro détecte automatiquement les pièces, les murs et les surfaces pour accélérer encore votre métré.",
+      "narration": "A análise de plantas Pro deteta automaticamente as divisões, as paredes e as áreas para acelerar ainda mais as suas medições.",
       "image": null
     },
     {
       "key": "controle",
-      "title": "Contrôle des cotes",
+      "title": "Controlo de cotas",
       "start": 82.68,
-      "narration": "Le contrôle des cotes compare vos mesures aux cotes écrites du plan et signale la moindre incohérence.",
+      "narration": "O controlo de cotas compara as suas medidas com as cotas escritas na planta e assinala a mais pequena incoerência.",
       "image": null
     },
     {
       "key": "escaliers",
-      "title": "Calcul d'escaliers",
+      "title": "Cálculo de escadas",
       "start": 92.62,
-      "narration": "Le module escaliers calcule votre ouvrage béton, contrôle les normes, propose une vue en trois dimensions interactive et un dossier PDF entièrement coté.",
+      "narration": "O módulo de escadas calcula a sua escada em betão, verifica as normas, propõe uma vista tridimensional interativa e um dossier PDF totalmente cotado.",
       "image": null
     },
     {
       "key": "calculateurs",
-      "title": "Calculateurs de matériaux",
+      "title": "Calculadoras de materiais",
       "start": 106.22,
-      "narration": "Les calculateurs donnent les quantités exactes de matériaux, marges et pertes de pose comprises.",
+      "narration": "As calculadoras dão as quantidades exatas de materiais, com margens e perdas de aplicação incluídas.",
       "image": null
     },
     {
       "key": "prix",
-      "title": "Prix matériaux",
+      "title": "Preços de materiais",
       "start": 117.28,
-      "narration": "La base de prix matériaux vous tient informé des tarifs à jour du marché.",
+      "narration": "A base de preços de materiais mantém-no informado sobre os preços atualizados do mercado.",
       "image": null
     },
     {
       "key": "devis",
-      "title": "Suivi des devis",
+      "title": "Acompanhamento de orçamentos",
       "start": 126.2,
-      "narration": "Le suivi des devis centralise toutes vos propositions commerciales et leur statut, du brouillon à la signature.",
+      "narration": "O acompanhamento de orçamentos centraliza todas as suas propostas comerciais e o respetivo estado, do rascunho à assinatura.",
       "image": null
     },
     {
       "key": "devis_editeur",
-      "title": "Éditeur de devis",
+      "title": "Editor de orçamentos",
       "start": 137.1,
-      "narration": "L'éditeur de devis compose votre proposition ligne par ligne. Ajoutez des fournitures, de la main d'œuvre et des ouvrages complets, avec leurs quantités et leurs prix unitaires. La TVA, les sous-totaux et le total sont recalculés en temps réel, sans la moindre erreur de calcul. En un clic, générez un devis PDF professionnel prêt à envoyer à votre client.",
+      "narration": "O editor de orçamentos compõe a sua proposta linha a linha. Adicione materiais, mão de obra e trabalhos completos, com as respetivas quantidades e preços unitários. O IVA, os subtotais e o total são recalculados em tempo real, sem qualquer erro de cálculo. Com um clique, gere um orçamento PDF profissional pronto a enviar ao seu cliente.",
       "image": null
     },
     {
       "key": "factures",
-      "title": "Factures",
+      "title": "Faturas",
       "start": 166.7,
-      "narration": "La facturation transforme n'importe quel devis signé en facture conforme, en un seul clic. Acomptes, situations de travaux et factures définitives restent reliés à votre chantier, avec une numérotation continue et le format Factur-X.",
+      "narration": "A faturação transforma qualquer orçamento aceite numa fatura conforme, com um só clique. Adiantamentos, autos de medição e faturas finais ficam ligados à sua obra, com numeração sequencial.",
       "image": null
     },
     {
       "key": "situations",
-      "title": "Situations de travaux",
+      "title": "Autos de medição",
       "start": 187.19,
-      "narration": "Les situations de travaux gèrent l'avancement et les acomptes de vos chantiers, mois après mois.",
+      "narration": "Os autos de medição gerem o avanço e os adiantamentos das suas obras, mês a mês.",
       "image": null
     },
     {
       "key": "clients",
-      "title": "Clients",
+      "title": "Clientes",
       "start": 197.29,
-      "narration": "L'espace clients regroupe tous vos contacts et l'historique de chaque relation.",
+      "narration": "O espaço de clientes reúne todos os seus contactos e o histórico de cada relação.",
       "image": null
     },
     {
       "key": "chantiers",
-      "title": "Dossiers chantier",
+      "title": "Dossiers de obra",
       "start": 205.49,
-      "narration": "Les dossiers chantier réunissent plans, devis et documents de chaque projet au même endroit.",
+      "narration": "Os dossiers de obra reúnem plantas, orçamentos e documentos de cada projeto no mesmo sítio.",
       "image": null
     },
     {
       "key": "suivi",
-      "title": "Suivi de chantier",
+      "title": "Acompanhamento de obra",
       "start": 215.1,
-      "narration": "Le suivi de chantier pilote l'avancement au quotidien, tâche par tâche.",
+      "narration": "O acompanhamento de obra gere o avanço no dia a dia, tarefa a tarefa.",
       "image": null
     },
     {
       "key": "dpgf",
-      "title": "DPGF vers devis",
+      "title": "Mapa de quantidades para orçamento",
       "start": 222.99,
-      "narration": "Le module DPGF transforme le cadre de l'architecte en un devis directement chiffrable.",
+      "narration": "O módulo de mapa de quantidades transforma o mapa do arquiteto num orçamento diretamente orçamentável.",
       "image": null
     },
     {
       "key": "analyse_docs",
-      "title": "Analyse de documents",
+      "title": "Análise de documentos",
       "start": 231.71,
-      "narration": "L'analyse de documents lit vos DPGF et CCTP pour en extraire automatiquement les éléments chiffrables.",
+      "narration": "A análise de documentos lê os seus mapas de quantidades e cadernos de encargos para extrair automaticamente os elementos orçamentáveis.",
       "image": null
     },
     {
       "key": "scanner",
-      "title": "Scanner de devis",
+      "title": "Scanner de orçamentos",
       "start": 242.19,
-      "narration": "Le scanner numérise un devis papier et le rend immédiatement exploitable.",
+      "narration": "O scanner digitaliza um orçamento em papel e torna-o imediatamente utilizável.",
       "image": null
     },
     {
       "key": "appro",
-      "title": "Analyse technique et appro",
+      "title": "Análise técnica e aprovisionamento",
       "start": 251.32,
-      "narration": "L'analyse technique et l'approvisionnement optimisent vos commandes de matériaux et anticipent les besoins.",
+      "narration": "A análise técnica e o aprovisionamento otimizam as suas encomendas de materiais e antecipam as necessidades.",
       "image": null
     },
     {
       "key": "etudes_pc",
-      "title": "Études permis de construire",
+      "title": "Estudos de licenciamento",
       "start": 261.08,
-      "narration": "Le module études prépare et assemble les pièces de votre permis de construire.",
+      "narration": "O módulo de estudos prepara e reúne as peças do seu processo de licenciamento.",
       "image": null
     },
     {
       "key": "mesure_photo",
-      "title": "Mesurer sur photo",
+      "title": "Medir em fotografia",
       "start": 269.71,
-      "narration": "Mesurez directement sur une simple photo prise sur le chantier.",
+      "narration": "Meça diretamente numa simples fotografia tirada em obra.",
       "image": null
     },
     {
       "key": "rendu_ia",
-      "title": "Rendu IA avant-après",
+      "title": "Render IA antes/depois",
       "start": 277.1,
-      "narration": "Le rendu par intelligence artificielle illustre vos travaux, avant et après.",
+      "narration": "O render por inteligência artificial ilustra as suas obras, antes e depois.",
       "image": null
     },
     {
       "key": "multiniveaux",
-      "title": "Projets multi-niveaux",
+      "title": "Projetos multipiso",
       "start": 286.09,
-      "narration": "Regroupez fondations, rez-de-chaussée et étages en un projet multi-niveaux, avec métré et devis consolidés.",
+      "narration": "Agrupe fundações, rés-do-chão e pisos num projeto multipiso, com medições e orçamento consolidados.",
       "image": null
     },
     {
       "key": "bibliotheque",
-      "title": "Bibliothèque d'ouvrages",
+      "title": "Biblioteca de trabalhos",
       "start": 297.2,
-      "narration": "La bibliothèque mémorise vos compositions d'ouvrages, réutilisables sur tous vos chantiers.",
+      "narration": "A biblioteca memoriza as suas composições de trabalhos, reutilizáveis em todas as obras.",
       "image": null
     },
     {
       "key": "catalogue",
-      "title": "Catalogue de prix",
+      "title": "Catálogo de preços",
       "start": 307.0,
-      "narration": "Le catalogue de prix personnalise vos tarifs et vos ratios d'entreprise.",
+      "narration": "O catálogo de preços personaliza os seus preços e rácios de empresa.",
       "image": null
     },
     {
       "key": "equipe",
-      "title": "Équipe",
+      "title": "Equipa",
       "start": 315.02,
-      "narration": "La gestion d'équipe partage l'accès et les données entre tous vos collaborateurs.",
+      "narration": "A gestão de equipa partilha o acesso e os dados entre todos os seus colaboradores.",
       "image": null
     },
     {
       "key": "rh",
-      "title": "RH et pointage",
+      "title": "RH e registo de horas",
       "start": 324.18,
-      "narration": "Le module ressources humaines gère le pointage et les heures de vos équipes.",
+      "narration": "O módulo de recursos humanos gere o registo de presenças e as horas das suas equipas.",
       "image": null
     },
     {
       "key": "entreprise",
-      "title": "Espace entreprise",
+      "title": "Espaço empresa",
       "start": 332.59,
-      "narration": "L'espace entreprise centralise l'identité et les paramètres de votre société.",
+      "narration": "O espaço empresa centraliza a identidade e as definições da sua empresa.",
       "image": null
     },
     {
       "key": "ma_page",
-      "title": "Ma page publique",
+      "title": "A minha página pública",
       "start": 340.88,
-      "narration": "Votre page publique met en avant votre entreprise et vos réalisations auprès de vos prospects.",
+      "narration": "A sua página pública destaca a sua empresa e os seus trabalhos junto de potenciais clientes.",
       "image": null
     },
     {
       "key": "radar",
-      "title": "Radar chantiers",
+      "title": "Radar de obras",
       "start": 350.29,
-      "narration": "Le radar chantiers vous alerte des opportunités d'affaires près de chez vous.",
+      "narration": "O radar de obras alerta-o para oportunidades de negócio perto de si.",
       "image": null
     },
     {
       "key": "assistant",
-      "title": "Assistant BTP",
+      "title": "Assistente Construção",
       "start": 358.51,
-      "narration": "L'assistant intelligent répond à vos questions et vous guide dans toute l'application.",
+      "narration": "O assistente inteligente responde às suas perguntas e guia-o em toda a aplicação.",
       "image": null
     },
     {
       "key": "pro",
-      "title": "L'offre Pro",
+      "title": "A oferta Pro",
       "start": 366.62,
-      "narration": "Passez à l'offre Pro : sept jours d'essai, puis un abonnement clair et sans engagement.",
+      "narration": "Mude para a oferta Pro: sete dias de teste e depois uma subscrição clara e sem fidelização.",
       "image": null
     },
     {
       "key": "dashboard",
-      "title": "Tableau de bord",
+      "title": "Painel",
       "start": 375.73,
-      "narration": "Enfin, votre tableau de bord réunit toute votre activité. ConstruPilot vous fait gagner du temps, du premier chiffrage à la facturation finale.",
+      "narration": "Por fim, o seu painel reúne toda a sua atividade. O ConstruPilot faz-lhe ganhar tempo, da primeira orçamentação à faturação final.",
       "image": null
     }
   ]

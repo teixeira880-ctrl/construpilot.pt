@@ -80,7 +80,7 @@ export default function LandingMetre() {
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}>
             <p className="overline text-primary">Medições IA · Empresas de renovação</p>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] mt-3">
-              Deixe a IA gerir o seu <span className="text-primary">medições</span>, mantenha os seus preços.
+              Deixe a IA tratar das suas <span className="text-primary">medições</span>, mantenha os seus preços.
             </h1>
             <p className="text-base md:text-lg text-muted-foreground mt-5 max-w-xl">
               Uma planta, algumas fotos, uma nota de voz ou o mapa de quantidades do arquiteto: ConstruPilot levanta cada divisão, orçamenta por especialidades aos seus preços e mostra-lhe a margem <b>avant</b> de enviar o orçamento.

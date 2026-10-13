@@ -21,9 +21,9 @@ const PLANS = [
   { name: "Grátis", price: "0 €", period: "vitalício", popular: false, tid: "plan-particulier-free-cta",
     desc: "Para explorar e fazer uma primeira estimativa.",
     features: ["3 estimativas expresso / mês", "Calculadoras de áreas e volumes", "Guia de preços médios por região"] },
-  { name: "Passe Tranquilidade", price: "19 €", period: "/mois sans engagement", popular: true, tid: "plan-particulier-pass-cta",
+  { name: "Passe Tranquilidade", price: "19 €", period: "/mês sem fidelização", popular: true, tid: "plan-particulier-pass-cta",
     desc: "Acompanhamento completo durante todas as suas obras.",
-    features: ["Estimativas e Smart Projects ilimitados", "Scanner de orçamentos ilimitado", "Análise de fotografias e deteção de riscos", "Coach IA travaux 24/7", "Contacto prioritário com profissionais"] },
+    features: ["Estimativas e Smart Projects ilimitados", "Scanner de orçamentos ilimitado", "Análise de fotografias e deteção de riscos", "Coach IA de obras 24/7", "Contacto prioritário com profissionais"] },
 ];
 
 export default function LandingParticuliers() {
