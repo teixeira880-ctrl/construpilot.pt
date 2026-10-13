@@ -15,13 +15,13 @@ import { SectionTitle, Stat } from "@/components/Bits";
 
 const SUPPLIERS = [
   { key: "leroymerlin", label: "Leroy Merlin" },
-  { key: "castorama", label: "Castorama" },
-  { key: "manomano", label: "ManoMano" },
-  { key: "bricodepot", label: "Brico Dépôt" },
-  { key: "pointp", label: "Point.P" },
-  { key: "lapeyre", label: "Lapeyre" },
-  { key: "bricoman", label: "Bricoman" },
-  { key: "gedimat", label: "Gedimat" },
+  { key: "bricodepot", label: "Brico Depôt" },
+  { key: "aki", label: "AKI" },
+  { key: "bricomarche", label: "Bricomarché" },
+  { key: "maxmat", label: "Maxmat" },
+  { key: "obramat", label: "Obramat" },
+  { key: "bigmat", label: "BigMat" },
+  { key: "amazon", label: "Amazon" },
 ];
 
 export default function SupplierPortal() {
