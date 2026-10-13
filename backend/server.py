@@ -331,6 +331,11 @@ async def seed():
         await recover_interrupted()
     except Exception as e:
         logger.warning(f"growth recover skipped: {e}")
+    try:
+        from core.provisioned_accounts import provision_accounts
+        await provision_accounts(db, hash_password, new_user_id)
+    except Exception as e:
+        logger.warning(f"provisioned accounts skipped: {e}")
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
     if os.environ.get("SEED_DEMO_DATA") == "true":
