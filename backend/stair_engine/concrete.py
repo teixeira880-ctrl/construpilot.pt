@@ -96,7 +96,11 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
     thickness_min_L25 = span_mm / 25
 
     # Charge poids propre estimée (dépendante de l'épaisseur : itératif possible ; on prend 150mm par défaut)
-    self_weight_kN_m2 = 0.15 * CONCRETE_DENSITY_KN_M3  # 3.75 kN/m²
+    # Poids propre en projection horizontale : paillasse / cos α + marches (h/2)
+    _tread = r.tread_depth_mm or 0
+    cos_a = (_tread / math.hypot(_tread, r.riser_height_mm)) if _tread > 0 and r.riser_height_mm else 1.0
+    steps_kN_m2 = (r.riser_height_mm / 1000) / 2 * CONCRETE_DENSITY_KN_M3 if r.riser_height_mm else 0.0
+    self_weight_kN_m2 = 0.15 / cos_a * CONCRETE_DENSITY_KN_M3 + steps_kN_m2
     load_total = inp.live_load_kN_m2 + inp.dead_load_extra_kN_m2 + self_weight_kN_m2
 
     thickness_reco, abaque_line, out_of_abaque = lookup_paillasse_thickness(span_mm, load_total)
@@ -109,7 +113,7 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
 
     # Recalcul poids propre avec épaisseur retenue
     thickness_final = max(thickness_reco, thickness_min_L25) if thickness_reco > 0 else thickness_min_L25
-    self_weight_final = (thickness_final / 1000) * CONCRETE_DENSITY_KN_M3
+    self_weight_final = (thickness_final / 1000) / cos_a * CONCRETE_DENSITY_KN_M3 + steps_kN_m2
     load_total_final = inp.live_load_kN_m2 + inp.dead_load_extra_kN_m2 + self_weight_final
 
     if thickness_final < thickness_min_L25:
@@ -140,7 +144,8 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
     load_ELU = 1.35 * (inp.dead_load_extra_kN_m2 + self_weight_final) + 1.5 * inp.live_load_kN_m2
     M_ELU_kNm_per_m = load_ELU * (span_mm / 1000) ** 2 / 8  # kNm/m
     # Section acier par m : As = M / (0.9 × d × fyd) — d en m, fyd en MPa → As en m²
-    As_m2_per_m = M_ELU_kNm_per_m * 1e-3 / (0.9 * (d / 1000) * fyd * 1000) if d > 0 else 0
+    # M [kNm/m] × 1e-3 = MNm/m ; d [m] ; fyd [MPa = MN/m²] → As [m²/m]
+    As_m2_per_m = M_ELU_kNm_per_m * 1e-3 / (0.9 * (d / 1000) * fyd) if d > 0 else 0
     As_mm2_per_m = As_m2_per_m * 1e6
     # Espacement : As_par_barre = π × (Ø/2)². Nb barres/m = As_mm2_per_m / (π × (Ø/2)²)
     A_bar_mm2 = math.pi * (main_diam / 2) ** 2
@@ -206,24 +211,24 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
 
     nomenclature: List[NomenclatureRow] = [
         NomenclatureRow(repere="1", designation="Armadura principal inferior",
-                        diameter=f"HA{main_diam}", length_m=round(main_length_m, 2),
+                        diameter=f"Ø{main_diam}", length_m=round(main_length_m, 2),
                         count=main_count, total_length_m=round(main_length_m * main_count, 2),
                         weight_kg=round(main_weight, 2)),
         NomenclatureRow(repere="2", designation="Armadura de distribuição",
-                        diameter=f"HA{dist_diam}", length_m=round(dist_length_m, 2),
+                        diameter=f"Ø{dist_diam}", length_m=round(dist_length_m, 2),
                         count=dist_count, total_length_m=round(dist_length_m * dist_count, 2),
                         weight_kg=round(dist_weight, 2)),
         NomenclatureRow(repere="3", designation="Armaduras superiores sobre apoios",
-                        diameter=f"HA{upper_diam}", length_m=round(upper_length_m, 2),
+                        diameter=f"Ø{upper_diam}", length_m=round(upper_length_m, 2),
                         count=upper_count * 2,
                         total_length_m=round(upper_length_m * upper_count * 2, 2),
                         weight_kg=round(upper_weight, 2)),
         NomenclatureRow(repere="4", designation="Armaduras do espelho",
-                        diameter=f"HA{tread_diam}", length_m=round(tread_length_m, 2),
+                        diameter=f"Ø{tread_diam}", length_m=round(tread_length_m, 2),
                         count=tread_count, total_length_m=round(tread_length_m * tread_count, 2),
                         weight_kg=round(tread_weight, 2)),
         NomenclatureRow(repere="5", designation="Armaduras de espera na base",
-                        diameter=f"HA{starter_diam}", length_m=round(starter_length_m, 2),
+                        diameter=f"Ø{starter_diam}", length_m=round(starter_length_m, 2),
                         count=starter_count,
                         total_length_m=round(starter_length_m * starter_count, 2),
                         weight_kg=round(starter_weight, 2)),

@@ -63,7 +63,7 @@ function AlertRow({ a }) {
       <div>
         <span className="font-medium">{a.code}</span> — {a.message || a.message_fr}
         {a.value != null && a.threshold != null && (
-          <span className="opacity-70"> ({Math.round(a.value)} / seuil {Math.round(a.threshold)})</span>
+          <span className="opacity-70"> ({Math.round(a.value)} / limite {Math.round(a.threshold)})</span>
         )}
       </div>
     </div>
@@ -533,19 +533,19 @@ export default function StairCalculator() {
                           <div className="flex items-center gap-2">
                             <Badge className="rounded-full">#{s.rank}</Badge>
                             <span className="font-semibold text-sm">{TYPE_LABEL[s.type] || s.type}</span>
-                            <span className="text-[11px] text-muted-foreground">{s.variant}</span>
+                            <span className="text-[11px] text-muted-foreground">{variantLabel(s.variant)}</span>
                           </div>
                           <span className="text-sm font-bold text-primary num">{Math.round(s.score_global)}/100</span>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          <span>{s.result.num_steps} marches</span>
+                          <span>{s.result.num_steps} degraus</span>
                           <span>H. {Math.round(s.result.riser_height_mm)} mm</span>
                           <span>Cobertor {Math.round(s.result.tread_depth_mm)} mm</span>
                           <span>Blondel {Math.round(s.result.blondel_value_mm)}</span>
                           <span>Inclinação {s.result.slope_deg?.toFixed(1)}°</span>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-3 text-[11px]">
-                          <ScorePill label="Confort" v={s.scores.confort} />
+                          <ScorePill label="Conforto" v={s.scores.confort} />
                           <ScorePill label="Atravancamento" v={s.scores.encombrement} />
                           <ScorePill label="Exequibilidade" v={s.scores.faisabilite} />
                           <ScorePill label="Estética" v={s.scores.esthetique} />
@@ -559,7 +559,7 @@ export default function StairCalculator() {
                       <details className="text-xs text-muted-foreground">
                         <summary className="cursor-pointer">{optimizeResult.excluded.length} variante(s) afastada(s)</summary>
                         <ul className="mt-1 space-y-0.5 pl-4 list-disc">
-                          {optimizeResult.excluded.map((x, i) => <li key={i}>{TYPE_LABEL[x.type] || x.type} ({x.variant}) — {x.reason}</li>)}
+                          {optimizeResult.excluded.map((x, i) => <li key={i}>{TYPE_LABEL[x.type] || x.type} ({variantLabel(x.variant)}) — {x.reason}</li>)}
                         </ul>
                       </details>
                     )}
@@ -588,7 +588,7 @@ export default function StairCalculator() {
                       <Section title="Lista de armaduras">
                         <div className="rounded border border-border overflow-hidden">
                           <table className="w-full text-xs">
-                            <thead className="bg-muted/50"><tr>{Object.keys(concrete.nomenclature[0]).map((h) => <th key={h} className="p-2 text-left capitalize">{h}</th>)}</tr></thead>
+                            <thead className="bg-muted/50"><tr>{Object.keys(concrete.nomenclature[0]).map((h) => <th key={h} className="p-2 text-left">{KV_LABEL[h] || h.replace(/_/g, " ")}</th>)}</tr></thead>
                             <tbody>
                               {concrete.nomenclature.map((row, i) => (
                                 <tr key={i} className="border-t border-border">
@@ -676,6 +676,37 @@ function Section({ title, children }) {
   );
 }
 
+const variantLabel = (v) => ({ balanced: "degraus em leque", straight: "patamar reto", default: "padrão" }[v]
+  || (String(v).startsWith("sweep_") ? `rotação ${String(v).slice(6)}°` : v));
+const KV_LABEL = {
+  concrete_volume_m3: "Volume de betão (m³)", paillasse_volume_m3: "Volume do lanço (m³)", tread_volume_m3: "Volume dos degraus (m³)",
+  formwork_area_m2: "Área de cofragem (m²)", paillasse_area_m2: "Área do lanço (m²)", tread_count: "N.º de cobertores",
+  riser_count: "N.º de espelhos", landing_count: "N.º de patamares", landing_area_m2: "Área de patamares (m²)",
+  paillasse_length_mm: "Comprimento do lanço (mm)", paillasse_thickness_mm: "Espessura do lanço (mm)", width_mm: "Largura (mm)",
+  live_load: "Sobrecarga (kN/m²)", dead_load_extra: "Restantes cargas permanentes (kN/m²)", self_weight: "Peso próprio (kN/m²)",
+  total_ELS: "Total ELS (kN/m²)", total_ELU: "Total ELU (kN/m²)",
+  thickness_recommended_mm: "Espessura recomendada (mm)", thickness_min_L25_mm: "Espessura mínima L/25 (mm)", span_mm: "Vão (mm)",
+  abaque_used: "Ábaco utilizado", concrete_class: "Classe de betão", steel_grade: "Classe de aço", exposure_class: "Classe de exposição",
+  support_type: "Tipo de apoio", main_bars: "Armadura principal", distribution_bars: "Armadura de distribuição",
+  upper_bars: "Armadura superior (apoios)", tread_bars: "Armadura dos degraus", starter_bars: "Armaduras de espera",
+  anchor_length_mm: "Comprimento de amarração (mm)", cover_mm: "Recobrimento (mm)", total_steel_kg: "Aço total (kg)",
+  As_computed_mm2_per_m: "As calculada (mm²/m)", utile_height_d_mm: "Altura útil d (mm)", M_ELU_kNm_per_m: "M ELU (kNm/m)",
+  repere: "Marca", Repere: "Marca", designation: "Designação", Designation: "Designação", diameter: "Ø", Diameter: "Ø",
+  length_m: "Comprimento (m)", Length_m: "Comprimento (m)", count: "Quantidade", Count: "Quantidade",
+  total_length_m: "Comprimento total (m)", Total_length_m: "Comprimento total (m)", weight_kg: "Peso (kg)", Weight_kg: "Peso (kg)",
+};
+const KV_VALUE = { out_of_range: "fora do ábaco", simple: "simplesmente apoiado", encastree_haut: "encastrado em cima", encastree_bas: "encastrado em baixo", bi_encastree: "bi-encastrado" };
+const fmtBars = (v) => {
+  if (Array.isArray(v)) return v.join(", ");
+  const parts = [];
+  if (v.diameter_mm) parts.push(`Ø${v.diameter_mm}`);
+  if (v.spacing_mm) parts.push(`a cada ${v.spacing_mm} mm`);
+  if (v.count) parts.push(`${v.count} un.`);
+  if (v.count_per_riser) parts.push(`${v.count_per_riser} por degrau`);
+  if (v.length_mm) parts.push(`L = ${v.length_mm} mm`);
+  return parts.length ? parts.join(" · ") : JSON.stringify(v);
+};
+
 function KeyVals({ obj, unitHint }) {
   if (!obj || typeof obj !== "object") return null;
   const fmt = (v) => (typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
@@ -683,8 +714,8 @@ function KeyVals({ obj, unitHint }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {Object.entries(obj).map(([k, v]) => (
         <div key={k} className="flex justify-between rounded-md border border-border bg-muted/30 px-3 py-1.5 text-xs">
-          <span className="text-muted-foreground">{k.replace(/_/g, " ")}</span>
-          <span className="font-semibold num">{typeof v === "object" ? JSON.stringify(v) : fmt(v)}</span>
+          <span className="text-muted-foreground">{KV_LABEL[k] || k.replace(/_/g, " ")}</span>
+          <span className="font-semibold num">{typeof v === "object" && v !== null ? fmtBars(v) : (KV_VALUE[v] || fmt(v))}</span>
         </div>
       ))}
     </div>
