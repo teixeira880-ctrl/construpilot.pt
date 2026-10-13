@@ -13,6 +13,8 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 
+from pydantic import BaseModel
+
 from core.db import db
 from core.security import admin_user
 from routes.autoseo import SITE_URL, _download_and_store
@@ -20,10 +22,46 @@ from routes.autoseo import SITE_URL, _download_and_store
 router = APIRouter(tags=["babylovegrowth"])
 logger = logging.getLogger(__name__)
 SOURCE = "babylovegrowth"
+BLG_SETTINGS_KEY = "babylovegrowth_credentials"
 
 
-def _cfg() -> tuple[str, str]:
-    key = os.environ.get("BABYLOVEGROWTH_API_KEY")
+async def get_blg_credentials() -> dict:
+    """Devolve {'api_key': str|None, 'webhook_secret': str|None}.
+
+    Lê primeiro de Mongo (app_settings/babylovegrowth_credentials); se não
+    estiver definido, recua para as variáveis de ambiente. Permite migração
+    sem perda de compatibilidade com o fluxo antigo baseado em `.env`.
+    """
+    doc = await db.app_settings.find_one({"key": BLG_SETTINGS_KEY}, {"_id": 0}) or {}
+    api_key = (doc.get("api_key") or os.environ.get("BABYLOVEGROWTH_API_KEY") or "").strip() or None
+    webhook_secret = (doc.get("webhook_secret") or os.environ.get("BABYLOVEGROWTH_WEBHOOK_SECRET") or "").strip() or None
+    return {"api_key": api_key, "webhook_secret": webhook_secret}
+
+
+async def save_blg_credentials(api_key: str | None, webhook_secret: str | None) -> dict:
+    """Guarda credenciais em Mongo. Valores vazios removem o campo do documento."""
+    patch = {"key": BLG_SETTINGS_KEY}
+    unset: dict = {}
+    if api_key is not None:
+        if api_key.strip():
+            patch["api_key"] = api_key.strip()
+        else:
+            unset["api_key"] = ""
+    if webhook_secret is not None:
+        if webhook_secret.strip():
+            patch["webhook_secret"] = webhook_secret.strip()
+        else:
+            unset["webhook_secret"] = ""
+    update: dict = {"$set": patch}
+    if unset:
+        update["$unset"] = unset
+    await db.app_settings.update_one({"key": BLG_SETTINGS_KEY}, update, upsert=True)
+    return await get_blg_credentials()
+
+
+async def _cfg() -> tuple[str, str]:
+    creds = await get_blg_credentials()
+    key = creds["api_key"]
     if not key:
         raise HTTPException(503, "BABYLOVEGROWTH_API_KEY não configurada")
     return key, (os.environ.get("BABYLOVEGROWTH_API_BASE") or "https://api.babylovegrowth.ai/api/integrations").rstrip("/")
@@ -98,7 +136,7 @@ async def _upsert(article: dict, event: str) -> str | None:
 
 async def sync_articles(force: bool = False) -> dict:
     """Pull paginé : récupère les articles absents (ou tous si force) et les publie."""
-    key, base = _cfg()
+    key, base = await _cfg()
     headers = {"X-API-Key": key, "Content-Type": "application/json"}
     known = {d["autoseo_id"] for d in await db.autoseo_articles.find(
         {"source": SOURCE}, {"_id": 0, "autoseo_id": 1}).to_list(5000)}
@@ -137,7 +175,8 @@ async def sync_articles(force: bool = False) -> dict:
 
 
 async def run_scheduled_sync():
-    if not os.environ.get("BABYLOVEGROWTH_API_KEY"):
+    creds = await get_blg_credentials()
+    if not creds["api_key"]:
         return
     try:
         res = await sync_articles()
@@ -154,10 +193,24 @@ async def blg_status(_=Depends(admin_user)):
     recent = await db.autoseo_articles.find(
         {"source": SOURCE}, {"_id": 0, "title": 1, "slug": 1, "published_at": 1, "language_code": 1,
                              "seed_keyword": 1, "hero_image_url": 1}).sort("published_at", -1).to_list(20)
-    return {"configured": bool(os.environ.get("BABYLOVEGROWTH_API_KEY")),
+    creds = await get_blg_credentials()
+    return {"configured": bool(creds["api_key"]),
             "webhook_url": f"{SITE_URL}/api/webhooks/babylovegrowth",
-            "webhook_secret_set": bool(os.environ.get("BABYLOVEGROWTH_WEBHOOK_SECRET")),
+            "webhook_secret_set": bool(creds["webhook_secret"]),
             "count": count, "last_sync": last, "recent": recent}
+
+
+class BlgCredsIn(BaseModel):
+    api_key: str | None = None
+    webhook_secret: str | None = None
+
+
+@router.put("/admin/babylovegrowth/credentials")
+async def blg_set_credentials(payload: BlgCredsIn, _=Depends(admin_user)):
+    """Define/limpa as credenciais BabyLoveGrowth. Nunca devolve valores em claro."""
+    creds = await save_blg_credentials(payload.api_key, payload.webhook_secret)
+    return {"api_key_set": bool(creds["api_key"]),
+            "webhook_secret_set": bool(creds["webhook_secret"])}
 
 
 @router.post("/admin/babylovegrowth/sync")
@@ -179,7 +232,8 @@ async def blg_delete(slug: str, _=Depends(admin_user)):
 @router.post("/webhooks/babylovegrowth")
 async def blg_webhook(request: Request, authorization: str | None = Header(None)):
     """Push temps réel (Settings → Integrations → Webhook). Bearer = BABYLOVEGROWTH_WEBHOOK_SECRET."""
-    secret = os.environ.get("BABYLOVEGROWTH_WEBHOOK_SECRET")
+    creds = await get_blg_credentials()
+    secret = creds["webhook_secret"]
     if not secret:
         raise HTTPException(503, "Webhook não configurado")
     if not authorization or not hmac.compare_digest(authorization.strip(), f"Bearer {secret}"):
