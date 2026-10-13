@@ -64,8 +64,8 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculadoras profissionais", dKey: "landing.feat.calc_d", text: "Pintura, azulejos, pladur, betão, isolamento: quantidades exatas com margens.", to: "/calculateurs", span: "md:col-span-4" },
-  { icon: Search, tKey: "landing.feat.price_t", title: "Comparador de preços", dKey: "landing.feat.price_d", text: "Preços recolhidos nas lojas de materiais de construção, com data da recolha, histórico das suas pesquisas e alertas.", to: "/prix", span: "md:col-span-4" },
+  { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculadoras profissionais", dKey: "landing.feat.calc_d", text: "Pintura, azulejos, pladur, betão, isolamento: quantidades exatas com margens.", to: "/calculadoras", span: "md:col-span-4" },
+  { icon: Search, tKey: "landing.feat.price_t", title: "Comparador de preços", dKey: "landing.feat.price_d", text: "Preços recolhidos nas lojas de materiais de construção, com data da recolha, histórico das suas pesquisas e alertas.", to: "/precos", span: "md:col-span-4" },
   { icon: Cuboid, tKey: "landing.feat.threed_t", title: "Geração 3D", dKey: "landing.feat.threed_d", text: "Visualize o seu projeto em três dimensões a partir de uma simples planta 2D.", to: "/plan", span: "md:col-span-8 lg:col-span-4" },
   { icon: Wrench, tKey: "landing.feat.diy_t", title: "Modo «faço eu mesmo»", dKey: "landing.feat.diy_d", text: "Materiais calculados + guia profissional passo a passo.", to: "/diy", span: "md:col-span-4 lg:col-span-4" },
   { icon: Camera, tKey: "landing.feat.photo_t", title: "Estimativa por foto", dKey: "landing.feat.photo_d", text: "A IA identifica a divisão, o seu estado e as obras prováveis.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
@@ -217,7 +217,7 @@ export default function Landing() {
         <div className="bg-primary text-primary-foreground text-center text-sm font-semibold px-4 py-2.5 flex flex-wrap items-center justify-center gap-2" data-testid="promo-banner">
           <Sparkles className="h-4 w-4" />
           {t("landing.promo")}
-          <Link to="/tarifs" className="underline underline-offset-2 hover:opacity-80 font-normal">
+          <Link to="/planos" className="underline underline-offset-2 hover:opacity-80 font-normal">
             {t("landing.promo_terms", "Ver os planos aplicáveis depois")}
           </Link>
           <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">{t("landing.promo_cta")}</Link>

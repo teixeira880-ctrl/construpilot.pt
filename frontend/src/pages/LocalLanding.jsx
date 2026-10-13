@@ -73,7 +73,7 @@ export default function LocalLanding() {
                 Estimar o meu projeto <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link to="/prix">
+            <Link to="/precos">
               <Button variant="outline" className="rounded-sm h-11" data-testid={`local-cta-prix-${c.slug}`}>
                 Comparar os preços materiais
               </Button>

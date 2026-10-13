@@ -1413,7 +1413,7 @@ export default function PlanTakeoff() {
       ts: Date.now(), project_name: `Estudo do projeto de licenciamento — ${plan?.filename || "plan"}`,
       total_avg: t.ht || 0, items,
     }));
-    nav("/prix");
+    nav("/precos");
   };
   const recomputePcStudy = async () => {
     try {
@@ -3598,7 +3598,7 @@ export default function PlanTakeoff() {
           </div>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Button
-              onClick={() => nav("/tarifs")}
+              onClick={() => nav("/planos")}
               data-testid="plan-paywall-upgrade"
               className="rounded-sm h-11 px-6"
             >
@@ -5320,7 +5320,7 @@ export default function PlanTakeoff() {
               toast.success(`${items.length} material${items.length > 1 ? "x" : ""} adicionada${items.length > 1 ? "s" : ""} no orçamento`);
               setRoomEstimate(null);
               // Navigate to /prix
-              window.location.href = "/prix?from=room-estimate";
+              window.location.href = "/precos?from=room-estimate";
             }}
           />
 

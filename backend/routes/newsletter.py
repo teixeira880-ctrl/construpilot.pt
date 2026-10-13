@@ -87,13 +87,24 @@ async def newsletter_stats(_=Depends(admin_user)):
 
 
 async def notify_new_article(article: dict) -> int:
-    """Envoie le nouvel article à tous les abonnés actifs de sa langue (une seule fois par article)."""
+    """Envia o artigo apenas aos subscritores PT confirmados.
+
+    Comportamento: desativado por defeito via flag `BLG_NOTIFY_NEWSLETTER`.
+    Quando ativo, só são contactados subscritores com `unsubscribed_at=None`,
+    `confirmed_at` (duplo opt-in) definido e idioma `pt`.
+    """
+    if (os.environ.get("BLG_NOTIFY_NEWSLETTER", "false") or "").strip().lower() not in ("1", "true", "yes", "on"):
+        logger.info("Newsletter notify skipped (BLG_NOTIFY_NEWSLETTER=false)")
+        return 0
     slug = article.get("slug")
     if not slug or await db.newsletter_sends.find_one({"slug": slug}):
         return 0
-    lang = "pt" if (article.get("language_code") or "fr").startswith("pt") else "pt"
+    if not (article.get("language_code") or "").lower().startswith("pt"):
+        return 0
+    lang = "pt"
     subs = await db.newsletter_subscribers.find(
-        {"unsubscribed_at": None, "lang": lang}, {"_id": 0, "email": 1, "token": 1}).to_list(10000)
+        {"unsubscribed_at": None, "lang": lang, "confirmed_at": {"$ne": None}},
+        {"_id": 0, "email": 1, "token": 1}).to_list(10000)
     if not subs:
         return 0
     from engines.emailer import send_email
@@ -106,10 +117,10 @@ async def notify_new_article(article: dict) -> int:
     sent = 0
     for s in subs:
         unsub = f"{_frontend()}/api/newsletter/unsubscribe?token={s['token']}"
-        cta = "Ler o artigo" if lang == "fr" else "Ler o artigo"
+        cta = "Ler o artigo"
         html = (f"<div style='font-family:sans-serif;max-width:560px'>"
                 + (f"<img src='{hero}' alt='' style='width:100%;border-radius:8px'/>" if hero else "")
-                + f"<h2 style='margin:16px 0 8px'>{title}</h2><p style='color:#444'>{excerpt}</p><p><a href='{url}' style='background:#2ECC71;color:#fff;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:bold'>{cta}</a></p><p style='font-size:11px;color:#888'>ConstruPilot · <a href='{unsub}'>{('Cancelar a subscrição' if lang == 'fr' else 'Cancelar')}</a></p></div>")
+                + f"<h2 style='margin:16px 0 8px'>{title}</h2><p style='color:#444'>{excerpt}</p><p><a href='{url}' style='background:#2ECC71;color:#fff;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:bold'>{cta}</a></p><p style='font-size:11px;color:#888'>ConstruPilot · <a href='{unsub}'>Cancelar a subscrição</a></p></div>")
         try:
             await send_email(s["email"], title, html, from_name="ConstruPilot")
             sent += 1

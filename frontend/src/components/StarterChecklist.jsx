@@ -18,8 +18,8 @@ export function StarterChecklist({ status, isPro = true }) {
     { done: s.page_published, title: "Publique a página da sua empresa", desc: "Uma página pública com as suas obras realizadas e um formulário de pedido de orçamento.", to: "/ma-page", cta: "Publicar" },
   ] : [
     { done: s.project, title: "Estime os seus trabalhos", desc: "Descreva o seu projeto e obtenha uma estimativa detalhada em 30 s.", to: "/estimation", cta: "Estimar" },
-    { done: false, title: "Compare os preços materiais", desc: "Consulte os preços de mercado para orçamentar os seus trabalhos.", to: "/prix", cta: "Ver os preços" },
-    { done: false, title: "Utilize as calculadoras", desc: "Superfícies, volumes e quantidades em poucos segundos.", to: "/calculateurs", cta: "Calcular" },
+    { done: false, title: "Compare os preços materiais", desc: "Consulte os preços de mercado para orçamentar os seus trabalhos.", to: "/precos", cta: "Ver os preços" },
+    { done: false, title: "Utilize as calculadoras", desc: "Superfícies, volumes e quantidades em poucos segundos.", to: "/calculadoras", cta: "Calcular" },
   ];
 
   const doneCount = items.filter((i) => i.done).length;

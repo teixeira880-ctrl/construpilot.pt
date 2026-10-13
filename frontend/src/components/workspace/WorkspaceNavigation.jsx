@@ -98,7 +98,7 @@ export default function WorkspaceNavigation() {
   };
   const primary = links.find(l => l.to === "/devis-editeur" && !l.locked) || links.find(l => l.to === "/estimation");
   const renderLink = (item, directory = false) => {
-    const to = item.locked ? "/tarifs" : item.to;
+    const to = item.locked ? "/planos" : item.to;
     const lockIcon = item.locked
       ? <UpgradeLock title={label(item)} requiredLevel={item.requiredLevel} benefit={benefitFor(item.to, item.requiredLevel)} className="ms-auto" />
       : null;
@@ -147,7 +147,7 @@ export default function WorkspaceNavigation() {
               <a href="/presentation/index.html" target="_blank" rel="noopener noreferrer"><Download size={16} />{deckLabel} (PT/FR/EN)</a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {links.filter(l => ["/compte", "/preferences", "/tarifs", "/admin"].includes(l.to)).map(item => <DropdownMenuItem asChild key={item.to}><Link to={item.to} data-testid={`workspace-account-${item.to.slice(1)}`}><item.icon size={16} />{label(item)}</Link></DropdownMenuItem>)}
+            {links.filter(l => ["/compte", "/preferences", "/planos", "/admin"].includes(l.to)).map(item => <DropdownMenuItem asChild key={item.to}><Link to={item.to} data-testid={`workspace-account-${item.to.slice(1)}`}><item.icon size={16} />{label(item)}</Link></DropdownMenuItem>)}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={signOut} data-testid="logout-btn"><LogOut size={16} />{ui("logout")}</DropdownMenuItem>
           </DropdownMenuContent>
@@ -166,7 +166,7 @@ export default function WorkspaceNavigation() {
         </button>
       </div>
       {primary && <Button asChild className="workspace-create"><Link to={primary.to} data-testid="workspace-create"><Plus size={17} />{label(primary)}</Link></Button>}
-      {!isPro && <Link to="/tarifs" className="workspace-go-pro" data-testid="workspace-go-pro"><Sparkles size={16} />{experience("upgrade")}</Link>}
+      {!isPro && <Link to="/planos" className="workspace-go-pro" data-testid="workspace-go-pro"><Sparkles size={16} />{experience("upgrade")}</Link>}
       <nav className="workspace-sidebar-links" aria-label={ui("menu")}>
         <div className="workspace-nav-group" data-testid="workspace-nav-essentials"><p>{experience("essentials")}</p>{essentials.map(item => renderLink(item))}</div>
         {extraFavorites.length > 0 && <div className="workspace-nav-group" data-testid="workspace-nav-favorites"><p>{ui("favorites")}</p>

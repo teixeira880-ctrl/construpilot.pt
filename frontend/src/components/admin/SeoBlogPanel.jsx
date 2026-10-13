@@ -21,7 +21,10 @@ export default function SeoBlogPanel() {
     setBusy(true);
     try {
       const { data } = await api.post(`/admin/babylovegrowth/sync?force=${force}`, {}, { timeout: 300000 });
-      toast.success(`${data.created} artigo(s) publicado(s) · ${data.skipped} já presentes${data.errors ? ` · ${data.errors} erro(s)` : ""}`);
+      const parts = [`${data.created} artigo(s) publicado(s)`, `${data.skipped} já presentes`];
+      if (data.skipped_lang) parts.push(`${data.skipped_lang} ignorado(s) por idioma`);
+      if (data.errors) parts.push(`${data.errors} erro(s)`);
+      toast.success(parts.join(" · "));
       load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Sincronização impossível");
@@ -42,8 +45,8 @@ export default function SeoBlogPanel() {
     <div className="space-y-6" data-testid="admin-seo-blog-panel">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h3 className="font-display font-bold text-lg flex items-center gap-2"><Newspaper className="h-5 w-5 text-primary" /> SEO & Blog — BabyLoveGrowth</h3>
-          <p className="text-sm text-muted-foreground">Os artigos gerados por BabyLoveGrowth são publicados automaticamente em <b>/blog</b> (sincronização a cada 2 h + webhook tempo real).</p>
+          <h3 className="font-display font-bold text-lg flex items-center gap-2"><Newspaper className="h-5 w-5 text-primary" /> SEO & Blogue — BabyLoveGrowth</h3>
+          <p className="text-sm text-muted-foreground">Os artigos em português (pt-PT) gerados por BabyLoveGrowth são publicados automaticamente em <b>/blog</b>. Artigos noutros idiomas são ignorados.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => sync(true)} disabled={busy} data-testid="admin-blg-resync">
@@ -57,15 +60,15 @@ export default function SeoBlogPanel() {
 
       <div className="grid sm:grid-cols-4 gap-3">
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Ligação API</p>
-          <p className="font-bold mt-1" data-testid="admin-blg-configured">{st.configured ? <span className="text-emerald-500">Chave configurada</span> : <span className="text-red-500">Chave em falta</span>}</p></div>
+          <p className="font-bold mt-1" data-testid="admin-blg-configured">{st.configured ? <span className="text-emerald-500">Configurado ✓</span> : <span className="text-red-500">Chave API em falta — configure BABYLOVEGROWTH_API_KEY nas variáveis de ambiente</span>}</p></div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Artigos publicados</p>
           <p className="font-bold text-2xl num mt-1" data-testid="admin-blg-count">{st.count}</p></div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Subscritores newsletter</p>
           <p className="font-bold text-2xl num mt-1" data-testid="admin-newsletter-active">{nl ? nl.active : "…"}</p>
           {nl?.recent_sends?.[0] && <p className="text-[11px] text-muted-foreground truncate">Último envio: {nl.recent_sends[0].title} ({nl.recent_sends[0].sent})</p>}</div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Última sincronização</p>
-          <p className="text-sm mt-1" data-testid="admin-blg-last-sync">{st.last_sync?.at ? new Date(st.last_sync.at).toLocaleString("pt-PT") : "jamais"}</p>
-          {st.last_sync && <p className="text-[11px] text-muted-foreground">+{st.last_sync.created} · {st.last_sync.skipped} existentes · {st.last_sync.errors} erreurs</p>}</div>
+          <p className="text-sm mt-1" data-testid="admin-blg-last-sync">{st.last_sync?.at ? new Date(st.last_sync.at).toLocaleString("pt-PT") : "nunca"}</p>
+          {st.last_sync && <p className="text-[11px] text-muted-foreground">+{st.last_sync.created} novos · {st.last_sync.skipped} existentes · {st.last_sync.skipped_lang || 0} ignorados por idioma · {st.last_sync.errors} erro(s)</p>}</div>
       </div>
 
       <div className="surface p-4 rounded-md text-xs space-y-2">

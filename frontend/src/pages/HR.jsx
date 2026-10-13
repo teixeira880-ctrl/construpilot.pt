@@ -50,7 +50,7 @@ export default function HR() {
         <h1 className="font-display text-3xl font-extrabold tracking-tight mt-4">{t("hr.paywall_title")}</h1>
         <p className="mt-4 text-muted-foreground">{t("hr.paywall_desc")}</p>
         <Button className="mt-8 rounded-sm gap-2" data-testid="hr-upgrade-btn"
-          onClick={() => (window.location.href = "/tarifs")}>
+          onClick={() => (window.location.href = "/planos")}>
           {t("hr.see_pb")} <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

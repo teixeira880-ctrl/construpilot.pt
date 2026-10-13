@@ -162,7 +162,7 @@ export default function SharedCalc() {
           Estimativa indicativa, margens de segurança incluídas. As quantidades podem variar conforme a execução.
         </p>
 
-        <Link to="/calculateurs" className="surface p-5 rounded-md flex items-center justify-between group hover:border-primary/50 transition-colors" data-testid="shared-cta">
+        <Link to="/calculadoras" className="surface p-5 rounded-md flex items-center justify-between group hover:border-primary/50 transition-colors" data-testid="shared-cta">
           <div>
             <p className="font-display font-semibold">Estime o seu projeto gratuitamente</p>
             <p className="text-sm text-muted-foreground">Calculadoras de materiais, orçamentos e preços — com ConstruPilot.</p>

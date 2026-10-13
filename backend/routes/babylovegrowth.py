@@ -53,7 +53,12 @@ def _reading_minutes(html: str | None) -> int:
     return max(1, round(words / 200))
 
 
-async def _upsert(article: dict, event: str) -> str:
+async def _upsert(article: dict, event: str) -> str | None:
+    """Guarda ou atualiza o artigo. Devolve o `slug` ou `None` se foi ignorado por idioma."""
+    lang = (article.get("languageCode") or "pt")[:5]
+    if not lang.lower().startswith("pt"):
+        logger.info("BLG skip non-PT article id=%s lang=%s", article.get("id"), lang)
+        return None
     aid = f"blg-{article.get('id')}"
     slug = article.get("slug") or _slugify(article.get("title"))
     hero_src = article.get("hero_image_url") or article.get("featured_image")
@@ -74,7 +79,7 @@ async def _upsert(article: dict, event: str) -> str:
         "seed_keyword": article.get("seedKeyword"),
         "json_ld": article.get("jsonLd"),
         "faq_schema": _faq_from_jsonld(article.get("faqJsonLd")),
-        "language_code": (article.get("languageCode") or "fr")[:5],
+        "language_code": lang,
         "reading_minutes": _reading_minutes(html),
         "status": "published", "published_at": created, "created_at": created,
         "updated_at": _now(), "received_at": _now(),
@@ -97,7 +102,7 @@ async def sync_articles(force: bool = False) -> dict:
     headers = {"X-API-Key": key, "Content-Type": "application/json"}
     known = {d["autoseo_id"] for d in await db.autoseo_articles.find(
         {"source": SOURCE}, {"_id": 0, "autoseo_id": 1}).to_list(5000)}
-    created = skipped = errors = 0
+    created = skipped = skipped_lang = errors = 0
     offset, limit = 0, 50
     async with httpx.AsyncClient(timeout=60) as c:
         while True:
@@ -114,15 +119,19 @@ async def sync_articles(force: bool = False) -> dict:
                 try:
                     full = await c.get(f"{base}/v1/articles/{it['id']}", headers=headers)
                     full.raise_for_status()
-                    await _upsert(full.json(), "sync")
-                    created += 1
+                    result = await _upsert(full.json(), "sync")
+                    if result is None:
+                        skipped_lang += 1
+                    else:
+                        created += 1
                 except Exception as e:  # noqa: BLE001
                     errors += 1
                     logger.error(f"BLG sync article {it.get('id')}: {e}")
             if len(items) < limit:
                 break
             offset += limit
-    res = {"created": created, "skipped": skipped, "errors": errors, "at": _now()}
+    res = {"created": created, "skipped": skipped, "skipped_lang": skipped_lang,
+           "errors": errors, "at": _now()}
     await db.app_settings.update_one({"key": "blg_last_sync"}, {"$set": {"key": "blg_last_sync", **res}}, upsert=True)
     return res
 
@@ -181,4 +190,6 @@ async def blg_webhook(request: Request, authorization: str | None = Header(None)
     if payload.get("id") is None:
         payload["id"] = _slugify(payload.get("slug") or payload["title"])
     slug = await _upsert(payload, "webhook")
+    if slug is None:
+        return {"ok": True, "ignored": "non-pt-language"}
     return {"ok": True, "url": f"{SITE_URL}/blog/{slug}"}

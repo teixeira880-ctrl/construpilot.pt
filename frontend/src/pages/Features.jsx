@@ -64,7 +64,7 @@ export default function Features() {
         </p>
         <div className="mt-8 flex flex-wrap gap-3 justify-center">
           <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-start">Começar gratuitamente <ArrowRight className="h-4 w-4" /></Button></Link>
-          <Link to="/tarifs"><Button variant="outline" className="rounded-sm h-11" data-testid="features-cta-pricing">Ver as tarifas</Button></Link>
+          <Link to="/planos"><Button variant="outline" className="rounded-sm h-11" data-testid="features-cta-pricing">Ver as tarifas</Button></Link>
         </div>
       </section>
 

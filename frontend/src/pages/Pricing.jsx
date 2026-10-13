@@ -149,7 +149,7 @@ export default function Pricing() {
         title="Preços e subscrições ConstruPilot"
         description="Oferta gratuita para começar, Premium para particulares, Pro e Pro Business para profissionais: detalhe das funções incluídas em cada plano, sem fidelização."
         keywords="preço software orçamentos, preço construpilot, subscrição profissional, software construção gratuito, preço ferramenta estimativa obras"
-        canonical="/tarifs"
+        canonical="/planos"
       />
       <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
         {t("pricing.subtitle")}

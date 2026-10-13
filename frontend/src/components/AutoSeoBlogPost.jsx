@@ -153,7 +153,7 @@ export default function AutoSeoBlogPost({ slug }) {
         </div>
 
         <nav className="mt-8 flex flex-wrap gap-2 text-xs" data-testid="blog-internal-links" aria-label="Ferramentas ConstruPilot">
-          {[["/estimation", "Estimador de obras"], ["/calculateurs", "Calculadoras de construção"], ["/prix", "Preços de materiais"], ["/metre", "Medições IA para os profissionais"]].map(([to, l]) => (
+          {[["/estimation", "Estimador de obras"], ["/calculadoras", "Calculadoras de construção"], ["/precos", "Preços de materiais"], ["/medicoes", "Medições IA para os profissionais"]].map(([to, l]) => (
             <Link key={to} to={to} className="px-3 py-1.5 rounded-full border border-border hover:border-primary hover:text-primary transition-colors">{l}</Link>
           ))}
         </nav>

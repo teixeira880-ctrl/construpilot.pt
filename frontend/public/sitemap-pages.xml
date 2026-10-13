@@ -10,219 +10,172 @@
   </url>
 
   <url>
-    <loc>https://construpilot.pt/metre</loc>
+    <loc>https://construpilot.pt/medicoes</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/medicoes" />
   </url>
 
   <url>
     <loc>https://construpilot.pt/smart-project</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/smart-project" />
   </url>
 
   <url>
     <loc>https://construpilot.pt/estimation</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/estimation" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/prix</loc>
+    <loc>https://construpilot.pt/precos</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/precos" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/calculateurs</loc>
+    <loc>https://construpilot.pt/calculadoras</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/calculadoras" />
   </url>
 
   <url>
     <loc>https://construpilot.pt/diy</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/diy" />
   </url>
 
   <url>
     <loc>https://construpilot.pt/photo</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/photo" />
   </url>
 
   <url>
     <loc>https://construpilot.pt/scanner-devis</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/scanner-devis" />
   </url>
 
   <url>
     <loc>https://construpilot.pt/coach</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/coach" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/tarifs</loc>
+    <loc>https://construpilot.pt/planos</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/planos" />
+  </url>
+
+  <url>
+    <loc>https://construpilot.pt/particulares</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/particulares" />
   </url>
 
   <url>
     <loc>https://construpilot.pt/blog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/blog" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/blog/cout-extension-maison-2026</loc>
-    <lastmod>2026-06-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/estimer-chantier-5-min</loc>
-    <lastmod>2026-06-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/cout-renovation-2026</loc>
-    <lastmod>2026-02-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/devis-tva-10-mode-emploi</loc>
-    <lastmod>2026-02-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/guide-metre-2d</loc>
-    <lastmod>2026-02-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/abattre-mur-porteur-reglementation</loc>
-    <lastmod>2026-02-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/permis-construire-2026</loc>
-    <lastmod>2026-02-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/re2020-renovation-guide</loc>
-    <lastmod>2026-02-16</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/chauffage-re2020-quel-choix</loc>
-    <lastmod>2026-02-17</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/prime-cee-2026-guide</loc>
-    <lastmod>2026-02-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/blog/dpe-obligatoire-2026</loc>
-    <lastmod>2026-02-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://construpilot.pt/devis-travaux-paris</loc>
+    <loc>https://construpilot.pt/orcamento-obras-lisboa</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-lisboa" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-lyon</loc>
+    <loc>https://construpilot.pt/orcamento-obras-porto</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-porto" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-marseille</loc>
+    <loc>https://construpilot.pt/orcamento-obras-braga</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-braga" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-toulouse</loc>
+    <loc>https://construpilot.pt/orcamento-obras-coimbra</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-coimbra" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-bordeaux</loc>
+    <loc>https://construpilot.pt/orcamento-obras-setubal</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-setubal" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-nantes</loc>
+    <loc>https://construpilot.pt/orcamento-obras-aveiro</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-aveiro" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-nice</loc>
+    <loc>https://construpilot.pt/orcamento-obras-faro</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-faro" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-strasbourg</loc>
+    <loc>https://construpilot.pt/orcamento-obras-funchal</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-funchal" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-rennes</loc>
+    <loc>https://construpilot.pt/orcamento-obras-leiria</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-leiria" />
   </url>
 
   <url>
-    <loc>https://construpilot.pt/devis-travaux-montpellier</loc>
+    <loc>https://construpilot.pt/orcamento-obras-viseu</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/orcamento-obras-viseu" />
   </url>
+
   <url>
-    <loc>https://construpilot.pt/suppression-compte</loc>
+    <loc>https://construpilot.pt/eliminar-conta</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://construpilot.pt/suppression-compte" />
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/eliminar-conta" />
     <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.pt/delete-account" />
   </url>
+
   <url>
-    <loc>https://construpilot.pt/suppression-donnees</loc>
+    <loc>https://construpilot.pt/eliminar-dados</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://construpilot.pt/suppression-donnees" />
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/eliminar-dados" />
     <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.pt/data-deletion" />
   </url>
 

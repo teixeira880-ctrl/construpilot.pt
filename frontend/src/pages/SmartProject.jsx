@@ -201,7 +201,7 @@ export default function SmartProject() {
                     // Récupérer les matériaux liés à l'estimation en cours
                     const lots = (result?.estimation?.lots || [])
                       .map((l) => ({ key: l.key, quantity: l.quantity }));
-                    if (lots.length === 0) { navigate("/prix"); return; }
+                    if (lots.length === 0) { navigate("/precos"); return; }
                     const { data } = await api.post("/estimation/materials", { lots });
                     // Empiler les termes de recherche pour PriceSearch
                     sessionStorage.setItem(
@@ -214,10 +214,10 @@ export default function SmartProject() {
                         ts: Date.now(),
                       })
                     );
-                    navigate("/prix?from=smart-project");
+                    navigate("/precos?from=smart-project");
                   } catch (e) {
                     toast.error("Impossível recuperar os materiais");
-                    navigate("/prix");
+                    navigate("/precos");
                   }
                 }}
               >

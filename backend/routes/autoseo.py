@@ -195,26 +195,32 @@ async def autoseo_media(article_id: str, kind: str):
 
 @router.get("/blog/sitemap.xml")
 async def blog_sitemap():
-    """Sitemap des articles dynamiques (AutoSEO + BabyLoveGrowth), référencé par /sitemap.xml (index)."""
+    """Sitemap des articles dynamiques (AutoSEO + BabyLoveGrowth + CEO), filtré PT-PT."""
     from fastapi.responses import Response
     from xml.sax.saxutils import escape
     docs = await db.autoseo_articles.find(
-        {"status": "published"}, {"_id": 0, "slug": 1, "updated_at": 1, "published_at": 1,
-                                  "hero_image_url": 1, "title": 1}
+        {"status": "published",
+         "$or": [{"language_code": {"$regex": "^pt", "$options": "i"}},
+                 {"language_code": {"$exists": False}}]},
+        {"_id": 0, "slug": 1, "updated_at": 1, "published_at": 1,
+         "hero_image_url": 1, "title": 1, "language_code": 1},
     ).sort("published_at", -1).to_list(5000)
     parts = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+             'xmlns:xhtml="http://www.w3.org/1999/xhtml" '
              'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">']
     for d in docs:
         mod = (d.get("updated_at") or d.get("published_at") or "")[:10]
         img = d.get("hero_image_url") or ""
         if img.startswith("/"):
             img = SITE_URL + img
+        url = f"{SITE_URL}/blog/{escape(d['slug'])}"
         parts.append("<url>")
-        parts.append(f"<loc>{SITE_URL}/blog/{escape(d['slug'])}</loc>")
+        parts.append(f"<loc>{url}</loc>")
         if mod:
             parts.append(f"<lastmod>{mod}</lastmod>")
         parts.append("<changefreq>monthly</changefreq><priority>0.7</priority>")
+        parts.append(f'<xhtml:link rel="alternate" hreflang="pt-PT" href="{url}" />')
         if img:
             parts.append(f"<image:image><image:loc>{escape(img)}</image:loc>"
                          f"<image:title>{escape(d.get('title') or '')}</image:title></image:image>")

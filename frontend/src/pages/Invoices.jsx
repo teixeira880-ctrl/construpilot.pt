@@ -170,7 +170,7 @@ export default function Invoices() {
           <Button className="rounded-sm gap-2" data-testid="invoices-activate-addon-btn" onClick={activateAddon}>
             {t("crm.activate_addon")} <ArrowRight className="h-4 w-4" />
           </Button>
-          <Button variant="outline" className="rounded-sm gap-2" data-testid="invoices-upgrade-btn" onClick={() => nav("/tarifs")}>
+          <Button variant="outline" className="rounded-sm gap-2" data-testid="invoices-upgrade-btn" onClick={() => nav("/planos")}>
             {t("crm.see_pb")}
           </Button>
         </div>

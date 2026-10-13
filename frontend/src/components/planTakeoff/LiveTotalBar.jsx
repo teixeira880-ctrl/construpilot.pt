@@ -95,7 +95,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
       ts: Date.now(),
     }));
     toast.success(`Pesquisa de preços em ${allMaterials.length} materiais…`);
-    window.location.href = "/prix?from=plan-total";
+    window.location.href = "/precos?from=plan-total";
   };
 
   if (!rooms || rooms.length === 0) return null;

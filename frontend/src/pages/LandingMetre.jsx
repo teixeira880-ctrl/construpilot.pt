@@ -70,7 +70,7 @@ export default function LandingMetre() {
     <div className="min-h-screen bg-background text-foreground" data-testid="landing-metre">
       <SEO title="Medições IA — da planta ao orçamento com os seus preços | ConstruPilot"
            description="Deposite planta, fotos, nota de voz ou mapa de quantidades: ConstruPilot mede cada divisão, orçamenta por especialidades aos seus preços e mostra a sua margem antes da assinatura. Teste gratuito, sem compromisso."
-           canonical="/metre" />
+           canonical="/medicoes" />
       <Nav />
 
       {/* HERO */}
@@ -215,7 +215,7 @@ export default function LandingMetre() {
               ))}
             </ul>
             <Button asChild size="lg" className="rounded-full w-full mt-6 h-12" data-testid="metre-cta-pricing"><Link to="/inscription?signup=1&plan=pro">Iniciar o teste gratuito</Link></Button>
-            <p className="text-center text-xs text-muted-foreground mt-2"><Link to="/tarifs" className="underline underline-offset-2">Ver todas as tarifas</Link></p>
+            <p className="text-center text-xs text-muted-foreground mt-2"><Link to="/planos" className="underline underline-offset-2">Ver todas as tarifas</Link></p>
           </motion.div>
         </div>
       </section>

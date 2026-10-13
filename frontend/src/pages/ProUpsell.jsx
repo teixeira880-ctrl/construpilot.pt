@@ -122,7 +122,7 @@ export default function ProUpsell() {
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center mt-10">
-        <Button variant="ghost" onClick={() => nav("/tarifs")} data-testid="pro-upsell-see-all" className="gap-2">
+        <Button variant="ghost" onClick={() => nav("/planos")} data-testid="pro-upsell-see-all" className="gap-2">
           Ver todas as tarifas <ArrowRight className="h-4 w-4" />
         </Button>
         <Button variant="outline" onClick={() => nav("/dashboard")} data-testid="pro-upsell-back">

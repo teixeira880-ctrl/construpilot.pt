@@ -24,7 +24,7 @@ export default function NotFound() {
   if (target) return <Navigate to={target} replace />;
   const links = [
     { to: "/estimation", label: "Estimar um projeto", icon: Search },
-    { to: "/prix", label: "Preço dos materiais", icon: FileText },
+    { to: "/precos", label: "Preço dos materiais", icon: FileText },
     { to: "/blog", label: "O blogue", icon: FileText },
   ];
   return (

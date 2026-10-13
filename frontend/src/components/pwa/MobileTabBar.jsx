@@ -8,7 +8,7 @@ import { usePermissions } from "@/context/PermissionContext";
 import { meetsLevel, routeMatches, OPEN_WORKSPACE_MENU } from "@/components/workspace/navigation";
 import { useWorkspaceCopy } from "@/components/workspace/copy";
 const HIDDEN_PREFIXES = ["/pointage", "/sign/", "/e/", "/etude/", "/avis/", "/fiche/", "/login", "/inscription", "/reinitialiser", "/rendu/", "/estimation-partagee/", "/prospection/"];
-const HIDDEN_PAGES = ["/", "/particuliers", "/metre", "/investisseurs", "/fonctionnalites"];
+const HIDDEN_PAGES = ["/", "/particulares", "/medicoes", "/investisseurs", "/fonctionnalites"];
 export const MobileTabBar = () => {
   const { user } = useAuth();
   const { tier } = useBilling();
@@ -27,10 +27,10 @@ export const MobileTabBar = () => {
     { to: "/assistant", label: experience("assistantShort"), icon: AssistantIcon, test: "assistant" },
   ] : [
     { to: "/dashboard", label: ui("home"), icon: LayoutDashboard, test: "accueil" },
-    { to: "/calculateurs", label: ui("calculators"), icon: Calculator, test: "calculs" },
+    { to: "/calculadoras", label: ui("calculators"), icon: Calculator, test: "calculs" },
     canAssistant
       ? { to: "/assistant", label: experience("assistantShort"), icon: AssistantIcon, test: "assistant" }
-      : { to: "/prix", label: ui("prices"), icon: Search, test: "prix" },
+      : { to: "/precos", label: ui("prices"), icon: Search, test: "prix" },
     { to: "/estimation", label: ui("new"), icon: Plus, test: "novo" },
   ];
   return <nav className="workspace-mobile-tabs" data-testid="mobile-tab-bar" aria-label={ui("menu")}>

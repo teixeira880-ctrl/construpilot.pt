@@ -187,7 +187,7 @@ export default function LandingPortugal() {
               Estimar agora <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Link to="/tarifs">
+          <Link to="/planos">
             <Button variant="outline" className="rounded-sm h-12 px-6 text-base" data-testid="pt-cta-pricing">
               Ver planos
             </Button>

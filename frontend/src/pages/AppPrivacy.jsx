@@ -120,7 +120,7 @@ const FrenchPolicy = () => (
       <p>
         Pode eliminar a sua conta diretamente na aplicação (A minha conta → Eliminar a minha conta) ou escrevendo para{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}?subject=Suppression%20de%20compte`}>{CONTACT_EMAIL}</a>. A eliminação implica o apagamento das suas obras, documentos, fotografias e mensagens. Procedimento detalhado:{" "}
-        <Link className="text-primary underline" to="/suppression-compte" data-testid="privacy-delete-link">construpilot.pt/suppression-compte</Link>.
+        <Link className="text-primary underline" to="/eliminar-conta" data-testid="privacy-delete-link">construpilot.pt/suppression-compte</Link>.
       </p>
     </Section>
 

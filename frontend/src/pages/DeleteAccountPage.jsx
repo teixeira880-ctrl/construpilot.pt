@@ -277,8 +277,8 @@ export default function DeleteAccountPage() {
         <p className="text-sm text-muted-foreground">
           {dataMode ? t.accountLink : t.dataLink}{" "}
           <Link className="text-primary underline"
-            to={dataMode ? (lang === "fr" ? "/suppression-compte" : "/delete-account")
-                         : (lang === "fr" ? "/suppression-donnees" : "/data-deletion")}
+            to={dataMode ? (lang === "fr" ? "/eliminar-conta" : "/delete-account")
+                         : (lang === "fr" ? "/eliminar-dados" : "/data-deletion")}
             data-testid="delete-account-cross-link">
             {dataMode
               ? (lang === "fr" ? "construpilot.pt/suppression-compte" : "construpilot.pt/delete-account")

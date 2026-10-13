@@ -79,7 +79,7 @@ export default function Docs() {
         <ol className="grid gap-4 text-sm">
           <li className="flex gap-3">
             <span className="num h-7 w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">1</span>
-            <span>Subscreva o plano <Link to="/tarifs" className="text-primary underline">API Starter, Business ou Scale</Link> desde a página Tarifas.</span>
+            <span>Subscreva o plano <Link to="/planos" className="text-primary underline">API Starter, Business ou Scale</Link> desde a página Tarifas.</span>
           </li>
           <li className="flex gap-3">
             <span className="num h-7 w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">2</span>
@@ -135,7 +135,7 @@ export default function Docs() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3 justify-end">
-          <Link to="/tarifs"><Button data-testid="docs-cta-pricing" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">Ver as tarifas API <ArrowRight className="h-4 w-4" /></Button></Link>
+          <Link to="/planos"><Button data-testid="docs-cta-pricing" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">Ver as tarifas API <ArrowRight className="h-4 w-4" /></Button></Link>
           <Link to="/enterprise"><Button variant="outline" className="rounded-sm">Falar com um especialista</Button></Link>
         </div>
       </div>

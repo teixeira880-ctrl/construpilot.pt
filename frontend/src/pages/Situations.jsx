@@ -206,7 +206,7 @@ export default function Situations() {
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Faturação progressiva</h1>
         <p className="text-muted-foreground mt-3">Autos de medição, progresso acumulado, retenção de garantia e conta prorata — reservado ao <b>pack Business</b>.</p>
-        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="situations-upgrade-btn">Passar ao pack Business <ArrowRight className="h-4 w-4" /></Button>
+        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/planos")} data-testid="situations-upgrade-btn">Passar ao pack Business <ArrowRight className="h-4 w-4" /></Button>
       </div>
     );
   }

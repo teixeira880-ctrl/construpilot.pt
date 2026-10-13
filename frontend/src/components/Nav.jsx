@@ -26,8 +26,8 @@ const NAV_MAIN = [
   { to: "/devis-editeur", label: "Novo orçamento", key: "nav.newquote", icon: FileText, auth: true, min: "pro" },
   { to: "/assistant", label: "Assistente Construção", key: "nav.assistant", icon: AssistantIcon, auth: true, min: "particulier_payant" },
   { to: "/estimation", label: "Estimador", key: "nav.estimator", icon: Hammer },
-  { to: "/calculateurs", label: "Calculadoras", key: "nav.calculators", icon: Calculator },
-  { to: "/prix", label: "Preços de materiais", key: "nav.prices", icon: Search },
+  { to: "/calculadoras", label: "Calculadoras", key: "nav.calculators", icon: Calculator },
+  { to: "/precos", label: "Preços de materiais", key: "nav.prices", icon: Search },
   { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
 ];
 
@@ -68,7 +68,7 @@ const NAV_DISCOVER = [
 ];
 
 const ACCOUNT_LINKS = [
-  { to: "/tarifs", label: "Preços & subscrição", key: "nav.pricing", icon: Sparkles },
+  { to: "/planos", label: "Preços & subscrição", key: "nav.pricing", icon: Sparkles },
   { to: "/aide", label: "Ajuda e assistência", key: "nav.help", icon: LifeBuoy },
   { to: "/investisseurs", label: "Investidores", key: "nav.investors", icon: Handshake },
   { to: "/mes-avis", label: "Opiniões de clientes", key: "nav.reviews", icon: MessageSquare },
@@ -144,7 +144,7 @@ export const Nav = () => {
             {mainItems.map((l) => {
               const locked = l._state === "locked";
               return (
-              <Link key={l.to} to={locked ? "/tarifs" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : t(l.key, l.label)} className={pill(!locked && location.pathname === l.to)}>
+              <Link key={l.to} to={locked ? "/planos" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : t(l.key, l.label)} className={pill(!locked && location.pathname === l.to)}>
                 <l.icon className="h-4 w-4" /> <span className="hidden xl:inline">{t(l.key, l.label)}</span>{locked && <Lock className="h-3 w-3 opacity-70" />}
               </Link>
             );})}
@@ -162,7 +162,7 @@ export const Nav = () => {
                   const locked = l._state === "locked";
                   return (
                   <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
-                    <Link to={locked ? "/tarifs" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : (l.hint || undefined)} className="flex items-center gap-2.5">
+                    <Link to={locked ? "/planos" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : (l.hint || undefined)} className="flex items-center gap-2.5">
                       <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
                       {t(l.key, l.label)}
                       {locked ? <Lock data-testid={`nav-lock-${l.to.slice(1)}`} className="ml-auto h-3.5 w-3.5 text-primary/70" /> : <>
@@ -187,7 +187,7 @@ export const Nav = () => {
                 const locked = l._state === "locked";
                 return (
                 <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
-                  <Link to={locked ? "/tarifs" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : undefined} className="flex items-center gap-2.5">
+                  <Link to={locked ? "/planos" : l.to} data-testid={`nav-link-${l.to.slice(1)}`} data-locked={locked || undefined} title={locked ? lockHint(l) : undefined} className="flex items-center gap-2.5">
                     <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
                     {t(l.key, l.label)}
                     {locked && <Lock data-testid={`nav-lock-${l.to.slice(1)}`} className="ml-auto h-3.5 w-3.5 text-primary/70" />}
@@ -195,7 +195,7 @@ export const Nav = () => {
                 </DropdownMenuItem>
               );})}
               <DropdownMenuSeparator />
-              {ACCOUNT_LINKS.filter((l) => ["/tarifs", "/investisseurs"].includes(l.to) || (l.to === "/preferences" && user)).map((l) => (
+              {ACCOUNT_LINKS.filter((l) => ["/planos", "/investisseurs"].includes(l.to) || (l.to === "/preferences" && user)).map((l) => (
                 <DropdownMenuItem key={l.to} asChild className="rounded-lg cursor-pointer py-2">
                   <Link to={l.to} data-testid={`nav-link-${l.to.slice(1)}`} className="flex items-center gap-2.5">
                     <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span>
@@ -270,7 +270,7 @@ export const Nav = () => {
             const locked = l._state === "locked";
             return (
             <Link
-              key={l.to} to={locked ? "/tarifs" : l.to} onClick={() => setOpen(false)} data-testid={`mobile-nav-link-${l.to.slice(1)}`} data-locked={locked || undefined}
+              key={l.to} to={locked ? "/planos" : l.to} onClick={() => setOpen(false)} data-testid={`mobile-nav-link-${l.to.slice(1)}`} data-locked={locked || undefined}
               className="flex items-center gap-3 px-3 py-3 text-sm rounded-lg hover:bg-secondary transition-colors"
             >
               <span className="h-7 w-7 grid place-items-center rounded-md bg-primary/10"><l.icon className="h-4 w-4 text-primary" /></span> {t(l.key, l.label)}
@@ -334,8 +334,8 @@ export const Footer = () => (
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-2 text-[11px]">
           <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Informação legal</a>
           <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Política de privacidade</a>
-          <a href="/suppression-compte" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-compte">Eliminar a minha conta</a>
-          <a href="/suppression-donnees" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-donnees">Eliminar os meus dados</a>
+          <a href="/eliminar-conta" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-compte">Eliminar a minha conta</a>
+          <a href="/eliminar-dados" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-donnees">Eliminar os meus dados</a>
           <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">CGU / CGV</a>
         </div>
         <p className="text-[11px] text-muted-foreground">

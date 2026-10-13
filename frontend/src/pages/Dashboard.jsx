@@ -140,8 +140,8 @@ export default function Dashboard() {
             ? { to: "/assistant", icon: AssistantIcon, title: experience("assistantShort"), desc: ui("askDesc"), testid: "quick-assistant" }
             : { to: "/btp-solver", icon: Wrench, title: "Resolver um problema", desc: "Faça a sua pergunta sobre obras", testid: "quick-solver" },
           isPro ? { to: "/plan", icon: Ruler, title: experience("planShort"), desc: ui("planDesc"), testid: "quick-plan" } : { to: "/estimation", icon: FileText, title: ui("estimate"), desc: ui("estimateDesc"), testid: "quick-estimate" },
-          isPro ? { to: "/chantiers", icon: HardHat, title: ui("chantiers"), desc: experience("sitesDesc"), testid: "quick-chantiers" } : { to: "/calculateurs", icon: Wrench, title: ui("calculators"), desc: ui("personalMore"), testid: "quick-calculators" },
-          isPro && can("devis") ? { to: "/devis-editeur", icon: FileText, title: experience("quoteShort"), desc: ui("quoteDesc"), testid: "quick-new-quote" } : { to: "/prix", icon: Search, title: ui("prices"), desc: ui("pricesDesc"), testid: "quick-prices" },
+          isPro ? { to: "/chantiers", icon: HardHat, title: ui("chantiers"), desc: experience("sitesDesc"), testid: "quick-chantiers" } : { to: "/calculadoras", icon: Wrench, title: ui("calculators"), desc: ui("personalMore"), testid: "quick-calculators" },
+          isPro && can("devis") ? { to: "/devis-editeur", icon: FileText, title: experience("quoteShort"), desc: ui("quoteDesc"), testid: "quick-new-quote" } : { to: "/precos", icon: Search, title: ui("prices"), desc: ui("pricesDesc"), testid: "quick-prices" },
         ].map(a => <Link key={a.to} to={a.to} className="dashboard-quick-action" data-testid={a.testid}><span><a.icon size={21} /></span><span className="flex-1 min-w-0"><strong>{a.title}</strong><small>{a.desc}</small></span><ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" /></Link>)}
       </div>
       <div className="dashboard-stats">
@@ -240,7 +240,7 @@ export default function Dashboard() {
             <div className="surface p-12 text-center" data-testid="alerts-empty">
               <Bell className="h-8 w-8 mx-auto text-muted-foreground" />
               <p className="mt-4 text-sm text-muted-foreground">
-                {t("dash.alerts_empty")} <Link to="/prix" className="text-primary" data-testid="dashboard-create-price-alert">{t("dash.create_alert")}</Link>
+                {t("dash.alerts_empty")} <Link to="/precos" className="text-primary" data-testid="dashboard-create-price-alert">{t("dash.create_alert")}</Link>
               </p>
             </div>
           ) : (
@@ -299,11 +299,11 @@ export default function Dashboard() {
         <div className="dashboard-upsell" data-testid="dashboard-upsell">
           <div className="dashboard-upsell-head">
             <div><strong><Sparkles size={16} className="text-primary" /> {t("dash.unlock_title", "Desbloqueie mais com uma subscrição")}</strong><small>{t("dash.unlock_desc", "Estas funções estão incluídas nas ofertas pagas.")}</small></div>
-            <Button asChild size="sm" className="rounded-sm"><Link to="/tarifs" data-testid="dashboard-upsell-cta">{t("dash.see_plans", "Ver as ofertas")}</Link></Button>
+            <Button asChild size="sm" className="rounded-sm"><Link to="/planos" data-testid="dashboard-upsell-cta">{t("dash.see_plans", "Ver as ofertas")}</Link></Button>
           </div>
           <div className="dashboard-upsell-grid">
             {lockedUpsell.map((f) => (
-              <Link key={f.to} to="/tarifs" className="dashboard-upsell-tile" data-testid={`dashboard-locked-${f.to.slice(1)}`} data-locked="true" title={`Função ${LEVEL_LABELS[f.min]} — clique para desbloquear`}>
+              <Link key={f.to} to="/planos" className="dashboard-upsell-tile" data-testid={`dashboard-locked-${f.to.slice(1)}`} data-locked="true" title={`Função ${LEVEL_LABELS[f.min]} — clique para desbloquear`}>
                 <span className="dashboard-upsell-icon"><f.icon size={19} /></span>
                 <span className="flex-1 min-w-0"><strong>{f.title}</strong><small>{f.desc}</small></span>
                 <span className="dashboard-upsell-badge" onClick={(e) => e.preventDefault()}>

@@ -165,7 +165,7 @@ export default function ProOffer() {
                   onClick={() => proPlans[0] ? subscribe(proPlans[0]) : navigate("/register?intent=pro")}>
             <Sparkles className="h-5 w-5" /> Começar agora
           </Button>
-          <p className="mt-2 text-xs text-muted-foreground">Está com dúvidas? <a href="/tarifs" className="underline underline-offset-4">Comparar todos os planos</a></p>
+          <p className="mt-2 text-xs text-muted-foreground">Está com dúvidas? <a href="/planos" className="underline underline-offset-4">Comparar todos os planos</a></p>
         </div>
       </section>
     </div>

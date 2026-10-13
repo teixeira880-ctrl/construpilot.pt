@@ -117,7 +117,7 @@ export default function Entreprise() {
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Espaço Empresa</h1>
         <p className="text-muted-foreground mt-3">Pilote toda a sua empresa, as suas equipas e os seus acessos — reservado ao <b>pack Business</b>.</p>
-        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-upgrade-btn">Passar ao pack Business <ArrowRight className="h-4 w-4" /></Button>
+        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/planos")} data-testid="entreprise-upgrade-btn">Passar ao pack Business <ArrowRight className="h-4 w-4" /></Button>
       </div>
     );
   }
@@ -278,7 +278,7 @@ export default function Entreprise() {
           <p className="overline">Subscrição</p>
           <p className="font-display font-semibold mt-1 capitalize">{(tier || "free").replace("_", " ")}{typeof sub?.plan === "string" ? ` · ${sub.plan}` : ""}</p>
         </div>
-        <Button variant="outline" className="rounded-sm gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-manage-sub"><Wallet className="h-4 w-4" /> Gerir a subscrição</Button>
+        <Button variant="outline" className="rounded-sm gap-2" onClick={() => nav("/planos")} data-testid="entreprise-manage-sub"><Wallet className="h-4 w-4" /> Gerir a subscrição</Button>
       </div>
     </div>
   );

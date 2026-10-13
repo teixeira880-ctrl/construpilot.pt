@@ -27,7 +27,7 @@ export function LandingLayout({ audience, children }) {
     <a className="landing-skip" href="#landing-main">Ir para o conteúdo</a>
     <header className="landing-header" onKeyDown={e => { if (e.key === "Escape") { setMenu(false); document.getElementById("landing-menu-button")?.focus(); } }}>
       <div className="landing-header-inner">
-        <Link to={pro ? "/" : "/particuliers"} className="landing-brand" aria-label="ConstruPilot, início" data-testid={`${prefix}-logo`}><img src="/construpilot-icon.png" alt="" width="34" height="34" /><span>Constru<span>Pilot</span></span></Link>
+        <Link to={pro ? "/" : "/particulares"} className="landing-brand" aria-label="ConstruPilot, início" data-testid={`${prefix}-logo`}><img src="/construpilot-icon.png" alt="" width="34" height="34" /><span>Constru<span>Pilot</span></span></Link>
         <div className="landing-audience"><AudienceSwitch active={audience} tone="light" /></div>
         <nav className="landing-desktop-links" aria-label="Apresentação">{sections.map(s => <a key={s.id} href={`#${s.id}`}>{s.label}</a>)}</nav>
         <Link to="/login" className="landing-login" data-testid={`${prefix}-nav-login`} aria-label="Entrar"><LogIn size={18} aria-hidden="true" /><span>Iniciar sessão</span></Link>
@@ -55,6 +55,6 @@ export function LandingPricing({ plans, pro = false }) {
       <ul>{p.features.map(f => <li key={f}><span aria-hidden="true">✓</span>{f}</li>)}</ul>
       <Link to="/inscription" className={`landing-button${p.popular ? "" : " landing-button-outline"}`} data-testid={p.tid}>{pro ? "Experimentar durante 7 dias" : p.popular ? "Descobrir o Passe" : "Começar gratuitamente"}<ArrowRight size={17} /></Link>
     </article>)}</div>
-    <Link to="/tarifs" className="landing-text-link">Consultar o detalhe das ofertas <ArrowRight size={16} /></Link>
+    <Link to="/planos" className="landing-text-link">Consultar o detalhe das ofertas <ArrowRight size={16} /></Link>
   </section>;
 }

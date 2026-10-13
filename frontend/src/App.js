@@ -231,8 +231,10 @@ function AppRouter() {
     <DefaultSEO />
     <Routes>
       <Route path="/" element={<LandingPro />} />
-      <Route path="/particuliers" element={<LandingParticuliers />} />
-      <Route path="/metre" element={<LandingMetre />} />
+      <Route path="/particulares" element={<LandingParticuliers />} />
+      <Route path="/particuliers" element={<Navigate to="/particulares" replace />} />
+      <Route path="/medicoes" element={<LandingMetre />} />
+      <Route path="/metre" element={<Navigate to="/medicoes" replace />} />
       <Route path="/economies" element={<Shell><SavingsCalculator /></Shell>} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
       <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
@@ -244,8 +246,10 @@ function AppRouter() {
       <Route path="/reinitialiser" element={<ResetPassword />} />
       <Route path="/smart-project" element={<Shell><SmartProject /></Shell>} />
       <Route path="/estimation" element={<Shell><Estimator /></Shell>} />
-      <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
-      <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
+      <Route path="/calculadoras" element={<Shell><Calculators /></Shell>} />
+      <Route path="/calculateurs" element={<Navigate to="/calculadoras" replace />} />
+      <Route path="/precos" element={<Shell><PriceSearch /></Shell>} />
+      <Route path="/prix" element={<Navigate to="/precos" replace />} />
       <Route path="/mon-catalogue" element={<ProRoute><Shell><PriceCatalog /></Shell></ProRoute>} />
       <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
       <Route path="/rentabilite" element={<ProRoute><Shell><Profitability /></Shell></ProRoute>} />
@@ -257,21 +261,39 @@ function AppRouter() {
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
-      <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
+      <Route path="/planos" element={<Shell><Pricing /></Shell>} />
+      <Route path="/tarifs" element={<Navigate to="/planos" replace />} />
       <Route path="/pro" element={<Shell><ProOffer /></Shell>} />
       <Route path="/aide" element={<Shell><Help /></Shell>} />
       <Route path="/comparatif" element={<Shell><Comparatif /></Shell>} />
       <Route path="/blog" element={<Shell><Blog /></Shell>} />
+      {/* Artigos FR legacy — redirect 301 para /blog (noindex via BlogPost quando o slug não existe) */}
+      {[
+        "cout-extension-maison-2026", "estimer-chantier-5-min", "cout-renovation-2026",
+        "devis-tva-10-mode-emploi", "guide-metre-2d", "abattre-mur-porteur-reglementation",
+        "permis-construire-2026", "re2020-renovation-guide", "chauffage-re2020-quel-choix",
+        "prime-cee-2026-guide", "dpe-obligatoire-2026",
+      ].map((slug) => (
+        <Route key={`fr-${slug}`} path={`/blog/${slug}`} element={<Navigate to="/blog" replace />} />
+      ))}
       <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />
-      <Route path="/devis-travaux-:city" element={<Shell><LocalLanding /></Shell>} />
       {CITY_LIST.map((c) => (
         <Route key={`pt-${c.slug}`} path={`/orcamento-obras-${c.slug}`}
                element={<Shell><LocalLanding /></Shell>} />
       ))}
+      {/* Páginas de cidades FR legacy — redirect 301 para a landing principal */}
+      {[
+        "paris", "lyon", "marseille", "toulouse", "bordeaux",
+        "nantes", "nice", "strasbourg", "rennes", "montpellier",
+      ].map((city) => (
+        <Route key={`fr-city-${city}`} path={`/devis-travaux-${city}`}
+               element={<Navigate to="/" replace />} />
+      ))}
       {CITY_LIST.map((c) => (
         <Route key={c.slug} path={`/devis-travaux-${c.slug}`}
-               element={<Shell><LocalLanding /></Shell>} />
+               element={<Navigate to={`/orcamento-obras-${c.slug}`} replace />} />
       ))}
+      <Route path="/devis-travaux-:city" element={<Navigate to="/" replace />} />
       <Route path="/parrainage" element={<Protected><Shell><Referrals /></Shell></Protected>} />
       <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
@@ -349,9 +371,12 @@ function AppRouter() {
       <Route path="/privacy" element={<Shell><AppPrivacy /></Shell>} />
       <Route path="/app-privacy" element={<Shell><AppPrivacy /></Shell>} />
       <Route path="/confidentialite-apps" element={<Shell><AppPrivacy /></Shell>} />
-      <Route path="/suppression-compte" element={<Shell><DeleteAccountPage /></Shell>} />      <Route path="/delete-account" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/eliminar-conta" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/suppression-compte" element={<Navigate to="/eliminar-conta" replace />} />
+      <Route path="/delete-account" element={<Shell><DeleteAccountPage /></Shell>} />
       <Route path="/account-deletion" element={<Shell><DeleteAccountPage /></Shell>} />
-      <Route path="/suppression-donnees" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/eliminar-dados" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/suppression-donnees" element={<Navigate to="/eliminar-dados" replace />} />
       <Route path="/data-deletion" element={<Shell><DeleteAccountPage /></Shell>} />
       <Route path="/appel-offres/:token" element={<RfqPublic />} />
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />

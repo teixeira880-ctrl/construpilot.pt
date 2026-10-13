@@ -37,8 +37,8 @@ export const WORKSPACE_LINKS = [
   { to: "/mesure-photo", key: "nav.photomeasure", label: "Medir em fotografia", icon: Camera, group: "chantiers", min: "particulier_payant" },
   { to: "/estimation", key: "nav.estimator", label: "Estimador", ui: "estimate", icon: Calculator, group: "today", personalPin: true },
   { to: "/smart-project", label: "Smart Project", ui: "smart", icon: Sparkles, group: "today" },
-  { to: "/prix", key: "nav.prices", label: "Preços de materiais", icon: Search, group: "library", personalPin: true },
-  { to: "/calculateurs", key: "nav.calculators", label: "Calculadoras", icon: Calculator, group: "library", personalPin: true },
+  { to: "/precos", key: "nav.prices", label: "Preços de materiais", icon: Search, group: "library", personalPin: true },
+  { to: "/calculadoras", key: "nav.calculators", label: "Calculadoras", icon: Calculator, group: "library", personalPin: true },
   { to: "/scanner-devis", key: "nav.scanner", label: "Scanner de orçamentos", icon: FileSearch, group: "billing", subscriber: true },
   { to: "/entreprise", key: "nav.company", label: "Espaço Empresa", icon: Building2, group: "account", min: "business", perm: "entreprise" },
   { to: "/ma-page", key: "nav.myPage", label: "A minha página & documentos", icon: Globe, group: "clients", pro: true, pin: true, words: "site montra página pública cabeçalho rodapé pdf personalização fotografias obras realizadas" },
@@ -63,7 +63,7 @@ export const WORKSPACE_LINKS = [
   { to: "/developpeurs", label: "Chaves API", icon: KeyRound, group: "account", min: "business" },
   { to: "/preferences", key: "nav.preferences", label: "Memória e preferências", ui: "preferences", icon: Brain, group: "account" },
   { to: "/compte", key: "nav.account", label: "A minha conta", ui: "account", icon: KeyRound, group: "account" },
-  { to: "/tarifs", key: "nav.pricing", label: "Preços & subscrição", ui: "subscription", icon: Sparkles, group: "account" },
+  { to: "/planos", key: "nav.pricing", label: "Preços & subscrição", ui: "subscription", icon: Sparkles, group: "account" },
   { to: "/inviter", key: "nav.referral", label: "Recomendar", icon: Handshake, group: "account" },
   { to: "/investisseurs", key: "nav.investors", label: "Investidores", icon: Handshake, group: "discover" },
   { to: "/aide", key: "nav.help", label: "Ajuda e assistência", icon: LifeBuoy, group: "discover", words: "aide support assistance contact faq help ajuda" },
@@ -76,7 +76,7 @@ export const WORKSPACE_GROUPS = ["favorites", "today", "chantiers", "billing", "
 export const workspaceEssentials = (links, professional) => {
   const paths = professional
     ? ["/dashboard", "/chantiers", "/plan", "/agents", "/devis", "/factures", "/clients", "/assistant"]
-    : ["/dashboard", "/estimation", "/assistant", "/agents", "/calculateurs", "/prix", "/marketplace"];
+    : ["/dashboard", "/estimation", "/assistant", "/agents", "/calculadoras", "/precos", "/marketplace"];
   return paths.map(path => links.find(item => item.to === path && !item.locked)).filter(Boolean);
 };
 const RANK = { particulier_gratuit: 0, particulier_payant: 1, pro: 2, business: 3 };

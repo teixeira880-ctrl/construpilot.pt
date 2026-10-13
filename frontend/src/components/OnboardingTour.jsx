@@ -12,7 +12,7 @@ import { useI18n } from "@/context/I18nContext";
  */
 const STEPS = [
   { icon: Sparkles, color: "text-primary", k: "s1", to: "/smart-project" },
-  { icon: Search, color: "text-emerald-500", k: "s2", to: "/prix" },
+  { icon: Search, color: "text-emerald-500", k: "s2", to: "/precos" },
   { icon: Camera, color: "text-amber-500", k: "s3", to: "/dashboard" },
   { icon: Handshake, color: "text-primary", k: "s4", to: "/marketplace" },
 ];

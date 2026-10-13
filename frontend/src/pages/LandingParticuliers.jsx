@@ -14,7 +14,7 @@ const TOOLS = [
   { icon: FileSearch, tag: "Compreender", title: "Um olhar sobre os seus orçamentos", desc: "Compare os artigos e identifique os pontos a esclarecer com o seu profissional.", to: "/scanner-devis" },
   { icon: Camera, tag: "Explorar", title: "A sua divisão em imagens", desc: "Utilize uma fotografia para dar contexto e preparar as suas perguntas.", to: "/photo" },
   { icon: Wrench, tag: "Escolher", title: "Fazer sozinho ou delegar", desc: "Compare as opções consoante o seu orçamento, as suas competências e a obra.", to: "/diy" },
-  { icon: Calculator, tag: "Calcular", title: "As quantidades certas", desc: "Estime as necessidades de tinta, azulejo ou isolamento a partir das suas medidas.", to: "/calculateurs" },
+  { icon: Calculator, tag: "Calcular", title: "As quantidades certas", desc: "Estime as necessidades de tinta, azulejo ou isolamento a partir das suas medidas.", to: "/calculadoras" },
   { icon: MessageSquare, tag: "Ser acompanhado", title: "As suas perguntas sobre obras", desc: "Prepare as suas conversas e encontre explicações ao longo do projeto.", to: "/coach" },
 ];
 const PLANS = [
@@ -46,7 +46,7 @@ export default function LandingParticuliers() {
     else navigate(`/inscription?email=${encodeURIComponent(mail)}&signup=1`);
   };
   return <LandingLayout audience="particulier">
-    <SEO title="ConstruPilot — Prepare o seu projeto de remodelação" description="Estime o orçamento das suas obras, compreenda os seus orçamentos e prepare as etapas da sua remodelação com o ConstruPilot para particulares." canonical="/particuliers" keywords="estimativa obras, orçamento remodelação, comparar orçamentos"
+    <SEO title="ConstruPilot — Prepare o seu projeto de remodelação" description="Estime o orçamento das suas obras, compreenda os seus orçamentos e prepare as etapas da sua remodelação com o ConstruPilot para particulares." canonical="/particulares" keywords="estimativa obras, orçamento remodelação, comparar orçamentos"
       jsonLd={{"@context":"https://schema.org","@type":"WebApplication",name:"ConstruPilot para particulares",applicationCategory:"UtilitiesApplication",operatingSystem:"Web",offers:[{"@type":"Offer",name:"Grátis",price:"0",priceCurrency:"EUR"},{"@type":"Offer",name:"Passe Tranquilidade",price:"19",priceCurrency:"EUR"}]}} />
     <section className="landing-hero landing-section" data-testid="particuliers-hero">
       <div className="landing-hero-copy"><p className="landing-eyebrow"><span />PARA A SUA CASA, O SEU APARTAMENTO</p><h1>Os seus desejos ganham forma.<br /><em>O seu projeto também.</em></h1>

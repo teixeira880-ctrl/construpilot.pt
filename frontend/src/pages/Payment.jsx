@@ -85,7 +85,7 @@ export function PaymentSuccess() {
         <>
           <XCircle className="h-14 w-14 mx-auto text-red-500" />
           <p className="font-display text-xl font-bold">Sessão não encontrada</p>
-          <Link to="/tarifs"><Button variant="outline" className="rounded-sm">Voltar aos preços</Button></Link>
+          <Link to="/planos"><Button variant="outline" className="rounded-sm">Voltar aos preços</Button></Link>
         </>
       )}
     </div>
@@ -99,7 +99,7 @@ export function PaymentCancel() {
       <p className="font-display text-2xl font-bold">Pagamento cancelado</p>
       <p className="text-sm text-muted-foreground">Nenhum montante foi debitado. Pode retomar a qualquer momento.</p>
       <div className="flex justify-center gap-3">
-        <Link to="/tarifs"><Button className="rounded-sm hover:bg-orange-600 hover:text-white">Rever as fórmulas</Button></Link>
+        <Link to="/planos"><Button className="rounded-sm hover:bg-orange-600 hover:text-white">Rever as fórmulas</Button></Link>
         <Link to="/"><Button variant="outline" className="rounded-sm">Voltar ao início</Button></Link>
       </div>
     </div>
