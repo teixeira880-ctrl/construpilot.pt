@@ -111,7 +111,7 @@ def build_study_note(study: dict) -> bytes:
     story.append(_p("Documento gerado pelo StructuroPilot (ConstruPilot)", ss["CoverSub"]))
     story.append(Spacer(1, 10 * mm))
     story.append(_p(f"<b>{study.get('title','')}</b>", ss["CoverSub"]))
-    story.append(_p(f"Objet : {goal}", ss["CoverSub"]))
+    story.append(_p(f"Objeto: {goal}", ss["CoverSub"]))
     story.append(Spacer(1, 10 * mm))
     story.append(_section_table(ss, [
         ("Referência do processo", study.get("study_id", "")),
@@ -123,8 +123,8 @@ def build_study_note(study: dict) -> bytes:
     story.append(Spacer(1, 8 * mm))
     # Tableau "Ind. Evolution" (historique de révision)
     story.append(_p("Índice · Alteração", ss["H2"]))
-    evo = [[_p("<b>Ind.</b>", ss["Small"]), _p("<b>Auteur</b>", ss["Small"]),
-            _p("<b>Date</b>", ss["Small"]), _p("<b>Objet</b>", ss["Small"])]]
+    evo = [[_p("<b>Ind.</b>", ss["Small"]), _p("<b>Autor</b>", ss["Small"]),
+            _p("<b>Data</b>", ss["Small"]), _p("<b>Objeto</b>", ss["Small"])]]
     approvals = study.get("approvals") or []
     if approvals:
         for a in approvals:
@@ -149,7 +149,7 @@ def build_study_note(study: dict) -> bytes:
     story.append(PageBreak())
 
     # ---------- Sommaire ----------
-    story.append(_p("Sommaire", ss["H1"]))
+    story.append(_p("Índice", ss["H1"]))
     for line in [
         "1. Caderno de encargos e condicionantes",
         "2. Visita ao local — levantamentos e constatações",
@@ -163,7 +163,7 @@ def build_study_note(study: dict) -> bytes:
 
     # ---------- 1. Cahier des charges ----------
     story.append(_p("1. Caderno de encargos e condicionantes", ss["H1"]))
-    story.append(_p("1.1 Objet", ss["H2"]))
+    story.append(_p("1.1 Objeto", ss["H2"]))
     story.append(_p(goal, ss["Body"]))
     story.append(_p("1.2 Plantas e dimensões", ss["H2"]))
     story.append(_section_table(ss, [
@@ -183,7 +183,7 @@ def build_study_note(study: dict) -> bytes:
     story.append(_p("A documentar (redes, pavimentos adjacentes, construções existentes).", ss["Body"]))
     story.append(_p("1.7 Obra e segurança", ss["H2"]))
     story.append(_p("Escoramento e faseamento a definir; capacidade do piso inferior «a documentar».", ss["Body"]))
-    story.append(_p("1.8 Maintenance", ss["H2"]))
+    story.append(_p("1.8 Manutenção", ss["H2"]))
     story.append(_p("Proteção anticorrosiva / resistência ao fogo do aço a precisar na fase de execução.", ss["Body"]))
 
     # ---------- 2. Visite / relevés ----------
@@ -289,7 +289,7 @@ def build_study_note(study: dict) -> bytes:
     story.append(_p("4. Variantes de solução a estudar", ss["H1"]))
     story.append(_p("As variantes abaixo são opções a comparar. As grandezas mecânicas (secção adotada, flecha, verificação dos apoios) dependem do motor de cálculo bloqueado e estão marcadas «A CALCULAR».", ss["Body"]))
     var_header = [_p("<b>Ref.</b>", ss["Small"]), _p("<b>Solução</b>", ss["Small"]),
-                  _p("<b>Principe</b>", ss["Small"]), _p("<b>Secção / flecha / apoios</b>", ss["Small"])]
+                  _p("<b>Princípio</b>", ss["Small"]), _p("<b>Secção / flecha / apoios</b>", ss["Small"])]
     var_rows = [var_header]
     for ref, sol, principe in VARIANTS:
         var_rows.append([_p(ref, ss["Small"]), _p(sol, ss["Small"]), _p(principe, ss["Small"]),
@@ -302,7 +302,7 @@ def build_study_note(study: dict) -> bytes:
     story.append(tv)
 
     # ---------- 5. Annexes ----------
-    story.append(_p("5. Annexes", ss["H1"]))
+    story.append(_p("5. Anexos", ss["H1"]))
     story.append(_p("5.1 Memórias de cálculo", ss["H2"]))
     story.append(_tbd_para(ss, "A produzir pelo motor de cálculo: "))
     story.append(_p("5.2 Plantas importadas", ss["H2"]))
@@ -333,7 +333,7 @@ def build_study_note(study: dict) -> bytes:
                                   ("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
         story.append(tver)
     story.append(Spacer(1, 6 * mm))
-    story.append(_p("Signature", ss["H2"]))
+    story.append(_p("Assinatura", ss["H2"]))
     if approvals:
         for a in approvals:
             story.append(_p(f"{a.get('name', '')} — {a.get('role', '')} (rev. {a.get('revision', '')}, {(a.get('at', '') or '')[:10]})", ss["Body"]))

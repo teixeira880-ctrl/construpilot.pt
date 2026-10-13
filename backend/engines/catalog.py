@@ -281,7 +281,7 @@ RISK_KEYWORDS = {
     "tableau électrique": "A substituição de um quadro elétrico é da competência de um eletricista qualificado (NF C 15-100).",
     "toiture": "Trabalhos em altura: risco de queda grave, andaime e arnês obrigatórios.",
     "fondations": "As fundações comprometem a estabilidade do edifício: estudo de solo e gabinete de estudos necessários.",
-    "étanchéité": "Impermeabilização estrutural: um defeito provoca danos graves, garantia decenal recomendada.",
+    "étanchéité": "Impermeabilização estrutural: um defeito provoca danos graves, seguro de responsabilidade civil recomendado.",
     "plomb": "Pinturas com chumbo: diagnóstico e protocolo de remoção específico.",
 }
 

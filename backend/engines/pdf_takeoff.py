@@ -136,7 +136,7 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
     if branding.get("nif"):
         _fisc.append(f"NIF {branding['nif']}")
     if not branding.get("nif") and branding.get("siret"):
-        _fisc.append(f"Estabelecimento {branding['siret']}")
+        _fisc.append(f"NIF {branding['siret']}")
     if branding.get("vat"):
         _fisc.append(f"{('IVA' if branding.get('nif') else 'IVA')} {branding['vat']}")
     if branding.get("alvara"):
@@ -911,7 +911,7 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
             comp_lines.append(Paragraph(branding["company_email"], white_small))
         fisc = []
         if branding.get("siret"):
-            fisc.append("Estabelecimento " + str(branding["siret"]))
+            fisc.append("NIF " + str(branding["siret"]))
         if branding.get("vat"):
             fisc.append("IVA " + str(branding["vat"]))
         if fisc:

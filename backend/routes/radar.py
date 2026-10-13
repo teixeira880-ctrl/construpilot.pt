@@ -374,7 +374,7 @@ def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
     if addr:
         header_lines.append(addr)
     fisc = " · ".join([x for x in [
-        f"Estabelecimento {b['siret']}" if b.get("siret") else "",
+        f"NIF {b['siret']}" if b.get("siret") else "",
         f"IVA {b['vat']}" if b.get("vat") else ""] if x])
     if fisc:
         header_lines.append(fisc)

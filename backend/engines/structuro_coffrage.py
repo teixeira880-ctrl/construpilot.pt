@@ -101,10 +101,10 @@ class Sheet:
             c.line(xx, PAD, xx, y)
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 9)
-        c.drawString(xA + 10, y - 16, ctx.get("project", "Projet auto-pilote BET"))
+        c.drawString(xA + 10, y - 16, ctx.get("project", "Projeto autopiloto BET"))
         c.setFont("Helvetica", 7.5)
         c.setFillColor(MUT)
-        c.drawString(xA + 10, y - 30, ctx.get("sub1", "Pré-dimensionnement généré automatiquement"))
+        c.drawString(xA + 10, y - 30, ctx.get("sub1", "Pré-dimensionamento gerado automaticamente"))
         c.drawString(xA + 10, y - 42, ctx.get("sub2", ""))
         c.setFillColor(WARN)
         c.setFont("Helvetica", 7.5)
@@ -112,7 +112,7 @@ class Sheet:
         c.setFillColor(MUT)
         c.setFont("Helvetica", 7.5)
         c.drawString(xB + 10, y - 30, ctx.get("date", ""))
-        c.drawString(xB + 10, y - 42, f"Índice {ctx.get('rev', 1)} | Auto-pilote ConstruPilot")
+        c.drawString(xB + 10, y - 42, f"Índice {ctx.get('rev', 1)} | Autopiloto ConstruPilot")
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 8)
         c.drawString(xC + 10, y - 16, f'A3 horizontal | Escala {echelle}')
@@ -122,7 +122,7 @@ class Sheet:
         c.drawString(xC + 10, y - 42, "Imprimir a 100 % - não medir no ecrã")
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 7.5)
-        c.drawCentredString((xD + PAGE_W - PAD) / 2, y - 16, "CONCEPTION")
+        c.drawCentredString((xD + PAGE_W - PAD) / 2, y - 16, "CONCEÇÃO")
         c.setFillColor(WARN)
         c.drawCentredString((xD + PAGE_W - PAD) / 2, y - 28, "NÃO VALIDADA")
         c.setFillColor(INK)
@@ -657,7 +657,7 @@ def _lbd_table(fck=25, fyk=500, eta1=0.7):
 
 def _ancrage_sheet(c, ctx, code, feuille):
     sh = Sheet(c, ctx, "Amarrações, emendas e esboços de moldagem",
-               "Comprimentos ao eixo dos varões — nenhuma autorização de fabrico", code, feuille, "schématique")
+               "Comprimentos ao eixo dos varões — nenhuma autorização de fabrico", code, feuille, "esquemático")
     x0, y0, x1, y1 = sh.area
     c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
     c.drawString(x0 + 10, y1 - 10, "01 / AMARRAÇÃO RETA E EMENDA — C25/30, A500")
@@ -671,11 +671,11 @@ def _ancrage_sheet(c, ctx, code, feuille):
     c.setStrokeColor(REBAR); c.setLineWidth(1.4)
     # L
     c.line(bx, by, bx + 70, by); c.line(bx + 70, by, bx + 70, by + 45)
-    c.setFillColor(INK); c.setFont("Helvetica", 7); c.drawString(bx, by - 12, "L : a + b, 1 coude")
+    c.setFillColor(INK); c.setFont("Helvetica", 7); c.drawString(bx, by - 12, "L : a + b, 1 dobra")
     # U
     ux = bx + 150
     c.setStrokeColor(REBAR); c.line(ux, by + 45, ux, by); c.line(ux, by, ux + 70, by); c.line(ux + 70, by, ux + 70, by + 45)
-    c.setFillColor(INK); c.drawString(ux, by - 12, "U : a + 2b, 2 coudes")
+    c.setFillColor(INK); c.drawString(ux, by - 12, "U : a + 2b, 2 dobras")
     # cadre
     cx = bx + 320
     c.setStrokeColor(REBAR); c.rect(cx, by, 60, 45, stroke=1, fill=0)
@@ -683,9 +683,9 @@ def _ancrage_sheet(c, ctx, code, feuille):
     c.setFillColor(MUT); c.setFont("Helvetica", 7)
     c.drawString(x0 + 10, y0 + 20, "Mandril 4Ø (Ø≤16) / 7Ø acima. Comprimento desenvolvido = segmentos retos + arcos ao eixo.")
     sh.notes([
-        ("Usage", "Quadro indicativo de amarração e emenda por diâmetro, para a paginação do processo."),
+        ("Utilização", "Quadro indicativo de amarração e emenda por diâmetro, para a paginação do processo."),
         ("A verificar", "Posição de betonagem, confinamento, pressão sob a dobra e percentagem de varões emendados no mesmo local."),
-        ("Formes", "As famílias I/L/U/C servem para o cálculo dos comprimentos da lista."),
+        ("Formas", "As famílias I/L/U/C servem para o cálculo dos comprimentos da lista."),
     ])
 
 
@@ -720,7 +720,7 @@ def _grid_table(c, x, y_top, rows, widths, fs=7.2, rh=14):
 
 def _nomenclature_sheet(c, ctx, metre_data, code, feuille):
     sh = Sheet(c, ctx, "Lista de aços e medição", "Comprimentos ao eixo, pesos teóricos e estimativa de materiais",
-               code, feuille, "sans")
+               code, feuille, "s/ escala")
     x0, y0, x1, y1 = sh.area
     steel = (metre_data or {}).get("steel", {})
     rows = [["Referência", "Artigo", "Piso", "Secção", "Aços", "Nb", "Lg (m)", "Peso (kg)"]]
@@ -753,20 +753,21 @@ def _nomenclature_sheet(c, ctx, metre_data, code, feuille):
 # ----------------------------------------------------------------- note de calcul ----
 def _calc_sheet(c, ctx, model, summary, soil, code, feuille):
     sh = Sheet(c, ctx, "Memória de cálculo — referências e limites",
-               "Resultados determinísticos (NP EN 1990/1991/1992/1997) — hipóteses do pré-modelo", code, feuille, "sans")
+               "Resultados determinísticos (NP EN 1990/1991/1992/1997) — hipóteses do pré-modelo", code, feuille, "s/ escala")
     x0, y0, x1, y1 = sh.area
     c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
     c.drawString(x0 + 10, y1 - 8, "FUNDAÇÕES — tensão admissível do estudo geotécnico")
-    frows = [["Sapata", "Type", "N_ELS (kN)", "N_ELU (kN)", "Dim (m)", "Estado"]]
+    _FOOTING_LABEL = {"isolee": "isolada", "filante": "contínua", "radier": "ensoleiramento"}
+    frows = [["Sapata", "Tipo", "N_ELS (kN)", "N_ELU (kN)", "Dim (m)", "Estado"]]
     for f in (summary or {}).get("footings", [])[:10]:
         ok = f.get("dim_m") is not None
-        frows.append([f.get("id"), f.get("type"), f.get("n_els_kn"), f.get("n_elu_kn"),
-                      f.get("dim_m") if ok else "—", "dimensionnée" if ok else "solo (estudo geotécnico) a confirmar"])
+        frows.append([f.get("id"), _FOOTING_LABEL.get(f.get("type"), f.get("type")), f.get("n_els_kn"), f.get("n_elu_kn"),
+                      f.get("dim_m") if ok else "—", "dimensionada" if ok else "solo (estudo geotécnico) a confirmar"])
     yend = _grid_table(c, x0 + 10, y1 - 22, frows, [90, 70, 80, 80, 70, 90])
     c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
     c.drawString(x0 + 10, yend - 16, "SUPERESTRUTURA — esforços condicionantes")
     ss = (summary or {}).get("superstructure") or {}
-    srows = [["Elemento", "Piso", "Secção", "Sollicitation", "Aços"]]
+    srows = [["Elemento", "Piso", "Secção", "Solicitação", "Aços"]]
     for b in ss.get("beams", [])[:6]:
         top = f" / sup {b['as_top_req_cm2']} cm²" if b.get("as_top_req_cm2") is not None else ""
         srows.append([f"PTR {b.get('id','')}", b.get("level"), f"{int(round(b['b_m']*100))}×{int(round(b['h_m']*100))}",
@@ -779,8 +780,9 @@ def _calc_sheet(c, ctx, model, summary, soil, code, feuille):
                       f"N={ww.get('n_ed_kn')} kN", f"V {ww.get('as_vert_cm2')} cm²"])
     _grid_table(c, x0 + 10, yend - 30, srows, [90, 70, 80, 120, 110])
     notes = [
-        ("Sol (G2)", f"q_ELS={soil.get('q_els_kpa','—')} kPa ; q_ELU={soil.get('q_elu_kpa','—')} kPa ; "
-                     f"{soil.get('foundation_type','—')} ; ancrage {soil.get('anchorage_depth_m','—')} m ; "
+        ("Solo (estudo geotécnico)", f"q_ELS={soil.get('q_els_kpa','—')} kPa ; q_ELU={soil.get('q_elu_kpa','—')} kPa ; "
+                     f"{_FOOTING_LABEL.get(soil.get('foundation_type'), soil.get('foundation_type','—'))} ; "
+                     f"encastramento {soil.get('anchorage_depth_m','—')} m ; "
                      f"{soil.get('soil_class','—')}."),
         ("Descida de cargas", f"Reação no solo ELU ≈ {(summary or {}).get('ground_reaction_elu_kn', '—')} kN. Combinações NP EN 1990 (ELU/ELS), cargas NP EN 1991-1-1."),
         ("Hipóteses", "Malha regular, transferências centradas, sem ação horizontal (vento/sismo) nem segunda ordem. "
@@ -812,7 +814,7 @@ def build_coffrage_pdf(model: dict, revision: int, title: str, superstructure: d
     ctx = {"project": title, "rev": revision,
            "sub1": "Pré-dimensionamento gerado automaticamente (piloto automático de engenharia)",
            "sub2": (inputs or {}).get("building", {}).get("destination", "").capitalize() if inputs else "",
-           "date": "Dossier auto-pilote ConstruPilot"}
+           "date": "Processo autopiloto ConstruPilot"}
     elements = model.get("elements", [])
 
     # 1) Coffrage fondations

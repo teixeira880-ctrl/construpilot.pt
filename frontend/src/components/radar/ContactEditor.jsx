@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 
 const FIELDS = [["nom", "Nome / denominação social"], ["societe", "Sociedade"], ["adresse1", "Morada postal"],
   ["adresse2", "Complemento"], ["cp", "Código postal"], ["ville", "Cidade"], ["siren", "NIPC"],
-  ["siret", "Estabelecimento"], ["email", "E-mail"], ["telephone", "Telefone"]];
+  ["siret", "NIF"], ["email", "E-mail"], ["telephone", "Telefone"]];
 export const contactError = (e) => typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Verifique os contactos e a sua origem.";
 
 export const ContactEditor = ({ opp, onSaved, onCancel }) => {

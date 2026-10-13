@@ -36,7 +36,7 @@ def build_situation_pdf(sit: dict, branding: dict | None, client: dict | None) -
     seller = branding.get("company_name") or "ConstruPilot"
     addr = " · ".join(filter(None, [branding.get("address"),
                                     " ".join(filter(None, [branding.get("postal_code"), branding.get("city")]))]))
-    ids = " · ".join(filter(None, [f"Estabelecimento {branding.get('siret')}" if branding.get("siret") else None,
+    ids = " · ".join(filter(None, [f"NIF {branding.get('siret')}" if branding.get("siret") else None,
                                    f"IVA {branding.get('vat')}" if branding.get("vat") else None]))
     E.append(Paragraph(seller, h))
     if addr:
@@ -133,7 +133,7 @@ def build_payment_certificate(sit: dict, branding: dict | None, client: dict | N
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
                             topMargin=16 * mm, bottomMargin=16 * mm)
     E = [Paragraph(branding.get("company_name") or "ConstruPilot", h)]
-    ids = " · ".join(filter(None, [f"Estabelecimento {branding.get('siret')}" if branding.get("siret") else None,
+    ids = " · ".join(filter(None, [f"NIF {branding.get('siret')}" if branding.get("siret") else None,
                                    f"IVA {branding.get('vat')}" if branding.get("vat") else None]))
     if ids:
         E.append(Paragraph(ids, small))

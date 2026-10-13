@@ -181,10 +181,10 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label>Estabelecimento</Label>
+                  <Label>NIF</Label>
                   <Input value={siret} onChange={(e) => setSiret(e.target.value)}
-                         placeholder="14 dígitos" disabled={!canEdit}
-                         data-testid="branding-siret-input" className="rounded-sm h-11 num" maxLength={14} />
+                         placeholder="9 dígitos" disabled={!canEdit}
+                         data-testid="branding-siret-input" className="rounded-sm h-11 num" maxLength={13} />
                 </div>
                 <div className="grid gap-2">
                   <Label>NIF intracom.</Label>

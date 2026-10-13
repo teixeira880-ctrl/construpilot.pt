@@ -53,7 +53,7 @@ export default function Login() {
             setBusy(false); return;
           }
           if (!form.kbis || !form.decennale) {
-            toast.error("K-bis e atestado decenal obrigatórios para uma conta pro");
+            toast.error("Certidão permanente e alvará/seguro RC obrigatórios para uma conta pro");
             setBusy(false); return;
           }
         }
@@ -291,17 +291,17 @@ export default function Login() {
                     <div className="grid gap-1.5">
                       <Label className="text-xs">NIF / NIPC (9 dígitos)</Label>
                       <Input required value={form.siret} onChange={set("siret")} inputMode="numeric"
-                             maxLength={14} placeholder="501 234 567"
+                             maxLength={13} placeholder="501 234 567"
                              data-testid="register-siret-input" className="rounded-sm h-10" />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">Certidão comercial (PDF, JPG ou PNG)</Label>
+                      <Label className="text-xs">Certidão permanente (PDF, JPG ou PNG)</Label>
                       <input required type="file" accept=".pdf,image/jpeg,image/png"
                              onChange={(e) => setForm({ ...form, kbis: e.target.files?.[0] || null })}
                              data-testid="register-kbis-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">Certificado de seguro decenal (PDF, JPG ou PNG)</Label>
+                      <Label className="text-xs">Alvará IMPIC ou apólice de seguro de responsabilidade civil (PDF, JPG ou PNG)</Label>
                       <input required type="file" accept=".pdf,image/jpeg,image/png"
                              onChange={(e) => setForm({ ...form, decennale: e.target.files?.[0] || null })}
                              data-testid="register-decennale-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />

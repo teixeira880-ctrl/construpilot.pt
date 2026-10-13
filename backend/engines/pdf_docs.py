@@ -177,7 +177,7 @@ def _fiscal_parts(b: dict) -> list[str]:
     if b.get("nif"):
         fisc.append(f"NIF {b['nif']}")
     elif b.get("siret"):
-        fisc.append(f"Estabelecimento {b['siret']}")
+        fisc.append(f"NIF {b['siret']}")
     if b.get("vat"):
         fisc.append(f"{('IVA' if b.get('nif') else 'IVA')} {b['vat']}")
     if b.get("alvara"):
@@ -504,7 +504,7 @@ def _client_block(story: list, client: dict | None, S: dict, L: dict, P: dict,
     if client.get("phone"):
         lines.append(client["phone"])
     if client.get("siret"):
-        lines.append(f"Estabelecimento {client['siret']}")
+        lines.append(f"NIF {client['siret']}")
     html = "<br/>".join(lines) or L["client"]
     tbl = _table([[Paragraph(f"<b>{L['addressed_to']}</b><br/>" + html, S["body"])]], [82 * mm],
                  style_extras=[

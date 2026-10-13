@@ -607,7 +607,7 @@ export default function Landing() {
               <div className="p-6 border border-border rounded-2xl bg-background/50 backdrop-blur-sm flex flex-col justify-center">
                 <p className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-4">{t("landing.cmp.artisan_cost", "Custo profissional")}</p>
                 <p className="num text-3xl font-extrabold text-foreground">{eur(10500)}</p>
-                <p className="text-sm text-muted-foreground mt-2">{t("landing.cmp.artisan_sub", "Mão de obra incluída, garantia decenal.")}</p>
+                <p className="text-sm text-muted-foreground mt-2">{t("landing.cmp.artisan_sub", "Mão de obra incluída, com garantia da obra.")}</p>
               </div>
               
               <div className="p-6 border border-primary/30 rounded-2xl bg-primary/5 backdrop-blur-sm flex flex-col justify-center shadow-inner relative overflow-hidden">

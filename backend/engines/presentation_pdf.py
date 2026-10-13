@@ -144,7 +144,7 @@ def _brand_header(branding: dict | None):
         branding.get("contact_line"),
         " ".join(filter(None, [branding.get("postal"), branding.get("city")])),
         branding.get("company_email"),
-        f"Estabelecimento {branding['siret']}" if branding.get("siret") else None]))
+        f"NIF {branding['siret']}" if branding.get("siret") else None]))
     if not name and not infos:
         return []
     logo = _logo(branding)
@@ -471,7 +471,7 @@ INV = {
         "k_budget": "Despesas do mês em curso",
         "k_signups": "Registos medidos (30 d)",
         "k_activation": "Taxa de ativação (30 d)",
-        "k_companies": "Empresas identificadas (SIRET)",
+        "k_companies": "Empresas identificadas (NIF)",
         "k_docs": "Orçamentos e faturas criados",
         "h7": "7. Roteiro",
         "road": [["Etapa", "Conteúdo", "Estado"],
@@ -640,7 +640,7 @@ INV = {
         "k_budget": "Despesas do mês em curso",
         "k_signups": "Registos medidos (30 d)",
         "k_activation": "Taxa de ativação (30 d)",
-        "k_companies": "Empresas identificadas (SIRET)",
+        "k_companies": "Empresas identificadas (NIF)",
         "k_docs": "Orçamentos e faturas criados",
         "h7": "7. Roteiro",
         "road": [["Etapa", "Conteúdo", "Estado"],

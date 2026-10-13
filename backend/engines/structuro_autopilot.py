@@ -379,13 +379,14 @@ def build_model(inputs: dict) -> Model:
     L = cfg["building"]["levels"]
     dest = cfg["building"]["destination"]
     system = cfg["system"]["structure"]
-    src = Source(document="Auto-pilote BET", note="Pré-modelo gerado automaticamente — A VERIFICAR antes do cálculo")
+    dest_label = _N.DEST_LABEL_PT.get(dest, dest)
+    src = Source(document="Autopiloto BET", note="Pré-modelo gerado automaticamente — A VERIFICAR antes do cálculo")
     elements = _build_walls(cfg, xs, ys, nx, ny, L, src) if system == "voiles" \
         else _build_frame(cfg, xs, ys, nx, ny, L, src)
     sys_label = "paredes resistentes" if system == "voiles" else "pórtico pilares-vigas"
     actions = [Action(id="G", kind="G", label="Permanentes (peso próprio + G complementares)"),
-               Action(id="Q", kind="Q", label=f"Exploitation ({dest})")]
-    model = Model(title=f'Auto-pilote BET — {dest} {L} piso(s) — {sys_label}',
+               Action(id="Q", kind="Q", label=f"Sobrecarga de utilização ({dest_label})")]
+    model = Model(title=f'Autopiloto BET — {dest_label} — {L} piso(s) — {sys_label}',
                   actions=actions, self_weight_action="G", gravity_model_reviewed=True, elements=elements,
                   assumptions=[
                       f'Pré-modelo AUTOMÁTICO ({sys_label}) : malha regular, transferências centradas'

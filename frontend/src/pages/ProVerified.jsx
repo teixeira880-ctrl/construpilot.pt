@@ -83,7 +83,7 @@ export default function ProVerified() {
         )}
         {data.verified && (
           <p className="text-xs text-muted-foreground mt-4 max-w-md mx-auto">
-            A identidade (NIPC), a certidão permanente e o seguro decenal desta empresa foram verificados por ConstruPilot.
+            A identidade (NIPC), a certidão permanente e o alvará/seguro RC desta empresa foram verificados por ConstruPilot.
           </p>
         )}
       </Card>
@@ -94,7 +94,7 @@ export default function ProVerified() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Elementos verificados</h2>
           {data.siret && (
             <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Estabelecimento</span>
+              <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> NIF</span>
               <span className="font-mono">{data.siret}</span>
             </div>
           )}

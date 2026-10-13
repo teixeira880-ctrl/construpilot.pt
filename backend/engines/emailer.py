@@ -227,7 +227,7 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
     if nif:
         _id_parts.append(f"NIF {nif}")
     if not nif and siret:
-        _id_parts.append(f'Estabelecimento {siret}')
+        _id_parts.append(f'NIF {siret}')
     if vat:
         _id_parts.append(f"{('IVA' if nif else 'IVA')} {vat}")
     if alvara:

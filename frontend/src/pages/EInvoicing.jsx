@@ -256,7 +256,7 @@ export default function EInvoicing() {
             <div className="h-10 w-10 rounded-lg bg-emerald-500/10 grid place-items-center"><ShieldCheck className="h-5 w-5 text-emerald-500" /></div>
             <div>
               <p className="font-semibold text-sm flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /> Conectado a <b>{status.platform}</b></p>
-              <p className="text-xs text-muted-foreground num">Estabelecimento {status.siret}</p>
+              <p className="text-xs text-muted-foreground num">NIF {status.siret}</p>
             </div>
             <div className="flex items-center gap-2 sm:ml-4" data-testid="einv-threshold-control">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -302,7 +302,7 @@ export default function EInvoicing() {
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="font-display font-semibold">{inv.supplier}</p>
-                      <p className="text-xs text-muted-foreground num">N° {inv.number} · SIRET {inv.supplier_siret} · emitido a {inv.issued_at}</p>
+                      <p className="text-xs text-muted-foreground num">N° {inv.number} · NIF {inv.supplier_siret} · emitido a {inv.issued_at}</p>
                       {inv.status === "refused" && inv.reason && (
                         <p className="text-xs text-red-500 mt-1">Motivo de recusa: {inv.reason}</p>
                       )}

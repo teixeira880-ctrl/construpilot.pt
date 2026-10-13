@@ -280,7 +280,7 @@ INV = {
         "nomeasure": "não mensurável",
         "labels": ["Contas existentes (sem testes)", "Ativos em 30 dias", "Subscrições pagas ativas",
                    "Registos medidos (30 d)", "Taxa de ativação (30 d)",
-                   "Empresas identificadas (SIRET)", "Orçamentos e faturas criados"],
+                   "Empresas identificadas (NIF)", "Orçamentos e faturas criados"],
         "funds_title": "Plano de exploração — 500 000 € em 24 meses",
         "slides_before": [
             ("1. O problema", [
@@ -456,7 +456,7 @@ INV = {
         "nomeasure": "não mensurável",
         "labels": ["Contas existentes (sem testes)", "Ativos em 30 dias", "Subscrições pagas ativas",
                    "Registos medidos (30 d)", "Taxa de ativação (30 d)",
-                   "Empresas identificadas (SIRET)", "Orçamentos e faturas criados"],
+                   "Empresas identificadas (NIF)", "Orçamentos e faturas criados"],
         "funds_title": "Plano de exploração — 500 000 € em 24 meses",
         "slides_before": [
             ("1. O problema", [
