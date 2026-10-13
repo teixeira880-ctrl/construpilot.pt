@@ -302,7 +302,7 @@ export default function EInvoicing() {
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="font-display font-semibold">{inv.supplier}</p>
-                      <p className="text-xs text-muted-foreground num">N° {inv.number} · SIRET {inv.supplier_siret} · emitido a {inv.issued_at}</p>
+                      <p className="text-xs text-muted-foreground num">N° {inv.number} · NIF {inv.supplier_siret} · emitido a {inv.issued_at}</p>
                       {inv.status === "refused" && inv.reason && (
                         <p className="text-xs text-red-500 mt-1">Motivo de recusa: {inv.reason}</p>
                       )}

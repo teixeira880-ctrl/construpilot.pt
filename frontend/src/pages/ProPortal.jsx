@@ -74,12 +74,12 @@ const KycForm = ({ onSaved }) => {
                  data-testid="kyc-rcpro-number" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>Seguradora decenal</Label>
+          <Label>Seguradora (responsabilidade civil)</Label>
           <Input value={form.decennale_insurer} onChange={(e) => setForm({ ...form, decennale_insurer: e.target.value })}
                  data-testid="kyc-dec-insurer" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>N.º apólice decenal</Label>
+          <Label>N.º apólice / alvará IMPIC</Label>
           <Input value={form.decennale_number} onChange={(e) => setForm({ ...form, decennale_number: e.target.value })}
                  data-testid="kyc-dec-number" className="rounded-sm h-11" />
         </div>

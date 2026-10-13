@@ -90,7 +90,7 @@ export default function ProKycPanel() {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground num mt-0.5">
-                    {r.email} · SIRET {r.siret || "—"}
+                    {r.email} · NIF {r.siret || "—"}
                   </p>
                   {r.kyc_rejection_reason && (
                     <p className="text-xs text-red-600 mt-1">Motivo recusa: {r.kyc_rejection_reason}</p>
@@ -103,14 +103,14 @@ export default function ProKycPanel() {
                         onClick={() => viewDoc(r.user_id, "kbis")}
                         data-testid={`kyc-view-kbis-${r.user_id}`}>
                   {busy === `${r.user_id}-kbis` ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
-                  K-bis {r.has_kbis ? "" : "(em falta)"}
+                  Certidão permanente {r.has_kbis ? "" : "(em falta)"}
                 </Button>
                 <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8"
                         disabled={!r.has_decennale || busy === `${r.user_id}-decennale`}
                         onClick={() => viewDoc(r.user_id, "decennale")}
                         data-testid={`kyc-view-decennale-${r.user_id}`}>
                   {busy === `${r.user_id}-decennale` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
-                  Decenal {r.has_decennale ? "" : "(em falta)"}
+                  Alvará / seguro RC {r.has_decennale ? "" : "(em falta)"}
                 </Button>
                 {r.kyc_status !== "verified" && (
                   <Button size="sm" className="rounded-sm gap-1 h-8 bg-emerald-600 hover:bg-emerald-700 text-white"

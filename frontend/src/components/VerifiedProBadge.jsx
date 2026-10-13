@@ -12,7 +12,7 @@ export function VerifiedProBadge({ status, size = "sm", className = "" }) {
   return (
     <span
       data-testid="verified-pro-badge"
-      title="Comprovativos profissionais (certidão permanente, seguro decenal) verificados por ConstruPilot"
+      title="Comprovativos profissionais (certidão permanente, alvará / seguro RC) verificados por ConstruPilot"
       className={`inline-flex items-center gap-1 rounded-full font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 ${s} ${className}`}
     >
       <ShieldCheck className={size === "lg" ? "h-4 w-4" : "h-3 w-3"} />
