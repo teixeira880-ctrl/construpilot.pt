@@ -47,7 +47,7 @@ export function OuvrageComposeDialog({ onAdd, planVariables }) {
         { base_code, level, region, margin_pct: margin, quantity: 1,
           variables: planVariables || undefined });
       onAdd(data.line);
-      toast.success(`Adicionado:${data.line.designation} (${data.line.qty} ${data.line.unit} × ${data.line.unit_price_ht} €)`);
+      toast.success(`Adicionado: ${data.line.designation} (${data.line.qty} ${data.line.unit} × ${data.line.unit_price_ht} €)`);
     } catch { toast.error("Impossível adicionar o trabalho"); }
     finally { setAdding(""); }
   };
@@ -76,14 +76,14 @@ export function OuvrageComposeDialog({ onAdd, planVariables }) {
                   Quantidades retiradas da planta: {planVariables.surface_m2 ? `${planVariables.surface_m2} m²` : ""}{planVariables.perimetre_ml ? ` · ${planVariables.perimetre_ml} ml` : ""}
                 </span>
               )}
-              <div className="flex gap-1">Gamme :{LEVELS.map((l) => (
+              <div className="flex gap-1">Gama:{LEVELS.map((l) => (
                 <button key={l} onClick={() => setLevel(l)} className={`rounded-sm px-2 py-1 border capitalize ${level === l ? "border-primary bg-primary text-white" : "border-input"}`}>{l}</button>))}</div>
               <div className="flex gap-1 items-center">Região:
                 <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded-sm border border-input bg-background px-2 py-1">
-                  <option value="idf">Île-de-France</option><option value="grandes_villes">Grandes villes</option>
+                  <option value="idf">Île-de-France</option><option value="grandes_villes">Grandes cidades</option>
                   <option value="standard">Standard</option><option value="rural">Rural</option>
                 </select></div>
-              <div className="flex items-center gap-1">Marge :
+              <div className="flex items-center gap-1">Margem:
                 <input type="number" value={margin} onChange={(e) => setMargin(Number(e.target.value) || 0)} className="w-14 rounded-sm border border-input bg-background px-2 py-1 text-right num" />%</div>
             </div>
             <div className="relative">

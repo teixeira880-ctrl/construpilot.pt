@@ -17,7 +17,7 @@ export default function PriceCatalog() {
   const [importing, setImporting] = useState(false);
   const [q, setQ] = useState("");
   const [depts, setDepts] = useState([]);
-  const [deptCode, setDeptCode] = useState(() => localStorage.getItem("construpilot_dept_code") || "AUTRE");
+  const [deptCode, setDeptCode] = useState(() => localStorage.getItem("construpilot_dept_code") || "OUTRO");
   const fileRef = useRef(null);
 
   const load = () => api.get("/prices/catalog").then(({ data }) => setRows(data));
@@ -66,7 +66,7 @@ export default function PriceCatalog() {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/prices/catalog/import", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`${data.imported}preços importados${data.skipped ? ` · ${data.skipped}ignorados` : ""}`);
+      toast.success(`${data.imported} preços importados${data.skipped ? ` · ${data.skipped} ignorados` : ""}`);
       load();
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Não foi possível importar");
@@ -77,7 +77,7 @@ export default function PriceCatalog() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8" data-testid="price-catalog-page">
-      <SectionTitle overline="Comparateur 100 % fiable" title="O meu catálogo de preços" />
+      <SectionTitle overline="Comparador 100 % fiável" title="O meu catálogo de preços" />
       <p className="text-muted-foreground -mt-4 max-w-2xl text-sm">
         Introduza os seus preços reais de fornecedores (ou importe um ficheiro do seu armazém). O comparador e os orçamentos utilizarão automaticamente estes preços quando o nome do material corresponder.
       </p>
@@ -97,7 +97,7 @@ export default function PriceCatalog() {
       </div>
 
       <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-6 items-end" data-testid="catalog-form">
-        <div className="md:col-span-2"><Label>Material *</Label><Input value={form.name} onChange={set("name")} placeholder="Plaque BA13 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
+        <div className="md:col-span-2"><Label>Material *</Label><Input value={form.name} onChange={set("name")} placeholder="Placa BA13 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
         <div><Label>Preço (€) *</Label><Input type="number" value={form.price} onChange={set("price")} className="rounded-sm mt-1 num" data-testid="catalog-price" /></div>
         <div><Label>Un.</Label><Input value={form.unit} onChange={set("unit")} placeholder="u / m² / ml" className="rounded-sm mt-1" data-testid="catalog-unit" /></div>
         <div><Label>Fornecedor</Label><Input value={form.supplier} onChange={set("supplier")} placeholder="Point P…" className="rounded-sm mt-1" data-testid="catalog-supplier" /></div>
@@ -117,7 +117,7 @@ export default function PriceCatalog() {
             <Download className="h-4 w-4" /> Modelo Excel
           </Button>
           <Button variant="outline" className="rounded-sm gap-2" disabled={importing} onClick={() => fileRef.current?.click()} data-testid="catalog-import-btn">
-            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importer CSV / Excel
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importar CSV / Excel
           </Button>
         </div>
       </div>

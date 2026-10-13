@@ -13,21 +13,21 @@ const COMPETITORS = [
   { slug: "batichiffrage", name: "BatiChiffrage" }, { slug: "renalto", name: "Renalto" },
 ];
 const ROWS = [
-  ["Orçamentos e faturas", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel", "Oui", "Oui"]],
+  ["Orçamentos e faturas", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Parcial", "Oui", "Oui"]],
   ["Faturação eletrónica (SAF-T / QR code ATCUD)", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "—", "Oui", "Oui"]],
-  ["Biblioteca de artigos e preços", ["Oui", "Oui", "Oui", "Oui", "Option", "Oui", "Non", "Oui", "Oui"]],
+  ["Biblioteca de artigos e preços", ["Oui", "Oui", "Oui", "Oui", "Opção", "Oui", "Non", "Oui", "Oui"]],
   ["Orçamentação 100% determinística (0 IA na matemática)", ["Oui", "—", "—", "—", "—", "—", "—", "—", "Non"]],
-  ["Medição em plantas (PDF/imagem) + calibração", ["Oui", "Brevemente", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]],
+  ["Medição em plantas (PDF/imagem) + calibração", ["Oui", "Brevemente", "Non", "Non", "Non", "Non", "Non", "Non", "Parcial"]],
   ["Leitura das cotas nativas DWG / DXF", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]],
-  ["Deteção de paredes e vãos (IA / OpenCV)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]],
+  ["Deteção de paredes e vãos (IA / OpenCV)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Parcial"]],
   ["Projetos multinível consolidados (R/C, 1.º andar…)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]],
   ["Cálculo de escadas (betão + armaduras + 3D)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]],
-  ["Leitura de mapas de quantidades / cadernos de encargos → orçamento detalhado", ["Oui", "—", "—", "—", "Option", "Oui", "—", "Oui", "Oui"]],
+  ["Leitura de mapas de quantidades / cadernos de encargos → orçamento detalhado", ["Oui", "—", "—", "—", "Opção", "Oui", "—", "Oui", "Oui"]],
   ["Comparação de versões de plantas", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]],
-  ["Assistente IA + agentes especializados orquestrados", ["Oui", "Partiel", "Non", "Partiel", "Non", "Non", "Non", "Partiel", "Oui"]],
-  ["Acompanhamento de obra / controlo de custos", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel"]],
+  ["Assistente IA + agentes especializados orquestrados", ["Oui", "Parcial", "Non", "Parcial", "Non", "Non", "Non", "Parcial", "Oui"]],
+  ["Acompanhamento de obra / controlo de custos", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Parcial"]],
   ["Assinatura eletrónica", ["Oui", "Oui", "—", "—", "Oui", "Oui", "—", "Oui", "—"]],
-  ["Processo PDF com a sua marca (página de rosto, logótipo, marca de água)", ["Oui", "Partiel", "Partiel", "Partiel", "Partiel", "Partiel", "—", "Partiel", "Partiel"]],
+  ["Processo PDF com a sua marca (página de rosto, logótipo, marca de água)", ["Oui", "Parcial", "Parcial", "Parcial", "Parcial", "Parcial", "—", "Parcial", "Parcial"]],
   ["PDF multilingue (FR / EN / PT)", ["Oui", "—", "—", "—", "—", "—", "—", "—", "—"]],
 ];
 const DIFFS = [
@@ -58,7 +58,7 @@ export default function Comparatif() {
         description="Comparativo de softwares para a construção: medição em planta, orçamentação determinística, escadas 3D, agentes IA."
         keywords="alternativa software orçamentos obras, comparativo software construção, software medições planta, orçamentação determinística, software construção profissional"
         canonical="/comparatif"
-        jsonLd={{ "@context": "https://schema.org", "@type": "WebPage", "name": "Comparatif logiciels BTP — ConstruPilot" }}
+        jsonLd={{ "@context": "https://schema.org", "@type": "WebPage", "name": "Comparativo de softwares de construção — ConstruPilot" }}
       />
 
       <div className="text-center">
@@ -82,7 +82,7 @@ export default function Comparatif() {
           </SelectContent>
         </Select>
         <a href={pdfUrl} target="_blank" rel="noopener noreferrer" data-testid="comparatif-download-targeted">
-          <Button className="rounded-full gap-2 font-semibold"><Download className="h-4 w-4" /> {vs ? "PDF direcionado" : "PDF complet"}</Button>
+          <Button className="rounded-full gap-2 font-semibold"><Download className="h-4 w-4" /> {vs ? "PDF direcionado" : "PDF completo"}</Button>
         </a>
       </div>
 
@@ -121,7 +121,7 @@ export default function Comparatif() {
       </div>
 
       <div className="mt-14 rounded-2xl bg-[#0A0D14] text-white p-10 text-center">
-        <h2 className="font-display text-3xl font-bold">Essayez ConstruPilot gratuitement 7 jours</h2>
+        <h2 className="font-display text-3xl font-bold">Experimente o ConstruPilot gratuitamente durante 7 dias</h2>
         <p className="mt-3 text-slate-300">Da planta ao orçamento, sem reintrodução nem cálculo manual. Teste em condições reais.</p>
         <Button onClick={() => navigate("/inscription")} size="lg" className="mt-6 rounded-full gap-2 font-bold px-8 h-12" data-testid="comparatif-bottom-cta">Começar agora <ArrowRight className="h-5 w-5" /></Button>
       </div>

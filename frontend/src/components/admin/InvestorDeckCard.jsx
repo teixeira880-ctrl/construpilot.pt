@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const LANGS = [
-  { code: "fr", label: "Francês" },
+  { code: "fr", label: "Português" },
   { code: "en", label: "English" },
   { code: "pt", label: "Português" },
 ];
@@ -60,11 +60,10 @@ export default function InvestorDeckCard() {
         <Presentation className="h-4 w-4" /> Apresentações para investidores e clientes
       </p>
       <p className="text-sm text-muted-foreground">
-        Deck para investidores com os <b>números reais</b> lidos na base no momento da transferência (contas existentes fora de testes, ativas 30 dias, subscrições pagas, inscrições medidas, taxa de ativação), a análise do mercado português, as aplicações Android e iOS e o plano de exploração de <b>500 000 € em 24 meses</b>. Une valeur non mesurable s'affiche
-        « non mesurable ». Le PowerPoint intègre les captures d'écran réelles du produit.
+        Deck para investidores com os <b>números reais</b> lidos na base no momento da transferência (contas existentes fora de testes, ativas 30 dias, subscrições pagas, inscrições medidas, taxa de ativação), a análise do mercado português, as aplicações Android e iOS e o plano de exploração de <b>500 000 € em 24 meses</b>. Um valor não mensurável é apresentado como «não mensurável». O PowerPoint integra as capturas de ecrã reais do produto.
       </p>
       <div className="space-y-2.5">
-        <p className="text-xs font-medium text-foreground">Investisseur (confidentiel)</p>
+        <p className="text-xs font-medium text-foreground">Investidor (confidencial)</p>
         <Row kind="investor" ext="pdf" icon={FileText} title="PDF" />
         <Row kind="investor" ext="pptx" icon={Presentation} title="PowerPoint" />
         <p className="text-xs font-medium text-foreground pt-2">Cliente (comercial)</p>

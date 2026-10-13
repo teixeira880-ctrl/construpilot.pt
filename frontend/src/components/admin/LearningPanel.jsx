@@ -37,7 +37,7 @@ function ScopeSelect({ value, onChange, scopes, testid }) {
 
 export default function LearningPanel() {
   const [examples, setExamples] = useState([]);
-  const [scopes, setScopes] = useState(["global", "devis", "analyse", "coach", "plan"]);
+  const [scopes, setScopes] = useState(["global", "devis", "análise", "coach", "plan"]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -120,7 +120,7 @@ export default function LearningPanel() {
     setBulkBusy(true);
     try {
       const { data } = await api.post("/admin/learning/bulk", { scope: bulkScope, approved: true, items });
-      toast.success(`${data.created}exemplo(s) importado(s).`);
+      toast.success(`${data.created} exemplo(s) importado(s).`);
       setBulkText("");
       load();
     } catch (e) {
@@ -145,7 +145,7 @@ export default function LearningPanel() {
     }
     setBulkBusy(false);
     if (fileRef.current) fileRef.current.value = "";
-    if (ok) { toast.success(`${ok}ficheiro(s) importado(s) como exemplo(s).`); load(); }
+    if (ok) { toast.success(`${ok} ficheiro(s) importado(s) como exemplo(s).`); load(); }
   };
 
   const loadPreview = async (scope) => {
@@ -206,7 +206,7 @@ export default function LearningPanel() {
       {/* Formulaire ajout / édition */}
       <div className="surface rounded-md p-5 space-y-4" data-testid="learning-form">
         <div className="flex items-center justify-between">
-          <h4 className="font-semibold text-sm">{editId ? "Editar o exemplo" : "Nouvel exemple"}</h4>
+          <h4 className="font-semibold text-sm">{editId ? "Editar o exemplo" : "Novo exemplo"}</h4>
           {editId && (
             <Button variant="ghost" size="sm" className="rounded-sm gap-1" onClick={resetForm} data-testid="learning-cancel-edit">
               <X className="h-4 w-4" /> Cancelar
@@ -219,7 +219,7 @@ export default function LearningPanel() {
             <ScopeSelect value={form.scope} onChange={(v) => setForm({ ...form, scope: v })} scopes={scopes} testid="learning-scope-select" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Titre (court)</Label>
+            <Label className="text-xs">Título (curto)</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                    placeholder="Ex.: Orçamento remodelação casa de banho 6 m²" className="rounded-sm h-9 text-sm"
                    data-testid="learning-title-input" />
@@ -256,7 +256,7 @@ export default function LearningPanel() {
           <h4 className="font-semibold text-sm">Pré-visualização — o que a IA recebe</h4>
           <div className="w-56"><ScopeSelect value={previewScope} onChange={loadPreview} scopes={scopes} testid="learning-preview-scope" /></div>
           <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => loadPreview(previewScope)} disabled={previewBusy} data-testid="learning-preview-btn">
-            {previewBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Afficher
+            {previewBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Mostrar
           </Button>
         </div>
         {previewText !== null && (
@@ -270,7 +270,7 @@ export default function LearningPanel() {
 
       {/* Liste */}
       <div className="flex items-center justify-between pt-2">
-        <h4 className="font-semibold text-sm">Exemples ({examples.length})</h4>
+        <h4 className="font-semibold text-sm">Exemplos ({examples.length})</h4>
       </div>
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> A carregar…</div>
@@ -284,14 +284,14 @@ export default function LearningPanel() {
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{SCOPE_LABELS[ex.scope] || ex.scope}</span>
                 <span className="font-medium text-sm">{ex.title || "(sem título)"}</span>
                 <span className={`text-[11px] px-2 py-0.5 rounded-full ${ex.approved ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
-                  {ex.approved ? "Aprovado" : "Brouillon"}
+                  {ex.approved ? "Aprovado" : "Rascunho"}
                 </span>
                 <span className="text-[11px] text-muted-foreground flex items-center gap-1" title="Número de gerações IA que utilizaram este exemplo" data-testid={`learning-usage-${ex.id}`}>
-                  <BarChart3 className="h-3 w-3" /> {ex.used_count || 0} usage(s){ex.last_used_at ? ` · dernier ${fmtDate(ex.last_used_at)}` : ""}
+                  <BarChart3 className="h-3 w-3" /> {ex.used_count || 0} usage(s){ex.last_used_at ? ` · último ${fmtDate(ex.last_used_at)}` : ""}
                 </span>
                 <div className="flex items-center gap-1 ml-auto">
                   <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm" onClick={() => toggleApproved(ex)}
-                          title={ex.approved ? "Desativar" : "Approuver"} data-testid={`learning-toggle-${ex.id}`}>
+                          title={ex.approved ? "Desativar" : "Aprovar"} data-testid={`learning-toggle-${ex.id}`}>
                     <Check className={`h-4 w-4 ${ex.approved ? "text-emerald-600" : "text-muted-foreground"}`} />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm" onClick={() => startEdit(ex)}

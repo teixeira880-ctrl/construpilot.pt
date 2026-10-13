@@ -37,12 +37,12 @@ export function BeforeAfterSlider({ before, after, height = 380 }) {
       <div className="absolute inset-0 overflow-hidden" style={{ width: `${pos}%` }}>
         <img
           src={before}
-          alt="Avant"
+          alt="Antes"
           className="absolute inset-0 h-full object-contain"
           style={{ width: ref.current ? ref.current.getBoundingClientRect().width : "100%", maxWidth: "none" }}
           draggable={false}
         />
-        <span className="absolute left-3 top-3 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">Avant</span>
+        <span className="absolute left-3 top-3 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">Antes</span>
       </div>
 
       {/* Poignée */}

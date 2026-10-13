@@ -73,22 +73,22 @@ export function WorkDraftCard({ initial }) {
   };
   const history = async () => {
     try { const r = await api.get(`/assistant/work-drafts/${draft.draft_id}/versions`); setVersions(r.data.versions); }
-    catch { toast.error("Historique indisponible"); }
+    catch { toast.error("Histórico indisponível"); }
   };
   return <div className="grid grid-cols-1 gap-2 mt-2 text-sm min-w-0" data-testid={testId("editor")} data-draft-id={initial.draft_id}>
-    <div className="text-xs text-muted-foreground" data-testid={testId("version")}>Brouillon · Version {draft.revision || 0}{dirty ? "· alterações não guardadas" : ""}{loading ? "· a carregar…" : ""}</div>
+    <div className="text-xs text-muted-foreground" data-testid={testId("version")}>Rascunho · Versão {draft.revision || 0}{dirty ? " · alterações não guardadas" : ""}{loading ? " · a carregar…" : ""}</div>
     {(conflict || error) && <div role="alert" className="border border-amber-500 rounded-sm p-2 text-xs" data-testid={testId("conflict")}>
       {error || "Existe uma versão mais recente. O seu texto fica aqui; pode copiá-lo antes de carregar a versão atual."}
       <button className="underline ml-2" disabled={loading || saving} onClick={reload} data-testid={testId("reload")}>Carregar a versão atual</button>
     </div>}
     <fieldset disabled={loading || saving || !!error} className="grid gap-2 disabled:opacity-60">
-      <label>Titre / objet<input className="w-full border rounded-sm px-2 py-1 bg-background" maxLength={200} value={draft.title} onChange={e => modify({ title: e.target.value })} data-testid={testId("title")} /></label>
-      {draft.kind === "email" && <label>Destinataire<input className="w-full border rounded-sm px-2 py-1 bg-background" placeholder="Morada a completar" value={draft.recipient} onChange={e => modify({ recipient: e.target.value })} data-testid={testId("recipient")} /></label>}
+      <label>Título / assunto<input className="w-full border rounded-sm px-2 py-1 bg-background" maxLength={200} value={draft.title} onChange={e => modify({ title: e.target.value })} data-testid={testId("title")} /></label>
+      {draft.kind === "email" && <label>Destinatário<input className="w-full border rounded-sm px-2 py-1 bg-background" placeholder="Morada a completar" value={draft.recipient} onChange={e => modify({ recipient: e.target.value })} data-testid={testId("recipient")} /></label>}
       <textarea aria-label="Texto do rascunho" rows={10} className="w-full border rounded-sm px-2 py-2 bg-background" value={draft.body} onChange={e => modify({ body: e.target.value })} data-testid={testId("body")} />
     </fieldset>
     <div className="flex flex-wrap gap-2 text-xs">
       {[["save", "Guardar"], ["copy", "Copiar este texto"], ["txt", "Transferir o texto"], ...(draft.kind === "email" ? [["eml", "Transferir o e-mail"], ["mail", "Abrir o meu e-mail"]] : [])].map(([action, label]) => <button key={action} disabled={saving || (action !== "copy" && (loading || !!error || conflict))} className="border rounded-sm px-2 py-1 bg-background disabled:opacity-50" onClick={() => act(action)} data-testid={testId(action)}>{label}</button>)}
-      <button className="underline" disabled={loading || saving} onClick={history} data-testid={testId("history")}>Historique</button>
+      <button className="underline" disabled={loading || saving} onClick={history} data-testid={testId("history")}>Histórico</button>
     </div>
     {versions && <div className="border rounded-sm p-2 text-xs grid gap-2">
       <p>As 10 versões anteriores são conservadas. Retomar uma versão coloca-a no editor antes de guardar.</p>

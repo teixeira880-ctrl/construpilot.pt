@@ -34,7 +34,7 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
   const [running, setRunning] = useState(false);
   const [left, setLeft] = useState("");
   const [right, setRight] = useState("");
-  const [name, setName] = useState("Ouverture");
+  const [name, setName] = useState("Vão");
   const [parentWall, setParentWall] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [saved, setSaved] = useState([]);
@@ -90,7 +90,7 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
     let l = byL[0], r = byR[0];
     if (l.id === r.id) r = byR.find(p => p.id !== l.id) || byL.find(p => p.id !== l.id);
     setLeft(l.id); setRight(r.id); setParentWall(w.id);
-    toast.success(`Apoios detetados: esquerdo «${l.id} », droite « ${r.id} » — modifiables`);
+    toast.success(`Apoios detetados: esquerdo « ${l.id} », direito « ${r.id} » — editáveis`);
   };
 
   const prefillWall = id => {
@@ -98,7 +98,7 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
     if (!w) return;
     setParentWall(id);
     set({ wall_thickness_m: w.width_m ?? opts.wall_thickness_m, masonry_height_above_m: w.height_m ?? opts.masonry_height_above_m });
-    toast.info(`Espessura e altura retomadas da parede${id}— introduza as cargas segundo a descida de cargas`);
+    toast.info(`Espessura e altura retomadas da parede ${id} — introduza as cargas segundo a descida de cargas`);
   };
 
   const compute = async () => {
@@ -116,20 +116,20 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
   const saveCurrent = async () => {
     if (!res) { toast.error("Dimensione a padieira antes de a guardar"); return; }
     const id = editingId || uid();
-    const payload = { ...opts, id, name: name || "Ouverture", left: left || null, right: right || null };
+    const payload = { ...opts, id, name: name || "Vão", left: left || null, right: right || null };
     try {
       await persist([...saved.filter(e => e.id !== id).map(toPayload), payload]);
       setEditingId(id);
-      toast.success(`Ouverture « ${payload.name}» guardada no estudo`);
+      toast.success(`Abertura « ${payload.name} » guardada no estudo`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar"); }
   };
 
-  const newOpening = () => { setEditingId(null); setRes(null); setName(`Ouverture ${saved.length + 1}`); setLeft(""); setRight(""); setOpts(DEFAULT_LINTEL); };
+  const newOpening = () => { setEditingId(null); setRes(null); setName(`Vão ${saved.length + 1}`); setLeft(""); setRight(""); setOpts(DEFAULT_LINTEL); };
 
   const loadSaved = e => {
     setOpts({ ...DEFAULT_LINTEL, ...e.inputs });
     setName(e.name); setLeft(e.left || ""); setRight(e.right || ""); setRes(e.result); setEditingId(e.id);
-    toast.info(`« ${e.name}» carregada no editor`);
+    toast.info(`« ${e.name} » carregada no editor`);
   };
 
   const removeSaved = async e => {
@@ -143,7 +143,7 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
       const url = URL.createObjectURL(data), a = document.createElement("a");
       a.href = url; a.download = `linteau-${(e.name || "ouverture").replace(/[^a-z0-9]/gi, "-")}.${fmt}`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(`Planta cotada${fmt.toUpperCase()}descarregado`);
+      toast.success(`Planta cotada ${fmt.toUpperCase()} descarregado`);
     } catch (err) { toast.error("Exportação impossível — guarde a abertura e tente novamente"); }
   };
 
@@ -165,12 +165,12 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
       <div className="space-y-2">{saved.map(e => {
         const reco = e.result?.recommendation;
         return <div key={e.id} className={`flex flex-wrap items-center gap-2 text-xs border rounded-md p-2 ${editingId === e.id ? "border-emerald-500 bg-emerald-50/50" : ""}`} data-testid={`lintel-saved-${e.id}`}>
-          <span className="font-medium flex-1 min-w-[8rem]">{e.name}<span className="text-muted-foreground"> · L {e.inputs?.clear_span_m} m{reco ? ` · ${reco.material === "steel" ? "Aço" : "BA"} ${reco.label} (${reco.cost_eur} €)` : "· não resolvido"}{e.left && e.right ? ` · appuis ${e.left}/${e.right}` : ""}</span></span>
-          <Button variant="ghost" size="sm" onClick={() => loadSaved(e)} data-testid={`lintel-load-${e.id}`}>Charger</Button>
+          <span className="font-medium flex-1 min-w-[8rem]">{e.name}<span className="text-muted-foreground"> · L {e.inputs?.clear_span_m} m{reco ? ` · ${reco.material === "steel" ? "Aço" : "BA"} ${reco.label} (${reco.cost_eur} €)` : " · não resolvido"}{e.left && e.right ? ` · apoios ${e.left}/${e.right}` : ""}</span></span>
+          <Button variant="ghost" size="sm" onClick={() => loadSaved(e)} data-testid={`lintel-load-${e.id}`}>Carregar</Button>
           <Button variant="outline" size="sm" disabled={busy || !e.left || !e.right} onClick={() => reinjectSaved(e)} data-testid={`lintel-reinject-saved-${e.id}`}>Reinjetar</Button>
           <Button variant="outline" size="sm" onClick={() => exportLintel(e, "pdf")} data-testid={`lintel-pdf-${e.id}`}><FileDown className="h-3.5 w-3.5 mr-1" />PDF</Button>
           <Button variant="outline" size="sm" onClick={() => exportLintel(e, "dxf")} data-testid={`lintel-dxf-${e.id}`}>DXF</Button>
-          <button aria-label={`Eliminar${e.name}`} onClick={() => removeSaved(e)} data-testid={`lintel-delete-${e.id}`}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-600" /></button>
+          <button aria-label={`Eliminar ${e.name}`} onClick={() => removeSaved(e)} data-testid={`lintel-delete-${e.id}`}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-600" /></button>
         </div>;
       })}</div>
     </div>}
@@ -236,12 +236,12 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Num label="Aço (€/kg)" value={opts.steel_eur_per_kg} onChange={v => set({ steel_eur_per_kg: v })} />
         <Num label="Betão (€/m³)" value={opts.concrete_eur_per_m3} onChange={v => set({ concrete_eur_per_m3: v })} />
-        <Num label="Armatures (€/kg)" value={opts.rebar_eur_per_kg} onChange={v => set({ rebar_eur_per_kg: v })} />
+        <Num label="Armaduras (€/kg)" value={opts.rebar_eur_per_kg} onChange={v => set({ rebar_eur_per_kg: v })} />
       </div>
     </div>
 
     <div className="flex flex-wrap gap-2">
-      <Button onClick={compute} disabled={busy || running} data-testid="lintel-compute"><Calculator className="h-4 w-4 mr-2" />{running ? "Calcul…" : "Dimensionar a padieira"}</Button>
+      <Button onClick={compute} disabled={busy || running} data-testid="lintel-compute"><Calculator className="h-4 w-4 mr-2" />{running ? "Cálculo…" : "Dimensionar a padieira"}</Button>
       <Button variant="outline" onClick={saveCurrent} disabled={busy || !res} data-testid="lintel-save"><Save className="h-4 w-4 mr-2" />{editingId ? "Atualizar a abertura" : "Guardar esta abertura"}</Button>
     </div>
 
@@ -251,27 +251,27 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
         <div className="border rounded-lg p-3" data-testid="lintel-steel">
           <p className="text-sm font-medium">Aço NP EN 1993</p>
           {res.steel ? (res.steel.status === "ok"
-            ? <div className="text-xs mt-1"><p className="text-base font-semibold">{res.steel.label} <span className="text-muted-foreground">({res.steel.grade})</span></p><p>M_Rd {res.steel.mrd_knm} kN·m · V_Rd {res.steel.vrd_kn} kN</p><p>Flecha {res.steel.defl_char_mm}/{res.steel.defl_char_limit_mm} mm (totale) · {res.steel.defl_qp_mm}/{res.steel.defl_qp_limit_mm} mm (q-p)</p>{res.steel.ltb ? <p className="text-emerald-800" data-testid="lintel-ltb">Encurvadura lateral: Mb,Rd {res.steel.ltb.mb_rd_knm} kN·m · χLT {res.steel.ltb.chi_lt} · Mcr {res.steel.ltb.mcr_knm} kN·m (courbe {res.steel.ltb.curve})</p> : <p className="text-muted-foreground">Encurvadura lateral não verificada (travamento lateral suposto, χLT=1)</p>}<p>Masse {res.steel.mass_kg} kg · <b>{res.steel.cost_eur} €</b></p>{res.steel.bearing_plate && <p className="text-muted-foreground">Platine {res.steel.bearing_plate.length_mm}×{res.steel.bearing_plate.width_mm}×{res.steel.bearing_plate.thickness_mm} mm ({res.steel.bearing_plate.sigma_kpa}≤{res.steel.bearing_plate.allow_kpa} kPa)</p>}</div>
+            ? <div className="text-xs mt-1"><p className="text-base font-semibold">{res.steel.label} <span className="text-muted-foreground">({res.steel.grade})</span></p><p>M_Rd {res.steel.mrd_knm} kN·m · V_Rd {res.steel.vrd_kn} kN</p><p>Flecha {res.steel.defl_char_mm}/{res.steel.defl_char_limit_mm} mm (total) · {res.steel.defl_qp_mm}/{res.steel.defl_qp_limit_mm} mm (q-p)</p>{res.steel.ltb ? <p className="text-emerald-800" data-testid="lintel-ltb">Encurvadura lateral: Mb,Rd {res.steel.ltb.mb_rd_knm} kN·m · χLT {res.steel.ltb.chi_lt} · Mcr {res.steel.ltb.mcr_knm} kN·m (curva {res.steel.ltb.curve})</p> : <p className="text-muted-foreground">Encurvadura lateral não verificada (travamento lateral suposto, χLT=1)</p>}<p>Massa {res.steel.mass_kg} kg · <b>{res.steel.cost_eur} €</b></p>{res.steel.bearing_plate && <p className="text-muted-foreground">Platina {res.steel.bearing_plate.length_mm}×{res.steel.bearing_plate.width_mm}×{res.steel.bearing_plate.thickness_mm} mm ({res.steel.bearing_plate.sigma_kpa}≤{res.steel.bearing_plate.allow_kpa} kPa)</p>}</div>
             : <p className="text-xs text-amber-700 mt-1">{res.steel.message}</p>) : <p className="text-xs text-muted-foreground mt-1">Não pedido</p>}
         </div>
         <div className="border rounded-lg p-3" data-testid="lintel-rc">
           <p className="text-sm font-medium">Betão armado NP EN 1992</p>
           {res.rc ? (res.rc.status === "ok"
-            ? <div className="text-xs mt-1"><p className="text-base font-semibold">{res.rc.label}</p><p>As {res.rc.as_required_cm2} cm² (mini {res.rc.as_min_cm2}) · Asw/s {res.rc.asw_required_cm2_m} cm²/m</p><p>Vão/altura útil L/d {res.rc.span_depth_ratio} ≤ {res.rc.span_depth_limit}</p><p>{res.rc.concrete_m3} m³ + {res.rc.rebar_kg} kg de aço · <b>{res.rc.cost_eur} €</b></p>{res.rc.detailing?.anchorage && <p className="text-muted-foreground">Ancrage {res.rc.detailing.anchorage.straight_mm} mm · crochet {res.rc.detailing.anchorage.hook_mm} mm (Ø{res.rc.bar_mm})</p>}</div>
+            ? <div className="text-xs mt-1"><p className="text-base font-semibold">{res.rc.label}</p><p>As {res.rc.as_required_cm2} cm² (mini {res.rc.as_min_cm2}) · Asw/s {res.rc.asw_required_cm2_m} cm²/m</p><p>Vão/altura útil L/d {res.rc.span_depth_ratio} ≤ {res.rc.span_depth_limit}</p><p>{res.rc.concrete_m3} m³ + {res.rc.rebar_kg} kg de aço · <b>{res.rc.cost_eur} €</b></p>{res.rc.detailing?.anchorage && <p className="text-muted-foreground">Amarração {res.rc.detailing.anchorage.straight_mm} mm · crochet {res.rc.detailing.anchorage.hook_mm} mm (Ø{res.rc.bar_mm})</p>}</div>
             : <p className="text-xs text-amber-700 mt-1">{res.rc.message}</p>) : <p className="text-xs text-muted-foreground mt-1">Não pedido</p>}
         </div>
       </div>
       <Reco r={res} />
       <div className={`text-xs border rounded-lg p-3 ${res.bearing.status === "ok" ? "border-emerald-200" : "border-red-300"}`} data-testid="lintel-bearing">
-        <b>Apoio na alvenaria:</b> reação ELU {res.bearing.reaction_kn} kN · pression {res.bearing.sigma_kpa} kPa ≤ {res.bearing.allow_kpa} kPa → <span className={res.bearing.status === "ok" ? "text-emerald-700 font-semibold" : "text-red-700 font-semibold"}>{res.bearing.status === "ok" ? "OK" : "A REVER"}</span> · about requis ≥ {res.bearing.required_length_m} m
+        <b>Apoio na alvenaria:</b> reação ELU {res.bearing.reaction_kn} kN · pression {res.bearing.sigma_kpa} kPa ≤ {res.bearing.allow_kpa} kPa → <span className={res.bearing.status === "ok" ? "text-emerald-700 font-semibold" : "text-red-700 font-semibold"}>{res.bearing.status === "ok" ? "OK" : "A REVER"}</span> · entrega necessária ≥ {res.bearing.required_length_m} m
       </div>
       {res.notes?.map((x, i) => <p key={i} className="text-[11px] text-amber-700">• {x}</p>)}
       {res.reactions && <div className="border rounded-lg p-3 bg-muted/30 space-y-2" data-testid="lintel-reinject">
         <p className="text-sm font-medium">Fechar a descida de cargas</p>
         <p className="text-xs text-muted-foreground">Reação por apoio: <b>G {res.reactions.g_kn} kN</b> + <b>Q {res.reactions.q_kn} kN</b> (características). Detete automaticamente os nembos que enquadram a abertura (ou escolha-os) para reinjetar estas reações como cargas pontuais.</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
-          <label className="block text-xs">Appui gauche<select className={sel + " mt-1"} value={left} onChange={e => setLeft(e.target.value)} data-testid="lintel-left-support"><option value="">Escolher…</option>{piers.map(p => <option key={p.id} value={p.id}>{`${p.id} · ${p.kind === "wall" ? "mur" : "poteau"}`}</option>)}</select></label>
-          <label className="block text-xs">Appui droit<select className={sel + " mt-1"} value={right} onChange={e => setRight(e.target.value)} data-testid="lintel-right-support"><option value="">Escolher…</option>{piers.map(p => <option key={p.id} value={p.id}>{`${p.id} · ${p.kind === "wall" ? "mur" : "poteau"}`}</option>)}</select></label>
+          <label className="block text-xs">Apoio esquerdo<select className={sel + " mt-1"} value={left} onChange={e => setLeft(e.target.value)} data-testid="lintel-left-support"><option value="">Escolher…</option>{piers.map(p => <option key={p.id} value={p.id}>{`${p.id} · ${p.kind === "wall" ? "parede" : "poteau"}`}</option>)}</select></label>
+          <label className="block text-xs">Apoio direito<select className={sel + " mt-1"} value={right} onChange={e => setRight(e.target.value)} data-testid="lintel-right-support"><option value="">Escolher…</option>{piers.map(p => <option key={p.id} value={p.id}>{`${p.id} · ${p.kind === "wall" ? "parede" : "poteau"}`}</option>)}</select></label>
           <Button variant="outline" size="sm" onClick={autoDetect} disabled={busy} data-testid="lintel-autodetect"><Wand2 className="h-4 w-4 mr-1" />Detetar os apoios</Button>
           <Button variant="outline" size="sm" onClick={reinject} disabled={busy || !left || !right} data-testid="lintel-reinject-btn">Reinjetar na descida</Button>
         </div>

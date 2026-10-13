@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const LANGS = [
-  { code: "fr", label: "Francês" },
+  { code: "fr", label: "Português" },
   { code: "en", label: "English" },
   { code: "pt", label: "Português" },
 ];
@@ -25,18 +25,18 @@ export const BrochureCard = () => {
       const url = URL.createObjectURL(data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ConstruPilot-plaquette${name ? `-${name.replace(/\W+/g, "-")}` : ""}-${lang}.${ext}`;
+      a.download = `ConstruPilot-brochura${name ? `-${name.replace(/\W+/g, "-")}` : ""}-${lang}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Plaquette indisponible");
+      toast.error("Brochura indisponível");
     } finally { setBusy(""); }
   };
 
   return (
     <div className="surface p-5 space-y-3" data-testid="brochure-card">
       <p className="overline flex items-center gap-2 text-primary">
-        <FileText className="h-4 w-4" /> Plaquette commerciale
+        <FileText className="h-4 w-4" /> Brochura comercial
       </p>
       <p className="text-sm text-muted-foreground">
         Apresentação com o seu cabeçalho (logótipo, nome, contactos): para enviar aos seus clientes ou imprimir para as suas reuniões. Indique o nome do cliente para uma página de rosto personalizada e datada.

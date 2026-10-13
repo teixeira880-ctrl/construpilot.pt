@@ -21,7 +21,7 @@ export default function SeoBlogPanel() {
     setBusy(true);
     try {
       const { data } = await api.post(`/admin/babylovegrowth/sync?force=${force}`, {}, { timeout: 300000 });
-      toast.success(`${data.created}artigo(s) publicado(s) ·${data.skipped}já presentes${data.errors ? ` · ${data.errors}erro(s)` : ""}`);
+      toast.success(`${data.created} artigo(s) publicado(s) · ${data.skipped} já presentes${data.errors ? ` · ${data.errors} erro(s)` : ""}`);
       load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Sincronização impossível");
@@ -29,7 +29,7 @@ export default function SeoBlogPanel() {
   };
 
   const del = async (slug) => {
-    if (!window.confirm(`Retirer « ${slug}» do blogue?`)) return;
+    if (!window.confirm(`Remover « ${slug} » do blogue?`)) return;
     await api.delete(`/admin/babylovegrowth/articles/${slug}`);
     toast.success("Artigo removido"); load();
   };
@@ -50,7 +50,7 @@ export default function SeoBlogPanel() {
             Ressincronizar tudo
           </Button>
           <Button size="sm" className="rounded-sm gap-2" onClick={() => sync(false)} disabled={busy} data-testid="admin-blg-sync">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Synchroniser maintenant
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sincronizar agora
           </Button>
         </div>
       </div>
@@ -62,10 +62,10 @@ export default function SeoBlogPanel() {
           <p className="font-bold text-2xl num mt-1" data-testid="admin-blg-count">{st.count}</p></div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Subscritores newsletter</p>
           <p className="font-bold text-2xl num mt-1" data-testid="admin-newsletter-active">{nl ? nl.active : "…"}</p>
-          {nl?.recent_sends?.[0] && <p className="text-[11px] text-muted-foreground truncate">Dernier envoi : {nl.recent_sends[0].title} ({nl.recent_sends[0].sent})</p>}</div>
+          {nl?.recent_sends?.[0] && <p className="text-[11px] text-muted-foreground truncate">Último envio: {nl.recent_sends[0].title} ({nl.recent_sends[0].sent})</p>}</div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Última sincronização</p>
           <p className="text-sm mt-1" data-testid="admin-blg-last-sync">{st.last_sync?.at ? new Date(st.last_sync.at).toLocaleString("fr-FR") : "jamais"}</p>
-          {st.last_sync && <p className="text-[11px] text-muted-foreground">+{st.last_sync.created} · {st.last_sync.skipped} existants · {st.last_sync.errors} erreurs</p>}</div>
+          {st.last_sync && <p className="text-[11px] text-muted-foreground">+{st.last_sync.created} · {st.last_sync.skipped} existentes · {st.last_sync.errors} erreurs</p>}</div>
       </div>
 
       <div className="surface p-4 rounded-md text-xs space-y-2">
@@ -78,7 +78,7 @@ export default function SeoBlogPanel() {
       </div>
 
       <div className="surface p-4 rounded-md">
-        <p className="overline text-[10px] mb-2">Derniers articles</p>
+        <p className="overline text-[10px] mb-2">Últimos artigos</p>
         {!st.recent?.length && <p className="text-sm text-muted-foreground">Nenhum artigo ainda sincronizado.</p>}
         <ul className="divide-y divide-border/50">
           {(st.recent || []).map((a) => (

@@ -31,7 +31,7 @@ export default function DataManagementPanel() {
   const delClient = async (cl) => {
     if (!(await confirm({
       title: "Eliminar este cliente?",
-      description: `${cl.company || cl.name || "Este cliente"}será eliminado. Impossível se tiver orçamentos/faturas associados.`,
+      description: `${cl.company || cl.name || "Este cliente"} será eliminado. Impossível se tiver orçamentos/faturas associados.`,
       confirmLabel: "Eliminar",
     }))) return;
     try {
@@ -43,7 +43,7 @@ export default function DataManagementPanel() {
   const delQuote = async (q) => {
     if (!(await confirm({
       title: "Eliminar este orçamento?",
-      description: `O orçamento${q.number || ""}será eliminado definitivamente.`,
+      description: `O orçamento ${q.number || ""} será eliminado definitivamente.`,
       confirmLabel: "Eliminar",
     }))) return;
     try {
@@ -76,7 +76,7 @@ export default function DataManagementPanel() {
                 <div key={q.doc_id} className="flex items-center gap-2 border border-border rounded-sm px-2 py-1.5"
                      data-testid={`mgmt-quote-${q.doc_id}`}>
                   <button onClick={() => nav(`/devis-editeur/${q.doc_id}`)} className="min-w-0 flex-1 text-left">
-                    <p className="text-xs font-medium truncate">{q.number || "Brouillon"} · {eur(q.totals?.ttc)}</p>
+                    <p className="text-xs font-medium truncate">{q.number || "Rascunho"} · {eur(q.totals?.ttc)}</p>
                     <p className="text-[10px] text-muted-foreground truncate">{q.client_name || q.client?.name || "—"} · {q.status || "draft"}</p>
                   </button>
                   <button onClick={() => delQuote(q)} className="text-muted-foreground hover:text-red-600 shrink-0"
@@ -89,7 +89,7 @@ export default function DataManagementPanel() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" /> Clients ({clients.length})
+                <Users className="h-4 w-4 text-primary" /> Clientes ({clients.length})
               </p>
               <button onClick={() => nav("/clients")} className="text-xs text-primary inline-flex items-center gap-1">
                 Gerir <ExternalLink className="h-3 w-3" />

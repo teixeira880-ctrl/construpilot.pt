@@ -10,7 +10,7 @@ const eur = (v) => (v === null || v === undefined ? "não mensurável" : `${Numb
 
 const SEV = {
   critical: { cls: "border-red-500/40 bg-red-500/10 text-red-600", Icon: CircleAlert, label: "Critique" },
-  high: { cls: "border-orange-500/40 bg-orange-500/10 text-orange-600", Icon: ShieldAlert, label: "Prioritaire" },
+  high: { cls: "border-orange-500/40 bg-orange-500/10 text-orange-600", Icon: ShieldAlert, label: "Prioritário" },
   medium: { cls: "border-amber-500/40 bg-amber-500/10 text-amber-600", Icon: AlertTriangle, label: "A vigiar" },
   low: { cls: "border-sky-500/40 bg-sky-500/10 text-sky-600", Icon: Info, label: "Info" },
   info: { cls: "border-slate-400/40 bg-slate-400/10 text-slate-500", Icon: Info, label: "Info" },
@@ -51,11 +51,11 @@ export default function PilotagePanel({ onOpenBudget }) {
             {data.headline}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Mois {data.month} · recommandations <b>determinísticas</b> (derivadas dos limiares conhecidos, nenhum valor inventado).
+            Mês {data.month} · recomendações <b>determinísticas</b> (derivadas dos limiares conhecidos, nenhum valor inventado).
           </p>
         </div>
         <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={load} disabled={busy} data-testid="pilotage-refresh">
-          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Actualiser
+          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Atualizar
         </Button>
       </div>
 
@@ -75,7 +75,7 @@ export default function PilotagePanel({ onOpenBudget }) {
         <div className="surface rounded-md p-4" data-testid="pilotage-used">
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Consumido / teto</p>
           <p className="font-display text-3xl font-extrabold mt-1 num">{eur(st.used_eur)}</p>
-          <p className="text-xs text-muted-foreground mt-1">sur {eur(st.cap_eur)} · reste {eur(st.remaining_eur)}</p>
+          <p className="text-xs text-muted-foreground mt-1">sur {eur(st.cap_eur)} · restante {eur(st.remaining_eur)}</p>
           <p className="text-xs mt-1 flex items-center gap-1">
             {data.new_engagements_allowed
               ? <><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Novos compromissos autorizados</>
@@ -100,7 +100,7 @@ export default function PilotagePanel({ onOpenBudget }) {
 
       {/* Recommandations / actions */}
       <section className="grid gap-2" data-testid="pilotage-recos">
-        <p className="font-semibold text-sm">Recommandations & actions ({data.recommendations?.length || 0})</p>
+        <p className="font-semibold text-sm">Recomendações e ações ({data.recommendations?.length || 0})</p>
         {data.recommendations?.map((r, i) => {
           const sev = SEV[r.severity] || SEV.info;
           const Icon = sev.Icon;

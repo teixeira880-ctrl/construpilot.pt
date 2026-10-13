@@ -51,12 +51,12 @@ export function CompetitorsPanel({ projectId, canEdit }) {
   return <div className="space-y-4" data-testid="growth-competitors">
     <p className="text-sm text-muted-foreground">Marcas acompanhadas nas respostas IA (nomes, variantes, domínios). As sugestões devem ser confirmadas; nenhum concorrente é inventado: adicione os realmente observados nas respostas.</p>
     {canEdit && <div className="surface p-3 grid sm:grid-cols-4 gap-2" data-testid="growth-brand-form">
-      <Input placeholder="Nom" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} data-testid="growth-brand-name" /><Input placeholder="Variantes (virgule)" value={draft.variants} onChange={(e) => setDraft({ ...draft, variants: e.target.value })} /><Input placeholder="Domaines (virgule)" value={draft.domains} onChange={(e) => setDraft({ ...draft, domains: e.target.value })} data-testid="growth-brand-domains" />
+      <Input placeholder="Nome" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} data-testid="growth-brand-name" /><Input placeholder="Variantes (virgule)" value={draft.variants} onChange={(e) => setDraft({ ...draft, variants: e.target.value })} /><Input placeholder="Domínios (vírgula)" value={draft.domains} onChange={(e) => setDraft({ ...draft, domains: e.target.value })} data-testid="growth-brand-domains" />
       <Button size="sm" onClick={add} disabled={!draft.name.trim()} data-testid="growth-brand-add"><Plus className="h-4 w-4" /> Adicionar</Button></div>}
     <ul className="divide-y border rounded-md">{data.brands.map((b) => <li key={b.brand_id} className="px-3 py-2 text-sm flex flex-wrap items-center gap-2" data-testid={`growth-brand-${b.brand_id}`}>
       <strong className="min-w-[120px]">{b.name}</strong><span className="text-xs text-muted-foreground flex-1">{b.variants?.join(", ")} · {b.domains?.join(", ") || "—"}</span>
       {b.is_self && <Badge className="rounded-sm">ConstruPilot</Badge>}{b.suggested && !b.confirmed && <Badge variant="outline" className="rounded-sm text-amber-700">sugestão a confirmar</Badge>}
-      {canEdit && !b.confirmed && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => confirm(b)} data-testid={`growth-brand-confirm-${b.brand_id}`}><Check className="h-3.5 w-3.5" /> Confirmer</Button>}
+      {canEdit && !b.confirmed && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => confirm(b)} data-testid={`growth-brand-confirm-${b.brand_id}`}><Check className="h-3.5 w-3.5" /> Confirmar</Button>}
       {canEdit && !b.is_self && <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(b)} data-testid={`growth-brand-delete-${b.brand_id}`}><Trash2 className="h-3.5 w-3.5" /></Button>}
     </li>)}</ul>
   </div>;

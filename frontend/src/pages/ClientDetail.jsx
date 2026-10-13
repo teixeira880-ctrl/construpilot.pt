@@ -112,13 +112,13 @@ export default function ClientDetail() {
         <p className="text-sm font-medium truncate">{d.title || d.number || "—"}</p>
         <p className="text-[11px] text-muted-foreground num">
           {d.number || "brouillon"} · {(d.created_at || "").slice(0, 10)}
-          {d.doc_type === "invoice" && d.paid > 0 && `· pago${eur(d.paid)}`}
+          {d.doc_type === "invoice" && d.paid > 0 && ` · pago ${eur(d.paid)}`}
         </p>
       </div>
       <St s={d.status} />
       <span className="num font-bold text-sm w-24 text-right">{eur(d.totals?.ttc)}</span>
       <div className="flex gap-1 shrink-0">
-        <Button size="icon" variant="ghost" className="h-7 w-7" title="Ouvrir"
+        <Button size="icon" variant="ghost" className="h-7 w-7" title="Abrir"
                 onClick={() => nav(`/devis-editeur/${d.doc_id}`)} data-testid={`doc-open-${d.doc_id}`}>
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
@@ -192,7 +192,7 @@ export default function ClientDetail() {
         {signed.map((d) => (
           <Row key={d.doc_id} d={d} extra={
             <Button size="sm" variant="outline" className="rounded-sm gap-1 h-7 text-[11px] border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                    onClick={() => { setConvert(d); setMode(d.deposit_pct > 0 ? "acompte" : "total"); setPct(d.deposit_pct > 0 ? d.deposit_pct : 30); }}
+                    onClick={() => { setConvert(d); setMode(d.deposit_pct > 0 ? "sinal" : "total"); setPct(d.deposit_pct > 0 ? d.deposit_pct : 30); }}
                     data-testid={`convert-invoice-${d.doc_id}`}>
               <Receipt className="h-3.5 w-3.5" /> {t("crm.bill_btn")}
             </Button>
@@ -249,9 +249,9 @@ export default function ClientDetail() {
                 <option value="detailed">{t("crm.mode_detailed")}</option>
               </select>
             </div>
-            {(mode === "prorata" || mode === "acompte") && (
+            {(mode === "prorata" || mode === "sinal") && (
               <div>
-                <Label>{mode === "acompte" ? t("crm.pct_acompte") : t("crm.pct_prorata")}</Label>
+                <Label>{mode === "sinal" ? t("crm.pct_acompte") : t("crm.pct_prorata")}</Label>
                 <Input type="number" min="1" max="100" value={pct} onChange={(e) => setPct(e.target.value)}
                        className="rounded-sm num mt-1 max-w-[120px]" data-testid="convert-pct" />
               </div>
@@ -259,7 +259,7 @@ export default function ClientDetail() {
             <p className="text-xs text-muted-foreground">
               {mode === "detailed"
                 ? t("crm.hint_detailed")
-                : mode === "acompte"
+                : mode === "sinal"
                   ? t("crm.hint_acompte")
                   : mode === "prorata"
                     ? t("crm.hint_prorata")

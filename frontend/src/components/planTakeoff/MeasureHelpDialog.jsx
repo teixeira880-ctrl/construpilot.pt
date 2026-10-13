@@ -68,8 +68,8 @@ export function MeasureHelpDialog({ trigger }) {
           <Step n={2} icon={Ruler} title="Calibrar a escala (indispensável, em primeiro)">
             <p>Sem escala, a app não conhece o tamanho real da planta. As ferramentas Distância, Superfície, Divisão… permanecem <b>esbatidos</b> enquanto não estiver feito.</p>
             <ul className="list-disc pl-5 space-y-0.5">
-              <li>Clique na ferramenta <b>« Calibrer »</b> (ícone régua).</li>
-              <li>Clique <b>2 points</b> numa distância <b>connue</b> (ex. uma cota escrita « 4,25 m », uma parede cotada).</li>
+              <li>Clique na ferramenta <b>« Calibrar »</b> (ícone régua).</li>
+              <li>Clique <b>2 pontos</b> numa distância <b>connue</b> (ex. uma cota escrita « 4,25 m », uma parede cotada).</li>
               <li>Insira a <b>distância real em metros</b> depois valide.</li>
               <li>✅ A escala está guardada e todas as ferramentas desbloqueiam.</li>
             </ul>
@@ -81,7 +81,7 @@ export function MeasureHelpDialog({ trigger }) {
 
           <Step n={3} icon={Move} title="Medir (manual) — distância, superfície, divisão">
             <ul className="list-disc pl-5 space-y-0.5">
-              <li><b><Move className="h-3.5 w-3.5 inline text-primary" /> Distance</b> : clique no ponto de partida e depois de chegada → <b>double-clic</b> para validar (comprimento em m).</li>
+              <li><b><Move className="h-3.5 w-3.5 inline text-primary" /> Distância</b> : clique no ponto de partida e depois de chegada → <b>double-clic</b> para validar (comprimento em m).</li>
               <li><b><Hexagon className="h-3.5 w-3.5 inline text-primary" /> Superfície</b> : clique em cada canto da zona → <b>double-clic</b> para fechar (m² + perímetro).</li>
               <li><b><Square className="h-3.5 w-3.5 inline text-primary" /> Divisão</b> : desenhe os cantos de uma divisão → superfície no chão + paredes.</li>
               <li><b><Wand2 className="h-3.5 w-3.5 inline text-primary" /> Auto-divisão</b> : clique uma vez <b>no interior</b> de uma divisão fechada → deteção auto dos contornos.</li>
@@ -107,7 +107,7 @@ export function MeasureHelpDialog({ trigger }) {
             <ul className="list-disc pl-5 space-y-0.5">
               <li>Em <b>o editor de orçamentos</b> : ajuste as linhas, quantidades, preços unitários e o IVA (6 % / 13 % / 23 %).</li>
               <li>Escolha o <b>client</b>, depois clique em <b>« Enviar orçamento »</b>.</li>
-              <li>Le <b>message e-mail</b> e o <b>número de orçamento</b> são preenchidos automaticamente; para as taxas reduzidas (6 % / 13 %), <b>a declaração de IVA é anexada automaticamente</b>.</li>
+              <li>Le <b>mensagem e-mail</b> e o <b>número de orçamento</b> são preenchidos automaticamente; para as taxas reduzidas (6 % / 13 %), <b>a declaração de IVA é anexada automaticamente</b>.</li>
               <li>O orçamento parte com a sua <b>logotipo e os seus contactos</b>, e encontra-se em <b>« Seguimento dos orçamentos »</b>.</li>
             </ul>
           </Step>
@@ -115,18 +115,18 @@ export function MeasureHelpDialog({ trigger }) {
           <div className="rounded-sm border border-border bg-muted/40 p-4 mt-1 space-y-2">
             <p className="font-semibold flex items-center gap-2"><MousePointerClick className="h-4 w-4 text-primary" /> Os gestos essenciais</p>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li><b>Double-clic</b> = terminar a medição em curso.</li>
+              <li><b>Duplo clique</b> = terminar a medição em curso.</li>
               <li><Key>Esc</Key> = anular a medição em curso (nada é guardado).</li>
               <li><b>« Cancelar tudo »</b> = apaga os pontos da medição em curso.</li>
               <li>Roda ou botões <Key>+</Key>/<Key>−</Key> = zoom; clicar e arrastar = deslocar a planta.</li>
-              <li><MousePointer2 className="h-3.5 w-3.5 inline" /> Outil <b>« Seleção »</b> = voltar ao modo normal para clicar/deslocar os elementos.</li>
+              <li><MousePointer2 className="h-3.5 w-3.5 inline" /> Ferramenta <b>« Seleção »</b> = voltar ao modo normal para clicar/deslocar os elementos.</li>
             </ul>
           </div>
 
           <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-4 mt-3 space-y-1.5">
             <p className="font-semibold flex items-center gap-2 text-amber-700"><Lightbulb className="h-4 w-4" /> Conselhos para ser preciso</p>
             <ul className="text-sm text-amber-800 space-y-1 list-disc pl-5">
-              <li><b>Zoomez</b> antes de clicar nos cantos: quanto mais zoom, mais preciso.</li>
+              <li><b>Amplie</b> antes de clicar nos cantos: quanto mais zoom, mais preciso.</li>
               <li>Para calibrar, escolha a <b>maior cota possível</b> (uma referência longa reduz o erro).</li>
               <li><b>Cada página tem a sua própria escala</b> : se mudar de página/planta, recalibre.</li>
               <li>No painel da direita, pode <b>renommer</b>, <b>converter em divisão</b>, <b>deduzir</b> (vão, abertura) ou <b>supprimer</b> uma medida.</li>
@@ -136,7 +136,7 @@ export function MeasureHelpDialog({ trigger }) {
 
         <div className="flex justify-end pt-2">
           <Button onClick={() => setOpen(false)} className="rounded-sm gap-2 bg-primary" data-testid="measure-help-close">
-            <CornerDownLeft className="h-4 w-4" /> J'ai compris, commencer
+            <CornerDownLeft className="h-4 w-4" /> Compreendi, começar
           </Button>
         </div>
       </DialogContent>

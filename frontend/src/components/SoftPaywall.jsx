@@ -28,7 +28,7 @@ const MESSAGES = {
     body: "A IA compara os seus orçamentos à base de preços ConstruPilot e deteta os sobrecustos.",
   },
   pdf: {
-    title: "Export PDF professionnel",
+    title: "Exportar PDF profissional",
     body: "Orçamento assinável, logótipo empresa, ventilação por lote, planeamento incluído.",
   },
   default: {
@@ -75,7 +75,7 @@ export const SoftPaywall = ({ context = "default", compact = false }) => {
         <Link to={`/tarifs?from=${encodeURIComponent(loc.pathname)}`}>
           <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white" data-testid={`${testid}-cta`}>
             <Sparkles className="h-4 w-4" />
-            Essayer Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} jours offerts` : ""}
+            Experimentar Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} dias oferecidos` : ""}
           </Button>
         </Link>
         <Link to="/tarifs">

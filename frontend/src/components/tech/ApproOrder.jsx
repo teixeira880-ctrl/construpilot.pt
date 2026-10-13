@@ -50,7 +50,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
 
   const downloadCsv = () => {
     const priceCols = !!priced;
-    const head = ["Designation", "Quantite", "Unite", "Commandable_qty", "Commandable_unite"].concat(priceCols ? ["PU_HT", "Total_HT"] : []);
+    const head = ["Designação", "Quantidade", "Unidade", "Qtd_encomendável", "Commandable_unite"].concat(priceCols ? ["PU_HT", "Total_s/ IVA"] : []);
     const lines = [head.join(";")].concat(rows.map((it) => {
       const base = [it.designation, it.qty, it.unit, it.commandable_qty ?? "", it.commandable_unit ?? ""];
       return base.concat(priceCols ? [it.unit_price ?? "", it.line_total ?? ""] : []).join(";");
@@ -90,7 +90,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
         to: toEmail, cc_self: ccSelf,
         priced_items: priced ? priced.items : null,
       });
-      toast.success(`Nota de encomenda enviada para${toEmail}`);
+      toast.success(`Nota de encomenda enviada para ${toEmail}`);
       setEmailOpen(false);
     } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
@@ -119,7 +119,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
           <thead className="bg-secondary/40"><tr>
             <th className="text-left p-2">Designação</th>
             <th className="p-2 text-right">Qtd.</th><th className="p-2">Un.</th>
-            <th className="p-2 text-right">Commandable</th><th className="p-2">Cond.</th>
+            <th className="p-2 text-right">Encomendável</th><th className="p-2">Cond.</th>
             {priced && <th className="p-2 text-right">PU HT</th>}
             {priced && <th className="p-2 text-right">Total s/ IVA</th>}
             <th className="p-2">Conf.</th><th className="p-2"></th>
@@ -175,10 +175,10 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
             </div>
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={ccSelf} onChange={(e) => setCcSelf(e.target.checked)} data-testid="appro-email-cc" />
-              Me mettre en copie (CC)
+              Colocar-me em cópia (CC)
             </label>
             <div className="rounded-sm border border-border p-3 bg-secondary/20 text-xs">
-              <div className="font-semibold mb-1">Pré-visualização · {rows.length} ligne(s){priced ? `· Total${eur(priced.grand_total)} € HT` : ""}</div>
+              <div className="font-semibold mb-1">Pré-visualização · {rows.length} linha(s){priced ? ` · Total ${eur(priced.grand_total)} € HT` : ""}</div>
               <ul className="space-y-0.5 max-h-40 overflow-auto">
                 {rows.slice(0, 12).map((it, i) => (
                   <li key={i} className="flex justify-between gap-2">
@@ -186,9 +186,9 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
                     <span className="whitespace-nowrap num">{it.commandable_qty ?? it.qty} {it.commandable_unit || it.unit}{priced ? ` · ${eur(it.line_total)} €` : ""}</span>
                   </li>
                 ))}
-                {rows.length > 12 && <li className="text-muted-foreground">+ {rows.length - 12} autre(s)…</li>}
+                {rows.length > 12 && <li className="text-muted-foreground">+ {rows.length - 12} outro(s)…</li>}
               </ul>
-              <p className="text-[11px] text-muted-foreground mt-2">PDF + CSV joints automatiquement.</p>
+              <p className="text-[11px] text-muted-foreground mt-2">PDF + CSV anexados automaticamente.</p>
             </div>
           </div>
           <DialogFooter>

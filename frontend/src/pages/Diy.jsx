@@ -29,7 +29,7 @@ export default function Diy() {
       setGuide(data);
       setOptim(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch { toast.error("Guide indisponible"); }
+    } catch { toast.error("Guia indisponível"); }
     finally { setBusy(false); }
   };
 
@@ -127,7 +127,7 @@ export default function Diy() {
                   <p className="text-xs text-muted-foreground">{optim.best_single?.supplier}</p>
                 </div>
                 <div>
-                  <p className="overline">Multi-fournisseurs</p>
+                  <p className="overline">Multi-fornecedores</p>
                   <p className="num mt-2 text-xl font-bold text-primary">{eur(optim.multi_supplier.total)}</p>
                   <p className="num text-xs text-muted-foreground">{optim.multi_supplier.suppliers_count} magasins</p>
                 </div>
@@ -155,7 +155,7 @@ export default function Diy() {
                   <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
                     {s.tips && (
                       <div className="p-3 rounded-sm border border-emerald-500/30 bg-emerald-500/5">
-                        <p className="overline text-emerald-600 dark:text-emerald-400">Conseil ConstruPilot</p>
+                        <p className="overline text-emerald-600 dark:text-emerald-400">Conselho ConstruPilot</p>
                         <p className="mt-1 text-muted-foreground">{s.tips}</p>
                       </div>
                     )}
@@ -167,7 +167,7 @@ export default function Diy() {
                     )}
                     {s.tools?.length > 0 && (
                       <div className="p-3 rounded-sm border border-border">
-                        <p className="overline text-muted-foreground">Outils</p>
+                        <p className="overline text-muted-foreground">Ferramentas</p>
                         <p className="mt-1 text-muted-foreground">{s.tools.join(", ")}</p>
                       </div>
                     )}

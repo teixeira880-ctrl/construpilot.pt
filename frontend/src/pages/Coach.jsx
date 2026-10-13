@@ -121,7 +121,7 @@ export default function Coach() {
 
   return (
     <div className="grid gap-8">
-      <SEO title="Coach IA travaux" description="Coloque as suas questões sobre obras, renovação, materiais, IVA, licenças à IA ConstruPilot. Resposta quantificada em 30 segundos, por voz ou teclado. Gratuito." keywords="coach de obras, chatbot construção, IA remodelação, ajuda ao profissional, perguntas sobre obras" canonical="/coach" />
+      <SEO title="Coach IA obras" description="Coloque as suas questões sobre obras, renovação, materiais, IVA, licenças à IA ConstruPilot. Resposta quantificada em 30 segundos, por voz ou teclado. Gratuito." keywords="coach de obras, chatbot construção, IA remodelação, ajuda ao profissional, perguntas sobre obras" canonical="/coach" />
       <SectionTitle as="h1" over={t("coach.over")} title={t("coach.title")}>
         {t("coach.subtitle")}
       </SectionTitle>
@@ -178,7 +178,7 @@ export default function Coach() {
           <Button
             variant="outline" onClick={toggleMic} data-testid="mic-btn"
             className={`rounded-sm shrink-0 ${listening ? "border-primary text-primary" : ""}`}
-            aria-label="Assistant vocal"
+            aria-label="Assistente de voz"
           >
             {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>

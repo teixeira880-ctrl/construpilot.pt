@@ -26,7 +26,7 @@ export default function PublicEstimation() {
     return (
       <div className="min-h-screen grid place-items-center p-6" data-testid="public-estimation-error">
         <div className="surface p-10 text-center max-w-md">
-          <p className="overline text-destructive">Lien indisponible</p>
+          <p className="overline text-destructive">Ligação indisponível</p>
           <h1 className="font-display text-2xl font-bold mt-3">{err}</h1>
           <Link to="/" className="mt-6 inline-flex">
             <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
@@ -75,15 +75,15 @@ export default function PublicEstimation() {
             {project.name}
           </h1>
           <p className="num mt-2 text-sm text-muted-foreground">
-            {project.city || project.region || "France"}
+            {project.city || project.region || "França"}
             {project.surface ? ` · ${num(project.surface, 1)} m²` : ""}
-            {estimation.finish_level_name ? ` · finition ${estimation.finish_level_name}` : ""}
+            {estimation.finish_level_name ? ` · acabamento ${estimation.finish_level_name}` : ""}
           </p>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-4 stagger">
           <div className="surface p-6">
-            <p className="overline">Budget bas</p>
+            <p className="overline">Orçamento baixo</p>
             <p className="num mt-2 text-2xl font-bold">{eur(estimation.total_min)}</p>
           </div>
           <div className="surface p-6 border-primary" data-testid="public-total-avg">
@@ -91,7 +91,7 @@ export default function PublicEstimation() {
             <p className="num mt-2 text-3xl font-extrabold text-primary">{eur(estimation.total_avg)}</p>
           </div>
           <div className="surface p-6">
-            <p className="overline">Budget haut</p>
+            <p className="overline">Orçamento alto</p>
             <p className="num mt-2 text-2xl font-bold">{eur(estimation.total_max)}</p>
           </div>
         </div>

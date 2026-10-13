@@ -40,7 +40,7 @@ export function SupervisorResult({ run }) {
       {rows.length === 0 && <p className="text-sm">Nenhum documento neste controlo.</p>}
       {rows.map(row => <article key={`${row.kind}:${row.id}`} className="rounded-lg border border-border p-3 min-w-0">
         <p className="font-semibold text-sm break-words">{row.label}</p>
-        <p className="text-xs text-muted-foreground mt-1">{row.checked_elements} elemento(s) verificado(s) · {row.corrections} valeur(s) {row.applied ? "corrigida(s)" : "a recalcular"}</p>
+        <p className="text-xs text-muted-foreground mt-1">{row.checked_elements} elemento(s) verificado(s) · {row.corrections} valor(es) {row.applied ? "corrigida(s)" : "a recalcular"}</p>
         {!!row.issues?.length && <ul className="mt-2 space-y-1 text-xs text-amber-800 dark:text-amber-200">{row.issues.map((item, index) => <li key={`${item.code}:${index}`} className="break-words">{item.message}{item.path ? ` (${item.path})` : ""}</li>)}</ul>}
         <div className="flex flex-wrap items-center gap-3 mt-2">
           <Link className="text-sm text-primary underline" to={row.kind === "quote" ? `/devis-editeur/${encodeURIComponent(row.id)}` : `/plan?open=${encodeURIComponent(row.id)}`}>Abrir o documento</Link>

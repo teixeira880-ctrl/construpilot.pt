@@ -57,7 +57,7 @@ export default function Situations() {
       const { data } = await api.post("/situations/dgd", {
         marche_id: marcheId, impute_deposit: dgdDeposit, release_retention: dgdRelease,
       });
-      toast.success(`Conta final criada — fatura${data.number}`);
+      toast.success(`Conta final criada — fatura ${data.number}`);
       await loadMarche(marcheId);
       loadRetentions();
     } catch (e) {
@@ -80,7 +80,7 @@ export default function Situations() {
       const a = document.createElement("a");
       a.href = url; a.download = "decompte-general-definitif.pdf"; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("PDF indisponible"); }
+    } catch { toast.error("PDF indisponível"); }
   };
 
   const loadMarche = async (id) => {
@@ -142,8 +142,8 @@ export default function Situations() {
         marche_id: marcheId, lines, retention_pct: Number(retention) || 0,
         deposit_mode: depMode, deposit_amount_ht: Number(depManual) || 0,
       });
-      toast.success(`Situation n°${data.seq}criada — fatura${data.invoice_number}`
-        + (data.deposit_imputed_ht ? `· adiantamento deduzido${data.deposit_imputed_ht} € HT` : ""));
+      toast.success(`Auto de medição n.º${data.seq} criada — fatura ${data.invoice_number}`
+        + (data.deposit_imputed_ht ? ` · adiantamento deduzido ${data.deposit_imputed_ht} € HT` : ""));
       await refreshMarche(); loadRetentions();
     } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
     finally { setBusy(false); }
@@ -195,7 +195,7 @@ export default function Situations() {
     catch { toast.error("Erro"); }
   };
   const remindRet = async (mid) => {
-    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Lembrete enviado para${data.to}` : "E-mail não enviado (cliente sem e-mail ou serviço indisponível)"); }
+    try { const { data } = await api.post(`/situations/retentions/${mid}/remind`); toast[data.emails_sent ? "success" : "message"](data.emails_sent ? `Lembrete enviado para ${data.to}` : "E-mail não enviado (cliente sem e-mail ou serviço indisponível)"); }
     catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
 
@@ -212,7 +212,7 @@ export default function Situations() {
   }
 
   const RetStatus = ({ s }) => {
-    const map = { released: ["Liberada", "text-muted-foreground border-border"], due: ["A libertar", "text-red-500 border-red-500/30"], pending: ["En cours", "text-amber-500 border-amber-500/30"], held: ["Detida", "text-primary border-primary/30"] };
+    const map = { released: ["Liberada", "text-muted-foreground border-border"], due: ["A libertar", "text-red-500 border-red-500/30"], pending: ["Em curso", "text-amber-500 border-amber-500/30"], held: ["Detida", "text-primary border-primary/30"] };
     const [l, c] = map[s] || map.held;
     return <Badge variant="outline" className={`rounded-sm ${c}`}>{l}</Badge>;
   };
@@ -230,7 +230,7 @@ export default function Situations() {
           <SelectContent>
             {marches.map((m) => (
               <SelectItem key={m.doc_id} value={m.doc_id} data-testid={`marche-opt-${m.doc_id}`}>
-                {(m.number || "Brouillon")} · {m.title || "Sem título"} — {eur(m.total_ht)} HT
+                {(m.number || "Rascunho")} · {m.title || "Sem título"} — {eur(m.total_ht)} HT
               </SelectItem>
             ))}
           </SelectContent>
@@ -248,16 +248,16 @@ export default function Situations() {
       )}
       {summary && dep && (dep.invoiced_ttc > 0) && (
         <p className="text-xs text-muted-foreground" data-testid="marche-deposit-note">
-          Adiantamento faturado {eur(dep.invoiced_ttc)} c/ IVA · recebido {eur(dep.paid_ttc)} TTC
-          {dep.unpaid_ttc > 0 ? `· não recebido${eur(dep.unpaid_ttc)}(não dedutível)` : ""}
-          {" "}· já imputado {eur(dep.imputed_ht)} HT · disponible {eur(dep.available_ht)} HT
+          Adiantamento faturado {eur(dep.invoiced_ttc)} c/ IVA · recebido {eur(dep.paid_ttc)} c/ IVA
+          {dep.unpaid_ttc > 0 ? ` · não recebido ${eur(dep.unpaid_ttc)} (não dedutível)` : ""}
+          {" "}· já imputado {eur(dep.imputed_ht)} s/ IVA · disponível {eur(dep.available_ht)} HT
         </p>
       )}
 
       <Tabs defaultValue="situation" className="w-full">
         <TabsList className="rounded-sm flex-wrap h-auto" data-testid="situations-tabs">
           <TabsTrigger value="situation" data-testid="tab-situation">Nova situação</TabsTrigger>
-          <TabsTrigger value="avancement" data-testid="tab-avancement">Avancement</TabsTrigger>
+          <TabsTrigger value="avancement" data-testid="tab-avancement">Avanço</TabsTrigger>
           <TabsTrigger value="prorata" data-testid="tab-prorata">Conta pro rata</TabsTrigger>
           <TabsTrigger value="retenue" data-testid="tab-retenue">Retenção de garantia</TabsTrigger>
           <TabsTrigger value="dgd" data-testid="tab-dgd">Conta final</TabsTrigger>
@@ -270,13 +270,13 @@ export default function Situations() {
               <div className="surface rounded-md overflow-hidden" data-testid="situation-lines">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Poste</th><th className="p-3 text-right">Valor s/ IVA</th>
+                    <th className="p-3">Artigo</th><th className="p-3 text-right">Valor s/ IVA</th>
                     <th className="p-3 text-center">% ant.</th><th className="p-3 text-center">% acumulado</th>
                     <th className="p-3 text-right">Este auto s/ IVA</th></tr></thead>
                   <tbody>
                     {baseLines.map((l, i) => (
                       <tr key={i} className="border-b border-border/50" data-testid={`sit-line-${i}`}>
-                        <td className="p-3">{l.designation || `Ligne ${i + 1}`}</td>
+                        <td className="p-3">{l.designation || `Linha ${i + 1}`}</td>
                         <td className="p-3 text-right num">{eur(lineContract(l))}</td>
                         <td className="p-3 text-center num text-muted-foreground">{(prevPct[i] || 0)}%</td>
                         <td className="p-3 text-center">
@@ -319,12 +319,12 @@ export default function Situations() {
                   </div>
                   <p className="text-[11px] text-muted-foreground" data-testid="situation-deposit-info">
                     {depAvailable > 0
-                      ? <>Disponible : {eur(depAvailable)} s/ IVA · dedução: <b className="text-foreground">-{eur(depDeduct)}</b></>
+                      ? <>Disponível: {eur(depAvailable)} s/ IVA · dedução: <b className="text-foreground">-{eur(depDeduct)}</b></>
                       : "Nenhum adiantamento recebido a deduzir nesta empreitada."}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Travaux {eur(totalHT)} HT</p>
+                  <p className="text-xs text-muted-foreground">Obras {eur(totalHT)} HT</p>
                   <p className="num text-2xl font-extrabold text-primary" data-testid="situation-total-ht">{eur(invoiceHt)}</p>
                   <p className="text-[11px] text-muted-foreground">Fatura s/ IVA após adiantamento</p>
                 </div>
@@ -334,17 +334,17 @@ export default function Situations() {
               </div>
               {situations.length > 0 && (
                 <div className="space-y-2" data-testid="situations-history">
-                  <p className="overline">Historique</p>
+                  <p className="overline">Histórico</p>
                   {situations.map((s) => (
                     <div key={s.situation_id} className="surface rounded-sm p-4 flex flex-wrap items-center gap-4" data-testid={`situation-row-${s.situation_id}`}>
                       <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center"><TrendingUp className="h-4 w-4 text-primary" /></div>
                       <div>
-                        <p className="font-semibold">Situation n°{s.seq} · {s.invoice_number}</p>
-                        <p className="text-xs text-muted-foreground">{eur(s.total_ttc)} TTC{s.deposit_imputed_ht ? `· adiantamento deduzido${eur(s.deposit_imputed_ht)} HT` : ""}{s.retention_amount ? ` · retenue ${eur(s.retention_amount)} · net ${eur(s.net_due)}` : ""}</p>
+                        <p className="font-semibold">Auto de medição n.º{s.seq} · {s.invoice_number}</p>
+                        <p className="text-xs text-muted-foreground">{eur(s.total_ttc)} c/ IVA{s.deposit_imputed_ht ? ` · adiantamento deduzido ${eur(s.deposit_imputed_ht)} HT` : ""}{s.retention_amount ? ` · retenção ${eur(s.retention_amount)} · net ${eur(s.net_due)}` : ""}</p>
                       </div>
                       <div className="ml-auto flex gap-2">
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" onClick={() => downloadSituationPdf(s)} data-testid={`situation-pdf-${s.situation_id}`}><FileText className="h-4 w-4" /> Auto PDF</Button>
-                        <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => downloadCertificate(s)} data-testid={`situation-cert-${s.situation_id}`}><ShieldCheck className="h-4 w-4" /> Certificat</Button>
+                        <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => downloadCertificate(s)} data-testid={`situation-cert-${s.situation_id}`}><ShieldCheck className="h-4 w-4" /> Certificado</Button>
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => nav(`/devis-editeur/${s.invoice_doc_id}`)} data-testid={`situation-open-${s.situation_id}`}><FileText className="h-4 w-4" /> Fatura</Button>
                         <Button size="sm" variant="ghost" className="rounded-sm text-red-500" onClick={() => del(s.situation_id)} data-testid={`situation-del-${s.situation_id}`}><Trash2 className="h-4 w-4" /></Button>
                       </div>
@@ -368,7 +368,7 @@ export default function Situations() {
               </div>
               <div className="surface rounded-md p-5">
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Avancement global</span>
+                  <span className="text-muted-foreground">Avanço global</span>
                   <span className="num font-bold text-primary">{summary.totals.pct_global}%</span>
                 </div>
                 <div className="h-3 rounded-full bg-secondary overflow-hidden">
@@ -379,9 +379,9 @@ export default function Situations() {
               <div className="surface rounded-md overflow-hidden" data-testid="avancement-lines">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Lot</th><th className="p-3 text-right">Valor s/ IVA</th>
-                    <th className="p-3 text-center">Avancement</th><th className="p-3 text-right">Faturado s/ IVA</th>
-                    <th className="p-3 text-right">Restant HT</th></tr></thead>
+                    <th className="p-3">Lote</th><th className="p-3 text-right">Valor s/ IVA</th>
+                    <th className="p-3 text-center">Avanço</th><th className="p-3 text-right">Faturado s/ IVA</th>
+                    <th className="p-3 text-right">Restante s/ IVA</th></tr></thead>
                   <tbody>
                     {summary.lines.map((l, i) => (
                       <tr key={i} className="border-b border-border/50">
@@ -417,7 +417,7 @@ export default function Situations() {
                   </div>
                 </div>
                 <div className="text-right ml-auto">
-                  <p className="text-xs text-muted-foreground">Cagnotte prorata totale</p>
+                  <p className="text-xs text-muted-foreground">Bónus pro rata total</p>
                   <p className="num text-2xl font-extrabold text-primary" data-testid="prorata-pot">{eur(prorata.pot)}</p>
                 </div>
                 <Button className="rounded-sm gap-2" onClick={() => saveProrata({ rate_pct: prorata.rate_pct, expenses: prorata.expenses })} data-testid="prorata-save"><CheckCircle2 className="h-4 w-4" /> Guardar</Button>
@@ -428,19 +428,19 @@ export default function Situations() {
                   <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={addExpense} data-testid="prorata-add-expense"><Plus className="h-4 w-4" /> Adicionar</Button></div>
                 {(prorata.expenses || []).map((e, i) => (
                   <div key={i} className="flex items-center gap-2" data-testid={`prorata-exp-${i}`}>
-                    <Input value={e.label} onChange={(ev) => updExpense(i, "label", ev.target.value)} placeholder="Ex. benne, nettoyage, gardiennage" className="rounded-sm h-9 flex-1" />
+                    <Input value={e.label} onChange={(ev) => updExpense(i, "label", ev.target.value)} placeholder="Ex. contentor, limpeza, vigilância" className="rounded-sm h-9 flex-1" />
                     <Input type="number" value={e.amount} onChange={(ev) => updExpense(i, "amount", Number(ev.target.value))} className="rounded-sm h-9 w-28 num" />
                     <Button size="icon" variant="ghost" className="h-9 w-9 text-red-500" onClick={() => rmExpense(i)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
-                <p className="text-xs text-muted-foreground">Despesas manuais: {eur(prorata.manual_total)}. La cagnotte = dépenses + taux du marché, répartie ci-dessous au prorata du montant de chaque lot.</p>
+                <p className="text-xs text-muted-foreground">Despesas manuais: {eur(prorata.manual_total)}. O fundo comum = despesas + taxa da empreitada, distribuído abaixo proporcionalmente ao montante de cada capítulo.</p>
               </div>
 
               <div className="surface rounded-md overflow-hidden" data-testid="prorata-participants">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="p-3">Lot</th><th className="p-3 text-right">Montante lote s/ IVA</th>
-                    <th className="p-3 text-center">Quote-part</th><th className="p-3 text-right">Contribution prorata</th></tr></thead>
+                    <th className="p-3">Lote</th><th className="p-3 text-right">Montante lote s/ IVA</th>
+                    <th className="p-3 text-center">Quota-parte</th><th className="p-3 text-right">Contribuição proporcional</th></tr></thead>
                   <tbody>
                     {prorata.participants.map((p, i) => (
                       <tr key={i} className="border-b border-border/50">
@@ -465,7 +465,7 @@ export default function Situations() {
                 <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center"><ShieldCheck className="h-5 w-5 text-primary" /></div>
                 <div className="min-w-0">
                   <p className="font-semibold">{r.label} <RetStatus s={r.status} /></p>
-                  <p className="text-xs text-muted-foreground">Retenção detida: <b className="text-foreground num">{eur(r.held)}</b>{r.release_due ? `· libertação prevista em${r.release_due}` : "· receção não preenchida"}</p>
+                  <p className="text-xs text-muted-foreground">Retenção detida: <b className="text-foreground num">{eur(r.held)}</b>{r.release_due ? ` · libertação prevista em ${r.release_due}` : " · receção não preenchida"}</p>
                 </div>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   {!r.released && (
@@ -475,7 +475,7 @@ export default function Situations() {
                     </div>
                   )}
                   {!r.released && r.client?.email && (
-                    <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => remindRet(r.marche_id)} data-testid={`retenue-remind-${r.marche_id}`}><Bell className="h-4 w-4" /> Relancer</Button>
+                    <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={() => remindRet(r.marche_id)} data-testid={`retenue-remind-${r.marche_id}`}><Bell className="h-4 w-4" /> Relançar</Button>
                   )}
                   {!r.released ? (
                     <Button size="sm" className="rounded-sm gap-1.5" onClick={() => releaseRet(r.marche_id)} data-testid={`retenue-release-${r.marche_id}`}><CheckCircle2 className="h-4 w-4" /> Liberar</Button>
@@ -501,7 +501,7 @@ export default function Situations() {
               <div className="text-sm space-y-1">
                 <p>Adiantamento recebido por imputar: <b className="num">{eur(dgd.totals.deposit_available_ht)}</b> HT</p>
                 <p>Saldo a faturar: <b className="num text-primary">{eur(dgd.totals.dgd_ht)}</b> HT
-                  {" · "}{eur(dgd.totals.dgd_ttc)} TTC (TVA {dgd.totals.vat_rate}%)</p>
+                  {" · "}{eur(dgd.totals.dgd_ttc)} c/ IVA (IVA {dgd.totals.vat_rate}%)</p>
                 <p>Total devido a título da conta final: <b className="num">{eur(dgd.totals.dgd_due)}</b></p>
               </div>
               {dgd.dgd_doc_id ? (

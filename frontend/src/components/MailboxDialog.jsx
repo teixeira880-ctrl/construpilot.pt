@@ -15,7 +15,7 @@ const PRESETS = {
   outlook: { label: "Outlook / Microsoft 365", host: "smtp.office365.com", port: 587, security: "starttls" },
   ionos: { label: "IONOS", host: "smtp.ionos.fr", port: 465, security: "ssl" },
   ovh: { label: "OVH", host: "ssl0.ovh.net", port: 465, security: "ssl" },
-  other: { label: "Autre (manuel)", host: "", port: 465, security: "ssl" },
+  other: { label: "Outro (manual)", host: "", port: 465, security: "ssl" },
 };
 
 /** Connecte la boîte e-mail de l'entreprise (SMTP) — les devis/factures partent
@@ -80,7 +80,7 @@ export function MailboxDialog({ trigger }) {
     setTesting(true);
     try {
       const { data } = await api.post("/users/me/mailbox/test");
-      toast.success(`E-mail de teste enviado para${data.sent_to}— verifique «Enviados»`);
+      toast.success(`E-mail de teste enviado para ${data.sent_to} — verifique «Enviados»`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Teste falhado");
     } finally { setTesting(false); }
@@ -117,7 +117,7 @@ export function MailboxDialog({ trigger }) {
             )}
           </DialogTitle>
           <DialogDescription>
-            Os seus orçamentos e faturas partirão da sua própria caixa e uma cópia aparecerá automaticamente na sua pasta <b>« Enviados »</b> (comme Obat).
+            Os seus orçamentos e faturas partirão da sua própria caixa e uma cópia aparecerá automaticamente na sua pasta <b>« Enviados »</b> (como Obat).
           </DialogDescription>
         </DialogHeader>
 
@@ -149,13 +149,13 @@ export function MailboxDialog({ trigger }) {
 
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-2 col-span-2">
-              <Label>Serveur SMTP</Label>
+              <Label>Servidor SMTP</Label>
               <Input value={host} onChange={(e) => setHost(e.target.value)}
                      disabled={provider !== "other"} placeholder="smtp.gmail.com"
                      data-testid="mailbox-host-input" className="rounded-sm h-11" />
             </div>
             <div className="grid gap-2">
-              <Label>Port</Label>
+              <Label>Porte</Label>
               <Input value={port} onChange={(e) => setPort(e.target.value)}
                      disabled={provider !== "other"} inputMode="numeric"
                      data-testid="mailbox-port-input" className="rounded-sm h-11 num" />
@@ -163,9 +163,9 @@ export function MailboxDialog({ trigger }) {
           </div>
 
           <div className="grid gap-2">
-            <Label>E-mail (adresse d'envoi)</Label>
+            <Label>E-mail (endereço de envio)</Label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                   placeholder="contact@votre-entreprise.fr"
+                   placeholder="contacto@a-sua-empresa.pt"
                    data-testid="mailbox-email-input" className="rounded-sm h-11" />
           </div>
 
@@ -201,7 +201,7 @@ export function MailboxDialog({ trigger }) {
             </div>
             <Button onClick={save} disabled={busy} className="rounded-sm gap-2 bg-primary" data-testid="mailbox-save-btn">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {configured ? "Atualizar" : "Connecter"}
+              {configured ? "Atualizar" : "Ligar"}
             </Button>
           </div>
         </div>

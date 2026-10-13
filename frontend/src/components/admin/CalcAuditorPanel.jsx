@@ -102,7 +102,7 @@ export default function CalcAuditorPanel() {
       {audit && (
         <p className="text-xs text-muted-foreground">
           Última auditoria: {audit.started_at ? new Date(audit.started_at).toLocaleString("fr-FR") : "—"}
-          {audit.triggered_by ? `· desencadeada por${audit.triggered_by === "scheduler" ? "o agendador (diário)" : "l'administrateur"}` : ""}
+          {audit.triggered_by ? ` · desencadeada por ${audit.triggered_by === "scheduler" ? "o agendador (diário)" : "o administrador"}` : ""}
           {audit.status === "running" ? " · en cours…" : ""}
         </p>
       )}
@@ -119,13 +119,13 @@ export default function CalcAuditorPanel() {
           <table className="w-full text-sm">
             <thead className="bg-secondary/60">
               <tr className="text-left">
-                <th className="p-3 font-semibold">Article</th>
+                <th className="p-3 font-semibold">Artigo</th>
                 <th className="p-3 font-semibold">Un.</th>
                 <th className="p-3 font-semibold text-right">Preço do motor</th>
                 <th className="p-3 font-semibold text-right">Preço de mercado</th>
                 <th className="p-3 font-semibold text-right">Desvio</th>
                 <th className="p-3 font-semibold">Estado</th>
-                <th className="p-3 font-semibold">Sources</th>
+                <th className="p-3 font-semibold">Fontes</th>
               </tr>
             </thead>
             <tbody>

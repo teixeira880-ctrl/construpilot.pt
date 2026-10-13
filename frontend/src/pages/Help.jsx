@@ -64,7 +64,7 @@ function ContactForm() {
       <input type="text" value={form.website} onChange={set("website")} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">Resposta por e-mail em 1 dia útil · <a href="mailto:info@construpilot.fr" className="text-primary hover:underline">info@construpilot.fr</a></p>
-        <Button type="submit" disabled={busy} className="gap-2" data-testid="help-submit"><Send className="h-4 w-4" /> {busy ? "Envoi…" : "Enviar o meu pedido"}</Button>
+        <Button type="submit" disabled={busy} className="gap-2" data-testid="help-submit"><Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o meu pedido"}</Button>
       </div>
     </form>
   );
@@ -75,7 +75,7 @@ export default function Help() {
   const [open, setOpen] = useState(0);
   const openChat = () => window.dispatchEvent(new CustomEvent("cp:open-help"));
   const links = [
-    { icon: MessageCircle, title: "Assistant en ligne", desc: "Resposta imediata às perguntas sobre a utilização do ConstruPilot.", action: <Button size="sm" onClick={openChat} data-testid="help-open-chat">Abrir o chat</Button> },
+    { icon: MessageCircle, title: "Assistente online", desc: "Resposta imediata às perguntas sobre a utilização do ConstruPilot.", action: <Button size="sm" onClick={openChat} data-testid="help-open-chat">Abrir o chat</Button> },
     { icon: Bot, title: "Assistente Construção (IA especializada)", desc: "Orçamentos, regulamentação, leitura de plantas, processo de obra — para profissionais com sessão iniciada.", action: <Button size="sm" variant="outline" asChild data-testid="help-open-assistant"><Link to={user ? "/assistant" : "/login?next=/assistant"}>/assistant</Link></Button> },
     { icon: KeyRound, title: "Espaço do cliente e subempreiteiro", desc: "Foi convidado para uma obra? Inicie sessão com o identificador recebido.", action: <Button size="sm" variant="outline" asChild data-testid="help-open-portal"><Link to="/espace">/espace</Link></Button> },
     { icon: Mail, title: "E-mail", desc: "Para qualquer questão comercial, de faturação ou de dados pessoais.", action: <Button size="sm" variant="outline" asChild data-testid="help-mailto"><a href="mailto:info@construpilot.fr">info@construpilot.fr</a></Button> },
@@ -84,7 +84,7 @@ export default function Help() {
     <div className="grid gap-10 max-w-5xl" data-testid="help-page">
       <SEO title="Ajuda e assistência ConstruPilot" description="Centro de ajuda ConstruPilot: perguntas frequentes, assistente online, espaço do cliente e formulário de contacto com resposta em 1 dia útil." path="/aide" />
       <header className="grid gap-3">
-        <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold flex items-center gap-2"><LifeBuoy className="h-4 w-4" /> Assistance</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold flex items-center gap-2"><LifeBuoy className="h-4 w-4" /> Assistência</p>
         <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-tight">Como podemos ajudar?</h1>
         <p className="text-base text-muted-foreground max-w-2xl">Um assistente online para as perguntas imediatas, uma FAQ para o essencial e uma equipa que responde por e-mail em 1 dia útil.</p>
       </header>

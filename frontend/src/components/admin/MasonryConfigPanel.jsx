@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 const RATIOS = [
-  { key: "loss_pct", label: "Pertes / casse", unit: "%", step: 0.5 },
-  { key: "cement_kg_per_m2", label: "Ciment (mortier traditionnel)", unit: "kg / m²", step: 0.5 },
-  { key: "sand_m3_per_m2", label: "Sable (mortier traditionnel)", unit: "m³ / m²", step: 0.005 },
-  { key: "glue_kg_per_m2", label: "Mortier-colle joint mince", unit: "kg / m²", step: 0.5 },
-  { key: "foam_m2_per_can", label: "Mousse PU — rendement", unit: "m² / cartouche", step: 0.5 },
-  { key: "gobetis_kg_per_m2", label: "Gobetis d'accroche", unit: "kg / m²", step: 0.5 },
+  { key: "loss_pct", label: "Perdas / quebras", unit: "%", step: 0.5 },
+  { key: "cement_kg_per_m2", label: "Cimento (argamassa tradicional)", unit: "kg / m²", step: 0.5 },
+  { key: "sand_m3_per_m2", label: "Areia (argamassa tradicional)", unit: "m³ / m²", step: 0.005 },
+  { key: "glue_kg_per_m2", label: "Argamassa-cola junta fina", unit: "kg / m²", step: 0.5 },
+  { key: "foam_m2_per_can", label: "Espuma PU — rendimento", unit: "m² / cartucho", step: 0.5 },
+  { key: "gobetis_kg_per_m2", label: "Chapisco de aderência", unit: "kg / m²", step: 0.5 },
   { key: "render_kg_per_m2", label: "Corpo de reboco de fachada", unit: "kg / m²", step: 0.5 },
 ];
 
@@ -108,7 +108,7 @@ export default function MasonryConfigPanel() {
               <tr className="text-left text-muted-foreground border-b border-border">
                 <th className="py-2 pr-3 font-medium">Descrição</th>
                 <th className="py-2 pr-3 font-medium">Material</th>
-                <th className="py-2 pr-3 font-medium">Blocs / m²</th>
+                <th className="py-2 pr-3 font-medium">Blocos / m²</th>
                 <th className="py-2 pr-3 font-medium">Preço unit. (€)</th>
                 <th className="py-2 pr-3 font-medium">Pesquisa de fornecedor</th>
                 <th className="py-2" />
@@ -119,13 +119,13 @@ export default function MasonryConfigPanel() {
                 <tr key={b.key || i} className="border-b border-border/40" data-testid={`admin-masonry-block-row-${i}`}>
                   <td className="py-1.5 pr-3 min-w-[200px]">
                     <Input value={b.label} onChange={(e) => setBlock(i, { label: e.target.value })}
-                      placeholder="Parpaing creux 20×20×50" className="h-8" data-testid={`admin-masonry-block-label-${i}`} />
+                      placeholder="Bloco furado 20×20×50" className="h-8" data-testid={`admin-masonry-block-label-${i}`} />
                   </td>
                   <td className="py-1.5 pr-3">
                     <select value={b.material} onChange={(e) => setBlock(i, { material: e.target.value })}
                       className="h-8 rounded-md border border-border bg-background px-2" data-testid={`admin-masonry-block-material-${i}`}>
-                      <option value="parpaing">Parpaing</option>
-                      <option value="brique">Brique</option>
+                      <option value="parpaing">Bloco de betão</option>
+                      <option value="brique">Tijolo</option>
                     </select>
                   </td>
                   <td className="py-1.5 pr-3 w-28">
@@ -138,7 +138,7 @@ export default function MasonryConfigPanel() {
                   </td>
                   <td className="py-1.5 pr-3 min-w-[200px]">
                     <Input value={b.search || ""} onChange={(e) => setBlock(i, { search: e.target.value })}
-                      placeholder="parpaing creux 20x20x50" className="h-8" data-testid={`admin-masonry-block-search-${i}`} />
+                      placeholder="bloco furado 20x20x50" className="h-8" data-testid={`admin-masonry-block-search-${i}`} />
                   </td>
                   <td className="py-1.5">
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => delBlock(i)} data-testid={`admin-masonry-block-delete-${i}`}>

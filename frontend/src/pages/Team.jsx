@@ -50,7 +50,7 @@ export default function Team() {
   }
 
   const create = async () => {
-    if (newName.trim().length < 2) return toast.error("Nom trop court");
+    if (newName.trim().length < 2) return toast.error("Nome demasiado curto");
     setBusy(true);
     try {
       await api.post("/organizations", { name: newName.trim() });
@@ -63,7 +63,7 @@ export default function Team() {
   };
 
   const join = async () => {
-    if (joinCode.trim().length < 4) return toast.error("Code invalide");
+    if (joinCode.trim().length < 4) return toast.error("Código inválido");
     setBusy(true);
     try {
       await api.post("/organizations/join", { code: joinCode.trim().toUpperCase() });
@@ -87,7 +87,7 @@ export default function Team() {
   };
 
   const removeMember = async (uid, name) => {
-    if (!window.confirm(`Retirer ${name || uid}da equipa?`)) return;
+    if (!window.confirm(`Remover ${name || uid} da equipa?`)) return;
     try {
       await api.delete(`/organizations/members/${uid}`);
       toast.success("Membro removido");
@@ -99,12 +99,12 @@ export default function Team() {
 
   const transferOwnership = async (uid, name) => {
     if (!window.confirm(
-      `Transferir a propriedade da equipa para${name || uid} ?\n\n` +
+      `Transferir a propriedade da equipa para ${name || uid} ?\n\n` +
       `Passará a admin. Esta ação só é reversível se o novo proprietário lhe voltar a transferir a propriedade.`
     )) return;
     try {
       await api.post("/organizations/transfer-ownership", { new_owner_user_id: uid });
-      toast.success(`Propriedade transferida para${name}`);
+      toast.success(`Propriedade transferida para ${name}`);
       await refresh();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Transferência impossível");
@@ -112,13 +112,13 @@ export default function Team() {
   };
 
   const invite = async () => {
-    if (!/@/.test(inviteEmail)) return toast.error("Email invalide");
+    if (!/@/.test(inviteEmail)) return toast.error("E-mail inválido");
     setBusy(true);
     try {
       const { data } = await api.post("/organizations/invite",
         { email: inviteEmail.trim(), role: inviteRole });
       toast.success(data.email_status === "sent"
-        ? `Convite enviado para${inviteEmail}`
+        ? `Convite enviado para ${inviteEmail}`
         : `Código comunicado: partilhe-o manualmente`);
       setOpenInvite(false); setInviteEmail("");
     } catch (e) {
@@ -206,10 +206,10 @@ export default function Team() {
               <DialogContent className="rounded-sm">
                 <DialogHeader>
                   <DialogTitle>Aderir a uma organização</DialogTitle>
-                  <DialogDescription>Format : 4 lettres - 4 chiffres (ex : ABCD-1234).</DialogDescription>
+                  <DialogDescription>Formato: 4 letras - 4 algarismos (ex.: ABCD-1234).</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-2">
-                  <Label>Code d'invitation</Label>
+                  <Label>Código de convite</Label>
                   <Input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                     maxLength={16} placeholder="ABCD-1234"
                     data-testid="team-join-code" className="rounded-sm h-11 num tracking-widest" />
@@ -220,7 +220,7 @@ export default function Team() {
                   </Button>
                   <Button onClick={join} disabled={busy} data-testid="team-join-confirm"
                     className="rounded-sm hover:bg-orange-600 hover:text-white">
-                    Rejoindre
+                    Aderir
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -235,7 +235,7 @@ export default function Team() {
   const isAdmin = state.role === "owner" || state.role === "admin";
   return (
     <div className="grid gap-10">
-      <SectionTitle over={`Organisation · ${state.role}`} title={state.name}>
+      <SectionTitle over={`Organização · ${state.role}`} title={state.name}>
         A sua equipa utiliza uma identidade visual comum em todas as exportações PDF.
       </SectionTitle>
 
@@ -243,7 +243,7 @@ export default function Team() {
         <div className="surface p-6 grid gap-3" data-testid="team-code-card">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <p className="overline">Code d'invitation</p>
+            <p className="overline">Código de convite</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge className="rounded-sm bg-primary text-primary-foreground num tracking-widest text-lg py-2 px-4"
@@ -263,7 +263,7 @@ export default function Team() {
         <div className="surface p-6 grid gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            <p className="overline">Membres</p>
+            <p className="overline">Membros</p>
           </div>
           <p className="num font-display text-3xl font-extrabold" data-testid="team-member-count">
             {state.member_count}
@@ -282,7 +282,7 @@ export default function Team() {
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="team-invite-btn"
                           className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                    <Mail className="h-3 w-3" /> Inviter
+                    <Mail className="h-3 w-3" /> Convidar
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-sm">
@@ -312,7 +312,7 @@ export default function Team() {
             )}
             <Button size="sm" variant="outline" onClick={leave} data-testid="team-leave-btn"
                     className="rounded-sm gap-2 text-destructive">
-              <LogOut className="h-3 w-3" /> Quitter
+              <LogOut className="h-3 w-3" /> Sair
             </Button>
           </div>
         </div>
@@ -339,7 +339,7 @@ export default function Team() {
                 </div>
                 <p className="text-xs text-muted-foreground num">
                   {m.email}
-                  {m.joined_org_at && `· aderiu em${new Date(m.joined_org_at).toLocaleDateString("fr-FR")}`}
+                  {m.joined_org_at && ` · aderiu em ${new Date(m.joined_org_at).toLocaleDateString("fr-FR")}`}
                 </p>
               </div>
               {isAdmin && m.org_role !== "owner" && m.user_id !== user.user_id && (
@@ -355,7 +355,7 @@ export default function Team() {
                   <Button size="sm" variant="ghost" onClick={() => removeMember(m.user_id, m.name)}
                           data-testid={`team-remove-${m.user_id}`}
                           className="rounded-sm gap-1 text-destructive">
-                    <Trash2 className="h-3 w-3" /> Retirer
+                    <Trash2 className="h-3 w-3" /> Remover
                   </Button>
                 </div>
               )}

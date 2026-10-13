@@ -17,8 +17,8 @@ import { usePostalCopy } from "./postalCopy";
 import { BrandingDialog } from "@/components/BrandingDialog";
 
 const MODES = [
-  { v: "normal", label: "Lettre simple" },
-  { v: "suivi", label: "Lettre suivie" },
+  { v: "normal", label: "Carta simples" },
+  { v: "suivi", label: "Carta registada" },
   { v: "lrar", label: "Registado (LRAR)" },
 ];
 
@@ -79,7 +79,7 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
       const { data } = await api.post(`/radar/prospection/${campaign.token}/postal`, payload, { timeout: 55000 });
       setSends((s) => [data, ...s]);
       setApprovedQuote(null);
-      if (data.status === "submitted") { setLocked(true); toast.success(`Carta aceite pela Merci Facteur (n.º${data.envoi_id})`); }
+      if (data.status === "submitted") { setLocked(true); toast.success(`Carta aceite pela Merci Facteur (n.º ${data.envoi_id})`); }
       else { setLocked(true); setSendError(data.error_message || "Envio a verificar antes de qualquer nova tentativa."); }
     } catch (e) {
       setSendError(postalError(e)); setApprovedQuote(null);
@@ -97,7 +97,7 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
       setLocked(needsCheck);
       if (!needsCheck) { setApprovedQuote(null); setSendError(""); refreshPrice(); }
       offerState.refresh();
-    } catch { toast.error("Suivi indisponible"); }
+    } catch { toast.error("Acompanhamento indisponível"); }
   };
 
   return (
@@ -112,19 +112,19 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
         <fieldset disabled={busy} className="space-y-3 min-w-0">
         <PostalDestination destination={destination} edited={edited} onChange={changeDestination} complete={completePostalAddress(form)} />
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <label className="col-span-2">Destinataire *
+          <label className="col-span-2">Destinatário *
             <Input value={form.nom} onChange={set("nom")} className="h-9 mt-1" data-testid="postal-nom" /></label>
           <label className="col-span-2">Empresa (opcional)
             <Input value={form.societe} onChange={set("societe")} className="h-9 mt-1" data-testid="postal-societe" /></label>
-          <label className="col-span-2">Adresse *
+          <label className="col-span-2">Morada *
             <Input value={form.adresse1} onChange={set("adresse1")} placeholder="N.º e via" className="h-9 mt-1" data-testid="postal-adresse1" /></label>
           <label className="col-span-2">Complemento
             <Input value={form.adresse2} onChange={set("adresse2")} className="h-9 mt-1" data-testid="postal-adresse2" /></label>
-          <label>Code postal *
+          <label>Código postal *
             <Input value={form.cp} onChange={set("cp")} className="h-9 mt-1 num" data-testid="postal-cp" /></label>
-          <label>Ville *
+          <label>Cidade *
             <Input value={form.ville} onChange={set("ville")} className="h-9 mt-1" data-testid="postal-ville" /></label>
-          <label className="col-span-2">Mode d'envoi
+          <label className="col-span-2">Modo de envio
             <select value={mode} onChange={(e) => setMode(e.target.value)} data-testid="postal-mode"
               className="h-9 mt-1 w-full rounded-md border border-border bg-background px-2 text-sm">
               {MODES.map((m) => <option key={m.v} value={m.v}>{m.label}</option>)}
@@ -147,9 +147,9 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
         {sends.length > 0 && (
           <div className="border-t border-border pt-3" data-testid="postal-history">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-bold flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> Envois postaux ({sends.length})</p>
+              <p className="text-xs font-bold flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> Envios postais ({sends.length})</p>
               <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={refresh} data-testid="postal-refresh">
-                <RefreshCw className="h-3 w-3" /> Suivi
+                <RefreshCw className="h-3 w-3" /> Acompanhamento
               </Button>
             </div>
             <ul className="text-xs max-h-48 overflow-y-auto">

@@ -39,7 +39,7 @@ export default function Chantiers() {
 
       <div className="workspace-collection-toolbar">
         <div className="workspace-search-field flex-1 min-w-56"><Search size={17} aria-hidden="true" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar uma obra, um cliente, uma cidade…" aria-label="Pesquisar" data-testid="chantiers-search" /></div>
-        <div className="workspace-status-filters" role="group" aria-label="Filtrer par statut">
+        <div className="workspace-status-filters" role="group" aria-label="Filtrar por estado">
           {[["", "Todos"], ...Object.entries(CHANTIER_STATUS)].map(([v, l]) => (
             <button key={v} type="button" aria-pressed={status === v} onClick={() => setStatus(v)} data-testid={`chantiers-filter-${v || "all"}`}
               className={`px-3 h-9 rounded-md border text-sm transition-colors ${status === v ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}>{l}</button>
@@ -51,7 +51,7 @@ export default function Chantiers() {
       {state === "ready" && items.length === 0 && (
         <div className="surface p-10 text-center" data-testid="chantiers-empty">
           <HardHat className="h-10 w-10 mx-auto text-primary/60" />
-          <h2 className="font-semibold mt-3">Nenhum processo de obra{q || status ? "para este filtro" : ""}</h2>
+          <h2 className="font-semibold mt-3">Nenhum processo de obra{q || status ? " para este filtro" : ""}</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Crie o seu primeiro processo: depois encontrará o cliente pré-preenchido no orçamento, no editor de plantas, na análise Pro e no solucionador.</p>
           {!q && !status && <Button className="mt-4 gap-2" onClick={() => setOpen(true)} data-testid="chantiers-empty-new"><Plus className="h-4 w-4" /> Criar uma obra</Button>}
         </div>
@@ -67,10 +67,10 @@ export default function Chantiers() {
               </div>
               <div className="workspace-site-counts">
                 <Count icon={FileText} n={c.counts.documents} title="Orçamentos e faturas" label="docs" />
-                <Count icon={Ruler} n={c.counts.plans} title="Plans" label="plans" />
+                <Count icon={Ruler} n={c.counts.plans} title="Plantas" label="plans" />
                 {c.counts.plans_pro > 0 && <Count icon={Layers} n={c.counts.plans_pro} title="Analyses Pro" label="analyses" />}
-                {c.counts.diagnostics > 0 && <Count icon={Wrench} n={c.counts.diagnostics} title="Diagnostics" label="diagnostics" />}
-                {c.counts.reports > 0 && <Count icon={Camera} n={c.counts.reports} title="Comptes rendus" label="rapports" />}
+                {c.counts.diagnostics > 0 && <Count icon={Wrench} n={c.counts.diagnostics} title="Diagnósticos" label="diagnostics" />}
+                {c.counts.reports > 0 && <Count icon={Camera} n={c.counts.reports} title="Relatórios" label="rapports" />}
               </div>
               <Badge variant="outline" className={`rounded-sm text-[10px] ${STATUS_CLASS[c.status] || ""}`} data-testid={`chantier-status-${c.chantier_id}`}>{CHANTIER_STATUS[c.status] || c.status}</Badge>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />

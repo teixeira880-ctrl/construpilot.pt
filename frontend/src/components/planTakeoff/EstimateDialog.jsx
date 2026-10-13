@@ -37,13 +37,13 @@ export function EstimateDialog({
                   <SelectItem value="renovation_partielle">Renovação parcial</SelectItem>
                   <SelectItem value="renovation_energetique">Renovação energética</SelectItem>
                   <SelectItem value="salle_de_bain">Casa de banho</SelectItem>
-                  <SelectItem value="cuisine">Cuisine</SelectItem>
-                  <SelectItem value="construction_neuve">Construction neuve</SelectItem>
+                  <SelectItem value="cuisine">Cozinha</SelectItem>
+                  <SelectItem value="construction_neuve">Construção nova</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-1">
-              <Label className="text-xs">Gamme finition</Label>
+              <Label className="text-xs">Gama de acabamento</Label>
               <Select value={estFinishLevel} onValueChange={setEstFinishLevel}>
                 <SelectTrigger data-testid="estimate-finish" className="rounded-sm h-10">
                   <SelectValue />
@@ -61,7 +61,7 @@ export function EstimateDialog({
                     data-testid="estimate-run-btn"
                     className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <Sparkles className="h-4 w-4" />
-              {estimateBusy ? "Estimation en cours…" : "Lancer l'estimation"}
+              {estimateBusy ? "Estimativa em curso…" : "Iniciar a estimativa"}
             </Button>
           )}
           {estimateResult && (
@@ -83,13 +83,13 @@ export function EstimateDialog({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Lots</p>
+                  <p className="text-[10px] text-muted-foreground">Capítulos</p>
                   <p className="num font-display text-2xl font-extrabold">
                     {estimateResult?.estimation?.lots?.length ?? 0}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Estimation moyenne</p>
+                  <p className="text-[10px] text-muted-foreground">Estimativa média</p>
                   <p className="num font-display text-xl font-extrabold text-primary">
                     {estimateResult?.estimation?.total_avg?.toLocaleString("fr-FR") ?? "—"} €
                   </p>
@@ -102,7 +102,7 @@ export function EstimateDialog({
                 </div>
               </div>
               <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
-                Fourchette : {estimateResult?.estimation?.total_min?.toLocaleString("fr-FR") ?? "—"} €
+                Intervalo: {estimateResult?.estimation?.total_min?.toLocaleString("fr-FR") ?? "—"} €
                 → {estimateResult?.estimation?.total_max?.toLocaleString("fr-FR") ?? "—"} € · Duração estimada: {estimateResult?.estimation?.duration_weeks ?? "—"} semaine(s)
               </p>
             </div>

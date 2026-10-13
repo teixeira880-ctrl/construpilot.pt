@@ -6,13 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { api } from "@/lib/api";
 
 const SEV = {
-  error: { icon: AlertCircle, cls: "text-red-600 dark:text-red-400", bg: "bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/30", label: "Bloquant" },
+  error: { icon: AlertCircle, cls: "text-red-600 dark:text-red-400", bg: "bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/30", label: "Bloqueante" },
   warning: { icon: AlertTriangle, cls: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30", label: "A verificar" },
   info: { icon: Info, cls: "text-sky-600 dark:text-sky-400", bg: "bg-sky-50 border-sky-200 dark:bg-sky-500/10 dark:border-sky-500/30", label: "Information" },
 };
 const CAT_LABEL = {
-  doublon: "Doublon", coherence: "Coerência", marge: "Marge", tva: "TVA",
-  metre: "Medição da obra", poste_manquant: "Poste manquant", ambiguite: "Ambiguidade",
+  doublon: "Duplicado", coherence: "Coerência", marge: "Margem", tva: "IVA",
+  metre: "Medição da obra", poste_manquant: "Artigo em falta", ambiguite: "Ambiguidade",
 };
 
 export function QuoteCheckPanel({ open, onOpenChange, buildPayload, onFocusLine, onApplyFix, docId }) {
@@ -100,7 +100,7 @@ export function QuoteCheckPanel({ open, onOpenChange, buildPayload, onFocusLine,
           <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
             <div className="flex items-center gap-3 rounded-sm bg-secondary/30 px-3 py-2 text-sm" data-testid="quote-check-summary">
               <span className="font-medium">{result.checked_lines} linha(s) controlada(s)</span>
-              <span className="text-red-600">{result.counts.error} bloquant(s)</span>
+              <span className="text-red-600">{result.counts.error} bloqueante(s)</span>
               <span className="text-amber-600">{result.counts.warning} a verificar</span>
               <span className="text-sky-600">{result.counts.info} info</span>
               {result.ai_used && <span className="ml-auto text-[10px] uppercase tracking-wide text-primary">+ analyse IA</span>}
@@ -134,18 +134,18 @@ export function QuoteCheckPanel({ open, onOpenChange, buildPayload, onFocusLine,
                           <button key={li} type="button" onClick={() => { onFocusLine?.(li); onOpenChange(false); }}
                                   className="inline-flex items-center gap-0.5 text-xs rounded-sm border bg-white dark:bg-white/10 text-slate-700 dark:text-slate-100 px-2 py-0.5 hover:bg-primary/5"
                                   data-testid={`quote-check-goto-${a.id}-${li}`}>
-                            Ligne {li + 1} <ChevronRight className="h-3 w-3" />
+                            Linha {li + 1} <ChevronRight className="h-3 w-3" />
                           </button>
                         ))}
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {a.fix && (
                           <Button size="sm" className="h-7 rounded-sm gap-1 text-xs" onClick={() => applyFix(a)} data-testid={`quote-check-fix-${a.id}`}>
-                            <Wrench className="h-3.5 w-3.5" /> Corriger
+                            <Wrench className="h-3.5 w-3.5" /> Corrigir
                           </Button>
                         )}
                         <Button size="sm" variant="outline" className="h-7 rounded-sm gap-1 text-xs" onClick={() => mark(a, "elsewhere")} data-testid={`quote-check-elsewhere-${a.id}`}>
-                          Inclus ailleurs
+                          Incluído noutro lado
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 rounded-sm gap-1 text-xs text-muted-foreground" onClick={() => dismissWithReason(a)} data-testid={`quote-check-dismiss-${a.id}`}>
                           <XCircle className="h-3.5 w-3.5" /> Afastar com motivo
@@ -162,7 +162,7 @@ export function QuoteCheckPanel({ open, onOpenChange, buildPayload, onFocusLine,
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Tratadas ({done.length})</p>
                 {done.map((a) => {
                   const h = handled[a.key];
-                  const label = h.status === "fixed" ? "Corrigido" : h.status === "elsewhere" ? "Inclus ailleurs" : `Afastado${h.reason ? " — " + h.reason : ""}`;
+                  const label = h.status === "fixed" ? "Corrigido" : h.status === "elsewhere" ? "Incluído noutro lado" : `Afastado${h.reason ? " — " + h.reason : ""}`;
                   return (
                     <div key={a.id} className="flex items-center gap-2 text-xs text-muted-foreground py-1" data-testid={`quote-check-handled-${a.id}`}>
                       <CheckCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />

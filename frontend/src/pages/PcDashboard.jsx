@@ -10,13 +10,13 @@ const STATUS_STYLE = {
   "saldada": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
   "sinal pago": "bg-violet-500/15 text-violet-600 border-violet-500/40",
   "aceite": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
-  "ouverte": "bg-sky-500/15 text-sky-600 border-sky-500/40",
+  "aberta": "bg-sky-500/15 text-sky-600 border-sky-500/40",
   "relançada": "bg-amber-500/15 text-amber-600 border-amber-500/40",
   "enviada": "bg-primary/10 text-primary border-primary/40",
   "gerada": "bg-muted text-muted-foreground border-border",
 };
 const STATUS_ICON = {
-  "saldada": BadgeCheck, "sinal pago": CreditCard, "aceite": CheckCircle2, "ouverte": Eye,
+  "saldada": BadgeCheck, "sinal pago": CreditCard, "aceite": CheckCircle2, "aberta": Eye,
   "relançada": BellRing, "enviada": Send, "gerada": FileStack,
 };
 
@@ -35,7 +35,7 @@ export default function PcDashboard() {
     setReportBusy(true);
     try {
       const { data } = await api.post("/pc/weekly-report/send-me");
-      toast.success(`Relatório enviado a${data.sent_to} (${data.studies}estudos)`);
+      toast.success(`Relatório enviado a ${data.sent_to} (${data.studies} estudos)`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setReportBusy(false); }
   };
@@ -62,7 +62,7 @@ export default function PcDashboard() {
         <Button variant="outline" size="sm" onClick={sendReportNow} disabled={reportBusy}
                 className="rounded-sm gap-2" data-testid="pc-dash-weekly-report-btn">
           <Mail className="h-3.5 w-3.5" />
-          {reportBusy ? "Envoi…" : "Enviar-me o relatório semanal"}
+          {reportBusy ? "A enviar…" : "Enviar-me o relatório semanal"}
         </Button>
       </header>
 
@@ -86,7 +86,7 @@ export default function PcDashboard() {
             Nenhum estudo PC por enquanto — abra um plano e clique «Estudo PC».
           </p>
           <Button onClick={() => nav("/plan")} className="rounded-sm" data-testid="pc-dashboard-goto-plan">
-            Ouvrir Mesurer
+            Abrir Medir
           </Button>
         </div>
       ) : (
@@ -97,8 +97,8 @@ export default function PcDashboard() {
               <th className="p-2">Gerada a</th>
               <th className="p-2 text-right">Betão</th>
               <th className="p-2 text-right">Total c/ IVA</th>
-              <th className="p-2">Statut</th>
-              <th className="p-2 text-right">Envois / BC</th>
+              <th className="p-2">Estado</th>
+              <th className="p-2 text-right">Envios / BC</th>
               <th className="p-2"></th>
             </tr>
           </thead>
@@ -134,7 +134,7 @@ export default function PcDashboard() {
                     <Button variant="outline" size="sm" className="rounded-sm h-7 text-xs"
                             onClick={() => nav(`/plan?open=${s.plan_id}`)}
                             data-testid={`pc-dash-row-${i}-open`}>
-                      Ouvrir
+                      Abrir
                     </Button>
                   </td>
                 </tr>

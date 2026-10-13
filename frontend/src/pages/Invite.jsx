@@ -10,7 +10,7 @@ import { SectionTitle } from "@/components/Bits";
 
 const SHARE_TEXT = (code) =>
   `Acabei de testar o ConstruPilot para estimar as minhas obras 🛠️\n\n` +
-  `Com o meu código de referência${code}, recebes 5 € de oferta na tua primeira compra 👇`;
+  `Com o meu código de referência ${code}, recebes 5 € de oferta na tua primeira compra 👇`;
 
 export default function Invite() {
   const { user } = useAuth();
@@ -30,8 +30,8 @@ export default function Invite() {
   const link = `${window.location.origin}/inscription?ref=${code}`;
   const text = SHARE_TEXT(code);
 
-  const copy = async (v, label = "Lien") => {
-    try { await navigator.clipboard.writeText(v); setCopied(true); setTimeout(() => setCopied(false), 1500); toast.success(label + "copiado"); }
+  const copy = async (v, label = "Ligação") => {
+    try { await navigator.clipboard.writeText(v); setCopied(true); setTimeout(() => setCopied(false), 1500); toast.success(label + " copiado"); }
     catch { toast.error("Cópia impossível"); }
   };
 
@@ -61,7 +61,7 @@ export default function Invite() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Parrainage ConstruPilot" title="Invitez, gagnez 5 € par filleul converti">
+      <SectionTitle over="Recomendação ConstruPilot" title="Convide, ganhe 5 € por indicado convertido">
         Envie a sua ligação a um amigo em plena renovação. Ele obtém <b className="text-primary">5 € de desconto</b> na sua primeira compra, recupera <b className="text-primary">5 € de crédito</b> ConstruPilot desde a sua conversão.
       </SectionTitle>
 
@@ -70,7 +70,7 @@ export default function Invite() {
           <div className="flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /><p className="overline">O seu código</p></div>
           <div className="flex items-center gap-2">
             <Badge className="rounded-sm bg-primary text-primary-foreground num tracking-widest text-lg py-2 px-4" data-testid="invite-code">{code}</Badge>
-            <Button size="sm" variant="outline" onClick={() => copy(code, "Code")} className="rounded-sm gap-1"><Copy className="h-3 w-3" /></Button>
+            <Button size="sm" variant="outline" onClick={() => copy(code, "Código")} className="rounded-sm gap-1"><Copy className="h-3 w-3" /></Button>
           </div>
         </div>
         <div className="surface p-6 grid gap-3">
@@ -102,8 +102,8 @@ export default function Invite() {
           <Button variant="outline" onClick={() => share("email")} data-testid="share-email" className="rounded-sm gap-2">
             <Mail className="h-4 w-4" /> Email
           </Button>
-          <Button variant="outline" onClick={() => copy(link, "Lien")} data-testid="share-copy" className="rounded-sm gap-2">
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Copier
+          <Button variant="outline" onClick={() => copy(link, "Ligação")} data-testid="share-copy" className="rounded-sm gap-2">
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Copiar
           </Button>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function Invite() {
         <p className="overline">Enviar por email aos meus contactos</p>
         <div className="flex flex-wrap gap-2">
           <Input value={emails} onChange={(e) => setEmails(e.target.value)}
-                 placeholder="marie@example.com, paul@example.com, sophie@…"
+                 placeholder="maria@exemplo.pt, paulo@exemplo.pt, sofia@…"
                  data-testid="invite-emails" className="rounded-sm flex-1 min-w-[280px]" />
           <Button onClick={sendEmails} disabled={busy} data-testid="invite-send-emails" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <Send className="h-4 w-4" /> Enviar

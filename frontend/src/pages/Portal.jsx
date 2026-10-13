@@ -47,7 +47,7 @@ export function PortalLogin() {
       {null}
       <form onSubmit={submit} className="max-w-md mx-auto w-full rounded-2xl border bg-[#fffaf3] p-6 grid gap-4 mt-8" data-testid="portal-login-form">
         <div><h1 className="text-xl font-semibold flex items-center gap-2"><KeyRound className="h-5 w-5 text-emerald-700" /> Aceder à minha obra</h1>
-          <p className="text-sm text-slate-600 mt-1">{step === "login" ? "Introduza o identificador da obra (recebido por e-mail) e o seu endereço de e-mail: ser-lhe-á enviado um código." : `Foi enviado um código de 6 dígitos para${form.email} (valable 10 min).`}</p></div>
+          <p className="text-sm text-slate-600 mt-1">{step === "login" ? "Introduza o identificador da obra (recebido por e-mail) e o seu endereço de e-mail: ser-lhe-á enviado um código." : `Foi enviado um código de 6 dígitos para ${form.email} (válido 10 min).`}</p></div>
         {step === "login" ? <>
           <label className="text-sm grid gap-1">Identificador da obra<input className={`${field} font-mono uppercase`} value={form.ref} onChange={set("ref")} placeholder="CP-XXXX-XXXX" required data-testid="portal-ref" /></label>
           <label className="text-sm grid gap-1">O seu e-mail<input type="email" className={field} value={form.email} onChange={set("email")} required data-testid="portal-email" /></label>
@@ -71,7 +71,7 @@ export function PortalAccept() {
     if (fired.current) return;
     fired.current = true;
     portalApi.post(`/accept/${token}`).then(({ data }) => nav(`/espace/${data.participant.chantier_ref}`, { replace: true }))
-      .catch((e) => setError(detail(e, "Lien invalide")));
+      .catch((e) => setError(detail(e, "Ligação inválida")));
   }, [token, nav]);
   return (
     <Frame company={null}>{null}
@@ -83,7 +83,7 @@ export function PortalAccept() {
   );
 }
 
-const MS = { planned: [Circle, "text-slate-400", "Previsto"], in_progress: [Clock, "text-amber-600", "En cours"], done: [CheckCircle2, "text-emerald-600", "Terminado"], late: [AlertTriangle, "text-red-600", "En retard"] };
+const MS = { planned: [Circle, "text-slate-400", "Previsto"], in_progress: [Clock, "text-amber-600", "Em curso"], done: [CheckCircle2, "text-emerald-600", "Terminado"], late: [AlertTriangle, "text-red-600", "En retard"] };
 
 export function PortalChantier() {
   const { ref } = useParams();
@@ -111,20 +111,20 @@ export function PortalChantier() {
   const others = (me?.chantiers || []).filter((c) => c.available);
   const canDocs = participant.role === "client" && (participant.permissions?.quotes || participant.permissions?.invoices);
   const canRecept = participant.role === "client";
-  const tabs = [["progress", "Avancement", TrendingUp, true], ["documents", "Orçamentos e faturas", FileText, !!canDocs], ["receptions", "Receção", ClipboardCheck, !!canRecept], ["messages", "Messages", MessageSquare, !!participant.permissions?.chat], ["issues", "Problemas", AlertTriangle, !!participant.permissions?.report_issue]].filter((t) => t[3]);
+  const tabs = [["progress", "Avanço", TrendingUp, true], ["documents", "Orçamentos e faturas", FileText, !!canDocs], ["receptions", "Receção", ClipboardCheck, !!canRecept], ["messages", "Mensagens", MessageSquare, !!participant.permissions?.chat], ["issues", "Problemas", AlertTriangle, !!participant.permissions?.report_issue]].filter((t) => t[3]);
   const tab = tabs.some(t => t[0] === requestedTab) ? requestedTab : "progress";
   return (
     <Frame company={company}>
       <div className="ms-auto flex flex-wrap justify-end items-center gap-2 min-w-0">
         {others.length > 1 && <div className="relative"><select value={me.participant.participant_id} onChange={(e) => switchTo(e.target.value)} className="text-xs rounded-md border px-2 py-1.5 pr-6 max-w-[160px] bg-[#fffaf3]" data-testid="portal-switch">{others.map((c) => <option key={c.participant_id} value={c.participant_id}>{`${c.name} · ${c.ref}`}</option>)}</select><ChevronDown className="h-3 w-3 absolute right-2 top-2.5 pointer-events-none" /></div>}
-        <button type="button" onClick={logout} className="text-xs inline-flex items-center gap-1 text-slate-500 hover:text-slate-900" data-testid="portal-logout"><LogOut className="h-3.5 w-3.5" /> Quitter</button>
+        <button type="button" onClick={logout} className="text-xs inline-flex items-center gap-1 text-slate-500 hover:text-slate-900" data-testid="portal-logout"><LogOut className="h-3.5 w-3.5" /> Sair</button>
       </div>
       <>
         <section className="rounded-2xl border bg-[#fffaf3] p-5" data-testid="portal-overview">
-          <p className="text-[11px] uppercase tracking-wide text-slate-500">{participant.role === "client" ? "A sua obra" : `Obra · o seu capítulo:${participant.lot || "—"}`} · {chantier.ref}</p>
+          <p className="text-[11px] uppercase tracking-wide text-slate-500">{participant.role === "client" ? "A sua obra" : `Obra · o seu capítulo: ${participant.lot || "—"}`} · {chantier.ref}</p>
           <h1 className="text-2xl font-semibold mt-1" data-testid="portal-chantier-name">{chantier.name}</h1>
           {chantier.address && <p className="text-sm text-slate-600">{chantier.address}</p>}
-          {progress_pct != null && <div className="mt-4"><div className="flex justify-between text-xs text-slate-600"><span>Avancement global</span><span className="font-semibold" data-testid="portal-progress">{progress_pct}%</span></div>
+          {progress_pct != null && <div className="mt-4"><div className="flex justify-between text-xs text-slate-600"><span>Avanço global</span><span className="font-semibold" data-testid="portal-progress">{progress_pct}%</span></div>
             <div className="mt-1 h-2.5 rounded-full bg-slate-200 overflow-hidden"><div className="h-full transition-all" style={{ width: `${progress_pct}%`, background: accent }} /></div></div>}
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
             {company.phone && <a href={`tel:${company.phone}`} className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5" data-testid="portal-call"><Phone className="h-4 w-4" /> {company.phone}</a>}

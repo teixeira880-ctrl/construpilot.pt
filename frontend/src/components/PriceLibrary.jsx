@@ -28,7 +28,7 @@ export const PriceLibrary = () => {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/pro/price-library/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`${data.imported}preços importados —${data.total}no total na sua biblioteca`);
+      toast.success(`${data.imported} preços importados — ${data.total} no total na sua biblioteca`);
       load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Importação impossível (.xlsx ou .pdf esperado)");
@@ -59,7 +59,7 @@ export const PriceLibrary = () => {
         <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro Business</span>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Importez <span className="text-foreground">a sua própria tabela de preços</span> (Excel ou PDF). O ConstruPilot utiliza-o
+        Importe <span className="text-foreground">a sua própria tabela de preços</span> (Excel ou PDF). O ConstruPilot utiliza-o
         <span className="text-foreground"> em prioridade</span> para orçamentar os seus mapas — a IA só completa as linhas não encontradas.
       </p>
 
@@ -68,7 +68,7 @@ export const PriceLibrary = () => {
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => fileRef.current?.click()} disabled={busy} className="gap-2 rounded-sm" data-testid="library-upload-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {busy ? "Analyse en cours…" : "Importer Excel / PDF"}
+          {busy ? "Análise em curso…" : "Importar Excel / PDF"}
         </Button>
         {items.length > 0 && (
           <Button variant="outline" onClick={clearAll} className="gap-2 rounded-sm text-destructive" data-testid="library-clear-btn">

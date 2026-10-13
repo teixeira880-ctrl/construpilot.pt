@@ -73,7 +73,7 @@ export const DevicesList = () => {
               </div>
               {d.current ? (
                 <Badge className="rounded-sm shrink-0" data-testid="device-current-badge">
-                  Cet appareil
+                  Este dispositivo
                 </Badge>
               ) : (
                 <Button type="button" variant="ghost" size="icon" className="shrink-0"

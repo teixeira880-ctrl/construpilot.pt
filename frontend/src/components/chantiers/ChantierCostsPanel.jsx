@@ -35,7 +35,7 @@ export function ChantierCostsPanel({ chantierId }) {
         <TrendingUp className="h-4 w-4 text-primary" />
         <p className="font-display font-bold text-sm">Custos e margem</p>
         <span className="text-[11px] text-muted-foreground">
-          {scope.using_signed_only ? `${scope.signed}orçamento(s) assinado(s)` : `${scope.quotes}orçamento(s) associado(s)`}
+          {scope.using_signed_only ? `${scope.signed} orçamento(s) assinado(s)` : `${scope.quotes} orçamento(s) associado(s)`}
         </span>
 
       </div>
@@ -45,7 +45,7 @@ export function ChantierCostsPanel({ chantierId }) {
         <CostForecast chantierId={chantierId} data={data} onSaved={setData} onReload={load} />
         {/* Synthèse */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[["Vente HT (budget)", eur(totals.vente_ht), ""],
+          {[["Venda s/ IVA (orçamento)", eur(totals.vente_ht), ""],
             ["Custo previsional", eur(totals.cost_prev_ht), totals.coverage.complete ? "" : "partiel"],
             ["Margem previsional", eur(totals.margin_ht), totals.margin_pct != null ? `${totals.margin_pct}%` : "não verificável"],
             ["Custos registados conhecidos", eur(data.real_cost_known_ht), ""]].map(([lbl, val, sub], i) => (
@@ -63,12 +63,12 @@ export function ChantierCostsPanel({ chantierId }) {
             <table className="w-full text-sm" data-testid="chantier-costs-lots">
               <thead>
                 <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-b border-border">
-                  <th className="text-left py-1.5">Lot</th>
-                  <th className="text-right">Vente HT</th>
+                  <th className="text-left py-1.5">Lote</th>
+                  <th className="text-right">Venda s/ IVA</th>
                   <th className="text-right">Custo prev.</th>
                   <th className="text-right">Comprometido conhecido</th>
-                  <th className="text-right">Marge</th>
-                  <th className="text-right">% vente</th>
+                  <th className="text-right">Margem</th>
+                  <th className="text-right">% venda</th>
                 </tr>
               </thead>
               <tbody>
@@ -79,7 +79,7 @@ export function ChantierCostsPanel({ chantierId }) {
                     </td>
                     <td className="text-right num">{eur(l.vente_ht)}</td>
                     <td className="text-right num">{eur(l.cost_prev_ht)}</td>
-                    <td className="text-right num" title={`${l.real_hours || 0} h · achats ${eur(l.real_purchases_ht)}`}>{eur(l.real_cost_ht)}</td>
+                    <td className="text-right num" title={`${l.real_hours || 0} h · compras ${eur(l.real_purchases_ht)}`}>{eur(l.real_cost_ht)}</td>
                     <td className={`text-right num font-semibold ${l.margin_ht != null && l.margin_ht < 0 ? "text-red-600" : ""}`}>{eur(l.margin_ht)}</td>
                     <td className="text-right num">{l.margin_pct != null ? `${l.margin_pct}%` : "—"}</td>
                   </tr>
@@ -96,18 +96,18 @@ export function ChantierCostsPanel({ chantierId }) {
             <div className="min-w-0">
               <p className="text-sm font-medium">{labor.hours_validated} h registadas</p>
               <p className="text-[11px] text-muted-foreground">
-                {labor.cost_est != null ? `≈ ${eur(labor.cost_est)}de mão de obra (${labor.rate_used} €/h)` : "custo MO não orçamentado (definir uma taxa)"}
-                {labor.hours_total > labor.hours_validated ? ` · ${labor.hours_total - labor.hours_validated} h en attente` : ""}
+                {labor.cost_est != null ? `≈ ${eur(labor.cost_est)} de mão de obra (${labor.rate_used} €/h)` : "custo MO não orçamentado (definir uma taxa)"}
+                {labor.hours_total > labor.hours_validated ? ` · ${labor.hours_total - labor.hours_validated} h pendentes` : ""}
               </p>
             </div>
           </div>
           <div className="rounded-sm border border-border/60 px-3 py-2 flex items-center gap-2" data-testid="chantier-costs-purchases">
             <ShoppingCart className="h-4 w-4 text-primary shrink-0" />
             <div className="min-w-0">
-              <p className="text-sm font-medium">{purchases.orders} commande(s) · {purchases.items} article(s)</p>
+              <p className="text-sm font-medium">{purchases.orders} encomenda(s) · {purchases.items} article(s)</p>
               <p className="text-[11px] text-muted-foreground">
-                {purchases.priced_total != null ? `≈ ${eur(purchases.priced_total)}de compras orçamentadas` : "compras não orçamentadas"}
-                {purchases.unpriced_items ? ` · ${purchases.unpriced_items}sem preço` : ""}
+                {purchases.priced_total != null ? `≈ ${eur(purchases.priced_total)} de compras orçamentadas` : "compras não orçamentadas"}
+                {purchases.unpriced_items ? ` · ${purchases.unpriced_items} sem preço` : ""}
               </p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export function ChantierCostsPanel({ chantierId }) {
                 )}
                 {purchase_entries.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground mb-1">Commandes d'achat</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground mb-1">Encomendas de compra</p>
                     <div className="grid gap-1">
                       {purchase_entries.map((e) => (
                         <div key={e.order_id} className="flex items-center gap-2 text-xs" data-testid={`purchase-entry-${e.order_id}`}>
@@ -159,7 +159,7 @@ export function ChantierCostsPanel({ chantierId }) {
                   </div>
                 )}
                 {(unaffected.labor_hours > 0 || unaffected.purchases_ht) && (
-                  <p className="text-[11px] text-amber-700">Não atribuído: {unaffected.labor_hours || 0} h{unaffected.labor_cost != null ? ` (${eur(unaffected.labor_cost)})` : ""}{unaffected.purchases_ht ? ` · achats ${eur(unaffected.purchases_ht)}` : ""}.</p>
+                  <p className="text-[11px] text-amber-700">Não atribuído: {unaffected.labor_hours || 0} h{unaffected.labor_cost != null ? ` (${eur(unaffected.labor_cost)})` : ""}{unaffected.purchases_ht ? ` · compras ${eur(unaffected.purchases_ht)}` : ""}.</p>
                 )}
               </div>
             )}

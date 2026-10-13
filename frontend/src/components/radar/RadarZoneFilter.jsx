@@ -15,7 +15,7 @@ export const RadarZoneFilter = ({ zone, options, km, onRadius, onApply, busy }) 
   const changed = mode !== zone.mode || [...selected].sort().join() !== [...zone.departments].sort().join();
   return <section className="border-y border-border py-4 my-5 space-y-3" data-testid="radar-zone-filter">
     <div role="radiogroup" aria-label="Zona de pesquisa" className="flex flex-wrap gap-2">
-      {[["radius", "Rayon", MapPin], ["departments", "Departamentos", Layers]].map(([value, label, Icon]) => <button key={value} role="radio" aria-checked={mode === value}
+      {[["radius", "Raio", MapPin], ["departments", "Departamentos", Layers]].map(([value, label, Icon]) => <button key={value} role="radio" aria-checked={mode === value}
         disabled={busy} onClick={() => { setMode(value); if (value === "departments") setEditing(true); }} data-testid={`radar-zone-${value}`} className={`inline-flex gap-2 items-center px-3 py-2 border rounded-md text-sm transition-colors ${mode === value ? "bg-primary text-white border-primary" : "border-border hover:border-primary"}`}><Icon className="h-4 w-4" />{label}</button>)}
       {mode === "departments" && <Button variant="ghost" size="sm" onClick={() => setEditing((v) => !v)} aria-expanded={editing} className="gap-1" data-testid="radar-departments-edit"><SlidersHorizontal className="h-4 w-4" />{editing ? "Reduzir" : "Alterar os distritos"}</Button>}
     </div>
@@ -28,7 +28,7 @@ export const RadarZoneFilter = ({ zone, options, km, onRadius, onApply, busy }) 
         <Button variant="ghost" size="sm" disabled={busy} onClick={() => setSelected([])} data-testid="radar-departments-clear">Remover todos</Button>
         <span className="text-xs text-muted-foreground" data-testid="radar-departments-count">{selected.length} distrito(s)</span>
       </div>}
-      {selected.length > 0 && <div className="flex flex-wrap gap-2" data-testid="radar-departments-selected">{selected.map((d) => <button key={d} disabled={busy} onClick={() => toggle(d)} aria-label={`Retirer ${d}`} title={options.find((o) => o.code === d)?.name}
+      {selected.length > 0 && <div className="flex flex-wrap gap-2" data-testid="radar-departments-selected">{selected.map((d) => <button key={d} disabled={busy} onClick={() => toggle(d)} aria-label={`Remover ${d}`} title={options.find((o) => o.code === d)?.name}
         className="flex items-center gap-1 text-xs px-2 py-1 border border-primary rounded-md text-primary" data-testid={`radar-department-remove-${d}`}>{d}<X className="h-3 w-3" /></button>)}</div>}
       {editing && <><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Pesquisar um código ou departamento" aria-label="Pesquisar um departamento" className="max-w-md" data-testid="radar-department-query" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 max-h-44 overflow-y-auto border border-border rounded-md p-3" data-testid="radar-department-options">
@@ -43,7 +43,7 @@ export const RadarZoneFilter = ({ zone, options, km, onRadius, onApply, busy }) 
       <Button size="sm" disabled={busy || (mode === "departments" && !selected.length) || !changed} onClick={async () => { await onApply({ mode, departments: selected }); setEditing(false); }} className="gap-1" data-testid="radar-zone-apply">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Aplicar e guardar
       </Button>
-      <p className="text-xs text-muted-foreground" data-testid="radar-zone-status">{changed ? "Seleção não aplicada" : zone.mode === "departments" ? `Distritos:${zone.departments.join(", ")}· sem limite de raio` : `Rayon actif : ${km} km`}</p>
+      <p className="text-xs text-muted-foreground" data-testid="radar-zone-status">{changed ? "Seleção não aplicada" : zone.mode === "departments" ? `Distritos: ${zone.departments.join(", ")} · sem limite de raio` : `Raio ativo: ${km} km`}</p>
     </div>
   </section>;
 };

@@ -12,7 +12,7 @@ import {
   PiggyBank, Landmark, Loader2,
 } from "lucide-react";
 
-const STEPS = ["Descrever", "Comprendre", "Comparer", "Preparar"];
+const STEPS = ["Descrever", "Compreender", "Comparar", "Preparar"];
 const ASSESS_STYLE = {
   "provavelmente com perdas": "text-red-600 border-red-300 bg-red-50",
   "a verificar": "text-amber-600 border-amber-300 bg-amber-50",
@@ -79,7 +79,7 @@ export default function Renovation() {
       const { data } = await api.post(`/renovation/projects/${project.project_id}/pull-surfaces`, { plan_id: selPlan });
       const { data: fresh } = await api.get(`/renovation/projects/${project.project_id}`);
       setInputs(fresh.inputs || {}); setProject(fresh);
-      toast.success(`${data.count}área(s) recuperada(s) da planta (estado medido)`);
+      toast.success(`${data.count} área(s) recuperada(s) da planta (estado medido)`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Recuperação impossível"); }
     finally { setBusy(false); }
   };
@@ -122,7 +122,7 @@ export default function Renovation() {
     try {
       const { data } = await api.post(`/renovation/projects/${project.project_id}/describe`, { text: freeText });
       if (!data.count) { toast.message("Nenhum dado reconhecido — precise a sua descrição"); }
-      else { applyProposals(data.proposals); toast.success(`${data.count}campo(s) pré-preenchido(s) — a confirmar`); }
+      else { applyProposals(data.proposals); toast.success(`${data.count} campo(s) pré-preenchido(s) — a confirmar`); }
     } catch { toast.error("Extração impossível"); }
     finally { setBusy(false); }
   };
@@ -158,10 +158,10 @@ export default function Renovation() {
       setProject(fresh);
       if (data.ademe) {
         const d = data.dpe || {};
-        toast.success(`N.º de certificado energético detetado (${data.numero_dpe}) — certificado energético oficial importado:${d.etiquette_energie}/${d.etiquette_climat}${(data.audits || []).length ? ` · ${data.audits.length} audit(s)` : ""}`);
+        toast.success(`N.º de certificado energético detetado (${data.numero_dpe}) — certificado energético oficial importado: ${d.etiquette_energie}/${d.etiquette_climat}${(data.audits || []).length ? ` · ${data.audits.length} audit(s)` : ""}`);
       } else {
-        const cls = data.imported_class ? ` · classe lue : ${data.imported_class}` : "";
-        toast.success(`${data.count}campo(s) importado(s) do documento${cls}`);
+        const cls = data.imported_class ? ` · classe lida: ${data.imported_class}` : "";
+        toast.success(`${data.count} campo(s) importado(s) do documento${cls}`);
       }
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível importar"); }
     finally { setBusy(false); }
@@ -176,7 +176,7 @@ export default function Renovation() {
       setInputs(fresh.inputs || {});
       setProject(fresh);
       const d = data.dpe || {};
-      toast.success(`DPE ${d.numero_dpe}importado —${d.etiquette_energie}/${d.etiquette_climat}${(data.audits || []).length ? ` · ${data.audits.length} audit(s)` : ""}`);
+      toast.success(`DPE ${d.numero_dpe} importado — ${d.etiquette_energie}/${d.etiquette_climat}${(data.audits || []).length ? ` · ${data.audits.length} audit(s)` : ""}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Número de certificado energético não encontrado nos dados abertos"); }
     finally { setBusy(false); }
   };
@@ -200,7 +200,7 @@ export default function Renovation() {
       const { data: fresh } = await api.get(`/renovation/projects/${project.project_id}`);
       setProject(fresh);
       toast.success(data.message || "Certificado energético do edifício importado (partes comuns)");
-    } catch (e) { toast.error(e?.response?.data?.detail || "DPE immeuble indisponible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Certificado energético do edifício indisponível"); }
     finally { setBusy(false); }
   };
 
@@ -210,9 +210,9 @@ export default function Renovation() {
       const res = await api.get(`/renovation/projects/${project.project_id}/report.pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `RenoPilot_${(project.title || "rapport").replace(/\s+/g, "_")}.pdf`;
+      a.href = url; a.download = `RenoPilot_${(project.title || "relatório").replace(/\s+/g, "_")}.pdf`;
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    } catch { toast.error("Rapport indisponible"); }
+    } catch { toast.error("Relatório indisponível"); }
   };
 
 
@@ -276,7 +276,7 @@ export default function Renovation() {
         </div>
         <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-800 text-xs p-3 my-4 flex gap-2" data-testid="reno-disclaimer">
           <Info className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>Estimativa de reabilitação — <b>não substitui um certificado energético nem uma auditoria regulamentar</b>. Le calcul énergétique (classe, kWh) nécessite un moteur 3CL certifié non encore connecté : seule une analyse qualitative est produite à ce stade.</span>
+          <span>Estimativa de reabilitação — <b>não substitui um certificado energético nem uma auditoria regulamentar</b>. O cálculo energético (classe, kWh) requer um motor certificado ainda não ligado: nesta fase só é produzida uma análise qualitativa.</span>
         </div>
         <Button onClick={createProject} disabled={busy} className="rounded-md gap-2 bg-emerald-600 hover:bg-emerald-700" data-testid="reno-new-project">
           <Plus className="h-4 w-4" /> Novo projeto
@@ -287,10 +287,10 @@ export default function Renovation() {
             <Card key={p.project_id} className="p-3 flex items-center justify-between hover:border-emerald-400 transition" data-testid={`reno-project-${p.project_id}`}>
               <button className="text-left flex-1" onClick={() => openProject(p.project_id)}>
                 <p className="font-medium text-sm">{p.title}</p>
-                <p className="text-[11px] text-muted-foreground">Statut : {p.status} · maj {new Date(p.updated_at).toLocaleDateString("fr-FR")}</p>
+                <p className="text-[11px] text-muted-foreground">Estado: {p.status} · maj {new Date(p.updated_at).toLocaleDateString("fr-FR")}</p>
               </button>
               <div className="flex gap-1">
-                <Button size="sm" variant="ghost" onClick={() => openProject(p.project_id)} className="h-8 gap-1 text-xs">Ouvrir <ArrowRight className="h-3 w-3" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => openProject(p.project_id)} className="h-8 gap-1 text-xs">Abrir <ArrowRight className="h-3 w-3" /></Button>
                 <Button size="icon" variant="ghost" onClick={() => deleteProject(p.project_id)} className="h-8 w-8 text-red-500" data-testid={`reno-delete-${p.project_id}`}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </Card>
@@ -310,7 +310,7 @@ export default function Renovation() {
         <div className="flex items-center gap-2">
           <h2 className="font-semibold truncate">{project.title}</h2>
           <Button size="sm" variant="outline" onClick={downloadReport} className="rounded-md gap-1 h-8 text-xs" data-testid="reno-report-pdf">
-            <Download className="h-3.5 w-3.5" /> Rapport PDF
+            <Download className="h-3.5 w-3.5" /> Relatório PDF
           </Button>
         </div>
       </div>
@@ -350,14 +350,14 @@ export default function Renovation() {
                   <EtiquetteBadge letter={project.ademe_dpe.etiquette_energie} kind="energia" />
                   <EtiquetteBadge letter={project.ademe_dpe.etiquette_climat} kind="climat" />
                   <Badge variant="outline">{project.ademe_dpe.conso_ep_m2} kWh/m²/an (EP)</Badge>
-                  <Badge variant="outline">{project.ademe_dpe.ges_m2} kgCO₂/m²/an</Badge>
+                  <Badge variant="outline">{project.ademe_dpe.ges_m2} kgCO₂/m²/ano</Badge>
                   {project.ademe_dpe.cout_annuel && <Badge variant="outline">≈ {eur(project.ademe_dpe.cout_annuel)}/an</Badge>}
                 </div>
                 <div className="text-[11px] text-muted-foreground grid sm:grid-cols-2 gap-x-4">
-                  <p><b className="text-foreground">Bien :</b> {project.ademe_dpe.type_batiment} · {project.ademe_dpe.surface_m2} m² · {project.ademe_dpe.periode_construction}</p>
-                  <p><b className="text-foreground">Adresse :</b> {project.ademe_dpe.adresse}</p>
+                  <p><b className="text-foreground">Imóvel:</b> {project.ademe_dpe.type_batiment} · {project.ademe_dpe.surface_m2} m² · {project.ademe_dpe.periode_construction}</p>
+                  <p><b className="text-foreground">Morada:</b> {project.ademe_dpe.adresse}</p>
                   <p><b className="text-foreground">Chauffage :</b> {project.ademe_dpe.chauffage_energie} — {project.ademe_dpe.chauffage_desc}</p>
-                  <p><b className="text-foreground">ECS :</b> {project.ademe_dpe.ecs_generateur || "—"}</p>
+                  <p><b className="text-foreground">AQS:</b> {project.ademe_dpe.ecs_generateur || "—"}</p>
                   <p><b className="text-foreground">Isolamento das paredes:</b> {project.ademe_dpe.isolation?.murs || "—"} · <b className="text-foreground">menuiseries :</b> {project.ademe_dpe.isolation?.menuiseries || "—"}</p>
                   <p><b className="text-foreground">DPE n° :</b> <span className="font-mono">{project.ademe_dpe.numero_dpe}</span> ({project.ademe_dpe.date_dpe})</p>
                 </div>
@@ -372,7 +372,7 @@ export default function Renovation() {
                   <div className="rounded-md border border-violet-200 bg-violet-50/40 p-3" data-testid="reno-immeuble-card">
                     <p className="text-xs font-semibold text-violet-700 mb-2">Comparação fração / partes comuns (condomínio)</p>
                     <div className="grid grid-cols-2 gap-3">
-                      {[["Logement (privatif)", project.ademe_dpe], ["Immeuble (parties communes)", project.ademe_dpe_immeuble]].map(([t, dd]) => (
+                      {[["Fração (privada)", project.ademe_dpe], ["Edifício (partes comuns)", project.ademe_dpe_immeuble]].map(([t, dd]) => (
                         <div key={t} className="rounded-md border border-border bg-white p-2">
                           <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t}</p>
                           <div className="flex items-center gap-1 mb-1">
@@ -393,7 +393,7 @@ export default function Renovation() {
                     <p className="text-xs font-semibold text-sky-700 mb-2 flex items-center gap-1"><Hammer className="h-3.5 w-3.5" /> Cenários de reabilitação oficiais (auditoria energética)</p>
                     {(project.ademe_audits || []).map((a, ai) => (
                       <div key={a.n_audit} className="mb-2">
-                        <p className="text-[10px] text-muted-foreground mb-1">Audit {a.n_audit} · {a.date}</p>
+                        <p className="text-[10px] text-muted-foreground mb-1">Auditoria {a.n_audit} · {a.date}</p>
                         <div className="space-y-1">
                           {a.steps.map((s, i) => (
                             <div key={i} className="flex items-start justify-between gap-2 text-[11px] border-b border-sky-100 pb-1" data-testid={`reno-audit-step-${i}`}>
@@ -433,7 +433,7 @@ export default function Renovation() {
                 <Sparkles className="h-3.5 w-3.5" /> Preencher com a IA
               </Button>
               <Button size="sm" variant={listening ? "default" : "outline"} onClick={toggleDictation} className={`rounded-sm gap-1 ${listening ? "bg-red-600 hover:bg-red-700 animate-pulse" : ""}`} data-testid="reno-dictation">
-                <Mic className="h-3.5 w-3.5" /> {listening ? "A ditar… (parar)" : "Dicter"}
+                <Mic className="h-3.5 w-3.5" /> {listening ? "A ditar… (parar)" : "Ditar"}
               </Button>
               <label className="inline-flex items-center gap-1 h-8 px-3 rounded-sm border border-border text-xs cursor-pointer hover:bg-secondary" data-testid="reno-import-dpe-label">
                 <Upload className="h-3.5 w-3.5" /> Importar um certificado energético / auditoria (PDF/XML)
@@ -460,7 +460,7 @@ export default function Renovation() {
               <div className="mt-2 flex flex-wrap gap-1.5" data-testid="reno-imported-docs">
                 {(project.documents || []).map((d) => (
                   <Badge key={d.doc_id} variant="outline" className="text-[10px] rounded-sm">
-                    {d.filename}{d.imported_class ? ` · classe lue ${d.imported_class} (document)` : ""}
+                    {d.filename}{d.imported_class ? ` · classe lida ${d.imported_class} (document)` : ""}
                   </Badge>
                 ))}
               </div>
@@ -574,7 +574,7 @@ export default function Renovation() {
                 </div>
                 <p className="font-semibold text-sm">{s.name}</p>
                 <p className="text-[11px] text-muted-foreground min-h-[48px]">{s.description}</p>
-                <p className="text-lg font-bold">{eur(s.total_ht_chiffrable)} <span className="text-[11px] font-normal text-muted-foreground">HT chiffrable</span></p>
+                <p className="text-lg font-bold">{eur(s.total_ht_chiffrable)} <span className="text-[11px] font-normal text-muted-foreground">s/ IVA orçamentável</span></p>
                 {s.a_chiffrer.length > 0 && <p className="text-[10px] text-amber-600">{s.a_chiffrer.length} artigo(s) a orçamentar</p>}
                 <p className="text-[10px] text-slate-500 italic">{s.energy_gain.message}</p>
                 <Button size="sm" onClick={() => { setActiveScenario(s.key); setStep(3); }}
@@ -593,7 +593,7 @@ export default function Renovation() {
                 ).map(({ s, ai, i }) => (
                   <Card key={`${ai}-${i}`} className="p-4 flex flex-col gap-2 border-sky-200 bg-sky-50/40 hover:border-sky-400 transition" data-testid={`reno-audit-card-${ai}-${i}`}>
                     <div className="flex items-center justify-between">
-                      <Badge className="bg-sky-600">Audit ADEME</Badge>
+                      <Badge className="bg-sky-600">Auditoria energética</Badge>
                       <span className="flex items-center gap-1">
                         <EtiquetteBadge letter={project.ademe_dpe?.etiquette_energie} small />
                         <ArrowRight className="h-3 w-3 text-muted-foreground" />
@@ -639,7 +639,7 @@ function PrepareScenario({ scenario, onBack, onEstimate, busy }) {
   return (
     <div className="grid gap-3" data-testid="reno-prepare">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">{scenario.name} — descriptif par lot</h3>
+        <h3 className="font-semibold">{scenario.name} — descritivo por capítulo</h3>
         <Button onClick={onEstimate} disabled={busy} className="rounded-md gap-2 bg-emerald-600 hover:bg-emerald-700" data-testid="reno-create-estimate">
           <FileText className="h-4 w-4" /> Criar o orçamento
         </Button>
@@ -649,11 +649,11 @@ function PrepareScenario({ scenario, onBack, onEstimate, busy }) {
           <div className="flex items-center justify-between gap-2 mb-1">
             <p className="font-medium text-sm">{it.lot} — {it.label}</p>
             <Badge variant="outline" className="text-[10px] rounded-sm shrink-0">
-              {it.metre.quantity != null ? `${it.metre.quantity} ${it.metre.unit}` : `${it.metre.unit}a confirmar`}
+              {it.metre.quantity != null ? `${it.metre.quantity} ${it.metre.unit}` : `${it.metre.unit} a confirmar`}
             </Badge>
           </div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-            <p><b className="text-foreground">Objectif :</b> {it.descriptif.objectif}</p>
+            <p><b className="text-foreground">Objetivo:</b> {it.descriptif.objectif}</p>
             <p><b className="text-foreground">Performance :</b> {it.descriptif.performance_cible}</p>
             <p><b className="text-foreground">Medição:</b> {it.descriptif.metre}</p>
             <p><b className="text-foreground">Execução:</b> {it.descriptif.mise_en_oeuvre}</p>
@@ -728,7 +728,7 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
         if (!s.cout_travaux) return;
         list.push({
           id: `audit:${ai}:${i}`, group: "Cenários de auditoria energética",
-          label: `Audit ${s.etape} (${s.etiquette_energie}) — ${eur(s.cout_travaux)}`,
+          label: `Auditoria ${s.etape} (${s.etiquette_energie}) — ${eur(s.cout_travaux)}`,
           type: "audit", travaux_ht: s.cout_travaux,
           dpe_actuel: initial || "", dpe_vise: s.etiquette_energie || "",
         });
@@ -763,9 +763,9 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
         residence_principale: !!form.residence_principale,
         commune_insee: commune || null, gestes: items,
       });
-      if (data.need_commune) { toast.error("Commune requise (code postal projet manquant)"); return; }
+      if (data.need_commune) { toast.error("Freguesia obrigatória (código postal do projeto em falta)"); return; }
       setGRes(data);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Simulation par geste indisponible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Simulação por intervenção indisponível"); }
     finally { setGBusy(false); }
   };
 
@@ -834,7 +834,7 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
     <Card className="p-4 border-emerald-200 bg-emerald-50/30" data-testid="reno-aides-panel">
       <div className="flex items-center gap-2 mb-1">
         <PiggyBank className="h-5 w-5 text-emerald-600" />
-        <h3 className="font-semibold text-sm">Apoios financeiros <span className="font-normal text-muted-foreground">(indicatif)</span></h3>
+        <h3 className="font-semibold text-sm">Apoios financeiros <span className="font-normal text-muted-foreground">(indicativo)</span></h3>
         <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700">Apoios à reabilitação · Fundo Ambiental</Badge>
       </div>
       <p className="text-[11px] text-muted-foreground mb-3">
@@ -857,7 +857,7 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
             })}
           </select>
         </label>
-        <label className="grid gap-1 text-[11px]">DPE actuel
+        <label className="grid gap-1 text-[11px]">Certificado energético atual
           <select value={form.dpe_actuel} onChange={set("dpe_actuel")} disabled={targets.find((t) => t.id === form.target)?.type === "audit"} className="h-8 rounded-md border border-border bg-background px-2 text-xs disabled:opacity-60" data-testid="aides-dpe-actuel">
             <option value="">—</option>{DPE_LETTERS.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
@@ -870,7 +870,7 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
         {targets.find((t) => t.id === form.target)?.type === "audit" && (
           <p className="text-[10px] text-sky-700 sm:col-span-3 -mt-1">Montante e classes retomados do cenário de auditoria oficial (classe {targets.find((t) => t.id === form.target)?.dpe_actuel || "?"} → {targets.find((t) => t.id === form.target)?.dpe_vise || "?"}).</p>
         )}
-        <div className="grid gap-1 text-[11px]">Situation
+        <div className="grid gap-1 text-[11px]">Auto de medição
           <div className="flex gap-3 items-center h-8">
             <label className="flex items-center gap-1"><input type="checkbox" checked={form.proprietaire_occupant} onChange={(e) => set("proprietaire_occupant")(e.target.checked)} data-testid="aides-proprietaire" /> Proprietário residente</label>
             <label className="flex items-center gap-1"><input type="checkbox" checked={form.residence_principale} onChange={(e) => set("residence_principale")(e.target.checked)} data-testid="aides-residence" /> Habitação própria permanente</label>
@@ -895,7 +895,7 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
       {res && res.ok && (
         <div className="mt-4 grid gap-3" data-testid="aides-result">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {res.revenu_classe && <Badge className="bg-emerald-600 capitalize">Revenu : {res.revenu_classe}</Badge>}
+            {res.revenu_classe && <Badge className="bg-emerald-600 capitalize">Rendimento: {res.revenu_classe}</Badge>}
             {res.scenario_name && <Badge variant="outline">Travaux : {fmt(res.travaux_ht)} HT — {res.scenario_name}</Badge>}
           </div>
 
@@ -959,14 +959,14 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
           ))}
         </div>
         <Button size="sm" variant="outline" onClick={runGestes} disabled={gBusy} className="rounded-sm mt-2 gap-1 h-7 text-[11px]" data-testid="aides-gestes-calculer">
-          {gBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <PiggyBank className="h-3 w-3" />} Calculer par geste
+          {gBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <PiggyBank className="h-3 w-3" />} Calcular por intervenção
         </Button>
 
         {gRes && gRes.ok && (
           <div className="mt-3" data-testid="aides-gestes-result">
             <table className="w-full text-[11px] border border-border rounded-md overflow-hidden">
               <thead className="bg-emerald-50 text-left text-[10px] uppercase text-muted-foreground">
-                <tr><th className="px-2 py-1">Geste</th><th className="px-2 py-1 text-right">Preço estimado</th><th className="px-2 py-1 text-right">MPR</th><th className="px-2 py-1 text-right">CEE</th><th className="px-2 py-1 text-right">Valor a cargo</th><th className="px-2 py-1 text-right">Orçamento</th></tr>
+                <tr><th className="px-2 py-1">Intervenção</th><th className="px-2 py-1 text-right">Preço estimado</th><th className="px-2 py-1 text-right">MPR</th><th className="px-2 py-1 text-right">Certificados de poupança</th><th className="px-2 py-1 text-right">Valor a cargo</th><th className="px-2 py-1 text-right">Orçamento</th></tr>
               </thead>
               <tbody>
                 {gRes.gestes.map((g, i) => {

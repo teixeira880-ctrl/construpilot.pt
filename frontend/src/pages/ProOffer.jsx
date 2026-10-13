@@ -17,7 +17,7 @@ const PRO_VALUE = [
   { icon: Ruler, title: "Medição em planta 2D / DXF", text: "Desenhe, calibre, deduza os vãos e exporte a medição líquida para o orçamento." },
   { icon: Boxes, title: "Orçamentação por especialidade", text: "Pladur, pintura, mosaico… composições e rácios personalizáveis, preços memorizados." },
   { icon: Footprints, title: "Cálculo de escadas em betão", text: "Otimizador, alertas RGEU / DL 163/2006, análise de betão armado e processo PDF cotado." },
-  { icon: Layers, title: "Projets multi-niveaux", text: "Agrupe Fundações, R/C, 1.º andar… com medição e orçamentação consolidadas." },
+  { icon: Layers, title: "Projetos multinível", text: "Agrupe Fundações, R/C, 1.º andar… com medição e orçamentação consolidadas." },
   { icon: ShieldCheck, title: "Cálculos determinísticos", text: "Nenhuma aproximação IA na matemática: proveniência e rastreabilidade garantidas." },
 ];
 
@@ -102,8 +102,8 @@ export default function ProOffer() {
       {/* OFFER / PLANS */}
       <section id="offre-pro" className="max-w-4xl mx-auto px-5 w-full grid gap-6">
         <div className="text-center grid gap-2">
-          <p className="text-xs uppercase tracking-widest text-primary font-semibold">Offre Pro</p>
-          <h2 className="font-display text-3xl font-extrabold tracking-tight">Essai {trialDays} dias, depois uma subscrição clara</h2>
+          <p className="text-xs uppercase tracking-widest text-primary font-semibold">Oferta Pro</p>
+          <h2 className="font-display text-3xl font-extrabold tracking-tight">Experiência {trialDays} dias, depois uma subscrição clara</h2>
           <p className="text-sm text-muted-foreground max-w-xl mx-auto">
             Teste todas as funções Pro durante {trialDays} dias. O cartão é registado na inscrição: no fim da experiência, a subscrição começa automaticamente ao preço abaixo. Sem fidelização, cancelável num clique.
           </p>
@@ -124,7 +124,7 @@ export default function ProOffer() {
                   <div><p className="font-display font-bold text-lg">{plan.name}</p>{plan.tagline && <p className="text-xs text-muted-foreground">{plan.tagline}</p>}</div>
                 </div>
                 <div><p className="num font-display text-4xl font-extrabold tracking-tighter">{eur} €<span className="text-base font-normal text-muted-foreground">/mois</span></p>
-                  <p className="text-[11px] text-muted-foreground mt-1">Essai {trialDays} dias oferecidos · sem fidelização</p></div>
+                  <p className="text-[11px] text-muted-foreground mt-1">Experiência {trialDays} dias oferecidos · sem fidelização</p></div>
                 {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
                 <ul className="grid gap-2">
                   {(plan.features || []).map((f, i) => (
@@ -134,7 +134,7 @@ export default function ProOffer() {
                 <Button onClick={() => subscribe(plan)} disabled={busy === plan.plan_id}
                         data-testid={`pro-subscribe-${plan.plan_id}`}
                         className="w-full rounded-sm gap-2 mt-2" variant={hi ? "default" : "outline"}>
-                  {busy === plan.plan_id ? "Redirection…" : <>Iniciar a experiência {trialDays} jours <ArrowRight className="h-4 w-4" /></>}
+                  {busy === plan.plan_id ? "A redirecionar…" : <>Iniciar a experiência {trialDays} jours <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               </div>
             );
@@ -146,10 +146,10 @@ export default function ProOffer() {
 
       {/* CONDITIONS / FAQ facturation */}
       <section className="max-w-3xl mx-auto px-5 w-full grid gap-4">
-        <h2 className="font-display text-2xl font-extrabold tracking-tight text-center">Conditions & facturation</h2>
+        <h2 className="font-display text-2xl font-extrabold tracking-tight text-center">Condições e faturação</h2>
         <div className="grid gap-3">
           {[
-            { icon: CalendarClock, q: `Como funciona a experiência de${trialDays} jours ?`, a: `Acede a todas as funções Pro durante${trialDays}dias. Não há qualquer débito durante a experiência.` },
+            { icon: CalendarClock, q: `Como funciona a experiência de ${trialDays} jours ?`, a: `Acede a todas as funções Pro durante ${trialDays} dias. Não há qualquer débito durante a experiência.` },
             { icon: CreditCard, q: "Porque é pedido um cartão na inscrição?", a: "O cartão é registado para permitir o início automático da subscrição no fim da experiência. Só é debitado depois do período de experiência." },
             { icon: ShieldCheck, q: "Posso cancelar antes de ser faturado?", a: `Sim. Cancele a qualquer momento durante a experiência a partir do seu espaço de faturação: nenhum montante será cobrado.` },
             { icon: Building2, q: "Qual a diferença entre Pro e Pro Business?", a: "O Pro cobre um profissional e as suas obras. O Pro Business acrescenta a gestão de equipa (artigos partilhados), a faturação eletrónica e volumes superiores." },

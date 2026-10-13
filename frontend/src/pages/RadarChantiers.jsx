@@ -90,7 +90,7 @@ export default function RadarChantiers() {
       setProfile(p); setKm(p.km); setDraftMetiers(p.metiers || []); setDraftBase(p.base);
       setZone({ mode: p.zone_mode, departments: p.departments });
       setFilters(p.filters || { work_types: [], building_types: [], client_types: [] });
-    }).catch(() => { setLoading(false); toast.error("Profil Radar indisponible"); });
+    }).catch(() => { setLoading(false); toast.error("Perfil Radar indisponível"); });
   }, [user]);
 
   useEffect(() => { if (user) load(km); }, [km, load, user]);
@@ -128,7 +128,7 @@ export default function RadarChantiers() {
     const points = data.map_points || [];
     points.forEach((o) => {
       const popup = document.createElement("div");
-      popup.textContent = `${o.commune} · ${o.count} permis · centre communal`;
+      popup.textContent = `${o.commune} · ${o.count} licenças · centro do concelho`;
       L.circleMarker([o.lat, o.lon], { radius: 9, color: scoreColor(o.score), fillColor: scoreColor(o.score), fillOpacity: 0.85, weight: 2 })
         .bindPopup(popup)
         .on("click", () => openDetail(o.id)).addTo(layer.current);
@@ -145,12 +145,12 @@ export default function RadarChantiers() {
     try {
       const { data: o } = await api.get(`/radar/opportunities/${id}`);
       setSel(o); setLetterMsg(o.suggested_message || "");
-    } catch { toast.error("Fiche indisponible"); }
+    } catch { toast.error("Ficha indisponível"); }
   };
 
   const loadCampaigns = useCallback(async () => {
     try { const { data } = await api.get("/radar/campaigns"); setCampaigns(data); }
-    catch { toast.error("Suivi indisponible"); }
+    catch { toast.error("Acompanhamento indisponível"); }
   }, []);
 
   const toggleFav = async (id) => {
@@ -243,7 +243,7 @@ export default function RadarChantiers() {
         <span className="h-12 w-12 mx-auto grid place-items-center rounded-xl bg-primary/10">
           <Radar className="h-6 w-6 text-primary" />
         </span>
-        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Radar Chantiers</h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Radar Obras</h1>
         <p className="text-base text-muted-foreground">
           O Radar identifica as licenças de construção publicadas à volta da sua empresa e estima o seu potencial de obra. Precisa da sua zona de atividade e das suas especialidades: crie uma conta profissional para o utilizar.
         </p>
@@ -267,11 +267,11 @@ export default function RadarChantiers() {
       <div className="flex items-center gap-3 mb-1 flex-wrap">
         <span className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10"><Radar className="h-5 w-5 text-primary" /></span>
         <div className="flex-1">
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">Radar Chantiers</h1>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight">Radar Obras</h1>
           <p className="text-xs text-muted-foreground">Deteta as futuras obras em redor da sua empresa e estima o seu potencial.</p>
         </div>
         <Button variant="outline" size="sm" className="rounded-sm gap-1" onClick={() => { const n = !showCampaigns; setShowCampaigns(n); if (n) loadCampaigns(); }} data-testid="radar-campaigns-btn">
-          <BarChart3 className="h-4 w-4" /> Suivi
+          <BarChart3 className="h-4 w-4" /> Acompanhamento
         </Button>
         <Button variant="outline" size="sm" className="rounded-sm gap-1" onClick={() => setShowSettings((s) => !s)} data-testid="radar-settings-btn">
           <Settings className="h-4 w-4" /> Definições
@@ -302,7 +302,7 @@ export default function RadarChantiers() {
                     <div className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {c.commune}</div>
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
-                    <span className="inline-flex items-center gap-1 text-muted-foreground" title="Ouvertures / scans QR"><Eye className="h-3.5 w-3.5" /> {c.open_count}</span>
+                    <span className="inline-flex items-center gap-1 text-muted-foreground" title="Aberturas / scans QR"><Eye className="h-3.5 w-3.5" /> {c.open_count}</span>
                     <span className="inline-flex items-center gap-1 font-bold text-primary" title="Potenciais clientes captados"><Users className="h-3.5 w-3.5" /> {c.lead_count}</span>
                   </div>
                 </div>
@@ -346,7 +346,7 @@ export default function RadarChantiers() {
 
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">
-          {[["Oportunidades", stats.detected], ["Fortes (≥85)", stats.strong], ["Potencial (o seu lote)", eur(stats.potential_ttc)], ["Favoris", stats.favorites]].map(([l, v], i) => (
+          {[["Oportunidades", stats.detected], ["Fortes (≥85)", stats.strong], ["Potencial (o seu lote)", eur(stats.potential_ttc)], ["Favoritos", stats.favorites]].map(([l, v], i) => (
             <div key={i} className="surface rounded-xl p-3 min-w-0" data-testid={`radar-kpi-${i}`}>
               <div className="text-lg font-extrabold text-primary break-words" title={String(v)}>{i === 2 ? <><span className="sm:hidden">{new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }).format(stats.potential_ttc)}</span><span className="hidden sm:inline">{v}</span></> : v}</div>
               <div className="text-[11px] text-muted-foreground">{l}</div>
@@ -373,7 +373,7 @@ export default function RadarChantiers() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-muted-foreground break-all">{o.id}</span>
-                    {o.is_demo && <span className="text-[10px] text-amber-700" data-testid={`radar-demo-${o.id}`}>FICTIF</span>}
+                    {o.is_demo && <span className="text-[10px] text-amber-700" data-testid={`radar-demo-${o.id}`}>FICTÍCIO</span>}
                     {o.is_favorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
                   </div>
                   <div className="font-bold text-sm mt-0.5">{o.batiment}</div>
@@ -383,7 +383,7 @@ export default function RadarChantiers() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-extrabold text-white" style={{ background: scoreColor(o.score) }} title="Score indicatif ConstruPilot" data-testid={`radar-score-${o.id}`}>
+                  <div className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-extrabold text-white" style={{ background: scoreColor(o.score) }} title="Pontuação indicativa ConstruPilot" data-testid={`radar-score-${o.id}`}>
                     <Flame className="h-3 w-3" /> {o.score}
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-1">A sua especialidade</div>
@@ -398,7 +398,7 @@ export default function RadarChantiers() {
 
       {data && data.count > 0 && <nav className="flex flex-wrap items-center justify-end gap-3 mt-4" aria-label="Páginas das licenças" data-testid="radar-pagination">
         <Button size="sm" variant="outline" disabled={loading || pageNumber <= 1} onClick={() => setPageNumber((p) => p - 1)} data-testid="radar-page-previous">Anterior</Button>
-        <span className="text-xs" data-testid="radar-page-number">Page {pageNumber} / {Math.max(1, Math.ceil(data.count / data.page_size))} · {data.count} permis</span>
+        <span className="text-xs" data-testid="radar-page-number">Página {pageNumber} / {Math.max(1, Math.ceil(data.count / data.page_size))} · {data.count} permis</span>
         <Button size="sm" variant="outline" disabled={loading || pageNumber * data.page_size >= data.count} onClick={() => setPageNumber((p) => p + 1)} data-testid="radar-page-next">Seguinte</Button>
       </nav>}
 
@@ -410,10 +410,10 @@ export default function RadarChantiers() {
               <button onClick={() => setSel(null)} data-testid="radar-detail-close"><X className="h-5 w-5" /></button>
             </div>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <span className="rounded-full px-2.5 py-1 text-sm font-extrabold text-white" style={{ background: scoreColor(sel.score) }} title="Score indicatif ConstruPilot" data-testid="radar-detail-score">{sel.score}/100</span>
+              <span className="rounded-full px-2.5 py-1 text-sm font-extrabold text-white" style={{ background: scoreColor(sel.score) }} title="Pontuação indicativa ConstruPilot" data-testid="radar-detail-score">{sel.score}/100</span>
               <span className="text-[11px] rounded-full px-2 py-0.5 border border-border" data-testid="radar-detail-client-type">{categoryLabel("client_types", sel.classification?.client_type)}</span>
               <span data-testid="radar-contact-status" className={`text-[11px] rounded-full px-2 py-0.5 ${sel.contact_status === "green" ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
-                {sel.is_demo ? "FICHE FICTIVE" : sel.contact_status === "green" ? "Dados completos · por verificar" : "Contacto por completar / verificar"}
+                {sel.is_demo ? "FICHA FICTÍCIA" : sel.contact_status === "green" ? "Dados completos · por verificar" : "Contacto por completar / verificar"}
               </span>
             </div>
             <h2 className="font-display text-xl font-bold mt-3">{sel.batiment}</h2>
@@ -423,7 +423,7 @@ export default function RadarChantiers() {
             <RadarQualification key={`qualification-${sel.id}`} opp={sel} options={profile?.filter_options?.client_types || []} onUpdated={(o) => { setSel(o); load(km); }} />
             <RadarContactPanel key={sel.id} opp={sel} onUpdated={(o) => { setSel(o); load(km); }} />
             <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
-              {[["Type", sel.type], ["Nature", sel.nature], ["Área publicada", sel.surf_created ? `${sel.surf_created} m²` : "Não utilizável"], ["Logements", sel.logements], ["Autorisation", sel.date_auth || "Não comunicada"], ["N°", sel.num], ["Statut SDES", sel.statut]].map(([l, v], i) => (
+              {[["Tipo", sel.type], ["Natureza", sel.nature], ["Área publicada", sel.surf_created ? `${sel.surf_created} m²` : "Não utilizável"], ["Habitações", sel.logements], ["Autorização", sel.date_auth || "Não comunicada"], ["N°", sel.num], ["Estado SDES", sel.statut]].map(([l, v], i) => (
                 <div key={i} className="surface rounded-md p-2 min-w-0" data-testid={`radar-permit-field-${i}`}><div className="text-[10px] uppercase text-muted-foreground">{l}</div><div className="font-semibold break-words">{v}</div></div>
               ))}
             </div>
@@ -468,7 +468,7 @@ export default function RadarChantiers() {
 
             <div className="flex flex-wrap gap-2 mt-3">
               <Button variant="outline" className="rounded-sm gap-1 flex-1" onClick={() => toggleFav(sel.id)} data-testid="radar-detail-fav">
-                <Star className={`h-4 w-4 ${sel.is_favorite ? "fill-primary text-primary" : ""}`} /> {sel.is_favorite ? "Favori" : "Adicionar aos favoritos"}
+                <Star className={`h-4 w-4 ${sel.is_favorite ? "fill-primary text-primary" : ""}`} /> {sel.is_favorite ? "Favorito" : "Adicionar aos favoritos"}
               </Button>
               <Button className="rounded-sm gap-1 flex-1 whitespace-normal h-auto min-h-9" onClick={generateLetter} disabled={genLoading || sel.is_demo} data-testid="radar-generate-letter">
                 {genLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {campaign ? "Regenerar" : "Gerar a carta"}
@@ -501,7 +501,7 @@ export default function RadarChantiers() {
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground mt-3" data-testid="radar-permit-source">Source : {sel.source?.name} · publication {sel.source?.millesime}</p>
+            <p className="text-xs text-muted-foreground mt-3" data-testid="radar-permit-source">Fonte: {sel.source?.name} · publication {sel.source?.millesime}</p>
             {sel.source?.record_url && <a href={sel.source.record_url} target="_blank" rel="noopener noreferrer" className="inline-block text-xs text-primary underline mt-1" data-testid="radar-record-source-link">Ver a licença na fonte oficial</a>}
           </div>
         </div>

@@ -37,7 +37,7 @@ export default function SharedCalc() {
     return (
       <div className="min-h-screen grid place-items-center bg-background text-center px-6">
         <div>
-          <p className="font-display text-2xl font-bold">Fiche introuvable</p>
+          <p className="font-display text-2xl font-bold">Ficha não encontrada</p>
           <p className="text-muted-foreground mt-2">Este link pode ter expirado.</p>
           <Link to="/" className="text-primary mt-4 inline-block">Ir para ConstruPilot →</Link>
         </div>
@@ -111,7 +111,7 @@ export default function SharedCalc() {
               <table className="w-full text-sm">
                 <thead className="bg-secondary/60">
                   <tr>
-                    <th className="text-left px-4 py-2.5">Produit</th>
+                    <th className="text-left px-4 py-2.5">Produto</th>
                     <th className="text-right px-4 py-2.5">Qtd.</th>
                     <th className="text-left px-4 py-2.5">Fornecedor</th>
                     <th className="text-right px-4 py-2.5">Total</th>

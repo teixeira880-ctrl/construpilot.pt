@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Rocket, FileUp, Wand2, FileDown, Layers, Info, Building2, Mountain, CheckCircle2, FileText } from "lucide-react";
 
 const sel = "border rounded-md p-2 bg-background text-sm w-full";
-const KIND = { plan: "Planta cotada", pc: "Permis (PC)", g2: "Estudo geotécnico" };
-const DEST = [["habitation", "Habitation"], ["bureau", "Bureau"], ["commerce", "Commerce"], ["parking", "Parking"], ["industriel", "Industriel"], ["erp", "ERP"]];
-const FOND = [["isolee", "Sapatas isoladas"], ["filante", "Semelles filantes"], ["radier", "Radier"]];
+const KIND = { plan: "Planta cotada", pc: "Projeto de licenciamento", g2: "Estudo geotécnico" };
+const DEST = [["habitation", "Habitation"], ["bureau", "Bureau"], ["commerce", "Comércio"], ["parking", "Parking"], ["industriel", "Industriel"], ["erp", "ERP"]];
+const FOND = [["isolee", "Sapatas isoladas"], ["filante", "Sapatas contínuas"], ["radier", "Ensoleiramento"]];
 const num = v => (v === "" || v === null || v === undefined ? null : Number(v));
 const parseBays = s => String(s || "").split(/[,;x×\s]+/).map(x => parseFloat(x.replace(",", "."))).filter(x => Number.isFinite(x) && x > 0);
 const fmtBays = a => (Array.isArray(a) ? a.join(", ") : "");
@@ -56,7 +56,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
     try {
       const { data } = await api.post(`${base}/documents`, fd, { headers: { "Content-Type": "multipart/form-data" }, timeout: 120000 });
       onChange(data);
-      toast.success(`${KIND[kind]}importado`);
+      toast.success(`${KIND[kind]} importado`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível importar"); }
     finally { setBusy(false); }
   };
@@ -189,7 +189,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
         {(inputs.incertitudes?.length > 0) && <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs text-amber-700 flex gap-2" data-testid="autopilot-uncertainties"><Info className="h-4 w-4 shrink-0" /><div><b>A verificar (leitura IA):</b> {inputs.incertitudes.join(" · ")}</div></div>}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <label className="block text-xs">Sistema estrutural<select className={sel + " mt-1"} value={sy.structure || "portique"} onChange={e => setSy({ structure: e.target.value })} data-testid="autopilot-system"><option value="portique">Portique (poteaux-poutres)</option><option value="voiles">Paredes resistentes</option></select></label>
+          <label className="block text-xs">Sistema estrutural<select className={sel + " mt-1"} value={sy.structure || "portique"} onChange={e => setSy({ structure: e.target.value })} data-testid="autopilot-system"><option value="portique">Pórtico (pilares-vigas)</option><option value="voiles">Paredes resistentes</option></select></label>
           {isWalls ? <Num label="Espessura da parede (m)" value={sy.wall_thickness_m} onChange={v => setSy({ wall_thickness_m: v })} testid="autopilot-wall-thickness" />
             : <label className="flex items-center gap-2 text-xs pt-5"><input type="checkbox" checked={!!sy.two_way_slab} onChange={e => setSy({ two_way_slab: e.target.checked })} data-testid="autopilot-two-way" />Laje armada em 2 direções (apoiada em 4 lados)</label>}
         </div>
@@ -231,8 +231,8 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
             <Num label="Contrainte adm. ELS (kPa)" value={so.q_els_kpa} onChange={v => setSo({ q_els_kpa: v })} testid="autopilot-q-els" />
             <Num label="Contrainte adm. ELU (kPa)" value={so.q_elu_kpa} onChange={v => setSo({ q_elu_kpa: v })} testid="autopilot-q-elu" />
             <label className="block text-xs">Tipo de fundação<select className={sel + " mt-1"} value={so.foundation_type || "isolee"} onChange={e => setSo({ foundation_type: e.target.value })} data-testid="autopilot-foundation-type">{FOND.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-            <Num label="Ancrage D (m)" value={so.anchorage_depth_m} onChange={v => setSo({ anchorage_depth_m: v })} />
-            <Num label="φ' (°) — si connu" value={so.phi_deg} onChange={v => setSo({ phi_deg: v })} />
+            <Num label="Encastramento D (m)" value={so.anchorage_depth_m} onChange={v => setSo({ anchorage_depth_m: v })} />
+            <Num label="φ' (°) — se conhecido" value={so.phi_deg} onChange={v => setSo({ phi_deg: v })} />
             <Num label="c' (kPa)" value={so.c_kpa} onChange={v => setSo({ c_kpa: v })} />
             <Num label="cu (kPa)" value={so.cu_kpa} onChange={v => setSo({ cu_kpa: v })} />
             <label className="flex items-center gap-2 text-xs pt-5"><input type="checkbox" checked={!!so.water_table} onChange={e => setSo({ water_table: e.target.checked })} data-testid="autopilot-water" />Nível freático encontrado</label>
@@ -252,7 +252,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
       <h3 className="text-sm font-medium flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" />3. Resultado — descida de cargas, fundações &amp; armaduras</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
         <div className="border rounded-md p-2"><span className="text-muted-foreground">Elementos</span><p className="text-base font-semibold">{result.summary.total_elements}</p></div>
-        <div className="border rounded-md p-2"><span className="text-muted-foreground">Semelles ({result.summary.footing_type === "filante" ? "filantes" : "isoladas"})</span><p className="text-base font-semibold">{result.summary.n_footings}</p></div>
+        <div className="border rounded-md p-2"><span className="text-muted-foreground">Sapatas ({result.summary.footing_type === "filante" ? "filantes" : "isoladas"})</span><p className="text-base font-semibold">{result.summary.n_footings}</p></div>
         <div className="border rounded-md p-2"><span className="text-muted-foreground">Reação no solo ELU</span><p className="text-base font-semibold">{result.summary.ground_reaction_elu_kn} kN</p></div>
         <div className="border rounded-md p-2"><span className="text-muted-foreground">Sapata máx.</span><p className="text-base font-semibold">{result.summary.max_footing_dim_m != null ? `${result.summary.max_footing_dim_m} m` : "Solo a confirmar"}</p></div>
       </div>
@@ -261,21 +261,21 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
       </div>}
       <div className="overflow-x-auto">
         <table className="w-full text-xs border" data-testid="autopilot-footings-table">
-          <thead className="bg-muted/50"><tr><th className="text-left p-2">Sapata</th><th className="text-right p-2">N ELS (kN)</th><th className="text-right p-2">N ELU (kN)</th><th className="text-right p-2">Dimension</th></tr></thead>
-          <tbody>{(result.summary.footings || []).map(f => <tr key={f.id} className="border-t"><td className="p-2 font-medium">{f.id}</td><td className="text-right p-2">{f.n_els_kn}</td><td className="text-right p-2">{f.n_elu_kn}</td><td className="text-right p-2 font-semibold">{f.status === "sol_a_confirmer" ? <span className="text-amber-700">Solo (estudo geotécnico) a confirmar</span> : f.type === "filante" ? `filante, larg. ${f.width_m} m` : `${f.side_m}×${f.side_m} m`}</td></tr>)}</tbody>
+          <thead className="bg-muted/50"><tr><th className="text-left p-2">Sapata</th><th className="text-right p-2">N ELS (kN)</th><th className="text-right p-2">N ELU (kN)</th><th className="text-right p-2">Dimensão</th></tr></thead>
+          <tbody>{(result.summary.footings || []).map(f => <tr key={f.id} className="border-t"><td className="p-2 font-medium">{f.id}</td><td className="text-right p-2">{f.n_els_kn}</td><td className="text-right p-2">{f.n_elu_kn}</td><td className="text-right p-2 font-semibold">{f.status === "sol_a_confirmer" ? <span className="text-amber-700">Solo (estudo geotécnico) a confirmar</span> : f.type === "filante" ? `contínua, larg. ${f.width_m} m` : `${f.side_m}×${f.side_m} m`}</td></tr>)}</tbody>
         </table>
       </div>
 
       {result.summary.superstructure && (() => { const ss = result.summary.superstructure; return <div className="space-y-3" data-testid="autopilot-superstructure">
-        {ss.beams?.length > 0 && <div className="overflow-x-auto"><p className="text-xs font-medium mb-1">Poutres — ferraillage EC2 (gouvernant par niveau{ss.continuity ? "e por direção, alinhamentos contínuos" : ""})</p>
-          <table className="w-full text-xs border" data-testid="autopilot-beams-table"><thead className="bg-muted/50"><tr><th className="text-left p-2">Niveau</th><th className="text-left p-2">Viga</th><th className="text-right p-2">b×h (m)</th><th className="text-right p-2">M vão (kN·m)</th><th className="text-right p-2">M appui (kN·m)</th><th className="text-right p-2">As inf. (cm²)</th><th className="text-right p-2">As sup. (cm²)</th><th className="text-right p-2">Asw/s (cm²/m)</th><th className="text-right p-2">Flecha LP / lim. (mm)</th></tr></thead>
+        {ss.beams?.length > 0 && <div className="overflow-x-auto"><p className="text-xs font-medium mb-1">Vigas — armaduras EC2 (condicionante por piso{ss.continuity ? " e por direção, alinhamentos contínuos" : ""})</p>
+          <table className="w-full text-xs border" data-testid="autopilot-beams-table"><thead className="bg-muted/50"><tr><th className="text-left p-2">Piso</th><th className="text-left p-2">Viga</th><th className="text-right p-2">b×h (m)</th><th className="text-right p-2">M vão (kN·m)</th><th className="text-right p-2">M apoio (kN·m)</th><th className="text-right p-2">As inf. (cm²)</th><th className="text-right p-2">As sup. (cm²)</th><th className="text-right p-2">Asw/s (cm²/m)</th><th className="text-right p-2">Flecha LP / lim. (mm)</th></tr></thead>
             <tbody>{ss.beams.map(b => <tr key={b.id} className="border-t"><td className="p-2">{b.level}</td><td className="p-2 font-medium">{b.id}</td><td className="text-right p-2">{b.b_m}×{b.h_m}</td><td className="text-right p-2">{b.med_knm}</td><td className="text-right p-2">{b.m_support_knm != null ? `−${b.m_support_knm}` : "—"}</td><td className="text-right p-2 font-semibold">{b.as_req_cm2}</td><td className="text-right p-2 font-semibold">{b.as_top_req_cm2 ?? "—"}</td><td className="text-right p-2">{b.asw_s_req_cm2_m}</td><td className={`text-right p-2 ${b.deflection?.status === "a_revoir" ? "text-red-700 font-semibold" : ""}`}>{b.deflection ? `${b.deflection.w_long_term_mm} / ${b.deflection.limit_mm}` : "—"}</td></tr>)}</tbody></table>
           {ss.continuity && <p className="text-[11px] text-muted-foreground mt-1">{ss.continuity.method}</p>}</div>}
         {ss.columns?.length > 0 && <div className="overflow-x-auto"><p className="text-xs font-medium mb-1">Pilares — aços EC2 (compressão centrada)</p>
-          <table className="w-full text-xs border" data-testid="autopilot-columns-table"><thead className="bg-muted/50"><tr><th className="text-left p-2">Niveau</th><th className="text-left p-2">Pilar</th><th className="text-right p-2">Section (m)</th><th className="text-right p-2">N_Ed (kN)</th><th className="text-left p-2">Aciers long.</th><th className="text-right p-2">As (cm²)</th><th className="text-left p-2">Cadres</th><th className="text-center p-2">Statut</th></tr></thead>
+          <table className="w-full text-xs border" data-testid="autopilot-columns-table"><thead className="bg-muted/50"><tr><th className="text-left p-2">Piso</th><th className="text-left p-2">Pilar</th><th className="text-right p-2">Section (m)</th><th className="text-right p-2">N_Ed (kN)</th><th className="text-left p-2">Aços long.</th><th className="text-right p-2">As (cm²)</th><th className="text-left p-2">Estribos</th><th className="text-center p-2">Estado</th></tr></thead>
             <tbody>{ss.columns.map(c => <tr key={c.id} className="border-t"><td className="p-2">{c.level}</td><td className="p-2 font-medium">{c.id}</td><td className="text-right p-2">{c.b_m}×{c.h_m}</td><td className="text-right p-2">{c.n_ed_kn}</td><td className="p-2 font-semibold">{c.long_bars}</td><td className="text-right p-2">{c.as_prov_cm2}</td><td className="p-2">{c.ties}</td><td className={`text-center p-2 ${c.status === "ok" ? "text-emerald-700" : "text-amber-700 font-semibold"}`}>{c.status === "ok" ? "OK" : "A rever"}</td></tr>)}</tbody></table></div>}
         {ss.walls?.length > 0 && <div className="overflow-x-auto"><p className="text-xs font-medium mb-1">Paredes resistentes — aços EC2 (§9.6)</p>
-          <table className="w-full text-xs border" data-testid="autopilot-walls-table"><thead className="bg-muted/50"><tr><th className="text-left p-2">Niveau</th><th className="text-left p-2">Voile</th><th className="text-right p-2">Esp.×C (m)</th><th className="text-right p-2">N_Ed (kN)</th><th className="text-right p-2">As vert. (cm²)</th><th className="text-right p-2">As horiz. (cm²)</th></tr></thead>
+          <table className="w-full text-xs border" data-testid="autopilot-walls-table"><thead className="bg-muted/50"><tr><th className="text-left p-2">Piso</th><th className="text-left p-2">Parede resistente</th><th className="text-right p-2">Esp.×C (m)</th><th className="text-right p-2">N_Ed (kN)</th><th className="text-right p-2">As vert. (cm²)</th><th className="text-right p-2">As horiz. (cm²)</th></tr></thead>
             <tbody>{ss.walls.map(w => <tr key={w.id} className="border-t"><td className="p-2">{w.level}</td><td className="p-2 font-medium">{w.id}</td><td className="text-right p-2">{w.thickness_m}×{w.length_m}</td><td className="text-right p-2">{w.n_ed_kn}</td><td className="text-right p-2 font-semibold">{w.as_vert_cm2}</td><td className="text-right p-2">{w.as_horiz_cm2}</td></tr>)}</tbody></table></div>}
       </div>; })()}
 
@@ -288,15 +288,15 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
           <div className="border rounded-md p-2 bg-primary/5"><span className="text-muted-foreground">Custo total dos materiais</span><p className="text-base font-semibold text-primary" data-testid="autopilot-metre-cost">{m.cost.total_eur} €</p><span className="text-[10px] text-muted-foreground">acier {m.cost.steel_eur} €</span></div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs border" data-testid="autopilot-rebar-schedule"><thead className="bg-muted/50"><tr><th className="text-left p-2">Referência</th><th className="text-left p-2">Ouvrage</th><th className="text-left p-2">Niveau</th><th className="text-left p-2">Aciers</th><th className="text-right p-2">Nb</th><th className="text-right p-2">Poids (kg)</th></tr></thead>
+          <table className="w-full text-xs border" data-testid="autopilot-rebar-schedule"><thead className="bg-muted/50"><tr><th className="text-left p-2">Referência</th><th className="text-left p-2">Artigo</th><th className="text-left p-2">Piso</th><th className="text-left p-2">Aços</th><th className="text-right p-2">Nb</th><th className="text-right p-2">Peso (kg)</th></tr></thead>
             <tbody>{(m.steel.schedule || []).map((r, i) => <tr key={i} className="border-t"><td className="p-2 font-medium">{r.mark}</td><td className="p-2">{r.type}</td><td className="p-2">{r.level}</td><td className="p-2">{r.bars}</td><td className="text-right p-2">{r.count}</td><td className="text-right p-2 font-semibold">{r.weight_kg}</td></tr>)}</tbody></table>
         </div>
         <p className="text-[11px] text-muted-foreground">{m.note}</p>
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2" data-testid="autopilot-quote-block">
           <p className="text-xs font-medium flex items-center gap-2"><FileText className="h-3.5 w-3.5" />Gerar um orçamento «Estrutura» a partir desta medição</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
-            <Num label="Marge (%)" value={quoteMargin} onChange={v => setQuoteMargin(v)} testid="autopilot-quote-margin" />
-            <label className="block text-xs">TVA<select className={sel + " mt-1"} value={quoteVat} onChange={e => setQuoteVat(Number(e.target.value))} data-testid="autopilot-quote-vat"><option value={20}>20 % (neuf)</option><option value={10}>6 % (reabilitação)</option><option value={0}>0 % (sous-traitance)</option></select></label>
+            <Num label="Margem (%)" value={quoteMargin} onChange={v => setQuoteMargin(v)} testid="autopilot-quote-margin" />
+            <label className="block text-xs">IVA<select className={sel + " mt-1"} value={quoteVat} onChange={e => setQuoteVat(Number(e.target.value))} data-testid="autopilot-quote-vat"><option value={20}>23 % (construção nova)</option><option value={10}>6 % (reabilitação)</option><option value={0}>0 % (subcontratação)</option></select></label>
             <Button onClick={generateQuote} disabled={busy} className="gap-2 md:col-span-2" data-testid="autopilot-generate-quote"><FileText className="h-4 w-4" />Criar o orçamento &amp; abrir o editor</Button>
           </div>
           <p className="text-[11px] text-muted-foreground">Uma linha de betão por elemento (m³) + uma linha de aço por marca (kg) ao preço do material × (1 + margem). Linhas 100 % editáveis no editor.</p>
@@ -305,7 +305,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={downloadCoffrage} disabled={busy} className="gap-2" data-testid="autopilot-download-coffrage"><Layers className="h-4 w-4" />Transferir as plantas de cofragem (cotadas + lista de armaduras)</Button>
-        <Button onClick={downloadDossier} disabled={busy} variant="outline" className="gap-2" data-testid="autopilot-download-dossier"><FileDown className="h-4 w-4" />Dossier BET (descente + ferraillage EC2 + fondations EC7)</Button>
+        <Button onClick={downloadDossier} disabled={busy} variant="outline" className="gap-2" data-testid="autopilot-download-dossier"><FileDown className="h-4 w-4" />Processo de engenharia (descida + armaduras EC2 + fundações EC7)</Button>
         <Button asChild variant="outline" data-testid="autopilot-open-calc"><a href="/structuro/calcul">Abrir no módulo de cálculo</a></Button>
       </div>
       <p className="text-[11px] text-muted-foreground">Pré-dimensionamento automático indicativo. Verifique as hipóteses, complete vento/sismo/continuidade e mande visar pelo engenheiro / pela fiscalização.</p>

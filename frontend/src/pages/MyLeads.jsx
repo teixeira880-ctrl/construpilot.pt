@@ -10,9 +10,9 @@ import { api, eur } from "@/lib/api";
 import { SEO } from "@/components/SEO";
 
 const HANDLING = {
-  acceptee: { label: "Prise en charge", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
+  acceptee: { label: "Tomada de responsabilidade", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
   refusee: { label: "Recusada", cls: "bg-red-500/15 text-red-600 border-red-500/30" },
-  en_cours: { label: "En cours", cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
+  en_cours: { label: "Em curso", cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
 };
 
 export default function MyLeads() {
@@ -32,7 +32,7 @@ export default function MyLeads() {
     setBusy(lead.lead_id + status);
     try {
       await api.put(`/leads/${lead.lead_id}/handling`, { handling_status: status });
-      toast.success(status === "acceptee" ? "Demande prise en charge" : status === "refusee" ? "Pedido recusado" : "Atualização");
+      toast.success(status === "acceptee" ? "Pedido assumido" : status === "refusee" ? "Pedido recusado" : "Atualização");
       load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Ação impossível"); }
     finally { setBusy(""); }
@@ -44,7 +44,7 @@ export default function MyLeads() {
       const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : (parts[0] || "");
       const last = parts.length > 1 ? parts[parts.length - 1] : "";
       const { data } = await api.post("/clients", {
-        first_name: first, last_name: last || first || "Client",
+        first_name: first, last_name: last || first || "Cliente",
         email: l.email || "", phone: l.phone || "", address: l.address || "",
         notes: l.description || "",
       });
@@ -96,18 +96,18 @@ export default function MyLeads() {
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
                   {l.handling_status !== "acceptee" && (
                     <Button size="sm" className="rounded-sm gap-1.5 h-8" disabled={busy.startsWith(l.lead_id)} onClick={() => setHandling(l, "acceptee")} data-testid={`my-lead-accept-${l.lead_id}`}>
-                      <Check className="h-3.5 w-3.5" /> Prendre en charge
+                      <Check className="h-3.5 w-3.5" /> Assumir
                     </Button>
                   )}
                   {l.handling_status !== "refusee" && (
                     <Button size="sm" variant="outline" className="rounded-sm gap-1.5 h-8" disabled={busy.startsWith(l.lead_id)} onClick={() => setHandling(l, "refusee")} data-testid={`my-lead-refuse-${l.lead_id}`}>
-                      <X className="h-3.5 w-3.5" /> Refuser
+                      <X className="h-3.5 w-3.5" /> Recusar
                     </Button>
                   )}
                   <Button size="sm" variant="secondary" className="rounded-sm gap-1.5 h-8" onClick={() => createQuote(l)} data-testid={`my-lead-quote-${l.lead_id}`}>
                     <FileText className="h-3.5 w-3.5" /> Criar um orçamento
                   </Button>
-                  {l.email && <a href={`mailto:${l.email}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"><Mail className="h-3.5 w-3.5" /> Contacter</a>}
+                  {l.email && <a href={`mailto:${l.email}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"><Mail className="h-3.5 w-3.5" /> Contactar</a>}
                 </div>
               </div>
             );

@@ -140,8 +140,8 @@ export default function PlanReader() {
       <Card className="p-5 rounded-md space-y-3" data-testid="plan-upload-card">
         <div className="grid sm:grid-cols-[1fr_auto] gap-3 items-end">
           <div className="space-y-1.5">
-            <Label className="text-xs">Titre</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. Fondation maison Houilles" className="rounded-sm h-10" data-testid="plan-title-input" />
+            <Label className="text-xs">Título</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Fundação moradia Sintra" className="rounded-sm h-10" data-testid="plan-title-input" />
           </div>
           <div>
             <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={(e) => analyze(e.target.files?.[0])} data-testid="plan-file-input" />
@@ -159,7 +159,7 @@ export default function PlanReader() {
           {/* Barre d'état */}
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="rounded-sm">Escala {read.scale_detected || "?"}</Badge>
-            <Badge variant="outline" className="rounded-sm">{read.vector ? "PDF vectoriel" : "PDF image"}</Badge>
+            <Badge variant="outline" className="rounded-sm">{read.vector ? "PDF vetorial" : "PDF image"}</Badge>
             {read.complete
               ? <Badge className="rounded-sm bg-emerald-600 gap-1" data-testid="plan-complete-badge"><CheckCircle2 className="h-3 w-3" /> Medição completa</Badge>
               : <Badge className="rounded-sm bg-amber-500 gap-1" data-testid="plan-incomplete-badge"><AlertTriangle className="h-3 w-3" /> Cotas a completar</Badge>}
@@ -173,9 +173,9 @@ export default function PlanReader() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: Boxes, label: "Betão total", value: `${m.beton_total_m3 ?? 0} m³` },
-              { icon: Ruler, label: `Aço${m.acier_complet ? "" : " (incomplet)"}`, value: `${m.acier_total_kg ?? 0} kg` },
-              { icon: Layers, label: "Semelles", value: m.nb_semelles ?? 0 },
-              { icon: Layers, label: "Poteaux", value: m.nb_poteaux ?? 0 },
+              { icon: Ruler, label: `Aço${m.acier_complet ? "" : " (incompleto)"}`, value: `${m.acier_total_kg ?? 0} kg` },
+              { icon: Layers, label: "Sapatas", value: m.nb_semelles ?? 0 },
+              { icon: Layers, label: "Pilares", value: m.nb_poteaux ?? 0 },
             ].map((c, i) => (
               <Card key={i} className="p-4 rounded-md" data-testid={`metre-card-${i}`}>
                 <c.icon className="h-4 w-4 text-primary mb-1" />
@@ -220,11 +220,11 @@ export default function PlanReader() {
           <Card className="p-4 rounded-md overflow-x-auto" data-testid="fondations-table">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-sm">Elementos de fundação / estrutura</h3>
-              <Button variant="outline" size="sm" className="rounded-sm" onClick={addFond} data-testid="add-fondation-btn">+ Ligne</Button>
+              <Button variant="outline" size="sm" className="rounded-sm" onClick={addFond} data-testid="add-fondation-btn">+ Linha</Button>
             </div>
             <table className="w-full text-sm">
               <thead><tr className="text-left text-xs text-muted-foreground border-b">
-                <th className="py-1 pr-2">Type</th><th className="pr-2">Referência</th><th className="pr-2">L (m)</th><th className="pr-2">l (m)</th><th className="pr-2">h (m)</th><th className="pr-2">Nb</th><th className="pr-2">Betão m³</th><th className="pr-2">Aço kg</th><th className="pr-2">Conf.</th><th></th>
+                <th className="py-1 pr-2">Tipo</th><th className="pr-2">Referência</th><th className="pr-2">L (m)</th><th className="pr-2">l (m)</th><th className="pr-2">h (m)</th><th className="pr-2">Nb</th><th className="pr-2">Betão m³</th><th className="pr-2">Aço kg</th><th className="pr-2">Conf.</th><th></th>
               </tr></thead>
               <tbody>
                 {(read.fondations || []).map((f, i) => (
@@ -256,7 +256,7 @@ export default function PlanReader() {
               <h3 className="font-semibold text-sm mb-2">Muros de embasamento</h3>
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-xs text-muted-foreground border-b">
-                  <th className="py-1 pr-2">Referência</th><th className="pr-2">Material</th><th className="pr-2">Espes. (m)</th><th className="pr-2">Long. (m)</th><th className="pr-2">Haut. (m)</th><th className="pr-2">Superfície m²</th><th></th>
+                  <th className="py-1 pr-2">Referência</th><th className="pr-2">Material</th><th className="pr-2">Espes. (m)</th><th className="pr-2">Long. (m)</th><th className="pr-2">Alt. (m)</th><th className="pr-2">Superfície m²</th><th></th>
                 </tr></thead>
                 <tbody>
                   {read.murs.map((w, i) => (

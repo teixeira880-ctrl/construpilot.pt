@@ -48,10 +48,10 @@ export default function PresetPicker({
     try {
       const { data } = await api.post("/tool-presets/seed-defaults");
       if (data.created > 0) {
-        toast.success(`${data.created}modelos de fábrica adicionados`);
+        toast.success(`${data.created} modelos de fábrica adicionados`);
         await load();
       } else {
-        toast.info(`Já tem${data.already_had}modelos`);
+        toast.info(`Já tem ${data.already_had} modelos`);
       }
     } catch (e) {
       toast.error("Não foi possível importar");
@@ -61,7 +61,7 @@ export default function PresetPicker({
   };
 
   const create = async () => {
-    if (!newName.trim()) return toast.error("Nom requis");
+    if (!newName.trim()) return toast.error("Nome obrigatório");
     const kind = kinds[0] || "other";
     try {
       const body = {
@@ -73,7 +73,7 @@ export default function PresetPicker({
         params: currentSelection?.params || {},
       };
       await api.post("/tool-presets", body);
-      toast.success(`Modelo «${newName.trim()}» guardado`);
+      toast.success(`Modelo « ${newName.trim()} » guardado`);
       setNewName(""); setNewPrice(""); setCreating(false);
       await load();
     } catch {
@@ -134,7 +134,7 @@ export default function PresetPicker({
               <div className="text-center py-6 text-xs text-muted-foreground px-4">
                 {presets.length === 0
                   ? "Nenhum modelo. Clique «Modelos de fábrica» para começar com 6 predefinições prontas."
-                  : `Nenhum modelo do tipo${kinds.join(", ")}. Créez-en un.`}
+                  : `Nenhum modelo do tipo ${kinds.join(", ")}. Crie um.`}
               </div>
             )}
             {filtered.map((p) => (
@@ -142,7 +142,7 @@ export default function PresetPicker({
                 key={p.preset_id}
                 data-testid={`${testIdPrefix}-item-${p.preset_id}`}
                 className="flex items-center gap-2 px-3 py-2 hover:bg-muted/40 cursor-pointer group"
-                onClick={() => { onApply?.(p); setOpen(false); toast.success(`Modelo «${p.name}» aplicado`); }}
+                onClick={() => { onApply?.(p); setOpen(false); toast.success(`Modelo « ${p.name} » aplicado`); }}
               >
                 <div className="h-3 w-3 rounded-sm shrink-0" style={{ background: p.color }} />
                 <div className="min-w-0 flex-1">

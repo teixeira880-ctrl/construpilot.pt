@@ -34,8 +34,8 @@ export function BrandPanel({ projectId, canEdit }) {
       <select className="h-9 rounded-md border bg-background px-2 text-sm" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} data-testid="growth-fact-status">
         {Object.entries(FACT_STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}
       </select>
-      <Input className="sm:col-span-2" placeholder="Affirmation" value={form.statement} onChange={(e) => setForm({ ...form, statement: e.target.value })} data-testid="growth-fact-statement" />
-      <Input placeholder="Source (URL, document, personne)" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} data-testid="growth-fact-source" />
+      <Input className="sm:col-span-2" placeholder="Afirmação" value={form.statement} onChange={(e) => setForm({ ...form, statement: e.target.value })} data-testid="growth-fact-statement" />
+      <Input placeholder="Fonte (URL, documento, pessoa)" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} data-testid="growth-fact-source" />
       <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="growth-fact-date" />
       <div className="flex gap-2 sm:col-span-2"><Button size="sm" onClick={save} disabled={!form.statement.trim()} data-testid="growth-fact-save"><Check className="h-4 w-4" /> Guardar</Button><Button size="sm" variant="ghost" onClick={() => setForm(null)}>Cancelar</Button></div>
     </div>}
@@ -44,7 +44,7 @@ export function BrandPanel({ projectId, canEdit }) {
       <h3 className="overline mb-1">{c}</h3>
       <ul className="divide-y border rounded-md">
         {data.facts.filter((f) => f.category === c).map((f) => <li key={f.fact_id} className="px-3 py-2 text-sm flex flex-wrap items-start gap-2" data-testid={`growth-fact-${f.fact_id}`}>
-          <div className="flex-1 min-w-[220px]"><p>{f.statement}</p><p className="text-[11px] text-muted-foreground">Source : {f.source || "—"} · {f.date || "—"}</p></div>
+          <div className="flex-1 min-w-[220px]"><p>{f.statement}</p><p className="text-[11px] text-muted-foreground">Fonte: {f.source || "—"} · {f.date || "—"}</p></div>
           <Badge className={`rounded-sm border-0 ${FACT_STATUS[f.status]?.[1]}`}>{FACT_STATUS[f.status]?.[0] || f.status}</Badge>
           {canEdit && <><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setForm(f)} data-testid={`growth-fact-edit-${f.fact_id}`}><Pencil className="h-3.5 w-3.5" /></Button>
             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(f)} data-testid={`growth-fact-delete-${f.fact_id}`}><Trash2 className="h-3.5 w-3.5" /></Button></>}

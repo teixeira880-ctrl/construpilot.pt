@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-const TYPE_LBL = { acier: "Ferraillage", etancheite: "Impermeabilização", toiture: "Cobertura", vrd: "VRD", mixte: "Mixte" };
+const TYPE_LBL = { acier: "Armação", etancheite: "Impermeabilização", toiture: "Cobertura", vrd: "VRD", mixte: "Misto" };
 const STATUS = { brouillon: "bg-muted text-muted-foreground", envoyé: "bg-amber-500/15 text-amber-600", confirmé: "bg-emerald-500/15 text-emerald-600" };
 
 export default function OrdersTab({ suppliers = [] }) {
@@ -34,7 +34,7 @@ export default function OrdersTab({ suppliers = [] }) {
       const { data } = await api.post("/pro/appro/orders/merge", {
         order_ids: selected, project: project.trim(), supplier_id: supplierId || null,
       });
-      toast.success(`Encomenda fundida —${data.item_count} lignes (${data.merged_count} bons)`);
+      toast.success(`Encomenda fundida — ${data.item_count} linhas (${data.merged_count} notas)`);
       setSelected([]); setProject(""); load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Fusão impossível");
@@ -78,7 +78,7 @@ export default function OrdersTab({ suppliers = [] }) {
         <Button onClick={merge} disabled={busy || selected.length < 2}
                 data-testid="merge-orders-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
           <GitMerge className="h-4 w-4" />
-          {busy ? "Fusion…" : `Fusionner (${selected.length})`}
+          {busy ? "A fundir…" : `Fundir (${selected.length})`}
         </Button>
       </div>
 
@@ -107,14 +107,14 @@ export default function OrdersTab({ suppliers = [] }) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-semibold text-sm truncate">
-                        {o.project || TYPE_LBL[o.type] || "Commande"}
+                        {o.project || TYPE_LBL[o.type] || "Encomenda"}
                       </span>
                       <span className="text-[10px] font-bold uppercase bg-secondary px-1.5 py-0.5 rounded">
                         {TYPE_LBL[o.type] || o.type}
                       </span>
                       {o.merged_from && (
                         <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                          Fusion ×{o.merged_from.length}
+                          Fusão ×{o.merged_from.length}
                         </span>
                       )}
                     </div>
@@ -127,7 +127,7 @@ export default function OrdersTab({ suppliers = [] }) {
                   <select value={o.status || "brouillon"} onChange={(e) => setStatus(o.order_id, e.target.value)}
                           data-testid={`order-status-${o.order_id}`}
                           className={`text-[11px] font-bold rounded-full px-2 py-1 border-0 cursor-pointer ${STATUS[o.status] || STATUS.brouillon}`}>
-                    <option value="brouillon">Brouillon</option>
+                    <option value="brouillon">Rascunho</option>
                     <option value="enviado">Enviada</option>
                     <option value="confirmado">Confirmada</option>
                   </select>

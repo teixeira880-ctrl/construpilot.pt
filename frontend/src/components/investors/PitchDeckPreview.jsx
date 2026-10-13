@@ -50,7 +50,7 @@ export const PitchDeckPreview = ({ onDownload }) => {
               {imageState === "loading" && <div role="status" data-testid="pitch-deck-slide-loading" className="absolute inset-0 grid place-items-center pointer-events-none"><Loader2 className="animate-spin" aria-label="A carregar" /></div>}
               {imageState === "error" ? (
                 <div role="alert" data-testid="pitch-deck-image-error" className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-sm text-center">
-                  <p>Diapositive indisponible.</p>
+                  <p>Diapositivo indisponível.</p>
                   <Button variant="outline" size="sm" data-testid="pitch-deck-image-retry" onClick={() => { setImageState("loading"); setAttempt((v) => v + 1); }}>Tentar novamente</Button>
                 </div>
               ) : (
@@ -66,7 +66,7 @@ export const PitchDeckPreview = ({ onDownload }) => {
               <select aria-label="Escolher um diapositivo" data-testid="pitch-deck-slide-select" value={page} onChange={(e) => changePage(Number(e.target.value))} className="h-10 max-w-full rounded-md border border-input bg-background px-3 text-sm">
                 {Array.from({ length: info.page_count }, (_, i) => <option key={i + 1} value={i + 1}>{`Diapositive ${i + 1} / ${info.page_count}`}</option>)}
               </select>
-              <Button size="icon" variant="outline" title="Diapositive suivante" aria-label="Diapositive suivante" data-testid="pitch-deck-next" disabled={page === info.page_count} onClick={() => changePage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
+              <Button size="icon" variant="outline" title="Diapositivo seguinte" aria-label="Diapositivo seguinte" data-testid="pitch-deck-next" disabled={page === info.page_count} onClick={() => changePage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
               <span className="sr-only" role="status" data-testid="pitch-deck-page-status">{page} / {info.page_count}</span>
             </div>
           </>

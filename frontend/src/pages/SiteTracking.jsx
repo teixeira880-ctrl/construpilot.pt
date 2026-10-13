@@ -71,7 +71,7 @@ export default function SiteTracking() {
     setRep({ title: "", notes: "" }); setRepPhotos([]); toast.success("Relatório adicionado"); load();
   };
   const addReserve = async () => {
-    if (!need() || !res.description.trim()) return toast.error("Description requise");
+    if (!need() || !res.description.trim()) return toast.error("Descrição obrigatória");
     await api.post("/site/reserves", { project, ...res, photos: resPhotos, chantier_id: chantierId || null });
     setRes({ lot: "", description: "", company: "", company_email: "" }); setResPhotos([]); toast.success("Reserva criada"); load();
   };
@@ -96,7 +96,7 @@ export default function SiteTracking() {
     setBusy(true);
     try {
       const { data } = await api.post(`/site/reserves/remind?project=${encodeURIComponent(project)}`);
-      if (data.emails_sent) toast.success(`${data.emails_sent}e-mail(s) enviado(s) às empresas`);
+      if (data.emails_sent) toast.success(`${data.emails_sent} e-mail(s) enviado(s) às empresas`);
       else toast.info("Nenhuma empresa com e-mail sobre as reservas em curso");
     } catch { toast.error("Envio impossível"); } finally { setBusy(false); }
   };
@@ -120,15 +120,15 @@ export default function SiteTracking() {
 
       <Tabs defaultValue="reports">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="reports" className="rounded-sm gap-2" data-testid="tab-reports"><ClipboardList className="h-4 w-4" /> Comptes-rendus ({reports.length})</TabsTrigger>
+          <TabsTrigger value="reports" className="rounded-sm gap-2" data-testid="tab-reports"><ClipboardList className="h-4 w-4" /> Relatórios ({reports.length})</TabsTrigger>
           <TabsTrigger value="reserves" className="rounded-sm gap-2" data-testid="tab-reserves"><AlertTriangle className="h-4 w-4" /> Reservas ({openCount})</TabsTrigger>
-          <TabsTrigger value="checklist" className="rounded-sm gap-2" data-testid="tab-checklist"><CheckCircle2 className="h-4 w-4" /> Avancement ({ckPct}%)</TabsTrigger>
+          <TabsTrigger value="checklist" className="rounded-sm gap-2" data-testid="tab-checklist"><CheckCircle2 className="h-4 w-4" /> Progresso ({ckPct}%)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="reports" className="mt-5 space-y-4">
           <div className="surface p-5 rounded-md grid gap-3">
             <Input value={rep.title} onChange={(e) => setRep({ ...rep, title: e.target.value })} placeholder="Título / data de visita" className="rounded-sm" data-testid="report-title" />
-            <Textarea value={rep.notes} onChange={(e) => setRep({ ...rep, notes: e.target.value })} placeholder="Observations, avancement, points bloquants…" rows={3} className="rounded-sm" data-testid="report-notes" />
+            <Textarea value={rep.notes} onChange={(e) => setRep({ ...rep, notes: e.target.value })} placeholder="Observações, avanço, pontos bloqueantes…" rows={3} className="rounded-sm" data-testid="report-notes" />
             <div className="flex justify-end"><DictateButton testId="report-dictate" onText={(t) => setRep((r) => ({ ...r, notes: [r.notes, t].filter(Boolean).join(" ") }))} /></div>
             <div className="flex items-center gap-3 flex-wrap">
               <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-primary" data-testid="report-photo-label">
@@ -141,7 +141,7 @@ export default function SiteTracking() {
           </div>
           {reports.map((r) => (
             <div key={r.report_id} className="surface p-4 rounded-md flex justify-between gap-4" data-testid={`report-${r.report_id}`}>
-              <div className="flex-1"><p className="font-display font-semibold">{r.title || "Visite"}</p><p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">{r.notes}</p>
+              <div className="flex-1"><p className="font-display font-semibold">{r.title || "Visita"}</p><p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">{r.notes}</p>
                 {r.photos?.length > 0 && <div className="flex gap-2 mt-2 flex-wrap">{r.photos.map((ph, i) => <img key={i} src={FILE + encodeURIComponent(ph)} alt="" className="h-16 w-16 object-cover rounded border border-border" />)}</div>}
                 <p className="text-xs text-muted-foreground mt-2">{new Date(r.created_at).toLocaleDateString("fr-FR")}</p></div>
               <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 shrink-0" onClick={() => api.delete(`/site/reports/${r.report_id}`).then(load)} data-testid={`report-del-${r.report_id}`}><Trash2 className="h-4 w-4" /></Button>
@@ -151,15 +151,15 @@ export default function SiteTracking() {
 
         <TabsContent value="reserves" className="mt-5 space-y-4">
           <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-4 items-end">
-            <Input value={res.lot} onChange={(e) => setRes({ ...res, lot: e.target.value })} placeholder="Lot (ex. Plomberie)" className="rounded-sm" data-testid="reserve-lot" />
+            <Input value={res.lot} onChange={(e) => setRes({ ...res, lot: e.target.value })} placeholder="Especialidade (ex. Canalizações)" className="rounded-sm" data-testid="reserve-lot" />
             <div className="md:col-span-2 flex gap-2 items-center">
               <Input value={res.description} onChange={(e) => setRes({ ...res, description: e.target.value })} placeholder="Descrição da reserva" className="rounded-sm flex-1" data-testid="reserve-desc" />
               <DictateButton testId="reserve-dictate" className="h-10 shrink-0" onText={(txt) => setRes((r) => ({ ...r, description: [r.description, txt].filter(Boolean).join(" ") }))} />
             </div>
-            <Input value={res.company} onChange={(e) => setRes({ ...res, company: e.target.value })} placeholder="Entreprise" className="rounded-sm" data-testid="reserve-company" />
+            <Input value={res.company} onChange={(e) => setRes({ ...res, company: e.target.value })} placeholder="Empresa" className="rounded-sm" data-testid="reserve-company" />
             <Input value={res.company_email} onChange={(e) => setRes({ ...res, company_email: e.target.value })} placeholder="E-mail empresa (para relançamento)" className="rounded-sm md:col-span-2" data-testid="reserve-email" />
             <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-primary">
-              <Camera className="h-4 w-4" /> Photos {resPhotos.length > 0 && `(${resPhotos.length})`}
+              <Camera className="h-4 w-4" /> Fotografias {resPhotos.length > 0 && `(${resPhotos.length})`}
               <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => readFiles(e.target.files, setResPhotos)} data-testid="reserve-photo-input" />
             </label>
             <Button onClick={addReserve} className="rounded-sm gap-2 w-fit" data-testid="reserve-add"><Plus className="h-4 w-4" /> Criar a reserva</Button>
@@ -182,7 +182,7 @@ export default function SiteTracking() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={r.status === "lifted" ? "secondary" : "default"}>{r.status === "lifted" ? "Levantamento" : "En cours"}</Badge>
+                <Badge variant={r.status === "lifted" ? "secondary" : "default"}>{r.status === "lifted" ? "Levantamento" : "Em curso"}</Badge>
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => api.delete(`/site/reserves/${r.reserve_id}`).then(load)} data-testid={`reserve-del-${r.reserve_id}`}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
@@ -191,11 +191,11 @@ export default function SiteTracking() {
 
         <TabsContent value="checklist" className="mt-5 space-y-4">
           <div className="surface p-4 rounded-md">
-            <div className="flex justify-between text-sm mb-2"><span className="text-muted-foreground">Avancement global</span><span className="num font-bold text-primary">{ckPct}%</span></div>
+            <div className="flex justify-between text-sm mb-2"><span className="text-muted-foreground">Avanço global</span><span className="num font-bold text-primary">{ckPct}%</span></div>
             <div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${ckPct}%` }} /></div>
           </div>
           <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-3 items-end">
-            <Input value={ck.lot} onChange={(e) => setCk({ ...ck, lot: e.target.value })} placeholder="Lot" className="rounded-sm" data-testid="ck-lot" />
+            <Input value={ck.lot} onChange={(e) => setCk({ ...ck, lot: e.target.value })} placeholder="Lote" className="rounded-sm" data-testid="ck-lot" />
             <Input value={ck.label} onChange={(e) => setCk({ ...ck, label: e.target.value })} placeholder="Ponto a controlar" className="rounded-sm" data-testid="ck-label" />
             <Button onClick={addCk} className="rounded-sm gap-2 w-fit" data-testid="ck-add"><Plus className="h-4 w-4" /> Adicionar</Button>
           </div>

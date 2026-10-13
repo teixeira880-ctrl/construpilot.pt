@@ -17,7 +17,7 @@ export function StudyRunning() {
         const {data}=await api.get("/pc/study-jobs"); if(stopped) return;
         const all=data.jobs||[], active=all.filter(j=>["queued","running","committing"].includes(j.status));
         for(const j of all.filter(j=>seen.current.has(j.job_id)&&!["queued","running","committing"].includes(j.status))) {
-          const options={action:{label:"Ouvrir",onClick:()=>nav(`/plan?open=${encodeURIComponent(j.plan_id)}&study=1`)}};
+          const options={action:{label:"Abrir",onClick:()=>nav(`/plan?open=${encodeURIComponent(j.plan_id)}&study=1`)}};
           if(j.status==="completed") toast.success("Estudo e orçamento disponíveis",options);
           else if(j.status!=="cancelled") toast.error(j.error||"Estudo interrompido",options);
         }

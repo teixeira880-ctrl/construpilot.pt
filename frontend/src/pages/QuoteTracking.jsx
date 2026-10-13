@@ -64,7 +64,7 @@ export default function QuoteTracking() {
   const toggleAutoRemind = (val) => saveRemind({ enabled: val });
 
   const QUOTE_STATUS = {
-    draft: { label: "Brouillon", cls: "border-border text-muted-foreground" },
+    draft: { label: "Rascunho", cls: "border-border text-muted-foreground" },
     sent: { label: "Enviado", cls: "border-sky-500/60 text-sky-600" },
     signed: { label: "Assinado", cls: "border-primary/60 text-primary bg-primary/5" },
     refused: { label: "Recusado", cls: "border-red-500/60 text-red-600" },
@@ -82,7 +82,7 @@ export default function QuoteTracking() {
       const { data } = await api.put("/documents/settings/auto-deposit", next);
       setAutoDeposit(data.enabled); setDepositPct(data.pct);
       toast.success(data.enabled
-        ? `Acompte ${data.pct}% criado automaticamente em cada assinatura`
+        ? `Adiantamento ${data.pct} % criado automaticamente em cada assinatura`
         : "Adiantamento automático desativado");
     } catch { toast.error("Definição impossível"); }
   };
@@ -101,7 +101,7 @@ export default function QuoteTracking() {
     try {
       await api.patch(`/documents/${doc.doc_id}/status`, { status });
       setQuotes((qs) => qs.map((x) => x.doc_id === doc.doc_id ? { ...x, status } : x));
-      toast.success(`Statut : ${QUOTE_STATUS[status]?.label || status}`);
+      toast.success(`Estado: ${QUOTE_STATUS[status]?.label || status}`);
     } catch { toast.error("Alteração de estado impossível"); }
   };
   const deleteQuote = async (doc) => {
@@ -111,13 +111,13 @@ export default function QuoteTracking() {
       if (typed !== "ELIMINAR") { toast.message("Eliminação anulada — o orçamento assinado é conservado"); return; }
     } else if (!(await confirm({
       title: "Mover este orçamento para o lixo?",
-      description: `O orçamento${doc.number || ""}será recuperável durante 30 dias a partir do Lixo.`,
+      description: `O orçamento ${doc.number || ""} será recuperável durante 30 dias a partir do Lixo.`,
       confirmLabel: "Mover para o lixo",
     }))) return;
     try {
       await api.delete(`/documents/${doc.doc_id}${signed ? "?confirm_signed=true" : ""}`);
       setQuotes((qs) => qs.filter((x) => x.doc_id !== doc.doc_id));
-      toast.success("Orçamento movido para o lixo — recuperável durante 30 dias", { action: { label: "Corbeille", onClick: () => navigate("/corbeille") } });
+      toast.success("Orçamento movido para o lixo — recuperável durante 30 dias", { action: { label: "Lixo", onClick: () => navigate("/corbeille") } });
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível eliminar"); }
   };
   const facturer = async (doc) => {
@@ -268,7 +268,7 @@ export default function QuoteTracking() {
         : `${window.location.origin}${data.url}`;
       await navigator.clipboard.writeText(fullUrl);
       toast.success(pct > 0
-        ? `Ligação copiada — sinal${pct}% na assinatura`
+        ? `Ligação copiada — sinal ${pct}% na assinatura`
         : "Link de assinatura copiado (sem sinal)");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Impossível gerar");
@@ -297,7 +297,7 @@ export default function QuoteTracking() {
         { vat_rate: Number(invoiceVat) });
       toast.success(data.already
         ? "Fatura já criada — abertura do editor"
-        : `Fatura${data.number || ""}criada a partir do orçamento 🎉`);
+        : `Fatura ${data.number || ""} criada a partir do orçamento 🎉`);
       setInvoiceSend(null);
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
@@ -305,7 +305,7 @@ export default function QuoteTracking() {
     } finally { setInvoicing(null); }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
   if (loading) return <div className="surface p-10 text-center">A carregar…</div>;
 
   const notOpened = sends.filter(s => !s.opened && !s.signed);
@@ -315,9 +315,9 @@ export default function QuoteTracking() {
   const fmtEur = (n) => (n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 0 }) + " €";
   const daysSince = (iso) => {
     const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-    if (d === 0) return "aujourd'hui";
+    if (d === 0) return "hoje";
     if (d === 1) return "hier";
-    return `há${d} j`;
+    return `há ${d} j`;
   };
 
   const Card = ({ send, colour, showComplete }) => {
@@ -341,32 +341,32 @@ export default function QuoteTracking() {
             <button onClick={() => retrySend(send)} disabled={retrying === send.log_id}
                     data-testid={`retry-send-${send.log_id}`}
                     className="text-[10px] px-2 py-0.5 rounded-sm border border-red-500/40 text-red-600 font-semibold">
-              {retrying === send.log_id ? "Envoi…" : "Tentar novamente"}
+              {retrying === send.log_id ? "A enviar…" : "Tentar novamente"}
             </button>
           </div>
         )}
         {send.email_status === "queued" && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-amber-500/15 text-amber-600" data-testid={`send-queued-${send.log_id}`}>Envoi en cours…</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-amber-500/15 text-amber-600" data-testid={`send-queued-${send.log_id}`}>A enviar…</span>
         )}
         <p className="text-[10px] num text-muted-foreground">
           Enviado {daysSince(send.created_at)}
-          {send.opened && send.opened_at && ` · ouvert ${daysSince(send.opened_at)}`}
-          {send.signed && send.signed_at && `· assinado${daysSince(send.signed_at)}`}
-          {send.open_count > 1 && ` (${send.open_count} ouvertures)`}
+          {send.opened && send.opened_at && ` · aberto ${daysSince(send.opened_at)}`}
+          {send.signed && send.signed_at && ` · assinado ${daysSince(send.signed_at)}`}
+          {send.open_count > 1 && ` (${send.open_count} vãos)`}
         </p>
         <div className="flex gap-1 pt-1 flex-wrap">
           {!send.signed && (
             <button onClick={() => copySignLink(send)}
                     data-testid={`copy-sign-${send.log_id}`}
                     className="text-[10px] text-primary hover:underline inline-flex items-center gap-1">
-              <Copy className="h-3 w-3" /> Lien signature
+              <Copy className="h-3 w-3" /> Ligação de assinatura
             </button>
           )}
           {send.signature_token && (
             <a href={`/sign/${send.signature_token}`} target="_blank" rel="noopener noreferrer"
                data-testid={`open-sign-${send.log_id}`}
                className="text-[10px] text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-              <ExternalLink className="h-3 w-3" /> Ouvrir
+              <ExternalLink className="h-3 w-3" /> Abrir
             </a>
           )}
         </div>
@@ -383,7 +383,7 @@ export default function QuoteTracking() {
                   onClick={() => { setInvoiceVat("10"); setInvoiceSend(send); }}
                   data-testid={`convert-invoice-${send.log_id}`}>
             <Receipt className="h-3 w-3" />
-            {invoicing === send.log_id ? "Conversion…" : "Converter em fatura"}
+            {invoicing === send.log_id ? "Conversão…" : "Converter em fatura"}
           </Button>
         )}
         {isAdmin && send.signed && send.doc_id && (
@@ -400,7 +400,7 @@ export default function QuoteTracking() {
                     title="Transformar este orçamento ganho num exemplo de aprendizagem para a IA"
                     data-testid={`ai-example-${send.log_id}`}>
               <GraduationCap className="h-3 w-3" />
-              {exBusy === send.log_id ? "Ajout…" : "Fazer dele um exemplo IA"}
+              {exBusy === send.log_id ? "A adicionar…" : "Fazer dele um exemplo IA"}
             </Button>
           )
         )}
@@ -438,7 +438,7 @@ export default function QuoteTracking() {
         <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground border border-border rounded-sm px-3 py-2 max-w-full min-w-0"
                data-testid="auto-remind-toggle" title="Relançamento automático por e-mail dos orçamentos enviados não assinados">
           <Switch checked={autoRemind} onCheckedChange={toggleAutoRemind} data-testid="auto-remind-switch" />
-          Relances auto
+          Lembretes automáticos
           {autoRemind && (
             <span className="flex flex-wrap items-center gap-1 ml-1 min-w-0">
               <select value={remindDelay} onChange={(e) => saveRemind({ delay_days: Number(e.target.value) })}
@@ -449,9 +449,9 @@ export default function QuoteTracking() {
               </select>
               <select value={remindMax} onChange={(e) => saveRemind({ max_reminders: Number(e.target.value) })}
                       className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs" data-testid="remind-max-select">
-                <option value={1}>1 relance</option>
-                <option value={2}>2 relances</option>
-                <option value={3}>3 relances</option>
+                <option value={1}>1 lembrete</option>
+                <option value={2}>2 lembretes</option>
+                <option value={3}>3 lembretes</option>
               </select>
             </span>
           )}
@@ -503,7 +503,7 @@ export default function QuoteTracking() {
                     <button onClick={() => navigate(`/devis-editeur/${d.doc_id}`)}
                             className="min-w-0 text-left flex-1" data-testid={`quote-open-${d.doc_id}`}>
                       <p className="text-sm font-semibold break-words line-clamp-2" data-testid={`quote-title-${d.doc_id}`}>
-                        {d.title || d.number || "Brouillon"}
+                        {d.title || d.number || "Rascunho"}
                       </p>
                       <p className="text-xs text-muted-foreground break-words line-clamp-1" data-testid={`quote-client-${d.doc_id}`}>{d.client_name || d.client?.company || [d.client?.first_name, d.client?.last_name].filter(Boolean).join(" ") || quoteText("emptyClient")}</p>
                       {d.source === "assistant" && <p className="text-xs text-primary" data-testid={`quote-assistant-origin-${d.doc_id}`}>{quoteText("source")}</p>}
@@ -521,7 +521,7 @@ export default function QuoteTracking() {
                     <select value={d.status || "draft"} onChange={(e) => changeStatus(d, e.target.value)}
                             data-testid={`quote-status-select-${d.doc_id}`}
                             className="rounded-sm border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary h-9 flex-1 sm:flex-none min-w-[6.5rem]">
-                      <option value="draft">Brouillon</option>
+                      <option value="draft">Rascunho</option>
                       <option value="sent">Enviado</option>
                       <option value="signed">Assinado</option>
                       <option value="refused">Recusado</option>
@@ -536,13 +536,13 @@ export default function QuoteTracking() {
                             disabled={d.status !== "signed"} onClick={() => facturer(d)}
                             title={d.status !== "signed" ? "O orçamento deve ser assinado" : "Transformar em fatura"}
                             data-testid={`quote-invoice-${d.doc_id}`}>
-                      <Receipt className="h-3.5 w-3.5" /> Facturer
+                      <Receipt className="h-3.5 w-3.5" /> Faturar
                     </Button>
                     <Button size="sm" variant="outline" className="rounded-sm gap-1 h-9 flex-1 sm:flex-none min-w-[7rem] justify-center"
                             disabled={d.status !== "signed"} onClick={() => facturerAcompte(d)}
                             title={d.status !== "signed" ? "O orçamento deve ser assinado" : "Fatura de sinal 30%"}
                             data-testid={`quote-deposit-${d.doc_id}`}>
-                      <Receipt className="h-3.5 w-3.5" /> Acompte 30%
+                      <Receipt className="h-3.5 w-3.5" /> Sinal 30%
                     </Button>
                     <Button size="sm" variant="outline" className="rounded-sm gap-1 h-9 flex-1 sm:flex-none min-w-[9rem] justify-center"
                             disabled={d.status !== "signed"} onClick={() => openBilling(d)}
@@ -574,11 +574,11 @@ export default function QuoteTracking() {
         <div className="surface p-4" data-testid="kpi-opened">
           <div className="flex items-center gap-2 mb-1">
             <Eye className="h-4 w-4 text-emerald-500" />
-            <p className="overline">Ouverts</p>
+            <p className="overline">Abertos</p>
           </div>
           <p className="num font-display text-3xl font-extrabold">{stats.opened || 0}</p>
           <p className="text-[10px] text-muted-foreground num">
-            {stats.sent ? Math.round((stats.opened || 0) / stats.sent * 100) : 0} % taux d'ouverture
+            {stats.sent ? Math.round((stats.opened || 0) / stats.sent * 100) : 0} % taxa de abertura
           </p>
         </div>
         <div className="surface p-4" data-testid="kpi-signed">
@@ -604,14 +604,14 @@ export default function QuoteTracking() {
       {/* Export comptabilité */}
       <div className="surface p-4 flex flex-wrap items-end gap-3" data-testid="accounting-export">
         <div>
-          <p className="overline">Export comptable</p>
+          <p className="overline">Exportação contabilística</p>
           <p className="text-xs text-muted-foreground mt-1">
             Relatório mensal PDF pronto a enviar ao seu contabilista, ou exportação CSV bruta.
           </p>
         </div>
         <div className="flex items-end gap-2 ml-auto flex-wrap">
           <div className="flex flex-col">
-            <label className="text-[10px] text-muted-foreground mb-1">Mois</label>
+            <label className="text-[10px] text-muted-foreground mb-1">Mês</label>
             <select value={recapM} onChange={(e) => setRecapM(Number(e.target.value))}
                     data-testid="recap-month-select"
                     className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary">
@@ -632,11 +632,11 @@ export default function QuoteTracking() {
           </div>
           <Button onClick={exportRecapPdf} className="rounded-sm gap-2"
                   data-testid="export-recap-pdf-btn">
-            <FileDown className="h-4 w-4" /> Rapport PDF comptable
+            <FileDown className="h-4 w-4" /> Relatório PDF contabilístico
           </Button>
           <Button variant="outline" onClick={exportCsv} className="rounded-sm gap-2"
                   data-testid="export-csv-btn">
-            <Download className="h-4 w-4" /> Exporter CSV
+            <Download className="h-4 w-4" /> Exportar CSV
           </Button>
         </div>
       </div>
@@ -647,7 +647,7 @@ export default function QuoteTracking() {
         </p>
         <Button size="sm" variant="outline" onClick={load} data-testid="quote-tracking-refresh"
                 className="rounded-sm gap-1">
-          <RefreshCw className="h-3 w-3" /> Actualiser
+          <RefreshCw className="h-3 w-3" /> Atualizar
         </Button>
       </div>
 
@@ -727,7 +727,7 @@ export default function QuoteTracking() {
           <div className="grid gap-2">
             <label className="text-xs text-muted-foreground">Taxa de IVA</label>
             <div className="grid grid-cols-3 gap-2">
-              {[["5.5", "5,5 % — 1.ª necessidade"], ["10", "10 % — Renovação"], ["20", "20 % — Neuf"]].map(([v, lbl]) => (
+              {[["5.5", "5,5 % — 1.ª necessidade"], ["10", "10 % — Renovação"], ["20", "20 % — Novo"]].map(([v, lbl]) => (
                 <button key={v} onClick={() => setInvoiceVat(v)}
                   data-testid={`vat-opt-${v}`}
                   className={`rounded-sm border px-2 py-3 text-center transition-colors ${
@@ -768,7 +768,7 @@ export default function QuoteTracking() {
                 <div className="border border-border rounded-sm divide-y divide-border max-h-32 overflow-auto" data-testid="billing-recap-list">
                   {recap.invoices.map((i) => (
                     <div key={i.doc_id} className="flex justify-between px-3 py-1.5 text-xs">
-                      <span>{i.number || "—"} · {{ deposit: "Acompte", situation: "Situation", balance: "Solde" }[i.source] || "Fatura"}</span>
+                      <span>{i.number || "—"} · {{ deposit: "Adiantamento", situation: "Auto de medição", balance: "Saldo" }[i.source] || "Fatura"}</span>
                       <span className="num">{eur(i.ttc)}</span>
                     </div>
                   ))}
@@ -777,7 +777,7 @@ export default function QuoteTracking() {
               <div className="rounded-sm border border-border p-3 space-y-2">
                 <p className="font-semibold text-xs uppercase tracking-wide">Novo auto de medição</p>
                 <div className="flex items-end gap-3">
-                  <label className="w-24 text-xs">Avancement %
+                  <label className="w-24 text-xs">Progresso %
                     <input type="number" min="1" max="100" value={sitPct} onChange={(e) => setSitPct(e.target.value)}
                            className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-pct" />
                   </label>
@@ -800,7 +800,7 @@ export default function QuoteTracking() {
                 </div>
                 <p className="text-[11px] text-muted-foreground" data-testid="billing-deposit-info">
                   {recap.deposit?.available_ht > 0
-                    ? `Adiantamento recebido${eur(recap.deposit.paid_ttc)}c/ IVA · disponível para deduzir${eur(recap.deposit.available_ht)} HT`
+                    ? `Adiantamento recebido ${eur(recap.deposit.paid_ttc)} c/ IVA · disponível para deduzir ${eur(recap.deposit.available_ht)} HT`
                     : "Nenhum adiantamento recebido a deduzir (só o adiantamento efetivamente pago é dedutível)."}
                 </p>
               </div>

@@ -7,17 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-const APPS = ["ConstruPilot Obra", "ConstruPilot Collaborateur", "ConstruPilot Particuliers"];
+const APPS = ["ConstruPilot Obra", "ConstruPilot Colaborador", "ConstruPilot Particulares"];
 const CONTACT_EMAIL = "contact@construpilot.fr";
 const UPDATED = { fr: "Juin 2026", en: "June 2026" };
 
 const T = {
   fr: {
-    over: "Applications mobiles & web",
+    over: "Aplicações móveis e web",
     title: "Eliminar a minha conta ConstruPilot",
-    updated: (d) => `Última atualização:${d}`,
+    updated: (d) => `Última atualização: ${d}`,
     banner: "Eliminação definitiva · Nenhum dado vendido · Alojamento na UE",
-    intro: `Esta página explica como pedir a eliminação da sua conta e dos seus dados nas aplicações${APPS.join(", ")}e no serviço web ConstruPilot (editor: ConstruPilot).`,
+    intro: `Esta página explica como pedir a eliminação da sua conta e dos seus dados nas aplicações ${APPS.join(", ")} e no serviço web ConstruPilot (editor: ConstruPilot).`,
     s1: "1. Eliminar a sua conta a partir da aplicação",
     s1b: [
       "Inicie sessão na sua conta (aplicação móvel ou site).",
@@ -53,10 +53,10 @@ const T = {
     fmsgph: "Ex.: nome da empresa, último acesso, aplicação utilizada…",
     send: "Enviar o meu pedido de eliminação",
     sent: "Pedido enviado. Recebe um aviso de receção por e-mail; a eliminação é tratada no prazo máximo de 30 dias.",
-    err: "Envio impossível. Escreva-nos diretamente para" + CONTACT_EMAIL,
+    err: "Envio impossível. Escreva-nos diretamente para " + CONTACT_EMAIL,
     required: "Indique o seu nome e o e-mail da conta.",
     dataTitle: "Pedir a eliminação dos meus dados",
-    dataIntro: `Esta página permite a qualquer utilizador das aplicações${APPS.join(", ")}e do serviço web ConstruPilot pedir a eliminação dos seus dados pessoais, com ou sem eliminação da conta.`,
+    dataIntro: `Esta página permite a qualquer utilizador das aplicações ${APPS.join(", ")} e do serviço web ConstruPilot pedir a eliminação dos seus dados pessoais, com ou sem eliminação da conta.`,
     dataChoice: "O que pretende eliminar?",
     dataOptA: "Toda a minha conta e todos os meus dados",
     dataOptB: "Apenas alguns dados (fotografias, obra, contactos, histórico…) mantendo a minha conta",
@@ -203,7 +203,7 @@ export default function DeleteAccountPage() {
         </div>
         <div className="flex rounded-full border border-border overflow-hidden text-sm">
           <button type="button" onClick={() => setLang("fr")} data-testid="delete-account-lang-fr"
-            className={`px-4 py-1.5 transition-colors ${lang === "fr" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>Francês</button>
+            className={`px-4 py-1.5 transition-colors ${lang === "fr" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>Português</button>
           <button type="button" onClick={() => setLang("en")} data-testid="delete-account-lang-en"
             className={`px-4 py-1.5 transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>English</button>
         </div>
@@ -297,7 +297,7 @@ export default function DeleteAccountPage() {
           {" · "}
           <Link className="text-primary underline" to="/privacy">{lang === "fr" ? "Política de privacidade" : "Privacy Policy"}</Link>
           {" · "}
-          <Link className="text-primary underline" to="/aide">{lang === "fr" ? "Assistance" : "Support"}</Link>
+          <Link className="text-primary underline" to="/aide">{lang === "fr" ? "Assistência" : "Support"}</Link>
         </p>
       </Section>
     </div>

@@ -56,7 +56,7 @@ export default function AdsPanel() {
   };
 
   const save = async () => {
-    if (!form.name.trim()) return toast.error("Nom requis");
+    if (!form.name.trim()) return toast.error("Nome obrigatório");
     setSaving(true);
     const payload = {
       name: form.name, platform: form.platform, status: form.status,
@@ -92,7 +92,7 @@ export default function AdsPanel() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2" data-testid="ads-filters">
-        <span className="text-xs text-muted-foreground">Filtrer :</span>
+        <span className="text-xs text-muted-foreground">Filtrar:</span>
         <select value={fPlatform} onChange={(e) => setFPlatform(e.target.value)} data-testid="ads-filter-platform"
           className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm">
           <option value="">Todas as plataformas</option>
@@ -112,8 +112,8 @@ export default function AdsPanel() {
       {sum && (
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3" data-testid="ads-kpis">
           <Stat label="Despesa total" value={eur(sum.total_spend)} />
-          <Stat label="Budget" value={eur(sum.total_budget)} />
-          <Stat label="Leads (saisis)" value={num(sum.total_leads)} />
+          <Stat label="Orçamento" value={eur(sum.total_budget)} />
+          <Stat label="Leads (inseridos)" value={num(sum.total_leads)} />
           <Stat label="Leads reais (CRM)" value={num(sum.total_real_leads || 0)} accent />
           <Stat label="CPL real" value={sum.real_cpl != null ? eur(sum.real_cpl) : (sum.cpl != null ? eur(sum.cpl) : "—")} />
           <Stat label="ROAS" value={sum.roas != null ? `${sum.roas}×` : "—"} accent />
@@ -145,7 +145,7 @@ export default function AdsPanel() {
 
       {channels && channels.length > 0 && (
         <div className="surface p-5 rounded-sm" data-testid="ads-channels">
-          <p className="text-sm font-display font-semibold mb-3">Leads par canal d'acquisition</p>
+          <p className="text-sm font-display font-semibold mb-3">Leads por canal de aquisição</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {channels.map((c) => (
               <div key={c.channel} className="rounded-sm border border-border p-3 flex items-center justify-between" data-testid={`channel-${c.channel}`}>
@@ -224,23 +224,23 @@ export default function AdsPanel() {
             <DialogDescription>Indique a despesa e os leads para calcular o custo por lead.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
-            <div><Label>Nom</Label><Input value={form.name} onChange={set("name")} className="rounded-sm mt-1" data-testid="ads-name" /></div>
-            <div><Label>Plateforme</Label>
+            <div><Label>Nome</Label><Input value={form.name} onChange={set("name")} className="rounded-sm mt-1" data-testid="ads-name" /></div>
+            <div><Label>Plataforma</Label>
               <select value={form.platform} onChange={set("platform")} data-testid="ads-platform"
                 className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm">
                 {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Budget (€)</Label><Input type="number" value={form.budget} onChange={set("budget")} className="rounded-sm mt-1 num" data-testid="ads-budget" /></div>
+              <div><Label>Orçamento (€)</Label><Input type="number" value={form.budget} onChange={set("budget")} className="rounded-sm mt-1 num" data-testid="ads-budget" /></div>
               <div><Label>Despesa (€)</Label><Input type="number" value={form.spend} onChange={set("spend")} className="rounded-sm mt-1 num" data-testid="ads-spend" /></div>
               <div><Label>Leads</Label><Input type="number" value={form.leads} onChange={set("leads")} className="rounded-sm mt-1 num" data-testid="ads-leads" /></div>
               <div><Label>Volume de negócios atribuído (€)</Label><Input type="number" value={form.revenue} onChange={set("revenue")} className="rounded-sm mt-1 num" data-testid="ads-revenue" /></div>
             </div>
             <div>
-              <Label>Source CRM (attribution auto)</Label>
+              <Label>Fonte CRM (atribuição automática)</Label>
               <Input value={form.lead_source} onChange={set("lead_source")} list="ads-lead-sources"
-                placeholder="ex. landing-google, meta-printemps…"
+                placeholder="ex. landing-google, meta-primavera…"
                 className="rounded-sm mt-1" data-testid="ads-lead-source" />
               <datalist id="ads-lead-sources">
                 {sources.map((s) => <option key={s} value={s} />)}

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 const STATE = { confirmed: "confirmado", probable: "probable", indeterminate: "indeterminado", not_verifiable: "não verificável" };
 const TOOL = { check_dimension_chain: "Cadeia de cotas", compare_dimension_values: "Comparação de cotas", resolve_ambiguous_reading: "Leitura ambígua",
-  calculate_quantities: "Quantidades", dedupe_elements: "Eliminação de duplicados", classify_strokes: "Classificação dos traços", read_rebar_schedule: "Nomenclature d'aciers" };
+  calculate_quantities: "Quantidades", dedupe_elements: "Eliminação de duplicados", classify_strokes: "Classificação dos traços", read_rebar_schedule: "Lista de armaduras" };
 const useCrop = (r) => {
   const [src, setSrc] = useState(null);
   useEffect(() => {
@@ -39,10 +39,10 @@ const Reading = ({ r, onCorrect }) => {
   return <li className="flex items-start gap-2 py-1 border-b border-border/40" data-testid={`calc-reading-${r.label}`}>
     {crop && <img src={crop} alt={r.label} className="h-12 w-20 object-contain rounded-sm border bg-white" data-testid="calc-reading-crop" />}
     <div className="flex-1 text-xs">
-      <div><b>{r.label}</b> : {r.value_m != null ? `${r.value_m} m` : `${r.candidates_m?.join(" / ")}m (ambígua)`} <span className="text-muted-foreground">· {r.origin === "user_statement" ? "declarado por si" : r.origin === "native_text" ? "texte natif" : r.origin === "assumption" ? "hipótese" : "leitura da planta"}</span></div>
+      <div><b>{r.label}</b> : {r.value_m != null ? `${r.value_m} m` : `${r.candidates_m?.join(" / ")} m (ambígua)`} <span className="text-muted-foreground">· {r.origin === "user_statement" ? "declarado por si" : r.origin === "native_text" ? "texto nativo" : r.origin === "assumption" ? "hipótese" : "leitura da planta"}</span></div>
       {editing ? <div className="flex items-center gap-1 mt-1">
         <input type="number" step="0.001" value={value} onChange={(e) => setValue(e.target.value)} className="h-7 w-24 rounded-sm border px-1 text-xs" data-testid="calc-correct-input" />
-        <Button size="sm" className="h-7 text-xs gap-1" onClick={() => { onCorrect(r.label, Number(value)); setEditing(false); }} data-testid="calc-correct-save"><Check size={12} /> Recalculer</Button>
+        <Button size="sm" className="h-7 text-xs gap-1" onClick={() => { onCorrect(r.label, Number(value)); setEditing(false); }} data-testid="calc-correct-save"><Check size={12} /> Recalcular</Button>
         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}><X size={12} /></Button>
       </div> : <button type="button" className="text-[11px] underline text-muted-foreground flex items-center gap-1 mt-0.5" onClick={() => setEditing(true)} data-testid="calc-correct-btn"><Pencil size={10} /> Corrigir a leitura</button>}
     </div>

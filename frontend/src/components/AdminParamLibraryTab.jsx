@@ -61,7 +61,7 @@ export default function AdminParamLibraryTab() {
       const fd = new FormData(); fd.append("file", file);
       const { data } = await api.post("/admin/param-library/import", fd,
         { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`${data.ouvrages} ouvrages · ${data.lines}linhas importadas`);
+      toast.success(`${data.ouvrages} trabalhos · ${data.lines} linhas importadas`);
       await load(q); await loadTables();
     } catch (err) { toast.error(err?.response?.data?.detail || "Não foi possível importar"); }
     finally { setUploading(false); }
@@ -99,7 +99,7 @@ export default function AdminParamLibraryTab() {
     setGenBusy(true);
     try {
       const { data } = await api.post("/admin/param-library/materials/generate-missing");
-      toast.success(`${data.added}material(is) em falta adicionado(s) — a completar`);
+      toast.success(`${data.added} material(is) em falta adicionado(s) — a completar`);
       await loadTables();
     } finally { setGenBusy(false); }
   };
@@ -107,7 +107,7 @@ export default function AdminParamLibraryTab() {
     setGenBusy(true);
     try {
       const { data } = await api.post("/admin/param-library/materials/prefill");
-      toast.success(`${data.updated}preços pré-preenchidos (estimativa) — a ajustar`);
+      toast.success(`${data.updated} preços pré-preenchidos (estimativa) — a ajustar`);
       await loadTables();
     } finally { setGenBusy(false); }
   };
@@ -117,12 +117,12 @@ export default function AdminParamLibraryTab() {
     const fd = new FormData(); fd.append("file", file);
     const { data } = await api.post("/admin/param-library/materials/import", fd,
       { headers: { "Content-Type": "multipart/form-data" } });
-    toast.success(`${data.processed}preços importados`);
+    toast.success(`${data.processed} preços importados`);
     await loadTables();
   };
   const exportMats = async () => {
     const { data } = await api.get("/admin/param-library/materials");
-    const rows = [["Nom", "Unite", "Preço"], ...(data.materials || []).map((m) => [m.name, m.unit, m.price])];
+    const rows = [["Nome", "Unidade", "Preço"], ...(data.materials || []).map((m) => [m.name, m.unit, m.price])];
     const csv = rows.map((r) => r.join(";")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a"); a.href = url; a.download = "prix-materiaux-construpilot.csv"; a.click();
@@ -143,8 +143,8 @@ export default function AdminParamLibraryTab() {
         </div>
         <div className="flex flex-col items-end gap-1">
           {totalLines > 0
-            ? <Badge className="bg-emerald-600 hover:bg-emerald-600" data-testid="param-count">{meta.count_ouvrages || "?"} ouvrages · {totalLines} lignes</Badge>
-            : <Badge variant="outline" className="text-amber-600 border-amber-400">Vide</Badge>}
+            ? <Badge className="bg-emerald-600 hover:bg-emerald-600" data-testid="param-count">{meta.count_ouvrages || "?"} trabalhos · {totalLines} lignes</Badge>
+            : <Badge variant="outline" className="text-amber-600 border-amber-400">Vazio</Badge>}
           {meta.imported_at && <span className="text-[11px] text-muted-foreground">{meta.last_file}</span>}
         </div>
       </div>
@@ -155,11 +155,11 @@ export default function AdminParamLibraryTab() {
         <Button onClick={() => fileRef.current?.click()} disabled={uploading}
                 className="rounded-sm gap-2 bg-primary" data-testid="param-import-btn">
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Importer (remplacer) CSV / Excel
+          Importar (substituir) CSV / Excel
         </Button>
         {totalLines > 0 && (
           <Button variant="ghost" onClick={clearAll} className="rounded-sm gap-2 text-destructive"
-                  data-testid="param-clear-btn"><Trash2 className="h-4 w-4" /> Vider</Button>
+                  data-testid="param-clear-btn"><Trash2 className="h-4 w-4" /> Esvaziar</Button>
         )}
       </div>
 
@@ -173,8 +173,8 @@ export default function AdminParamLibraryTab() {
         <div className="border border-border rounded-sm overflow-hidden max-h-[420px] overflow-y-auto">
           <Table data-testid="param-ouvrages-table">
             <TableHeader><TableRow className="bg-secondary/60 hover:bg-secondary/60">
-              <TableHead>Code</TableHead><TableHead>Famille</TableHead><TableHead>Especialidade</TableHead>
-              <TableHead className="text-center">Lignes</TableHead><TableHead className="text-right">Calcul</TableHead>
+              <TableHead>Código</TableHead><TableHead>Família</TableHead><TableHead>Especialidade</TableHead>
+              <TableHead className="text-center">Linhas</TableHead><TableHead className="text-right">Cálculo</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {busy ? <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
@@ -197,7 +197,7 @@ export default function AdminParamLibraryTab() {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="border border-border rounded-sm p-4 space-y-3" data-testid="param-rates">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> Taux horaires 2026 (€/h HT)</h4>
+            <h4 className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> Taxas horárias 2026 (€/h s/ IVA)</h4>
             <Button size="sm" onClick={saveRates} className="rounded-sm gap-1 h-8" data-testid="param-rates-save"><Save className="h-3.5 w-3.5" /> Guardar</Button>
           </div>
           <div className="max-h-64 overflow-y-auto space-y-1">
@@ -244,10 +244,10 @@ export default function AdminParamLibraryTab() {
             </Button>
             <input ref={matFileRef} type="file" accept=".csv" className="hidden" onChange={importMats} data-testid="param-mat-import-input" />
             <Button size="sm" variant="outline" onClick={() => matFileRef.current?.click()} className="rounded-sm gap-1 h-8" data-testid="param-mat-import">
-              <Upload className="h-3.5 w-3.5" /> Importer CSV
+              <Upload className="h-3.5 w-3.5" /> Importar CSV
             </Button>
             <Button size="sm" variant="ghost" onClick={exportMats} className="rounded-sm gap-1 h-8" data-testid="param-mat-export">
-              <Save className="h-3.5 w-3.5" /> Exporter CSV
+              <Save className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
           </div>
         </div>
@@ -280,18 +280,18 @@ export default function AdminParamLibraryTab() {
                 <span className="text-xs font-mono text-muted-foreground">{detail.base_code}</span>
               </DialogTitle></DialogHeader>
               <div className="flex flex-wrap gap-3 items-center text-xs">
-                <div className="flex gap-1">Gamme :{LEVELS.map((l) => (
+                <div className="flex gap-1">Gama:{LEVELS.map((l) => (
                   <button key={l} onClick={() => setLevel(l)} className={`rounded-sm px-2 py-1 border capitalize ${level === l ? "border-primary bg-primary text-white" : "border-input"}`}>{l}</button>))}</div>
                 <div className="flex gap-1">Região:
                   <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded-sm border border-input bg-background px-2 py-1">
                     {coefs.map((c) => <option key={c.region} value={c.region}>{c.label || c.region} (×{c.coef})</option>)}
                   </select></div>
-                <div className="flex items-center gap-1">Marge :
+                <div className="flex items-center gap-1">Margem:
                   <input type="number" value={margin} onChange={(e) => setMargin(Number(e.target.value) || 0)} className="w-16 rounded-sm border border-input bg-background px-2 py-1 text-right num" />%</div>
               </div>
               <div className="border border-border rounded-sm overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead><tr className="bg-secondary/60 text-left"><th className="p-2">Composant</th><th className="p-2 text-right">Qtd.</th><th className="p-2 text-right">PU</th><th className="p-2 text-right">Custo</th></tr></thead>
+                  <thead><tr className="bg-secondary/60 text-left"><th className="p-2">Componente</th><th className="p-2 text-right">Qtd.</th><th className="p-2 text-right">PU</th><th className="p-2 text-right">Custo</th></tr></thead>
                   <tbody>{detail.lignes.map((l, i) => (
                     <tr key={i} className="border-t border-border/60">
                       <td className="p-2">{l.composant} {!l.matched && <span className="text-[10px] text-amber-600">(preço a definir)</span>}</td>

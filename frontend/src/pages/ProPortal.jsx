@@ -51,7 +51,7 @@ const KycForm = ({ onSaved }) => {
   };
   return (
     <form onSubmit={submit} className="surface p-6 grid gap-4" data-testid="kyc-form">
-      <p className="overline">Devenir ConstruPilot Verified</p>
+      <p className="overline">Tornar-se ConstruPilot Verified</p>
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label>NIPC ou estabelecimento *</Label>
@@ -59,17 +59,17 @@ const KycForm = ({ onSaved }) => {
                  data-testid="kyc-siren" className="rounded-sm h-11 num" />
         </div>
         <div className="grid gap-2">
-          <Label>Raison sociale *</Label>
+          <Label>Denominação social *</Label>
           <Input required value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })}
                  data-testid="kyc-company" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>Assureur RC Pro</Label>
+          <Label>Seguradora RC Pro</Label>
           <Input value={form.rc_pro_insurer} onChange={(e) => setForm({ ...form, rc_pro_insurer: e.target.value })}
                  data-testid="kyc-rcpro-insurer" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>N° police RC Pro</Label>
+          <Label>N.º apólice RC Pro</Label>
           <Input value={form.rc_pro_number} onChange={(e) => setForm({ ...form, rc_pro_number: e.target.value })}
                  data-testid="kyc-rcpro-number" className="rounded-sm h-11" />
         </div>
@@ -100,7 +100,7 @@ const KycForm = ({ onSaved }) => {
         </div>
       </div>
       <Button type="submit" disabled={busy} data-testid="kyc-submit" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-        <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Submeter o meu processo"}
+        <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Submeter o meu processo"}
       </Button>
       <p className="text-xs text-muted-foreground">
         Após verificação (48 h), recebe o distintivo <b>ConstruPilot Verified</b> e aceda aos contactos qualificados.
@@ -139,13 +139,13 @@ export default function ProPortal() {
     } catch (err) { toast.error(err?.response?.data?.detail || "Compra impossível"); }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
   if (!me) return <div className="surface p-10 text-center">A carregar…</div>;
 
   if (!me.registered) {
     return (
       <div className="grid gap-8">
-        <SectionTitle over="Espace Pro" title="Devenez professionnel ConstruPilot">
+        <SectionTitle over="Espaço Pro" title="Torne-se profissional ConstruPilot">
           Receba todas as semanas potenciais clientes qualificados — pontuação 0/100 — nas suas zonas e especialidades. Pague à unidade através dos seus créditos ConstruPilot Pro.
         </SectionTitle>
         <KycForm onSaved={load} />
@@ -161,7 +161,7 @@ export default function ProPortal() {
             <h1 className="font-display text-3xl font-extrabold tracking-tighter">{me.company_name}</h1>
             {me.verified ? (
               <Badge className="rounded-sm bg-emerald-500/15 text-emerald-500 border-emerald-500/40 gap-1" data-testid="pro-verified-badge">
-                <ShieldCheck className="h-3 w-3" /> {me.badge || "Verified"}
+                <ShieldCheck className="h-3 w-3" /> {me.badge || "Verificado"}
               </Badge>
             ) : (
               <Badge variant="outline" className="rounded-sm border-amber-500/40 text-amber-500">
@@ -191,8 +191,8 @@ export default function ProPortal() {
                       data-testid={`recharge-${a.cents}`}
                       className="border border-border rounded-sm p-4 text-left hover:border-primary transition-colors group">
                 <p className="num font-display text-2xl font-extrabold">{a.label}</p>
-                {a.bonus && <Badge variant="outline" className="rounded-sm text-[10px] text-primary border-primary/40 mt-1">Bonus {a.bonus}</Badge>}
-                <p className="text-xs text-muted-foreground mt-2 group-hover:text-primary">Recharger →</p>
+                {a.bonus && <Badge variant="outline" className="rounded-sm text-[10px] text-primary border-primary/40 mt-1">Bónus {a.bonus}</Badge>}
+                <p className="text-xs text-muted-foreground mt-2 group-hover:text-primary">Recarregar →</p>
               </button>
             ))}
           </div>
@@ -204,7 +204,7 @@ export default function ProPortal() {
 
       <Tabs defaultValue="available">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="available" className="rounded-sm" data-testid="pro-tab-available">Leads disponibles ({leads.length})</TabsTrigger>
+          <TabsTrigger value="available" className="rounded-sm" data-testid="pro-tab-available">Leads disponíveis ({leads.length})</TabsTrigger>
           <TabsTrigger value="bought" className="rounded-sm" data-testid="pro-tab-bought">Os meus leads comprados ({me.leads_bought?.length || 0})</TabsTrigger>
         </TabsList>
 
@@ -221,16 +221,16 @@ export default function ProPortal() {
                 <div key={l.lead_id} className="surface p-5 grid gap-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-display font-bold">{l.trade || "Travaux"}</p>
+                      <p className="font-display font-bold">{l.trade || "Obras"}</p>
                       <p className="text-xs text-muted-foreground">{(l.address || "").slice(0, 60) || "Morada visível após a compra"}</p>
                     </div>
                     <Badge className={`rounded-sm ${l.score >= 75 ? "bg-emerald-500/15 text-emerald-500" : l.score >= 55 ? "bg-primary/15 text-primary" : "bg-secondary text-foreground"}`}>
-                      Score {l.score}/100
+                      Pontuação {l.score}/100
                     </Badge>
                   </div>
                   <p className="text-sm line-clamp-3 text-muted-foreground">{(l.description || "").slice(0, 200)}</p>
                   <div className="grid grid-cols-3 gap-2 text-xs">
-                    {l.budget && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Budget</p><p className="num font-semibold">{eur(l.budget)}</p></div>}
+                    {l.budget && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Orçamento</p><p className="num font-semibold">{eur(l.budget)}</p></div>}
                     {l.surface && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Superfície</p><p className="num font-semibold">{l.surface} m²</p></div>}
                     {l.delay_days && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Prazo</p><p className="num font-semibold">{l.delay_days} j</p></div>}
                   </div>
@@ -253,8 +253,8 @@ export default function ProPortal() {
             <div className="surface p-6">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Especialidade</TableHead><TableHead>Cliente</TableHead><TableHead>Contact</TableHead>
-                  <TableHead>Score</TableHead><TableHead>Preço pago</TableHead>
+                  <TableHead>Especialidade</TableHead><TableHead>Cliente</TableHead><TableHead>Contacto</TableHead>
+                  <TableHead>Pontuação</TableHead><TableHead>Preço pago</TableHead>
                 </TableRow></TableHeader>
                 <TableBody data-testid="pro-bought-table">
                   {me.leads_bought.map((l) => (

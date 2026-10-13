@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const STATES = { unchecked: "A controlar", stale: "Alterado desde o controlo", needs_review: "A verificar", checked: "Coerência controlada" };
-const RUNS = { proposed: "Proposto", queued: "En attente", running: "En cours", done: "Terminado", error: "Interrompu", cancelled: "Parado" };
+const RUNS = { proposed: "Proposto", queued: "Em espera", running: "Em curso", done: "Terminado", error: "Interrompido", cancelled: "Parado" };
 export function ChantierPilot({ chantierId }) {
   const [data, setData] = useState(null), [error, setError] = useState("");
   const sequence = useRef(0);
@@ -45,8 +45,8 @@ export function ChantierPilot({ chantierId }) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{Object.entries(STATES).map(([key, label]) => <div key={key} className="rounded-xl border border-border/70 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums" data-testid={`pilot-count-${key}`}>{data.summary[key]}</p></div>)}</div>
         {data.truncated && <p role="alert" className="text-sm text-amber-700">Mais de 200 recursos por tipo: abra o Piloto e selecione um capítulo. O acompanhamento apresentado é parcial.</p>}
         {data.runs.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs"><RefreshCw size={14} className={active ? "animate-spin" : ""} /><span>Último controlo: {RUNS[data.runs[0].status] || data.runs[0].status}</span><Link className="text-primary underline" to={`/agents?chantier=${encodeURIComponent(chantierId)}&run=${data.runs[0].run_id}`}>Resultados e histórico</Link></div>}
-        <details className="group"><summary className="cursor-pointer text-sm font-medium py-2">Plantas e orçamentos · {data.resources.length} ressource(s)</summary>
-          <div className="grid gap-2 mt-2 max-h-80 overflow-auto">{data.resources.map(r => <div key={r.kind + r.id} className="flex flex-wrap justify-between gap-2 border-b border-border/60 py-3 text-sm"><div className="min-w-0 flex-1"><p className="font-medium break-words">{r.label}</p><p className="text-xs text-muted-foreground mt-1">{STATES[r.state]}{r.issues > 0 ? ` · ${r.issues} point(s)` : ""}</p></div><Link className="text-primary inline-flex items-center gap-1 text-xs min-h-10" to={r.kind === "plan" ? `/analyse/${encodeURIComponent(r.id)}` : `/devis-editeur/${encodeURIComponent(r.id)}`}>{r.kind === "plan" ? "Fontes e revisões" : "Ouvrir"}<ArrowUpRight size={14} /></Link></div>)}{!data.resources.length && <p className="text-sm text-muted-foreground">Adicione uma planta ou associe um orçamento para começar.</p>}</div>
+        <details className="group"><summary className="cursor-pointer text-sm font-medium py-2">Plantas e orçamentos · {data.resources.length} recurso(s)</summary>
+          <div className="grid gap-2 mt-2 max-h-80 overflow-auto">{data.resources.map(r => <div key={r.kind + r.id} className="flex flex-wrap justify-between gap-2 border-b border-border/60 py-3 text-sm"><div className="min-w-0 flex-1"><p className="font-medium break-words">{r.label}</p><p className="text-xs text-muted-foreground mt-1">{STATES[r.state]}{r.issues > 0 ? ` · ${r.issues} point(s)` : ""}</p></div><Link className="text-primary inline-flex items-center gap-1 text-xs min-h-10" to={r.kind === "plan" ? `/analyse/${encodeURIComponent(r.id)}` : `/devis-editeur/${encodeURIComponent(r.id)}`}>{r.kind === "plan" ? "Fontes e revisões" : "Abrir"}<ArrowUpRight size={14} /></Link></div>)}{!data.resources.length && <p className="text-sm text-muted-foreground">Adicione uma planta ou associe um orçamento para começar.</p>}</div>
         </details>
         <p className="text-xs text-muted-foreground">{data.note}</p>
       </>}

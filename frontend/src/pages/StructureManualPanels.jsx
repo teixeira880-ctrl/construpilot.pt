@@ -27,7 +27,7 @@ function Txt({ label, value, onChange, testid }) {
 const Status = ({ s }) => {
   const ok = ["partial", "pass", "listed_checks_only"].includes(s);
   const bad = ["fails_check", "out_of_scope", "conflict", "conflicts", "incomplete", "has_unresolved_checks", "blocked"].includes(s);
-  const map = { partial: "Calculado", pass: "Conforme (saisi)", conflict: "Conflit", conflicts: "Conflits", incomplete: "A completar", fails_check: "Controlo não satisfeito", out_of_scope: "Hors domaine", listed_checks_only: "Controlos listados", has_unresolved_checks: "Controlos a rever", blocked: "Bloqueado" };
+  const map = { partial: "Calculado", pass: "Conforme (introduzido)", conflict: "Conflito", conflicts: "Conflits", incomplete: "A completar", fails_check: "Controlo não satisfeito", out_of_scope: "Hors domaine", listed_checks_only: "Controlos listados", has_unresolved_checks: "Controlos a rever", blocked: "Bloqueado" };
   return <span className={bad ? "text-red-700 font-semibold" : ok ? "text-emerald-700" : "text-muted-foreground"}>{map[s] || s}</span>;
 };
 
@@ -79,13 +79,13 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
       id: `S_${e.id}`.slice(0, 60), kind: "beam", b_mm: b, h_mm: h, d_mm: Math.max(10, h - cover() * 1000),
       med_knm: (uls.moment_knm?.value) ?? 0, ved_kn: Math.abs((uls.shear_kn?.value) ?? 0), ned_kn: 0, torsion_knm: 0,
       materials: mat, as_provided_mm2: autoDesigns[e.id]?.as_provided_mm2 ?? null, cot_theta: cot(),
-      source: DEF_SRC, case: uls.moment_knm?.label || "Cas manuel",
+      source: DEF_SRC, case: uls.moment_knm?.label || "Caso manual",
     };
   };
   const prefillSections = () => setReinf({ sections: beams.map(sectionFromBeam) });
   const addSection = () => setModel(m => {
     let n = 1; const s = m.reinforcement.sections || []; while (s.some(x => x.id === `S${n}`)) n++;
-    return { ...m, reinforcement: { ...m.reinforcement, sections: [...s, { id: `S${n}`, kind: "beam", b_mm: 300, h_mm: 500, d_mm: 450, med_knm: 0, ved_kn: 0, ned_kn: 0, torsion_knm: 0, materials: mat, as_provided_mm2: null, cot_theta: cot(), source: DEF_SRC, case: "Cas manuel" }] } };
+    return { ...m, reinforcement: { ...m.reinforcement, sections: [...s, { id: `S${n}`, kind: "beam", b_mm: 300, h_mm: 500, d_mm: 450, med_knm: 0, ved_kn: 0, ned_kn: 0, torsion_knm: 0, materials: mat, as_provided_mm2: null, cot_theta: cot(), source: DEF_SRC, case: "Caso manual" }] } };
   });
   const editSection = (i, patch) => setModel(m => ({ ...m, reinforcement: { ...m.reinforcement, sections: m.reinforcement.sections.map((s, j) => j === i ? { ...s, ...patch, ...(patch.kind === "slab_strip" ? { b_mm: 1000 } : {}) } : s) } }));
   const removeSection = i => setModel(m => ({ ...m, reinforcement: { ...m.reinforcement, sections: m.reinforcement.sections.filter((_, j) => j !== i) } }));
@@ -95,13 +95,13 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
   const ar = model?.architecture;
   const enableArch = () => setModel(m => ({ ...m, architecture: { clearances: [], fit_bands: [], unresolved: [] } }));
   const setArch = patch => setModel(m => ({ ...m, architecture: { ...m.architecture, ...patch } }));
-  const clearanceFromBeam = e => ({ id: `C_${e.id}`.slice(0, 60), element_id: e.id, label: `Altura livre sob${e.id}`, pc_clearance_m: 2.5, integrated_depth_m: 0, additional_loss_m: 0, minimum_clearance_m: 2.1, source: DEF_SRC, criterion_source: DEF_SRC });
+  const clearanceFromBeam = e => ({ id: `C_${e.id}`.slice(0, 60), element_id: e.id, label: `Altura livre sob ${e.id}`, pc_clearance_m: 2.5, integrated_depth_m: 0, additional_loss_m: 0, minimum_clearance_m: 2.1, source: DEF_SRC, criterion_source: DEF_SRC });
   const prefillClearances = () => setArch({ clearances: beams.map(clearanceFromBeam) });
   const editArr = (key, i, patch) => setModel(m => ({ ...m, architecture: { ...m.architecture, [key]: m.architecture[key].map((r, j) => j === i ? { ...r, ...patch } : r) } }));
   const removeArr = (key, i) => setModel(m => ({ ...m, architecture: { ...m.architecture, [key]: m.architecture[key].filter((_, j) => j !== i) } }));
   const addFitBand = () => setModel(m => {
     let n = 1; const fb = m.architecture.fit_bands || []; while (fb.some(x => x.id === `F${n}`)) n++;
-    return { ...m, architecture: { ...m.architecture, fit_bands: [...fb, { id: `F${n}`, element_id: beams[0]?.id || (m.elements[0]?.id || ""), label: "Gabarit", axis: "x", minimum_m: 0, maximum_m: 1, mode: "beam_width", source: DEF_SRC }] } };
+    return { ...m, architecture: { ...m.architecture, fit_bands: [...fb, { id: `F${n}`, element_id: beams[0]?.id || (m.elements[0]?.id || ""), label: "Gabarito", axis: "x", minimum_m: 0, maximum_m: 1, mode: "beam_width", source: DEF_SRC }] } };
   });
   const archChecks = Object.fromEntries(((result.architectural_compatibility?.checks) || []).map(c => [c.id, c]));
 
@@ -141,10 +141,10 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
         </div>
         <div className="space-y-3">{(rf.sections || []).map((s, i) => { const res = reinfResults[s.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`reinf-section-${i}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <Input aria-label={`Marca da secção${i + 1}`} className="max-w-[9rem]" value={s.id} onChange={e => editSection(i, { id: e.target.value })} />
-            <select aria-label={`Type section ${i + 1}`} className={sel + " max-w-[10rem]"} value={s.kind} onChange={e => editSection(i, { kind: e.target.value })}><option value="beam">Viga</option><option value="slab_strip">Faixa de laje (1 m)</option></select>
+            <Input aria-label={`Marca da secção ${i + 1}`} className="max-w-[9rem]" value={s.id} onChange={e => editSection(i, { id: e.target.value })} />
+            <select aria-label={`Tipo de secção ${i + 1}`} className={sel + " max-w-[10rem]"} value={s.kind} onChange={e => editSection(i, { kind: e.target.value })}><option value="beam">Viga</option><option value="slab_strip">Faixa de laje (1 m)</option></select>
             {res && <span className="text-xs">→ <Status s={res.status} />{res.as_required_mm2 != null ? ` · As,req ${cm2(res.as_required_mm2)} cm²` : ""}</span>}
-            <Button variant="ghost" size="sm" aria-label={`Eliminar secção${i + 1}`} onClick={() => removeSection(i)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" aria-label={`Eliminar secção ${i + 1}`} onClick={() => removeSection(i)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Num label="b (mm)" value={s.b_mm} onChange={v => editSection(i, { b_mm: v })} disabled={s.kind === "slab_strip"} />
@@ -154,7 +154,7 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
             <Num label="M Ed (kN·m)" value={s.med_knm} onChange={v => editSection(i, { med_knm: v })} testid={`reinf-med-${i}`} />
             <Num label="V Ed (kN)" value={s.ved_kn} onChange={v => editSection(i, { ved_kn: v })} />
             <Num label="As colocado (mm², opcional)" value={s.as_provided_mm2} onChange={v => editSection(i, { as_provided_mm2: v })} />
-            <Txt label="Cas / combinaison" value={s.case} onChange={v => editSection(i, { case: v })} />
+            <Txt label="Caso / combinação" value={s.case} onChange={v => editSection(i, { case: v })} />
           </div>
           <Txt label="Source / justification" value={s.source} onChange={v => editSection(i, { source: v })} />
           {res && res.issues?.length > 0 && <ul className="list-disc ml-5 text-[11px] text-amber-700">{res.issues.map((x, k) => <li key={k}>{x}</li>)}</ul>}
@@ -169,19 +169,19 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
         <h2 className="font-semibold">Controlos de arquitetura do projeto de licenciamento (gabaritos &amp; alturas livres)</h2>
         <Button size="sm" onClick={save} disabled={busy} data-testid="manual-save-arch"><Calculator className="h-4 w-4 mr-2" />Guardar e recalcular</Button>
       </div>
-      <p className="text-sm text-muted-foreground">Verifica restrições <b>explicitement saisies</b> do projeto de licenciamento (altura livre sob viga, saliências numa faixa). Nenhuma deteção automática nem validação do projeto. Pré-preenchimento proposto, editável. Relatório <b>indicatif</b>.</p>
+      <p className="text-sm text-muted-foreground">Verifica restrições <b>introduzidas explicitamente</b> do projeto de licenciamento (altura livre sob viga, saliências numa faixa). Nenhuma deteção automática nem validação do projeto. Pré-preenchimento proposto, editável. Relatório <b>indicatif</b>.</p>
       {!ar ? <Button variant="outline" onClick={enableArch} data-testid="arch-enable"><Plus className="h-4 w-4 mr-1" />Ativar os controlos de arquitetura</Button> : <>
         {result.architectural_compatibility && <p className="text-xs">Estado global: <Status s={result.architectural_compatibility.status} /></p>}
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={prefillClearances} disabled={!beams.length} data-testid="arch-prefill"><Plus className="h-4 w-4 mr-1" />Pré-preencher as alturas livres (vigas)</Button>
           <Button variant="outline" size="sm" onClick={addFitBand} data-testid="arch-add-fitband"><Plus className="h-4 w-4 mr-1" />Adicionar um gabarito</Button>
         </div>
-        <div className="space-y-3"><h3 className="text-sm font-medium">Hauteurs libres</h3>{(ar.clearances || []).map((c, i) => { const res = archChecks[c.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`arch-clearance-${i}`}>
+        <div className="space-y-3"><h3 className="text-sm font-medium">Alturas livres</h3>{(ar.clearances || []).map((c, i) => { const res = archChecks[c.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`arch-clearance-${i}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <Input aria-label={`Marca da altura${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("clearances", i, { id: e.target.value })} />
-            <select aria-label={`Elemento da altura${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("clearances", i, { element_id: e.target.value })}><option value="">Viga…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
+            <Input aria-label={`Marca da altura ${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("clearances", i, { id: e.target.value })} />
+            <select aria-label={`Elemento da altura ${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("clearances", i, { element_id: e.target.value })}><option value="">Viga…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
             {res && <span className="text-xs">→ <Status s={res.status} />{res.margin_m != null ? ` · marge ${(res.margin_m * 100).toFixed(1)} cm` : ""}</span>}
-            <Button variant="ghost" size="sm" aria-label={`Eliminar altura${i + 1}`} onClick={() => removeArr("clearances", i)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" aria-label={`Eliminar altura ${i + 1}`} onClick={() => removeArr("clearances", i)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <Txt label="Descrição" value={c.label} onChange={v => editArr("clearances", i, { label: v })} />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -190,23 +190,23 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
             <Num label="Perda complementar (m)" value={c.additional_loss_m} onChange={v => editArr("clearances", i, { additional_loss_m: v })} />
             <Num label="Altura livre mínima (m)" value={c.minimum_clearance_m} onChange={v => editArr("clearances", i, { minimum_clearance_m: v })} />
           </div>
-          <div className="grid md:grid-cols-2 gap-3"><Txt label="Source cote" value={c.source} onChange={v => editArr("clearances", i, { source: v })} /><Txt label="Fonte do critério" value={c.criterion_source} onChange={v => editArr("clearances", i, { criterion_source: v })} /></div>
+          <div className="grid md:grid-cols-2 gap-3"><Txt label="Fonte da cota" value={c.source} onChange={v => editArr("clearances", i, { source: v })} /><Txt label="Fonte do critério" value={c.criterion_source} onChange={v => editArr("clearances", i, { criterion_source: v })} /></div>
           {res?.summary && <p className="text-[11px] text-muted-foreground">{res.summary}</p>}
         </div>; })}</div>
-        {(ar.fit_bands || []).length > 0 && <div className="space-y-3"><h3 className="text-sm font-medium">Gabarits (bandes disponibles)</h3>{(ar.fit_bands || []).map((c, i) => { const res = archChecks[c.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`arch-fitband-${i}`}>
+        {(ar.fit_bands || []).length > 0 && <div className="space-y-3"><h3 className="text-sm font-medium">Gabaritos (faixas disponíveis)</h3>{(ar.fit_bands || []).map((c, i) => { const res = archChecks[c.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`arch-fitband-${i}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <Input aria-label={`Marca do gabarito${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("fit_bands", i, { id: e.target.value })} />
-            <select aria-label={`Elemento do gabarito${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("fit_bands", i, { element_id: e.target.value })}><option value="">Elemento…</option>{(model.elements || []).map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
-            <select aria-label={`Mode gabarit ${i + 1}`} className={sel + " max-w-[11rem]"} value={c.mode} onChange={e => editArr("fit_bands", i, { mode: e.target.value })}><option value="beam_width">Largura da viga</option><option value="column_footprint">Implantação do pilar</option></select>
-            <select aria-label={`Axe gabarit ${i + 1}`} className={sel + " max-w-[6rem]"} value={c.axis} onChange={e => editArr("fit_bands", i, { axis: e.target.value })}><option value="x">Axe X</option><option value="y">Axe Y</option></select>
+            <Input aria-label={`Marca do gabarito ${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("fit_bands", i, { id: e.target.value })} />
+            <select aria-label={`Elemento do gabarito ${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("fit_bands", i, { element_id: e.target.value })}><option value="">Elemento…</option>{(model.elements || []).map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
+            <select aria-label={`Modo gabarito ${i + 1}`} className={sel + " max-w-[11rem]"} value={c.mode} onChange={e => editArr("fit_bands", i, { mode: e.target.value })}><option value="beam_width">Largura da viga</option><option value="column_footprint">Implantação do pilar</option></select>
+            <select aria-label={`Eixo do gabarito ${i + 1}`} className={sel + " max-w-[6rem]"} value={c.axis} onChange={e => editArr("fit_bands", i, { axis: e.target.value })}><option value="x">Eixo X</option><option value="y">Eixo Y</option></select>
             {res && <span className="text-xs">→ <Status s={res.status} /></span>}
-            <Button variant="ghost" size="sm" aria-label={`Eliminar gabarito${i + 1}`} onClick={() => removeArr("fit_bands", i)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" aria-label={`Eliminar gabarito ${i + 1}`} onClick={() => removeArr("fit_bands", i)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <Txt label="Descrição" value={c.label} onChange={v => editArr("fit_bands", i, { label: v })} />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <Num label="Bande mini (m)" value={c.minimum_m} onChange={v => editArr("fit_bands", i, { minimum_m: v })} />
-            <Num label="Bande maxi (m)" value={c.maximum_m} onChange={v => editArr("fit_bands", i, { maximum_m: v })} />
-            <Txt label="Source" value={c.source} onChange={v => editArr("fit_bands", i, { source: v })} />
+            <Num label="Faixa mínima (m)" value={c.minimum_m} onChange={v => editArr("fit_bands", i, { minimum_m: v })} />
+            <Num label="Faixa máxima (m)" value={c.maximum_m} onChange={v => editArr("fit_bands", i, { maximum_m: v })} />
+            <Txt label="Fonte" value={c.source} onChange={v => editArr("fit_bands", i, { source: v })} />
           </div>
           {res?.summary && <p className="text-[11px] text-muted-foreground">{res.summary}</p>}
         </div>; })}</div>}
@@ -229,24 +229,24 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
       {links.length > 0 && <MaterialsEditor testPrefix="linked-mat" />}
       <div className="space-y-3">{links.map((l, i) => { const res = linkResults[l.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`linked-section-${i}`}>
         <div className="flex flex-wrap items-center gap-2">
-          <Input aria-label={`Marca ligada${i + 1}`} className="max-w-[8rem]" value={l.id} onChange={e => editLink(i, { id: e.target.value })} />
-          <select aria-label={`Viga ligada${i + 1}`} className={sel + " max-w-[9rem]"} value={l.element_id} onChange={e => editLink(i, { element_id: e.target.value })}><option value="">Viga…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
-          <select aria-label={`Tipo ligado${i + 1}`} className={sel + " max-w-[10rem]"} value={l.kind} onChange={e => editLink(i, { kind: e.target.value })}><option value="beam">Viga</option><option value="slab_strip">Faixa de laje</option></select>
+          <Input aria-label={`Marca ligada ${i + 1}`} className="max-w-[8rem]" value={l.id} onChange={e => editLink(i, { id: e.target.value })} />
+          <select aria-label={`Viga ligada ${i + 1}`} className={sel + " max-w-[9rem]"} value={l.element_id} onChange={e => editLink(i, { element_id: e.target.value })}><option value="">Viga…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
+          <select aria-label={`Tipo ligado ${i + 1}`} className={sel + " max-w-[10rem]"} value={l.kind} onChange={e => editLink(i, { kind: e.target.value })}><option value="beam">Viga</option><option value="slab_strip">Faixa de laje</option></select>
           {res && <span className="text-xs">→ <Status s={res.status} />{res.as_required_envelope_mm2 != null ? ` · As,req ${cm2(res.as_required_envelope_mm2)} cm²` : ""}</span>}
-          <Button variant="ghost" size="sm" aria-label={`Eliminar ligado${i + 1}`} onClick={() => removeLink(i)}><Trash2 className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" aria-label={`Eliminar ligado ${i + 1}`} onClick={() => removeLink(i)}><Trash2 className="h-4 w-4" /></Button>
         </div>
         <div>
           <p className="text-xs font-medium mb-1">Combinações verificadas</p>
           <div className="flex flex-wrap gap-3">{combos.map(c => <label key={c.id} className="flex items-center gap-1 text-xs"><input type="checkbox" checked={l.case_ids.includes(c.id)} onChange={e => toggleCase(i, c.id, e.target.checked, l.case_ids)} data-testid={`linked-case-${i}-${c.id}`} />{c.id}</label>)}</div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Num label="Centre aciers / face tendue (mm)" value={l.tension_centroid_from_face_mm} onChange={v => editLink(i, { tension_centroid_from_face_mm: v })} />
+          <Num label="Centro dos aços / face tracionada (mm)" value={l.tension_centroid_from_face_mm} onChange={v => editLink(i, { tension_centroid_from_face_mm: v })} />
           <Num label="As colocado (mm², opcional)" value={l.as_provided_mm2} onChange={v => editLink(i, { as_provided_mm2: v })} testid={`linked-asprov-${i}`} />
           <Num label="cot θ (1–2,5)" value={l.cot_theta} onChange={v => editLink(i, { cot_theta: v })} />
           {l.kind === "slab_strip" && <label className="flex items-end gap-2 text-xs"><input type="checkbox" checked={!!l.uniform_across_width} onChange={e => editLink(i, { uniform_across_width: e.target.checked })} />Distribuição uniforme na largura</label>}
         </div>
         <Txt label="Source / justification" value={l.source} onChange={v => editLink(i, { source: v })} />
-        {res && res.governing_flexure_case && <p className="text-[11px] text-muted-foreground">Cas dimensionnant : {res.governing_flexure_case} · vão {res.span_m} m · {res.force_basis}</p>}
+        {res && res.governing_flexure_case && <p className="text-[11px] text-muted-foreground">Caso condicionante: {res.governing_flexure_case} · vão {res.span_m} m · {res.force_basis}</p>}
       </div>; })}</div>
       {result.linked_reinforcement?.unresolved && links.length > 0 && <p className="text-[11px] text-muted-foreground" data-testid="linked-results">{result.linked_reinforcement.scope}</p>}
       {dirtyHint}

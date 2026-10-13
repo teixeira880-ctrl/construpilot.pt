@@ -9,7 +9,7 @@ const STATUS_STYLE = {
   verified: "bg-emerald-500/15 text-emerald-600",
   rejected: "bg-red-500/15 text-red-600",
 };
-const STATUS_LABEL = { pending: "En attente", verified: "Validado", rejected: "Recusado" };
+const STATUS_LABEL = { pending: "Em espera", verified: "Validado", rejected: "Recusado" };
 
 export default function ProKycPanel() {
   const [rows, setRows] = useState([]);
@@ -33,7 +33,7 @@ export default function ProKycPanel() {
       const url = URL.createObjectURL(res.data);
       window.open(url, "_blank", "noopener");
     } catch {
-      toast.error("Document indisponible");
+      toast.error("Documento indisponível");
     } finally { setBusy(""); }
   };
 
@@ -61,7 +61,7 @@ export default function ProKycPanel() {
         <h2 className="font-bold text-lg">Validação das contas Pro</h2>
       </div>
       <div className="flex gap-2">
-        {[["pending", "En attente"], ["verified", "Validados"], ["rejected", "Recusados"], ["", "Todos"]].map(([v, l]) => (
+        {[["pending", "Em espera"], ["verified", "Validados"], ["rejected", "Recusados"], ["", "Todos"]].map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)}
                   data-testid={`kyc-filter-${v || "all"}`}
                   className={`text-xs px-3 py-1.5 rounded-sm border ${filter === v ? "bg-primary text-white border-primary" : "border-border"}`}>
@@ -93,7 +93,7 @@ export default function ProKycPanel() {
                     {r.email} · SIRET {r.siret || "—"}
                   </p>
                   {r.kyc_rejection_reason && (
-                    <p className="text-xs text-red-600 mt-1">Motif refus : {r.kyc_rejection_reason}</p>
+                    <p className="text-xs text-red-600 mt-1">Motivo recusa: {r.kyc_rejection_reason}</p>
                   )}
                 </div>
               </div>
@@ -103,21 +103,21 @@ export default function ProKycPanel() {
                         onClick={() => viewDoc(r.user_id, "kbis")}
                         data-testid={`kyc-view-kbis-${r.user_id}`}>
                   {busy === `${r.user_id}-kbis` ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
-                  K-bis {r.has_kbis ? "" : "(manquant)"}
+                  K-bis {r.has_kbis ? "" : "(em falta)"}
                 </Button>
                 <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8"
                         disabled={!r.has_decennale || busy === `${r.user_id}-decennale`}
                         onClick={() => viewDoc(r.user_id, "decennale")}
                         data-testid={`kyc-view-decennale-${r.user_id}`}>
                   {busy === `${r.user_id}-decennale` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
-                  Decenal {r.has_decennale ? "" : "(manquant)"}
+                  Decenal {r.has_decennale ? "" : "(em falta)"}
                 </Button>
                 {r.kyc_status !== "verified" && (
                   <Button size="sm" className="rounded-sm gap-1 h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
                           disabled={busy === `${r.user_id}-review`}
                           onClick={() => review(r.user_id, true)}
                           data-testid={`kyc-approve-${r.user_id}`}>
-                    <ShieldCheck className="h-3 w-3" /> Valider
+                    <ShieldCheck className="h-3 w-3" /> Validar
                   </Button>
                 )}
                 {r.kyc_status !== "rejected" && (
@@ -125,7 +125,7 @@ export default function ProKycPanel() {
                           disabled={busy === `${r.user_id}-review`}
                           onClick={() => review(r.user_id, false)}
                           data-testid={`kyc-reject-${r.user_id}`}>
-                    <ShieldX className="h-3 w-3" /> Refuser
+                    <ShieldX className="h-3 w-3" /> Recusar
                   </Button>
                 )}
               </div>

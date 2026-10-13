@@ -38,13 +38,13 @@ export default function TechAnalysis() {
   const loadSuppliers = () => api.get("/pro/suppliers").then(({ data }) => setSuppliers(data.items || [])).catch(() => {});
 
   const tabs = [["acier", "Ferragem / Aço"], ["etancheite", "Impermeabilização"],
-  ["toiture", "Cobertura"], ["vrd", "VRD / Redes"], ["commandes", "Commandes"], ["fournisseurs", "Os meus fornecedores"]];
+  ["toiture", "Cobertura"], ["vrd", "VRD / Redes"], ["commandes", "Encomendas"], ["fournisseurs", "Os meus fornecedores"]];
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6" data-testid="tech-analysis-page">
       <div className="flex items-center gap-3 flex-wrap">
         <HardHat className="h-6 w-6 text-primary" />
-        <h1 className="font-display text-2xl font-bold">Analyse technique &amp; Approvisionnement IA</h1>
+        <h1 className="font-display text-2xl font-bold">Análise técnica &amp; Aprovisionamento IA</h1>
         <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro · Aço · Impermeabilização · Cobertura · Infraestruturas</span>
       </div>
 
@@ -71,7 +71,7 @@ const SupplierManager = ({ suppliers, reload }) => {
   const [editId, setEditId] = useState(null);
 
   const save = async () => {
-    if (!form.name) return toast.error("Nom requis");
+    if (!form.name) return toast.error("Nome obrigatório");
     try {
       const payload = { ...form, categories: form.categories || [], price_list: (form.price_list || []).filter((r) => r.label) };
       if (editId) await api.put(`/pro/suppliers/${editId}`, payload);
@@ -95,7 +95,7 @@ const SupplierManager = ({ suppliers, reload }) => {
     <div className="grid lg:grid-cols-2 gap-5" data-testid="suppliers-tab">
       <div className="surface p-4 space-y-2">
         <h3 className="font-bold mb-1">{editId ? "Modificar o fornecedor" : "Adicionar um fornecedor"}</h3>
-        {[["name", "Nom *"], ["agency", "Agence"], ["client_number", "N.º cliente"], ["email", "Email"], ["phone", "Telefone"], ["delivery_address", "Morada de entrega"]].map(([k, l]) => (
+        {[["name", "Nome *"], ["agency", "Agência"], ["client_number", "N.º cliente"], ["email", "Email"], ["phone", "Telefone"], ["delivery_address", "Morada de entrega"]].map(([k, l]) => (
           <div key={k}><label className="text-xs text-muted-foreground">{l}</label>
             <Input value={form[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className="h-8" data-testid={`supplier-${k}`} /></div>
         ))}
@@ -103,7 +103,7 @@ const SupplierManager = ({ suppliers, reload }) => {
         <div className="pt-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold">Catálogo de preços (palavras-chave → PU s/ IVA)</label>
-            <Button size="sm" variant="outline" onClick={addPrice} className="h-7 gap-1 rounded-sm" data-testid="add-price-row"><Plus className="h-3 w-3" />Ligne</Button>
+            <Button size="sm" variant="outline" onClick={addPrice} className="h-7 gap-1 rounded-sm" data-testid="add-price-row"><Plus className="h-3 w-3" />Linha</Button>
           </div>
           <p className="text-[11px] text-muted-foreground mb-1">Ex: « telhas terracota » · unidade · 0,85 €. Utilizado para orçamentar as notas de encomenda.</p>
           <div className="space-y-1">

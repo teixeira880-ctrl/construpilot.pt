@@ -14,7 +14,7 @@ const dictate = (fd) => axios.post(`${BASE}/api/speech/portal/transcribe`, fd, {
 export function PortalMessages({ portalApi, chantierRef, participantId }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
-  const load = useCallback(() => portalApi.get(`/${chantierRef}/messages`).then(({ data }) => { setData(data); setError(""); }).catch((e) => setError(e?.response?.data?.detail || "Messages indisponibles")), [portalApi, chantierRef]);
+  const load = useCallback(() => portalApi.get(`/${chantierRef}/messages`).then(({ data }) => { setData(data); setError(""); }).catch((e) => setError(e?.response?.data?.detail || "Mensagens indisponíveis")), [portalApi, chantierRef]);
   useEffect(() => { load(); const id = setInterval(load, 10000); return () => clearInterval(id); }, [load]);
   const fileUrl = (p) => `${BASE}/api/portal/${chantierRef}/messages/file?path=${encodeURIComponent(p)}`;
   if (error) return <p className="text-sm text-red-600" data-testid="portal-messages-error">{error}</p>;
@@ -47,14 +47,14 @@ function ReportForm({ portalApi, chantierRef, onDone, onCancel }) {
       <label className="text-sm grid gap-1">Detalhes<div className="flex gap-2 items-start"><textarea className={field} rows={3} value={form.description} onChange={set("description")} placeholder="Desde quando, onde exatamente, o que constatou…" data-testid="portal-issue-desc" /><DictateButton request={dictate} testId="portal-issue-desc-dictate" onText={(t) => setForm((f) => ({ ...f, description: [f.description, t].filter(Boolean).join(" ") }))} /></div></label>
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="text-sm grid gap-1">Divisão / capítulo<input className={field} value={form.location} onChange={set("location")} placeholder="Cozinha, casa de banho, fachada…" data-testid="portal-issue-location" /></label>
-        <label className="text-sm grid gap-1">Urgence<select className={field} value={form.urgency} onChange={set("urgency")} data-testid="portal-issue-urgency"><option value="low">Faible — peut attendre</option><option value="normal">Normale</option><option value="high">Urgente — dano em curso</option></select></label>
+        <label className="text-sm grid gap-1">Urgência<select className={field} value={form.urgency} onChange={set("urgency")} data-testid="portal-issue-urgency"><option value="low">Baixa — pode esperar</option><option value="normal">Normal</option><option value="high">Urgente — dano em curso</option></select></label>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="inline-flex items-center gap-1 text-sm rounded-lg border px-3 py-1.5 cursor-pointer bg-white" data-testid="portal-issue-attach"><Camera className="h-4 w-4" /> Photos {files.length > 0 && `(${files.length}/5)`}
+        <label className="inline-flex items-center gap-1 text-sm rounded-lg border px-3 py-1.5 cursor-pointer bg-white" data-testid="portal-issue-attach"><Camera className="h-4 w-4" /> Fotografias {files.length > 0 && `(${files.length}/5)`}
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => { setFiles((l) => [...l, ...Array.from(e.target.files)].slice(0, 5)); e.target.value = ""; }} data-testid="portal-issue-file-input" /></label>
-        {files.map((f, i) => <span key={i} className="inline-flex items-center gap-1 text-xs rounded border px-2 py-0.5 bg-white">{f.name}<button type="button" onClick={() => setFiles((l) => l.filter((_, j) => j !== i))} aria-label="Retirer"><X className="h-3 w-3" /></button></span>)}
+        {files.map((f, i) => <span key={i} className="inline-flex items-center gap-1 text-xs rounded border px-2 py-0.5 bg-white">{f.name}<button type="button" onClick={() => setFiles((l) => l.filter((_, j) => j !== i))} aria-label="Remover"><X className="h-3 w-3" /></button></span>)}
       </div>
-      <div className="flex justify-end gap-2"><button type="button" onClick={onCancel} className="text-sm rounded-lg border px-3 py-2 bg-white" data-testid="portal-issue-cancel">Cancelar</button><button type="submit" disabled={busy} className="text-sm rounded-lg bg-emerald-700 text-white px-4 py-2 font-medium disabled:opacity-60" data-testid="portal-issue-submit">{busy ? "Envoi…" : "Enviar a comunicação"}</button></div>
+      <div className="flex justify-end gap-2"><button type="button" onClick={onCancel} className="text-sm rounded-lg border px-3 py-2 bg-white" data-testid="portal-issue-cancel">Cancelar</button><button type="submit" disabled={busy} className="text-sm rounded-lg bg-emerald-700 text-white px-4 py-2 font-medium disabled:opacity-60" data-testid="portal-issue-submit">{busy ? "A enviar…" : "Enviar a comunicação"}</button></div>
     </form>
   );
 }
@@ -64,7 +64,7 @@ export function PortalIssues({ portalApi, chantierRef, canReport }) {
   const [data, setData] = useState({ issues: [], labels: {} });
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
-  const load = useCallback(() => portalApi.get(`/${chantierRef}/issues`).then(({ data }) => { setData(data); setError(""); }).catch((e) => setError(e?.response?.data?.detail || "Signalements indisponibles")), [portalApi, chantierRef]);
+  const load = useCallback(() => portalApi.get(`/${chantierRef}/issues`).then(({ data }) => { setData(data); setError(""); }).catch((e) => setError(e?.response?.data?.detail || "Ocorrências indisponíveis")), [portalApi, chantierRef]);
   useEffect(() => { load(); }, [load]);
   const fileUrl = (p) => `${BASE}/api/portal/${chantierRef}/messages/file?path=${encodeURIComponent(p)}`;
   const confirm = async (issue, resolved) => {
@@ -86,7 +86,7 @@ export function PortalIssues({ portalApi, chantierRef, canReport }) {
               <IssueHeader issue={i} labels={data.labels} />
               {i.description && <p className="text-sm text-slate-700 whitespace-pre-wrap">{i.description}</p>}
               <IssuePhotos photos={i.photos} fileUrl={fileUrl} testId={`portal-issue-photos-${i.issue_id}`} />
-              {i.assignee || i.target_date ? <p className="text-xs text-slate-500">{[i.assignee && `Pris en charge par ${i.assignee}`, i.target_date && `data prevista${new Date(i.target_date).toLocaleDateString("fr-FR")}`].filter(Boolean).join(" · ")}</p> : null}
+              {i.assignee || i.target_date ? <p className="text-xs text-slate-500">{[i.assignee && `Assumido por ${i.assignee}`, i.target_date && `data prevista ${new Date(i.target_date).toLocaleDateString("fr-FR")}`].filter(Boolean).join(" · ")}</p> : null}
               {i.pro_response && <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm" data-testid={`portal-issue-response-${i.issue_id}`}><p className="text-[11px] uppercase tracking-wide text-emerald-800">Resposta da empresa</p><p className="whitespace-pre-wrap">{i.pro_response}</p></div>}
               {i.status === "resolved" && i.client_confirmed == null && (
                 <div className="flex flex-wrap gap-2 items-center text-sm" data-testid={`portal-issue-confirm-${i.issue_id}`}><span>A empresa indica que está resolvido. Confirma?</span>

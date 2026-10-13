@@ -40,7 +40,7 @@ const COMPARE_CONFIG = {
       { tile_length: 90, tile_width: 90 },
     ],
     label: (v) => `${v.tile_length}×${v.tile_width} cm`,
-    metric: { title: "Carreaux", match: /carreau/i },
+    metric: { title: "Azulejos", match: /carreau/i },
     caption: "Perdas de aplicação incluídas conforme o tipo de aplicação selecionado. O formato mais barato está realçado.",
   },
 };
@@ -159,7 +159,7 @@ export default function Calculators() {
       name: active.name,
       materials: result.materials.map((m) => ({ name: m.name, quantity: m.quantity, unit: m.unit })),
     }]);
-    toast.success(`« ${active.name}» adicionado à seleção`);
+    toast.success(`« ${active.name} » adicionado à seleção`);
   };
 
   const buildGroupedQuote = async () => {
@@ -286,7 +286,7 @@ export default function Calculators() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" className="rounded-sm text-muted-foreground" onClick={() => setCart([])} data-testid="calc-cart-clear">Vider</Button>
+              <Button variant="ghost" className="rounded-sm text-muted-foreground" onClick={() => setCart([])} data-testid="calc-cart-clear">Esvaziar</Button>
               <Button className="rounded-sm gap-2" disabled={addingQuote} onClick={buildGroupedQuote} data-testid="calc-cart-quote-btn">
                 {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Criar o orçamento agrupado
               </Button>
@@ -322,7 +322,7 @@ export default function Calculators() {
             </div>
           ))}
           <Button onClick={run} disabled={busy} data-testid="calculate-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Calculator className="h-4 w-4" /> Calculer
+            <Calculator className="h-4 w-4" /> Calcular
           </Button>
         </div>
 
@@ -354,12 +354,12 @@ export default function Calculators() {
                       className="w-full mb-1 flex items-center gap-2 text-sm bg-primary/10 border border-primary/30 text-primary rounded-sm px-4 py-2.5 hover:bg-primary/15 transition-colors">
                       <Lock className="h-4 w-4" />
                       <span>Exportar PDF, orçamento e partilha estão <b>Premium</b> — desbloqueie-os.</span>
-                      <span className="ml-auto font-semibold underline">Passer Premium →</span>
+                      <span className="ml-auto font-semibold underline">Passar Premium →</span>
                     </button>
                   )}
                   <Button onClick={exportPdf} disabled={busyPdf} variant="outline" className="rounded-sm gap-2" data-testid="calc-export-pdf-btn">
                     {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : (!isPremium ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />)}
-                    {optim ? "Exportar PDF (com preços)" : "Exporter en PDF"}
+                    {optim ? "Exportar PDF (com preços)" : "Exportar em PDF"}
                   </Button>
                   <Button onClick={addToQuote} disabled={addingQuote} className="rounded-sm gap-2" data-testid="calc-add-quote-btn">
                     {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Adicionar ao orçamento
@@ -387,7 +387,7 @@ export default function Calculators() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                        <TableHead>Format</TableHead>
+                        <TableHead>Formato</TableHead>
                         <TableHead className="text-right">{compare.cfg.metric.title}</TableHead>
                         <TableHead className="text-right">Orçamento estimado</TableHead>
                       </TableRow>
@@ -442,7 +442,7 @@ export default function Calculators() {
                       <p className="num mt-3 text-xl font-bold">{eur(optim.best_single?.total)}</p>
                     </div>
                     <div className="surface p-6 border-primary">
-                      <p className="overline">Multi-fournisseurs</p>
+                      <p className="overline">Multi-fornecedores</p>
                       <p className="num mt-3 text-xl font-bold text-primary">{eur(optim.multi_supplier.total)}</p>
                     </div>
                     <div className="surface p-6">
@@ -454,7 +454,7 @@ export default function Calculators() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                          <TableHead>Produit</TableHead>
+                          <TableHead>Produto</TableHead>
                           <TableHead className="text-right">Qtd.</TableHead>
                           <TableHead>Fornecedor</TableHead>
                           <TableHead className="text-right">PU</TableHead>
@@ -475,7 +475,7 @@ export default function Calculators() {
                     </Table>
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <ShoppingCart className="h-3 w-3" /> Mode {optim.mode} — preço de demonstração, ligue as API de fornecedores para preços reais.
+                    <ShoppingCart className="h-3 w-3" /> Modo {optim.mode} — preço de demonstração, ligue as API de fornecedores para preços reais.
                   </p>
                 </div>
               )}
@@ -494,7 +494,7 @@ export default function Calculators() {
             <Input readOnly value={shareUrl || ""} className="rounded-sm num text-xs" data-testid="calc-share-url" />
             <Button variant="outline" className="rounded-sm gap-1 shrink-0" data-testid="calc-share-copy"
               onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Link copiado"); }}>
-              <Copy className="h-4 w-4" /> Copier
+              <Copy className="h-4 w-4" /> Copiar
             </Button>
           </div>
           {shareUrl && (

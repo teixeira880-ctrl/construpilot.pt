@@ -76,7 +76,7 @@ export const DemoShowcase = () => {
 
         <div className="grid gap-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">Chapitres</p>
+            <p className="text-sm font-semibold">Capítulos</p>
             <a href={data.video} download data-testid="demo-download"
                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
               <Download className="h-3.5 w-3.5" /> Transferir (MP4)

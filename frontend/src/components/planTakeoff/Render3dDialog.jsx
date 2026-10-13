@@ -39,8 +39,8 @@ export function Render3dDialog({
         <DialogHeader>
           <DialogTitle>Converter a planta 2D em 3D</DialogTitle>
           <DialogDescription>
-            Trois modes : <b>IA</b> para uma renderização fotorrealista (Nano Banana),
-            <b> Interactif</b> para uma maquete 3D navegável, ou
+            Três modos: <b>IA</b> para uma renderização fotorrealista (Nano Banana),
+            <b> Interativo</b> para uma maquete 3D navegável, ou
             <b> Vídeo</b> para um mini-tour multi-estilos a anexar ao orçamento.
           </DialogDescription>
         </DialogHeader>
@@ -52,8 +52,8 @@ export function Render3dDialog({
               <span className="text-primary font-semibold">✓ Renders, vídeos e maquetes ilimitados (Pro / Pro Business)</span>
             ) : (
               <>
-                <span data-testid="credits-free-render">🎁 Rendus offerts restants : <b>{credits3d.free_render_remaining ?? 0}</b></span>
-                <span>Créditos — renderização: <b>{creditFor("render")}</b> · vídeo: <b>{creditFor("video")}</b> · maquette : <b>{creditFor("mockup")}</b></span>
+                <span data-testid="credits-free-render">🎁 Renders oferecidos restantes: <b>{credits3d.free_render_remaining ?? 0}</b></span>
+                <span>Créditos — renderização: <b>{creditFor("render")}</b> · vídeo: <b>{creditFor("video")}</b> · maquete : <b>{creditFor("mockup")}</b></span>
                 <span className="text-muted-foreground">Preços unitários: render 5 € · vídeo 10 € · maqueta 5 €</span>
               </>
             )}
@@ -73,7 +73,7 @@ export function Render3dDialog({
               <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
                       data-testid="credit-buy-btn"
                       onClick={() => buyCredit(creditPaywall.credit_plan_id)}>
-                Acheter ({Number(creditPaywall.price_eur).toFixed(0)} €)
+                Comprar ({Number(creditPaywall.price_eur).toFixed(0)} €)
               </Button>
             </div>
           </div>
@@ -84,13 +84,13 @@ export function Render3dDialog({
                   onClick={() => setRender3dMode("ai")}
                   data-testid="render-3d-mode-ai"
                   className={`rounded-sm gap-1 ${render3dMode === "ai" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
-            <Sparkles className="h-3 w-3" /> Rendu IA
+            <Sparkles className="h-3 w-3" /> Renderização IA
           </Button>
           <Button size="sm" variant={render3dMode === "interactive" ? "default" : "ghost"}
                   onClick={() => (onInteractiveMode ? onInteractiveMode() : setRender3dMode("interactive"))}
                   data-testid="render-3d-mode-interactive"
                   className={`rounded-sm gap-1 ${render3dMode === "interactive" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
-            <Sparkles className="h-3 w-3" /> Maquette interactive
+            <Sparkles className="h-3 w-3" /> Maqueta interativa
           </Button>
           <Button size="sm" variant={render3dMode === "video" ? "default" : "ghost"}
                   onClick={() => setRender3dMode("video")}
@@ -122,12 +122,12 @@ export function Render3dDialog({
                  data-testid="render-3d-ai-hint">
               <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
               <p>
-                Le <strong>Rendu IA</strong> produz uma imagem colorida vista de cima (ilustração). Para uma
+                Le <strong>Renderização IA</strong> produz uma imagem colorida vista de cima (ilustração). Para uma
                 <strong> vraie 3D navigable</strong> (paredes em volume, órbita, zoom, altura ajustável), utilize a{" "}
                 <button type="button" className="underline font-semibold hover:text-amber-700"
                         data-testid="render-3d-ai-hint-interactive"
                         onClick={() => (onInteractiveMode ? onInteractiveMode() : setRender3dMode("interactive"))}>
-                  Maquette interactive
+                  Maqueta interativa
                 </button>.
               </p>
             </div>
@@ -177,7 +177,7 @@ export function Render3dDialog({
             )}
             {render3dImg && !render3dBusy && (
               <div className="space-y-3" data-testid="render-3d-result">
-                <img src={render3dImg} alt="Rendu 3D"
+                <img src={render3dImg} alt="Renderização 3D"
                      className="w-full rounded-sm border border-border" />
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={runRender3d} disabled={render3dBusy}
@@ -211,7 +211,7 @@ export function Render3dDialog({
             )}
 
             <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm bg-secondary/30">
-              💡 Astuce : essayez d'abord <b>Isométrico</b> para uma renderização global, depois <b>Vista interior</b> para imergir o seu cliente na sala.
+              💡 Dica: experimente primeiro <b>Isométrico</b> para uma renderização global, depois <b>Vista interior</b> para imergir o seu cliente na sala.
             </p>
           </div>
         )}
@@ -228,14 +228,14 @@ export function Render3dDialog({
                 <input type="checkbox" checked={videoAddWatermark}
                        onChange={(e) => setVideoAddWatermark(e.target.checked)}
                        className="accent-primary h-4 w-4" />
-                <span className="text-xs">Filigrane logo (branding)</span>
+                <span className="text-xs">Marca de água logótipo (imagem de marca)</span>
               </label>
               <label className="flex items-center gap-2 h-10 px-3 border border-border rounded-sm cursor-pointer bg-secondary/30"
                      data-testid="video-music-toggle">
                 <input type="checkbox" checked={videoAddMusic}
                        onChange={(e) => setVideoAddMusic(e.target.checked)}
                        className="accent-primary h-4 w-4" />
-                <span className="text-xs">Musique d'ambiance</span>
+                <span className="text-xs">Música ambiente</span>
               </label>
             </div>
 

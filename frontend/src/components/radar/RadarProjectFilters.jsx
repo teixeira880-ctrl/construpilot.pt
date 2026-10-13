@@ -47,6 +47,6 @@ export const RadarProjectFilters = ({ value, options, facets, busy, onApply, cou
       </Button>
       <Button size="sm" variant="ghost" className="h-10 gap-2" disabled={busy || !anySelected} onClick={() => { setDraft(EMPTY); onApply(EMPTY); }} data-testid="radar-filters-reset"><RotateCcw className="h-4 w-4" />Reiniciar</Button>
     </div>
-    <p role="status" className="text-xs text-muted-foreground" data-testid="radar-filters-status">{changed ? "Seleção não aplicada" : typeof count === "number" ? `${count} permis correspondant${count > 1 ? "s" : ""}` : "A carregar as licenças…"}</p>
+    <p role="status" className="text-xs text-muted-foreground" data-testid="radar-filters-status">{changed ? "Seleção não aplicada" : typeof count === "number" ? `${count} licença correspondente${count > 1 ? "s" : ""}` : "A carregar as licenças…"}</p>
   </section>;
 };

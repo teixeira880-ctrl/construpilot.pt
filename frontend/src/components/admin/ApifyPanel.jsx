@@ -88,9 +88,9 @@ export default function ApifyPanel() {
           setBusy(false);
           if (data.status === "SUCCEEDED") {
             setItems(data.items || []);
-            toast.success(`${data.count}resultado(s)${data.persisted ? "· guardados" : ""}`);
+            toast.success(`${data.count} resultado(s)${data.persisted ? " · guardados" : ""}`);
           } else {
-            toast.error(`Execução concluída:${data.status}`);
+            toast.error(`Execução concluída: ${data.status}`);
           }
           loadHistory();
         }
@@ -252,7 +252,7 @@ export default function ApifyPanel() {
       <div className="flex items-center justify-between pt-2">
         <h4 className="font-semibold">Histórico das execuções</h4>
         <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={loadHistory}
-                data-testid="apify-history-refresh"><RefreshCw className="h-4 w-4" /> Actualiser</Button>
+                data-testid="apify-history-refresh"><RefreshCw className="h-4 w-4" /> Atualizar</Button>
       </div>
       {history.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhuma execução por agora.</p>
@@ -264,7 +264,7 @@ export default function ApifyPanel() {
               <span className="font-mono text-xs text-muted-foreground">{j.actor_id}</span>
               {j.use_case && <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{j.use_case}</span>}
               <span className={`text-xs font-semibold ${j.status === "SUCCEEDED" ? "text-emerald-600" : j.status === "FAILED" ? "text-red-600" : "text-amber-600"}`}>{j.status}</span>
-              <span className="text-xs text-muted-foreground">{j.count} item(s){j.persist ? "· guardados" : ""}</span>
+              <span className="text-xs text-muted-foreground">{j.count} item(s){j.persist ? " · guardados" : ""}</span>
               <span className="text-xs text-muted-foreground ml-auto">{j.created_at ? new Date(j.created_at).toLocaleString("fr-FR") : ""}</span>
             </div>
           ))}

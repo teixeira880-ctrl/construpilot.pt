@@ -25,20 +25,20 @@ export default function SharedEstimate() {
           <div className="grid gap-2">
             <div className="text-xs uppercase tracking-widest text-[#FF5A00] font-semibold">Intervalo de orçamento de obras</div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" data-testid="shared-estimate-title">{e.project}</h1>
-            <p className="text-sm text-muted-foreground">Referência {data.ref} · {e.reference_region} · preço {e.price_date} · niveau : {e.finish_level}</p>
+            <p className="text-sm text-muted-foreground">Referência {data.ref} · {e.reference_region} · preço {e.price_date} · nível: {e.finish_level}</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 p-4 text-center"><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Preço baixo</div><div className="text-2xl sm:text-3xl font-bold" data-testid="shared-estimate-low">{eur(e.low_estimate)}</div></div>
             <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-4 text-center"><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Central</div><div className="text-2xl sm:text-3xl font-bold">{eur(e.central_estimate)}</div></div>
             <div className="rounded-sm border border-orange-500/40 bg-orange-500/10 p-4 text-center"><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Preço alto</div><div className="text-2xl sm:text-3xl font-bold" data-testid="shared-estimate-high">{eur(e.high_estimate)}</div></div>
           </div>
-          <p className="text-sm text-muted-foreground">Amplitude {e.range_percentage} % · confiance {Math.round((e.confidence || 0) * 100)} % · source : {e.price_source}</p>
+          <p className="text-sm text-muted-foreground">Amplitude {e.range_percentage} % · confiança {Math.round((e.confidence || 0) * 100)} % · source : {e.price_source}</p>
           <div className="grid sm:grid-cols-2 gap-6">
             <List title="Incluído na estimativa" items={e.included_items} testid="shared-estimate-included" />
             <List title="Não incluído" items={e.excluded_items} testid="shared-estimate-excluded" />
             <List title="Hipóteses adotadas" items={e.assumptions} />
-            <List title="Facteurs d'incertitude" items={e.uncertainty_factors} />
-            <List title="Informations manquantes" items={e.missing_information} />
+            <List title="Fatores de incerteza" items={e.uncertainty_factors} />
+            <List title="Informações em falta" items={e.missing_information} />
             <List title="Perguntas a colocar às empresas" items={e.recommended_questions_for_contractors} testid="shared-estimate-questions" />
           </div>
           <p className="text-sm italic border-l-4 border-[#FF5A00] pl-3 py-1 bg-muted/40" data-testid="shared-estimate-notice">{e.mandatory_notice}</p>

@@ -58,7 +58,7 @@ export default function ApiKeys() {
 
   const copy = async (v) => { try { await navigator.clipboard.writeText(v); toast.success("Copiado"); } catch { toast.error("Cópia impossível"); } };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
 
   return (
     <div className="grid gap-8">
@@ -73,20 +73,20 @@ export default function ApiKeys() {
         <div className="flex items-center gap-2"><Key className="h-4 w-4 text-primary" /><p className="overline">Nova chave API</p></div>
         <div className="grid sm:grid-cols-3 gap-3">
           <div className="grid gap-2">
-            <Label>Plan</Label>
+            <Label>Planta</Label>
             <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
               <SelectTrigger className="rounded-sm h-10" data-testid="api-key-plan"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {plans.map((p) => (
                   <SelectItem key={p.plan_id} value={p.plan_id}>
-                    {p.name} — {(p.amount_cents / 100).toFixed(0)} €/mois · {p.quotas?.api_calls_monthly?.toLocaleString("fr-FR")} appels
+                    {p.name} — {(p.amount_cents / 100).toFixed(0)} €/mês · {p.quotas?.api_calls_monthly?.toLocaleString("fr-FR")} appels
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label>Nom (ex : Production)</Label>
+            <Label>Nome (ex: Produção)</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="api-key-name" className="rounded-sm h-10" />
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function ApiKeys() {
             {freshKey?.key}
           </div>
           <Button onClick={() => copy(freshKey?.key)} className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Copy className="h-4 w-4" /> Copier
+            <Copy className="h-4 w-4" /> Copiar
           </Button>
         </DialogContent>
       </Dialog>
@@ -117,9 +117,9 @@ export default function ApiKeys() {
         <p className="overline mb-4">Chaves ativas ({keys.length})</p>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Nom</TableHead><TableHead>Prefixo</TableHead>
-            <TableHead>Plan</TableHead><TableHead>Quota / mois</TableHead>
-            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Nome</TableHead><TableHead>Prefixo</TableHead>
+            <TableHead>Planta</TableHead><TableHead>Quota / mês</TableHead>
+            <TableHead>Estado</TableHead><TableHead className="text-right">Ações</TableHead>
           </TableRow></TableHeader>
           <TableBody data-testid="api-keys-list">
             {keys.map((k) => (
@@ -130,12 +130,12 @@ export default function ApiKeys() {
                 <TableCell className="num">{k.monthly_quota?.toLocaleString("fr-FR")}</TableCell>
                 <TableCell>
                   <Badge variant={k.active ? "default" : "outline"} className="rounded-sm">
-                    {k.active ? "Actif" : "Revogado"}
+                    {k.active ? "Ativo" : "Revogado"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button size="sm" variant="outline" onClick={() => rotate(k.prefix)} className="rounded-sm gap-1" data-testid={`api-key-rotate-${k.prefix}`}>
-                    <RefreshCw className="h-3 w-3" /> Rotate
+                    <RefreshCw className="h-3 w-3" /> Rodar
                   </Button>
                   {k.active && (
                     <Button size="sm" variant="outline" onClick={() => revoke(k.prefix)} className="rounded-sm gap-1" data-testid={`api-key-revoke-${k.prefix}`}>
@@ -151,7 +151,7 @@ export default function ApiKeys() {
       </div>
 
       <div className="surface p-6 grid gap-3">
-        <div className="flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /><p className="overline">Exemple d'appel</p></div>
+        <div className="flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /><p className="overline">Exemplo de chamada</p></div>
         <pre className="text-xs bg-secondary/40 p-4 rounded-sm overflow-x-auto"><code>{`curl -X POST https://pilot-build-demo.preview.emergentagent.com/api/v1/public/estimation \\
   -H "X-API-Key: ckp_live_..." \\
   -H "Content-Type: application/json" \\

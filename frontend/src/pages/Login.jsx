@@ -73,7 +73,7 @@ export default function Login() {
           }
         }
         if (ref) {
-          toast.success(`Code parrainage ${ref.toUpperCase()}aplicado — bem-vindo!`);
+          toast.success(`Código de referência ${ref.toUpperCase()} aplicado — bem-vindo!`);
           sessionStorage.removeItem("construpilot_ref");
         }
         // Envoi de la demande de travaux mise en attente avant l'inscription
@@ -255,7 +255,7 @@ export default function Login() {
                   <Label>Tipo de conta</Label>
                   <div className="grid grid-cols-3 gap-2" data-testid="register-account-type">
                     {[
-                      { v: "particulier", label: "Particulier" },
+                      { v: "particulier", label: "Particular" },
                       { v: "pro", label: "Pro" },
                       { v: "pro_business", label: "Pro Business" },
                     ].map((o) => (
@@ -287,9 +287,9 @@ export default function Login() {
                 {/* Documents pro obligatoires */}
                 {(form.account_type === "pro" || form.account_type === "pro_business") && (
                   <div className="grid gap-3 rounded-sm border border-primary/30 bg-primary/5 p-3" data-testid="pro-documents-block">
-                    <p className="text-xs font-semibold text-primary">Justificatifs professionnels obligatoires</p>
+                    <p className="text-xs font-semibold text-primary">Comprovativos profissionais obrigatórios</p>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">N° SIRET (14 chiffres)</Label>
+                      <Label className="text-xs">N° SIRET (14 dígitos)</Label>
                       <Input required value={form.siret} onChange={set("siret")} inputMode="numeric"
                              maxLength={17} placeholder="123 456 789 00012"
                              data-testid="register-siret-input" className="rounded-sm h-10" />

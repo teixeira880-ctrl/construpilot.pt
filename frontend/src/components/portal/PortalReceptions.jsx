@@ -50,7 +50,7 @@ export function PortalReceptions({ portalApi, chantierRef, accent }) {
               <div className="flex flex-wrap items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{pv.ref} · {DECISIONS[pv.decision] || pv.decision}</p>
-                  <p className="text-xs text-slate-500">Receção {(pv.date_reception || "").slice(0, 10)} · {pv.reserve_count} reserva(s){pv.reserve_count ? ` · ${pv.reserve_lifted}/${pv.reserve_count}levantada(s)` : ""}{pv.client_signature?.name ? `· assinado:${pv.client_signature.name}` : ""}</p>
+                  <p className="text-xs text-slate-500">Receção {(pv.date_reception || "").slice(0, 10)} · {pv.reserve_count} reserva(s){pv.reserve_count ? ` · ${pv.reserve_lifted}/${pv.reserve_count} levantada(s)` : ""}{pv.client_signature?.name ? ` · assinado: ${pv.client_signature.name}` : ""}</p>
                 </div>
                 {pv.signed_client && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" data-testid={`portal-pv-signed-${pv.pv_id}`}>Assinado</span>}
                 <a href={`${BASE}/api/portal/${chantierRef}/reception/${pv.pv_id}/pdf`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs hover:bg-slate-50" data-testid={`portal-pv-pdf-${pv.pv_id}`}><Download className="h-3.5 w-3.5" /> PDF</a>
@@ -73,7 +73,7 @@ export function PortalReceptions({ portalApi, chantierRef, accent }) {
                           </button>
                           <div className="min-w-0">
                             <p className={`text-xs ${done ? "line-through text-slate-400" : "text-slate-700"}`}>{r.lot ? <span className="font-medium">{r.lot} · </span> : null}{r.description}</p>
-                            {done && <p className="text-[10px] text-emerald-600">Resolvida{r.lifted_by ? `— confirmado por${r.lifted_by}` : ""}</p>}
+                            {done && <p className="text-[10px] text-emerald-600">Resolvida{r.lifted_by ? ` — confirmado por ${r.lifted_by}` : ""}</p>}
                           </div>
                         </li>
                       );
@@ -94,7 +94,7 @@ export function PortalReceptions({ portalApi, chantierRef, accent }) {
                       </div>
                     </div>
                   ) : (
-                    <button type="button" onClick={() => setSigning(pv.pv_id)} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white" style={{ background: accent }} data-testid={`portal-pv-signbtn-${pv.pv_id}`}><PenLine className="h-3.5 w-3.5" /> Signer en ligne</button>
+                    <button type="button" onClick={() => setSigning(pv.pv_id)} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white" style={{ background: accent }} data-testid={`portal-pv-signbtn-${pv.pv_id}`}><PenLine className="h-3.5 w-3.5" /> Assinar online</button>
                   )}
                 </div>
               )}

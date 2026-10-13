@@ -120,7 +120,7 @@ export default function AdminDrillDialog({ metric, onClose, inbox = false, hours
     a.download = `construpilot-${metric}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`${rows.length}linha(s) exportada(s)`);
+    toast.success(`${rows.length} linha(s) exportada(s)`);
   };
 
   const sendBulk = async () => {
@@ -131,7 +131,7 @@ export default function AdminDrillDialog({ metric, onClose, inbox = false, hours
       const { data: res } = await api.post("/admin/bulk-email", {
         recipients: selectedEmails, subject, message,
       });
-      toast.success(`${res.sent}/${res.total}e-mail(s) enviado(s)${res.failed ? ` · ${res.failed}falha(s)` : ""}`);
+      toast.success(`${res.sent}/${res.total} e-mail(s) enviado(s)${res.failed ? ` · ${res.failed} falha(s)` : ""}`);
       setCompose(false); setSubject(""); setMessage(""); setSelected(new Set());
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Envio impossível");
@@ -174,18 +174,18 @@ export default function AdminDrillDialog({ metric, onClose, inbox = false, hours
             )}
             <Button size="sm" className="rounded-sm gap-2" onClick={exportCSV} disabled={!rows.length}
                     data-testid="admin-drill-export">
-              <Download className="h-4 w-4" /> Exporter CSV
+              <Download className="h-4 w-4" /> Exportar CSV
             </Button>
           </div>
 
           {/* Filtres cible pub */}
           {(hasPlan || hasCity || hasInactive) && (
             <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="admin-drill-filters">
-              <span className="text-muted-foreground flex items-center gap-1"><Filter className="h-3.5 w-3.5" /> Filtres :</span>
+              <span className="text-muted-foreground flex items-center gap-1"><Filter className="h-3.5 w-3.5" /> Filtros:</span>
               {hasPlan && (
                 <Select value={planFilter} onValueChange={setPlanFilter}>
                   <SelectTrigger className="rounded-sm h-8 w-[160px]" data-testid="admin-drill-plan-filter">
-                    <SelectValue placeholder="Plan" />
+                    <SelectValue placeholder="Planta" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os planos</SelectItem>
@@ -195,13 +195,13 @@ export default function AdminDrillDialog({ metric, onClose, inbox = false, hours
               )}
               {hasCity && (
                 <Input value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}
-                       placeholder="Ville / adresse" className="rounded-sm h-8 w-[180px]"
+                       placeholder="Cidade / morada" className="rounded-sm h-8 w-[180px]"
                        data-testid="admin-drill-city-filter" />
               )}
               {hasInactive && (
                 <label className="flex items-center gap-2 cursor-pointer" data-testid="admin-drill-inactive-filter">
                   <Checkbox checked={inactiveOnly} onCheckedChange={(v) => setInactiveOnly(!!v)} />
-                  Inactifs (+30 j)
+                  Inativos (+30 d)
                 </label>
               )}
               {(planFilter !== "all" || cityFilter || inactiveOnly) && (
@@ -268,7 +268,7 @@ export default function AdminDrillDialog({ metric, onClose, inbox = false, hours
       <Dialog open={compose} onOpenChange={(o) => { if (!o) setCompose(false); }}>
         <DialogContent className="max-w-lg" data-testid="admin-bulk-email-dialog">
           <DialogHeader>
-            <DialogTitle>E-mail promotionnel</DialogTitle>
+            <DialogTitle>E-mail promocional</DialogTitle>
             <DialogDescription>
               Envio a {selectedEmails.length} destinatário(s) selecionado(s).
             </DialogDescription>

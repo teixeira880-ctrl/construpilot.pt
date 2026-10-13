@@ -34,8 +34,8 @@ const SourceTag = ({ s }) => {
   const map = {
     bibliotheque: ["O seu preço", "bg-emerald-500/10 text-emerald-600"],
     ia: ["IA", "bg-amber-500/10 text-amber-600"],
-    manuel: ["Saisi", "bg-primary/10 text-primary"],
-    soustraitant: ["Sous-traitant", "bg-violet-500/10 text-violet-600"],
+    manuel: ["Introduzido", "bg-primary/10 text-primary"],
+    soustraitant: ["Subempreiteiro", "bg-violet-500/10 text-violet-600"],
     fichier: ["Bordereau", "bg-sky-500/10 text-sky-600"],
   };
   const [label, cls] = map[s] || ["—", "text-muted-foreground"];
@@ -50,7 +50,7 @@ const FileChips = ({ items, onRemove, testid }) => (
           className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-0.5 text-[11px]">
           {f.name}
           <button onClick={() => onRemove(i)} className="text-muted-foreground hover:text-red-500"
-            aria-label="Retirer" data-testid={`${testid}-remove-${i}`}>
+            aria-label="Remover" data-testid={`${testid}-remove-${i}`}>
             <X className="h-3 w-3" />
           </button>
         </span>
@@ -109,7 +109,7 @@ export const DpgfImport = () => {
     try {
       await api.patch("/pro/dpgf/settings/margin", { min_margin_pct: pct });
       setMinMargin(pct);
-      toast.success(pct ? `Alerta ativado abaixo de${pct}% de margem` : "Alerta de margem desativado");
+      toast.success(pct ? `Alerta ativado abaixo de ${pct}% de margem` : "Alerta de margem desativado");
     } catch { toast.error("Definição não guardada"); }
   };
 
@@ -151,7 +151,7 @@ export const DpgfImport = () => {
   };
 
   const removeStudy = async (h) => {
-    if (!window.confirm(`Eliminar a orçamentação «${h.filename || "Bordereau"}»? O orçamento associado, se existir, é mantido.`)) return;
+    if (!window.confirm(`Eliminar a orçamentação « ${h.filename || "Bordereau"} »? O orçamento associado, se existir, é mantido.`)) return;
     try {
       await api.delete(`/pro/dpgf/${h.file_id}`);
       setHistory((p) => p.filter((x) => x.file_id !== h.file_id));
@@ -189,7 +189,7 @@ export const DpgfImport = () => {
     try {
       const { data } = await api.patch(`/pro/dpgf/${res.file_id}/lot-margin`, { lot, margin_pct: pct });
       setRes(data);
-      toast.success(`Coefficient ${pct}% aplicado em${lot}`);
+      toast.success(`Coeficiente ${pct}% aplicado em ${lot}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Coeficiente não aplicado"); }
   };
 
@@ -198,14 +198,14 @@ export const DpgfImport = () => {
       const { data } = await api.get(`/pro/dpgf/${res.file_id}/offers-compare`);
       setCompare(data);
       if (!data.lots.length) toast.info("Nenhuma proposta recebida por agora");
-    } catch { toast.error("Comparatif indisponible"); }
+    } catch { toast.error("Comparativo indisponível"); }
   };
 
   const applyOffer = async (rfq, token) => {
     try {
       const { data } = await api.post(`/pro/dpgf/${res.file_id}/rfq/${rfq.rfq_id}/apply`, { token });
       setRes(data.study);
-      toast.success(`Proposta de${data.from}selecionada em${data.applied} ligne(s)`);
+      toast.success(`Proposta de ${data.from} selecionada em ${data.applied} linha(s)`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Impossível selecionar esta proposta"); }
   };
 
@@ -255,7 +255,7 @@ export const DpgfImport = () => {
         if (data.status === "done") {
           setRes(data.result); setRfqs([]); loadHistory();
           const r = data.result || {};
-          toast.success(`${r.priced}/${r.line_count}linhas orçamentadas ·${r.excluded}não orçamentada(s) ·${eur(r.grand_total_ht)} HT`);
+          toast.success(`${r.priced}/${r.line_count} linhas orçamentadas · ${r.excluded} não orçamentada(s) · ${eur(r.grand_total_ht)} HT`);
         } else if (data.status === "error") {
           toast.error(data.error || "Orçamentação impossível");
         } else {
@@ -291,12 +291,12 @@ export const DpgfImport = () => {
   const rememberPrices = async () => {
     try {
       const { data } = await api.post(`/pro/dpgf/${res.file_id}/remember`);
-      toast.success(`${data.remembered}preços adicionados à sua biblioteca ConstruPilot (disponíveis no editor de orçamentos)`);
+      toast.success(`${data.remembered} preços adicionados à sua biblioteca ConstruPilot (disponíveis no editor de orçamentos)`);
     } catch { toast.error("Não foi possível guardar"); }
   };
 
   const duplicateStudy = async (fileId, current) => {
-    const suggested = `${current || "Chiffrage"} — variante`;
+    const suggested = `${current || "Orçamentação"} — variante`;
     const next = window.prompt("Nome da variante (ajuste a margem a seguir)", suggested);
     if (next === null) return;
     try {
@@ -326,7 +326,7 @@ export const DpgfImport = () => {
       const { data } = await api.patch(`/pro/dpgf/${res.file_id}/global-margin`, { margin_pct: pct });
       setRes(data);
       if (variants) loadVariants();
-      toast.success(`Coefficient ${pct}% aplicado a toda a variante`);
+      toast.success(`Coeficiente ${pct}% aplicado a toda a variante`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Coeficiente não aplicado"); }
   };
 
@@ -335,8 +335,8 @@ export const DpgfImport = () => {
       const { data } = await api.post(`/pro/dpgf/${res.file_id}/quote`, {
         vat_rate: Number(vat), full_descriptions: fullDesc,
       });
-      toast.success(`Orçamento criado —${data.lines} lignes`
-        + (data.remembered_prices ? ` · ${data.remembered_prices}preços memorizados` : ""));
+      toast.success(`Orçamento criado — ${data.lines} lignes`
+        + (data.remembered_prices ? ` · ${data.remembered_prices} preços memorizados` : ""));
       loadHistory();
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Conversão impossível"); }
@@ -370,7 +370,7 @@ export const DpgfImport = () => {
           <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple hidden data-testid="dpgf-file-input"
                  onChange={(e) => setFiles((p) => [...p, ...Array.from(e.target.files || [])])} />
           <Button variant="outline" className="rounded-sm justify-start gap-2" onClick={() => fileRef.current?.click()} data-testid="dpgf-pick-file">
-            <FileSpreadsheet className="h-4 w-4" /> {files.length ? `${files.length}mapa(s) — adicionar` : "Escolher os ficheiros do mapa de quantidades"}
+            <FileSpreadsheet className="h-4 w-4" /> {files.length ? `${files.length} mapa(s) — adicionar` : "Escolher os ficheiros do mapa de quantidades"}
           </Button>
           <FileChips items={files} onRemove={(i) => setFiles(files.filter((_, x) => x !== i))} testid="dpgf-file-chip" />
         </div>
@@ -379,7 +379,7 @@ export const DpgfImport = () => {
           <input ref={cctpRef} type="file" accept=".pdf,.docx,.txt" multiple hidden data-testid="dpgf-cctp-input"
                  onChange={(e) => setCctps((p) => [...p, ...Array.from(e.target.files || [])])} />
           <Button variant="outline" className="rounded-sm justify-start gap-2" onClick={() => cctpRef.current?.click()} data-testid="dpgf-pick-cctp">
-            <FileText className="h-4 w-4" /> {cctps.length ? `${cctps.length}documento(s) — adicionar` : "Juntar os cadernos de encargos"}
+            <FileText className="h-4 w-4" /> {cctps.length ? `${cctps.length} documento(s) — adicionar` : "Juntar os cadernos de encargos"}
           </Button>
           <FileChips items={cctps} onRemove={(i) => setCctps(cctps.filter((_, x) => x !== i))} testid="dpgf-cctp-chip" />
           {cctps.some((f) => f.size > 10 * 1024 * 1024) ? (
@@ -393,7 +393,7 @@ export const DpgfImport = () => {
       <div className="grid gap-1.5 mt-3">
         <label className="text-xs text-muted-foreground">Nome da orçamentação</label>
         <Input value={label} onChange={(e) => setLabel(e.target.value)}
-          placeholder="Ex. Houilles — Lot 2 variante A" className="rounded-sm h-9"
+          placeholder="Ex.: Sintra — Capítulo 2 variante A" className="rounded-sm h-9"
           data-testid="dpgf-label" />
       </div>
 
@@ -422,15 +422,15 @@ export const DpgfImport = () => {
           <Input type="number" min={0} max={90} defaultValue={minMargin} key={`mm-${minMargin}`}
             onBlur={(e) => saveMinMargin(e.target.value)}
             className="rounded-sm h-9 w-20 num" data-testid="dpgf-min-margin" />
-          <span className="text-xs text-muted-foreground">marge mini (alerte)</span>
+          <span className="text-xs text-muted-foreground">margem mínima (alerta)</span>
         </div>
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
           <Switch checked={emailNotify} onCheckedChange={saveEmailNotify} data-testid="dpgf-email-notify" />
-          <Mail className="h-3.5 w-3.5" /> E-mail si gros chiffrage
+          <Mail className="h-3.5 w-3.5" /> E-mail se orçamentação grande
         </label>
         <Button onClick={run} disabled={busy} className="gap-2 rounded-sm ml-auto" data-testid="dpgf-upload-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {busy ? "Chiffrage en cours…" : "Orçamentar o mapa"}
+          {busy ? "Orçamentação em curso…" : "Orçamentar o mapa"}
         </Button>
       </div>
 
@@ -438,7 +438,7 @@ export const DpgfImport = () => {
         <div className="mt-4 rounded-sm border border-border bg-muted/40 p-3" data-testid="dpgf-progress">
           <div className="flex items-center gap-2 text-sm">
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            <span data-testid="dpgf-progress-step">{STEP_LABEL[progress.step] || "Chiffrage en cours…"}</span>
+            <span data-testid="dpgf-progress-step">{STEP_LABEL[progress.step] || "Orçamentação em curso…"}</span>
             {progress.step === "cctp_read" && progress.sub_total ? (
               <span className="text-xs text-muted-foreground" data-testid="dpgf-progress-pages">
                 page {progress.sub_done}/{progress.sub_total} — {progress.sub_doc}
@@ -473,7 +473,7 @@ export const DpgfImport = () => {
             <Button size="sm" variant="outline" className="h-7 rounded-sm text-[11px] gap-1 ml-auto"
               onClick={() => duplicateStudy(res.file_id, res.label || res.filename)}
               data-testid="dpgf-duplicate-btn">
-              <Copy className="h-3 w-3" /> Dupliquer en variante
+              <Copy className="h-3 w-3" /> Duplicar em variante
             </Button>
             <Button size="sm" variant="outline" className="h-7 rounded-sm text-[11px] gap-1"
               onClick={loadVariants} data-testid="dpgf-variants-btn">
@@ -506,7 +506,7 @@ export const DpgfImport = () => {
                 <table className="w-full text-xs">
                   <thead className="bg-secondary/20">
                     <tr>
-                      <th className="text-left p-2">Lot</th>
+                      <th className="text-left p-2">Lote</th>
                       {variants.variants.map((v) => (
                         <th key={v.file_id} className="p-2 text-right min-w-[130px]">
                           <button className={`underline decoration-dotted ${v.current ? "text-primary font-bold" : "hover:text-primary"}`}
@@ -594,7 +594,7 @@ export const DpgfImport = () => {
             </div>
           )}
           <div className="flex flex-wrap gap-4 text-sm">
-            <span>Lignes : <b>{res.line_count}</b></span>
+            <span>Linhas: <b>{res.line_count}</b></span>
             <span className="text-primary inline-flex items-center gap-1"><Sparkles className="h-3.5 w-3.5" /> Orçamentadas: <b>{res.priced}</b></span>
             {res.from_library > 0 && <span className="text-emerald-600">Os seus preços: <b>{res.from_library}</b></span>}
             {res.from_ai > 0 && <span className="text-amber-600">IA : <b>{res.from_ai}</b></span>}
@@ -610,7 +610,7 @@ export const DpgfImport = () => {
                   <span key={k} className="inline-block rounded-sm border border-border px-1.5 py-0.5 mr-1">{k}</span>))}</div>
               )}
               {!!res.directives.margin_pct && <p>Coefficient global : <b>{res.directives.margin_pct}%</b></p>}
-              {res.directives.notes?.length > 0 && <p className="text-muted-foreground">Consignes techniques : {res.directives.notes.join(" · ")}</p>}
+              {res.directives.notes?.length > 0 && <p className="text-muted-foreground">Instruções técnicas: {res.directives.notes.join(" · ")}</p>}
             </div>
           )}
 
@@ -627,7 +627,7 @@ export const DpgfImport = () => {
               {res.cctp.documents?.some((d) => d.truncated) ? (
                 <p className="text-amber-600 mt-1" data-testid="dpgf-cctp-truncated">
                   Lecture partielle : {res.cctp.documents.filter((d) => d.truncated)
-                    .map((d) => `${d.filename} (${d.pages_read}/${d.pages} pages)`).join(", ")} — estes ficheiros são sobretudo plantas. Junte o caderno de encargos do capítulo para uma análise completa.
+                    .map((d) => `${d.filename} (${d.pages_read}/${d.pages} páginas)`).join(", ")} — estes ficheiros são sobretudo plantas. Junte o caderno de encargos do capítulo para uma análise completa.
                 </p>
               ) : null}
             </div>
@@ -651,7 +651,7 @@ export const DpgfImport = () => {
                     Adicionar
                   </Button>
                   <Button size="sm" variant="ghost" className="rounded-sm h-8" onClick={() => ignoreGap(g)} data-testid={`dpgf-gap-ignore-${g.gap_id}`}>
-                    Ignorer
+                    Ignorar
                   </Button>
                 </div>
               ))}
@@ -681,11 +681,11 @@ export const DpgfImport = () => {
                           <span className="num font-semibold text-primary">{eur(d.total_ht)} HT</span>
                           <Button size="sm" variant="outline" className="rounded-sm h-7"
                             onClick={() => applyOffer(r, d.token)} data-testid={`dpgf-offer-apply-${d.token}`}>
-                            Retenir
+                            Selecionar
                           </Button>
                         </>
                       ) : (
-                        <span className="text-muted-foreground">en attente ·{" "}
+                        <span className="text-muted-foreground">pendente ·{" "}
                           <button className="underline" onClick={() => { navigator.clipboard?.writeText(d.link || ""); toast.success("Link copiado"); }}
                             data-testid={`dpgf-offer-link-${d.token}`}>copiar a ligação</button>
                         </span>
@@ -702,8 +702,8 @@ export const DpgfImport = () => {
             <div className="rounded-sm border border-border overflow-hidden" data-testid="dpgf-compare">
               <table className="w-full text-xs">
                 <thead className="bg-secondary/40">
-                  <tr><th className="text-left p-2">Lot / offre</th><th className="p-2 text-right">O meu preço s/ IVA</th>
-                    <th className="p-2 text-right">Offre HT</th><th className="p-2 text-right">Desvio</th>
+                  <tr><th className="text-left p-2">Capítulo / proposta</th><th className="p-2 text-right">O meu preço s/ IVA</th>
+                    <th className="p-2 text-right">Proposta s/ IVA</th><th className="p-2 text-right">Desvio</th>
                     <th className="p-2" /></tr>
                 </thead>
                 <tbody>
@@ -737,7 +737,7 @@ export const DpgfImport = () => {
                           <td className="p-2 text-center">
                             <Button size="sm" variant="outline" className="h-6 rounded-sm text-[10px]"
                               onClick={() => applyOffer({ rfq_id: o.rfq_id }, o.token)}
-                              data-testid={`dpgf-compare-apply-${o.token}`}>Retenir</Button>
+                              data-testid={`dpgf-compare-apply-${o.token}`}>Selecionar</Button>
                           </td>
                         </tr>
                       ))}
@@ -756,7 +756,7 @@ export const DpgfImport = () => {
                   <th className="p-2">Qtd.</th><th className="p-2">U.</th>
                   <th className="p-2 text-right">O seu preço</th>
                   <th className="p-2 text-right">Preço de mercado</th>
-                  <th className="p-2 text-right">PU retenu</th>
+                  <th className="p-2 text-right">PU selecionado</th>
                   <th className="p-2 text-right">Total s/ IVA</th>
                   <th className="p-2" />
                 </tr>
@@ -856,12 +856,12 @@ export const DpgfImport = () => {
               {VATS.map((v) => (
                 <button key={v} onClick={() => setVat(v)} data-testid={`dpgf-vat-${v}`}
                   className={`rounded-sm border px-2 py-1 text-xs transition-colors ${vat === v ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}>
-                  TVA {String(v).replace(".", ",")} %
+                  IVA {String(v).replace(".", ",")} %
                 </button>
               ))}
             </div>
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Switch checked={fullDesc} onCheckedChange={setFullDesc} data-testid="dpgf-full-desc" /> Descriptifs complets
+              <Switch checked={fullDesc} onCheckedChange={setFullDesc} data-testid="dpgf-full-desc" /> Descritivos completos
             </label>
             <Button onClick={toQuote} className="gap-2 rounded-sm ml-auto" data-testid="dpgf-to-quote-btn">
               <Wand2 className="h-4 w-4" /> Passar a orçamento
@@ -882,19 +882,19 @@ export const DpgfImport = () => {
             {history.slice(0, 8).map((h) => (
               <div key={h.file_id} className="flex flex-wrap items-center gap-2 text-xs" data-testid={`dpgf-hist-${h.file_id}`}>
                 <span className="flex-1 min-w-[220px] truncate">
-                  {h.label || h.filename || "Bordereau"} · {h.line_count} ligne(s) · <b>{eur(h.grand_total_ht)}</b> HT
+                  {h.label || h.filename || "Bordereau"} · {h.line_count} linha(s) · <b>{eur(h.grand_total_ht)}</b> HT
                   <span className="text-muted-foreground"> — {(h.created_at || "").slice(0, 10)}</span>
                 </span>
-                <Button size="sm" variant="ghost" className="rounded-sm h-7" title="Renommer"
+                <Button size="sm" variant="ghost" className="rounded-sm h-7" title="Renomear"
                   onClick={() => renameStudy(h.file_id, h.label)} data-testid={`dpgf-hist-rename-${h.file_id}`}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button size="sm" variant="ghost" className="rounded-sm h-7" title="Dupliquer en variante"
+                <Button size="sm" variant="ghost" className="rounded-sm h-7" title="Duplicar em variante"
                   onClick={() => duplicateStudy(h.file_id, h.label || h.filename)} data-testid={`dpgf-hist-duplicate-${h.file_id}`}>
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" variant="outline" className="rounded-sm h-7" onClick={() => loadStudy(h.file_id)}
-                  data-testid={`dpgf-hist-open-${h.file_id}`}>Rouvrir</Button>
+                  data-testid={`dpgf-hist-open-${h.file_id}`}>Reabrir</Button>
                 {h.quote_doc_id && (
                   <Button size="sm" variant="ghost" className="rounded-sm h-7" onClick={() => nav(`/devis-editeur/${h.quote_doc_id}`)}
                     data-testid={`dpgf-hist-quote-${h.file_id}`}>Orçamento associado</Button>
@@ -942,7 +942,7 @@ export const DpgfImport = () => {
               <Input value={rfqEmail} onChange={(e) => setRfqEmail(e.target.value)} className="rounded-sm h-9"
                 placeholder="plombier@exemple.fr, carreleur@exemple.fr" data-testid="dpgf-rfq-emails" />
             </label>
-            <label className="grid gap-1.5 text-xs text-muted-foreground">Message (facultatif)
+            <label className="grid gap-1.5 text-xs text-muted-foreground">Mensagem (opcional)
               <Textarea value={rfqMsg} onChange={(e) => setRfqMsg(e.target.value)} rows={2} className="rounded-sm"
                 placeholder="Prazo pretendido, condicionantes de acesso, planeamento…" data-testid="dpgf-rfq-message" />
             </label>

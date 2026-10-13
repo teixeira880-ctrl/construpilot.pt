@@ -63,7 +63,7 @@ export default function ResetPassword() {
                      data-testid="reset-new-password-input" className="rounded-sm h-11" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="rp-conf" className="text-xs">Confirmer</Label>
+              <Label htmlFor="rp-conf" className="text-xs">Confirmar</Label>
               <Input id="rp-conf" type="password" value={confirm} required
                      onChange={(e) => setConfirm(e.target.value)}
                      data-testid="reset-confirm-password-input" className="rounded-sm h-11" />

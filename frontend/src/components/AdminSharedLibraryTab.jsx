@@ -47,8 +47,8 @@ export default function AdminSharedLibraryTab() {
       const { data } = await api.post(`/admin/shared-library/import${merge ? `?merge=true${updPrices ? "&update_prices=true" : ""}` : ""}`, fd, {
         headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
       });
-      if (merge) toast.success(`Fusion FR : ${data.added}adicionado(s)${updPrices ? `, ${data.updated_prices}preços atualizados` : ""}, ${data.kept_existing}mantidos · total${data.total}`);
-      else toast.success(`${data.imported}artigos importados (colunas:${data.columns_detected.length})`);
+      if (merge) toast.success(`Fusion FR : ${data.added} adicionado(s)${updPrices ? `, ${data.updated_prices} preços atualizados` : ""}, ${data.kept_existing} mantidos · total ${data.total}`);
+      else toast.success(`${data.imported} artigos importados (colunas: ${data.columns_detected.length})`);
       await load(q);
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Não foi possível importar");
@@ -79,9 +79,8 @@ export default function AdminSharedLibraryTab() {
             <Library className="h-5 w-5 text-primary" /> Biblioteca partilhada (Pro Business)
           </h3>
           <p className="text-sm text-muted-foreground max-w-2xl mt-1">
-            Importe uma biblioteca de trabalhos (CSV ou Excel) com preços <b>baixo / médio / alto</b>.
-            Elle est accessible automatiquement par toutes les entreprises <b>Pro Business</b>, e a IA utiliza-a para orçamentar segundo a gama de preços escolhida.
-            <br />L'import <b>substitui inteiramente</b> a biblioteca existente.
+            Importe uma biblioteca de trabalhos (CSV ou Excel) com preços <b>baixo / médio / alto</b>. É acessível automaticamente por todas as empresas <b>Pro Business</b>, e a IA utiliza-a para orçamentar segundo a gama de preços escolhida.
+            <br />A importação <b>substitui inteiramente</b> a biblioteca existente.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -91,7 +90,7 @@ export default function AdminSharedLibraryTab() {
             </Badge>
           ) : (
             <Badge variant="outline" className="gap-1 text-amber-600 border-amber-400">
-              <AlertTriangle className="h-3 w-3" /> Vide
+              <AlertTriangle className="h-3 w-3" /> Vazio
             </Badge>
           )}
           {meta.imported_at && (
@@ -108,7 +107,7 @@ export default function AdminSharedLibraryTab() {
         <Button onClick={() => { modeRef.current = "replace"; fileRef.current?.click(); }} disabled={uploading}
                 className="rounded-sm gap-2 bg-primary" data-testid="shared-lib-import-btn">
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Importer (remplacer) CSV / Excel
+          Importar (substituir) CSV / Excel
         </Button>
         <Button variant="outline" onClick={() => { modeRef.current = "merge"; fileRef.current?.click(); }} disabled={uploading}
                 className="rounded-sm gap-2 border-primary/40 text-primary" title="Conserva o existente, adiciona apenas os artigos em falta (FR apenas, a biblioteca PT não é afetada)"
@@ -136,7 +135,7 @@ export default function AdminSharedLibraryTab() {
         {total > 0 && (
           <Button variant="ghost" onClick={clearAll} className="rounded-sm gap-2 text-destructive"
                   data-testid="shared-lib-clear-btn">
-            <Trash2 className="h-4 w-4" /> Vider
+            <Trash2 className="h-4 w-4" /> Esvaziar
           </Button>
         )}
       </div>
@@ -158,10 +157,10 @@ export default function AdminSharedLibraryTab() {
               <TableHead>Categoria</TableHead>
               <TableHead>Designação</TableHead>
               <TableHead>Un.</TableHead>
-              <TableHead className="text-right">Bas €</TableHead>
+              <TableHead className="text-right">Baixo €</TableHead>
               <TableHead className="text-right">Mediano €</TableHead>
-              <TableHead className="text-right">Haut €</TableHead>
-              <TableHead className="text-right">TVA</TableHead>
+              <TableHead className="text-right">Alto €</TableHead>
+              <TableHead className="text-right">IVA</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -186,7 +185,7 @@ export default function AdminSharedLibraryTab() {
         </Table>
       </div>
       {total > items.length && (
-        <p className="text-xs text-muted-foreground">Visualização dos {items.length} primeiros de {total}. Utilisez la recherche.</p>
+        <p className="text-xs text-muted-foreground">Visualização dos {items.length} primeiros de {total}. Utilize a pesquisa.</p>
       )}
     </div>
   );

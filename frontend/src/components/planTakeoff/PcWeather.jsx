@@ -31,7 +31,7 @@ export default function PcWeather({ planning, start }) {
       if (d.error) return toast.error(d.error);
       localStorage.setItem("construpilot_site_city", city.trim());
       setData(d);
-      toast.success(`Meteorologia carregada —${d.city}`);
+      toast.success(`Meteorologia carregada — ${d.city}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Meteorologia indisponível"); }
     finally { setBusy(false); }
   };

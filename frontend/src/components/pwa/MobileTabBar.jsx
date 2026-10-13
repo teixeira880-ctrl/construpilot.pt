@@ -31,7 +31,7 @@ export const MobileTabBar = () => {
     canAssistant
       ? { to: "/assistant", label: experience("assistantShort"), icon: AssistantIcon, test: "assistant" }
       : { to: "/prix", label: ui("prices"), icon: Search, test: "prix" },
-    { to: "/estimation", label: ui("new"), icon: Plus, test: "nouveau" },
+    { to: "/estimation", label: ui("new"), icon: Plus, test: "novo" },
   ];
   return <nav className="workspace-mobile-tabs" data-testid="mobile-tab-bar" aria-label={ui("menu")}>
     {tabs.map(({ to, label, icon: Icon, test }) => <Link key={to} to={to} aria-current={(routeMatches(pathname, to) || (to === "/devis" && routeMatches(pathname, "/devis-editeur"))) ? "page" : undefined} data-testid={`tab-${test}`}><span><Icon size={21} aria-hidden="true" /></span><span>{label}</span></Link>)}

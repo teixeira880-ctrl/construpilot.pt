@@ -31,7 +31,7 @@ export default function LearnedPricesPanel({ onValidated }) {
       const body = override != null && override !== "" ? { unit_price_ht: parseFloat(override) } : {};
       await api.post(`/library/${it.item_id}/validate`, body);
       setItems((xs) => xs.filter((x) => x.item_id !== it.item_id));
-      toast.success(`« ${it.designation}» validado — preço firme`);
+      toast.success(`« ${it.designation} » validado — preço firme`);
       onValidated?.();
     } catch { toast.error("Validação impossível"); }
     finally { setBusy(""); }
@@ -74,7 +74,7 @@ export default function LearnedPricesPanel({ onValidated }) {
               <Button size="sm" onClick={() => validate(it)} disabled={busy === it.item_id}
                       className="rounded-sm gap-1.5" data-testid={`learned-validate-${it.item_id}`}>
                 {busy === it.item_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                Valider
+                Validar
               </Button>
             </div>
           ))}

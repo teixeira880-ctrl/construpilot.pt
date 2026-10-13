@@ -16,7 +16,7 @@ const EMAILS = [
   },
   {
     key: "prospect-particulier",
-    title: "Prospect — Particulier",
+    title: "Potencial cliente — Particular",
     desc: "Para os leads que pediram uma estimativa. Ângulo: estimativa, preços justos, encontrar um profissional.",
     previewUrl: () => `${API}/admin/prospect-email/preview?audience=particulier`,
     sendPath: "/admin/prospect-email/test",
@@ -24,7 +24,7 @@ const EMAILS = [
   },
   {
     key: "prospect-pro",
-    title: "Prospect — Professionnel",
+    title: "Potencial cliente — Profissional",
     desc: "Para profissionais / gabinetes de projeto não clientes. Ângulo: medições, orçamentos determinísticos, StructuroPilot, faturação eletrónica.",
     previewUrl: () => `${API}/admin/prospect-email/preview?audience=pro`,
     sendPath: "/admin/prospect-email/test",
@@ -49,11 +49,11 @@ function EmailCard({ cfg }) {
       toast.error("Introduza pelo menos um endereço de e-mail válido");
       return;
     }
-    if (!window.confirm(`Enviar «${cfg.title}» para${count} destinataire(s) maintenant ?`)) return;
+    if (!window.confirm(`Enviar « ${cfg.title} » para ${count} destinatário(s) agora?`)) return;
     setBusy(true);
     try {
       const { data } = await api.post(cfg.sendPath, cfg.sendBody(to));
-      toast.success(`${data.sent}enviado(s)${data.failed ? ` · ${data.failed}falha(s)` : ""} sur ${data.recipients}`);
+      toast.success(`${data.sent} enviado(s)${data.failed ? ` · ${data.failed} falha(s)` : ""} sur ${data.recipients}`);
       setTo("");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Envio impossível");
@@ -78,7 +78,7 @@ function EmailCard({ cfg }) {
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground" data-testid={`admin-marketing-count-${cfg.key}`}>
-          {count > 0 ? `${count} destinataire(s) valide(s)` : "Nenhum endereço válido"}
+          {count > 0 ? `${count} destinatário(s) válido(s)` : "Nenhum endereço válido"}
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -107,7 +107,7 @@ export default function MarketingEmailsPanel() {
       <div className="flex items-start gap-2">
         <Mail className="h-5 w-5 text-primary mt-0.5" />
         <div>
-          <h3 className="font-display font-bold text-lg">Emails publicitaires</h3>
+          <h3 className="font-display font-bold text-lg">E-mails publicitários</h3>
           <p className="text-sm text-muted-foreground">
             Modelos prontos a enviar: boas-vindas (auto D+1) e potenciais clientes. Pré-visualize num novo separador, introduza um ou vários endereços e envie diretamente.
           </p>

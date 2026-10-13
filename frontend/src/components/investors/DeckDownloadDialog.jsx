@@ -53,7 +53,7 @@ export const DeckDownloadDialog = ({ open, onOpenChange, format }) => {
         ) : (
           <form onSubmit={submit} className="grid gap-4" data-testid="deck-download-form">
             <div className="grid gap-1.5">
-              <Label htmlFor="deck-name">Nom</Label>
+              <Label htmlFor="deck-name">Nome</Label>
               <Input id="deck-name" value={form.name} onChange={set("name")} placeholder="O seu nome" data-testid="deck-form-name" />
             </div>
             <div className="grid gap-1.5">
@@ -62,10 +62,10 @@ export const DeckDownloadDialog = ({ open, onOpenChange, format }) => {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="deck-fund">Fundo / sociedade</Label>
-              <Input id="deck-fund" value={form.fund} onChange={set("fund")} placeholder="Ex : Urban Ventures" data-testid="deck-form-fund" />
+              <Input id="deck-fund" value={form.fund} onChange={set("fund")} placeholder="Ex: Urban Ventures" data-testid="deck-form-fund" />
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={busy} className="rounded-full gap-2" data-testid="deck-form-submit"><Download className="h-4 w-4" />{busy ? "…" : `Transferir o${label}`}</Button>
+              <Button type="submit" disabled={busy} className="rounded-full gap-2" data-testid="deck-form-submit"><Download className="h-4 w-4" />{busy ? "…" : `Transferir o ${label}`}</Button>
             </DialogFooter>
           </form>
         )}

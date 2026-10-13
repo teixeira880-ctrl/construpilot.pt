@@ -9,23 +9,23 @@ import { LandingLayout, LandingHeading, LandingPricing, scrollToLanding } from "
 import { ProductPreview } from "@/components/landing/ProductPreview";
 
 const FEATURES = [
-  { id: "metre", icon: Ruler, clip: "metre", tag: "Lire & mesurer", title: "Plantas e medições", desc: "Importe as suas plantas PDF, DWG ou DXF, calibre a escala e controle as suas áreas, comprimentos e volumes.", to: "/plan" },
+  { id: "metre", icon: Ruler, clip: "metre", tag: "Ler e medir", title: "Plantas e medições", desc: "Importe as suas plantas PDF, DWG ou DXF, calibre a escala e controle as suas áreas, comprimentos e volumes.", to: "/plan" },
   { id: "devis", icon: FileText, clip: "devis_editeur", tag: "Orçamentar e apresentar", title: "Orçamentos à sua imagem", desc: "Estruture os seus artigos, ajuste os seus preços e tenha os descontos, o IVA e os totais à mão.", to: "/devis-editeur" },
-  { id: "factures", icon: ReceiptText, clip: "factures", tag: "Facturer & suivre", title: "Factures & situations", desc: "Encontre os seus documentos, prepare os seus autos de medição e as suas exportações de faturação.", to: "/factures" },
+  { id: "factures", icon: ReceiptText, clip: "factures", tag: "Faturar e acompanhar", title: "Faturas e autos de medição", desc: "Encontre os seus documentos, prepare os seus autos de medição e as suas exportações de faturação.", to: "/factures" },
   { id: "dpgf", icon: FileSpreadsheet, clip: "dpgf", tag: "Organizar as peças", title: "DPGF & CCTP", desc: "Reúna as informações do processo para preparar uma orçamentação que pode verificar e completar.", to: "/dpgf" },
-  { id: "escaliers", icon: Cuboid, clip: "escaliers", tag: "Estudar uma solução", title: "Escaliers 3D", desc: "Explore a geometria da sua escada e consulte as suas dimensões numa vista interativa.", to: "/escaliers" },
-  { id: "appro", icon: Truck, clip: null, tag: "Preparar a obra", title: "Approvisionnement", desc: "Organize os materiais, as encomendas e os custos no processo da obra.", to: "/appro" },
-  { id: "multiniveaux", icon: Layers, clip: "multiniveaux", tag: "Manter uma visão global", title: "Projets multi-niveaux", desc: "Encontre as plantas de cada piso e reúna as quantidades do seu projeto.", to: "/plan" },
-  { id: "equipe", icon: Users, clip: null, tag: "Travailler ensemble", title: "A sua equipa, reunida", desc: "Partilhe as informações úteis e organize os acessos dos seus colaboradores.", to: "/equipe" },
+  { id: "escaliers", icon: Cuboid, clip: "escaliers", tag: "Estudar uma solução", title: "Escadas 3D", desc: "Explore a geometria da sua escada e consulte as suas dimensões numa vista interativa.", to: "/escaliers" },
+  { id: "appro", icon: Truck, clip: null, tag: "Preparar a obra", title: "Aprovisionamento", desc: "Organize os materiais, as encomendas e os custos no processo da obra.", to: "/appro" },
+  { id: "multiniveaux", icon: Layers, clip: "multiniveaux", tag: "Manter uma visão global", title: "Projetos multinível", desc: "Encontre as plantas de cada piso e reúna as quantidades do seu projeto.", to: "/plan" },
+  { id: "equipe", icon: Users, clip: null, tag: "Trabalhar em conjunto", title: "A sua equipa, reunida", desc: "Partilhe as informações úteis e organize os acessos dos seus colaboradores.", to: "/equipe" },
 ];
 
 const PLANS = [
   { name: "Pro Artisan", price: "149 €", period: "/mois HT", popular: false, tid: "plan-pro-artisan-cta",
     desc: "Profissionais independentes e pequenas equipas.",
-    features: ["Medição em planta ilimitada", "Orçamentos e faturas eletrónicas", "Calcul d'escaliers 3D DTU", "Exportação PDF com o seu logótipo", "Support BTP prioritaire"] },
+    features: ["Medição em planta ilimitada", "Orçamentos e faturas eletrónicas", "Cálculo de escadas 3D (RGEU)", "Exportação PDF com o seu logótipo", "Suporte prioritário de construção"] },
   { name: "Pro Business / TCE", price: "249 €", period: "/mois HT", popular: true, tid: "plan-pro-business-cta",
     desc: "PME de construção, empreiteiros gerais, diretores de obra.",
-    features: ["Tudo do Pro Artesão +", "Analyse CCTP & import DPGF", "Projetos multinível e equipa", "Portail sous-traitants & appro", "Acompanhamento na implementação"] },
+    features: ["Tudo do Pro Artesão +", "Analyse CCTP & import DPGF", "Projetos multinível e equipa", "Portal de subempreiteiros e aprovisionamento", "Acompanhamento na implementação"] },
 ];
 
 const FAQ = [
@@ -56,7 +56,7 @@ export default function LandingPro() {
     </section>
     <div className="landing-ribbon"><span>Menos dispersão.</span><strong>Mais espaço para a sua profissão.</strong><span>No escritório como na obra.</span></div>
     <section className="landing-section" id="landing-how"><LandingHeading eyebrow="Uma continuidade, do início ao fim" title="A sua obra avança. As suas informações também." />
-      <div className="landing-steps">{[{title:"Rassemblez",desc:"As plantas, as peças do processo e os pedidos do cliente.",icon:Ruler},{title:"Prepare",desc:"Quantidades controladas e um orçamento construído artigo a artigo.",icon:FileText},{title:"Pilotez",desc:"Os documentos, as próximas ações e as conversas da equipa.",icon:Users}].map((s,i)=><article key={s.title}><div><span>0{i+1}</span><s.icon size={23} /></div><h3>{s.title}</h3><p>{s.desc}</p></article>)}</div>
+      <div className="landing-steps">{[{title:"Reúna",desc:"As plantas, as peças do processo e os pedidos do cliente.",icon:Ruler},{title:"Prepare",desc:"Quantidades controladas e um orçamento construído artigo a artigo.",icon:FileText},{title:"Faça a gestão",desc:"Os documentos, as próximas ações e as conversas da equipa.",icon:Users}].map((s,i)=><article key={s.title}><div><span>0{i+1}</span><s.icon size={23} /></div><h3>{s.title}</h3><p>{s.desc}</p></article>)}</div>
     </section>
     <section className="landing-section" id="landing-tools" data-testid="pro-features"><LandingHeading eyebrow="A sua caixa de ferramentas" title="Tudo se encontra. Tudo se acompanha.">As funções essenciais ficam perto; as ferramentas especializadas estão lá quando precisa delas.</LandingHeading>
       <div className="landing-feature-grid">{FEATURES.map(f=><button type="button" key={f.id} className="landing-feature-card" onClick={()=>setPreview(f)} data-testid={`pro-feature-${f.id}`}><span className="landing-feature-icon"><f.icon size={23} /></span><small>{f.tag}</small><h3>{f.title}</h3><p>{f.desc}</p><span className="landing-card-link">Descobrir <ArrowRight size={17} /></span></button>)}</div>
@@ -66,6 +66,6 @@ export default function LandingPro() {
     <LandingPricing plans={PLANS} pro />
     <section className="landing-section landing-faq"><LandingHeading eyebrow="As suas perguntas" title="Algumas referências antes de começar." />{FAQ.map(f=><details key={f.q}><summary>{f.q}<ChevronDown size={18} /></summary><p>{f.a}</p></details>)}</section>
     <section className="landing-section"><div className="landing-final"><p className="landing-eyebrow">CONSTRUPILOT PRO</p><h2>Uma obra bem preparada<br />começa aqui.</h2><Link to="/inscription" className="landing-button landing-button-ivory" data-testid="pro-bottom-cta">Descobrir o meu espaço Pro <ArrowRight size={18} /></Link><Link to="/particuliers" className="landing-audience-link" onClick={()=>{try{localStorage.setItem("construpilot_audience","particulier");}catch{}}}>Está a remodelar a sua habitação? Descubra o espaço Particulares.</Link></div></section>
-    <Dialog open={!!preview} onOpenChange={open=>!open&&setPreview(null)}><DialogContent className="landing-feature-dialog" data-testid="pro-feature-preview">{preview&&<><DialogHeader><DialogTitle>{preview.title}</DialogTitle><DialogDescription>{preview.desc}</DialogDescription></DialogHeader>{preview.clip?<video src={`/demo/clips/${preview.clip}.mp4`} poster={`/demo/clips/${preview.clip}.jpg`} controls muted playsInline preload="metadata" data-testid="pro-feature-preview-video" />:<p>Encontre os detalhes das funções e dos níveis de acesso nas nossas ofertas.</p>}<div className="landing-dialog-actions"><Link to="/inscription" className="landing-button" data-testid="pro-feature-preview-cta">Essayer ConstruPilot <ArrowRight size={17} /></Link><Link to={preview.to} className="landing-button landing-button-outline" data-testid="pro-feature-preview-open">Ouvrir l’outil</Link></div></>}</DialogContent></Dialog>
+    <Dialog open={!!preview} onOpenChange={open=>!open&&setPreview(null)}><DialogContent className="landing-feature-dialog" data-testid="pro-feature-preview">{preview&&<><DialogHeader><DialogTitle>{preview.title}</DialogTitle><DialogDescription>{preview.desc}</DialogDescription></DialogHeader>{preview.clip?<video src={`/demo/clips/${preview.clip}.mp4`} poster={`/demo/clips/${preview.clip}.jpg`} controls muted playsInline preload="metadata" data-testid="pro-feature-preview-video" />:<p>Encontre os detalhes das funções e dos níveis de acesso nas nossas ofertas.</p>}<div className="landing-dialog-actions"><Link to="/inscription" className="landing-button" data-testid="pro-feature-preview-cta">Essayer ConstruPilot <ArrowRight size={17} /></Link><Link to={preview.to} className="landing-button landing-button-outline" data-testid="pro-feature-preview-open">Abrir a ferramenta</Link></div></>}</DialogContent></Dialog>
   </LandingLayout>;
 }

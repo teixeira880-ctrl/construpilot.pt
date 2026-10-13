@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { api, eur, num } from "@/lib/api";
 
-const STATUS_LABELS = { en_attente: "En attente", recu: "Orçamento recebido", retenu: "Retenu ✓" };
+const STATUS_LABELS = { en_attente: "Em espera", recu: "Orçamento recebido", retenu: "Retido ✓" };
 
 export default function PcOrdersTracking({ planId, orders, onSaved }) {
   const [edits, setEdits] = useState({});
@@ -22,7 +22,7 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
         quoted_ht: Number.isFinite(quoted) ? quoted : null,
         notes: e.notes ?? o.response_notes ?? "",
       });
-      toast.success(`Resposta registada —${o.ref}`);
+      toast.success(`Resposta registada — ${o.ref}`);
       onSaved?.();
     } catch (err) { toast.error(err?.response?.data?.detail || "Não foi possível guardar"); }
   };
@@ -43,10 +43,10 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
         <thead>
           <tr className="bg-muted text-left">
             <th className="p-1.5">Ref. / Fornecedor</th>
-            <th className="p-1.5">Phase</th>
-            <th className="p-1.5 text-right">Indicatif HT</th>
+            <th className="p-1.5">Fase</th>
+            <th className="p-1.5 text-right">Indicativo s/ IVA</th>
             <th className="p-1.5 text-right">Orçamento recebido €</th>
-            <th className="p-1.5">Statut</th>
+            <th className="p-1.5">Estado</th>
             <th className="p-1.5"></th>
           </tr>
         </thead>
@@ -80,7 +80,7 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
                     {isBest && (
                       <Badge className="rounded-sm gap-1 text-[9px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 hover:bg-emerald-500/15"
                              data-testid={`pc-order-${i}-best`}>
-                        <Trophy className="h-2.5 w-2.5" /> Meilleure offre
+                        <Trophy className="h-2.5 w-2.5" /> Melhor proposta
                       </Badge>
                     )}
                   </div>

@@ -22,7 +22,7 @@ export const PriceHistoryPanel = ({ refreshKey }) => {
         <div className="max-h-80 overflow-auto">
           <table className="w-full text-xs" data-testid="price-history-table">
             <thead className="sticky top-0 bg-background text-[10px] uppercase tracking-wide text-muted-foreground">
-              <tr><th className="text-left px-3 py-1.5">Date</th><th className="text-left px-2 py-1.5">Ouvrage</th><th className="text-right px-2 py-1.5">Mediana antes</th><th className="text-right px-2 py-1.5">Mediana depois</th><th className="text-right px-3 py-1.5">Δ</th><th className="text-left px-2 py-1.5">Fichier</th></tr>
+              <tr><th className="text-left px-3 py-1.5">Data</th><th className="text-left px-2 py-1.5">Artigo</th><th className="text-right px-2 py-1.5">Mediana antes</th><th className="text-right px-2 py-1.5">Mediana depois</th><th className="text-right px-3 py-1.5">Δ</th><th className="text-left px-2 py-1.5">Ficheiro</th></tr>
             </thead>
             <tbody>
               {rows.map((r) => (

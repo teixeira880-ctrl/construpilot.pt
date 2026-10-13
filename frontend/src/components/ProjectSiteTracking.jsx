@@ -17,8 +17,8 @@ export const ProjectSiteTracking = ({ projectId, acceptedQuote }) => {
       <div className="flex flex-wrap items-center gap-3">
         <Activity className="h-4 w-4 text-primary" />
         <h3 className="font-semibold">Acompanhamento da obra pelo profissional</h3>
-        {data.progress != null && <span className="text-xs text-muted-foreground">Avancement {data.progress} %</span>}
-        <span className="ml-auto text-xs text-muted-foreground">{data.reports.length} compte{data.reports.length > 1 ? "s" : ""}-rendu{data.reports.length > 1 ? "s" : ""} · {data.checklist.done}/{data.checklist.total} tarefas · {openReserves} reserva{openReserves > 1 ? "s" : ""} ouverte{openReserves > 1 ? "s" : ""}</span>
+        {data.progress != null && <span className="text-xs text-muted-foreground">Avanço {data.progress} %</span>}
+        <span className="ml-auto text-xs text-muted-foreground">{data.reports.length} compte{data.reports.length > 1 ? "s" : ""}-rendu{data.reports.length > 1 ? "s" : ""} · {data.checklist.done}/{data.checklist.total} tarefas · {openReserves} reserva{openReserves > 1 ? "s" : ""} aberta{openReserves > 1 ? "s" : ""}</span>
       </div>
       {data.progress != null && (
         <div className="h-2.5 w-full rounded-full bg-secondary overflow-hidden" data-testid="project-site-progress">
@@ -44,7 +44,7 @@ export const ProjectSiteTracking = ({ projectId, acceptedQuote }) => {
           {data.reserves.slice(0, 8).map((r) => (
             <div key={r.reserve_id} className="flex items-start gap-2 text-sm"><AlertTriangle className={`h-4 w-4 mt-0.5 ${r.resolved || r.status === "levee" ? "text-emerald-600" : "text-amber-500"}`} />
               <span>{r.lot ? <b>{r.lot} · </b> : null}{r.description}</span>
-              <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{r.resolved || r.status === "levee" ? "levantada" : "ouverte"}</span></div>
+              <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{r.resolved || r.status === "levee" ? "levantada" : "aberta"}</span></div>
           ))}
         </div>
       )}

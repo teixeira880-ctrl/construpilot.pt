@@ -33,7 +33,7 @@ export default function Referral() {
     try {
       await navigator.clipboard.writeText(val);
       setCopied(true);
-      toast.success(`${label}copiado`);
+      toast.success(`${label} copiado`);
       setTimeout(() => setCopied(false), 1500);
     } catch {
       toast.error("Cópia impossível");
@@ -42,14 +42,13 @@ export default function Referral() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Parrainage ConstruPilot" title="Invitez, gagnez 5 € par filleul">
-        Cada pessoa que se inscreve com o seu código e realiza um primeiro pagamento gera-lhe <b className="text-primary">5 € de crédito</b>. En échange, votre filleul
-        bénéficie de <b className="text-primary">5 € de desconto</b> na sua primeira compra.
+      <SectionTitle over="Recomendação ConstruPilot" title="Convide, ganhe 5 € por indicado">
+        Cada pessoa que se inscreve com o seu código e realiza um primeiro pagamento gera-lhe <b className="text-primary">5 € de crédito</b>. Em troca, o seu apadrinhado beneficia de <b className="text-primary">5 € de desconto</b> na sua primeira compra.
       </SectionTitle>
 
       <div className="grid md:grid-cols-3 gap-6" data-testid="referral-stats">
         <Stat icon={Gift} label="O seu código" value={data?.code || "…"} suffix="" />
-        <Stat icon={Users} label="Filleuls" value={data?.invited || 0} />
+        <Stat icon={Users} label="Afilhados" value={data?.invited || 0} />
         <Stat icon={Sparkles} label="Crédito acumulado" value={eur(data?.credit_eur || 0)} />
       </div>
 
@@ -58,9 +57,9 @@ export default function Referral() {
           <p className="overline mb-2">A sua ligação para partilhar</p>
           <div className="flex flex-wrap gap-2">
             <Input readOnly value={shareUrl} data-testid="referral-share-url" className="rounded-sm font-mono text-xs" />
-            <Button onClick={() => copy(shareUrl, "Lien")} data-testid="referral-copy-link" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+            <Button onClick={() => copy(shareUrl, "Ligação")} data-testid="referral-copy-link" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              Copier
+              Copiar
             </Button>
           </div>
         </div>
@@ -70,7 +69,7 @@ export default function Referral() {
             <Badge className="rounded-sm bg-primary text-primary-foreground num text-lg py-2 px-4 tracking-wider" data-testid="referral-code">
               {data?.code || "…"}
             </Badge>
-            <Button variant="outline" size="sm" onClick={() => copy(data?.code || "", "Code")} className="rounded-sm gap-2">
+            <Button variant="outline" size="sm" onClick={() => copy(data?.code || "", "Código")} className="rounded-sm gap-2">
               <Copy className="h-3 w-3" /> Copiar o código
             </Button>
           </div>

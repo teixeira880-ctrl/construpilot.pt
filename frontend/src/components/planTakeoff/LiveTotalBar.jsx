@@ -66,7 +66,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
       setTotals(totalsMap);
       setMaterialsByRoom(materialsMap);
       const total = Object.values(totalsMap).reduce((a, b) => a + b, 0);
-      toast.success(`Custo total:${eur(total)} (${Object.keys(totalsMap).length}divisões)`);
+      toast.success(`Custo total: ${eur(total)} (${Object.keys(totalsMap).length} divisões)`);
     } finally {
       setComputing(false);
     }
@@ -90,11 +90,11 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
     sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
       items: allMaterials,
       source: "plan_total",
-      project_name: `Plan complet — ${nEstimated} pièces`,
+      project_name: `Planta completa — ${nEstimated} divisões`,
       total_avg: total,
       ts: Date.now(),
     }));
-    toast.success(`Pesquisa de preços em${allMaterials.length}materiais…`);
+    toast.success(`Pesquisa de preços em ${allMaterials.length} materiais…`);
     window.location.href = "/prix?from=plan-total";
   };
 
@@ -124,7 +124,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
             {hasEstimates
-              ? `Custo total da planta (${nEstimated}/${rooms.length}divisões)`
+              ? `Custo total da planta (${nEstimated}/${rooms.length} divisões)`
               : "Estime todas as divisões"}
           </span>
           {hasEstimates && (
@@ -147,7 +147,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
-          {computing ? "Calcul…" : hasEstimates ? "Actualiser" : "Calculer"}
+          {computing ? "Cálculo…" : hasEstimates ? "Atualizar" : "Calcular"}
         </Button>
         {hasEstimates && (
           <Button

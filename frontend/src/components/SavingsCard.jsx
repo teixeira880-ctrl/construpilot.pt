@@ -47,7 +47,7 @@ export const SavingsCard = ({ estimation, projectId }) => {
               {eur(data.total)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              soit ~{data.pct_of_project} % do orçamento total do projeto
+              ou seja ~{data.pct_of_project} % do orçamento total do projeto
             </p>
           </div>
         </div>

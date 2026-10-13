@@ -15,7 +15,7 @@ const BADGES_FR = [
   { icon: ShieldCheck, label: "Conforme Factur-X", sub: "Fatura eletrónica 2026" },
   { icon: CreditCard, label: "Pagamentos seguros", sub: "Propulsado por Stripe" },
   { icon: Globe, label: "Alojado na Europa", sub: "Conforme RGPD" },
-  { icon: Sparkles, label: "IA de última geração", sub: "Assistant BTP · Vision · Voix" },
+  { icon: Sparkles, label: "IA de última geração", sub: "Assistente Construção · Visão · Voz" },
 ];
 const BADGES_PT = [
   { icon: ShieldCheck, label: "Faturação conforme", sub: "e-Fatura / IVA 2026" },
@@ -70,12 +70,12 @@ const ReviewDialog = ({ open, onOpenChange }) => {
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="rv-name">{pt ? "Nome *" : "Nom *"}</Label>
+            <Label htmlFor="rv-name">{pt ? "Nome *" : "Nome *"}</Label>
             <Input id="rv-name" value={form.name} onChange={set("name")} placeholder={pt ? "O seu nome" : "O seu nome"} data-testid="review-name" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="rv-role">{pt ? "Profissão / cidade" : "Profissão / cidade"}</Label>
-            <Input id="rv-role" value={form.role} onChange={set("role")} placeholder={pt ? "Ex.: Empreiteiro, Lisboa" : "Ex : Artisan peintre, Lyon"} data-testid="review-role" />
+            <Input id="rv-role" value={form.role} onChange={set("role")} placeholder={pt ? "Ex.: Empreiteiro, Lisboa" : "Ex: Artesão pintor, Lisboa"} data-testid="review-role" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="rv-comment">{pt ? "A sua avaliação *" : "A sua opinião *"}</Label>
@@ -84,7 +84,7 @@ const ReviewDialog = ({ open, onOpenChange }) => {
           </div>
           <DialogFooter>
             <Button type="submit" disabled={busy} className="rounded-full" data-testid="review-submit">
-              {busy ? (pt ? "A enviar…" : "Envoi…") : (pt ? "Publicar a minha avaliação" : "Publicar a minha avaliação")}
+              {busy ? (pt ? "A enviar…" : "A enviar…") : (pt ? "Publicar a minha avaliação" : "Publicar a minha avaliação")}
             </Button>
           </DialogFooter>
         </form>
@@ -144,7 +144,7 @@ export function TrustSection() {
               </div>
             ) : reviews.map((r) => (
               <blockquote key={r.review_id} data-testid={`testimonial-${r.review_id}`} className="surface p-5 grid gap-3">
-                <div className="flex gap-0.5 text-primary" aria-label={`Note : ${r.rating}de 5`}>
+                <div className="flex gap-0.5 text-primary" aria-label={`Note : ${r.rating} de 5`}>
                   {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-current" />)}
                 </div>
                 <p className="text-sm leading-relaxed">« {r.comment} »</p>

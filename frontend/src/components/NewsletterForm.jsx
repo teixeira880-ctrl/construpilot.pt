@@ -42,7 +42,7 @@ export default function NewsletterForm({ source = "blog", compact = false }) {
               <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@entreprise.fr"
                      className="h-10 flex-1 min-w-[200px] rounded-sm" data-testid="newsletter-email" />
               <Button type="submit" disabled={busy} className="rounded-sm gap-2 h-10" data-testid="newsletter-submit">
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {isPT ? "Subscrever" : "S'abonner"}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {isPT ? "Subscrever" : "Subscrever"}
               </Button>
             </form>
           )}

@@ -11,8 +11,8 @@ import { api } from "@/lib/api";
 
 const pct = (v) => (v == null ? "—" : `${Math.round(v * 100)}%`);
 const CAT_LABEL = {
-  measurement: "Medições", material_waste: "Materiais + perdas", pricing: "Chiffrage",
-  phase_sequence: "Ordem das fases", robustness: "Robustesse (adversarial)",
+  measurement: "Medições", material_waste: "Materiais + perdas", pricing: "Orçamentação",
+  phase_sequence: "Ordem das fases", robustness: "Robustez (adversarial)",
 };
 
 export default function EvolutionLab() {
@@ -40,7 +40,7 @@ export default function EvolutionLab() {
     try {
       const { data } = await api.post("/admin/evolution/compare", cmp);
       setCmpRes(data);
-      toast.success(`Arena concluída — vencedor:${data.winner === "champion" ? cmp.champion_model : cmp.challenger_model}`);
+      toast.success(`Arena concluída — vencedor: ${data.winner === "champion" ? cmp.champion_model : cmp.challenger_model}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Comparação impossível"); }
     finally { setCmpBusy(false); }
   };
@@ -60,7 +60,7 @@ export default function EvolutionLab() {
     try {
       const { data } = await api.post("/admin/evolution/run", {});
       const aiTxt = data.ai_calls ? ` · IA ${data.ai_passed}/${data.ai_calls}` : "";
-      toast.success(`Lot #${data.generation} : ${data.passed}/${data.size}bem-sucedidos · fitness${data.fitness_score}${aiTxt}`);
+      toast.success(`Lot #${data.generation} : ${data.passed}/${data.size} bem-sucedidos · fitness ${data.fitness_score}${aiTxt}`);
       await load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Lançamento impossível"); }
     finally { setRunning(false); }
@@ -70,7 +70,7 @@ export default function EvolutionLab() {
     setBusy(true);
     try {
       const { data } = await api.post("/admin/evolution/send-report", {});
-      toast.success(`Relatório enviado a${data.sent_to}`);
+      toast.success(`Relatório enviado a ${data.sent_to}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
   };
@@ -80,7 +80,7 @@ export default function EvolutionLab() {
     try {
       const { data } = await api.put("/admin/evolution/config", { active_ai_model: model_key });
       setCfg(data);
-      toast.success(`Modelo ativo:${model_key}— aplicado ao chatbot e aos testes IA`);
+      toast.success(`Modelo ativo: ${model_key} — aplicado ao chatbot e aos testes IA`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Impossível"); }
     finally { setBusy(false); }
   };
@@ -135,12 +135,12 @@ export default function EvolutionLab() {
           <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
           <div className="text-xs text-muted-foreground">
             <div className="flex items-center justify-between gap-3">
-              <span><b>Tests IA/vision</b> (dispendioso — chamadas LLM). Desativados por defeito para controlar os custos.</span>
+              <span><b>Testes IA/visão</b> (dispendioso — chamadas LLM). Desativados por defeito para controlar os custos.</span>
               <Switch checked={cfg.ai_enabled} onCheckedChange={(v) => save({ ai_enabled: v })} disabled={busy} data-testid="evo-toggle-ai" />
             </div>
             {cfg.ai_enabled && (
               <div className="mt-2 flex items-center gap-2">
-                <span>Plafond d'appels IA / lot :</span>
+                <span>Limite de chamadas IA / lote:</span>
                 <Input type="number" min={0} max={5000} value={cfg.ai_budget_calls} onChange={(e) => setCfg({ ...cfg, ai_budget_calls: +e.target.value })}
                   onBlur={(e) => save({ ai_budget_calls: Math.min(5000, Math.max(0, +e.target.value || 0)) })} className="h-7 w-24" data-testid="evo-ai-budget" />
               </div>
@@ -159,7 +159,7 @@ export default function EvolutionLab() {
       <div className="surface p-4 space-y-3" data-testid="evo-nightly">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-bold flex items-center gap-2"><Mail className="h-4 w-4 text-primary" />Rapport nocturne par e-mail</div>
+            <div className="font-bold flex items-center gap-2"><Mail className="h-4 w-4 text-primary" />Relatório noturno por e-mail</div>
             <p className="text-xs text-muted-foreground">Um lote é executado todas as noites (03:00 UTC) e o relatório (Fitness + novos clusters) é-lhe enviado.</p>
           </div>
           <Switch checked={cfg.nightly_enabled} onCheckedChange={(v) => save({ nightly_enabled: v })} disabled={busy} data-testid="evo-toggle-nightly" />
@@ -186,7 +186,7 @@ export default function EvolutionLab() {
           <Switch checked={cfg.alert_enabled} onCheckedChange={(v) => save({ alert_enabled: v })} disabled={busy} data-testid="evo-toggle-alert" />
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <div><label className="text-xs text-muted-foreground">Seuil Fitness (/100)</label>
+          <div><label className="text-xs text-muted-foreground">Limiar Fitness (/100)</label>
             <Input type="number" min={0} max={100} value={cfg.alert_threshold} onChange={(e) => setCfg({ ...cfg, alert_threshold: +e.target.value })}
               onBlur={(e) => save({ alert_threshold: Math.min(100, Math.max(0, +e.target.value || 90)) })} className="h-8 w-28" data-testid="evo-alert-threshold" /></div>
           <div className="flex-1 min-w-[200px]"><label className="text-xs text-muted-foreground">E-mail de alerta (senão o do relatório)</label>
@@ -198,7 +198,7 @@ export default function EvolutionLab() {
       {/* Arène Champion vs Challenger */}
       <div className="surface p-4 space-y-3" data-testid="evo-compare">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="font-bold flex items-center gap-2"><Swords className="h-4 w-4 text-primary" />Comparaison Champion vs Challenger</div>
+          <div className="font-bold flex items-center gap-2"><Swords className="h-4 w-4 text-primary" />Comparação Campeão vs Desafiante</div>
           <span className="text-xs text-muted-foreground">Modelo IA ativo: <b className="text-primary" data-testid="evo-active-model">{cfg.active_ai_model}</b></span>
         </div>
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -207,7 +207,7 @@ export default function EvolutionLab() {
         </label>
         <p className="text-xs text-muted-foreground">Dois modelos IA enfrentam os mesmos cenários (mesma seed). O vencedor: melhor precisão, depois velocidade.</p>
         <div className="flex flex-wrap items-end gap-3">
-          <div><label className="text-xs text-muted-foreground">Champion</label>
+          <div><label className="text-xs text-muted-foreground">Campeão</label>
             <select value={cmp.champion_model} onChange={(e) => setCmp({ ...cmp, champion_model: e.target.value })} className="mt-1 h-8 rounded-sm border border-border bg-background px-2 text-sm block" data-testid="evo-cmp-champion">
               {["opus", "sonnet", "haiku", "gemini"].map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -220,7 +220,7 @@ export default function EvolutionLab() {
           <div><label className="text-xs text-muted-foreground">Testes IA / modelo</label>
             <Input type="number" min={1} max={100} value={cmp.ai_calls} onChange={(e) => setCmp({ ...cmp, ai_calls: Math.min(100, Math.max(1, +e.target.value || 8)) })} className="h-8 w-24" data-testid="evo-cmp-calls" /></div>
           <Button onClick={runCompare} disabled={cmpBusy} className="gap-2 rounded-sm" data-testid="evo-cmp-run">
-            {cmpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}{cmpBusy ? "Arena em curso…" : "Comparer"}
+            {cmpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}{cmpBusy ? "Arena em curso…" : "Comparar"}
           </Button>
         </div>
         {cmpRes && (
@@ -228,12 +228,12 @@ export default function EvolutionLab() {
             {[["champion", cmpRes.champion], ["challenger", cmpRes.challenger]].map(([side, r]) => (
               <div key={side} className={`rounded-sm border p-3 ${cmpRes.winner === side ? "border-primary bg-primary/5" : "border-border"}`} data-testid={`evo-cmp-${side}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase text-muted-foreground">{side === "champion" ? "Champion" : "Challenger"}</span>
-                  {cmpRes.winner === side && <span className="text-[10px] font-bold text-primary flex items-center gap-1"><Trophy className="h-3.5 w-3.5" />Gagnant</span>}
+                  <span className="text-xs uppercase text-muted-foreground">{side === "champion" ? "Campeão" : "Challenger"}</span>
+                  {cmpRes.winner === side && <span className="text-[10px] font-bold text-primary flex items-center gap-1"><Trophy className="h-3.5 w-3.5" />Vencedor</span>}
                 </div>
                 <div className="font-bold text-lg">{r.model}</div>
                 <div className="text-sm">Precisão: <b>{pct(r.ai_accuracy)}</b> ({r.ai_passed}/{r.ai_calls})</div>
-                <div className="text-xs text-muted-foreground">Latence moy. : {r.ai_avg_latency_s ?? "—"} s</div>
+                <div className="text-xs text-muted-foreground">Latência méd.: {r.ai_avg_latency_s ?? "—"} s</div>
               </div>
             ))}
           </div>
@@ -254,7 +254,7 @@ export default function EvolutionLab() {
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="evo-kpis">
         {[
-          { icon: Users, label: "Utilisateurs virtuels", value: dash.personas + " personas" },
+          { icon: Users, label: "Utilizadores virtuais", value: dash.personas + " personas" },
           { icon: Boxes, label: "Tipos de projetos", value: dash.project_types },
           { icon: Activity, label: "Testes executados (total)", value: (dash.tests_total || 0).toLocaleString("fr-FR") },
           { icon: TrendingUp, label: "Taxa de sucesso global", value: pct(dash.global_pass_rate) },
@@ -272,7 +272,7 @@ export default function EvolutionLab() {
         <div className="surface p-4" data-testid="evo-last-run">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold">Última especialidade · Geração #{last.generation}</h3>
-            <span className="text-sm">Fitness Score : <b className="text-primary num">{last.fitness_score}</b> / 100</span>
+            <span className="text-sm">Fitness Score: <b className="text-primary num">{last.fitness_score}</b> / 100</span>
           </div>
           {last.ai_calls ? (
             <p className="text-xs mb-2 flex items-center gap-1 text-primary" data-testid="evo-ai-result">
@@ -328,7 +328,7 @@ export default function EvolutionLab() {
             <div className="text-xs font-semibold mb-1">Evolução semana a semana</div>
             <div className="overflow-auto rounded-sm border border-border">
               <table className="w-full text-xs">
-                <thead className="bg-secondary/40"><tr><th className="text-left p-2">Semaine</th><th className="p-2 text-right">Lots</th><th className="p-2 text-right">Fitness moyen</th><th className="p-2 text-right">Taxa de sucesso méd.</th></tr></thead>
+                <thead className="bg-secondary/40"><tr><th className="text-left p-2">Semana</th><th className="p-2 text-right">Capítulos</th><th className="p-2 text-right">Fitness médio</th><th className="p-2 text-right">Taxa de sucesso méd.</th></tr></thead>
                 <tbody>
                   {reports.weekly.map((w, i) => (
                     <tr key={i} className="border-t border-border/60" data-testid={`evo-week-${i}`}>
@@ -346,7 +346,7 @@ export default function EvolutionLab() {
           <div className="space-y-1">
             {reports.items.slice(0, 10).map((r, i) => (
               <div key={i} className="flex justify-between items-center text-xs border-t border-border/60 py-1.5" data-testid={`evo-report-${i}`}>
-                <span className="text-muted-foreground">Gen #{r.generation} · {new Date(r.created_at).toLocaleDateString("fr-FR")} · {r.size} tests</span>
+                <span className="text-muted-foreground">Ger. #{r.generation} · {new Date(r.created_at).toLocaleDateString("fr-FR")} · {r.size} tests</span>
                 <span>Fitness <b className="text-primary num">{r.fitness_score}</b> · {Math.round((r.pass_rate || 0) * 100)}%{r.ai_calls ? ` · IA ${r.ai_passed}/${r.ai_calls}` : ""}</span>
               </div>
             ))}

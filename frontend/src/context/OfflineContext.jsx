@@ -27,7 +27,7 @@ export const OfflineProvider = ({ children }) => {
     try {
       const done = await flushQueue(uid);
       if (done > 0) {
-        toast.success(`${done}alteração(ões) sincronizada(s).`, { icon: <CheckCircle2 className="h-4 w-4" /> });
+        toast.success(`${done} alteração(ões) sincronizada(s).`, { icon: <CheckCircle2 className="h-4 w-4" /> });
         window.dispatchEvent(new Event("construpilot-offline-synced"));
       }
     } finally {
@@ -61,9 +61,9 @@ export const OfflineProvider = ({ children }) => {
       {(!online || pending > 0) && (
         <div className={`cp-offline-bar ${online ? "is-pending" : "is-offline"}`} data-testid="offline-bar" role="status">
           {!online
-            ? <><CloudOff className="h-4 w-4" /> <span>Modo offline{pending > 0 ? ` · ${pending} modif. en attente` : ""}</span></>
-            : <><RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> <span>{syncing ? "Synchronisation…" : `${pending}alter. a sincronizar`}</span>
-                {!syncing && <button type="button" className="cp-offline-sync" onClick={sync} data-testid="offline-sync-btn">Synchroniser</button>}</>}
+            ? <><CloudOff className="h-4 w-4" /> <span>Modo offline{pending > 0 ? ` · ${pending} alter. pendentes` : ""}</span></>
+            : <><RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> <span>{syncing ? "A sincronizar…" : `${pending} alter. a sincronizar`}</span>
+                {!syncing && <button type="button" className="cp-offline-sync" onClick={sync} data-testid="offline-sync-btn">Sincronizar</button>}</>}
         </div>
       )}
       {children}

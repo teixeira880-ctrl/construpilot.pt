@@ -1,5 +1,5 @@
 export const PostalDestination = ({ destination, edited, onChange, complete }) => <div className="space-y-2" data-testid="postal-destination">
-  <div role="radiogroup" aria-label="Adresse destinataire" className="flex flex-wrap gap-3 text-xs">
+  <div role="radiogroup" aria-label="Morada do destinatário" className="flex flex-wrap gap-3 text-xs">
     {[["contact", "Morada do contacto"], ["terrain", "Morada do terreno"]].map(([value, label]) => <label key={value} className="flex items-center gap-2">
       <input type="radio" name="postal-destination" value={value} checked={destination === value} onChange={() => onChange(value)} data-testid={`postal-destination-${value}`} />{label}
     </label>)}

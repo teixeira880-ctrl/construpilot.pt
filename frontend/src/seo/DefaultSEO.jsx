@@ -11,7 +11,7 @@ export const ROUTE_SEO = {
   "/login": { title: "Iniciar sessão", description: "Inicie sessão no seu espaço ConstruPilot para encontrar os seus projetos, estimativas e orçamentos.", noindex: true },
   "/inscription": { title: "Criar conta", description: "Crie a sua conta ConstruPilot gratuita: estimativas, orçamentos e acompanhamento de obra num só lugar.", noindex: true },
   "/smart-project": { title: "Smart Project: estimativa IA detalhada", description: "Descreva o seu projeto, a IA propõe uma orçamentação capítulo a capítulo com quantidades e intervalos de preço.", ptPath: "/smart-project" },
-  "/estimation": { title: "Estimateur travaux gratuit", description: "Orçamente a sua obra em 3 passos: tipo de trabalhos, área, nível de acabamento. Estimativa imediata e gratuita.", ptPath: "/estimation" },
+  "/estimation": { title: "Estimador trabalhos gratuito", description: "Orçamente a sua obra em 3 passos: tipo de trabalhos, área, nível de acabamento. Estimativa imediata e gratuita.", ptPath: "/estimation" },
   "/calculateurs": { title: "Calculadoras de construção: betão, pladur, azulejo", description: "Calcule as quantidades de materiais (betão, blocos, pladur, azulejo, tinta) com as perdas incluídas.", ptPath: "/calculateurs" },
   "/prix": { title: "Comparador preços materiais construção", description: "Compare os preços dos materiais no Leroy Merlin, Maxmat, Bricomarché, AKI e noutras lojas.", ptPath: "/prix" },
   "/diy": { title: "Guias de obras passo a passo", description: "Tutoriais e guias práticos para realizar as suas obras, com conselhos de segurança e materiais necessários.", ptPath: "/diy" },

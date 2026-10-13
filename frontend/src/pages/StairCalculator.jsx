@@ -18,9 +18,9 @@ import {
 
 const STAIR_TYPES = [
   { key: "straight", label: "Escada reta", api: "straight" },
-  { key: "quarter_turn_bottom", label: "Quart tournant bas", api: "quarter-turn-bottom" },
-  { key: "quarter_turn_top", label: "Quart tournant haut", api: "quarter-turn-top" },
-  { key: "half_turn", label: "Demi-tournant", api: "half-turn" },
+  { key: "quarter_turn_bottom", label: "Quarto de volta em baixo", api: "quarter-turn-bottom" },
+  { key: "quarter_turn_top", label: "Quarto de volta em cima", api: "quarter-turn-top" },
+  { key: "half_turn", label: "Meia volta", api: "half-turn" },
   { key: "helicoidal", label: "Helicoidal (caracol)", api: "helicoidal" },
 ];
 const TYPE_LABEL = Object.fromEntries(STAIR_TYPES.map((t) => [t.key, t.label]));
@@ -78,8 +78,8 @@ function ResultDetail({ r }) {
     ["Altura do espelho", mm(r.riser_height_mm)],
     ["Cobertor (linha de passagem)", mm(r.tread_depth_mm)],
     ["Blondel (2h + g)", `${Math.round(r.blondel_value_mm)} mm`],
-    ["Pente", `${r.slope_deg?.toFixed(1)}°`],
-    ["Reculement (emmarchement)", mm(r.stair_run_mm)],
+    ["Inclinação", `${r.slope_deg?.toFixed(1)}°`],
+    ["Desenvolvimento (projeção horizontal)", mm(r.stair_run_mm)],
     ["Comprimento desenvolvido", mm(r.stair_length_mm)],
     ["Pé-direito livre (headroom)", mm(r.headroom_mm)],
   ];
@@ -214,7 +214,7 @@ export default function StairCalculator() {
       setOptimizeResult(data);
       setTab("optimize");
       if (!data.solutions?.length) toast.warning("Nenhuma solução exequível — alargue as restrições");
-      else toast.success(`${data.solutions.length}solução(ões) proposta(s)`);
+      else toast.success(`${data.solutions.length} solução(ões) proposta(s)`);
     } catch (e) {
       toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Otimização impossível");
     }
@@ -227,8 +227,8 @@ export default function StairCalculator() {
     setConcrete(null);
     setTab("calc");
     setProjectName((prev) => (!prev || prev === "Escada sem nome")
-      ? `Escada${TYPE_LABEL[sol.type] || sol.type}` : prev);
-    toast.success(`Solution ${TYPE_LABEL[sol.type] || sol.type}carregada`);
+      ? `Escada ${TYPE_LABEL[sol.type] || sol.type}` : prev);
+    toast.success(`Solução ${TYPE_LABEL[sol.type] || sol.type} carregada`);
   };
 
   const doConcrete = async () => {
@@ -250,7 +250,7 @@ export default function StairCalculator() {
     setLoading("quote");
     try {
       const { data } = await api.post("/stairs/to-quote", {
-        project_name: projectName || "Escalier",
+        project_name: projectName || "Escada",
         stair_result: result,
         concrete_analysis: concrete,
         detailed_steel: detailedSteel,
@@ -268,7 +268,7 @@ export default function StairCalculator() {
     setLoading("pdf");
     try {
       const res = await api.post("/stairs/dossier/generate", {
-        project_name: projectName || "Escalier",
+        project_name: projectName || "Escada",
         stair_input: buildPayload(stairType),
         stair_result: result,
         concrete_analysis: concrete,
@@ -308,7 +308,7 @@ export default function StairCalculator() {
       setResult(data.result || null);
       setConcrete(data.concrete_analysis || null);
       setShowProjects(false);
-      toast.success(`Projet « ${data.name} » ouvert`);
+      toast.success(`Projet « ${data.name} » aberto`);
     } catch { toast.error("Abertura impossível"); }
   };
 
@@ -347,7 +347,7 @@ export default function StairCalculator() {
             <Footprints className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold leading-tight">Calcul d'escaliers</h1>
+            <h1 className="text-xl font-bold leading-tight">Cálculo de escadas</h1>
             <p className="text-xs text-muted-foreground">Motor determinístico · RGEU / DL 163/2006 / NP EN 1992 · betão armado</p>
           </div>
         </div>
@@ -359,7 +359,7 @@ export default function StairCalculator() {
           </Button>
           <div className="relative">
             <Button size="sm" variant="outline" onClick={() => setShowProjects((s) => !s)} data-testid="stair-projects-toggle" className="rounded-sm gap-1">
-              <FolderOpen className="h-4 w-4" /> Projets
+              <FolderOpen className="h-4 w-4" /> Projetos
             </Button>
             {showProjects && (
               <div className="absolute right-0 mt-1 w-72 max-h-80 overflow-auto rounded-md border border-border bg-background shadow-lg z-50 p-1" data-testid="stair-projects-list">
@@ -387,7 +387,7 @@ export default function StairCalculator() {
         {/* Input form */}
         <Card className="rounded-lg h-fit">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Contraintes</CardTitle>
+            <CardTitle className="text-base">Restrições</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-1">
@@ -402,7 +402,7 @@ export default function StairCalculator() {
 
             <div className="grid grid-cols-2 gap-2">
               <Field label="Altura a vencer (mm)" k="floor_height_mm" form={form} set={set} testid="floor-height" />
-              {stairType !== "helicoidal" && <Field label="Reculement dispo (mm)" k="available_length_mm" form={form} set={set} testid="avail-length" />}
+              {stairType !== "helicoidal" && <Field label="Desenvolvimento disponível (mm)" k="available_length_mm" form={form} set={set} testid="avail-length" />}
               {stairType !== "helicoidal" && <Field label="Largura disponível (mm)" k="available_width_mm" form={form} set={set} testid="avail-width" />}
               {stairType !== "helicoidal" && <Field label="Largura da escada (mm)" k="stair_width_mm" form={form} set={set} testid="stair-width" />}
               <Field label="Espessura da laje (mm)" k="slab_thickness_mm" form={form} set={set} testid="slab-thickness" />
@@ -421,7 +421,7 @@ export default function StairCalculator() {
             {isTurn && (
               <div className="space-y-2 rounded-md border border-dashed border-border p-2">
                 <div className="grid gap-1">
-                  <Label className="text-xs">Mode</Label>
+                  <Label className="text-xs">Modo</Label>
                   <Select value={form.balancing} onValueChange={(v) => set("balancing", v)}>
                     <SelectTrigger className="h-9" data-testid="stair-balancing-select"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -444,7 +444,7 @@ export default function StairCalculator() {
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="Comprimento do patamar (mm)" k="landing_length_mm" form={form} set={set} testid="landing-length" />
                     <Field label="Largura do patamar (mm)" k="landing_width_mm" form={form} set={set} testid="landing-width" />
-                    <Field label="Marches avant palier" k="steps_before_landing" form={form} set={set} testid="steps-before" />
+                    <Field label="Degraus antes do patamar" k="steps_before_landing" form={form} set={set} testid="steps-before" />
                   </div>
                 )}
               </div>
@@ -456,12 +456,12 @@ export default function StairCalculator() {
               </label>
               {stairType !== "helicoidal" && (
                 <div className="flex items-center gap-2">
-                  <Label className="text-xs">Sens</Label>
+                  <Label className="text-xs">Direção</Label>
                   <Select value={form.direction} onValueChange={(v) => set("direction", v)}>
                     <SelectTrigger className="h-8 w-24" data-testid="stair-direction"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="right">Droite</SelectItem>
-                      <SelectItem value="left">Gauche</SelectItem>
+                      <SelectItem value="right">Direita</SelectItem>
+                      <SelectItem value="left">Esquerda</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -470,10 +470,10 @@ export default function StairCalculator() {
 
             <div className="flex gap-2 pt-1">
               <Button onClick={doCalculate} disabled={!!loading} data-testid="stair-calculate-btn" className="flex-1 rounded-sm gap-2">
-                {loading === "calc" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />} Calculer
+                {loading === "calc" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />} Calcular
               </Button>
               <Button onClick={doOptimize} disabled={!!loading} variant="secondary" data-testid="stair-optimize-btn" className="flex-1 rounded-sm gap-2">
-                {loading === "optimize" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Optimiser
+                {loading === "optimize" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Otimizar
               </Button>
             </div>
           </CardContent>
@@ -485,10 +485,10 @@ export default function StairCalculator() {
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="mb-4">
                 <TabsTrigger value="calc" data-testid="tab-calc">Resultado</TabsTrigger>
-                <TabsTrigger value="view3d" data-testid="tab-view3d">Vue 3D</TabsTrigger>
-                <TabsTrigger value="optimize" data-testid="tab-optimize">Optimiseur</TabsTrigger>
+                <TabsTrigger value="view3d" data-testid="tab-view3d">Vista 3D</TabsTrigger>
+                <TabsTrigger value="optimize" data-testid="tab-optimize">Otimizador</TabsTrigger>
                 <TabsTrigger value="concrete" data-testid="tab-concrete">Betão armado</TabsTrigger>
-                <TabsTrigger value="assistant" data-testid="tab-assistant">Assistant IA</TabsTrigger>
+                <TabsTrigger value="assistant" data-testid="tab-assistant">Assistente IA</TabsTrigger>
               </TabsList>
 
               <TabsContent value="calc">
@@ -540,13 +540,13 @@ export default function StairCalculator() {
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           <span>{s.result.num_steps} marches</span>
                           <span>H. {Math.round(s.result.riser_height_mm)} mm</span>
-                          <span>Giron {Math.round(s.result.tread_depth_mm)} mm</span>
+                          <span>Cobertor {Math.round(s.result.tread_depth_mm)} mm</span>
                           <span>Blondel {Math.round(s.result.blondel_value_mm)}</span>
-                          <span>Pente {s.result.slope_deg?.toFixed(1)}°</span>
+                          <span>Inclinação {s.result.slope_deg?.toFixed(1)}°</span>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-3 text-[11px]">
                           <ScorePill label="Confort" v={s.scores.confort} />
-                          <ScorePill label="Encombrement" v={s.scores.encombrement} />
+                          <ScorePill label="Atravancamento" v={s.scores.encombrement} />
                           <ScorePill label="Exequibilidade" v={s.scores.faisabilite} />
                           <ScorePill label="Estética" v={s.scores.esthetique} />
                         </div>
@@ -575,17 +575,17 @@ export default function StairCalculator() {
                     <Section title="Medição / quantidades">
                       <KeyVals obj={concrete.quantities} unitHint />
                     </Section>
-                    <Section title="Charges (kN/m²)">
+                    <Section title="Cargas (kN/m²)">
                       <KeyVals obj={concrete.load_breakdown_kN_m2} />
                     </Section>
                     <Section title="Pré-dimensionamento do lanço">
                       <KeyVals obj={concrete.paillasse} />
                     </Section>
-                    <Section title="Ferraillage indicatif">
+                    <Section title="Armaduras indicativas">
                       <KeyVals obj={concrete.reinforcement} />
                     </Section>
                     {concrete.nomenclature?.length > 0 && (
-                      <Section title="Nomenclature aciers">
+                      <Section title="Lista de armaduras">
                         <div className="rounded border border-border overflow-hidden">
                           <table className="w-full text-xs">
                             <thead className="bg-muted/50"><tr>{Object.keys(concrete.nomenclature[0]).map((h) => <th key={h} className="p-2 text-left capitalize">{h}</th>)}</tr></thead>

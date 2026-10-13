@@ -109,8 +109,8 @@ export function QuoteDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="carrelage">Carrelage</SelectItem>
-                <SelectItem value="parquet">Parquet</SelectItem>
+                <SelectItem value="carrelage">Revestimento cerâmico</SelectItem>
+                <SelectItem value="parquet">Soalho</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -118,7 +118,7 @@ export function QuoteDialog({
           {quoteMode === "send" && (
             <>
               <div className="grid gap-2">
-                <Label>Objet email (optionnel)</Label>
+                <Label>Assunto email (opcional)</Label>
                 <Input value={quoteSubject} onChange={(e) => setQuoteSubject(e.target.value)}
                        placeholder="Ex: O seu orçamento para a renovação apartamento Paris 11"
                        maxLength={180}
@@ -144,7 +144,7 @@ export function QuoteDialog({
               <div className="grid gap-2">
                 <Label>Nome do cliente (opcional)</Label>
                 <Input value={quoteClientName} onChange={(e) => setQuoteClientName(e.target.value)}
-                       placeholder="M. Dupont"
+                       placeholder="Sr. Dupont"
                        data-testid="quote-client-name" className="rounded-sm h-11" />
               </div>
               <div className="grid gap-2">
@@ -192,9 +192,9 @@ export function QuoteDialog({
                       🎬 Anexar o tour vídeo 3D ({(latestVideo.size_bytes / 1024 / 1024).toFixed(1)} Mo)
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      {latestVideo.duration_s}s · Styles : {(latestVideo.styles || []).join(", ") || "—"}
-                      {latestVideo.has_watermark && "· com marca de água"}
-                      {latestVideo.has_audio && "· com música"}
+                      {latestVideo.duration_s}s · Estilos : {(latestVideo.styles || []).join(", ") || "—"}
+                      {latestVideo.has_watermark && " · com marca de água"}
+                      {latestVideo.has_audio && " · com música"}
                     </p>
                   </div>
                 </label>
@@ -214,7 +214,7 @@ export function QuoteDialog({
                         <div className="min-w-0">
                           <p className="font-bold truncate">{s.client_name || s.client_email}</p>
                           <p className="num text-muted-foreground">
-                            {new Date(s.created_at).toLocaleDateString("fr-FR")} · {s.total_ttc?.toLocaleString("fr-FR")} € TTC
+                            {new Date(s.created_at).toLocaleDateString("fr-FR")} · {s.total_ttc?.toLocaleString("fr-FR")} € c/ IVA
                           </p>
                         </div>
                         <div className="flex gap-1 shrink-0">
@@ -225,14 +225,14 @@ export function QuoteDialog({
                           {!s.signed && s.opened && (
                             <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-1.5 py-0.5 rounded-sm text-[9px]"
                                   data-testid={`open-badge-${s.log_id}`}>
-                              Ouvert ({s.open_count || 1})
+                              Aberto ({s.open_count || 1})
                             </span>
                           )}
                           {!s.signed && (
                             <button onClick={() => createSignatureLink(s.log_id)}
                                     data-testid={`sign-link-${s.log_id}`}
                                     className="text-primary hover:underline text-[10px]">
-                              Lien signature
+                              Ligação de assinatura
                             </button>
                           )}
                         </div>
@@ -285,7 +285,7 @@ export function QuoteDialog({
             <Button onClick={sendQuotePdf} disabled={quoteBusy || !quoteClientEmail}
                     data-testid="quote-send-btn"
                     className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              {quoteBusy ? "Envoi…" : "Enviar ao cliente"}
+              {quoteBusy ? "A enviar…" : "Enviar ao cliente"}
             </Button>
           )}
         </DialogFooter>

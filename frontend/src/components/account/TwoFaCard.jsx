@@ -26,7 +26,7 @@ export const TwoFaCard = () => {
       const { data } = await api.put("/auth/profile", { two_fa_email: tfaEmail.trim() });
       setUser(data.user);
       toast.success(tfaEmail.trim()
-        ? "Os códigos 2FA serão enviados para" + tfaEmail.trim()
+        ? "Os códigos 2FA serão enviados para " + tfaEmail.trim()
         : "Morada de receção reiniciada (email da conta)");
     } catch (err) {
       const d = err?.response?.data?.detail;
@@ -64,7 +64,7 @@ export const TwoFaCard = () => {
     <div className="surface p-5 space-y-4" data-testid="twofa-card">
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-primary" /> Double authentification
+          <ShieldCheck className="h-4 w-4 text-primary" /> Autenticação de dois fatores
         </p>
         <Badge variant={enabled ? "default" : "secondary"} className="rounded-sm"
                data-testid="twofa-status-badge">

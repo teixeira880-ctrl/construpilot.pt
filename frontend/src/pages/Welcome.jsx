@@ -60,7 +60,7 @@ export default function Welcome() {
         </div>
 
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight" data-testid="welcome-title">
-          {step === 0 && user?.name ? `Bienvenue, ${user.name.split(" ")[0]} 🎉` : s.title}
+          {step === 0 && user?.name ? `Bem-vindo, ${user.name.split(" ")[0]} 🎉` : s.title}
         </h1>
         <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{s.text}</p>
         {s.offer && <OfferNotice className="mt-4 text-left" />}
@@ -77,7 +77,7 @@ export default function Welcome() {
             onClick={() => (step === 0 ? nav("/dashboard") : setStep((v) => v - 1))}
             className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
             data-testid="welcome-back">
-            {step === 0 ? "Passer" : (<><ArrowLeft className="h-3 w-3" /> Anterior</>)}
+            {step === 0 ? "Passar" : (<><ArrowLeft className="h-3 w-3" /> Anterior</>)}
           </button>
 
           {last ? (

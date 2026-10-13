@@ -19,7 +19,7 @@ export default function PlanViewer({ planId, highlight }) {
     <div className="surface p-3" data-testid="plan-viewer">
       <div className="relative inline-block max-w-full leading-none">
         {img ? (
-          <img src={`data:image/png;base64,${img}`} alt="Plan" className="max-w-full rounded-sm border border-border" />
+          <img src={`data:image/png;base64,${img}`} alt="Planta" className="max-w-full rounded-sm border border-border" />
         ) : (
           <div className="text-sm text-muted-foreground p-8">{loading ? "Carregamento da pré-visualização…" : "Pré-visualização da planta indisponível"}</div>
         )}

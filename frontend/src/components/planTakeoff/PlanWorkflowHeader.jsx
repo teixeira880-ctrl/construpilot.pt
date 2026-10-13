@@ -33,9 +33,9 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
   const stage = busy ? 1 : !calibration ? 0 : hasRecap ? 2 : 1;
   const steps = [
     { title: "Escala", detail: calibration ? "Calibração guardada" : "Dimensão de referência", icon: Ruler, run: onCalibrate },
-    { title: "Analyse", detail: "Leitura e quantidades", icon: Sparkles, run: () => document.getElementById("plan-analysis-mode")?.focus() },
+    { title: "Análise", detail: "Leitura e quantidades", icon: Sparkles, run: () => document.getElementById("plan-analysis-mode")?.focus() },
     { title: "Controlo", detail: "Cotas e hipóteses", icon: ClipboardCheck, run: onReview },
-    { title: "Chiffrage", detail: "Preços e orçamento", icon: FileText, run: onEstimate },
+    { title: "Orçamentação", detail: "Preços e orçamento", icon: FileText, run: onEstimate },
   ];
   return <header className="plan-workflow-header" data-testid="plan-workflow-header">
     <div className="plan-workflow-heading">
@@ -46,9 +46,9 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
       </div>
       <div className="plan-document-tools">
         {children}
-        <ActionMenu label="Document" icon={FileText} actions={documentActions} disabled={busy} />
-        <ActionMenu label="Exporter" icon={FileDown} actions={exportActions} disabled={busy} />
-        <ActionMenu label="Outils" icon={Settings2} actions={studyActions} disabled={busy} />
+        <ActionMenu label="Documento" icon={FileText} actions={documentActions} disabled={busy} />
+        <ActionMenu label="Exportar" icon={FileDown} actions={exportActions} disabled={busy} />
+        <ActionMenu label="Ferramentas" icon={Settings2} actions={studyActions} disabled={busy} />
       </div>
     </div>
     <nav className="plan-workflow-steps" aria-label="Etapas da medição">
@@ -61,7 +61,7 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
     </nav>
     <div className="plan-analysis-controls" data-testid="plan-actions" aria-busy={busy}>
       <div className="plan-analysis-context">
-        <span className="plan-page-chip">Page {pageIndex + 1} / {pageCount}</span>
+        <span className="plan-page-chip">Página {pageIndex + 1} / {pageCount}</span>
         <span className={calibration ? "plan-scale-status" : "plan-scale-status is-pending"} data-testid="calib-badge">
           <span aria-hidden="true" />{calibration ? "Escala indicada" : "Escala a indicar"}
         </span>
@@ -69,17 +69,17 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
       <div className="plan-analysis-fields">
         <label>Tipo de planta
           <select value={planKind} onChange={(e) => onPlanKindChange(e.target.value)} disabled={busy || mode !== "complete"} data-testid="analyze-kind-toggle">
-            <option value="auto">Deteção automática</option><option value="gros_oeuvre">Obra grossa</option><option value="maison">Maison</option>
+            <option value="auto">Deteção automática</option><option value="gros_oeuvre">Obra grossa</option><option value="maison">Moradia</option>
           </select>
         </label>
-        <label className="plan-mode-field">Analyse
+        <label className="plan-mode-field">Análise
           <select id="plan-analysis-mode" value={mode} onChange={(e) => onModeChange(e.target.value)} disabled={busy} aria-describedby="plan-analysis-description">
             {Object.entries(MODES).filter(([key]) => key !== "structure_all" || pageCount > 1).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
           </select>
         </label>
         <button type="button" className="plan-primary-action" onClick={onAnalyze} disabled={busy} data-testid="plan-analyze-btn">
           {busy ? <Loader2 size={17} className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles size={17} aria-hidden="true" />}
-          {busy ? "Analyse en cours…" : "Analisar a planta"}
+          {busy ? "Análise em curso…" : "Analisar a planta"}
           {!busy && <ArrowRight size={16} aria-hidden="true" />}
         </button>
       </div>
@@ -96,16 +96,16 @@ export function PlanAnalysisResults({ recap, onClose, onReview, onQuote }) {
     <div className="plan-results-heading">
       <div><p className="plan-eyebrow">RESULTADOS · ESTA PÁGINA</p><h2>A sua medição ganha forma</h2></div>
       <span className="plan-review-badge">{warnings.length ? "Analyse partielle" : "A verificar na planta"}</span>
-      <button type="button" onClick={onClose} className="plan-text-button" data-testid="recap-close">Masquer</button>
+      <button type="button" onClick={onClose} className="plan-text-button" data-testid="recap-close">Ocultar</button>
     </div>
     <div className="plan-results-grid">
       <div data-testid="recap-surface"><span>Área das divisões medidas</span><strong>{recap.surface_pieces_m2 == null ? "A medir" : `${recap.surface_pieces_m2.toLocaleString("fr-FR")} m²`}</strong><small data-testid="recap-rooms">{recap.rooms} divisão{recap.rooms > 1 ? "s" : ""} · contornos a controlar</small></div>
-      <div data-testid="recap-beton"><span>Betão estimado</span><strong>{recap.beton_m3 == null ? "Indisponible" : `${recap.beton_m3.toLocaleString("fr-FR")} m³`}</strong><small>Espessuras e alturas a confirmar</small></div>
-      <div data-testid="recap-estimation"><span>Budget indicatif</span><strong>{amount == null ? "Indisponible" : `${amount.toLocaleString("fr-FR")} €`}</strong><small>{recap.estimation_globale_eur != null ? "Remodelação · planta completa (média)" : "Estrutura · esta página"}</small></div>
+      <div data-testid="recap-beton"><span>Betão estimado</span><strong>{recap.beton_m3 == null ? "Indisponível" : `${recap.beton_m3.toLocaleString("fr-FR")} m³`}</strong><small>Espessuras e alturas a confirmar</small></div>
+      <div data-testid="recap-estimation"><span>Orçamento indicativo</span><strong>{amount == null ? "Indisponível" : `${amount.toLocaleString("fr-FR")} €`}</strong><small>{recap.estimation_globale_eur != null ? "Remodelação · planta completa (média)" : "Estrutura · esta página"}</small></div>
     </div>
     <div className="plan-results-footnotes">
-      <p data-testid="recap-structure">Estrutura identificada: {recap.walls} paredes · {recap.columns} poteaux · {recap.beams} poutres · {recap.floors} dalles</p>
-      <p data-testid="recap-acier">Aço estimado por rácios: {recap.acier_kg == null ? "indisponible" : `${recap.acier_kg.toLocaleString("fr-FR")} kg`}</p>
+      <p data-testid="recap-structure">Estrutura identificada: {recap.walls} paredes · {recap.columns} pilares · {recap.beams} vigas · {recap.floors} dalles</p>
+      <p data-testid="recap-acier">Aço estimado por rácios: {recap.acier_kg == null ? "indisponível" : `${recap.acier_kg.toLocaleString("fr-FR")} kg`}</p>
     </div>
     {!!warnings.length && <div className="plan-results-warnings" role="status"><strong>Pontos a retomar</strong><ul>{warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></div>}
     <div className="plan-results-actions">

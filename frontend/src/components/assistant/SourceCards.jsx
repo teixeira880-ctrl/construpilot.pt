@@ -7,7 +7,7 @@ export const VerifiedSourceCard = ({ r }) => (
       <a href={r.url} target="_blank" rel="noreferrer" className="underline font-semibold" data-testid="assistant-source-link">{r.title || r.url} <ExternalLink className="inline h-3 w-3" /></a>
       <span className="text-muted-foreground">· {r.entity}{r.version ? ` · version ${r.version}` : ""}{r.dates_found?.[0] ? ` · ${r.dates_found[0]}` : ""}{r.pages ? ` · ${r.pages} p.` : ""}</span>
     </div>
-    <div data-testid="assistant-source-status">{r.verified ? "Passagem comprovativa encontrada" : r.ok ? "Consultada — nenhuma passagem sustenta a afirmação" : `Não verificada —${r.error}`}{r.injection_suspected && "· texto suspeito ignorado"}</div>
+    <div data-testid="assistant-source-status">{r.verified ? "Passagem comprovativa encontrada" : r.ok ? "Consultada — nenhuma passagem sustenta a afirmação" : `Não verificada — ${r.error}`}{r.injection_suspected && " · texto suspeito ignorado"}</div>
     {r.excerpt && <blockquote className="border-l-2 border-sky-400 pl-2 italic text-muted-foreground" data-testid="assistant-source-excerpt">« {r.excerpt.slice(0, 420)}{r.excerpt.length > 420 ? "…" : ""} »</blockquote>}
     <div className="text-muted-foreground">Consultada em {new Date(r.consulted_at).toLocaleString()} · affirmation : {r.claim}</div>
   </div>
@@ -26,9 +26,9 @@ const SUIT = { "adequada": "bg-emerald-500/10 border-emerald-500/40", "adequada 
 
 export const OptionsCompareCard = ({ r }) => (
   <div className="mt-1 grid gap-1.5" data-testid="assistant-options-card">
-    <div><b>{r.decision === "recommended" ? `Recommandation : ${r.recommended_option}` : "Opções condicionais — falta um dado decisivo"}</b></div>
+    <div><b>{r.decision === "recommended" ? `Recomendação: ${r.recommended_option}` : "Opções condicionais — falta um dado decisivo"}</b></div>
     {r.missing_decisive_data?.length > 0 && <div>A precisar: {r.missing_decisive_data.join(" · ")}</div>}
-    <div className="overflow-x-auto"><table className="w-full text-[11px]"><thead><tr className="text-left border-b"><th className="pr-2">Option</th><th className="pr-2">Adequação</th><th className="pr-2">Conditions</th><th className="pr-2">Sources</th></tr></thead>
+    <div className="overflow-x-auto"><table className="w-full text-[11px]"><thead><tr className="text-left border-b"><th className="pr-2">Opção</th><th className="pr-2">Adequação</th><th className="pr-2">Condições</th><th className="pr-2">Fontes</th></tr></thead>
       <tbody>{r.options?.map((o, i) => <tr key={i} className={`border-b align-top ${o.name === r.recommended_option ? "font-semibold" : ""}`} data-testid={`assistant-option-${i}`}>
         <td className="pr-2 py-1">{o.name}<div className="font-normal text-muted-foreground">{o.description}</div></td>
         <td className="pr-2 py-1"><span className={`rounded-sm border px-1 ${SUIT[o.suitability] || ""}`}>{o.suitability}</span><div className="text-muted-foreground">{o.evidence_level}</div></td>

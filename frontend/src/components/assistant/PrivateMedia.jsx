@@ -52,7 +52,7 @@ export const ArtifactCard = ({ artifact }) => {
     <p className="font-semibold text-sm break-words" data-testid={`${id}-title`}>{artifact.title}</p>
     {(artifact.mime === "image/jpeg" || artifact.mime === "image/png") && <PrivateImage path={artifact.download} title={artifact.title} testId={`${id}-preview`} />}
     {artifact.illustrative && <p className="text-xs text-muted-foreground" data-testid={`${id}-notice`}>{copy("illustrative")}</p>}
-    <button className="inline-flex gap-2 items-center border rounded-md px-3 py-2 mr-2 hover:bg-secondary transition-colors" data-testid={`${id}-open`} onClick={() => view(artifact.download, artifact.filename, artifact.title)}><Eye size={15} />Ouvrir</button>
+    <button className="inline-flex gap-2 items-center border rounded-md px-3 py-2 mr-2 hover:bg-secondary transition-colors" data-testid={`${id}-open`} onClick={() => view(artifact.download, artifact.filename, artifact.title)}><Eye size={15} />Abrir</button>
     <button className="inline-flex gap-2 items-center border rounded-md px-3 py-2 hover:bg-secondary transition-colors" data-testid={`${id}-download`} onClick={() => downloadAssistantFile(artifact.download, artifact.filename).catch(() => toast.error(copy("imageError")))}><Download size={15} />{copy("download")} {artifact.format.toUpperCase()}</button>
   </div>;
 };

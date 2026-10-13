@@ -58,7 +58,7 @@ export default function Investors() {
               <Download className="h-4 w-4" /> Pitch deck PDF
             </Button>
             <Button asChild size="sm" className="rounded-full gap-2" data-testid="deck-contact-top">
-              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-4 w-4" /> Contacter</a>
+              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-4 w-4" /> Contactar</a>
             </Button>
           </div>
         </div>
@@ -70,7 +70,7 @@ export default function Investors() {
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 h-72 w-[70%] bg-primary/20 blur-3xl rounded-full pointer-events-none" />
         <div className="mx-auto max-w-[1200px] px-6 lg:px-10 py-24 lg:py-32 text-center relative">
-          <span className="overline">Dossier investisseurs · 2026</span>
+          <span className="overline">Dossiê investidores · 2026</span>
           <h1 className="mt-5 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
             A IA que transforma uma planta<br className="hidden sm:block" /> em orçamento, em segundos.
           </h1>
@@ -108,8 +108,8 @@ export default function Investors() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <Card icon={ScanLine} title="Análise IA da planta" text="Deteção de paredes, pilares, vigas, sapatas + medição de betão e aços automáticas." />
           <Card icon={FileText} title="Orçamento instantâneo" text="A partir de uma planta, de uma descrição ou de um vídeo. Orçamentação automática através da biblioteca de preços." />
-          <Card icon={Cuboid} title="Maquette 3D" text="Visualização dos volumes detetados, exportação PNG anexada ao orçamento do cliente." />
-          <Card icon={Bot} title="Assistant IA" text="Correção da planta em linguagem natural, margem e preço de venda estimados." />
+          <Card icon={Cuboid} title="Maquete 3D" text="Visualização dos volumes detetados, exportação PNG anexada ao orçamento do cliente." />
+          <Card icon={Bot} title="Assistente IA" text="Correção da planta em linguagem natural, margem e preço de venda estimados." />
         </div>
       </Slide>
 
@@ -135,7 +135,7 @@ export default function Investors() {
             "Orçamento a partir de vídeo (voz + fotos) — inédito no mercado",
             "Maquete 3D gerada automaticamente a partir das medições",
             "ERP integrado: faturas, autos de medição, RH, acompanhamento de obra",
-            "Multilingue (7 langues) + Landing B2C particuliers",
+            "Multilingue (7 idiomas) + Landing B2C particulares",
             "Conformidade fatura eletrónica (Factur-X) já implementada",
           ].map((t) => (
             <li key={t} className="flex items-start gap-3 text-sm">
@@ -149,17 +149,17 @@ export default function Investors() {
       <Slide n={5} kicker="Modelo económico" dark
              title="SaaS por subscrição, receitas recorrentes e escaláveis.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Card icon={TrendingUp} title="Abonnement SaaS" text="Planos mensais por utilizador (profissional → PME), subida de gama por módulos." />
+          <Card icon={TrendingUp} title="Subscrição SaaS" text="Planos mensais por utilizador (profissional → PME), subida de gama por módulos." />
           <Card icon={PieChart} title="Opções ao valor" text="Créditos IA, módulo Empresa (RBAC/RH/obra), geração de documentos." />
-          <Card icon={Globe2} title="Expansion" text="Mercado lusófono e depois Europa do Sul (já multilingue), e B2C particulares." />
+          <Card icon={Globe2} title="Expansão" text="Mercado lusófono e depois Europa do Sul (já multilingue), e B2C particulares." />
         </div>
       </Slide>
 
       {/* 06 POURQUOI MAINTENANT */}
-      <Slide n={6} kicker="Pourquoi maintenant"
+      <Slide n={6} kicker="Porquê agora"
              title="O produto certo, no momento certo.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Card icon={Rocket} title="IA mature" text="Os modelos de visão permitem finalmente ler plantas de forma fiável." />
+          <Card icon={Rocket} title="IA madura" text="Os modelos de visão permitem finalmente ler plantas de forma fiável." />
           <Card icon={ShieldCheck} title="Regulamentação" text="A faturação eletrónica leva todo o setor a equipar-se em 2026-2027." />
           <Card icon={TrendingUp} title="Produto já avançado" text="Plataforma completa e funcional, pronta a crescer." />
         </div>
@@ -173,7 +173,7 @@ export default function Investors() {
             Estamos a angariar fundos para acelerar.
           </h2>
           <div className="mt-10 grid sm:grid-cols-3 gap-5 max-w-3xl mx-auto text-left">
-            <Card icon={Rocket} title="Produit & IA" text="Reforçar a deteção (IFC/BIM), o 3D e a automatização da orçamentação." />
+            <Card icon={Rocket} title="Produto & IA" text="Reforçar a deteção (IFC/BIM), o 3D e a automatização da orçamentação." />
             <Card icon={TrendingUp} title="Go-to-market" text="Aquisição de profissionais/PME, parcerias com fornecedores e associações do setor." />
             <Card icon={Building2} title="Equipa" text="Recrutamentos de produto, IA e comercial para crescer." />
           </div>
@@ -187,7 +187,7 @@ export default function Investors() {
               <Link to="/">Explorar o produto <ArrowRight className="h-5 w-5" /></Link>
             </Button>
           </div>
-          <p className="mt-6 text-xs text-muted-foreground">Contact : {CONTACT}</p>
+          <p className="mt-6 text-xs text-muted-foreground">Contacto: {CONTACT}</p>
         </div>
       </section>
 

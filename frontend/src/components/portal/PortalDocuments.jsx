@@ -69,7 +69,7 @@ export function PortalDocuments({ portalApi, chantierRef, accent }) {
           <p className="text-sm font-medium truncate">{d.title || d.number || (isQuote ? "Orçamento" : "Fatura")}</p>
           <p className="text-xs text-slate-500">
             {d.number ? `${d.number} · ` : ""}{(d.issue_date || d.created_at || "").slice(0, 10)}
-            {d.accepted_name ? `· assinado:${d.accepted_name}` : ""}
+            {d.accepted_name ? ` · assinado: ${d.accepted_name}` : ""}
           </p>
         </div>
         <span className="text-sm font-semibold num" data-testid={`portal-doc-total-${d.doc_id}`}>{eur(d.total_ttc)}</span>
@@ -112,9 +112,9 @@ export function PortalDocuments({ portalApi, chantierRef, accent }) {
             <div className="flex gap-2">
               <button type="button" onClick={() => { setSigning(d.doc_id); setDeclining(null); }}
                       className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white"
-                      style={{ background: accent }} data-testid={`portal-accept-${d.doc_id}`}><Check className="h-3.5 w-3.5" /> Accepter</button>
+                      style={{ background: accent }} data-testid={`portal-accept-${d.doc_id}`}><Check className="h-3.5 w-3.5" /> Aceitar</button>
               <button type="button" onClick={() => { setDeclining(d.doc_id); setSigning(null); }}
-                      className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50" data-testid={`portal-decline-${d.doc_id}`}><X className="h-3.5 w-3.5" /> Refuser</button>
+                      className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50" data-testid={`portal-decline-${d.doc_id}`}><X className="h-3.5 w-3.5" /> Recusar</button>
             </div>
           )}
         </div>
@@ -130,7 +130,7 @@ export function PortalDocuments({ portalApi, chantierRef, accent }) {
           : <div className="mt-2 divide-y">{quotes.map((d) => <DocRow key={d.doc_id} d={d} isQuote />)}</div>}
       </section>
       <section className="rounded-2xl border bg-white p-5" data-testid="portal-invoices">
-        <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> Factures ({invoices.length})</h2>
+        <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> Faturas ({invoices.length})</h2>
         {invoices.length === 0 ? <p className="text-sm text-slate-500 mt-2">Nenhuma fatura partilhada por agora.</p>
           : <div className="mt-2 divide-y">{invoices.map((d) => <DocRow key={d.doc_id} d={d} isQuote={false} />)}</div>}
       </section>

@@ -3,11 +3,11 @@ import { useI18n } from "@/context/I18nContext";
 const copy = {
   fr: {
     table: "Tabela da resposta — deslocamento horizontal",
-    activity: "Assistant : travail en cours", activityOffline: "Assistant : suivi indisponible",
+    activity: "Assistant : travail en cours", activityOffline: "Assistente: acompanhamento indisponível",
     backgroundHint: "O trabalho continua mesmo que mude de página. Encontre a resposta aqui ou nas notificações.",
     eyebrow: "CONSTRUPILOT · ASSISTANT", title: "Vamos avançar com a sua obra.",
     intro: "Um orçamento a preparar, uma planta a verificar ou um relatório a redigir. Comecemos pelo que precisa.",
-    subtitle: "O seu espaço de trabalho para a obra", context: "Contexte", contextTitle: "Documentos e opções",
+    subtitle: "O seu espaço de trabalho para a obra", context: "Contexto", contextTitle: "Documentos e opções",
     contextHint: "Escolha os documentos a utilizar e o tipo de resposta.",
     quote: "Preparar um orçamento", quoteDesc: "Organizar os trabalhos e os custos.",
     analyse: "Examinar uma planta", analyseDesc: "Ler as cotas e identificar o que verificar.",
@@ -15,7 +15,7 @@ const copy = {
     mail: "Preparar uma mensagem", mailDesc: "Encontrar as palavras certas para o cliente.",
     solve: "Uma questão técnica?", solveDesc: "Compreender um problema e comparar soluções.",
     draftHint: "Cada atalho prepara um pedido que pode editar.",
-    attach: "Joindre", existing: "Escolher um documento já importado", image: "Preparar uma imagem",
+    attach: "Anexar", existing: "Escolher um documento já importado", image: "Preparar uma imagem",
     webOn: "Internet ativa", webOff: "Internet desativada", you: "Você", loading: "A abrir a conversa…",
     historyHint: "Retome os seus projetos", documents: "Documentos associados", listen: "Ouvir",
   },

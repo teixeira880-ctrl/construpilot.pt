@@ -91,7 +91,7 @@ export default function Structuro() {
           <div className="font-semibold text-sm">Leitura de planta — medição da estrutura (sapatas, pilares, paredes de betão)</div>
           <div className="text-xs text-muted-foreground">Importe um PDF de fundações/estrutura: a IA identifica os elementos, calcula o betão/aço e pede qualquer cota em falta.</div>
         </div>
-        <span className="text-primary text-sm font-medium">Ouvrir →</span>
+        <span className="text-primary text-sm font-medium">Abrir →</span>
       </a>
 
       <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-[13px] text-amber-800 flex gap-2" data-testid="structuro-disclaimer">
@@ -145,7 +145,7 @@ export default function Structuro() {
 const SOURCE_OPTS = [
   { v: "mesure", l: "Medição / levantamento cotado" },
   { v: "document", l: "Documento / planta verificado" },
-  { v: "essai", l: "Essai / sondage" },
+  { v: "essai", l: "Ensaio / sondagem" },
   { v: "observation", l: "Observação no local" },
   { v: "declaration", l: "Declaração (a confirmar)" },
   { v: "inconnu", l: "Não sei" },
@@ -317,7 +317,7 @@ function StudyDetail({ study, setStudy, onBack }) {
         <h1 className="text-2xl font-bold">{s.title}</h1>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant="outline">Revisão {s.revision}</Badge>
-          <Badge variant="outline">Niveau : {LEVEL_LABEL[s.output_level] || s.output_level}</Badge>
+          <Badge variant="outline">Piso: {LEVEL_LABEL[s.output_level] || s.output_level}</Badge>
           <Badge variant="outline">Cycle : {s.lifecycle}</Badge>
           {s.ai_engine && <Badge variant="outline">Lecture IA : {s.ai_engine}</Badge>}
         </div>
@@ -342,12 +342,12 @@ function StudyDetail({ study, setStudy, onBack }) {
         <h2 className="text-sm font-semibold flex items-center gap-1"><Ruler className="h-4 w-4" /> Dimensionamento indicativo da padieira (NP EN 1992/1993)</h2>
         <p className="text-xs text-muted-foreground">Cálculo determinístico da viga de reforço acima da abertura (vão e espessura da parede retomados dos dados documentados). Propõe aço e/ou betão armado, a solução mais económica, flecha e apoio na alvenaria. <b>Indicativo, não executório.</b></p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          <label className="block">Charges permanentes G (kN/m)<input type="number" step="any" className="border rounded-md p-2 bg-background w-full mt-1" value={lintel.permanent_line_kn_m} onChange={e => setLintel({ ...lintel, permanent_line_kn_m: Number(e.target.value) })} data-testid="structuro-lintel-perm" /></label>
-          <label className="block">Charges exploitation Q (kN/m)<input type="number" step="any" className="border rounded-md p-2 bg-background w-full mt-1" value={lintel.variable_line_kn_m} onChange={e => setLintel({ ...lintel, variable_line_kn_m: Number(e.target.value) })} data-testid="structuro-lintel-var" /></label>
+          <label className="block">Cargas permanentes G (kN/m)<input type="number" step="any" className="border rounded-md p-2 bg-background w-full mt-1" value={lintel.permanent_line_kn_m} onChange={e => setLintel({ ...lintel, permanent_line_kn_m: Number(e.target.value) })} data-testid="structuro-lintel-perm" /></label>
+          <label className="block">Sobrecargas Q (kN/m)<input type="number" step="any" className="border rounded-md p-2 bg-background w-full mt-1" value={lintel.variable_line_kn_m} onChange={e => setLintel({ ...lintel, variable_line_kn_m: Number(e.target.value) })} data-testid="structuro-lintel-var" /></label>
           <label className="block">Peso da alvenaria (kN/m³)<input type="number" step="any" className="border rounded-md p-2 bg-background w-full mt-1" value={lintel.masonry_unit_weight_kn_m3} onChange={e => setLintel({ ...lintel, masonry_unit_weight_kn_m3: Number(e.target.value) })} /></label>
           <label className="block">Material<select className="border rounded-md p-2 bg-background w-full mt-1" value={lintel.material} onChange={e => setLintel({ ...lintel, material: e.target.value })} data-testid="structuro-lintel-material"><option value="both">Aço + betão</option><option value="steel">Aço</option><option value="rc">Betão armado</option></select></label>
         </div>
-        <Button size="sm" onClick={computeLintel} disabled={lintelBusy} data-testid="structuro-lintel-btn" className="gap-1"><Calculator className="h-4 w-4" />{lintelBusy ? "Calcul…" : "Calcular a padieira"}</Button>
+        <Button size="sm" onClick={computeLintel} disabled={lintelBusy} data-testid="structuro-lintel-btn" className="gap-1"><Calculator className="h-4 w-4" />{lintelBusy ? "Cálculo…" : "Calcular a padieira"}</Button>
         {s.lintel?.result && <div className="text-xs border-t pt-2 space-y-1" data-testid="structuro-lintel-result">
           <p>Âmbito {s.lintel.result.clear_span_m} m · modelo « {s.lintel.result.load_model} » · M_Ed {s.lintel.result.actions.m_ed_knm} kN·m · V_Ed {s.lintel.result.actions.v_ed_kn} kN</p>
           {s.lintel.result.steel?.status === "ok" && <p>Aço: <b>{s.lintel.result.steel.label}</b> — {s.lintel.result.steel.cost_eur} € ({s.lintel.result.steel.mass_kg} kg)</p>}
@@ -377,7 +377,7 @@ function StudyDetail({ study, setStudy, onBack }) {
 
         {/* Niveaux */}
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground">Niveaux ({(s.levels || []).length})</div>
+          <div className="text-xs font-semibold text-muted-foreground">Pisos ({(s.levels || []).length})</div>
           <div className="grid gap-2">
             {(s.levels || []).map((lv) => (
               <div key={lv.id} className="flex flex-wrap items-center gap-2 border border-border rounded-md p-2" data-testid={`structuro-level-${lv.id}`}>
@@ -495,7 +495,7 @@ function StudyDetail({ study, setStudy, onBack }) {
             <div key={q.id} className="border border-border rounded-md p-3 space-y-2" data-testid={`structuro-question-${q.datum_key}`}>
               <div className="text-sm font-medium flex items-center gap-2">
                 {q.question}
-                {q.requires_essai && <Badge className="bg-amber-100 text-amber-800 text-[10px]"><FlaskConical className="h-3 w-3 mr-1" />essai requis</Badge>}
+                {q.requires_essai && <Badge className="bg-amber-100 text-amber-800 text-[10px]"><FlaskConical className="h-3 w-3 mr-1" />ensaio necessário</Badge>}
               </div>
               <div className="text-[11px] text-muted-foreground">Desbloqueia: {q.blocks.join(", ")} — {q.how_to_document}</div>
               <div className="flex flex-wrap gap-2 items-center">
@@ -529,19 +529,19 @@ function StudyDetail({ study, setStudy, onBack }) {
           <input type="file" accept=".pdf,.dxf,.dwg,.ifc,.png,.jpg,.jpeg,.webp"
             onChange={(e) => setPlan((p) => ({ ...p, file: e.target.files?.[0] || null }))}
             className="text-xs" data-testid="structuro-plan-file" />
-          <Input className="h-8 w-36 text-xs" placeholder="Niveau (ex: RDC)"
+          <Input className="h-8 w-36 text-xs" placeholder="Piso (ex.: R/C)"
             value={plan.level} onChange={(e) => setPlan((p) => ({ ...p, level: e.target.value }))}
             data-testid="structuro-plan-level" />
           <select className="h-8 text-xs border border-border rounded-sm px-2" value={plan.kind}
             onChange={(e) => setPlan((p) => ({ ...p, kind: e.target.value }))} data-testid="structuro-plan-kind">
-            <option value="existant">Existant</option>
-            <option value="projet">Projet</option>
+            <option value="existant">Existente</option>
+            <option value="projet">Projeto</option>
             <option value="bet">Dossier BET</option>
           </select>
           <Input className="h-8 w-40 text-xs" placeholder="Escala / cota de ref."
             value={plan.scale_note} onChange={(e) => setPlan((p) => ({ ...p, scale_note: e.target.value }))} />
           <Button size="sm" className="h-8 gap-1" onClick={uploadPlan} disabled={uploading} data-testid="structuro-plan-upload-btn">
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importer
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importar
           </Button>
         </div>
         <div className="grid gap-2">
@@ -564,7 +564,7 @@ function StudyDetail({ study, setStudy, onBack }) {
               <div className="text-[10px] text-muted-foreground mt-1">
                 {(p.size / 1024).toFixed(0)} Ko · {p.recognition?.kind?.toUpperCase()}
                 {p.recognition?.objects_detected && p.recognition?.summary?.entities_total != null
-                  ? ` · ${p.recognition.summary.entities_total}entidades,${p.recognition.summary.layers_count} calques` : ""}
+                  ? ` · ${p.recognition.summary.entities_total} entidades, ${p.recognition.summary.layers_count} calques` : ""}
                 {p.scale_note ? ` · ${p.scale_note}` : ""}
               </div>
               <div className="text-[10px] text-amber-700 mt-0.5">{p.recognition?.note}</div>
@@ -590,7 +590,7 @@ function StudyDetail({ study, setStudy, onBack }) {
         ) : (
           <p className="text-xs text-muted-foreground">
             {blockedCount > 0
-              ? `Approbation indisponible : ${blockedCount}verificação(ões) bloqueada(s) por dados em falta.`
+              ? `Aprovação indisponível: ${blockedCount} verificação(ões) bloqueada(s) por dados em falta.`
               : "Dados suficientes para uma aprovação de estudo preliminar (nunca para execução)."}
           </p>
         )}
@@ -616,7 +616,7 @@ function StudyDetail({ study, setStudy, onBack }) {
             <div className="space-y-1">
               <Label className="text-xs">Âmbito (opcional)</Label>
               <Input value={form.scope} onChange={(e) => setForm((f) => ({ ...f, scope: e.target.value }))}
-                placeholder="Ex : esquisse ouverture RDC" data-testid="structuro-approve-scope" />
+                placeholder="Ex.: esboço abertura R/C" data-testid="structuro-approve-scope" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Reservas (opcional)</Label>
@@ -626,7 +626,7 @@ function StudyDetail({ study, setStudy, onBack }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveOpen(false)}>Cancelar</Button>
-            <Button onClick={doApprove} data-testid="structuro-approve-confirm">Approuver</Button>
+            <Button onClick={doApprove} data-testid="structuro-approve-confirm">Aprovar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

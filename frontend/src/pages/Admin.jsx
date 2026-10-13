@@ -68,9 +68,9 @@ export default function Admin() {
       const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : (parts[0] || "");
       const last = parts.length > 1 ? parts[parts.length - 1] : "";
       const snap = l.project_snapshot || {};
-      const notes = [l.description, snap.name ? `Projet: ${snap.name} ${snap.surface || ""} m²` : "", l.availability ? `Dispo: ${l.availability}` : ""].filter(Boolean).join(" — ");
+      const notes = [l.description, snap.name ? `Projet: ${snap.name} ${snap.surface || ""} m²` : "", l.availability ? `Disp.: ${l.availability}` : ""].filter(Boolean).join(" — ");
       const { data } = await api.post("/clients", {
-        first_name: first, last_name: last || first || "Client",
+        first_name: first, last_name: last || first || "Cliente",
         email: l.email || "", phone: l.phone || "", address: l.address || "", notes,
       });
       toast.success("Cliente criado a partir do pedido — abertura do editor de orçamentos");
@@ -85,13 +85,13 @@ export default function Admin() {
   const deleteUser = async (u) => {
     if (!(await confirm({
       title: "Eliminar definitivamente esta conta?",
-      description: `A conta${u.email}e TODOS os seus dados (projetos, orçamentos, faturas, pedidos, subscrições) serão eliminados definitivamente. Esta ação é irreversível.`,
+      description: `A conta ${u.email} e TODOS os seus dados (projetos, orçamentos, faturas, pedidos, subscrições) serão eliminados definitivamente. Esta ação é irreversível.`,
       confirmLabel: "Eliminar definitivamente",
       destructive: true,
     }))) return;
     try {
       const { data } = await api.delete(`/admin/users/${u.user_id}`);
-      toast.success(`Conta${u.email}eliminada ·${data.purged_total}registo(s) purgado(s)`);
+      toast.success(`Conta ${u.email} eliminada · ${data.purged_total} registo(s) purgado(s)`);
       load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível eliminar"); }
   };
@@ -121,7 +121,7 @@ export default function Admin() {
 
   const saveRegion = async (r, coef) => {
     await api.put("/admin/regions", { country: r.country, region: r.region, coef: Number(coef) });
-    toast.success(`Coefficient ${r.region} = ${coef}`);
+    toast.success(`Coeficiente ${r.region} = ${coef}`);
     load();
   };
 
@@ -148,13 +148,13 @@ export default function Admin() {
           onClick={async () => {
             try {
               const { data } = await api.post("/admin/demo-unlock");
-              toast.success(`Modo de demonstração ativado —${data.tier}· todas as opções desbloqueadas`);
+              toast.success(`Modo de demonstração ativado — ${data.tier} · todas as opções desbloqueadas`);
               setTimeout(() => window.location.reload(), 900);
             } catch { toast.error("Ativação do modo demonstração impossível"); }
           }}
           className="shrink-0 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 text-sm font-semibold transition-colors">
           🎬 Modo demo — desbloquear tudo
-          <span className="block text-[11px] font-normal text-muted-foreground">Stripe test · carte 4242 4242 4242 4242</span>
+          <span className="block text-[11px] font-normal text-muted-foreground">Stripe teste · cartão 4242 4242 4242 4242</span>
         </button>
       </div>
 
@@ -169,7 +169,7 @@ export default function Admin() {
 
       <Tabs defaultValue={["radar", "postal", "despesas", "ai", "support", "journey", "budget", "pilotage"].includes(searchParams.get("tab")) ? searchParams.get("tab") : "journey"}>
         <TabsList className="rounded-sm flex-wrap h-auto">
-          <TabsTrigger value="journey" className="rounded-sm" data-testid="admin-tab-journey">Comptes & parcours</TabsTrigger>
+          <TabsTrigger value="journey" className="rounded-sm" data-testid="admin-tab-journey">Contas e percurso</TabsTrigger>
           <TabsTrigger value="prices" className="rounded-sm" data-testid="admin-tab-prices">{t("admin.t_prices")}</TabsTrigger>
           <TabsTrigger value="regions" className="rounded-sm" data-testid="admin-tab-regions">{t("admin.t_regions")}</TabsTrigger>
           <TabsTrigger value="suppliers" className="rounded-sm" data-testid="admin-tab-suppliers">{t("admin.t_suppliers")}</TabsTrigger>
@@ -191,19 +191,19 @@ export default function Admin() {
           <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Biblioteca</TabsTrigger>
           <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Trabalhos compostos</TabsTrigger>
           <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicidade</TabsTrigger>
-          <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campagnes e-mail</TabsTrigger>
+          <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campanhas e-mail</TabsTrigger>
           <TabsTrigger value="apify" className="rounded-sm" data-testid="admin-tab-apify">Apify</TabsTrigger>
-          <TabsTrigger value="learning" className="rounded-sm" data-testid="admin-tab-learning">Apprentissage IA</TabsTrigger>
+          <TabsTrigger value="learning" className="rounded-sm" data-testid="admin-tab-learning">Aprendizagem IA</TabsTrigger>
           <TabsTrigger value="bridge" className="rounded-sm" data-testid="admin-tab-bridge">Agent Ponte</TabsTrigger>
           <TabsTrigger value="radar" className="rounded-sm" data-testid="admin-tab-radar">Radar / SITADEL</TabsTrigger>
           <TabsTrigger value="postal" className="rounded-sm" data-testid="admin-tab-postal">Postal</TabsTrigger>
           <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Alvenaria</TabsTrigger>
           <TabsTrigger value="seoblog" className="rounded-sm" data-testid="admin-tab-seoblog">SEO / Blog</TabsTrigger>
           <TabsTrigger value="ceo" className="rounded-sm" data-testid="admin-tab-ceo">Agent CEO</TabsTrigger>
-          <TabsTrigger value="calcaudit" className="rounded-sm" data-testid="admin-tab-calcaudit">Auditeur calculs</TabsTrigger>
+          <TabsTrigger value="calcaudit" className="rounded-sm" data-testid="admin-tab-calcaudit">Auditor de cálculos</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
-          <TabsTrigger value="support" className="rounded-sm" data-testid="admin-tab-support">Assistance</TabsTrigger>
+          <TabsTrigger value="support" className="rounded-sm" data-testid="admin-tab-support">Assistência</TabsTrigger>
           <TabsTrigger value="account" className="rounded-sm" data-testid="admin-tab-account">{t("admin.t_account")}</TabsTrigger>
         </TabsList>
 
@@ -279,7 +279,7 @@ export default function Admin() {
 
         <TabsContent value="account" className="mt-6">
           <div className="max-w-lg space-y-6" data-testid="admin-account-section">
-            <SectionTitle over="Administrateur" title="A minha conta">
+            <SectionTitle over="Administrador" title="A minha conta">
               Gira as suas informações de perfil e a sua palavra-passe.
             </SectionTitle>
             <ProfileForm />
@@ -294,13 +294,13 @@ export default function Admin() {
             <Table data-testid="admin-prices-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Lot</TableHead>
+                  <TableHead>Lote</TableHead>
                   <TableHead>Un.</TableHead>
                   <TableHead className="w-28">Eco</TableHead>
                   <TableHead className="w-28">Standard</TableHead>
                   <TableHead className="w-28">Premium</TableHead>
                   <TableHead className="w-28">M.O. / u</TableHead>
-                  <TableHead className="w-28">Heures / u</TableHead>
+                  <TableHead className="w-28">Horas / u</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -337,7 +337,7 @@ export default function Admin() {
               <div key={`${r.country}-${r.region}`} className="surface p-5 flex items-center gap-3">
                 <div className="flex-1">
                   <p className="font-medium">{r.region}</p>
-                  <p className="text-xs text-muted-foreground">{r.country === "FR" ? "France" : "Portugal"}</p>
+                  <p className="text-xs text-muted-foreground">{r.country === "FR" ? "França" : "Portugal"}</p>
                 </div>
                 <Input
                   type="number" step="0.01" defaultValue={r.coef}
@@ -352,7 +352,7 @@ export default function Admin() {
 
         <TabsContent value="suppliers" className="mt-6 grid gap-6">
           <div className="surface p-6 grid sm:grid-cols-5 gap-3 items-end" data-testid="admin-add-supplier">
-            {[["key", "Chave"], ["name", "Nom"], ["domain", "Domaine"], ["shipping", "Livraison €"], ["free_from", "Franco €"]].map(([k, label]) => (
+            {[["key", "Chave"], ["name", "Nome"], ["domain", "Domínio"], ["shipping", "Entrega €"], ["free_from", "Franco €"]].map(([k, label]) => (
               <div key={k} className="grid gap-2">
                 <Label className="text-xs">{label}</Label>
                 <Input value={newSup[k]} onChange={(e) => setNewSup({ ...newSup, [k]: e.target.value })} data-testid={`supplier-${k}-input`} className="rounded-sm h-10" />
@@ -367,11 +367,11 @@ export default function Admin() {
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Fornecedor</TableHead>
-                  <TableHead>Domaine</TableHead>
-                  <TableHead className="text-right">Livraison</TableHead>
+                  <TableHead>Domínio</TableHead>
+                  <TableHead className="text-right">Entrega</TableHead>
                   <TableHead className="text-right">Franco</TableHead>
                   <TableHead className="text-right">Prazo</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Tipo</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -399,14 +399,14 @@ export default function Admin() {
             <Table data-testid="admin-users-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Nom</TableHead>
+                  <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Tipo de conta</TableHead>
                   <TableHead>Função</TableHead>
-                  <TableHead>Plan</TableHead>
+                  <TableHead>Planta</TableHead>
                   <TableHead>Auth</TableHead>
                   <TableHead>2FA</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -422,13 +422,13 @@ export default function Admin() {
                         >
                           <SelectTrigger className="rounded-sm h-9 w-36" data-testid={`admin-accttype-${u.user_id}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="particulier">Particulier</SelectItem>
+                            <SelectItem value="particulier">Particular</SelectItem>
                             <SelectItem value="pro">Pro</SelectItem>
                             <SelectItem value="pro_business">Business</SelectItem>
                           </SelectContent>
                         </Select>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full w-fit font-medium ${u.role === "admin" || u.account_type === "pro_business" ? "bg-primary/15 text-primary" : u.account_type === "pro" ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
-                          Espace {u.role === "admin" ? "Business (admin)" : u.account_type === "pro_business" ? "Business" : u.account_type === "pro" ? "Pro" : "Particulier"}
+                          Espaço {u.role === "admin" ? "Business (admin)" : u.account_type === "pro_business" ? "Business" : u.account_type === "pro" ? "Pro" : "Particular"}
                         </span>
                       </div>
                     </TableCell>
@@ -483,11 +483,11 @@ export default function Admin() {
                           onClick={async () => {
                             const val = window.prompt(
                               "Email de receção dos códigos 2FA para " + u.email +
-                              "(deixar vazio = e-mail da conta)", u.two_fa_email || "");
+                              "\n(deixar vazio = e-mail da conta)", u.two_fa_email || "");
                             if (val === null) return;
                             const { data } = await api.put(`/admin/users/${u.user_id}`, { two_fa_email: val });
                             toast.success(data.two_fa_email
-                              ? "Códigos 2FA enviados para" + data.two_fa_email
+                              ? "Códigos 2FA enviados para " + data.two_fa_email
                               : "E-mail 2FA reiniciado");
                             load();
                           }}
@@ -522,11 +522,11 @@ export default function Admin() {
             <Table data-testid="admin-projects-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Projet</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Projeto</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Superfície</TableHead>
-                  <TableHead className="text-right">Budget</TableHead>
-                  <TableHead>Ville</TableHead>
+                  <TableHead className="text-right">Orçamento</TableHead>
+                  <TableHead>Cidade</TableHead>
                   <TableHead>Criado em</TableHead>
                 </TableRow>
               </TableHeader>
@@ -553,10 +553,10 @@ export default function Admin() {
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6" data-testid="admin-lead-stats">
               {[
                 { label: "Total leads", value: leadStats.total, accent: false },
-                { label: "Via page d'accueil", value: leadStats.landing, accent: false },
-                { label: "Particuliers", value: leadStats.particulier, accent: true },
+                { label: "Via página inicial", value: leadStats.landing, accent: false },
+                { label: "Particulares", value: leadStats.particulier, accent: true },
                 { label: "Pros", value: leadStats.pro, accent: true },
-                { label: "Nouveaux", value: leadStats.nouveau, accent: false },
+                { label: "Novos", value: leadStats.nouveau, accent: false },
                 { label: "Ganhos", value: leadStats.gagne, accent: false },
               ].map((s) => (
                 <div key={s.label}
@@ -573,8 +573,8 @@ export default function Admin() {
               {[
                 { label: "Novos (não atribuídos)", value: leadStats.nouveaux ?? leadStats.nouveau, cls: "text-foreground" },
                 { label: "Atribuídos", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
-                { label: "En attente pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
-                { label: "Pris en charge", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
+                { label: "Em espera pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
+                { label: "Assumido", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
                 { label: "Recusados", value: leadStats.refuses ?? 0, cls: "text-red-500" },
                 { label: "Taxa de conversão", value: `${leadStats.conversion ?? 0}%`, cls: "text-primary" },
               ].map((s) => (
@@ -586,8 +586,8 @@ export default function Admin() {
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="admin-leads-filter">
-            {[["all", "Todos"], ["nouveau", "Nouveaux"], ["contactado", "Contactados"],
-              ["orçamento enviado", "Orçamento enviado"], ["ganho", "Ganhos"], ["perdu", "Perdus"],
+            {[["all", "Todos"], ["novo", "Novos"], ["contactado", "Contactados"],
+              ["orçamento enviado", "Orçamento enviado"], ["ganho", "Ganhos"], ["perdu", "Perdidos"],
               ["j2", "Reenviados D+2"]].map(([v, lbl]) => (
               <button key={v} onClick={() => setLeadFilter(v)} data-testid={`admin-leads-filter-${v}`}
                 className={`px-3 py-1.5 rounded-sm text-xs font-semibold border transition-colors ${leadFilter === v ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/40"}`}>
@@ -633,7 +633,7 @@ export default function Admin() {
                   >
                     <SelectTrigger className="rounded-sm h-9 w-40" data-testid={`admin-lead-status-${l.lead_id}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["nouveau", "contactado", "visita planeada", "orçamento enviado", "ganho", "perdu"].map((s) => (
+                      {["novo", "contactado", "visita planeada", "orçamento enviado", "ganho", "perdu"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
@@ -643,16 +643,15 @@ export default function Admin() {
                 {l.description && <p className="text-sm">{l.description}</p>}
                 {l.project_snapshot && (
                   <p className="num text-xs text-muted-foreground">
-                    Projet : {l.project_snapshot.name} · {l.project_snapshot.surface} m² ·
-                    estimation {eur(l.project_snapshot.estimation)} · lots : {(l.project_snapshot.lots || []).join(", ")}
+                    Projeto: {l.project_snapshot.name} · {l.project_snapshot.surface} m² · estimativa {eur(l.project_snapshot.estimation)} · capítulos: {(l.project_snapshot.lots || []).join(", ")}
                   </p>
                 )}
                 {l.assignment_log && l.assignment_log.length > 0 && (
                   <div className="text-[11px] text-muted-foreground bg-muted/40 rounded-sm p-2 space-y-0.5" data-testid={`admin-lead-history-${l.lead_id}`}>
-                    <p className="font-semibold uppercase tracking-wide text-[10px]">Historique d'attribution</p>
+                    <p className="font-semibold uppercase tracking-wide text-[10px]">Histórico de atribuição</p>
                     {l.assignment_log.slice(-6).map((e, i) => (
                       <p key={i}>
-                        {{ proposee: "→ Proposta a", acceptee: "✔ Aceite por", refusee: "✕ Recusada por", assignee_manuelle: "→ Atribuída a", en_cours: "… En cours par" }[e.action] || e.action}{" "}
+                        {{ proposee: "→ Proposta a", acceptee: "✔ Aceite por", refusee: "✕ Recusada por", assignee_manuelle: "→ Atribuída a", en_cours: "… Em curso por" }[e.action] || e.action}{" "}
                         <span className="font-medium">{e.user_name || "—"}</span>
                         {" · "}{new Date(e.at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </p>
@@ -680,7 +679,7 @@ export default function Admin() {
                   </Button>
                   {l.email && (
                     <>
-                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Convite enviado para${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); } }}
+                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Convite enviado para ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); } }}
                               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
                               data-testid={`admin-lead-invite-send-${l.lead_id}`}>
                         <Mail className="h-3.5 w-3.5" /> Convidar a criar uma conta{l.invited_at ? " ✓" : ""}
@@ -699,7 +698,7 @@ export default function Admin() {
                   {l.phone && (
                     <a href={`tel:${l.phone}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"
                        data-testid={`admin-lead-call-${l.lead_id}`}>
-                      <Phone className="h-3.5 w-3.5" /> Appeler
+                      <Phone className="h-3.5 w-3.5" /> Ligar
                     </a>
                   )}
                 </div>
@@ -723,7 +722,7 @@ export default function Admin() {
               ))}
             </div>
             <Button variant="outline" onClick={load} data-testid="admin-refresh-btn" className="mt-6 rounded-sm gap-2">
-              <RefreshCw className="h-4 w-4" /> Actualiser
+              <RefreshCw className="h-4 w-4" /> Atualizar
             </Button>
           </div>
         </TabsContent>
@@ -805,7 +804,7 @@ function PromoCodesPanel() {
         <p className="overline">Criar um código promocional</p>
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="grid gap-1.5">
-            <Label className="text-xs">Code (ex: LANCEMENT10)</Label>
+            <Label className="text-xs">Código (ex: LANCEMENT10)</Label>
             <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="rounded-sm h-10 uppercase" data-testid="promo-code-input" />
           </div>
           <div className="grid gap-1.5">
@@ -817,7 +816,7 @@ function PromoCodesPanel() {
             <Input type="number" step="0.01" value={form.amount_off_cents} onChange={(e) => setForm({ ...form, amount_off_cents: e.target.value, percent_off: "" })} className="rounded-sm h-10 num" data-testid="promo-amount-input" />
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-xs">Utilisations max</Label>
+            <Label className="text-xs">Utilizações máx.</Label>
             <Input type="number" value={form.max_redemptions} onChange={(e) => setForm({ ...form, max_redemptions: e.target.value })} className="rounded-sm h-10 num" data-testid="promo-max-input" />
           </div>
           <div className="grid gap-1.5">
@@ -825,14 +824,14 @@ function PromoCodesPanel() {
             <Select value={form.duration} onValueChange={(v) => setForm({ ...form, duration: v })}>
               <SelectTrigger className="rounded-sm h-10" data-testid="promo-duration"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="once">1 fois (premier paiement)</SelectItem>
+                <SelectItem value="once">1 vez (primeiro pagamento)</SelectItem>
                 <SelectItem value="forever">Cada pagamento</SelectItem>
-                <SelectItem value="repeating">3 mois (repeating)</SelectItem>
+                <SelectItem value="repeating">3 meses (repeating)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-xs">Nom interne (optionnel)</Label>
+            <Label className="text-xs">Nome interno (opcional)</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-sm h-10" data-testid="promo-name-input" />
           </div>
         </div>
@@ -842,11 +841,11 @@ function PromoCodesPanel() {
       </div>
 
       <div className="surface p-6">
-        <p className="overline mb-4">Codes actifs ({codes.length})</p>
+        <p className="overline mb-4">Códigos ativos ({codes.length})</p>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Code</TableHead><TableHead>Desconto</TableHead><TableHead>Utilisations max</TableHead>
-            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Código</TableHead><TableHead>Desconto</TableHead><TableHead>Utilizações máx.</TableHead>
+            <TableHead>Estado</TableHead><TableHead className="text-right">Ações</TableHead>
           </TableRow></TableHeader>
           <TableBody data-testid="promo-list">
             {codes.map((c) => (
@@ -859,12 +858,12 @@ function PromoCodesPanel() {
                 <TableCell className="num">{c.max_redemptions || "ilimitado"}</TableCell>
                 <TableCell>
                   <Badge variant={c.active ? "default" : "outline"} className="rounded-sm">
-                    {c.active ? "Actif" : "Desativado"}
+                    {c.active ? "Ativo" : "Desativado"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant="outline" onClick={() => toggle(c, !c.active)} className="rounded-sm">
-                    {c.active ? "Desativar" : "Activer"}
+                    {c.active ? "Desativar" : "Ativar"}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -938,16 +937,16 @@ function PlansRevenuePanel() {
             </label>
           ))}
           <div className="border border-border rounded-sm p-3 text-sm">
-            <Label className="text-xs">Trial (jours)</Label>
+            <Label className="text-xs">Trial (dias)</Label>
             <Input type="number" value={flags.trial_days || 7} onChange={(e) => setFlags({ ...flags, trial_days: Number(e.target.value) })} className="rounded-sm h-9 num mt-1" />
           </div>
           <div className="border border-border rounded-sm p-3 text-sm">
-            <Label className="text-xs">Paywall mode</Label>
+            <Label className="text-xs">Modo paywall</Label>
             <Select value={flags.paywall_mode || "soft"} onValueChange={(v) => setFlags({ ...flags, paywall_mode: v })}>
               <SelectTrigger className="rounded-sm h-9 mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="soft">Soft (recomendado)</SelectItem>
-                <SelectItem value="hard">Hard (bloquant)</SelectItem>
+                <SelectItem value="hard">Hard (bloqueante)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -957,7 +956,7 @@ function PlansRevenuePanel() {
             <Save className="h-4 w-4" /> Guardar as flags
           </Button>
           <Button variant="outline" onClick={syncStripe} disabled={busy} data-testid="sync-stripe-btn" className="rounded-sm gap-2">
-            <RefreshCw className="h-4 w-4" /> Synchroniser Stripe
+            <RefreshCw className="h-4 w-4" /> Sincronizar Stripe
           </Button>
         </div>
       </div>
@@ -966,8 +965,8 @@ function PlansRevenuePanel() {
         <p className="overline mb-4">Plantas configuradas ({plans.length})</p>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Nom</TableHead><TableHead>Code</TableHead><TableHead>Public</TableHead>
-            <TableHead>Preço</TableHead><TableHead>Type</TableHead><TableHead>Stripe Price ID</TableHead>
+            <TableHead>Nome</TableHead><TableHead>Código</TableHead><TableHead>Público</TableHead>
+            <TableHead>Preço</TableHead><TableHead>Tipo</TableHead><TableHead>Stripe Price ID</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {plans.map((p) => (
@@ -1011,8 +1010,8 @@ function KycPanel() {
       <div className="surface p-6" data-testid="kyc-list">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Entreprise</TableHead><TableHead>SIREN</TableHead><TableHead>Especialidades</TableHead>
-            <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Empresa</TableHead><TableHead>NIPC</TableHead><TableHead>Especialidades</TableHead>
+            <TableHead>Estado</TableHead><TableHead className="text-right">Ações</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {rows.map((r) => (
@@ -1028,8 +1027,8 @@ function KycPanel() {
                 <TableCell className="text-right space-x-2">
                   {!r.verified && (
                     <>
-                      <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Valider</Button>
-                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motivo da recusa?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
+                      <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Validar</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motivo da recusa?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Recusar</Button>
                     </>
                   )}
                 </TableCell>
@@ -1096,7 +1095,7 @@ function InboxPanel() {
         <Stat label={t("admin.k_quotes_signed")} value={num(data?.counts?.quotes_signed || 0)} accent sub="Clicar: quem e porquê" onClick={() => setDrill("quotes_signed")} testId="inbox-stat-quotes_signed" />
         <Stat label={t("admin.k_quotes_opened")} value={num(data?.counts?.quotes_opened || 0)} sub="Clicar: quem e porquê" onClick={() => setDrill("quotes_opened")} testId="inbox-stat-quotes_opened" />
         <Stat label={t("admin.k_client_errors")} value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} sub="Clicar: detalhe" onClick={() => setDrill("client_errors")} testId="inbox-stat-client_errors" />
-        <Stat label="Deck investisseurs" value={num(data?.counts?.deck_downloads || 0)} accent={data?.counts?.deck_downloads > 0} sub="Clicar: quem e porquê" onClick={() => setDrill("deck_downloads")} testId="inbox-stat-deck_downloads" />
+        <Stat label="Deck para investidores" value={num(data?.counts?.deck_downloads || 0)} accent={data?.counts?.deck_downloads > 0} sub="Clicar: quem e porquê" onClick={() => setDrill("deck_downloads")} testId="inbox-stat-deck_downloads" />
       </div>
       <AdminDrillDialog metric={drill} inbox hours={hours} onClose={() => setDrill(null)} />
 
@@ -1116,7 +1115,7 @@ function InboxPanel() {
         ))}
         <div className="flex-1" />
         <Button size="sm" variant="outline" onClick={load} className="rounded-sm"
-                data-testid="inbox-refresh-btn">Actualiser</Button>
+                data-testid="inbox-refresh-btn">Atualizar</Button>
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">A carregar…</p>}
@@ -1127,7 +1126,7 @@ function InboxPanel() {
             {(l) => <LeadRow lead={l} onUpdated={load} />}
           </InboxSection>
 
-          <InboxSection title="Nouveaux comptes" items={data.new_users || []} empty="Nenhum novo utilizador.">
+          <InboxSection title="Novas contas" items={data.new_users || []} empty="Nenhum novo utilizador.">
             {(u) => (
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 flex-1">
@@ -1163,7 +1162,7 @@ function InboxPanel() {
           </InboxSection>
 
           <div className="surface p-5" data-testid="pending-reviews-section">
-            <p className="overline mb-3">Avis clients en attente ({pendingReviews.length})</p>
+            <p className="overline mb-3">Avaliações de clientes pendentes ({pendingReviews.length})</p>
             {pendingReviews.length === 0 ? (
               <p className="text-xs text-muted-foreground">Nenhuma avaliação a moderar.</p>
             ) : (
@@ -1176,9 +1175,9 @@ function InboxPanel() {
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <button onClick={() => approveReview(r.review_id)} data-testid={`approve-review-${r.review_id}`}
-                              className="text-[10px] px-2 py-1 rounded-sm bg-primary text-primary-foreground font-semibold">Publier</button>
+                              className="text-[10px] px-2 py-1 rounded-sm bg-primary text-primary-foreground font-semibold">Publicar</button>
                       <button onClick={() => deleteReview(r.review_id)} data-testid={`delete-review-${r.review_id}`}
-                              className="text-[10px] px-2 py-1 rounded-sm border border-border text-muted-foreground">Suppr.</button>
+                              className="text-[10px] px-2 py-1 rounded-sm border border-border text-muted-foreground">Elim.</button>
                     </div>
                   </div>
                 ))}
@@ -1190,7 +1189,7 @@ function InboxPanel() {
             action={
               <Button size="sm" variant="outline" className="rounded-sm gap-2 h-8"
                       data-testid="deck-export-csv-btn" onClick={exportDeckCsv}>
-                <Download className="h-3.5 w-3.5" /> Exporter CSV
+                <Download className="h-3.5 w-3.5" /> Exportar CSV
               </Button>
             }>
             {(d) => (
@@ -1253,7 +1252,7 @@ function InboxSection({ title, items, empty, children, action }) {
 
 /* ---------- LeadRow with direct actions (call / email / mark handled) ---------- */
 function LeadRow({ lead, onUpdated }) {
-  const [status, setStatus] = useState(lead.status || "nouveau");
+  const [status, setStatus] = useState(lead.status || "novo");
   const [busy, setBusy] = useState(false);
 
   const setLeadStatus = async (next) => {
@@ -1261,7 +1260,7 @@ function LeadRow({ lead, onUpdated }) {
     try {
       await api.put(`/admin/leads/${lead.lead_id}`, { status: next });
       setStatus(next);
-      toast.success(`Statut : ${next}`);
+      toast.success(`Estado: ${next}`);
       if (onUpdated) onUpdated();
     } catch { toast.error("Não foi possível atualizar"); }
     setBusy(false);
@@ -1299,7 +1298,7 @@ function LeadRow({ lead, onUpdated }) {
             href={`tel:${lead.phone}`}
             data-testid={`lead-call-${lead.lead_id}`}
             className="rounded-sm border border-border p-1.5 hover:bg-primary hover:text-white hover:border-primary transition"
-            title={`Appeler ${lead.phone}`}
+            title={`Ligar ${lead.phone}`}
           >
             <Phone className="h-3.5 w-3.5" />
           </a>
@@ -1311,7 +1310,7 @@ function LeadRow({ lead, onUpdated }) {
             )}`}
             data-testid={`lead-email-${lead.lead_id}`}
             className="rounded-sm border border-border p-1.5 hover:bg-primary hover:text-white hover:border-primary transition"
-            title={`Escrever a${lead.email}`}
+            title={`Escrever a ${lead.email}`}
           >
             <Mail className="h-3.5 w-3.5" />
           </a>
@@ -1325,7 +1324,7 @@ function LeadRow({ lead, onUpdated }) {
               data-testid={`lead-inprogress-${lead.lead_id}`}
               className="rounded-sm h-7 text-[10px]"
             >
-              En cours
+              Em curso
             </Button>
             <Button
               size="sm"
@@ -1341,10 +1340,10 @@ function LeadRow({ lead, onUpdated }) {
           <Button
             size="sm" variant="outline"
             disabled={busy}
-            onClick={() => setLeadStatus("nouveau")}
+            onClick={() => setLeadStatus("novo")}
             className="rounded-sm h-7 text-[10px]"
           >
-            Rouvrir
+            Reabrir
           </Button>
         )}
       </div>
@@ -1398,7 +1397,7 @@ function ClientErrorsPanel() {
         ))}
         <div className="flex-1" />
         <Button size="sm" variant="outline" onClick={load} className="rounded-sm"
-                data-testid="errors-refresh-btn">Actualiser</Button>
+                data-testid="errors-refresh-btn">Atualizar</Button>
       </div>
 
       {trend && trend.series && (
@@ -1436,9 +1435,9 @@ function ClientErrorsPanel() {
             ) : (
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Message</TableHead>
-                  <TableHead className="w-24 text-right">Occurrences</TableHead>
-                  <TableHead className="w-24 text-right">Utilisateurs</TableHead>
+                  <TableHead>Mensagem</TableHead>
+                  <TableHead className="w-24 text-right">Ocorrências</TableHead>
+                  <TableHead className="w-24 text-right">Utilizadores</TableHead>
                   <TableHead className="w-40">Última vez</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -1480,7 +1479,7 @@ function ClientErrorsPanel() {
                         className="text-primary text-[11px] whitespace-nowrap"
                         data-testid={`error-toggle-${i}`}
                       >
-                        {expanded[i] ? "Masquer" : "Stack"}
+                        {expanded[i] ? "Ocultar" : "Stack"}
                       </button>
                     </div>
                     {expanded[i] && it.stack && (
@@ -1525,12 +1524,12 @@ function AffiliatePanel() {
         </div>
       )}
       <div className="surface p-6">
-        <p className="overline mb-4">Configurations partenaires</p>
+        <p className="overline mb-4">Configurações de parceiros</p>
         <Table>
           <TableHeader><TableRow>
             <TableHead>Fornecedor</TableHead><TableHead>Rede</TableHead>
-            <TableHead>Commission</TableHead><TableHead>Cookie</TableHead>
-            <TableHead>Actif</TableHead>
+            <TableHead>Comissão</TableHead><TableHead>Cookie</TableHead>
+            <TableHead>Ativo</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {configs.map((c) => (

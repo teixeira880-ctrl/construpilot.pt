@@ -46,11 +46,11 @@ export default function Dashboard() {
   const professionalAccount = RANK[level] >= RANK.pro;
   const canAssistant = RANK[level] >= RANK.particulier_payant;
   const isPro = professionalAccount && can("dashboard");
-  const LEVEL_LABELS = { particulier_payant: "Particulier Payant", pro: "Pro", business: "Business" };
+  const LEVEL_LABELS = { particulier_payant: "Particular Pagante", pro: "Pro", business: "Business" };
   const lockedUpsell = [
-    { to: "/assistant", icon: AssistantIcon, title: "Assistant BTP", desc: "Chat, courriers & comptes-rendus IA", min: "particulier_payant" },
+    { to: "/assistant", icon: AssistantIcon, title: "Assistente Construção", desc: "Chat, cartas e relatórios IA", min: "particulier_payant" },
     { to: "/devis-editeur", icon: FileText, title: "Orçamentos e faturas", desc: "Crie orçamentos e faturas profissionais", min: "pro" },
-    { to: "/clients", icon: Users, title: "Clients", desc: "Fiches clients & historique", min: "pro" },
+    { to: "/clients", icon: Users, title: "Clientes", desc: "Fichas de clientes e histórico", min: "pro" },
     { to: "/chantiers", icon: HardHat, title: "Dossiers de obra", desc: "Plantas, fotografias e acompanhamento por obra", min: "pro" },
   ].filter((f) => RANK[level] < RANK[f.min]);
   const ui = useWorkspaceCopy();
@@ -285,7 +285,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">{[l.address, l.phone].filter(Boolean).join(" · ")}</p>
                   </div>
                   <p className="num font-bold">{eur(l.budget)}</p>
-                  <Badge variant="outline" className="rounded-sm">{l.status || "nouveau"}</Badge>
+                  <Badge variant="outline" className="rounded-sm">{l.status || "novo"}</Badge>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </button>
               ))}
@@ -303,7 +303,7 @@ export default function Dashboard() {
           </div>
           <div className="dashboard-upsell-grid">
             {lockedUpsell.map((f) => (
-              <Link key={f.to} to="/tarifs" className="dashboard-upsell-tile" data-testid={`dashboard-locked-${f.to.slice(1)}`} data-locked="true" title={`Fonction ${LEVEL_LABELS[f.min]}— clique para desbloquear`}>
+              <Link key={f.to} to="/tarifs" className="dashboard-upsell-tile" data-testid={`dashboard-locked-${f.to.slice(1)}`} data-locked="true" title={`Função ${LEVEL_LABELS[f.min]} — clique para desbloquear`}>
                 <span className="dashboard-upsell-icon"><f.icon size={19} /></span>
                 <span className="flex-1 min-w-0"><strong>{f.title}</strong><small>{f.desc}</small></span>
                 <span className="dashboard-upsell-badge" onClick={(e) => e.preventDefault()}>
@@ -325,7 +325,7 @@ export default function Dashboard() {
             {isPro && can("factures") && <Button asChild variant="outline"><Link to="/devis-editeur?type=invoice" data-testid="dashboard-new-invoice"><Receipt size={16} />{ui("newInvoice")}</Link></Button>}
           </div>
           {isPro && <>{can("factures") && <RevenueChart />}<CotesTile />
-            <Link to="/appro" data-testid="appro-link" className="surface p-5 flex gap-3 items-center"><HardHat size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.appro", "Analyse technique & Appro IA")}</span><ArrowRight size={17} className="ms-auto" /></Link>
+            <Link to="/appro" data-testid="appro-link" className="surface p-5 flex gap-3 items-center"><HardHat size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.appro", "Análise técnica & Aprovisionamento IA")}</span><ArrowRight size={17} className="ms-auto" /></Link>
             {can("factures") && <Link to="/rentabilite" data-testid="profitability-link" className="surface p-5 flex gap-3 items-center"><TrendingUp size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.profitability", "Relatório de rentabilidade")}</span><ArrowRight size={17} className="ms-auto" /></Link>}
             {can("catalogue") && <PriceLibrary />}
             {can("devis") && <Link to="/dpgf" data-testid="dpgf-link" className="surface p-5 flex gap-3 items-center"><FileSpreadsheet size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.dpgf", "Mapa de quantidades do arquiteto → orçamento")}</span><ArrowRight size={17} className="ms-auto" /></Link>}
@@ -348,7 +348,7 @@ export default function Dashboard() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-base">{selectedLead.name || t("dash.request")}</span>
-                <Badge variant="outline" className="rounded-sm">{selectedLead.status || "nouveau"}</Badge>
+                <Badge variant="outline" className="rounded-sm">{selectedLead.status || "novo"}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Info icon={Euro} label={ui("budget")} testId="lead-budget" value={selectedLead.budget ? eur(selectedLead.budget) : "—"} />

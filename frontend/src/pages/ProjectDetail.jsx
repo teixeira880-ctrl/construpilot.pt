@@ -25,7 +25,7 @@ import { SavingsCard } from "@/components/SavingsCard";
 import { Stat } from "@/components/Bits";
 
 const NEXT = { todo: "doing", doing: "done", done: "todo" };
-const LABEL = { todo: "⏳ A fazer", doing: "🔄 En cours", done: "✅ Terminado" };
+const LABEL = { todo: "⏳ A fazer", doing: "🔄 Em curso", done: "✅ Terminado" };
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -93,7 +93,7 @@ export default function ProjectDetail() {
       const { data } = await api.post("/estimation/materials", { lots: p.estimation.lots });
       setMaterials(data.items);
       await api.patch(`/projects/${id}`, { materials: data.items });
-      toast.success(`${data.items.length}linhas de materiais geradas`);
+      toast.success(`${data.items.length} linhas de materiais geradas`);
     } catch { toast.error("Impossível gerar"); }
     finally { setBusy(""); }
   };
@@ -130,7 +130,7 @@ export default function ProjectDetail() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success("PDF gerado");
-    } catch { toast.error("PDF indisponible"); }
+    } catch { toast.error("PDF indisponível"); }
     finally { setBusy(""); }
   };
 
@@ -141,7 +141,7 @@ export default function ProjectDetail() {
           <p className="overline">{p.estimation.project_type_name}</p>
           <h1 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight" data-testid="project-title">{p.name}</h1>
           <p className="num mt-2 text-sm text-muted-foreground">
-            {num(p.surface, 1)} m² · {p.city || p.region || "France"} · finition {p.estimation.finish_level_name}
+            {num(p.surface, 1)} m² · {p.city || p.region || "França"} · acabamento {p.estimation.finish_level_name}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -157,11 +157,11 @@ export default function ProjectDetail() {
       {budget && (
         <div className="grid gap-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
-            <Stat label="Budget initial" value={eur(budget.initial)} testId="budget-initial" />
+            <Stat label="Orçamento inicial" value={eur(budget.initial)} testId="budget-initial" />
             <Stat label="Gasto" value={eur(budget.spent)} testId="budget-spent" />
-            <Stat label="Restant" value={eur(budget.remaining)} testId="budget-remaining" accent />
+            <Stat label="Restante" value={eur(budget.remaining)} testId="budget-remaining" accent />
             <Stat label="Previsão final" value={eur(budget.forecast)} testId="budget-forecast" />
-            <Stat label="Ultrapassagem provável" value={eur(budget.overrun)} sub={`${budget.progress_pct}% realizado`} testId="budget-overrun" />
+            <Stat label="Ultrapassagem provável" value={eur(budget.overrun)} sub={`${budget.progress_pct} % realizado`} testId="budget-overrun" />
           </div>
           <div className="surface p-6">
             <div className="flex items-center gap-4">
@@ -203,12 +203,12 @@ export default function ProjectDetail() {
 
       <Tabs defaultValue="works">
         <TabsList className="rounded-sm flex-wrap h-auto">
-          <TabsTrigger value="works" className="rounded-sm" data-testid="pd-tab-works">Travaux & progression</TabsTrigger>
-          <TabsTrigger value="estimation" className="rounded-sm" data-testid="pd-tab-estimation">Estimation</TabsTrigger>
+          <TabsTrigger value="works" className="rounded-sm" data-testid="pd-tab-works">Trabalhos & progressão</TabsTrigger>
+          <TabsTrigger value="estimation" className="rounded-sm" data-testid="pd-tab-estimation">Estimativa</TabsTrigger>
           <TabsTrigger value="materials" className="rounded-sm" data-testid="pd-tab-materials">Materiais e cesto</TabsTrigger>
           <TabsTrigger value="photos" className="rounded-sm" data-testid="pd-tab-photos">Fotos antes/depois</TabsTrigger>
           <TabsTrigger value="timeline" className="rounded-sm" data-testid="pd-tab-timeline">Cronologia da obra</TabsTrigger>
-          <TabsTrigger value="advice" className="rounded-sm" data-testid="pd-tab-advice">Conseils IA</TabsTrigger>
+          <TabsTrigger value="advice" className="rounded-sm" data-testid="pd-tab-advice">Conselhos IA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="works" className="mt-6">
@@ -235,7 +235,7 @@ export default function ProjectDetail() {
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Observações, levantamentos, pontos a verificar na obra…"
               className="mt-3" data-testid="chantier-notes-input" />
             <Button onClick={saveNotes} disabled={busy === "notes" || notes === (p.notes || "")} className="mt-3 gap-2" data-testid="chantier-notes-save">
-              <Save className="h-4 w-4" /> {busy === "notes" ? "Enregistrement…" : "Guardar as notas"}
+              <Save className="h-4 w-4" /> {busy === "notes" ? "A guardar…" : "Guardar as notas"}
             </Button>
           </div>
         </TabsContent>
@@ -247,7 +247,7 @@ export default function ProjectDetail() {
         <TabsContent value="materials" className="mt-6 grid gap-6">
           <div className="flex flex-wrap gap-3">
             <Button onClick={buildMaterials} disabled={busy === "materials"} data-testid="build-materials-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <Package className="h-4 w-4" /> {busy === "materials" ? "Calcul…" : "Gerar a minha lista de compras"}
+              <Package className="h-4 w-4" /> {busy === "materials" ? "Cálculo…" : "Gerar a minha lista de compras"}
             </Button>
             {materials.length > 0 && (
               <Button variant="outline" onClick={optimize} disabled={busy === "optimize"} data-testid="optimize-cart-btn" className="rounded-sm gap-2">
@@ -303,7 +303,7 @@ export default function ProjectDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                      <TableHead>Produit</TableHead>
+                      <TableHead>Produto</TableHead>
                       <TableHead className="text-right">Qtd.</TableHead>
                       <TableHead>Melhor fornecedor</TableHead>
                       <TableHead className="text-right">Preço unitário</TableHead>

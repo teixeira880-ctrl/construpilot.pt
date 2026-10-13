@@ -27,7 +27,7 @@ import { useBilling } from "@/context/BillingContext";
 import { useI18n } from "@/context/I18nContext";
 
 const CONDITION_LABEL = {
-  neuf: "Neuf", bon: "Bom estado", moyen: "Estado médio", vetuste: "Degradado",
+  neuf: "Novo", bon: "Bom estado", moyen: "Estado médio", vetuste: "Degradado",
   a_renover_totalement: "A renovar totalmente",
 };
 
@@ -113,10 +113,10 @@ export default function Estimator() {
         to,
         client_name: leadName,
         audience: "particulier",
-        project: { name: `Estimation ${form.city || ""}`.trim() || "Votre projet", city: form.city, description: form.description },
+        project: { name: `Estimativa ${form.city || ""}`.trim() || "O seu projeto", city: form.city, description: form.description },
         estimation,
       });
-      toast.success(`A sua estimativa detalhada acaba de lhe ser enviada por e-mail para${to} ✉️`);
+      toast.success(`A sua estimativa detalhada acaba de lhe ser enviada por e-mail para ${to} ✉️`);
     } catch { /* envoi silencieux, non bloquant */ }
   };
 
@@ -125,7 +125,7 @@ export default function Estimator() {
     setBusy(true);
     try {
       const { data } = await api.post("/projects", {
-        ...form, name: name || "Mon projet", surface: Number(form.surface),
+        ...form, name: name || "O meu projeto", surface: Number(form.surface),
         construction_year: Number(form.construction_year) || null,
         lots: form.lots.length ? form.lots : null, estimation: est,
       });
@@ -142,7 +142,7 @@ export default function Estimator() {
     setBusy(true);
     try {
       const res = await api.post("/estimation/pdf",
-        { project: { name: name || "Mon projet", city: form.city, description: form.description },
+        { project: { name: name || "O meu projeto", city: form.city, description: form.description },
           estimation: est },
         { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
@@ -180,7 +180,7 @@ export default function Estimator() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Estimateur travaux gratuit" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA 10 %, duração estimada. Baseado nos preços França 2026." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
+      <SEO title="Estimador trabalhos gratuito" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA 10 %, duração estimada. Baseado nos preços França 2026." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
       <SectionTitle as="h1" over={t("est.over")} title={t("est.title")}>
         {t("est.subtitle")}
       </SectionTitle>
@@ -210,7 +210,7 @@ export default function Estimator() {
                     <Select value={form.country} onValueChange={(v) => { set("country", v); set("region", v === "FR" ? "Île-de-France" : "Lisboa"); }}>
                       <SelectTrigger className="rounded-sm h-11" data-testid="select-country"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="FR">France</SelectItem>
+                        <SelectItem value="FR">França</SelectItem>
                         <SelectItem value="PT">Portugal</SelectItem>
                       </SelectContent>
                     </Select>

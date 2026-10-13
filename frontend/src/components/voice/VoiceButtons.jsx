@@ -35,7 +35,7 @@ export function ListenButton({ text, request, className = "", testId = "listen-b
 }
 
 /** Bouton « Dicter » : enregistre le micro puis transcrit via la STT managée Emergent ; `onText(texte)` reçoit la transcription. `request(formData)` permet un client différent (portail). */
-export function DictateButton({ onText, request, testId = "dictate-btn", className = "", label = "Dicter" }) {
+export function DictateButton({ onText, request, testId = "dictate-btn", className = "", label = "Ditar" }) {
   const [state, setState] = useState("idle");
   const recRef = useRef(null);
   const chunks = useRef([]);
@@ -70,7 +70,7 @@ export function DictateButton({ onText, request, testId = "dictate-btn", classNa
   return (
     <button type="button" onClick={state === "recording" ? stop : start} disabled={state === "transcribing"} data-testid={testId} aria-pressed={state === "recording"}
       className={`inline-flex items-center gap-1 text-xs rounded-sm border px-2 py-1 transition-colors disabled:opacity-60 ${state === "recording" ? "bg-red-500/10 border-red-500/40 text-red-600 animate-pulse" : "hover:bg-muted"} ${className}`}>
-      <Icon className={`h-3.5 w-3.5 ${state === "transcribing" ? "animate-spin" : ""}`} /> {state === "recording" ? "Terminer" : state === "transcribing" ? "Transcription…" : label}
+      <Icon className={`h-3.5 w-3.5 ${state === "transcribing" ? "animate-spin" : ""}`} /> {state === "recording" ? "Terminar" : state === "transcribing" ? "Transcrição…" : label}
     </button>
   );
 }

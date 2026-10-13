@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 const PLAN_LABELS = {
   pro_business_monthly: "Pro Business", pro_business_yearly: "Pro Business",
   pro_monthly: "Pro", pro_yearly: "Pro", premium_monthly: "Premium", premium_yearly: "Premium",
-  project_pass: "Project Pass", invoicing_addon_monthly: "Option Facturation",
+  project_pass: "Project Pass", invoicing_addon_monthly: "Opção Faturação",
 };
 
 export function PaymentSuccess() {
@@ -84,7 +84,7 @@ export function PaymentSuccess() {
       {status === "error" && (
         <>
           <XCircle className="h-14 w-14 mx-auto text-red-500" />
-          <p className="font-display text-xl font-bold">Session introuvable</p>
+          <p className="font-display text-xl font-bold">Sessão não encontrada</p>
           <Link to="/tarifs"><Button variant="outline" className="rounded-sm">Voltar aos preços</Button></Link>
         </>
       )}

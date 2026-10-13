@@ -97,7 +97,7 @@ export default function ReviewCollect() {
                     onMouseLeave={() => setHover(0)}
                     onClick={() => setRating(n)}
                     className="p-1 transition-transform hover:scale-110"
-                    aria-label={`${n}estrela${n > 1 ? "s" : ""}`}
+                    aria-label={`${n} estrela${n > 1 ? "s" : ""}`}
                   >
                     <Star
                       className="h-9 w-9"
@@ -118,7 +118,7 @@ export default function ReviewCollect() {
                 onChange={(e) => setName(e.target.value)}
                 data-testid="review-name-input"
                 className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                placeholder="Ex : Marie D."
+                placeholder="Ex: Maria D."
               />
             </div>
 

@@ -14,7 +14,7 @@ import { compressImage } from "@/lib/imageCompress";
 import { useAuth } from "@/context/AuthContext";
 import { uploadProjectPhoto } from "@/lib/offlineProjects";
 
-const KIND_LABEL = { before: "Avant", after: "Após", progress: "Obra" };
+const KIND_LABEL = { before: "Antes", after: "Após", progress: "Obra" };
 const KIND_STYLE = {
   before: "border-slate-500/40 text-slate-600 dark:text-slate-300",
   after: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
@@ -92,13 +92,13 @@ const CompareSlider = ({ projectId, before, after }) => {
         {beforeSrc && (
           <div className="absolute inset-0 overflow-hidden"
                style={{ width: `${pos}%` }}>
-            <img src={beforeSrc} alt="Avant" draggable={false}
+            <img src={beforeSrc} alt="Antes" draggable={false}
                  className="absolute inset-0 h-full object-cover"
                  style={{ width: wrapRef.current?.offsetWidth || "auto", maxWidth: "none" }} />
           </div>
         )}
         <div className="absolute top-3 left-3 px-2 py-1 text-[10px] uppercase tracking-wider bg-black/60 text-white rounded-sm">
-          Avant
+          Antes
         </div>
         <div className="absolute top-3 right-3 px-2 py-1 text-[10px] uppercase tracking-wider bg-primary text-primary-foreground rounded-sm">
           Após
@@ -153,14 +153,14 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
   const upload = async (rawFile) => {
     if (!rawFile) return;
     if (rawFile.size > 25 * 1024 * 1024) {
-      toast.error("Fichier trop lourd (max 25 Mo avant compression)");
+      toast.error("Ficheiro demasiado pesado (máx. 25 MB antes da compressão)");
       return;
     }
     setUploading(true);
     try {
       const file = await compressImage(rawFile);
       const gain = rawFile.size > file.size
-        ? `(comprimida:${Math.round((1 - file.size / rawFile.size) * 100)} %)`
+        ? ` (comprimida: ${Math.round((1 - file.size / rawFile.size) * 100)} %)`
         : "";
       const { queued } = await uploadProjectPhoto(user?.user_id, projectId, file, { kind, lot, caption });
       setCaption("");
@@ -219,18 +219,18 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
         </div>
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="grid gap-2">
-            <Label>Type</Label>
+            <Label>Tipo</Label>
             <Select value={kind} onValueChange={setKind}>
               <SelectTrigger className="rounded-sm h-10" data-testid="photo-kind"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="before">Avant</SelectItem>
+                <SelectItem value="before">Antes</SelectItem>
                 <SelectItem value="after">Após</SelectItem>
                 <SelectItem value="progress">Obra (em curso)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>Lot (optionnel)</Label>
+            <Label>Especialidade (opcional)</Label>
             <Input list="photo-lots" value={lot} onChange={(e) => setLot(e.target.value)}
                    data-testid="photo-lot" placeholder="ex: Casa de banho"
                    className="rounded-sm h-10" />
@@ -250,7 +250,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
           <Button onClick={() => inputRef.current?.click()} disabled={uploading}
                   data-testid="photo-upload-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Upload className="h-4 w-4" /> {uploading ? "Envoi…" : "Escolher uma foto"}
+            <Upload className="h-4 w-4" /> {uploading ? "A enviar…" : "Escolher uma foto"}
           </Button>
           <p className="text-xs text-muted-foreground self-center">
             JPG, PNG, WEBP · comprimido automaticamente (~150 KB) · associe um lote para comparar antes/depois
@@ -260,7 +260,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
 
       <Tabs defaultValue="gallery">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="gallery" className="rounded-sm" data-testid="photos-tab-gallery">Galerie</TabsTrigger>
+          <TabsTrigger value="gallery" className="rounded-sm" data-testid="photos-tab-gallery">Galeria</TabsTrigger>
           <TabsTrigger value="compare" className="rounded-sm" data-testid="photos-tab-compare"
                        disabled={pairLots.length === 0}>
             Comparar antes/depois {pairLots.length ? `(${pairLots.length})` : ""}
@@ -274,7 +274,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
                 <div key={pp.tmp} className="relative rounded-lg overflow-hidden border border-dashed border-amber-500/60" data-testid="photo-pending">
                   <img src={pp.url} alt="" className="w-full h-44 object-cover opacity-80" />
                   <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-amber-500 text-white">
-                    <CloudOff className="h-3 w-3" /> En attente
+                    <CloudOff className="h-3 w-3" /> Em espera
                   </span>
                 </div>
               ))}

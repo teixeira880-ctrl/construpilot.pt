@@ -66,7 +66,7 @@ export default function WaterproofingTab({ plans, suppliers }) {
         </div>
         <Button onClick={analyze} disabled={busy || !planId} className="gap-2 rounded-sm" data-testid="analyze-wp-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Analyse IA…" : "Analisar a impermeabilização"}
+          {busy ? "Análise IA…" : "Analisar a impermeabilização"}
         </Button>
       </div>
 
@@ -75,7 +75,7 @@ export default function WaterproofingTab({ plans, suppliers }) {
           <div className="surface p-4 space-y-3" data-testid="wp-params">
             <h3 className="font-bold flex items-center gap-2"><Droplets className="h-4 w-4 text-primary" />Definições do complexo</h3>
             {ana.scale_confidence != null && (
-              <p className="text-xs text-muted-foreground">Escala: {ana.scale_detected || "incertaine"} · confiance {Math.round((ana.scale_confidence || 0) * 100)}%</p>
+              <p className="text-xs text-muted-foreground">Escala: {ana.scale_detected || "incertaine"} · confiança {Math.round((ana.scale_confidence || 0) * 100)}%</p>
             )}
             <div className="flex flex-wrap items-end gap-3">
               <div><label className="text-xs text-muted-foreground">Superfície (m²)</label><Input type="number" value={surface} onChange={(e) => setSurface(parseFloat(e.target.value) || 0)} className="h-8 w-28" data-testid="wp-surface" /></div>
@@ -83,15 +83,15 @@ export default function WaterproofingTab({ plans, suppliers }) {
               <div><label className="text-xs text-muted-foreground">Altura levantamento (m)</label><Input type="number" value={releve} onChange={(e) => setReleve(parseFloat(e.target.value) || 0)} className="h-8 w-28" data-testid="wp-releve" /></div>
               <div><label className="text-xs text-muted-foreground">Sistema</label>
                 <select value={system} onChange={(e) => setSystem(e.target.value)} className="mt-1 h-8 rounded-sm border border-border bg-background px-2 text-sm" data-testid="wp-system">
-                  <option value="bicouche">Bicouche</option><option value="monocouche">Monocouche</option>
+                  <option value="bicouche">Bicamada</option><option value="monocouche">Monocamada</option>
                 </select>
               </div>
-              <div><label className="text-xs text-muted-foreground">Recouvrement %</label><Input type="number" value={recouv} onChange={(e) => setRecouv(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="wp-recouv" /></div>
-              <div><label className="text-xs text-muted-foreground">Pertes %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="wp-loss" /></div>
-              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="wp-compute-btn"><Truck className="h-4 w-4" />Recalculer</Button>
+              <div><label className="text-xs text-muted-foreground">Sobreposição %</label><Input type="number" value={recouv} onChange={(e) => setRecouv(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="wp-recouv" /></div>
+              <div><label className="text-xs text-muted-foreground">Perdas %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="wp-loss" /></div>
+              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="wp-compute-btn"><Truck className="h-4 w-4" />Recalcular</Button>
             </div>
             {cmd?.compute && (
-              <p className="text-xs text-muted-foreground">Membrane : <b>{cmd.compute.membrane_area_m2} m²</b> · levantamentos {cmd.compute.releve_area_m2} m² · {cmd.compute.system_type}</p>
+              <p className="text-xs text-muted-foreground">Membrana: <b>{cmd.compute.membrane_area_m2} m²</b> · levantamentos {cmd.compute.releve_area_m2} m² · {cmd.compute.system_type}</p>
             )}
           </div>
 

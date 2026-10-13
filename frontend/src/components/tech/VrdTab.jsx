@@ -82,7 +82,7 @@ export default function VrdTab({ plans, suppliers }) {
         </div>
         <Button onClick={analyze} disabled={busy || !planId} className="gap-2 rounded-sm" data-testid="analyze-vrd-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Analyse IA…" : "Analisar o VRD"}
+          {busy ? "Análise IA…" : "Analisar o VRD"}
         </Button>
       </div>
 
@@ -91,13 +91,13 @@ export default function VrdTab({ plans, suppliers }) {
           <div className="surface p-4 space-y-3" data-testid="vrd-networks">
             <h3 className="font-bold flex items-center gap-2"><Waves className="h-4 w-4 text-primary" />Redes &amp; valas</h3>
             {ana.scale_confidence != null && (
-              <p className="text-xs text-muted-foreground">Escala: {ana.scale_detected || "incertaine"} · confiance {Math.round((ana.scale_confidence || 0) * 100)}%</p>
+              <p className="text-xs text-muted-foreground">Escala: {ana.scale_detected || "incertaine"} · confiança {Math.round((ana.scale_confidence || 0) * 100)}%</p>
             )}
             <div className="overflow-auto rounded-sm border border-border">
               <table className="w-full text-xs">
                 <thead className="bg-secondary/40"><tr>
                   <th className="text-left p-2">Rede</th><th className="p-2 text-right">Comprimento (ml)</th>
-                  <th className="p-2 text-right">Largura (m)</th><th className="p-2 text-right">Profondeur (m)</th><th className="p-2"></th>
+                  <th className="p-2 text-right">Largura (m)</th><th className="p-2 text-right">Profundidade (m)</th><th className="p-2"></th>
                 </tr></thead>
                 <tbody>
                   {nets.map((n, i) => (
@@ -124,11 +124,11 @@ export default function VrdTab({ plans, suppliers }) {
                 </select>
               </div>
               <Button size="sm" variant="outline" onClick={addNet} className="gap-1 rounded-sm" data-testid="vrd-add-net"><Plus className="h-3.5 w-3.5" />Adicionar</Button>
-              <div><label className="text-xs text-muted-foreground">Pertes %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-20" data-testid="vrd-loss" /></div>
-              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="vrd-compute-btn"><Truck className="h-4 w-4" />Recalculer</Button>
+              <div><label className="text-xs text-muted-foreground">Perdas %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-20" data-testid="vrd-loss" /></div>
+              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="vrd-compute-btn"><Truck className="h-4 w-4" />Recalcular</Button>
             </div>
             {totals && (
-              <p className="text-xs text-muted-foreground">Escavação: <b>{totals.deblai_m3} m³</b> · sable {totals.sable_m3} m³ · remblai {totals.remblai_m3} m³ · reparação {totals.refection_m2} m²</p>
+              <p className="text-xs text-muted-foreground">Escavação: <b>{totals.deblai_m3} m³</b> · sable {totals.sable_m3} m³ · aterro {totals.remblai_m3} m³ · reparação {totals.refection_m2} m²</p>
             )}
           </div>
 
@@ -136,7 +136,7 @@ export default function VrdTab({ plans, suppliers }) {
 
           {items.length > 0 && (
             <div data-testid="vrd-bordereau">
-              <h3 className="font-bold mb-2">Bordereau VRD</h3>
+              <h3 className="font-bold mb-2">Mapa VRD</h3>
               <ApproOrder items={items} suppliers={suppliers} csvName="bon_commande_vrd.csv"
                 createOrder={createOrder} onHighlight={setHighlight} />
             </div>

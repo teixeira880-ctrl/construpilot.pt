@@ -20,7 +20,7 @@ function Comparator({ beforeSrc, afterSrc }) {
           <MoveHorizontal className="h-4 w-4 text-neutral-800" />
         </span>
       </div>
-      <span className="absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded bg-black/60 text-white">Aujourd'hui</span>
+      <span className="absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded bg-black/60 text-white">Hoje</span>
       <span className="absolute top-2 right-2 text-[11px] px-2 py-0.5 rounded bg-primary/80 text-white">Após trabalhos</span>
       <input type="range" min="0" max="100" value={pos} onChange={(e) => setPos(Number(e.target.value))}
              aria-label="Comparador antes depois" data-testid="render-comparator-slider"
@@ -75,7 +75,7 @@ export default function RenderShare() {
             {meta.kind === "video" ? (
               <div className="grid md:grid-cols-2 gap-6">
                 <figure className="space-y-2">
-                  <figcaption className="text-xs uppercase tracking-wide text-neutral-400">Aujourd'hui</figcaption>
+                  <figcaption className="text-xs uppercase tracking-wide text-neutral-400">Hoje</figcaption>
                   <img src={inputSrc} alt="obra atual" className="w-full rounded-xl border border-white/10" data-testid="render-share-before" />
                 </figure>
                 <figure className="space-y-2">

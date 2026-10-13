@@ -70,31 +70,31 @@ export default function JourneyPanel() {
         ))}
         <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={load}
                 disabled={busy} data-testid="journey-refresh">
-          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Actualiser
+          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Atualizar
         </Button>
       </div>
 
-      <Block icon={Users} title="Comptes" testId="journey-accounts">
-        <Metric label="Comptes existants" value={a.existing_excluding_tests}
+      <Block icon={Users} title="Contas" testId="journey-accounts">
+        <Metric label="Contas existentes" value={a.existing_excluding_tests}
                 note="excluindo contas de teste e endereços internos" testId="journey-existing" />
         <Metric label="Dos quais profissionais" value={a.pros} testId="journey-pros" />
         <Metric label="Dos quais particulares" value={a.particuliers} testId="journey-particuliers" />
         <Metric label="Contas de teste / internas" value={a.test_or_internal}
-                note={`${a.admins}admin(s) · excluídos do total acima`} testId="journey-tests" />
-        <Metric label="Entreprises (SIRET distinct)" value={a.companies_with_siret}
+                note={`${a.admins} admin(s) · excluídos do total acima`} testId="journey-tests" />
+        <Metric label="Empresas (NIPC distinto)" value={a.companies_with_siret}
                 note="declarativo, introduzido pelo utilizador" testId="journey-companies" />
-        <Metric label="Organisations" value={a.organizations} testId="journey-orgs" />
+        <Metric label="Organizações" value={a.organizations} testId="journey-orgs" />
         <Metric label="Contas eliminadas" value={a.deleted_since_tracking}
                 note="desde a implementação do acompanhamento" testId="journey-deleted" />
-        <Metric label="Lignes brutes en base" value={a.all_rows_in_db} testId="journey-raw" />
+        <Metric label="Linhas brutas na base" value={a.all_rows_in_db} testId="journey-raw" />
       </Block>
 
       <Block icon={Activity} title="Atividade e clientes pagantes" testId="journey-activity">
-        <Metric label={`Ativos em${data.window_days} j`} value={act.active_users_window}
+        <Metric label={`Ativos em ${data.window_days} j`} value={act.active_users_window}
                 note={act.active_definition} testId="journey-active" />
         <Metric label="Já ligados pelo menos uma vez" value={act.ever_connected}
                 note="contas existentes que iniciaram sessão" testId="journey-ever" />
-        <Metric label="Clients payants" value={act.paying_customers}
+        <Metric label="Clientes pagantes" value={act.paying_customers}
                 note={act.paying_note} testId="journey-paying" />
         <Metric label="Sessões não associáveis" value={act.session_holders_not_countable}
                 note="sessões de contas eliminadas ou de testes: excluídas dos ativos"
@@ -109,7 +109,7 @@ export default function JourneyPanel() {
                 testId="journey-signups" />
         <Metric label="Primeiro valor atingido" value={j.first_value_window}
                 note={j.first_value_definition} testId="journey-firstvalue" />
-        <Metric label="Taux d'activation" value={j.activation_rate_pct} suffix=" %"
+        <Metric label="Taxa de ativação" value={j.activation_rate_pct} suffix=" %"
                 note="primeiro valor / inscrições da janela" testId="journey-activation" />
         <Metric label="Contas anteriores ao acompanhamento" value={j.accounts_before_instrumentation}
                 note="proveniência não resolvida: estas contas existiam antes da instrumentação"
@@ -143,7 +143,7 @@ export default function JourneyPanel() {
             <table className="w-full text-sm min-w-[620px]">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
-                  <th className="px-4 py-2.5">Date</th>
+                  <th className="px-4 py-2.5">Data</th>
                   <th className="px-4 py-2.5">Evento</th>
                   <th className="px-4 py-2.5">Canal</th>
                   <th className="px-4 py-2.5">Detalhes</th>

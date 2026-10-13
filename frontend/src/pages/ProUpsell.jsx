@@ -39,7 +39,7 @@ const PlanCard = ({ plan, highlight, busy, onSelect }) => {
 export default function ProUpsell() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
-  const analyse = sp.get("feature") === "analyse";
+  const analyse = sp.get("feature") === "análise";
   const [proPlans, setProPlans] = useState([]);
   const [partPlans, setPartPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,7 @@ export default function ProUpsell() {
       if (data?.url) { window.location.href = data.url; return; }
       toast.error("Impossível iniciar o pagamento");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Paiement indisponible");
+      toast.error(e?.response?.data?.detail || "Pagamento indisponível");
     } finally { setBusyId(""); }
   };
 

@@ -19,31 +19,31 @@ import { usePermissions } from "@/context/PermissionContext";
 // Nav v2 — menus groupés + relief (fin du débordement header)
 // Séparation stricte des offres : particulier_gratuit < particulier_payant < pro < business.
 const RANK = { particulier_gratuit: 0, particulier_payant: 1, pro: 2, business: 3 };
-const LEVEL_LABELS = { particulier_payant: "Particulier Payant", pro: "Pro", business: "Business" };
+const LEVEL_LABELS = { particulier_payant: "Particular Pagante", pro: "Pro", business: "Business" };
 
 const NAV_MAIN = [
   { to: "/dashboard", label: "Painel", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
   { to: "/devis-editeur", label: "Novo orçamento", key: "nav.newquote", icon: FileText, auth: true, min: "pro" },
-  { to: "/assistant", label: "Assistant BTP", key: "nav.assistant", icon: AssistantIcon, auth: true, min: "particulier_payant" },
-  { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
-  { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
+  { to: "/assistant", label: "Assistente Construção", key: "nav.assistant", icon: AssistantIcon, auth: true, min: "particulier_payant" },
+  { to: "/estimation", label: "Estimador", key: "nav.estimator", icon: Hammer },
+  { to: "/calculateurs", label: "Calculadoras", key: "nav.calculators", icon: Calculator },
   { to: "/prix", label: "Preços de materiais", key: "nav.prices", icon: Search },
   { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
 ];
 
 const NAV_PRO = [
-  { to: "/entreprise", label: "Espace Entreprise", key: "nav.company", icon: Building2, perm: "entreprise", min: "business" },
+  { to: "/entreprise", label: "Espaço Empresa", key: "nav.company", icon: Building2, perm: "entreprise", min: "business" },
   { to: "/ma-page", label: "A minha página & documentos", key: "nav.myPage", icon: Globe, auth: true, min: "pro" },
   { to: "/devis", label: "Acompanhamento de orçamentos", key: "nav.tracking", icon: LineChart, perm: "devis", min: "pro" },
-  { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, perm: "factures", min: "pro" },
+  { to: "/factures", label: "Faturas", key: "nav.invoices", icon: FileText, perm: "factures", min: "pro" },
   { to: "/situations", label: "Autos de medição", key: "nav.situations", icon: Layers, perm: "situations", min: "business" },
   { to: "/dpgf", label: "Mapa de quantidades do arquiteto → orçamento", key: "nav.dpgf", icon: FileSpreadsheet, perm: "devis", badge: "Novo", min: "pro" },
   { to: "/suivi-chantier", label: "Acompanhamento de obra", key: "nav.site", icon: HardHat, perm: "chantier", min: "pro" },
-  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, badge: "Novo", min: "pro" },
+  { to: "/appro", label: "Análise técnica & Aprovisionamento IA", key: "nav.appro", icon: Truck, auth: true, badge: "Novo", min: "pro" },
   { to: "/controle-cotes", label: "Analisar cotas das plantas", key: "nav.cotes", icon: Ruler, auth: true, badge: "Novo", min: "pro" },
-  { to: "/radar", label: "Radar Chantiers", key: "nav.radar", icon: Radar, auth: true, badge: "Novo", min: "pro" },
-  { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh", min: "business" },
-  { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact, min: "pro" },
+  { to: "/radar", label: "Radar Obras", key: "nav.radar", icon: Radar, auth: true, badge: "Novo", min: "pro" },
+  { to: "/rh", label: "RH — Ponto", key: "hr.nav", icon: Users, perm: "rh", min: "business" },
+  { to: "/clients", label: "Clientes", key: "nav.clients", icon: Contact, min: "pro" },
   { to: "/mon-catalogue", label: "Catálogo de preços", key: "nav.catalog", icon: Tag, perm: "catalogue", min: "pro" },
   { to: "/bibliotheque", label: "Biblioteca", key: "nav.library", icon: Library, min: "pro" },
   { to: "/equipe", label: "Equipa", key: "nav.team", icon: Users, min: "business" },
@@ -59,20 +59,20 @@ const NAV_DISCOVER = [
   { to: "/plan", label: "Editor de plantas", key: "nav.plan2d", icon: Ruler, auth: true, min: "pro" },
   { to: "/btp-solver", label: "Resolver um problema", key: "nav.solver", icon: Wrench, auth: true },
   { to: "/mes-demandes", label: "Os meus pedidos", key: "nav.myleads", icon: Inbox, auth: true },
-  { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
+  { to: "/photo", label: "Análise de fotografia", key: "nav.photo", icon: Camera },
   { to: "/scanner-devis", label: "Scanner de orçamentos", key: "nav.scanner", icon: FileSearch },
   { to: "/diy", label: "Faço eu mesmo", key: "nav.diy", icon: Wrench },
-  { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
+  { to: "/comparatif", label: "Comparativo", key: "nav.compare", icon: Tag },
   { to: "/marketplace", label: "Encontrar um profissional", key: "nav.marketplace", icon: Wrench },
   { to: "/docs", label: "API e Programadores", key: "nav.docs", icon: FileSearch, min: "business" },
 ];
 
 const ACCOUNT_LINKS = [
-  { to: "/tarifs", label: "Tarifs & abonnement", key: "nav.pricing", icon: Sparkles },
+  { to: "/tarifs", label: "Preços & subscrição", key: "nav.pricing", icon: Sparkles },
   { to: "/aide", label: "Ajuda e assistência", key: "nav.help", icon: LifeBuoy },
-  { to: "/investisseurs", label: "Investisseurs", key: "nav.investors", icon: Handshake },
-  { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
-  { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
+  { to: "/investisseurs", label: "Investidores", key: "nav.investors", icon: Handshake },
+  { to: "/mes-avis", label: "Opiniões de clientes", key: "nav.reviews", icon: MessageSquare },
+  { to: "/inviter", label: "Recomendar", key: "nav.referral", icon: Sparkles },
   { to: "/preferences", label: "Memória e preferências", key: "nav.preferences", icon: Brain, auth: true },
   { to: "/compte", label: "A minha conta", key: "nav.account", icon: KeyRound },
 ];
@@ -127,7 +127,7 @@ export const Nav = () => {
   const mainItems = annotate(NAV_MAIN);
   const proItems = annotate(NAV_PRO);
   const discoverItems = annotate(NAV_DISCOVER);
-  const lockHint = (l) => `Fonction ${LEVEL_LABELS[l.min] || ""}— clique para desbloquear`;
+  const lockHint = (l) => `Função ${LEVEL_LABELS[l.min] || ""} — clique para desbloquear`;
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
@@ -154,7 +154,7 @@ export const Nav = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button data-testid="nav-pro-btn" className={pill(groupActive(NAV_PRO)) + " shrink-0"}>
-                  <Building2 className="h-4 w-4" /> {t("nav.pro_space", "Espace Pro")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  <Building2 className="h-4 w-4" /> {t("nav.pro_space", "Espaço Pro")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-pro-menu">
@@ -289,7 +289,7 @@ export const Footer = () => (
       <p className="font-display font-bold tracking-tight">
         Constru<span className="text-primary">Pilot</span>
         <span className="ml-3 text-sm font-sans font-normal text-muted-foreground">
-          Estimez. Comparez. Construisez.
+          Estime. Compare. Construa.
         </span>
       </p>
       <div className="flex flex-col md:items-end gap-1">
@@ -320,7 +320,7 @@ export const Footer = () => (
             className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
             data-testid="footer-investors-link"
           >
-            Investisseurs
+            Investidores
           </Link>
           <span className="text-[11px] text-muted-foreground">
             Estimativas indicativas — não constituem um orçamento contratual.

@@ -44,7 +44,7 @@ export default function BridgePanel() {
     setRunning(true);
     try {
       const { data } = await api.post("/admin/bridge/run-batch");
-      toast.success(`${data.emails_sent ?? 0}e-mail(s) enviado(s) ·${data.leads ?? 0} lead(s)`);
+      toast.success(`${data.emails_sent ?? 0} e-mail(s) enviado(s) · ${data.leads ?? 0} lead(s)`);
       load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Falha do lote");
@@ -63,8 +63,8 @@ export default function BridgePanel() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Stat icon={Building2} label="Artisans (base)" value={data.artisans_active} testid="bridge-stat-artisans" />
-        <Stat icon={Mail} label="Invitations (7 j)" value={data.outreach_last_7d} testid="bridge-stat-7d" />
+        <Stat icon={Building2} label="Profissionais (base)" value={data.artisans_active} testid="bridge-stat-artisans" />
+        <Stat icon={Mail} label="Convites (7 d)" value={data.outreach_last_7d} testid="bridge-stat-7d" />
         <Stat icon={Mail} label="Convites (total)" value={data.outreach_total} testid="bridge-stat-total" />
         <Stat icon={Users} label="Leads tratados" value={data.leads_processed} testid="bridge-stat-leads" />
       </div>
@@ -74,7 +74,7 @@ export default function BridgePanel() {
           <div className="flex items-center gap-2">
             <Switch checked={form.enabled} onCheckedChange={(v) => save({ enabled: v })}
                     data-testid="bridge-enabled-switch" />
-            <Label className="text-sm flex items-center gap-1"><Power className="h-4 w-4" /> Agent actif</Label>
+            <Label className="text-sm flex items-center gap-1"><Power className="h-4 w-4" /> Agente ativo</Label>
           </div>
           <Button variant="default" size="sm" className="rounded-sm gap-2" onClick={runBatch}
                   disabled={running} data-testid="bridge-run-batch">
@@ -91,7 +91,7 @@ export default function BridgePanel() {
                    data-testid="bridge-min-budget" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Max. artisans / lead</Label>
+            <Label className="text-xs">Máx. profissionais / lead</Label>
             <Input type="number" min={1} max={20} value={form.max_per_lead}
                    onChange={(e) => setForm({ ...form, max_per_lead: Number(e.target.value) })}
                    onBlur={() => save({ max_per_lead: form.max_per_lead })} className="rounded-sm h-9 text-sm"
@@ -105,7 +105,7 @@ export default function BridgePanel() {
                    data-testid="bridge-cooldown" />
           </div>
         </div>
-        {saving && <p className="text-xs text-muted-foreground">Enregistrement…</p>}
+        {saving && <p className="text-xs text-muted-foreground">A guardar…</p>}
 
         <div className="grid sm:grid-cols-3 gap-4 pt-2 border-t border-border">
           <div className="space-y-1.5">
@@ -138,7 +138,7 @@ export default function BridgePanel() {
       <div className="flex items-center justify-between">
         <h4 className="font-semibold">Profissionais por distrito</h4>
         <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={load}
-                data-testid="bridge-refresh"><RefreshCw className="h-4 w-4" /> Actualiser</Button>
+                data-testid="bridge-refresh"><RefreshCw className="h-4 w-4" /> Atualizar</Button>
       </div>
       {data.artisans_by_department?.length ? (
         <div className="flex flex-wrap gap-2" data-testid="bridge-by-dept">

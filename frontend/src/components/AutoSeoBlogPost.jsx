@@ -79,7 +79,7 @@ export default function AutoSeoBlogPost({ slug }) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://construpilot.fr/" },
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.fr/" },
       { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.fr/blog" },
       { "@type": "ListItem", "position": 3, "name": a.title, "item": `https://construpilot.fr/blog/${a.slug}` },
     ],
@@ -98,9 +98,9 @@ export default function AutoSeoBlogPost({ slug }) {
       />
 
       <article className="mx-auto max-w-3xl px-5 lg:px-8 py-12 lg:py-16">
-        <nav aria-label="Fil d'Ariane" className="mb-6" data-testid="breadcrumb">
+        <nav aria-label="Caminho de navegação" className="mb-6" data-testid="breadcrumb">
           <ol className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <li><Link to="/" className="hover:text-primary" data-testid="breadcrumb-home">Accueil</Link></li>
+            <li><Link to="/" className="hover:text-primary" data-testid="breadcrumb-home">Início</Link></li>
             <li aria-hidden="true" className="opacity-50">/</li>
             <li><Link to="/blog" className="hover:text-primary" data-testid="breadcrumb-blog">Blog</Link></li>
             <li aria-hidden="true" className="opacity-50">/</li>
@@ -147,13 +147,13 @@ export default function AutoSeoBlogPost({ slug }) {
           </div>
           <Link to="/smart-project">
             <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white" data-testid="blog-cta-smart">
-              Essayer maintenant <ArrowRight className="h-4 w-4" />
+              Experimentar agora <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
 
-        <nav className="mt-8 flex flex-wrap gap-2 text-xs" data-testid="blog-internal-links" aria-label="Outils ConstruPilot">
-          {[["/estimation", "Estimador de obras"], ["/calculateurs", "Calculateurs BTP"], ["/prix", "Preços de materiais"], ["/metre", "Medições IA para os profissionais"]].map(([to, l]) => (
+        <nav className="mt-8 flex flex-wrap gap-2 text-xs" data-testid="blog-internal-links" aria-label="Ferramentas ConstruPilot">
+          {[["/estimation", "Estimador de obras"], ["/calculateurs", "Calculadoras de construção"], ["/prix", "Preços de materiais"], ["/metre", "Medições IA para os profissionais"]].map(([to, l]) => (
             <Link key={to} to={to} className="px-3 py-1.5 rounded-full border border-border hover:border-primary hover:text-primary transition-colors">{l}</Link>
           ))}
         </nav>

@@ -43,7 +43,7 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
         level_index: levelIndex, supplier_email: email.trim(),
         supplier_name: supplier, notes,
       });
-      toast.success(`Nota de encomenda${data.ref}enviado para${data.sent_to} — ${data.total_ht} € HT`);
+      toast.success(`Nota de encomenda ${data.ref} enviado para ${data.sent_to} — ${data.total_ht} € HT`);
       onClose();
     } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
@@ -61,7 +61,7 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="pc-order-supplier">Nome do fornecedor (opcional)</Label>
-            <Input id="pc-order-supplier" placeholder="Ex : Point.P Marseille"
+            <Input id="pc-order-supplier" placeholder="Ex: Point.P Marselha"
                    value={supplier} onChange={(e) => setSupplier(e.target.value)}
                    data-testid="pc-order-supplier-input" className="rounded-sm" />
           </div>

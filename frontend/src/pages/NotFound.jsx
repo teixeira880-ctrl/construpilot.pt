@@ -30,7 +30,7 @@ export default function NotFound() {
   return (
     <>
       <SEO
-        title="Page introuvable (404)"
+        title="Página não encontrada (404)"
         description="Esta página não existe ou foi movida."
         noindex
       />

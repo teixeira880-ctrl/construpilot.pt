@@ -30,7 +30,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
     try {
       const { data } = await api.post("/emails/templates", { name, body });
       setTemplates((prev) => [data.template, ...prev]);
-      toast.success(`Modelo guardado:${data.template.name}`);
+      toast.success(`Modelo guardado: ${data.template.name}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar"); }
   };
 
@@ -48,7 +48,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
       const { data } = await api.post(`/takeoffs/${planId}/pc-study/send`, {
         to_email: email.trim(), message, start_date: startDate || null,
       });
-      toast.success(`Estudo do projeto de licenciamento enviado para${data.sent_to}`);
+      toast.success(`Estudo do projeto de licenciamento enviado para ${data.sent_to}`);
       onSent?.();
       onClose();
     } catch (e) {
@@ -113,7 +113,7 @@ export default function PcSendDialog({ open, onClose, planId, onSent, startDate 
           <Button onClick={send} disabled={busy} className="rounded-sm gap-2"
                   data-testid="pc-send-confirm">
             <Mail className="h-3.5 w-3.5" />
-            {busy ? "Envoi…" : "Enviar o estudo"}
+            {busy ? "A enviar…" : "Enviar o estudo"}
           </Button>
         </DialogFooter>
       </DialogContent>

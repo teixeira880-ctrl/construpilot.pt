@@ -46,7 +46,7 @@ export default function MyReviews() {
     }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
   if (!data) return <div className="surface p-10 text-center animate-pulse">A carregar…</div>;
 
   const submitted = (data.reviews || []).filter((r) => r.submitted);
@@ -54,13 +54,13 @@ export default function MyReviews() {
 
   return (
     <div className="grid gap-8">
-      <SectionTitle over="Avis Clients" title="O que dizem os seus clientes">
+      <SectionTitle over="Avaliações Clientes" title="O que dizem os seus clientes">
         As avaliações verificadas — recolhidas automaticamente no final de cada obra — são exibidas nos seus futuros orçamentos PDF para tranquilizar os seus potenciais clientes.
       </SectionTitle>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="surface p-5" data-testid="reviews-kpi-average">
-          <p className="overline">Note moyenne</p>
+          <p className="overline">Classificação média</p>
           <div className="flex items-center gap-2 mt-1">
             <p className="num font-display text-3xl font-extrabold text-primary">
               {data.average || 0}
@@ -74,7 +74,7 @@ export default function MyReviews() {
           <p className="num font-display text-3xl font-extrabold mt-1">{data.count || 0}</p>
         </div>
         <div className="surface p-5" data-testid="reviews-kpi-pending">
-          <p className="overline">En attente</p>
+          <p className="overline">Em espera</p>
           <p className="num font-display text-3xl font-extrabold mt-1">{data.pending || 0}</p>
           <p className="text-[10px] text-muted-foreground">pedidos enviados sem resposta</p>
         </div>
@@ -115,7 +115,7 @@ export default function MyReviews() {
                         onClick={() => togglePublish(r)}
                         data-testid={`review-toggle-${r.review_id}`}>
                   {r.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  {r.published ? "Masquer" : "Afficher"}
+                  {r.published ? "Ocultar" : "Mostrar"}
                 </Button>
               </div>
               {r.comment && (

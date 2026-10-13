@@ -79,10 +79,10 @@ export const Timeline = ({ projectId }) => {
 
   const filters = [
     { key: "all", label: "Todos", count: events.length },
-    { key: "photo", label: "Photos", count: counts.photo || 0 },
+    { key: "photo", label: "Fotografias", count: counts.photo || 0 },
     { key: "expense", label: "Despesas", count: counts.expense || 0 },
-    { key: "progress", label: "Avancement", count: counts.progress || 0 },
-    { key: "lead", label: "Demandes", count: counts.lead || 0 },
+    { key: "progress", label: "Avanço", count: counts.progress || 0 },
+    { key: "lead", label: "Pedidos", count: counts.lead || 0 },
   ];
 
   return (

@@ -29,8 +29,8 @@ export const AudienceSwitch = ({ active = "pro", tone = "dark" }) => {
 
   return (
     <div className={`inline-flex items-center gap-1 p-1 rounded-full ${shell}`} data-testid="nav-audience-switch-toggle">
-      <Opt to="/" id="nav-audience-pro" pref="pro" icon={HardHat} label="Professionnel" isActive={active === "pro"} />
-      <Opt to="/particuliers" id="nav-audience-particulier" pref="particulier" icon={User} label="Particulier" isActive={active === "particulier"} />
+      <Opt to="/" id="nav-audience-pro" pref="pro" icon={HardHat} label="Profissional" isActive={active === "pro"} />
+      <Opt to="/particuliers" id="nav-audience-particulier" pref="particulier" icon={User} label="Particular" isActive={active === "particulier"} />
     </div>
   );
 };

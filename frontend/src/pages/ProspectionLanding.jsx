@@ -40,7 +40,7 @@ export default function ProspectionLanding() {
     return (
       <div className="min-h-screen grid place-items-center bg-stone-50 px-6 text-center" data-testid="prospection-notfound">
         <div>
-          <h1 className="text-2xl font-bold text-stone-800">Lien introuvable</h1>
+          <h1 className="text-2xl font-bold text-stone-800">Ligação não encontrada</h1>
           <p className="text-stone-500 mt-2">Este link de prospeção já não é válido ou expirou.</p>
         </div>
       </div>
@@ -76,7 +76,7 @@ export default function ProspectionLanding() {
             <h1 className="text-2xl font-extrabold mt-4">Obrigado, o seu pedido foi recebido!</h1>
             <p className="text-stone-600 mt-2 max-w-md mx-auto">
               {c.name} contactá-lo-á muito em breve para o seu projeto
-              {o.commune ? ` à ${o.commune}` : ""}. À très vite.
+              {o.commune ? ` à ${o.commune}` : ""}. Até muito breve.
             </p>
           </div>
         ) : (
@@ -118,14 +118,14 @@ export default function ProspectionLanding() {
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pedir a minha estimativa gratuita"}
               </Button>
               <p className="text-[11px] text-stone-400 text-center">
-                As suas coordenadas são transmitidas apenas a {c.name}. Conformément au RGPD, vous pouvez demander leur suppression à tout moment.
+                As suas coordenadas são transmitidas apenas a {c.name}. Em conformidade com o RGPD, pode solicitar a sua eliminação a qualquer momento.
               </p>
             </form>
           </>
         )}
 
         <div className="text-center text-xs text-stone-400 mt-10">
-          Desenvolvido por <b>ConstruPilot</b> · Estimez. Comparez. Construisez.
+          Desenvolvido por <b>ConstruPilot</b> · Estime. Compare. Construa.
         </div>
       </div>
     </div>

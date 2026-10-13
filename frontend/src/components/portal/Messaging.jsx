@@ -50,21 +50,21 @@ export function MessageComposer({ send, dictate, placeholder = "A sua mensagem�
   };
   return (
     <form onSubmit={submit} className="border-t border-border px-4 py-3 grid gap-2" data-testid={testId}>
-      {files.length > 0 && <div className="flex flex-wrap gap-1">{files.map((f, i) => <span key={i} className="inline-flex items-center gap-1 text-xs rounded border px-2 py-0.5 bg-muted" data-testid={`${testId}-file-${i}`}>{f.name}<button type="button" onClick={() => setFiles((l) => l.filter((_, j) => j !== i))} aria-label="Retirer"><X className="h-3 w-3" /></button></span>)}</div>}
+      {files.length > 0 && <div className="flex flex-wrap gap-1">{files.map((f, i) => <span key={i} className="inline-flex items-center gap-1 text-xs rounded border px-2 py-0.5 bg-muted" data-testid={`${testId}-file-${i}`}>{f.name}<button type="button" onClick={() => setFiles((l) => l.filter((_, j) => j !== i))} aria-label="Remover"><X className="h-3 w-3" /></button></span>)}</div>}
       <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={2} placeholder={placeholder} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary" data-testid={`${testId}-input`} />
       <div className="flex items-center gap-2">
         <label className="inline-flex items-center gap-1 text-xs rounded-sm border px-2 py-1 cursor-pointer hover:bg-muted" data-testid={`${testId}-attach`}>
-          <Paperclip className="h-3.5 w-3.5" /> Joindre {files.length > 0 && `(${files.length}/5)`}
+          <Paperclip className="h-3.5 w-3.5" /> Anexar {files.length > 0 && `(${files.length}/5)`}
           <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple className="hidden" onChange={(e) => { setFiles((l) => [...l, ...Array.from(e.target.files)].slice(0, 5)); e.target.value = ""; }} data-testid={`${testId}-file-input`} />
         </label>
         <DictateButton testId={`${testId}-dictate`} request={dictate} onText={(t) => setBody((b) => [b, t].filter(Boolean).join(" "))} />
-        <Button type="submit" size="sm" disabled={busy || (!body.trim() && files.length === 0)} className="ms-auto gap-1 h-8" data-testid={`${testId}-send`}><Send className="h-3.5 w-3.5" /> {busy ? "Envoi…" : "Enviar"}</Button>
+        <Button type="submit" size="sm" disabled={busy || (!body.trim() && files.length === 0)} className="ms-auto gap-1 h-8" data-testid={`${testId}-send`}><Send className="h-3.5 w-3.5" /> {busy ? "A enviar…" : "Enviar"}</Button>
       </div>
     </form>
   );
 }
 
-const CHANNELS = [["client", "Cliente"], ["subcontractors", "Sous-traitants"]];
+const CHANNELS = [["client", "Cliente"], ["subcontractors", "Subempreiteiros"]];
 
 /** Panneau pro : messagerie par canal sur la fiche chantier, rafraîchie toutes les 10 s. */
 export function ChantierMessagesPanel({ chantierId, api, initialChannel = "client", unread = {} }) {
@@ -76,7 +76,7 @@ export function ChantierMessagesPanel({ chantierId, api, initialChannel = "clien
   return (
     <section className="surface" data-testid="chantier-messages">
       <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border">
-        <MessageSquare className="h-4 w-4 text-primary" /><p className="font-display font-bold text-sm">Messages</p>
+        <MessageSquare className="h-4 w-4 text-primary" /><p className="font-display font-bold text-sm">Mensagens</p>
         <div className="ms-auto flex gap-1">
           {CHANNELS.map(([c, l]) => <button key={c} type="button" onClick={() => setChannel(c)} aria-pressed={channel === c} data-testid={`messages-channel-${c}`}
             className={`text-xs rounded-sm border px-2 py-1 inline-flex items-center gap-1 ${channel === c ? "bg-primary/10 border-primary/40 text-primary font-semibold" : "hover:bg-muted"}`}>{l}{unread[c] > 0 && channel !== c && <Badge className="rounded-sm h-4 px-1 text-[10px]" data-testid={`messages-unread-${c}`}>{unread[c]}</Badge>}</button>)}

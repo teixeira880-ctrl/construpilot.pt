@@ -63,7 +63,7 @@ export default function SmartProject() {
     try {
       const a = result.analysis;
       const { data } = await api.post("/projects", {
-        name: name || "Mon projet", description,
+        name: name || "O meu projeto", description,
         project_type: a.project_type, surface: a.surface, finish_level: a.finish_level,
         building_type: a.building_type, condition: a.condition, lots: a.lots,
         estimation: result.estimation,
@@ -97,7 +97,7 @@ export default function SmartProject() {
               className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
             >
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {loading ? "Analyse en cours…" : "Analisar o meu projeto"}
+              {loading ? "Análise em curso…" : "Analisar o meu projeto"}
             </Button>
             <VoiceNoteButton label="Ditar a minha obra"
               onText={(txt) => setDescription((d) => (d?.trim() ? `${d.trim()}\n${txt}` : txt))} />
@@ -209,7 +209,7 @@ export default function SmartProject() {
                       JSON.stringify({
                         items: data.items || [],
                         source: "smart_project",
-                        project_name: name || result?.analysis?.summary?.slice(0, 40) || "Mon projet",
+                        project_name: name || result?.analysis?.summary?.slice(0, 40) || "O meu projeto",
                         total_avg: result?.estimation?.total_avg || 0,
                         ts: Date.now(),
                       })
@@ -227,7 +227,7 @@ export default function SmartProject() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground -mt-8">
-            Estimation moyenne : <span className="num">{eur(result.estimation.total_avg)}</span> — indicativa, calculada pelo motor determinista ConstruPilot (preços de referência regionais).
+            Estimativa média: <span className="num">{eur(result.estimation.total_avg)}</span> — indicativa, calculada pelo motor determinista ConstruPilot (preços de referência regionais).
           </p>
         </>
       )}

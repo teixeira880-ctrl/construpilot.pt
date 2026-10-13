@@ -54,20 +54,20 @@ export default function PcGantt({ planning, start, onStartChange }) {
                 <p className="text-[11px] font-medium truncate" title={r.name}>{r.name}</p>
                 <p className="text-[10px] text-muted-foreground num">
                   {fmt(r.workStart)} → {fmt(r.workEnd)}
-                  {r.cure_days > 0 && `· secagem →${fmt(r.cureEnd)}`}
+                  {r.cure_days > 0 && ` · secagem → ${fmt(r.cureEnd)}`}
                 </p>
               </div>
               <div className="relative h-5 rounded-sm bg-background border border-border/60 overflow-hidden">
                 <div className="absolute top-0 h-full rounded-sm"
                      style={{ left: `${left}%`, width: `${workW}%`, backgroundColor: COLORS[i % COLORS.length] }}
-                     title={`${r.work_days}dias úteis`} />
+                     title={`${r.work_days} dias úteis`} />
                 {cureW > 0 && (
                   <div className="absolute top-0 h-full opacity-50"
                        style={{
                          left: `${left + workW}%`, width: `${cureW}%`,
                          backgroundImage: `repeating-linear-gradient(45deg, ${COLORS[i % COLORS.length]} 0 4px, transparent 4px 8px)`,
                        }}
-                       title={`Secagem do betão${r.cure_days} j`} />
+                       title={`Secagem do betão ${r.cure_days} j`} />
                 )}
               </div>
             </div>

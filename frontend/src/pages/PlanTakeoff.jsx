@@ -49,7 +49,7 @@ import { TOOLS, TOOL_LABELS, COUNTER_COLORS } from "@/components/planTakeoff/pla
 
 // ============ MAIN PAGE ============
 
-const LEVEL_SUGGESTIONS = ["Fondations", "RDC", "R+1", "R+2", "R+3", "Combles", "Sous-sol"];
+const LEVEL_SUGGESTIONS = ["Fundações", "R/C", "R+1", "R+2", "R+3", "Sótão", "Cave"];
 
 
 // Annotations isolées par plan/page. Les écritures d'une page sont sérialisées.
@@ -90,7 +90,7 @@ function usePlanAnnotations(planId, pageIndex) {
       session.error = null;
     }).catch((error) => {
       session.error = errorMessage(error, "Falha ao guardar");
-      toast.error(`Anotações da página${session.pageIndex + 1}não guardadas:${session.error}`);
+      toast.error(`Anotações da página ${session.pageIndex + 1} não guardadas: ${session.error}`);
       throw error;
     }).finally(() => {
       if (session.pending?.promise === promise) session.pending = null;
@@ -345,7 +345,7 @@ export default function PlanTakeoff() {
     if (!pu || pu <= 0) return toast.error("Preço unitário inválido");
     try {
       await api.post("/takeoffs/corps-etat/custom", { label, unit: cpForm.unit, pu });
-      toast.success(`Ouvrage « ${label}» adicionado ao catálogo`);
+      toast.success(`Artigo « ${label} » adicionado ao catálogo`);
       setCpForm({ label: "", unit: "m2", pu: "" });
       await loadCustomPostes();
       await refreshPosteCatalog();
@@ -438,7 +438,7 @@ export default function PlanTakeoff() {
         description: l.detail, qty: l.qty, unit: l.unit === "m²" ? "m2" : l.unit,
         unit_price_ht: sellingPu(l.pu, margin), category: cat });
     });
-    toast.success(`${chiffrageResult.lines.length} ligne(s) « ${cat}» adicionadas ao orçamento (${chiffrageResult.totals.ht_with_margin} € HT)`, { duration: 6000 });
+    toast.success(`${chiffrageResult.lines.length} linha(s) « ${cat} » adicionadas ao orçamento (${chiffrageResult.totals.ht_with_margin} € HT)`, { duration: 6000 });
     setChiffrageDialog(null); setChiffrageResult(null);
   };
 
@@ -463,7 +463,7 @@ export default function PlanTakeoff() {
       setAutoPosteDialog(null);
       if (!data.count) return toast.error("Orçamentação vazia: verifique os artigos escolhidos.");
       setPageChiffrage(data);
-      toast.success(`${data.count}cota(s) orçamentada(s)`);
+      toast.success(`${data.count} cota(s) orçamentada(s)`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Orçamentação impossível"); }
   };
 
@@ -476,7 +476,7 @@ export default function PlanTakeoff() {
         unit: l.unit === "m²" ? "m2" : l.unit, unit_price_ht: sellingPu(l.pu, it.totals?.margin_pct), category: it.label });
       n++;
     }));
-    toast.success(`${n}linha(s) adicionada(s) ao orçamento (${pageChiffrage.totals.ht_with_margin}€ s/ IVA) — clique em «Criar um orçamento»`, { duration: 7000 });
+    toast.success(`${n} linha(s) adicionada(s) ao orçamento (${pageChiffrage.totals.ht_with_margin} € s/ IVA) — clique em «Criar um orçamento»`, { duration: 7000 });
     setPageChiffrage(null);
   };
 
@@ -552,7 +552,7 @@ export default function PlanTakeoff() {
         unit: l.unit === "m²" ? "m2" : l.unit, unit_price_ht: sellingPu(l.pu, it.totals?.margin_pct), category: it.slot });
       n++;
     }));
-    toast.success(`${n}linha(s) adicionada(s) ao orçamento (${roomPresetResult.totals.ht_with_margin}€ s/ IVA) — clique em «Criar um orçamento»`, { duration: 7000 });
+    toast.success(`${n} linha(s) adicionada(s) ao orçamento (${roomPresetResult.totals.ht_with_margin} € s/ IVA) — clique em «Criar um orçamento»`, { duration: 7000 });
     setRoomPresetOpen(false); setRoomPresetResult(null);
   };
 
@@ -575,7 +575,7 @@ export default function PlanTakeoff() {
         name, poste: chiffragePoste,
         params: currentChiffrageOpts(), margin_pct: Number(chiffrageMargin) || 0,
         shared: saveOuvrageShared });
-      toast.success(`Ouvrage « ${name}» guardado${saveOuvrageShared ? "e partilhado com a equipa" : ""}— reutilizável em todas as suas obras`);
+      toast.success(`Artigo « ${name} » guardado${saveOuvrageShared ? " e partilhado com a equipa" : ""} — reutilizável em todas as suas obras`);
       setSaveOuvrageName("");
       loadOuvrages();
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar"); }
@@ -585,7 +585,7 @@ export default function PlanTakeoff() {
     setChiffragePoste(ov.poste);
     setChiffrageMargin(ov.margin_pct ?? 10);
     setChiffrageOpts((o) => ({ ...o, ...(ov.params || {}) }));
-    toast.success(`Ouvrage « ${ov.name}» aplicado — clique em «Calcular»`);
+    toast.success(`Artigo « ${ov.name} » aplicado — clique em «Calcular»`);
   };
 
   const deleteOuvrage = async (ouvrage_id) => {
@@ -781,7 +781,7 @@ export default function PlanTakeoff() {
   // 2+ plans importés → bascule automatiquement en projet multi-niveaux
   useEffect(() => {
     if (pendingFiles.length >= 2 && !groupImport.enabled) {
-      setGroupImport((g) => ({ ...g, enabled: true, mode: "new", name: g.name || "Projet multi-niveaux" }));
+      setGroupImport((g) => ({ ...g, enabled: true, mode: "new", name: g.name || "Projeto multinível" }));
     }
   }, [pendingFiles.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -852,7 +852,7 @@ export default function PlanTakeoff() {
       if (hl) {
         const ids = hl.split(",").map((s) => s.trim()).filter(Boolean);
         setHighlightMeasures(new Set(ids));
-        if (ids.length) { setObjectPanelOpen(true); toast.message(`${ids.length}artigo(s) com diferença realçado(s) na planta`, { duration: 6000 }); }
+        if (ids.length) { setObjectPanelOpen(true); toast.message(`${ids.length} artigo(s) com diferença realçado(s) na planta`, { duration: 6000 }); }
       }
     }).catch(() => toast.error("Impossível abrir este plano"));
   }, []);
@@ -862,7 +862,7 @@ export default function PlanTakeoff() {
     try {
       await api.patch(`/takeoffs/${plan.plan_id}/defaults`, next);
       setPlanDefaults(next);
-      toast.success(`Definições: parede${next.ceiling_h_m}m · pavimento${(next.floor_thickness_m * 100).toFixed(0)} cm`);
+      toast.success(`Definições: parede ${next.ceiling_h_m} m · pavimento ${(next.floor_thickness_m * 100).toFixed(0)} cm`);
     } catch { toast.error("Não foi possível guardar"); }
   };
 
@@ -877,7 +877,7 @@ export default function PlanTakeoff() {
   const uploadFile = async (file, cadUnit, displayName) => {
     setCadFile(null);
     if (!file) return null;
-    if (file.size > 20 * 1024 * 1024) { toast.error(`« ${displayName || file.name} » trop volumineux (>20 Mo)`); return null; }
+    if (file.size > 20 * 1024 * 1024) { toast.error(`« ${displayName || file.name} » demasiado grande (>20 MB)`); return null; }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -885,12 +885,12 @@ export default function PlanTakeoff() {
       if (cadUnit) fd.append("cad_unit", cadUnit);
       if (deskewEnabled) fd.append("deskew", "true");
       if (displayName && displayName.trim()) fd.append("display_name", displayName.trim());
-      const data = await uploadPlan(fd, { onStatus: (_j, sec) => sec >= 20 && sec % 10 === 0 && toast.message(`A analisar a planta…${sec}s (DWG e PDF multipágina: vários minutos possíveis)`, { id: "plan-upload-progress" }) });
+      const data = await uploadPlan(fd, { onStatus: (_j, sec) => sec >= 20 && sec % 10 === 0 && toast.message(`A analisar a planta… ${sec} s (DWG e PDF multipágina: vários minutos possíveis)`, { id: "plan-upload-progress" }) });
       if (chantierId && data?.plan_id) api.post(`/chantiers/${chantierId}/attach`, { kind: "plan", ref_id: data.plan_id }).then(() => toast.success("Planta associada ao processo de obra")).catch(() => toast.error("Planta importada, mas a associação ao processo foi impossível"));
       setPlan(data);
       setPageIndex(0);
       const kind = data.kind === "dxf" ? "DXF" : data.kind === "pdf" ? "PDF" : "image";
-      toast.success(`${kind}carregado (${data.page_count} page${data.page_count > 1 ? "s" : ""})`);
+      toast.success(`${kind} carregado (${data.page_count} page${data.page_count > 1 ? "s" : ""})`);
       return data;
     } catch (e) {
       if (!cadUnit && typeof e?.response?.data?.detail === "string" && e.response.data.detail.includes("CAD_UNIT_REQUIRED")) {
@@ -912,10 +912,10 @@ export default function PlanTakeoff() {
   // Détection auto du niveau depuis le nom du fichier (RDC, R+1, sous-sol…)
   const detectLevel = (fname, idx) => {
     const n = (fname || "").toLowerCase();
-    if (/combl|toitur/.test(n)) return "Combles";
-    if (/fondation|semelle/.test(n)) return "Fondations";
-    if (/sous[\s_-]?sol|\bss\b|\bs\.?sol\b/.test(n)) return "Sous-sol";
-    if (/\b(rdc|rez)\b|rez[\s_-]?de[\s_-]?chauss|\br0\b/.test(n)) return "RDC";
+    if (/combl|toitur/.test(n)) return "Sótão";
+    if (/fondation|semelle/.test(n)) return "Fundações";
+    if (/sous[\s_-]?sol|\bss\b|\bs\.?sol\b/.test(n)) return "Cave";
+    if (/\b(rdc|rez)\b|rez[\s_-]?de[\s_-]?chauss|\br0\b/.test(n)) return "R/C";
     const m = n.match(/\br\s*\+?\s*([1-6])\b|(?:etage|étage|niveau|niv)\s*([1-6])|\b([1-6])(?:er|e|eme|ème)\b/);
     if (m) { const d = m[1] || m[2] || m[3]; return `R+${d}`; }
     return LEVEL_SUGGESTIONS[idx] || "";
@@ -938,8 +938,8 @@ export default function PlanTakeoff() {
             const base = e.name.split("/").pop();
             expanded.push(new File([blob], base, { type: blob.type || "application/octet-stream" }));
           }
-          if (!entries.length) toast.error(`Nenhuma planta suportada em${f.name}`);
-        } catch { toast.error(`ZIP illisible : ${f.name}`); }
+          if (!entries.length) toast.error(`Nenhuma planta suportada em ${f.name}`);
+        } catch { toast.error(`ZIP ilegível: ${f.name}`); }
       } else if (SUPPORTED_RE.test(f.name)) {
         expanded.push(f);
       }
@@ -983,16 +983,16 @@ export default function PlanTakeoff() {
         if (groupImport.mode === "existing" && groupImport.groupId) {
           const existing = planGroups.find((g) => g.group_id === groupImport.groupId);
           const prevLevels = (existing?.levels || []).map((l) => ({ plan_id: l.plan_id, level_label: l.level_label || "" }));
-          const newLevels = uploaded.map((u, i) => ({ plan_id: u.plan_id, level_label: u.level_label || LEVEL_SUGGESTIONS[prevLevels.length + i] || `Niveau ${prevLevels.length + i + 1}` }));
+          const newLevels = uploaded.map((u, i) => ({ plan_id: u.plan_id, level_label: u.level_label || LEVEL_SUGGESTIONS[prevLevels.length + i] || `Piso ${prevLevels.length + i + 1}` }));
           await api.put(`/takeoffs/multilevel/groups/${groupImport.groupId}`, {
-            name: existing?.name || "Projet", chantier_id: existing?.chantier_id || null,
+            name: existing?.name || "Projeto", chantier_id: existing?.chantier_id || null,
             levels: [...prevLevels, ...newLevels],
           });
-          createdGroup = { group_id: groupImport.groupId, name: existing?.name || "Projet" };
+          createdGroup = { group_id: groupImport.groupId, name: existing?.name || "Projeto" };
         } else if (groupImport.name.trim()) {
           const { data } = await api.post("/takeoffs/multilevel/groups", {
             name: groupImport.name.trim(),
-            levels: uploaded.map((u, i) => ({ plan_id: u.plan_id, level_label: u.level_label || LEVEL_SUGGESTIONS[i] || `Niveau ${i + 1}` })),
+            levels: uploaded.map((u, i) => ({ plan_id: u.plan_id, level_label: u.level_label || LEVEL_SUGGESTIONS[i] || `Piso ${i + 1}` })),
           });
           const gid = data?.group?.group_id;
           if (gid) createdGroup = { group_id: gid, name: groupImport.name.trim() };
@@ -1005,9 +1005,9 @@ export default function PlanTakeoff() {
     loadAllPlans();
     loadPlanGroups();
     if (createdGroup) {
-      toast.success(`Projet « ${createdGroup.name} » — ${uploaded.length} niveau${uploaded.length > 1 ? "x" : ""}adicionada${uploaded.length > 1 ? "s" : ""}`);
+      toast.success(`Projet « ${createdGroup.name} » — ${uploaded.length} niveau${uploaded.length > 1 ? "x" : ""} adicionada${uploaded.length > 1 ? "s" : ""}`);
       openGroupConsolidated(createdGroup);
-    } else if (ok > 1) toast.success(`${ok}plantas importadas`);
+    } else if (ok > 1) toast.success(`${ok} plantas importadas`);
     else if (ok === 0) toast.error("Nenhuma planta importada — os ficheiros continuam disponíveis para tentar novamente");
     } finally { importBatchRef.current = false; setImportingBatch(false); }
   };
@@ -1093,7 +1093,7 @@ export default function PlanTakeoff() {
         const nb = list.length;
         const newC = {
           id: `cnt_${Date.now()}`,
-          label: `Compteur ${nb + 1}`,
+          label: `Contador ${nb + 1}`,
           color: COUNTER_COLORS[nb % COUNTER_COLORS.length],
           unit: "u",
           markers: [],
@@ -1115,7 +1115,7 @@ export default function PlanTakeoff() {
       setAnnotations({
         ...annotations,
         notes: [...annotations.notes, {
-          id: `nt_${Date.now()}`, x: pt[0], y: pt[1], text: trimmed || "Note"
+          id: `nt_${Date.now()}`, x: pt[0], y: pt[1], text: trimmed || "Nota"
         }],
       });
       toast.success("Nota adicionada");
@@ -1138,7 +1138,7 @@ export default function PlanTakeoff() {
             degrees: deg,
           }],
         });
-        toast.success(`Angle : ${deg.toFixed(1)}° · pente ${(Math.tan(deg * Math.PI / 180) * 12).toFixed(1)}/12`);
+        toast.success(`Angle : ${deg.toFixed(1)}° · inclinação ${(Math.tan(deg * Math.PI / 180) * 12).toFixed(1)}/12`);
         setPoints([]);
       } else {
         setPoints(next);
@@ -1151,7 +1151,7 @@ export default function PlanTakeoff() {
 
   const applyCalibration = async () => {
     const dist = parseFloat(calibDist.replace(",", "."));
-    if (!finitePositive(dist)) return toast.error("Distance invalide");
+    if (!finitePositive(dist)) return toast.error("Distância inválida");
     if (!plan?.plan_id || points.length !== 2 || Math.hypot(points[1][0] - points[0][0], points[1][1] - points[0][1]) <= 0) {
       return toast.error("Selecione dois pontos distintos na planta");
     }
@@ -1160,7 +1160,7 @@ export default function PlanTakeoff() {
         page_index: pageIndex, p1: points[0], p2: points[1],
         real_distance_m: dist, method: "two_points",
       });
-      toast.success(`Calibration : ${dist}m em${num(Math.hypot(points[1][0] - points[0][0], points[1][1] - points[0][1]), 0)} px`);
+      toast.success(`Calibration : ${dist} m em ${num(Math.hypot(points[1][0] - points[0][0], points[1][1] - points[0][1]), 0)} px`);
       setCalibDialog(false);
       setCalibDist("");
       setPoints([]);
@@ -1173,7 +1173,7 @@ export default function PlanTakeoff() {
     if (!openingsDialog) return;
     const w = decimalNumber(pendingOpening.width_m);
     const h = decimalNumber(pendingOpening.height_m);
-    if (!finitePositive(w) || !finitePositive(h)) return toast.error("Dimensions invalides");
+    if (!finitePositive(w) || !finitePositive(h)) return toast.error("Dimensões inválidas");
     try {
       await api.post(
         `/takeoffs/${plan.plan_id}/rooms/${openingsDialog.room_id}/openings`,
@@ -1185,8 +1185,8 @@ export default function PlanTakeoff() {
         }
       );
       toast.success(
-        `${pendingOpening.kind === "porte" ? "Porta" : pendingOpening.kind === "baie" ? "Baie" : "Janela"} `
-        + `${w}×${h}m adicionada a${openingsDialog.room_name}`
+        `${pendingOpening.kind === "porte" ? "Porta" : pendingOpening.kind === "baie" ? "Vão" : "Janela"} `
+        + `${w}×${h} m adicionada a ${openingsDialog.room_name}`
       );
       setOpeningsDialog(null);
       setPoints([]);
@@ -1216,7 +1216,7 @@ export default function PlanTakeoff() {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "polyline", points: pts, color: pickAutoColor(),
       });
-      toast.success(`Comprimento:${data.length_m}m — memorizada`);
+      toast.success(`Comprimento: ${data.length_m} m — memorizada`);
       setPoints([]);
       setPanelFocus("measures"); setObjectPanelOpen(true);
       await refreshPlan();
@@ -1248,7 +1248,7 @@ export default function PlanTakeoff() {
       }],
     });
     setPoints([]);
-    toast.success(`Cobertura:${real_area_m2.toFixed(1)}m² reais (a${pitch}°)`);
+    toast.success(`Cobertura: ${real_area_m2.toFixed(1)} m² reais (a ${pitch}°)`);
   };
 
   // ============ VAGUE B — Handlers pour le Volet Objets ============
@@ -1305,7 +1305,7 @@ export default function PlanTakeoff() {
     try {
       await api.patch(`/takeoffs/${plan.plan_id}/measurements/${measureId}`, { label });
       await refreshPlan();
-      toast.success(label ? `Medição renomeada:${label}` : "Designação apagada");
+      toast.success(label ? `Medição renomeada: ${label}` : "Designação apagada");
     } catch { toast.error("Renomeação impossível"); }
   };
 
@@ -1337,7 +1337,7 @@ export default function PlanTakeoff() {
   const convertMeasureToRoom = async (measureId) => {
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measurements/${measureId}/to-room`);
-      toast.success(`Divisão criada:${data.room.name} (${data.room.surface_m2}m²) — paredes e volume calculados`, { duration: 6000 });
+      toast.success(`Divisão criada: ${data.room.name} (${data.room.surface_m2} m²) — paredes e volume calculados`, { duration: 6000 });
       await refreshPlan();
     } catch (e) { toast.error(e?.response?.data?.detail || "Conversão impossível"); }
   };
@@ -1346,7 +1346,7 @@ export default function PlanTakeoff() {
   const deductMeasure = async (measureId) => {
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measurements/${measureId}/deduct`);
-      toast.success(`− ${data.deduction.area_m2}m² deduzidos de «${data.room_name}» → área líquida${data.surface_m2} m²`, { duration: 7000 });
+      toast.success(`− ${data.deduction.area_m2} m² deduzidos de « ${data.room_name} » → área líquida ${data.surface_m2} m²`, { duration: 7000 });
       await refreshPlan();
     } catch (e) { toast.error(e?.response?.data?.detail || "Dedução impossível"); }
   };
@@ -1354,7 +1354,7 @@ export default function PlanTakeoff() {
   const removeDeduction = async (roomId, dedId) => {
     try {
       const { data } = await api.delete(`/takeoffs/${plan.plan_id}/rooms/${roomId}/deductions/${dedId}`);
-      toast.success(`Dedução removida — área:${data.surface_m2} m²`);
+      toast.success(`Dedução removida — área: ${data.surface_m2} m²`);
       await refreshPlan();
     } catch { toast.error("Não foi possível eliminar"); }
   };
@@ -1395,7 +1395,7 @@ export default function PlanTakeoff() {
       a.href = url; a.download = `etude-pc-${plan.plan_id}.${fmt}`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(`Estudo licença de construção${fmt.toUpperCase()}descarregada`);
+      toast.success(`Estudo licença de construção ${fmt.toUpperCase()} descarregada`);
     } catch (e) { toast.error(e.message || "Impossível exportar"); }
   };
   const comparePcSuppliers = (study) => {
@@ -1403,14 +1403,14 @@ export default function PlanTakeoff() {
     const slabArea = Math.round((study?.inputs?.ground_floor_area_m2 || 0) +
                                 (study?.inputs?.upper_floors_area_m2 || 0));
     const items = [
-      { name: "Brique isobrique 20 cm", search: "brique isobrique 20 cm", quantity: t.briques_u || 0, unit: "u" },
+      { name: "Tijolo isobrique 20 cm", search: "tijolo isobrique 20 cm", quantity: t.briques_u || 0, unit: "u" },
       { name: "Aço HA varão para betão", search: "varão HA10 barra 6m", quantity: Math.round(t.acier_kg || 0), unit: "kg" },
       { name: "Malha soldada ST25C", search: "rede soldada ST25C painel", quantity: slabArea, unit: "m²" },
       { name: "Betão pronto a usar C25/30", search: "betão pronto a usar C25/30", quantity: t.beton_m3 || 0, unit: "m³" },
     ].filter((it) => it.quantity > 0);
     if (!items.length) return toast.error("Nenhuma quantidade a comparar — lance primeiro o estudo");
     sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
-      ts: Date.now(), project_name: `Étude PC — ${plan?.filename || "plan"}`,
+      ts: Date.now(), project_name: `Estudo do projeto de licenciamento — ${plan?.filename || "plan"}`,
       total_avg: t.ht || 0, items,
     }));
     nav("/prix");
@@ -1419,7 +1419,7 @@ export default function PlanTakeoff() {
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/pc-study/recompute`);
       await refreshPlan();
-      toast.success(`Orçamento recalculado com as suas definições —${data.totals?.ttc ?? 0} € TTC`);
+      toast.success(`Orçamento recalculado com as suas definições — ${data.totals?.ttc ?? 0} € c/ IVA`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Recálculo impossível"); }
   };
 
@@ -1438,7 +1438,7 @@ export default function PlanTakeoff() {
     try {
       const { data } = await api.post("/emails/templates", { name, body });
       setMsgTemplates((prev) => [data.template, ...prev]);
-      toast.success(`Modelo guardado:${data.template.name}`);
+      toast.success(`Modelo guardado: ${data.template.name}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     }
@@ -1460,7 +1460,7 @@ export default function PlanTakeoff() {
         to_email: report.to_email,
         message: "",
       });
-      toast.success(`Relatório reenviado para${data.sent_to}`);
+      toast.success(`Relatório reenviado para ${data.sent_to}`);
       await refreshPlan();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Não foi possível reenviar");
@@ -1506,7 +1506,7 @@ export default function PlanTakeoff() {
     }
     if (cx != null && cy != null) {
       setFocusRequest({ px: cx, py: cy, zoom: 1.5, ts: Date.now() });
-      toast.success(`Zoom em${kind}`);
+      toast.success(`Zoom em ${kind}`);
     } else {
       toast.info("Posição não disponível para este objeto");
     }
@@ -1530,7 +1530,7 @@ export default function PlanTakeoff() {
         payload
       );
       setRoomEstimate(data);
-      toast.success(`Orçamento da divisão gerado:${data.total_budget?.toFixed(2)} €`);
+      toast.success(`Orçamento da divisão gerado: ${data.total_budget?.toFixed(2)} €`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Impossível gerar");
     } finally {
@@ -1564,7 +1564,7 @@ export default function PlanTakeoff() {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "distance", points: pts.slice(0, 2), color: pickAutoColor(),
       });
-      toast.success(`Distance : ${data.value_m}m — memorizada. Faça duplo clique para terminar cada nova cota.`);
+      toast.success(`Distance : ${data.value_m} m — memorizada. Faça duplo clique para terminar cada nova cota.`);
       setPoints([]);
       setPanelFocus("measures"); setObjectPanelOpen(true);
       await refreshPlan();
@@ -1575,7 +1575,7 @@ export default function PlanTakeoff() {
     if (pts.length < 3) return toast.error("Uma divisão necessita pelo menos 3 pontos");
     if (!currentCalib) return toast.error("Calibre primeiro a planta");
     setPoints(pts);
-    setPendingRoomName(`Divisão${String(rooms.length + 1).padStart(2, "0")}`);
+    setPendingRoomName(`Divisão ${String(rooms.length + 1).padStart(2, "0")}`);
     setRoomDialog(true);
   };
 
@@ -1587,7 +1587,7 @@ export default function PlanTakeoff() {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "polygon", points: pts, color: pickAutoColor(),
       });
-      toast.success(`Área:${data.area_m2}m² · perímetro${data.perimeter_m}m — memorizada`, { duration: 6000 });
+      toast.success(`Área: ${data.area_m2} m² · perímetro ${data.perimeter_m} m — memorizada`, { duration: 6000 });
       setPoints([]);
       setPanelFocus("measures"); setObjectPanelOpen(true);
       await refreshPlan();
@@ -1619,9 +1619,9 @@ export default function PlanTakeoff() {
         setPoints([]);
         const isArea = tool === TOOLS.SURFACE;
         const total = cumulValue(next, isArea);
-        const noun = isArea ? "Zone" : "Troço";
-        const what = isArea ? "Superfície" : "Mur";
-        toast.success(`${noun} ${next.length}adicionada${next.length > 1 ? "" : ""} · ${what} en cours : ${total.toFixed(2)} ${isArea ? "m²" : "m"}— continue ou «Terminar»`, { duration: 5000 });
+        const noun = isArea ? "Zona" : "Troço";
+        const what = isArea ? "Superfície" : "Parede";
+        toast.success(`${noun} ${next.length} adicionada${next.length > 1 ? "" : ""} · ${what} en cours : ${total.toFixed(2)} ${isArea ? "m²" : "m"} — continue ou «Terminar»`, { duration: 5000 });
         return;
       }
     }
@@ -1652,8 +1652,8 @@ export default function PlanTakeoff() {
         ? { page_index: pageIndex, kind: "cumulative_area", points: flat, polygons: segs, label: cumulLabel.trim() || null, color: cumulColor, poste: cumulPoste || null }
         : { page_index: pageIndex, kind: "cumulative", points: flat, segments: segs, label: cumulLabel.trim() || null, color: cumulColor, poste: cumulPoste || null };
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, payload);
-      if (isArea) toast.success(`Área guardada:${data.area_m2} m² (${segs.length} zone${segs.length > 1 ? "s" : ""})`, { duration: 6000 });
-      else toast.success(`Parede guardada:${data.value_m} m (${segs.length}troço${segs.length > 1 ? "s" : ""}, ouvertures exclues)`, { duration: 6000 });
+      if (isArea) toast.success(`Área guardada: ${data.area_m2} m² (${segs.length} zone${segs.length > 1 ? "s" : ""})`, { duration: 6000 });
+      else toast.success(`Parede guardada: ${data.value_m} m (${segs.length} troço${segs.length > 1 ? "s" : ""}, vãos excluídos)`, { duration: 6000 });
       setCumulSegments([]); setCumulLabel(""); setCumulPoste(""); setPoints([]);
       setCumulMode(false);
       setCumulColor(pickAutoColor());
@@ -1676,7 +1676,7 @@ export default function PlanTakeoff() {
       const { data } = await api.post(
         `/takeoffs/${plan.plan_id}/measurements/${deductDraw.measurement_id}/deduct-opening`,
         { points: pts, ...(h > 0 ? { height_m: h } : {}) });
-      toast.success(`Vão deduzido: −${data.opening.width_m}m → parede líquida${data.value_m}m — desenhe a seguinte ou «Terminar»`, { duration: 6000 });
+      toast.success(`Vão deduzido: −${data.opening.width_m} m → parede líquida ${data.value_m} m — desenhe a seguinte ou «Terminar»`, { duration: 6000 });
     } catch (e) { toast.error(e?.response?.data?.detail || "Dedução impossível"); }
     setPoints([]);
     await refreshPlan();
@@ -1705,7 +1705,7 @@ export default function PlanTakeoff() {
       const { data } = await api.post(
         `/takeoffs/${plan.plan_id}/measurements/${deductDialog.measurement_id}/deduct-opening`,
         { width_m: w, count: c, ...(h > 0 ? { height_m: h } : {}), ...(label ? { label } : {}) });
-      toast.success(`Vão deduzido: −${(w * c).toFixed(2)}m → parede líquida${data.value_m} m`, { duration: 6000 });
+      toast.success(`Vão deduzido: −${(w * c).toFixed(2)} m → parede líquida ${data.value_m} m`, { duration: 6000 });
       if (h > 0 && deductNature) localStorage.setItem(`cp_op_h_${deductNature}`, String(h));
       setDeductWidth(""); setDeductCount(1);
       await refreshPlan();
@@ -1720,7 +1720,7 @@ export default function PlanTakeoff() {
         action: "set_measurement_surface",
         params: { measurement_id: measurementId, surface_m2: surfaceM2 }, page_index: pageIndex });
       await refreshPlan();
-      toast.success(`Área →${Number(surfaceM2).toFixed(2)} m²`);
+      toast.success(`Área → ${Number(surfaceM2).toFixed(2)} m²`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Área impossível"); }
   };
   const setMeasureLengthApi = async (measurementId, lengthM) => {
@@ -1729,7 +1729,7 @@ export default function PlanTakeoff() {
         action: "set_measurement_length",
         params: { measurement_id: measurementId, length_m: lengthM }, page_index: pageIndex });
       await refreshPlan();
-      toast.success(`Linear →${Number(lengthM).toFixed(2)} m`);
+      toast.success(`Linear → ${Number(lengthM).toFixed(2)} m`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Linear impossível"); }
   };
 
@@ -1740,7 +1740,7 @@ export default function PlanTakeoff() {
       if (heightM > 0 && data.wall_area_net_m2 != null) {
         setLastWallHeight(heightM);
         localStorage.setItem("cp_last_wall_height", String(heightM));
-        toast.success(`Altura${heightM}m → parede líquida${data.wall_area_net_m2} m² (brut ${data.wall_area_gross_m2} m² − ouvertures ${data.openings_area_m2} m²)`, { duration: 7000 });
+        toast.success(`Altura ${heightM} m → parede líquida ${data.wall_area_net_m2} m² (brut ${data.wall_area_gross_m2} m² − vãos ${data.openings_area_m2} m²)`, { duration: 7000 });
       } else toast.message("Altura de parede removida");
       await refreshPlan();
     } catch (e) { toast.error(e?.response?.data?.detail || "Altura impossível"); }
@@ -1749,9 +1749,9 @@ export default function PlanTakeoff() {
   // Arme le mode « dessiner la fenêtre » pour un mur donné (garde le volet ouvert)
   const armDeductDraw = (m) => {
     setDeductDialog(null);
-    setDeductDraw({ measurement_id: m.measurement_id, label: m.label || "Mur" });
+    setDeductDraw({ measurement_id: m.measurement_id, label: m.label || "Parede" });
     setCumulMode(false); setPoints([]); setTool(TOOLS.DIST);
-    toast.info(`Desenhe a janela/porta em «${m.label || "a parede"}» (2 pontos) e depois duplo clique. Pode encadear várias.`, { duration: 7000 });
+    toast.info(`Desenhe a janela/porta em « ${m.label || "a parede"} » (2 pontos) e depois duplo clique. Pode encadear várias.`, { duration: 7000 });
   };
 
   // Report d'une cote vers l'éditeur de devis (ligne d'ouvrage)
@@ -1759,18 +1759,18 @@ export default function PlanTakeoff() {
     const isArea = m.kind === "polygon" || m.kind === "cumulative_area";
     const val = isArea ? (m.area_m2 || 0) : (m.value_m ?? m.length_m ?? 0);
     const unit = isArea ? "m2" : "ml";
-    const name = m.label || (m.kind === "cumulative" ? "Mur" : m.kind === "cumulative_area" ? "Superfície" : isArea ? "Superfície" : "Mesure");
+    const name = m.label || (m.kind === "cumulative" ? "Parede" : m.kind === "cumulative_area" ? "Superfície" : isArea ? "Superfície" : "Medição");
     addOuvrageFromPlan({ line_kind: "ouvrage", designation: name, qty: Number(val) || 0, unit, unit_price_ht: 0 });
-    toast.success(`« ${name}» adicionado ao orçamento (${Number(val).toFixed(2)} ${unit}) — clique em «Criar um orçamento»`, { duration: 6000 });
+    toast.success(`« ${name} » adicionado ao orçamento (${Number(val).toFixed(2)} ${unit}) — clique em «Criar um orçamento»`, { duration: 6000 });
   };
 
   // Report de la SURFACE de mur nette (m²) au devis — quand une hauteur est saisie
   const reportWallAreaToDevis = (m) => {
     const area = Number(m.wall_area_net_m2 || 0);
     if (!(area > 0)) return toast.error("Introduza primeiro a altura da parede");
-    const name = (m.label || "Mur") + "— área (alt." + Number(m.wall_height_m || 0) + " m)";
+    const name = (m.label || "Parede") + " — área (alt. " + Number(m.wall_height_m || 0) + " m)";
     addOuvrageFromPlan({ line_kind: "ouvrage", designation: name, qty: area, unit: "m2", unit_price_ht: 0 });
-    toast.success(`Área de parede «${name}» adicionada ao orçamento (${area.toFixed(2)} m²)`, { duration: 6000 });
+    toast.success(`Área de parede « ${name} » adicionada ao orçamento (${area.toFixed(2)} m²)`, { duration: 6000 });
   };
 
   // Report GROUPÉ : toutes les surfaces nettes de murs de la page → devis en une fois
@@ -1778,12 +1778,12 @@ export default function PlanTakeoff() {
     const walls = pageMeasurements.filter((m) => Number(m.wall_area_net_m2 || 0) > 0);
     if (!walls.length) return toast.error("Nenhuma parede com área líquida (introduza primeiro as alturas)");
     walls.forEach((m) => {
-      const name = (m.label || "Mur") + "— área (alt." + Number(m.wall_height_m || 0) + " m)";
+      const name = (m.label || "Parede") + " — área (alt. " + Number(m.wall_height_m || 0) + " m)";
       addOuvrageFromPlan({ line_kind: "ouvrage", designation: name,
         qty: Number(m.wall_area_net_m2), unit: "m2", unit_price_ht: 0 });
     });
     const tot = walls.reduce((s, m) => s + Number(m.wall_area_net_m2 || 0), 0);
-    toast.success(`${walls.length}parede(s) adicionada(s) ao orçamento —${tot.toFixed(2)}m² no total`, { duration: 7000 });
+    toast.success(`${walls.length} parede(s) adicionada(s) ao orçamento — ${tot.toFixed(2)} m² no total`, { duration: 7000 });
   };
 
   // Fusion de cotes : joint plusieurs mesures en une (la 1re = cible), calcul automatique
@@ -1795,7 +1795,7 @@ export default function PlanTakeoff() {
       const m = data.measurement || {};
       const val = m.kind === "cumulative_area" ? `${Number(m.area_m2 || 0).toFixed(2)} m²`
         : `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
-      toast.success(`${data.merged_count}cotas fundidas →${val}`, { duration: 6000 });
+      toast.success(`${data.merged_count} cotas fundidas → ${val}`, { duration: 6000 });
       await refreshPlan();
     } catch (e) { toast.error(e?.response?.data?.detail || "Fusão impossível"); }
   };
@@ -1805,7 +1805,7 @@ export default function PlanTakeoff() {
     try {
       const { data } = await api.patch(
         `/takeoffs/${plan.plan_id}/measurements/${deductDialog.measurement_id}/openings/${openingId}`, patch);
-      toast.success(`Vão alterado → parede líquida${data.value_m} m`);
+      toast.success(`Vão alterado → parede líquida ${data.value_m} m`);
       await refreshPlan();
     } catch (e) { toast.error(e?.response?.data?.detail || "Alteração impossível"); }
   };
@@ -1813,7 +1813,7 @@ export default function PlanTakeoff() {
     try {
       const { data } = await api.delete(
         `/takeoffs/${plan.plan_id}/measurements/${deductDialog.measurement_id}/openings/${openingId}`);
-      toast.success(`Vão eliminado → parede líquida${data.value_m} m`);
+      toast.success(`Vão eliminado → parede líquida ${data.value_m} m`);
       await refreshPlan();
     } catch { toast.error("Não foi possível eliminar"); }
   };
@@ -1853,7 +1853,7 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     const roomCount = rooms.length;
     if (!window.confirm(
-      `Apagar tudo nesta página?\n\n${roomCount}divisão(ões),${pageMeasurements.length}medição(ões) e as anotações (contadores, notas, ângulos, coberturas) serão eliminadas. A apresentação das paredes detetadas será reinicializada. Esta ação é irreversível.`
+      `Apagar tudo nesta página?\n\n${roomCount} divisão(ões), ${pageMeasurements.length} medição(ões) e as anotações (contadores, notas, ângulos, coberturas) serão eliminadas. A apresentação das paredes detetadas será reinicializada. Esta ação é irreversível.`
     )) return;
     try {
       // Supprime toutes les pièces de la page côté serveur
@@ -1914,8 +1914,8 @@ export default function PlanTakeoff() {
     }
     await refreshPlan();
     if (currentPageKeyRef.current === sourceKey) setRightTab("rooms");
-    if (imported) toast.success(`${imported}contorno(s) importado(s) — verifique a sua posição e as suas dimensões na planta`);
-    if (failed) toast.warning(`${failed}divisão(ões) não importada(s)`);
+    if (imported) toast.success(`${imported} contorno(s) importado(s) — verifique a sua posição e as suas dimensões na planta`);
+    if (failed) toast.warning(`${failed} divisão(ões) não importada(s)`);
     if (!imported && skipped) toast.message("Estes contornos já estão presentes na medição");
     return imported;
   };
@@ -1937,7 +1937,7 @@ export default function PlanTakeoff() {
         const n = data.rooms?.length || 0;
         const surf = data.total_surface_written_m2;
         toast.success(
-          `Analyse IA — ${n}divisão${n > 1 ? "s" : ""}detetada${n > 1 ? "s" : ""}` +
+          `Analyse IA — ${n} divisão${n > 1 ? "s" : ""} detetada${n > 1 ? "s" : ""}` +
           (surf ? ` · ${surf} m²` : ""),
           { duration: 6000 }
         );
@@ -1953,9 +1953,9 @@ export default function PlanTakeoff() {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/calibrate/from-cotes`,
         { page_index: pageIndex });
       toast.success(
-        `Escala calibrada pelas cotas:${data.calibration.pixels_per_meter.toFixed(1)} px/m ` +
+        `Escala calibrada pelas cotas: ${data.calibration.pixels_per_meter.toFixed(1)} px/m ` +
         `(${data.calibration.samples_used} cote${data.calibration.samples_used > 1 ? "s" : ""}, ±${data.calibration.spread_pct}%)` +
-        (data.rooms_recomputed ? ` · ${data.rooms_recomputed}divisão(ões) recalculada(s)` : ""),
+        (data.rooms_recomputed ? ` · ${data.rooms_recomputed} divisão(ões) recalculada(s)` : ""),
         { duration: 8000 });
       await refreshPlan();
     } catch (e) { toast.error(e?.response?.data?.detail || "Calibração por cotas impossível"); }
@@ -1970,8 +1970,8 @@ export default function PlanTakeoff() {
       setReconcile(data);
       if (data.applied) {
         toast.success(
-          `Escala reajustada:${data.calibration.pixels_per_meter.toFixed(1)} px/m · ` +
-          `${data.rooms_recomputed}divisão(ões) recalculada(s)`, { duration: 7000 });
+          `Escala reajustada: ${data.calibration.pixels_per_meter.toFixed(1)} px/m · ` +
+          `${data.rooms_recomputed} divisão(ões) recalculada(s)`, { duration: 7000 });
         setReconcile(null);
         await refreshPlan();
       } else if (!data.can_reconcile) {
@@ -1987,13 +1987,13 @@ export default function PlanTakeoff() {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/apply-ai-texts`,
         { page_index: pageIndex });
       const parts = [];
-      if (data.renamed?.length) parts.push(`${data.renamed.length}divisão(ões) renomeada(s)`);
-      if (data.materials_set?.length) parts.push(`${data.materials_set.length}material(is) de pavimento`);
-      if (data.heights_updated?.length) parts.push(`${data.heights_updated.length}altura(s)`);
+      if (data.renamed?.length) parts.push(`${data.renamed.length} divisão(ões) renomeada(s)`);
+      if (data.materials_set?.length) parts.push(`${data.materials_set.length} material(is) de pavimento`);
+      if (data.heights_updated?.length) parts.push(`${data.heights_updated.length} altura(s)`);
       if (data.calibration_set) parts.push("escala escrita aplicada");
-      if (data.surface_flags?.length) parts.push(`⚠ ${data.surface_flags.length}diferença(s) de área >5%`);
+      if (data.surface_flags?.length) parts.push(`⚠ ${data.surface_flags.length} diferença(s) de área >5%`);
       toast.success(parts.length
-        ? `Textos da planta aplicados —${parts.join(" · ")}`
+        ? `Textos da planta aplicados — ${parts.join(" · ")}`
         : "Textos analisados — nada a modificar", { duration: 9000 });
       await refreshPlan();
     } catch (e) { toast.error(e?.response?.data?.detail || "Aplicação dos textos impossível"); }
@@ -2008,9 +2008,9 @@ export default function PlanTakeoff() {
       setDetectedWalls(data);
       setShowWalls(true);
       toast.success(
-        `${data.segment_count}segmentos de paredes detetados` +
-        (data.filtered_cotes ? ` · ${data.filtered_cotes}traços de cota/textos ignorados` : "") +
-        (data.filtered_diagonals ? ` · ${data.filtered_diagonals}diagonais ignoradas` : "")
+        `${data.segment_count} segmentos de paredes detetados` +
+        (data.filtered_cotes ? ` · ${data.filtered_cotes} traços de cota/textos ignorados` : "") +
+        (data.filtered_diagonals ? ` · ${data.filtered_diagonals} diagonais ignoradas` : "")
       );
       if (data.structural_hint && !ortho) {
         toast.warning(
@@ -2079,7 +2079,7 @@ export default function PlanTakeoff() {
     setLaborPriceM3(pr.labor_price_m3 || 400);
     setMarginPct(pr.margin_pct ?? 15);
     if (pr.acier_ratios) setAcierRatios((r) => ({ ...r, ...pr.acier_ratios }));
-    if (notify) toast.success(`Definições «${pr.name}» aplicadas`);
+    if (notify) toast.success(`Definições « ${pr.name} » aplicadas`);
   };
 
   const applyBetonPreset = (name) => {
@@ -2093,7 +2093,7 @@ export default function PlanTakeoff() {
   const deleteBetonPreset = async () => {
     const pr = betonPresets.find((p) => p.name === selectedPreset);
     if (!pr || pr.builtin) return;
-    if (!window.confirm(`Eliminar a definição «${selectedPreset} » ?`)) return;
+    if (!window.confirm(`Eliminar a definição « ${selectedPreset} » ?`)) return;
     try {
       await api.delete(`/takeoffs/settings/beton-presets/${encodeURIComponent(selectedPreset)}`);
       setBetonPresets((list) => list.filter((p) => p.name !== selectedPreset));
@@ -2133,7 +2133,7 @@ export default function PlanTakeoff() {
       const { data } = await api.get("/takeoffs/settings/beton-presets");
       setBetonPresets(data.presets || []);
       setSelectedPreset(name.trim());
-      toast.success(`Definição «${name.trim()}» guardado`);
+      toast.success(`Definição « ${name.trim()} » guardado`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Gravação da definição impossível"); }
   };
 
@@ -2181,7 +2181,7 @@ export default function PlanTakeoff() {
           aiSpeak(data.answer.length > 600 ? data.answer.slice(0, 600) : data.answer);
         }
       }    } catch (e) {
-      toast.error(e?.response?.data?.detail || "Assistant indisponible");
+      toast.error(e?.response?.data?.detail || "Assistente indisponível");
     } finally { setAiCmdBusy(false); }
   };
 
@@ -2213,7 +2213,7 @@ export default function PlanTakeoff() {
       await api.post(`/takeoffs/corps-etat/custom`, {
         label, unit, pu: ps.amount, color: "#0ea5e9",
       });
-      toast.success(`Artigo personalizado criado:${label} à ${ps.amount.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €/${unit === "m2" ? "m²" : unit}. Disponible dans le chiffrage.`);
+      toast.success(`Artigo personalizado criado: ${label} à ${ps.amount.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €/${unit === "m2" ? "m²" : unit}. Disponível na orçamentação.`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Criação do artigo impossível");
     } finally { setAiCmdBusy(false); }
@@ -2245,10 +2245,10 @@ export default function PlanTakeoff() {
       if (action === "estimate_page") {
         const ttc = Number(data?.totals?.ttc || 0);
         const ht = Number(data?.totals?.ht_with_margin || 0);
-        const msg = `Estimativa da página:${ht.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} euros hors taxes, soit ${ttc.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} euros TTC.`;
-        toast.success(`Total da página:${ht.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € HT · ${ttc.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € TTC`);
+        const msg = `Estimativa da página: ${ht.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} euros sem IVA, ou seja ${ttc.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} euros com IVA.`;
+        toast.success(`Total da página: ${ht.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € HT · ${ttc.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € c/ IVA`);
         aiSpeak(msg);
-        turnResult = `Página orçamentada:${ht.toFixed(0)} € HT`;
+        turnResult = `Página orçamentada: ${ht.toFixed(0)} € HT`;
       } else {
         toast.success("Ação aplicada e guardada");
         let hist = inverse;
@@ -2257,15 +2257,15 @@ export default function PlanTakeoff() {
           if (action === "create_measurement") {
             setAiJustCreated({ measurement_id: data.measurement_id, label: data.label || "cote", value: data.value });
           }
-          turnResult = `Criada:${data.label || "cote"} (${data.value || ""})`;
+          turnResult = `Criada: ${data.label || "cote"} (${data.value || ""})`;
         } else if (action === "create_measurements_bulk" && Array.isArray(data?.created)) {
           hist = { bulkDeleteIds: data.created.map((c) => c.measurement_id) };
-          toast.success(`${data.count}medições criadas`);
-          turnResult = `${data.count}cotas criadas`;
+          toast.success(`${data.count} medições criadas`);
+          turnResult = `${data.count} cotas criadas`;
         } else if (action === "deduct_measurement_areas") {
-          turnResult = `Área →${Number(data?.surface_m2 || 0).toFixed(2)} m² (−${Number(data?.total_deducted_m2 || 0).toFixed(2)} m²)`;
+          turnResult = `Área → ${Number(data?.surface_m2 || 0).toFixed(2)} m² (−${Number(data?.total_deducted_m2 || 0).toFixed(2)} m²)`;
         } else if (action === "adjust_measurement_surface") {
-          turnResult = `Área →${Number(data?.surface_m2 || 0).toFixed(2)} m²`;
+          turnResult = `Área → ${Number(data?.surface_m2 || 0).toFixed(2)} m²`;
         }
         setAiHistory((h) => [{ id: Date.now(), summary: summary || action, inverse: hist }, ...h].slice(0, 20));
       }
@@ -2353,7 +2353,7 @@ export default function PlanTakeoff() {
       try {
         const { data } = await api.post(`/takeoffs/${plan.plan_id}/analyze?page_index=${pageIndex}`);
         aiRooms = data?.rooms || [];
-        if (data?.error) warnings.push("análise das divisões:" + data.error);
+        if (data?.error) warnings.push("análise das divisões: " + data.error);
       } catch (e) { warnings.push("análise das divisões indisponível"); }
       if (currentPageKeyRef.current !== sourceKey) return;
 
@@ -2375,7 +2375,7 @@ export default function PlanTakeoff() {
       setAnalysisProgress("4 / 5 · A calcular a descrição do betão…");
       // 4) Chiffrage / descriptif béton (métré chiffré)
       const descData = await loadDescriptif();
-      if (!descData) warnings.push("descriptif indisponible");
+      if (!descData) warnings.push("descritivo indisponível");
       if (currentPageKeyRef.current !== sourceKey) return;
 
       setAnalysisProgress("5 / 5 · A preparar a estimativa…");
@@ -2385,7 +2385,7 @@ export default function PlanTakeoff() {
         try { estData = await runEstimation(); } catch (e) { /* estimation optionnelle */ }
       }
 
-      if ((latestPlan?.rooms || []).length > 0 && !estData) warnings.push("estimation indisponible");
+      if ((latestPlan?.rooms || []).length > 0 && !estData) warnings.push("estimativa indisponível");
       if (currentPageKeyRef.current !== sourceKey) return;
       // Récapitulatif instantané (sans dialogue)
       const missingSurface = measuredRooms.some((room) => !finitePositive(room.surface_m2));
@@ -2417,10 +2417,10 @@ export default function PlanTakeoff() {
 
       toast.dismiss(tid);
       const parts = [];
-      if (struct) parts.push(`${struct.wall_count || 0}paredes ·${struct.column_count || 0} poteaux · ${struct.beam_count || 0} poutres · ${struct.floor_count || 0} dalles`);
-      if (aiRooms.length) parts.push(`${aiRooms.length}divisão(ões)`);
-      if (warnings.length) toast.warning(`Analyse partielle : ${warnings.join(" ; ")}. Vérifiez les résultats avant export.`, { duration: 10000 });
-      else toast.success(`Análise concluída —${parts.join(" · ") || "nenhum elemento detetado"}. Vérifiez les résultats sur le plan.`, { duration: 8000 });
+      if (struct) parts.push(`${struct.wall_count || 0} paredes · ${struct.column_count || 0} pilares · ${struct.beam_count || 0} vigas · ${struct.floor_count || 0} dalles`);
+      if (aiRooms.length) parts.push(`${aiRooms.length} divisão(ões)`);
+      if (warnings.length) toast.warning(`Analyse partielle : ${warnings.join(" ; ")}. Verifique os resultados antes de exportar.`, { duration: 10000 });
+      else toast.success(`Análise concluída — ${parts.join(" · ") || "nenhum elemento detetado"}. Verifique os resultados na planta.`, { duration: 8000 });
     } catch (e) {
       toast.dismiss(tid);
       toast.error(e?.response?.data?.detail || "Análise impossível");
@@ -2438,13 +2438,13 @@ export default function PlanTakeoff() {
       const { data: job } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure-all`);
       const data = await waitPlanJob(job.job_id, { onProgress: (j) => {
         if (currentPageKeyRef.current === sourceKey && j.total > 0) {
-          setAnalysisProgress(`Structure · ${j.progress || 0} / ${j.total}páginas tratadas…`);
+          setAnalysisProgress(`Structure · ${j.progress || 0} / ${j.total} páginas tratadas…`);
         }
       } });
       await refreshPlan();
       if (currentPageKeyRef.current !== sourceKey) return;
       setAnalysisRecap(null);
-      toast.success(`Structure : ${data.page_count}página(s) analisada(s). Verifique cada página antes da medição.`);
+      toast.success(`Structure : ${data.page_count} página(s) analisada(s). Verifique cada página antes da medição.`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Análise multipágina impossível");
     } finally { setAnalysisBusy(false); setAnalysisProgress(""); analysisLock.current = false; }
@@ -2462,7 +2462,7 @@ export default function PlanTakeoff() {
         + (marginLabor !== "" ? `&margin_labor=${marginLabor}` : "");
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/quote?beton_only=true&wall_height=${wallHeight}&dalle_ep=${dalleEp}&voile_ep=${voileEp}${acierQuery()}&acier_price_kg=${acierPriceKg}&beton_price_m3=${betonPriceM3}${betonPriceQuery()}&labor_price_m3=${laborPriceM3}&margin_pct=${marginPct}&price_level=${priceLevel}${araseQuery()}${mq}`, body);
       const n = data.priced_lines || 0;
-      toast.success((n > 0 ? `Orçamento criado —${n}linha(s) orçamentada(s) a partir da sua biblioteca` : "Orçamento criado a partir do descritivo") + (plan3dSnapshot ? " · vue 3D jointe" : ""));
+      toast.success((n > 0 ? `Orçamento criado — ${n} linha(s) orçamentada(s) a partir da sua biblioteca` : "Orçamento criado a partir do descritivo") + (plan3dSnapshot ? " · vista 3D anexa" : ""));
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Não foi possível gerar o orçamento");
@@ -2486,7 +2486,7 @@ export default function PlanTakeoff() {
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       const ttc = data.totals?.ttc || 0;
-      toast.success(`Orçamento estimado transferido —${ttc.toLocaleString("fr-FR")} € TTC · ${data.priced_lines || 0}artigo(s) orçamentado(s)`, { duration: 6000 });
+      toast.success(`Orçamento estimado transferido — ${ttc.toLocaleString("fr-FR")} € c/ IVA · ${data.priced_lines || 0} artigo(s) orçamentado(s)`, { duration: 6000 });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Estimativa impossível");
     } finally { setQuoteBusy(false); }
@@ -2675,7 +2675,7 @@ export default function PlanTakeoff() {
     next.openings = [...(next.openings || []), item];
     setSelectedStruct({ type: "opening", id: item.opening_id });
     persistStructure(next).then(() => loadDescriptif());
-    toast.info(`${kind === "porte" ? "Porta" : "Janela"}adicionada — arraste as extremidades para a posicionar`);
+    toast.info(`${kind === "porte" ? "Porta" : "Janela"} adicionada — arraste as extremidades para a posicionar`);
   };
 
   const addStructFooting = () => {
@@ -2703,9 +2703,9 @@ export default function PlanTakeoff() {
       });
       // Charge les points détectés dans l'état — l'utilisateur peut ajuster puis valider
       setPoints(data.points);
-      toast.success(`Contorno detetado (${data.point_count} points, ${data.surface_m2} m²)`);
+      toast.success(`Contorno detetado (${data.point_count} pontos, ${data.surface_m2} m²)`);
       // Ouvre le dialog de nom immédiatement
-      setPendingRoomName(`Divisão${String(rooms.length + 1).padStart(2, "0")}`);
+      setPendingRoomName(`Divisão ${String(rooms.length + 1).padStart(2, "0")}`);
       setRoomDialog(true);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Nenhuma divisão detetada neste ponto");
@@ -2734,7 +2734,7 @@ export default function PlanTakeoff() {
     if (!materials) return;
     const q = [];
     if (materials.floor) q.push(`${materials.floor.material} ${materials.floor.quantity_m2}m²`);
-    if (materials.placo) q.push(`plaques BA13`);
+    if (materials.placo) q.push(`placas de pladur 13 mm`);
     if (materials.paint) q.push(`peinture`);
     nav(`/prix?q=${encodeURIComponent(q.join(" "))}`);
   };
@@ -2762,7 +2762,7 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     try {
       const res = await api.post("/takeoffs/metre-multi-pdf",
-        { plan_ids: [plan.plan_id], project_name: plan.filename || "Métré" },
+        { plan_ids: [plan.plan_id], project_name: plan.filename || "Medição" },
         { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
@@ -2833,7 +2833,7 @@ export default function PlanTakeoff() {
         to_email: ecartsEmail.trim(),
         message: ecartsMessage,
       });
-      toast.success(`Relatório de diferenças enviado para${data.sent_to}`, { duration: 7000 });
+      toast.success(`Relatório de diferenças enviado para ${data.sent_to}`, { duration: 7000 });
       setSendEcartsDialog(false);
       setEcartsMessage("");
       await refreshPlan();
@@ -2922,10 +2922,10 @@ export default function PlanTakeoff() {
       });
       if (data.email_status === "sent") {
         const extras = [];
-        if (quoteIncludeTva) extras.push("attestation TVA");
+        if (quoteIncludeTva) extras.push("declaração de IVA");
         if (quoteAttachVideo && latestVideo) extras.push("tour vídeo 3D");
         const extra = extras.length ? " + " + extras.join(" + ") + " joint(s)" : "";
-        toast.success(`Orçamento enviado a${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("fr-FR")} € TTC)`);
+        toast.success(`Orçamento enviado a ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("fr-FR")} € c/ IVA)`);
         setQuoteDialog(false);
         setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
         setQuoteSubject(""); setQuoteIntro(""); setQuoteClientAddress("");
@@ -2950,7 +2950,7 @@ export default function PlanTakeoff() {
       setEstimateResult(data);
       // Si rénovation → coche automatiquement TVA
       if (data.is_renovation) setQuoteIncludeTva(true);
-      toast.success(`Estimativa gerada:${data.surface_m2} m² · ${data.estimation?.total_avg?.toLocaleString("fr-FR")} €`);
+      toast.success(`Estimativa gerada: ${data.surface_m2} m² · ${data.estimation?.total_avg?.toLocaleString("fr-FR")} €`);
       return data;
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Estimativa impossível");
@@ -3014,7 +3014,7 @@ export default function PlanTakeoff() {
       setRender3dMode("interactive");
       loadCredits3d();
     } catch (e) {
-      handle3dError(e, "Maquette interactive indisponible");
+      handle3dError(e, "Maqueta interativa indisponível");
     }
   };
 
@@ -3124,7 +3124,7 @@ export default function PlanTakeoff() {
     if (!t) return;
     setQuoteFinish(t.finish || "std");
     setQuoteFloor(t.floor_material || "carrelage");
-    toast.success(`Modelo «${t.name}» aplicado`);
+    toast.success(`Modelo « ${t.name} » aplicado`);
   };
 
   const saveTemplate = async () => {
@@ -3135,7 +3135,7 @@ export default function PlanTakeoff() {
         finish: quoteFinish, floor_material: quoteFloor,
         is_shared: templateShared,
       });
-      toast.success(`Modelo «${templateName}» guardado`);
+      toast.success(`Modelo « ${templateName} » guardado`);
       setTemplateName(""); setTemplateShared(false);
       await loadTemplates();
     } catch (e) {
@@ -3195,7 +3195,7 @@ export default function PlanTakeoff() {
     try {
       if (gb.group_id) await api.put(`/takeoffs/multilevel/groups/${gb.group_id}`, body);
       else await api.post("/takeoffs/multilevel/groups", body);
-      toast.success(`Projet « ${gb.name.trim()}» guardado${chantierId ? "e associado ao processo de obra" : ""}`);
+      toast.success(`Projet « ${gb.name.trim()} » guardado${chantierId ? " e associado ao processo de obra" : ""}`);
       setGroupBuilder(null);
       loadPlanGroups();
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar"); }
@@ -3234,7 +3234,7 @@ export default function PlanTakeoff() {
 
   // ---- Agents IA (proposer → valider → exécuter → revoir/corriger) ----
   const AGENT_CATALOG = [
-    { key: "report", name: "Dossier automatique", icon: Bot, desc: "Reúne as suas plantas, faz a medição, orçamenta e produz o processo PDF completo." },
+    { key: "report", name: "Processo automático", icon: Bot, desc: "Reúne as suas plantas, faz a medição, orçamenta e produz o processo PDF completo." },
     { key: "devis", name: "Orçamento automático", icon: Wand2, desc: "Orçamenta as medições atribuídas e cria um orçamento consolidado editável." },
     { key: "metre", name: "Medição expresso", icon: Ruler, desc: "Síntese da medição: áreas, lineares, medições e plantas a completar." },
     { key: "detect", name: "Deteção automática de paredes", icon: ScanLine, desc: "Deteta paredes + vãos (IA) numa planta não medida. Calibração obrigatória antes da medição." },
@@ -3369,7 +3369,7 @@ export default function PlanTakeoff() {
   };
 
   const deleteGroup = async (g) => {
-    if (!(await confirmDialog({ title: "Eliminar este projeto multinível?", description: `« ${g.name}» — as plantas não são eliminadas.` }))) return;
+    if (!(await confirmDialog({ title: "Eliminar este projeto multinível?", description: `« ${g.name} » — as plantas não são eliminadas.` }))) return;
     try { await api.delete(`/takeoffs/multilevel/groups/${g.group_id}`); loadPlanGroups(); toast.success("Projeto eliminado"); }
     catch { toast.error("Não foi possível eliminar"); }
   };
@@ -3380,11 +3380,11 @@ export default function PlanTakeoff() {
   const setLevelLabel = (plan_id, label) => setGroupBuilder((gb) => ({ ...gb, levels: gb.levels.map((l) => l.plan_id === plan_id ? { ...l, level_label: label } : l) }));
 
   const trashPlan = async (p) => {
-    const ok = await confirmDialog({ title: "Mover esta planta para o lixo?", description: `« ${p.filename || "Plano sem nome"}» e as suas medições continuarão recuperáveis durante 30 dias no lixo.`, confirmLabel: "Mover para o lixo" });
+    const ok = await confirmDialog({ title: "Mover esta planta para o lixo?", description: `« ${p.filename || "Plano sem nome"} » e as suas medições continuarão recuperáveis durante 30 dias no lixo.`, confirmLabel: "Mover para o lixo" });
     if (!ok) return;
     try {
       await api.delete(`/takeoffs/${p.plan_id}`);
-      toast.success("Planta movida para o lixo — recuperável durante 30 dias", { action: { label: "Corbeille", onClick: () => nav("/corbeille") } });
+      toast.success("Planta movida para o lixo — recuperável durante 30 dias", { action: { label: "Lixo", onClick: () => nav("/corbeille") } });
       if (plan?.plan_id === p.plan_id) setPlan(null);
       loadAllPlans();
     } catch (e) {
@@ -3394,11 +3394,11 @@ export default function PlanTakeoff() {
 
   const bulkTrashPlans = async (ids) => {
     if (!ids.length) return;
-    const ok = await confirmDialog({ title: `Mettre ${ids.length} plan${ids.length > 1 ? "s" : ""}para o lixo?`, description: "Continuarão recuperáveis durante 30 dias no lixo.", confirmLabel: "Mover para o lixo" });
+    const ok = await confirmDialog({ title: `Colocar ${ids.length} plan${ids.length > 1 ? "s" : ""} para o lixo?`, description: "Continuarão recuperáveis durante 30 dias no lixo.", confirmLabel: "Mover para o lixo" });
     if (!ok) return;
     try {
       const { data } = await api.post("/takeoffs/bulk-trash", { plan_ids: ids });
-      toast.success(`${data.trashed} plan${data.trashed > 1 ? "s" : ""}movida(s) para o lixo`, { action: { label: "Corbeille", onClick: () => nav("/corbeille") } });
+      toast.success(`${data.trashed} plan${data.trashed > 1 ? "s" : ""} movida(s) para o lixo`, { action: { label: "Lixo", onClick: () => nav("/corbeille") } });
       setSelectedRecent([]);
       if (plan && ids.includes(plan.plan_id)) setPlan(null);
       loadAllPlans();
@@ -3410,7 +3410,7 @@ export default function PlanTakeoff() {
     if (!ok) return;
     try {
       const { data } = await api.post("/takeoffs/bulk-trash", { all: true });
-      toast.success(`${data.trashed} plan${data.trashed > 1 ? "s" : ""}movida(s) para o lixo`, { action: { label: "Corbeille", onClick: () => nav("/corbeille") } });
+      toast.success(`${data.trashed} plan${data.trashed > 1 ? "s" : ""} movida(s) para o lixo`, { action: { label: "Lixo", onClick: () => nav("/corbeille") } });
       setSelectedRecent([]);
       setPlan(null);
       loadAllPlans();
@@ -3421,11 +3421,11 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     const h = Number(planDefaults.ceiling_h_m);
     if (!h || h <= 0) return toast.error("Defina uma altura de parede válida nas definições");
-    const ok = await confirmDialog({ title: `Appliquer ${h}m a todas as cotas da página?`, description: "Todas as cotas lineares (paredes / distâncias) desta página passarão a ter esta altura; as áreas em m² são recalculadas automaticamente.", confirmLabel: "Appliquer" });
+    const ok = await confirmDialog({ title: `Aplicar ${h} m a todas as cotas da página?`, description: "Todas as cotas lineares (paredes / distâncias) desta página passarão a ter esta altura; as áreas em m² são recalculadas automaticamente.", confirmLabel: "Aplicar" });
     if (!ok) return;
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measurements/wall-height-bulk`, { height_m: h, page_index: pageIndex });
-      toast.success(`Altura${h}m aplicada a${data.updated} cote${data.updated > 1 ? "s" : ""}`);
+      toast.success(`Altura ${h} m aplicada a ${data.updated} cote${data.updated > 1 ? "s" : ""}`);
       const { data: full } = await api.get(`/takeoffs/${plan.plan_id}`);
       setPlan(full);
     } catch (e) { toast.error(e?.response?.data?.detail || "Aplicação impossível"); }
@@ -3435,7 +3435,7 @@ export default function PlanTakeoff() {
     if (!plan?.plan_id) return;
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/duplicate`);
-      toast.success(`Planta duplicada —${data.rooms}divisão${data.rooms > 1 ? "s" : ""}copiada${data.rooms > 1 ? "s" : ""}`);
+      toast.success(`Planta duplicada — ${data.rooms} divisão${data.rooms > 1 ? "s" : ""} copiada${data.rooms > 1 ? "s" : ""}`);
       const { data: full } = await api.get(`/takeoffs/${data.plan_id}`);
       setPlan(full);
       setPageIndex(0);
@@ -3457,7 +3457,7 @@ export default function PlanTakeoff() {
       a.href = url; a.download = `devis-projet.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(`Orçamento do projeto (${multiSelected.length}plantas) transferido`);
+      toast.success(`Orçamento do projeto (${multiSelected.length} plantas) transferido`);
       setMultiDialog(false);
     } catch (e) { toast.error(e.message || "Impossível exportar"); }
     finally { setMultiBusy(false); }
@@ -3475,7 +3475,7 @@ export default function PlanTakeoff() {
       a.href = url; a.download = "metre-groupe.pdf";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(`Medição agrupada (${multiSelected.length}plantas) transferido`);
+      toast.success(`Medição agrupada (${multiSelected.length} plantas) transferido`);
       setMultiDialog(false);
     } catch (e) { toast.error(e?.response?.data?.detail || "Impossível exportar"); }
     finally { setMultiBusy(false); }
@@ -3491,7 +3491,7 @@ export default function PlanTakeoff() {
         project_name: multiProjectName.trim() || "",
         subcontract_plan_ids: subcontractSel.filter((id) => multiSelected.includes(id)),
       });
-      toast.success(`Orçamento consolidado criado —${data.line_count} lignes`);
+      toast.success(`Orçamento consolidado criado — ${data.line_count} lignes`);
       setMultiDialog(false);
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
@@ -3526,7 +3526,7 @@ export default function PlanTakeoff() {
         : `${window.location.origin}${data.url}`;
       await navigator.clipboard.writeText(fullUrl);
       toast.success(pct > 0
-        ? `Ligação copiada — sinal${pct}% na assinatura`
+        ? `Ligação copiada — sinal ${pct}% na assinatura`
         : "Link de assinatura copiado (sem sinal)");
       await loadQuoteSends();
     } catch (e) {
@@ -3547,7 +3547,7 @@ export default function PlanTakeoff() {
       const updated = [...detectedWalls.segments];
       updated[segIndex] = { ...s, wall_type: next };
       setDetectedWalls({ ...detectedWalls, segments: updated });
-      toast.success(`Parede reclassificada:${next}`);
+      toast.success(`Parede reclassificada: ${next}`);
       await loadWallsSummary();
     } catch { toast.error("Reclassificação impossível"); }
   };
@@ -3578,18 +3578,17 @@ export default function PlanTakeoff() {
           <div>
             <p className="overline text-primary">Funcionalidade Pro Business</p>
             <h1 className="font-display text-3xl lg:text-4xl font-bold tracking-tight mt-3">
-              Mesurer + Rendu 3D
+              Medir + Renderização 3D
             </h1>
             <p className="text-sm text-muted-foreground mt-3 max-w-lg mx-auto">
               A importação de plantas, a medição automática de áreas, o takeoff calibrado e a geração de renderizações 3D / vídeos 3D estão reservados ao plano
-              <b className="text-foreground"> Pro Business</b>.
-              Passez sur ce plan pour débloquer ces outils métier.
+              <b className="text-foreground"> Pro Business</b>. Mude para este plano para desbloquear estas ferramentas profissionais.
             </p>
           </div>
           <div className="grid sm:grid-cols-3 gap-3 max-w-xl mx-auto">
             {[
-              "Import PDF/DXF/photo",
-              "Calibration + mesures pro",
+              "Importação PDF/DXF/foto",
+              "Calibragem + medições profissionais",
               "Renderização 3D + vídeo",
             ].map((f) => (
               <div key={f} className="border border-border rounded-sm p-3 text-xs">
@@ -3628,7 +3627,7 @@ export default function PlanTakeoff() {
       <Dialog open={pendingFiles.length > 0} onOpenChange={(o) => { if (!o && !importingBatch) { setPendingFiles([]); setGroupImport({ enabled: false, mode: "new", name: "", groupId: "" }); } }}>
         <DialogContent className="rounded-sm max-w-lg" data-testid="plan-import-dialog">
           <DialogHeader>
-            <DialogTitle>Importer {pendingFiles.length} plan{pendingFiles.length > 1 ? "s" : ""}</DialogTitle>
+            <DialogTitle>Importar {pendingFiles.length} plan{pendingFiles.length > 1 ? "s" : ""}</DialogTitle>
             <DialogDescription>
               Dê um nome a cada planta antes da importação. Esse nome será apresentado na lista e retomado nas exportações PDF.
             </DialogDescription>
@@ -3644,7 +3643,7 @@ export default function PlanTakeoff() {
                   <Input value={it.level || ""} disabled={importingBatch} list="level-suggestions-import"
                          onChange={(e) => setPendingFiles((prev) => prev.map((p) => p.id === it.id ? { ...p, level: e.target.value } : p))}
                          data-testid={`pending-file-level-${idx}`}
-                         className="h-9 w-24 shrink-0" placeholder="Niveau" />
+                         className="h-9 w-24 shrink-0" placeholder="Piso" />
                 )}
                 <span className="text-[10px] text-muted-foreground truncate max-w-[120px]" title={it.file.name}>
                   {it.file.name.split(".").pop()?.toUpperCase()} · {(it.file.size / (1024 * 1024)).toFixed(1)} Mo
@@ -3687,7 +3686,7 @@ export default function PlanTakeoff() {
                           onClick={() => setGroupImport((g) => ({ ...g, mode: "existing", groupId: g.groupId || planGroups[0]?.group_id || "" }))}
                           data-testid="group-mode-existing"
                           className={`flex-1 text-xs font-semibold rounded-sm border px-2 py-1.5 disabled:opacity-40 ${groupImport.mode === "existing" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
-                    Projet existant
+                    Projeto existente
                   </button>
                 </div>
                 {groupImport.mode === "existing" ? (
@@ -3695,7 +3694,7 @@ export default function PlanTakeoff() {
                           onChange={(e) => setGroupImport((g) => ({ ...g, groupId: e.target.value }))}
                           data-testid="group-import-select"
                           className="w-full h-9 rounded-sm border border-border bg-background px-2 text-sm">
-                    {planGroups.map((g) => <option key={g.group_id} value={g.group_id}>{g.name} ({(g.levels || []).length} niveaux)</option>)}
+                    {planGroups.map((g) => <option key={g.group_id} value={g.group_id}>{g.name} ({(g.levels || []).length} pisos)</option>)}
                   </select>
                 ) : (
                   <Input value={groupImport.name} disabled={importingBatch}
@@ -3710,7 +3709,7 @@ export default function PlanTakeoff() {
             <Button variant="outline" disabled={importingBatch} onClick={() => { setPendingFiles([]); setGroupImport({ enabled: false, mode: "new", name: "", groupId: "" }); }} className="rounded-sm">Cancelar</Button>
             <Button onClick={importPending} disabled={importingBatch || pendingFiles.some((p) => !p.name.trim()) || (groupImport.enabled && groupImport.mode === "new" && !groupImport.name.trim()) || (groupImport.enabled && groupImport.mode === "existing" && !groupImport.groupId)}
                     data-testid="plan-import-confirm" className="rounded-sm gap-2">
-              {importingBatch ? "Import en cours…" : groupImport.enabled ? (groupImport.mode === "existing" ? "Importar e associar" : "Importar e criar o projeto") : "Importer"}
+              {importingBatch ? "Importação em curso…" : groupImport.enabled ? (groupImport.mode === "existing" ? "Importar e associar" : "Importar e criar o projeto") : "Importar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3754,7 +3753,7 @@ export default function PlanTakeoff() {
           </div>
           <div className="text-center">
             <p className="font-display text-xl font-bold">
-              {uploading ? "Import en cours…" : dragActive ? "Solte para importar" : "Importar a minha planta"}
+              {uploading ? "Importação em curso…" : dragActive ? "Solte para importar" : "Importar a minha planta"}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
               PDF · DXF · DWG · JPG · PNG · WEBP · ZIP — até 20 MB — selecione vários ficheiros, uma pasta ou um ZIP
@@ -3816,7 +3815,7 @@ export default function PlanTakeoff() {
 
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: Ruler, title: "Formatos variados", desc: "PDF · DXF · DWG · JPG · PNG · WEBP — DWG converti automatiquement" },
+            { icon: Ruler, title: "Formatos variados", desc: "PDF · DXF · DWG · JPG · PNG · WEBP — DWG convertido automaticamente" },
             { icon: Wand2, title: "Deteção automática", desc: "Paredes (OpenCV) · divisões flood-fill · deskew foto inclinada" },
             { icon: Calculator, title: "Multi-pisos", desc: "R/C · R+1 · R+2 · águas-furtadas — medições por nível + total" },
           ].map(({ icon: Icon, title, desc }) => (
@@ -3917,12 +3916,12 @@ export default function PlanTakeoff() {
         <div className="surface p-5" data-testid="plan-groups-section">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="font-display font-bold flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Projets multi-niveaux</p>
+              <p className="font-display font-bold flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Projetos multinível</p>
               <p className="text-[11px] text-muted-foreground">Agrupe Fundações, R/C, 1.º andar… de uma mesma obra — medição e orçamentação consolidadas.</p>
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={openAgentBox} data-testid="open-agents-btn" className="rounded-sm gap-1">
-                <Bot className="h-4 w-4 text-primary" /> Agents IA
+                <Bot className="h-4 w-4 text-primary" /> Agentes IA
               </Button>
               <Button size="sm" onClick={openGroupBuilder} data-testid="new-plan-group-btn" className="rounded-sm gap-1">
                 <Plus className="h-4 w-4" /> Novo projeto
@@ -3956,7 +3955,7 @@ export default function PlanTakeoff() {
           <DialogContent className="rounded-sm max-w-lg" data-testid="group-builder-dialog">
             <DialogHeader>
               <DialogTitle>{groupBuilder?.group_id ? "Editar o projeto" : "Novo projeto multinível"}</DialogTitle>
-              <DialogDescription>Dê um nome ao projeto, adicione as plantas e identifique cada piso.{chantierId ? "As plantas serão associadas ao processo de obra atual." : ""}</DialogDescription>
+              <DialogDescription>Dê um nome ao projeto, adicione as plantas e identifique cada piso.{chantierId ? " As plantas serão associadas ao processo de obra atual." : ""}</DialogDescription>
             </DialogHeader>
             {groupBuilder && (
               <div className="space-y-3">
@@ -3970,7 +3969,7 @@ export default function PlanTakeoff() {
                       return (
                         <div key={l.plan_id} className="flex items-center gap-2" data-testid={`group-level-${l.plan_id}`}>
                           <Input value={l.level_label} onChange={(e) => setLevelLabel(l.plan_id, e.target.value)}
-                                 list="level-suggestions" placeholder="Niveau" className="h-8 w-32 text-xs" data-testid={`group-level-label-${l.plan_id}`} />
+                                 list="level-suggestions" placeholder="Piso" className="h-8 w-32 text-xs" data-testid={`group-level-label-${l.plan_id}`} />
                           <span className="text-[11px] flex-1 truncate">{p?.filename || l.plan_id}</span>
                           <button onClick={() => removeLevel(l.plan_id)} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
                         </div>
@@ -3981,7 +3980,7 @@ export default function PlanTakeoff() {
                   <datalist id="level-suggestions">{LEVEL_SUGGESTIONS.map((s) => <option key={s} value={s} />)}</datalist>
                 </div>
                 <div>
-                  <Label className="text-xs">Plans disponibles</Label>
+                  <Label className="text-xs">Plantas disponíveis</Label>
                   <div className="flex flex-wrap gap-1.5 mt-1 max-h-32 overflow-auto">
                     {allPlans.filter((p) => !groupBuilder.levels.some((l) => l.plan_id === p.plan_id)).map((p) => (
                       <button key={p.plan_id} onClick={() => addLevel(p.plan_id)}
@@ -4010,11 +4009,11 @@ export default function PlanTakeoff() {
               <DialogDescription>Medição e orçamentação das medições guardadas. O orçamento completo da obra ainda está por estabelecer.</DialogDescription>
             </DialogHeader>
             {groupView?.loading ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Calcul en cours…</div>
+              <div className="py-8 text-center text-sm text-muted-foreground">Cálculo em curso…</div>
             ) : groupView && (
               <div className="space-y-2 max-h-[55vh] overflow-auto">
                 <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" data-testid="group-scope-warning">
-                  <p className="font-semibold">Estimation partielle</p>
+                  <p className="font-semibold">Estimativa parcial</p>
                   <ul className="mt-1 list-disc space-y-1 pl-4">
                     {(groupView.coverage?.warnings || ["O montante incide apenas sobre as medições guardadas, não sobre todos os edifícios e capítulos."]).map((warning, index) => <li key={index}>{warning}</li>)}
                   </ul>
@@ -4022,9 +4021,9 @@ export default function PlanTakeoff() {
                 {(groupView.levels || []).map((lv) => (
                   <div key={lv.plan_id} className="rounded border border-border p-2" data-testid={`consolidated-level-${lv.plan_id}`}>
                     <div className="flex flex-wrap justify-between items-center text-sm font-medium gap-2">
-                      <span className="truncate">{lv.level_label || "Niveau"} <span className="text-muted-foreground text-xs">· {lv.filename || lv.plan_id}</span></span>
+                      <span className="truncate">{lv.level_label || "Piso"} <span className="text-muted-foreground text-xs">· {lv.filename || lv.plan_id}</span></span>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="num">{lv.consolidated?.chiffrage?.priced_measures > 0 ? `${lv.consolidated.chiffrage.ht_with_margin.toFixed(2)} € HT partiel` : "Não orçamentado"}</span>
+                        <span className="num">{lv.consolidated?.chiffrage?.priced_measures > 0 ? `${lv.consolidated.chiffrage.ht_with_margin.toFixed(2)} € s/ IVA parcial` : "Não orçamentado"}</span>
                         <Button size="sm" variant="outline" data-testid={`consolidated-open-${lv.plan_id}`}
                                 onClick={() => { setGroupView(null); openPlanById(lv.plan_id); }}
                                 className="rounded-sm h-7 gap-1 text-xs border-primary/50 text-primary hover:bg-primary hover:text-white">
@@ -4033,13 +4032,13 @@ export default function PlanTakeoff() {
                       </div>
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      {lv.consolidated?.metre?.area_m2 || 0} m² · {lv.consolidated?.metre?.length_ml || 0} ml · {lv.consolidated?.metre?.measures || 0} mesures ({lv.consolidated?.chiffrage?.priced_measures || 0} orçamentadas)
+                      {lv.consolidated?.metre?.area_m2 || 0} m² · {lv.consolidated?.metre?.length_ml || 0} ml · {lv.consolidated?.metre?.measures || 0} medições ({lv.consolidated?.chiffrage?.priced_measures || 0} orçamentadas)
                     </div>
                   </div>
                 ))}
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-between border-t border-border pt-2 text-sm font-semibold">
                   <span>Subtotal medido · {groupView.totals?.area_m2 || 0} m² · {groupView.totals?.length_ml || 0} ml</span>
-                  {(groupView.levels || []).some((lv) => lv.consolidated?.chiffrage?.priced_measures > 0) ? <span>HT <span className="num">{groupView.totals?.ht_with_margin?.toFixed(2)} €</span> · TTC <span className="num text-primary">{groupView.totals?.ttc?.toFixed(2)} €</span></span> : <span>Não orçamentado</span>}
+                  {(groupView.levels || []).some((lv) => lv.consolidated?.chiffrage?.priced_measures > 0) ? <span>HT <span className="num">{groupView.totals?.ht_with_margin?.toFixed(2)} €</span> · c/ IVA <span className="num text-primary">{groupView.totals?.ttc?.toFixed(2)} €</span></span> : <span>Não orçamentado</span>}
                 </div>
               </div>
             )}
@@ -4090,7 +4089,7 @@ export default function PlanTakeoff() {
                     data-testid="cover-client-company" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Adresse</Label>
+                  <Label className="text-xs">Morada</Label>
                   <Input value={coverDialog.address} onChange={(e) => setCoverDialog((d) => ({ ...d, address: e.target.value }))}
                     placeholder="Rua das Obras, 12" data-testid="cover-client-address" />
                 </div>
@@ -4148,7 +4147,7 @@ export default function PlanTakeoff() {
               ))}
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Marge (%)</span>
+              <span className="text-muted-foreground">Margem (%)</span>
               <Input type="number" value={chiffrageMargin} onChange={(e) => setChiffrageMargin(e.target.value)} className="h-8 w-20" data-testid="auto-poste-margin" />
             </div>
             <DialogFooter>
@@ -4162,10 +4161,10 @@ export default function PlanTakeoff() {
         <Dialog open={!!agentBox} onOpenChange={(o) => { if (!o) setAgentBox(null); }}>          <DialogContent className="rounded-sm max-w-2xl" data-testid="agents-dialog">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2"><Bot className="h-5 w-5 text-primary" /> Agents IA</span>
+                <span className="flex items-center gap-2"><Bot className="h-5 w-5 text-primary" /> Agentes IA</span>
                 <Button variant="ghost" size="sm" className="rounded-sm gap-1 text-xs" data-testid="agent-history-btn"
                   onClick={() => { loadAgentHistory(); setAgentBox((a) => ({ ...a, step: a.step === "history" ? "pick" : "history" })); }}>
-                  <History className="h-3.5 w-3.5" /> Historique
+                  <History className="h-3.5 w-3.5" /> Histórico
                 </Button>
               </DialogTitle>
               <DialogDescription>
@@ -4183,7 +4182,7 @@ export default function PlanTakeoff() {
                       <span className="font-medium">{(AGENT_CATALOG.find((a) => a.key === r.agent) || {}).name || r.agent}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === "done" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>{r.status === "done" ? "Executado" : "Proposto"}</span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">{new Date(r.created_at).toLocaleString("fr-FR")}{r.result?.totals ? `· Total c/ IVA${(r.result.totals.ttc || 0).toLocaleString("fr-FR")} €` : ""}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">{new Date(r.created_at).toLocaleString("fr-FR")}{r.result?.totals ? ` · Total c/ IVA ${(r.result.totals.ttc || 0).toLocaleString("fr-FR")} €` : ""}</p>
                     {r.feedback?.rating && <p className="text-[11px] mt-1">{r.feedback.rating === "ok" ? "✓ Validado por si" : "✎ Correção guardada"}{r.feedback.note ? ` — « ${r.feedback.note} »` : ""}</p>}
                   </div>
                 ))}
@@ -4208,7 +4207,7 @@ export default function PlanTakeoff() {
                 </div>
                 {agentBox.agent === "dpgf" ? (
                   <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-                    Cet agent ouvre l'atelier <b>Mapa de quantidades → orçamento</b> : importe o seu mapa de quantidades/caderno de encargos, ele lê o mapa, aplica os seus preços e prepara o orçamento detalhado.
+                    Este agente abre a oficina <b>Mapa de quantidades → orçamento</b> : importe o seu mapa de quantidades/caderno de encargos, ele lê o mapa, aplica os seus preços e prepara o orçamento detalhado.
                   </div>
                 ) : (
                   <>
@@ -4254,7 +4253,7 @@ export default function PlanTakeoff() {
                 )}
                 {(agentBox.agent === "report" || agentBox.agent === "devis") && (
                 <div>
-                  <Label className="text-xs">Niveaux (corrigez si besoin — l'agent apprend)</Label>
+                  <Label className="text-xs">Pisos (corrija se necessário — o agente aprende)</Label>
                   <div className="mt-1 grid gap-1.5">
                     {agentBox.run.plan_status.map((s) => (
                       <div key={s.plan_id} className="flex items-center gap-2">
@@ -4268,7 +4267,7 @@ export default function PlanTakeoff() {
                 {(agentBox.agent === "report" || agentBox.agent === "devis") && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Marge (%)</Label>
+                      <Label className="text-xs">Margem (%)</Label>
                       <Input type="number" value={agentBox.params.margin_pct} onChange={(e) => setAgentBox((a) => ({ ...a, params: { ...a.params, margin_pct: parseFloat(e.target.value) || 0 } }))} className="h-8" data-testid="agent-margin" />
                     </div>
                     <div className="space-y-1">
@@ -4280,7 +4279,7 @@ export default function PlanTakeoff() {
                 {agentBox.agent === "report" && (
                   <div className="grid grid-cols-2 gap-3">
                     <Input value={agentBox.params.client_name} onChange={(e) => setAgentBox((a) => ({ ...a, params: { ...a.params, client_name: e.target.value } }))} placeholder="Cliente (nome)" className="h-8" data-testid="agent-client-name" />
-                    <Input value={agentBox.params.client_city} onChange={(e) => setAgentBox((a) => ({ ...a, params: { ...a.params, client_city: e.target.value } }))} placeholder="Ville" className="h-8" data-testid="agent-client-city" />
+                    <Input value={agentBox.params.client_city} onChange={(e) => setAgentBox((a) => ({ ...a, params: { ...a.params, client_city: e.target.value } }))} placeholder="Cidade" className="h-8" data-testid="agent-client-city" />
                   </div>
                 )}
               </div>
@@ -4292,7 +4291,7 @@ export default function PlanTakeoff() {
                   <p className="font-semibold">✓ Agente concluído</p>
                   {agentBox.result.kind === "pdf" && <p className="text-[12px] mt-1">Processo gerado · {agentBox.result.levels} piso(s) · Total c/ IVA {(agentBox.result.totals?.ttc || 0).toLocaleString("fr-FR")} €</p>}
                   {agentBox.result.kind === "quote" && <p className="text-[12px] mt-1">Orçamento consolidado criado — editável no editor.</p>}
-                  {agentBox.result.kind === "summary" && <p className="text-[12px] mt-1">{agentBox.result.total_measures} mesures · {agentBox.result.total_openings} vãos em {agentBox.result.plans?.length} plan(s).</p>}
+                  {agentBox.result.kind === "summary" && <p className="text-[12px] mt-1">{agentBox.result.total_measures} medições · {agentBox.result.total_openings} vãos em {agentBox.result.plans?.length} plan(s).</p>}
                   {agentBox.result.kind === "detect" && <p className="text-[12px] mt-1">{agentBox.result.total_walls} paredes · {agentBox.result.total_openings} vãos detetados. <b>Calibração necessária</b> : abra a planta e introduza uma cota conhecida antes de qualquer medição.</p>}
                   {agentBox.result.kind === "compare" && (
                     <div className="text-[12px] mt-1 space-y-0.5">
@@ -4319,7 +4318,7 @@ export default function PlanTakeoff() {
               {agentBox?.step === "pick" && (
                 <>
                   <Button variant="outline" onClick={() => setAgentBox(null)} className="rounded-sm">Cancelar</Button>
-                  <Button onClick={agentPropose} disabled={agentBox.loading} className="rounded-sm gap-2" data-testid="agent-propose-btn"><Bot className="h-4 w-4" /> {agentBox.loading ? "Analyse…" : agentBox.agent === "dpgf" ? "Ouvrir l'atelier DPGF" : "Propor um plano"}</Button>
+                  <Button onClick={agentPropose} disabled={agentBox.loading} className="rounded-sm gap-2" data-testid="agent-propose-btn"><Bot className="h-4 w-4" /> {agentBox.loading ? "Análise…" : agentBox.agent === "dpgf" ? "Abrir a oficina de mapas de quantidades" : "Propor um plano"}</Button>
                 </>
               )}
               {agentBox?.step === "plan" && (
@@ -4424,7 +4423,7 @@ export default function PlanTakeoff() {
           </div>
           <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
             <div>
-              <p className="overline mb-2">Plans ({allPlans.length})</p>
+              <p className="overline mb-2">Plantas ({allPlans.length})</p>
               {allPlans.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma planta guardada.</p>}
               <div className="grid sm:grid-cols-2 gap-2">
                 {allPlans.map((p) => (
@@ -4444,7 +4443,7 @@ export default function PlanTakeoff() {
                         <p className="text-[11px] text-muted-foreground mt-1">
                           {(p.page_count || 1)} page{(p.page_count || 1) > 1 ? "s" : ""} · {p.rooms_count || 0} divisão{(p.rooms_count || 0) > 1 ? "s" : ""}
                           {p.created_at && <span> · {new Date(p.created_at).toLocaleDateString("fr-FR")}</span>}
-                          {plan?.plan_id === p.plan_id && <span className="text-primary"> · ouvert</span>}
+                          {plan?.plan_id === p.plan_id && <span className="text-primary"> · aberto</span>}
                         </p>
                       </div>
                     </button>
@@ -4454,7 +4453,7 @@ export default function PlanTakeoff() {
             </div>
             {planGroups.length > 0 && (
               <div>
-                <p className="overline mb-2">Projets multi-niveaux ({planGroups.length})</p>
+                <p className="overline mb-2">Projetos multinível ({planGroups.length})</p>
                 <div className="grid sm:grid-cols-2 gap-2">
                   {planGroups.map((g) => (
                     <button key={g.group_id} onClick={() => { setRecentDialog(false); setPlan(null); openGroupConsolidated(g); }}
@@ -4488,18 +4487,18 @@ export default function PlanTakeoff() {
         exportActions={[
           { id: "plan-pdf-export-btn", label: "Medições PDF", run: downloadPdf },
           { id: "plan-metre-noprice-btn", label: "Medição sem preços", run: downloadPlanMetre },
-          { id: "plan-xlsx-export-btn", label: "Tableur Excel", run: downloadXlsx },
+          { id: "plan-xlsx-export-btn", label: "Folha de cálculo Excel", run: downloadXlsx },
           { id: "plan-quote-pdf-btn", label: "Orçamento PDF", run: () => { setQuoteDialog(true); loadTemplates(); loadQuoteSends(); loadVideoHistory(); } },
-          { id: "plan-multi-quote-btn", label: "Consolider plusieurs plans", run: () => { setMultiDialog(true); loadAllPlans(); } },
+          { id: "plan-multi-quote-btn", label: "Consolidar várias plantas", run: () => { setMultiDialog(true); loadAllPlans(); } },
         ]}
         studyActions={[
-          { id: "plan-estimate-btn", label: "Estimation", run: () => { setEstimateDialog(true); setEstimateResult(null); } },
+          { id: "plan-estimate-btn", label: "Estimativa", run: () => { setEstimateDialog(true); setEstimateResult(null); } },
           { id: "plan-review-btn", label: "Controlo das cotas desta página", run: () => { setRightTab("ai"); document.getElementById("plan-results-panel")?.scrollIntoView({ block: "start" }); } },
           { id: "plan-pc-study-btn", label: "Estudo do projeto de licenciamento", run: () => setPcDialog(true) },
           (plan.structural_metre || plan.kind === "dxf") && { id: "plan-structural-btn", label: "Medição a partir das camadas CAD", run: () => setStructDialog(true) },
-          { id: "plan-render-3d-btn", label: "Visualisation 3D", run: () => { setRender3dDialog(true); setRender3dImg(null); setVideoUrl(null); setCreditPaywall(null); loadRender3dHistory(); loadVideoHistory(); loadCredits3d(); } },
+          { id: "plan-render-3d-btn", label: "Visualização 3D", run: () => { setRender3dDialog(true); setRender3dImg(null); setVideoUrl(null); setCreditPaywall(null); loadRender3dHistory(); loadVideoHistory(); loadCredits3d(); } },
           { id: "plan-tools-separator", separator: true },
-          { id: "plan-pro-tools", label: "Plans BIM / Autodesk", run: () => nav("/plans-pro") },
+          { id: "plan-pro-tools", label: "Plantas BIM / Autodesk", run: () => nav("/plans-pro") },
           { id: "plan-bet-reader", label: "Leitura especializada de engenharia", run: () => nav("/structuro/lecture-plan") },
         ]}>
           <Select value={plan?.plan_id || ""} onValueChange={(v) => {
@@ -4519,7 +4518,7 @@ export default function PlanTakeoff() {
               ))}
               {planGroups.map((g) => (
                 <SelectItem key={g.group_id} value={`group:${g.group_id}`} data-testid={`plan-switcher-group-${g.group_id}`}>
-                  📁 {g.name} ({(g.levels || []).length} niveaux)
+                  📁 {g.name} ({(g.levels || []).length} pisos)
                 </SelectItem>
               ))}
             </SelectContent>
@@ -4552,7 +4551,7 @@ export default function PlanTakeoff() {
           <OuvrageComposeDialog onAdd={addOuvrageFromPlan} planVariables={planVariables} />
           <Button variant="outline" onClick={() => { setCustomPosteOpen(true); loadCustomPostes(); }}
                   data-testid="open-custom-postes-btn" className="rounded-sm gap-2">
-            <Plus className="h-4 w-4" /> Postes perso
+            <Plus className="h-4 w-4" /> Artigos personalizados
           </Button>
           {pendingOuvrages > 0 && (
             <Button variant="outline" onClick={() => nav("/devis-editeur")}
@@ -4574,7 +4573,7 @@ export default function PlanTakeoff() {
             className="text-primary text-xs hover:underline"
             data-testid="toggle-plan-settings"
           >
-            {settingsOpen ? "Masquer" : "Editar"}
+            {settingsOpen ? "Ocultar" : "Editar"}
           </button>
         </div>
         <div className="flex items-center gap-1.5 text-xs">
@@ -4630,7 +4629,7 @@ export default function PlanTakeoff() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[180px_minmax(0,1fr)_320px] gap-4 min-w-0">
         {/* SIDEBAR PAGES */}
         <div className="surface p-3 max-h-[80vh] overflow-auto min-w-0 xl:col-span-2 2xl:col-span-1">
-          <p className="overline mb-3">Pages ({plan.page_count})</p>
+          <p className="overline mb-3">Páginas ({plan.page_count})</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-1 gap-2">
             {plan.pages.map((pg, i) => (
               <div key={i}>
@@ -4641,7 +4640,7 @@ export default function PlanTakeoff() {
                   className={`w-full border rounded-sm p-2 text-xs text-left transition-colors ${i === pageIndex ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-bold">Page {i + 1}</p>
+                    <p className="font-bold">Página {i + 1}</p>
                     {pg.level_label && (
                       <Badge variant="outline" className="text-[10px] rounded-sm num h-5">
                         {pg.level_label}
@@ -4658,9 +4657,9 @@ export default function PlanTakeoff() {
                   onValueChange={async (v) => {
                     const payload = v === "none"
                       ? { level_index: null, level_label: null }
-                      : v === "99" ? { level_index: 99, level_label: "Combles" }
-                      : v === "-1" ? { level_index: -1, level_label: "Sous-sol" }
-                      : v === "0" ? { level_index: 0, level_label: "RDC" }
+                      : v === "99" ? { level_index: 99, level_label: "Sótão" }
+                      : v === "-1" ? { level_index: -1, level_label: "Cave" }
+                      : v === "0" ? { level_index: 0, level_label: "R/C" }
                       : { level_index: Number(v), level_label: `R+${v}` };
                     await api.patch(`/takeoffs/${plan.plan_id}/pages/${i}/level`, payload);
                     await refreshPlan();
@@ -4668,16 +4667,16 @@ export default function PlanTakeoff() {
                   }}
                 >
                   <SelectTrigger className="rounded-sm h-6 text-[10px] mt-1" data-testid={`page-level-select-${i}`}>
-                    <SelectValue placeholder="Niveau…" />
+                    <SelectValue placeholder="Nível…" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem nível</SelectItem>
-                    <SelectItem value="-1">Sous-sol</SelectItem>
-                    <SelectItem value="0">RDC</SelectItem>
+                    <SelectItem value="-1">Cave</SelectItem>
+                    <SelectItem value="0">R/C</SelectItem>
                     <SelectItem value="1">R+1</SelectItem>
                     <SelectItem value="2">R+2</SelectItem>
                     <SelectItem value="3">R+3</SelectItem>
-                    <SelectItem value="99">Combles</SelectItem>
+                    <SelectItem value="99">Sótão</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -4693,18 +4692,18 @@ export default function PlanTakeoff() {
           <div className="flex flex-wrap gap-2 mb-3 pb-3 border-b border-border">
             <MeasureHelpDialog />
             <ToolButton icon={MousePointer2} label="Seleção" testId="tool-select" active={tool === TOOLS.SELECT} onClick={() => { setDeductDraw(null); setTool(TOOLS.SELECT); setPoints([]); }} />
-            <ToolButton icon={Ruler} label="Calibrer" testId="tool-calibrate" active={tool === TOOLS.CALIB} onClick={() => { setDeductDraw(null); setTool(TOOLS.CALIB); setPoints([]); }} />
-            <ToolButton icon={Move} label="Distance" testId="tool-distance" active={tool === TOOLS.DIST} onClick={() => { setDeductDraw(null); setTool(TOOLS.DIST); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={Ruler} label="Calibrar" testId="tool-calibrate" active={tool === TOOLS.CALIB} onClick={() => { setDeductDraw(null); setTool(TOOLS.CALIB); setPoints([]); }} />
+            <ToolButton icon={Move} label="Distância" testId="tool-distance" active={tool === TOOLS.DIST} onClick={() => { setDeductDraw(null); setTool(TOOLS.DIST); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Layers} label="Perímetro" testId="tool-polyline" active={tool === TOOLS.POLY} onClick={() => { setDeductDraw(null); setTool(TOOLS.POLY); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Hexagon} label="Superfície" testId="tool-surface" active={tool === TOOLS.SURFACE} onClick={() => { setDeductDraw(null); setTool(TOOLS.SURFACE); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Square} label="Divisão" testId="tool-room" active={tool === TOOLS.ROOM} onClick={() => { setDeductDraw(null); setTool(TOOLS.ROOM); setPoints([]); }} disabled={!currentCalib} />
             <ToolButton icon={Wand2} label="Auto-divisão" testId="tool-autoroom" active={tool === TOOLS.AUTOROOM} onClick={() => { setDeductDraw(null); setTool(TOOLS.AUTOROOM); setPoints([]); }} disabled={!currentCalib} />
-            <ToolButton icon={DoorOpen} label="Ouverture" testId="tool-opening" active={tool === TOOLS.OPENING} onClick={() => { setTool(TOOLS.OPENING); setPoints([]); }} disabled={!currentCalib || rooms.length === 0} />
+            <ToolButton icon={DoorOpen} label="Vão" testId="tool-opening" active={tool === TOOLS.OPENING} onClick={() => { setTool(TOOLS.OPENING); setPoints([]); }} disabled={!currentCalib || rooms.length === 0} />
             {/* Iter 57 — QuoterPlan-like tools */}
-            <ToolButton icon={Hash} label="Compteur" testId="tool-counter" active={tool === TOOLS.COUNTER} onClick={() => { setTool(TOOLS.COUNTER); setPoints([]); }} />
-            <ToolButton icon={StickyNote} label="Note" testId="tool-note" active={tool === TOOLS.NOTE} onClick={() => { setTool(TOOLS.NOTE); setPoints([]); }} />
-            <ToolButton icon={Triangle} label="Angle" testId="tool-angle" active={tool === TOOLS.ANGLE} onClick={() => { setTool(TOOLS.ANGLE); setPoints([]); }} />
-            <ToolButton icon={MountainSnow} label="Pente toit" testId="tool-pitch" active={tool === TOOLS.PITCH} onClick={() => { setTool(TOOLS.PITCH); setPoints([]); }} disabled={!currentCalib} />
+            <ToolButton icon={Hash} label="Contador" testId="tool-counter" active={tool === TOOLS.COUNTER} onClick={() => { setTool(TOOLS.COUNTER); setPoints([]); }} />
+            <ToolButton icon={StickyNote} label="Nota" testId="tool-note" active={tool === TOOLS.NOTE} onClick={() => { setTool(TOOLS.NOTE); setPoints([]); }} />
+            <ToolButton icon={Triangle} label="Ângulo" testId="tool-angle" active={tool === TOOLS.ANGLE} onClick={() => { setTool(TOOLS.ANGLE); setPoints([]); }} />
+            <ToolButton icon={MountainSnow} label="Inclinação da cobertura" testId="tool-pitch" active={tool === TOOLS.PITCH} onClick={() => { setTool(TOOLS.PITCH); setPoints([]); }} disabled={!currentCalib} />
             <div className="flex-1" />
             {rooms.some((r) => r.page_index === pageIndex && r.surface_delta_pct != null) && (
               <Button size="sm" variant={showDeltas ? "default" : "outline"}
@@ -4725,7 +4724,7 @@ export default function PlanTakeoff() {
                         onClick={() => setReclassifyMode(v => !v)}
                         data-testid="toggle-reclassify-mode"
                         className={`rounded-sm gap-1 h-8 ${reclassifyMode ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
-                  {reclassifyMode ? "Reclasser (actif)" : "Reclasser"}
+                  {reclassifyMode ? "Reclassificar (ativo)" : "Reclassificar"}
                 </Button>
               </>
             )}
@@ -4756,7 +4755,7 @@ export default function PlanTakeoff() {
                             : "Bloquear a planta (bloquear zoom + deslocação para cliques precisos)"}
             >
               {locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-              {locked ? "Bloqueado" : "Verrouiller"}
+              {locked ? "Bloqueado" : "Bloquear"}
             </Button>
             <Button
               size="sm"
@@ -4767,18 +4766,18 @@ export default function PlanTakeoff() {
               title="Abrir o Painel Objetos (edição & salto para)"
             >
               <Layers className="h-3 w-3" />
-              Objets
+              Objetos
             </Button>
             {/* P1 — Statut d'enregistrement automatique + enregistrement manuel */}
             <span data-testid="autosave-status"
                   className={`inline-flex items-center gap-1 text-xs px-2 h-8 rounded-sm ${saving ? "text-amber-500" : "text-emerald-600"}`}
                   title="As suas medições e modificações são guardadas automaticamente">
               <span className={`h-1.5 w-1.5 rounded-full ${saving ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-              {saving ? "Enregistrement…" : annotationSaveError ? "Falha ao guardar" : savedAt ? "Anotações guardadas ✓" : "Gravação das anotações ativa"}
+              {saving ? "A guardar…" : annotationSaveError ? "Falha ao guardar" : savedAt ? "Anotações guardadas ✓" : "Gravação das anotações ativa"}
             </span>
             <Button size="sm" variant="outline" onClick={manualSave} disabled={saving}
                     data-testid="plan-save-btn" className="rounded-sm gap-1 h-8"
-                    title="Forcer l'enregistrement maintenant">
+                    title="Forçar o registo agora">
               <Save className="h-3 w-3" /> Guardar
             </Button>
             {/* P1 — Réglage contraste/luminosité du plan */}
@@ -4832,7 +4831,7 @@ export default function PlanTakeoff() {
               title={fullscreen ? "Sair do ecrã inteiro (Esc)" : "Mostrar a planta em ecrã completo"}
             >
               {fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-              {fullscreen ? "Quitter" : "Ecrã completo"}
+              {fullscreen ? "Sair" : "Ecrã completo"}
             </Button>
             {/* P3 — Assistant IA d'édition du plan */}
             <Button
@@ -4843,7 +4842,7 @@ export default function PlanTakeoff() {
               className={`rounded-sm gap-1 h-8 ${aiCmdOpen ? "bg-primary text-white hover:bg-orange-600" : "border-primary/60 text-primary"}`}
               title="Assistente IA: modifique a planta em linguagem natural"
             >
-              <Bot className="h-3 w-3" /> Assistant IA
+              <Bot className="h-3 w-3" /> Assistente IA
             </Button>
           </div>
 
@@ -4910,7 +4909,7 @@ export default function PlanTakeoff() {
                   {aiTurns.length > 0 && (
                     <button onClick={() => { setAiTurns([]); setAiJustCreated(null); toast.message("Nova conversa"); }}
                             className="text-[10px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
-                            title={`Memória da conversa:${aiTurns.length}troca(s). Reinicializar.`}
+                            title={`Memória da conversa: ${aiTurns.length} troca(s). Reinicializar.`}
                             data-testid="ai-reset-conversation">
                       <History className="h-3 w-3" /> Nova conversa ({aiTurns.length})
                     </button>
@@ -4941,7 +4940,7 @@ export default function PlanTakeoff() {
                 <Button size="sm" onClick={aiProposeCommand} disabled={aiCmdBusy || !aiCmd.trim()}
                         className="rounded-sm gap-1 h-9" data-testid="ai-command-propose">
                   {aiCmdBusy && !aiCmdProposal ? <Sparkles className="h-3.5 w-3.5 animate-pulse" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  Proposer
+                  Propor
                 </Button>
               </div>
               {aiCmdProposal && aiCmdProposal.action === "answer" && (
@@ -4949,7 +4948,7 @@ export default function PlanTakeoff() {
                   <p className="text-xs whitespace-pre-wrap leading-snug">{aiCmdProposal.answer}</p>
                   {Array.isArray(aiCmdProposal.sources) && aiCmdProposal.sources.length > 0 && (
                     <div className="border-t border-border pt-1.5 grid gap-0.5">
-                      <p className="overline text-[10px]">Sources</p>
+                      <p className="overline text-[10px]">Fontes</p>
                       {aiCmdProposal.sources.map((s, i) => (
                         <a key={i} href={s.url} target="_blank" rel="noreferrer"
                            className="text-[11px] text-primary hover:underline truncate"
@@ -4989,7 +4988,7 @@ export default function PlanTakeoff() {
                     </Button>
                     <Button size="sm" onClick={aiApplyCommand} disabled={aiCmdBusy}
                             className="rounded-sm h-7 text-xs gap-1" data-testid="ai-command-apply">
-                      <Save className="h-3 w-3" /> Appliquer
+                      <Save className="h-3 w-3" /> Aplicar
                     </Button>
                   </div>
                 </div>
@@ -5004,11 +5003,11 @@ export default function PlanTakeoff() {
                             className="rounded-sm h-7 text-xs" data-testid="ai-chiffrer-created-skip">Mais tarde</Button>
                     <Button size="sm" onClick={() => {
                               const m = (plan?.measurements || []).find((x) => x.measurement_id === aiJustCreated.measurement_id);
-                              if (m) openChiffrage(m); else toast.error("Cote introuvable");
+                              if (m) openChiffrage(m); else toast.error("Cota não encontrada");
                               setAiJustCreated(null);
                             }} disabled={aiCmdBusy}
                             className="rounded-sm h-7 text-xs gap-1" data-testid="ai-chiffrer-created-go">
-                      € Chiffrer
+                      € Orçamentar
                     </Button>
                   </div>
                 </div>
@@ -5042,7 +5041,7 @@ export default function PlanTakeoff() {
             <div className="absolute top-3 right-3 z-20 w-64 border border-fuchsia-500/50 bg-background/95 backdrop-blur rounded-sm p-3 grid gap-1.5 shadow-lg"
                  data-testid="cote-detail-panel">
               <div className="flex items-center justify-between">
-                <p className="overline text-fuchsia-500">Cote IA #{selectedCote + 1}</p>
+                <p className="overline text-fuchsia-500">Cota IA #{selectedCote + 1}</p>
                 <button onClick={() => setSelectedCote(null)}
                         className="text-muted-foreground hover:text-foreground"
                         data-testid="cote-detail-close">
@@ -5115,7 +5114,7 @@ export default function PlanTakeoff() {
             onExportCotesPdf={downloadCotesPdf}
             onConvertMeasure={convertMeasureToRoom}
             onDeductMeasure={deductMeasure}
-            onDeductOpening={(m) => { setDeductWidth(""); setDeductCount(1); setDeductDialog({ measurement_id: m.measurement_id, label: m.label || "Mur" }); }}
+            onDeductOpening={(m) => { setDeductWidth(""); setDeductCount(1); setDeductDialog({ measurement_id: m.measurement_id, label: m.label || "Parede" }); }}
             onReportToDevis={reportMeasureToDevis}
             onMergeMeasures={mergeMeasures}
             onReportAllWallAreas={reportAllWallAreasToDevis}
@@ -5170,7 +5169,7 @@ export default function PlanTakeoff() {
                         <p className="num text-sm font-semibold">{Number(deductLiveMeasure.wall_area_gross_m2 || 0).toFixed(2)} m²</p>
                       </div>
                       <div className="rounded-sm bg-background p-2">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ouvertures</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Vãos</p>
                         <p className="num text-sm font-semibold text-destructive">−{Number(deductLiveMeasure.openings_area_m2 || 0).toFixed(2)} m²</p>
                       </div>
                       <div className="rounded-sm bg-primary/10 p-2">
@@ -5199,7 +5198,7 @@ export default function PlanTakeoff() {
                       {deductLiveMeasure.openings.map((op, oi) => (
                         <div key={op.opening_id} className="flex items-center gap-2" data-testid={`deduct-opening-${oi}`}>
                           <span className="w-4 text-[11px] text-muted-foreground">{oi + 1}.</span>
-                          <span className="flex-1 truncate text-xs">{op.label || "Ouverture"}</span>
+                          <span className="flex-1 truncate text-xs">{op.label || "Vão"}</span>
                           <Input defaultValue={op.width_m} inputMode="decimal"
                                  title="Largura (m)"
                                  data-testid={`deduct-opening-${oi}-width`}
@@ -5219,7 +5218,7 @@ export default function PlanTakeoff() {
                                  }} />
                           <span className="text-[11px] text-muted-foreground">m ×</span>
                           <Input type="number" min={1} defaultValue={op.count || 1}
-                                 title="Nombre"
+                                 title="Número"
                                  data-testid={`deduct-opening-${oi}-count`}
                                  className="h-8 w-16 text-xs"
                                  onBlur={(e) => {
@@ -5273,7 +5272,7 @@ export default function PlanTakeoff() {
                            className="h-9 w-24" />
                   </div>
                   <div className="grid gap-1">
-                    <Label className="text-xs">Nombre</Label>
+                    <Label className="text-xs">Número</Label>
                     <Input type="number" min={1} value={deductCount}
                            onChange={(e) => setDeductCount(e.target.value)}
                            data-testid="deduct-count-input" className="h-9 w-20" />
@@ -5314,11 +5313,11 @@ export default function PlanTakeoff() {
               sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
                 items,
                 source: "room_estimate",
-                project_name: `Pièce ${est.room?.name || "-"} — ${plan?.filename || "Plan"}`,
+                project_name: `Divisão ${est.room?.name || "-"} — ${plan?.filename || "Planta"}`,
                 total_avg: est.total_budget || 0,
                 ts: Date.now(),
               }));
-              toast.success(`${items.length}material${items.length > 1 ? "x" : ""}adicionada${items.length > 1 ? "s" : ""}no orçamento`);
+              toast.success(`${items.length} material${items.length > 1 ? "x" : ""} adicionada${items.length > 1 ? "s" : ""} no orçamento`);
               setRoomEstimate(null);
               // Navigate to /prix
               window.location.href = "/prix?from=room-estimate";
@@ -5336,7 +5335,7 @@ export default function PlanTakeoff() {
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2"
                  data-testid="active-tool-bar">
               <Badge variant="outline" className="rounded-sm gap-1 border-primary/40 text-primary font-semibold">
-                Outil actif : {TOOL_LABELS[tool] || tool}
+                Ferramenta ativa: {TOOL_LABELS[tool] || tool}
               </Badge>
               {(tool === TOOLS.DIST || tool === TOOLS.SURFACE) && (
                 <Button size="sm" variant={cumulMode ? "default" : "outline"}
@@ -5344,7 +5343,7 @@ export default function PlanTakeoff() {
                         data-testid="tool-cumul-toggle"
                         className={`rounded-sm gap-1 h-8 ${cumulMode ? "bg-primary text-white" : ""}`}
                         title={cumulIsArea ? "Somar várias zonas de pavimento numa única área" : "Somar vários troços de uma mesma parede (janelas/portas = vãos excluídos)"}>
-                  <Layers className="h-3 w-3" /> Cumul {cumulIsArea ? "surface" : "mur"} {cumulMode ? "ON" : "OFF"}
+                  <Layers className="h-3 w-3" /> Acumulado {cumulIsArea ? "surface" : "parede"} {cumulMode ? "ON" : "OFF"}
                 </Button>
               )}
               <span className="flex-1" />
@@ -5429,7 +5428,7 @@ export default function PlanTakeoff() {
               )}
               <Button size="sm" variant="outline" onClick={() => { setDeductDraw(null); setPoints([]); setTool(TOOLS.SELECT); }}
                       data-testid="deduct-draw-cancel" className="rounded-sm gap-1 h-8">
-                <X className="h-3 w-3" /> Terminer
+                <X className="h-3 w-3" /> Terminar
               </Button>
             </div>
           )}
@@ -5445,7 +5444,7 @@ export default function PlanTakeoff() {
               )}
               {tool === TOOLS.DIST && !cumulMode && points.length === 2 && (
                 <Button size="sm" onClick={() => finishDistance()} data-testid="tool-finish-distance" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                  <Save className="h-3 w-3" /> Mesurer
+                  <Save className="h-3 w-3" /> Medir
                 </Button>
               )}
               {tool === TOOLS.DIST && cumulMode && points.length === 2 && (
@@ -5456,7 +5455,7 @@ export default function PlanTakeoff() {
               )}
               {tool === TOOLS.POLY && points.length >= 2 && (
                 <Button size="sm" onClick={() => finishPolyline()} data-testid="tool-finish-polyline" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                  <Save className="h-3 w-3" /> Terminer polyligne
+                  <Save className="h-3 w-3" /> Terminar polilinha
                 </Button>
               )}
               {tool === TOOLS.SURFACE && !cumulMode && points.length >= 3 && (
@@ -5538,7 +5537,7 @@ export default function PlanTakeoff() {
               <Button
                 size="sm" variant="outline" onClick={() => {
                   const nb = annotations.counters.length;
-                  const label = window.prompt(`Nome do contador${nb + 1} (ex: Prises, Spots, Radiateurs) :`, `Compteur ${nb + 1}`);
+                  const label = window.prompt(`Nome do contador ${nb + 1} (ex.: Tomadas, Focos, Radiadores):`, `Contador ${nb + 1}`);
                   if (!label) return;
                   const newC = {
                     id: `cnt_${Date.now()}`,
@@ -5595,9 +5594,9 @@ export default function PlanTakeoff() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  ["porteur",  "text-red-500 border-red-500/40 bg-red-500/5",   "Porteur"],
-                  ["cloison",  "text-primary border-primary/40 bg-primary/5",   "Cloison"],
-                  ["doublage", "text-blue-500 border-blue-500/40 bg-blue-500/5", "Doublage"],
+                  ["porteur",  "text-red-500 border-red-500/40 bg-red-500/5",   "Estrutural"],
+                  ["cloison",  "text-primary border-primary/40 bg-primary/5",   "Divisória"],
+                  ["doublage", "text-blue-500 border-blue-500/40 bg-blue-500/5", "Isolamento térmico interior"],
                 ].map(([key, cls, label]) => {
                   const t = wallsSummary.totals[key] || { count: 0, ml: 0 };
                   return (
@@ -5615,7 +5614,7 @@ export default function PlanTakeoff() {
                 <div className="mt-2 flex flex-wrap gap-1.5 items-center" data-testid="walls-material-hint">
                   <span className="text-[10px] text-muted-foreground">Material das paredes resistentes (IA):</span>
                   {plan.ai_analysis.wall_types.hatching_present &&
-                   plan.ai_analysis.wall_types.hatching_present !== "aucun" ? (
+                   plan.ai_analysis.wall_types.hatching_present !== "nenhum" ? (
                     <Badge variant="outline" className="rounded-sm text-[10px] capitalize border-red-500/40 text-red-500">
                       {plan.ai_analysis.wall_types.hatching_present}
                     </Badge>
@@ -5625,10 +5624,10 @@ export default function PlanTakeoff() {
                     </span>
                   )}
                   {plan.ai_analysis.wall_types.load_bearing_visible && (
-                    <Badge variant="outline" className="rounded-sm text-[10px] border-red-500/40 text-red-500">porteurs visibles</Badge>
+                    <Badge variant="outline" className="rounded-sm text-[10px] border-red-500/40 text-red-500">estruturais visíveis</Badge>
                   )}
                   {plan.ai_analysis.wall_types.partition_visible && (
-                    <Badge variant="outline" className="rounded-sm text-[10px] border-primary/40 text-primary">cloisons visibles</Badge>
+                    <Badge variant="outline" className="rounded-sm text-[10px] border-primary/40 text-primary">divisórias visíveis</Badge>
                   )}
                 </div>
               )}
@@ -5640,7 +5639,7 @@ export default function PlanTakeoff() {
             <div className="mt-3 border border-red-500/30 rounded-sm p-3 bg-red-500/5" data-testid="structure-card">
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <p className="overline flex items-center gap-2">
-                  <Sparkles className="h-3 w-3 text-red-500" /> Structure IA
+                  <Sparkles className="h-3 w-3 text-red-500" /> Estrutura IA
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] text-muted-foreground">
@@ -5651,7 +5650,7 @@ export default function PlanTakeoff() {
                   <Button size="sm" variant={showStructure ? "default" : "outline"}
                           onClick={() => setShowStructure((v) => !v)}
                           data-testid="toggle-structure-overlay" className="rounded-sm gap-1 h-7 text-xs">
-                    <Layers className="h-3 w-3" /> {showStructure ? "Masquer" : "Afficher"}
+                    <Layers className="h-3 w-3" /> {showStructure ? "Ocultar" : "Mostrar"}
                   </Button>
                 </div>
               </div>
@@ -5661,15 +5660,15 @@ export default function PlanTakeoff() {
                   <p className="num text-lg font-extrabold">{structure.walls?.length || 0}</p>
                 </div>
                 <div className="border border-yellow-500/40 rounded-sm p-2 text-yellow-600" data-testid="structure-opening-count">
-                  <p className="text-[10px] uppercase font-bold tracking-wider">Ouvert.</p>
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Aberto.</p>
                   <p className="num text-lg font-extrabold">{structure.openings?.length || 0}</p>
                 </div>
                 <div className="border border-purple-800/40 rounded-sm p-2 text-purple-800" data-testid="structure-beam-count">
-                  <p className="text-[10px] uppercase font-bold tracking-wider">Poutres</p>
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Vigas</p>
                   <p className="num text-lg font-extrabold">{structure.beams?.length || 0}</p>
                 </div>
                 <div className="border border-purple-600/40 rounded-sm p-2 text-purple-600" data-testid="structure-column-count">
-                  <p className="text-[10px] uppercase font-bold tracking-wider">Poteaux</p>
+                  <p className="text-[10px] uppercase font-bold tracking-wider">Pilares</p>
                   <p className="num text-lg font-extrabold">{structure.columns?.length || 0}</p>
                 </div>
               </div>
@@ -5689,7 +5688,7 @@ export default function PlanTakeoff() {
                   </div>
                   {/* Hauteur par arases NGF (AS - AI) — prioritaire sur la hauteur murs */}
                   <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground">
-                    <span className="whitespace-nowrap">Arases NGF :</span>
+                    <span className="whitespace-nowrap">Arases NGF:</span>
                     <label className="flex items-center gap-1">AI
                       <input type="number" step="0.01" value={araseInf}
                              onChange={(e) => setAraseInf(e.target.value)}
@@ -5713,7 +5712,7 @@ export default function PlanTakeoff() {
                     <span className="text-[10px] text-muted-foreground whitespace-nowrap">Edifício:</span>
                     {[
                       { v: "dalle_pleine", label: "🏢 Edifício (laje maciça)" },
-                      { v: "poutrelles_hourdis", label: "🏠 Maison (hourdis)" },
+                      { v: "poutrelles_hourdis", label: "🏠 Moradia (abobadilha)" },
                       { v: "auto", label: "Auto" },
                     ].map((o) => (
                       <button key={o.v} type="button"
@@ -5746,11 +5745,11 @@ export default function PlanTakeoff() {
                     )}
                     <Button size="sm" variant="outline" onClick={saveBetonPreset}
                             data-testid="beton-preset-save" className="rounded-sm h-7 text-[10px] gap-1">
-                      <Save className="h-3 w-3" /> Sous…
+                      <Save className="h-3 w-3" /> Sob…
                     </Button>
                     <Button size="sm" variant="outline" onClick={runCompare}
                             data-testid="beton-preset-compare" className="rounded-sm h-7 text-[10px] gap-1">
-                      Comparer
+                      Comparar
                     </Button>
                   </div>
                   {!descriptif.calibrated && (
@@ -5783,9 +5782,9 @@ export default function PlanTakeoff() {
                   </div>
                   {/* Ratios de ferraillage ajustables (kg/m³) */}
                   <details className="mb-1.5" data-testid="acier-ratios">
-                    <summary className="text-[10px] font-semibold cursor-pointer text-orange-600">Ratios aciers (kg/m³) — ajustables</summary>
+                    <summary className="text-[10px] font-semibold cursor-pointer text-orange-600">Rácios de aço (kg/m³) — ajustáveis</summary>
                     <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] text-muted-foreground">
-                      {[["semelles", "Semelles"], ["poteaux", "Poteaux"], ["poutres", "Poutres"], ["dalles", "Dalles"], ["voiles", "Voiles"]].map(([k, lbl]) => (
+                      {[["semelles", "Sapatas"], ["poteaux", "Pilares"], ["poutres", "Vigas"], ["dalles", "Lajes"], ["voiles", "Paredes"]].map(([k, lbl]) => (
                         <label key={k} className="flex flex-col gap-0.5">{lbl}
                           <input type="number" step="5" min="0" max="400" value={acierRatios[k]}
                                  onChange={(e) => setAcierRatios((r) => ({ ...r, [k]: parseFloat(e.target.value) || 0 }))}
@@ -5810,7 +5809,7 @@ export default function PlanTakeoff() {
                              onChange={(e) => setLaborPriceM3(parseFloat(e.target.value) || 0)}
                              data-testid="labor-price-m3"
                              className="w-16 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" /> €/m³
-                      <span className="ml-2">Marge</span>
+                      <span className="ml-2">Margem</span>
                       <input type="number" step="1" min="0" max="100" value={marginPct}
                              onChange={(e) => setMarginPct(parseFloat(e.target.value) || 0)}
                              data-testid="margin-pct"
@@ -5829,13 +5828,13 @@ export default function PlanTakeoff() {
                       ))}
                     </div>
                     <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
-                      <span>Marge/poste :</span>
+                      <span>Margem/artigo:</span>
                       <label className="flex items-center gap-0.5">Betão
                         <input type="number" step="1" min="0" max="100" placeholder="—" value={marginBeton}
                                onChange={(e) => setMarginBeton(e.target.value)} data-testid="margin-beton"
                                className="w-11 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />%
                       </label>
-                      <label className="flex items-center gap-0.5">Aciers
+                      <label className="flex items-center gap-0.5">Aços
                         <input type="number" step="1" min="0" max="100" placeholder="—" value={marginAcier}
                                onChange={(e) => setMarginAcier(e.target.value)} data-testid="margin-acier"
                                className="w-11 rounded-sm border border-input bg-background px-1 py-0.5 text-right num" />%
@@ -5856,7 +5855,7 @@ export default function PlanTakeoff() {
                   <details className="mb-1.5" data-testid="beton-prices-poste">
                     <summary className="text-[10px] font-semibold cursor-pointer text-sky-600">Preço betão por item (€/m³) — opcional</summary>
                     <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] text-muted-foreground">
-                      {[["semelles", "Semelles"], ["proprete", "Limpeza"], ["poteaux", "Poteaux"], ["poutres", "Poutres"], ["voiles", "Voiles"]].map(([k, lbl]) => (
+                      {[["semelles", "Sapatas"], ["proprete", "Limpeza"], ["poteaux", "Pilares"], ["poutres", "Vigas"], ["voiles", "Paredes"]].map(([k, lbl]) => (
                         <label key={k} className="flex flex-col gap-0.5">{lbl}
                           <input type="number" step="5" min="0" max="500" value={betonPrices[k]}
                                  onChange={(e) => setBetonPrices((r) => ({ ...r, [k]: parseFloat(e.target.value) || 0 }))}
@@ -5874,7 +5873,7 @@ export default function PlanTakeoff() {
                                 className="rounded-sm border border-input bg-background px-1 py-0.5 text-[10px]">
                           <option value="auto">Auto (segundo plano)</option>
                           <option value="dalle_pleine">Laje maciça BA (edifício)</option>
-                          <option value="poutrelles_hourdis">Poutrelles-hourdis (maison)</option>
+                          <option value="poutrelles_hourdis">Vigotas-abobadilhas (casa)</option>
                         </select>
                       </label>
                       <label className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">Preço pavimento (€/m²)
@@ -5894,18 +5893,18 @@ export default function PlanTakeoff() {
                     </label>
                   </details>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
-                    <span className="text-muted-foreground flex items-center gap-1">Planchers (sol)
+                    <span className="text-muted-foreground flex items-center gap-1">Pavimentos (chão)
                       {descriptif.planchers_source === "auto" && (
                         <span className="text-[9px] px-1 rounded-sm bg-emerald-500/15 text-emerald-600 font-bold" data-testid="planchers-auto-badge">AUTO IA</span>
                       )}
                     </span><span className="num text-right">{descriptif.planchers_m2} m²</span>
                     <span className="text-muted-foreground">Paredes portantes</span><span className="num text-right">{descriptif.murs_porteurs_ml} ml</span>
-                    <span className="text-muted-foreground">Cloisons</span><span className="num text-right">{descriptif.cloisons_ml} ml</span>
+                    <span className="text-muted-foreground">Divisórias</span><span className="num text-right">{descriptif.cloisons_ml} ml</span>
                     <span className="text-muted-foreground">Paredes (superfície)</span><span className="num text-right">{descriptif.murs_surface_m2} m²</span>
                     <span className="text-muted-foreground">Portas / Janelas / Vãos</span><span className="num text-right">{descriptif.portes} / {descriptif.fenetres} / {descriptif.baies}</span>
-                    <span className="text-muted-foreground">Poutres</span><span className="num text-right">{descriptif.poutres_ml} ml</span>
-                    <span className="text-muted-foreground">Poteaux</span><span className="num text-right">{descriptif.poteaux || 0} u</span>
-                    <span className="text-muted-foreground">Semelles</span><span className="num text-right">{descriptif.semelles || 0} u</span>
+                    <span className="text-muted-foreground">Vigas</span><span className="num text-right">{descriptif.poutres_ml} ml</span>
+                    <span className="text-muted-foreground">Pilares</span><span className="num text-right">{descriptif.poteaux || 0} u</span>
+                    <span className="text-muted-foreground">Sapatas</span><span className="num text-right">{descriptif.semelles || 0} u</span>
                     {descriptif.beton_total_m3 > 0 && (
                       <>
                         <span className="text-muted-foreground font-semibold">Betão total</span>
@@ -5914,7 +5913,7 @@ export default function PlanTakeoff() {
                     )}
                     {descriptif.acier_total_kg > 0 && (
                       <>
-                        <span className="text-muted-foreground font-semibold">Aciers (ferraillage)</span>
+                        <span className="text-muted-foreground font-semibold">Aço (armadura)</span>
                         <span className="num text-right font-semibold text-orange-600" data-testid="descriptif-acier">{descriptif.acier_total_kg} kg</span>
                       </>
                     )}
@@ -5941,17 +5940,17 @@ export default function PlanTakeoff() {
                       <div className="mt-1 border border-border rounded-sm overflow-hidden">
                         <table className="w-full text-[10px]">
                           <thead className="bg-muted/60"><tr>
-                            <th className="text-left px-1.5 py-1">Poste</th>
+                            <th className="text-left px-1.5 py-1">Artigo</th>
                             <th className="text-right px-1.5 py-1">Betão</th>
-                            <th className="text-right px-1.5 py-1">Aciers</th>
+                            <th className="text-right px-1.5 py-1">Aços</th>
                           </tr></thead>
                           <tbody>
                             {[
-                              { k: "semelles", label: `Semelles (${descriptif.semelles || 0} u)`, b: descriptif.beton_semelles_m3, a: descriptif.acier_semelles_kg },
+                              { k: "semelles", label: `Sapatas (${descriptif.semelles || 0} u)`, b: descriptif.beton_semelles_m3, a: descriptif.acier_semelles_kg },
                               { k: "proprete", label: "Betão de limpeza (esp. 5 cm)", b: descriptif.beton_proprete_m3, a: 0 },
-                              { k: "poteaux", label: `Poteaux (${descriptif.poteaux || 0} u)`, b: descriptif.beton_poteaux_m3, a: descriptif.acier_poteaux_kg },
-                              { k: "poutres", label: `Poutres (${descriptif.poutres_ml || 0} ml)`, b: descriptif.beton_poutres_m3, a: descriptif.acier_poutres_kg },
-                              { k: "dalles", label: `Dalles / planchers (${descriptif.planchers_m2 || 0} m²)`, b: descriptif.beton_dalles_m3, a: descriptif.acier_dalles_kg },
+                              { k: "poteaux", label: `Pilares (${descriptif.poteaux || 0} u)`, b: descriptif.beton_poteaux_m3, a: descriptif.acier_poteaux_kg },
+                              { k: "poutres", label: `Vigas (${descriptif.poutres_ml || 0} ml)`, b: descriptif.beton_poutres_m3, a: descriptif.acier_poutres_kg },
+                              { k: "dalles", label: `Lajes / pavimentos (${descriptif.planchers_m2 || 0} m²)`, b: descriptif.beton_dalles_m3, a: descriptif.acier_dalles_kg },
                               { k: "voiles", label: `Paredes resistentes (${descriptif.murs_porteurs_ml || 0} ml)`, b: descriptif.beton_voiles_m3, a: descriptif.acier_voiles_kg },
                             ].filter((r) => (r.b || 0) > 0).map((r) => (
                               <tr key={r.k} className="border-t border-border" data-testid={`poste-row-${r.k}`}>
@@ -5976,7 +5975,7 @@ export default function PlanTakeoff() {
                       <div className="mt-1 max-h-40 overflow-auto border border-border rounded-sm">
                         <table className="w-full text-[10px]">
                           <thead className="bg-muted/60 sticky top-0"><tr>
-                            <th className="text-left px-1.5 py-1">Referência</th><th className="text-left px-1.5 py-1">Section</th><th className="text-right px-1.5 py-1">Betão</th>
+                            <th className="text-left px-1.5 py-1">Referência</th><th className="text-left px-1.5 py-1">Secção</th><th className="text-right px-1.5 py-1">Betão</th>
                           </tr></thead>
                           <tbody>
                             {descriptif.poteaux_table.map((p) => (
@@ -6014,10 +6013,10 @@ export default function PlanTakeoff() {
                   )}
                   <Button size="sm" onClick={estimateAndDownloadQuote} disabled={quoteBusy} data-testid="structure-estimate-quote"
                           className="w-full rounded-sm h-9 text-sm font-bold gap-1.5 mt-2 bg-primary hover:bg-primary/90">
-                    <FileDown className="h-4 w-4" /> {quoteBusy ? "Estimation en cours…" : "Estimar o orçamento (PDF)"}
+                    <FileDown className="h-4 w-4" /> {quoteBusy ? "Estimativa em curso…" : "Estimar o orçamento (PDF)"}
                   </Button>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Estrutura / betão apenas — paredes, pilares, vigas, lajes, sapatas + aços (área = lajes) · betão {betonPriceM3} €/m³ · aciers {acierPriceKg} €/kg · mão de obra {laborPriceM3} €/m³ · marge {marginPct}%
+                    Estrutura / betão apenas — paredes, pilares, vigas, lajes, sapatas + aços (área = lajes) · betão {betonPriceM3} €/m³ · aços {acierPriceKg} €/kg · mão de obra {laborPriceM3} €/m³ · margem {marginPct}%
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <Button size="sm" variant="outline" onClick={sendToQuote} data-testid="structure-to-quote"
@@ -6040,7 +6039,7 @@ export default function PlanTakeoff() {
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setAiChatOpen(true)} data-testid="structure-ai-assistant"
                             className="rounded-sm h-7 text-xs gap-1 flex-1 text-primary border-primary/40">
-                      <Bot className="h-3 w-3" /> Assistant IA
+                      <Bot className="h-3 w-3" /> Assistente IA
                     </Button>
                   </div>
                 </div>
@@ -6059,7 +6058,7 @@ export default function PlanTakeoff() {
                   {(selectedStruct.type === "wall" || selectedStruct.type === "opening") && (
                     <Button size="sm" variant="outline" onClick={toggleStructType}
                             data-testid="structure-toggle-type" className="rounded-sm h-7 text-xs gap-1">
-                      {selectedStruct.type === "wall" ? "Porteur ↔ Cloison" : "Porta ↔ Janela ↔ Vão"}
+                      {selectedStruct.type === "wall" ? "Resistente ↔ Divisória" : "Porta ↔ Janela ↔ Vão"}
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={deleteStructItem}
@@ -6071,7 +6070,7 @@ export default function PlanTakeoff() {
               <div className="flex items-center gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={addStructWall}
                         data-testid="structure-add-wall" className="rounded-sm h-7 text-xs gap-1">
-                  <Plus className="h-3 w-3" /> Mur
+                  <Plus className="h-3 w-3" /> Parede
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => addStructOpening("fenetre")}
                         data-testid="structure-add-window" className="rounded-sm h-7 text-xs gap-1 text-yellow-600 border-yellow-500/40">
@@ -6136,7 +6135,7 @@ export default function PlanTakeoff() {
                       {r.surface_delta_pct != null && (
                         <Badge variant="outline"
                                className={`rounded-sm text-[10px] num ${Math.abs(r.surface_delta_pct) > 5 ? "border-amber-500 text-amber-500" : "border-green-600 text-green-600"}`}
-                               title={`Área escrita na planta:${r.surface_written_m2} m²`}
+                               title={`Área escrita na planta: ${r.surface_written_m2} m²`}
                                data-testid={`room-surface-delta-${r.room_id}`}>
                           escrito {r.surface_written_m2} m² ({r.surface_delta_pct > 0 ? "+" : ""}{r.surface_delta_pct}%)
                         </Badge>
@@ -6144,7 +6143,7 @@ export default function PlanTakeoff() {
                       {(r.deductions || []).map((d) => (
                         <Badge key={d.deduction_id} variant="outline"
                                className="rounded-sm text-[10px] num border-red-400 text-red-500 gap-1"
-                               title={`Área bruta:${r.surface_gross_m2} m²`}
+                               title={`Área bruta: ${r.surface_gross_m2} m²`}
                                data-testid={`room-deduction-${d.deduction_id}`}>
                           − {d.area_m2} m² {d.label}
                           <button onClick={() => removeDeduction(r.room_id, d.deduction_id)}
@@ -6160,13 +6159,13 @@ export default function PlanTakeoff() {
                     <span>Superfície</span><span className="text-right font-bold">{r.surface_m2} m²</span>
                     <span>Perímetro</span><span className="text-right">{r.perimeter_m} m</span>
                     <span>Paredes brutas</span><span className="text-right">{r.wall_area_gross_m2} m²</span>
-                    <span>Ouvertures</span><span className="text-right text-destructive">-{r.openings_area_m2 || 0} m²</span>
+                    <span>Vãos</span><span className="text-right text-destructive">-{r.openings_area_m2 || 0} m²</span>
                     <span>Paredes líquidas</span><span className="text-right font-bold">{r.wall_area_net_m2} m²</span>
                     {r.volume_m3 != null && (<><span>Volume</span><span className="text-right">{r.volume_m3} m³</span></>)}
                   </div>
                   {(r.openings || []).length > 0 && (
                     <div className="mt-2 pt-2 border-t border-border/60 space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Ouvertures ({r.openings.length})</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Aberturas ({r.openings.length})</p>
                       {r.openings.map((o) => (
                         <div key={o.opening_id} className="flex items-center justify-between text-xs">
                           <span className="truncate">
@@ -6194,19 +6193,19 @@ export default function PlanTakeoff() {
               )}
               {takeoff && (
                 <div className="border-t border-border pt-3 grid gap-1 text-xs num" data-testid="takeoff-totals">
-                  <p className="overline mb-2">Totaux</p>
+                  <p className="overline mb-2">Totais</p>
                   <div className="flex justify-between"><span>Pavimento total</span><b>{takeoff.totals.floor_m2} m²</b></div>
-                  <div className="flex justify-between"><span>Plafonds</span><b>{takeoff.totals.ceiling_m2} m²</b></div>
+                  <div className="flex justify-between"><span>Tetos</span><b>{takeoff.totals.ceiling_m2} m²</b></div>
                   <div className="flex justify-between"><span>Paredes líquidas</span><b>{takeoff.totals.walls_net_m2} m²</b></div>
                   <div className="flex justify-between"><span>Perímetro</span><b>{takeoff.totals.perimeter_m} m</b></div>
 
                   {takeoff.levels?.length > 1 && (
                     <div className="mt-3" data-testid="takeoff-by-level">
-                      <p className="overline mb-2">Par niveau</p>
+                      <p className="overline mb-2">Por nível</p>
                       {takeoff.levels.map((lvl) => (
                         <div key={String(lvl.level_index)} className="border-l-2 border-primary pl-2 mb-2">
                           <p className="font-bold text-primary">{lvl.level_label} · {lvl.rooms.length} divisão{lvl.rooms.length > 1 ? "s" : ""}</p>
-                          <div className="flex justify-between"><span>Sol</span><span>{lvl.totals.floor_m2} m²</span></div>
+                          <div className="flex justify-between"><span>Pavimento</span><span>{lvl.totals.floor_m2} m²</span></div>
                           <div className="flex justify-between"><span>Paredes líquidas</span><span>{lvl.totals.walls_net_m2} m²</span></div>
                         </div>
                       ))}
@@ -6215,7 +6214,7 @@ export default function PlanTakeoff() {
 
                   <div className="flex gap-2 mt-3">
                     <Button size="sm" onClick={sendToEstimator} data-testid="send-to-estimator" className="flex-1 rounded-sm hover:bg-orange-600 hover:text-white">
-                      <Calculator className="h-3 w-3 mr-1" /> Chiffrer
+                      <Calculator className="h-3 w-3 mr-1" /> Orçamentar
                     </Button>
                     <Button size="sm" variant="outline" onClick={sendToPrices} data-testid="send-to-prices" className="flex-1 rounded-sm">
                       <Search className="h-3 w-3 mr-1" /> Preço
@@ -6246,18 +6245,18 @@ export default function PlanTakeoff() {
               {materials && (
                 <div className="grid gap-3 text-xs" data-testid="materials-result">
                   {materials.floor && <MatCard label={`Sol (${materials.floor.material})`}
-                    lines={[[`Superfície`, `${materials.floor.surface_m2} m²`], [`+${materials.floor.waste_pct}% pertes`, `${materials.floor.quantity_m2}m² a encomendar`]]} />}
-                  {materials.paint && <MatCard label="Peinture" lines={[
+                    lines={[[`Superfície`, `${materials.floor.surface_m2} m²`], [`+${materials.floor.waste_pct}% perdas`, `${materials.floor.quantity_m2} m² a encomendar`]]} />}
+                  {materials.paint && <MatCard label="Pintura" lines={[
                     [`Superfície`, `${materials.paint.surface_m2} m²`],
-                    [`${materials.paint.coats} couches, marge ${materials.paint.margin_pct}%`, `${materials.paint.liters_recommended} L`],
+                    [`${materials.paint.coats} demãos, margem ${materials.paint.margin_pct}%`, `${materials.paint.liters_recommended} L`],
                   ]} />}
-                  {materials.placo && <MatCard label="Placo BA13" lines={[
+                  {materials.placo && <MatCard label="Pladur BA13" lines={[
                     [`Superfície`, `${materials.placo.surface_m2} m²`],
-                    [`+${materials.placo.waste_pct}% pertes`, `${materials.placo.plates} plaques`],
+                    [`+${materials.placo.waste_pct}% perdas`, `${materials.placo.plates} plaques`],
                   ]} />}
-                  {materials.skirting && <MatCard label="Plinthes" lines={[
+                  {materials.skirting && <MatCard label="Rodapés" lines={[
                     [`Perímetro - portas`, `${materials.skirting.net_m} m`],
-                    [`+ pertes`, `${materials.skirting.quantity_m} m`],
+                    [`+ perdas`, `${materials.skirting.quantity_m} m`],
                   ]} />}
                 </div>
               )}
@@ -6268,7 +6267,7 @@ export default function PlanTakeoff() {
                                selectedIndex={selectedCheckedCote} onFocusCote={focusCheckedCote} />
               {!plan.ai_analysis && (
                 <p className="text-xs text-muted-foreground">
-                  Escolha uma análise no topo e depois clique em <b>Analisar a planta</b>. Vérifiez ici les pièces, ouvertures et surfaces lues.
+                  Escolha uma análise no topo e depois clique em <b>Analisar a planta</b>. Verifique aqui as divisões, vãos e áreas lidas.
                 </p>
               )}
               {plan.ai_analysis && (
@@ -6297,7 +6296,7 @@ export default function PlanTakeoff() {
                             <Zap className="h-3 w-3 text-primary" /> Eletricidade
                           </p>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {[["Prises", "outlets"], ["Inter.", "switches"], ["Pts lum.", "light_points"], ["Spots", "spots"], ["Tableau", "panels"], ["RJ45/TV", "network_tv"]]
+                            {[["Tomadas", "outlets"], ["Inter.", "switches"], ["Pts ilum.", "light_points"], ["Focos", "spots"], ["Tabela", "panels"], ["RJ45/TV", "network_tv"]]
                               .map(([lbl, k]) => (plan.ai_analysis.electrical?.[k] ? (
                                 <Badge key={k} variant="outline" className="rounded-sm num text-[10px]">
                                   {plan.ai_analysis.electrical[k]} {lbl}
@@ -6309,10 +6308,10 @@ export default function PlanTakeoff() {
                         </div>
                         <div>
                           <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                            <Droplet className="h-3 w-3 text-primary" /> Plomberie
+                            <Droplet className="h-3 w-3 text-primary" /> Canalização
                           </p>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {[["WC", "wc"], ["Lavabos", "washbasins"], ["Douches", "showers"], ["Baignoires", "bathtubs"], ["Lava-loiças", "kitchen_sinks"], ["Chauffe-eau", "water_heaters"], ["Lave-linge", "washing_machines"]]
+                            {[["WC", "wc"], ["Lavatórios", "washbasins"], ["Duches", "showers"], ["Banheiras", "bathtubs"], ["Lava-loiças", "kitchen_sinks"], ["Esquentador", "water_heaters"], ["Máquina de lavar roupa", "washing_machines"]]
                               .map(([lbl, k]) => (plan.ai_analysis.plumbing?.[k] ? (
                                 <Badge key={k} variant="outline" className="rounded-sm num text-[10px]">
                                   {plan.ai_analysis.plumbing[k]} {lbl}
@@ -6362,7 +6361,7 @@ export default function PlanTakeoff() {
                   {!plan.ai_analysis.error && (
                     <div className="border border-primary/30 bg-primary/5 p-2 rounded-sm grid gap-2"
                          data-testid="ai-text-actions">
-                      <p className="overline text-primary">Actions cotes & textes</p>
+                      <p className="overline text-primary">Ações cotas & textos</p>
                       {(plan.ai_analysis.dimension_lines || []).some((d) => d.bbox_norm) && (
                         <Button size="sm" variant="outline" className="w-full justify-start gap-2 rounded-sm"
                                 disabled={aiActionBusy} onClick={calibrateFromCotes}
@@ -6420,7 +6419,7 @@ export default function PlanTakeoff() {
                                 </span>
                                 <button onClick={() => resendReport(s)} disabled={sendingEcarts}
                                         className="text-primary hover:text-orange-600 disabled:opacity-40 transition"
-                                        title={`Reenviar para${s.to_email}`}
+                                        title={`Reenviar para ${s.to_email}`}
                                         data-testid={`resend-report-${i}`}>
                                   <RotateCw className="h-3 w-3" />
                                 </button>
@@ -6476,11 +6475,11 @@ export default function PlanTakeoff() {
                           <b className="num">{plan.ai_analysis.totals_gros_oeuvre.interior_walls_area_m2} m²</b></div>
                       )}
                       {plan.ai_analysis.totals_gros_oeuvre.openings_area_m2 != null && (
-                        <div className="flex justify-between"><span>Ouvertures</span>
+                        <div className="flex justify-between"><span>Vãos</span>
                           <b className="num text-destructive">-{plan.ai_analysis.totals_gros_oeuvre.openings_area_m2} m²</b></div>
                       )}
                       {plan.ai_analysis.totals_gros_oeuvre.floor_slab_area_m2 != null && (
-                        <div className="flex justify-between"><span>Planchers/dalles</span>
+                        <div className="flex justify-between"><span>Pavimentos/lajes</span>
                           <b className="num">{plan.ai_analysis.totals_gros_oeuvre.floor_slab_area_m2} m²</b></div>
                       )}
                       {plan.ai_analysis.totals_gros_oeuvre.concrete_volume_m3_estimated != null && (
@@ -6526,7 +6525,7 @@ export default function PlanTakeoff() {
                   {/* --- ESCALIERS --- */}
                   {(plan.ai_analysis.stairwells || []).length > 0 && (
                     <div className="border border-border p-2 rounded-sm" data-testid="ai-stairwells">
-                      <p className="overline mb-2">Escaliers ({plan.ai_analysis.stairwells.length})</p>
+                      <p className="overline mb-2">Escadas ({plan.ai_analysis.stairwells.length})</p>
                       {plan.ai_analysis.stairwells.map((s, i) => (
                         <div key={i} className="text-xs py-1 border-b last:border-b-0 border-border/50">
                           <div className="flex justify-between">
@@ -6609,14 +6608,14 @@ export default function PlanTakeoff() {
                               disabled={!snapPickA || !snapPickB || snapPickA === snapPickB}
                               data-testid="snap-compare-btn"
                               className="rounded-sm gap-1 h-6 text-[10px] hover:bg-orange-600 hover:text-white">
-                        Comparer
+                        Comparar
                       </Button>
                       {(snapPickA || snapPickB || snapCompareResult) && (
                         <Button size="sm" variant="ghost"
                                 onClick={() => { setSnapPickA(null); setSnapPickB(null); setSnapCompareResult(null); }}
                                 data-testid="snap-compare-clear"
                                 className="rounded-sm gap-1 h-6 text-[10px]">
-                          Reset
+                          Repor
                         </Button>
                       )}
                     </div>
@@ -6627,7 +6626,7 @@ export default function PlanTakeoff() {
                     <div className="border border-primary/40 bg-primary/5 rounded-sm p-3"
                          data-testid="snap-compare-result">
                       <p className="font-bold text-primary mb-2">
-                        Diff : {snapCompareResult.before.label || snapCompareResult.before.action}
+                        Dif.: {snapCompareResult.before.label || snapCompareResult.before.action}
                         {" → "}
                         {snapCompareResult.after.label || snapCompareResult.after.action}
                       </p>
@@ -6703,12 +6702,12 @@ export default function PlanTakeoff() {
                             <Button size="sm" variant="ghost" onClick={() => openLabelDialog(s)}
                                     data-testid={`label-${s.snapshot_id}`}
                                     className="rounded-sm gap-1 text-xs h-6">
-                              {s.label ? "Renommer" : "Nommer"}
+                              {s.label ? "Renomear" : "Nomear"}
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => restoreSnapshot(s.snapshot_id)}
                                     data-testid={`restore-${s.snapshot_id}`}
                                     className="rounded-sm gap-1 text-xs h-6">
-                              Restaurer
+                              Restaurar
                             </Button>
                           </div>
                         </div>
@@ -6780,7 +6779,7 @@ export default function PlanTakeoff() {
             <Button onClick={sendEcartsReport} disabled={sendingEcarts}
                     className="rounded-sm gap-2" data-testid="ecarts-send-confirm">
               <Mail className="h-3.5 w-3.5" />
-              {sendingEcarts ? "Envoi…" : "Enviar o relatório"}
+              {sendingEcarts ? "A enviar…" : "Enviar o relatório"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -6806,7 +6805,7 @@ export default function PlanTakeoff() {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setCalibDialog(false); setPoints([]); }} className="rounded-sm">Cancelar</Button>
             <Button onClick={applyCalibration} data-testid="calib-confirm-btn"
-                    className="rounded-sm hover:bg-orange-600 hover:text-white">Calibrer</Button>
+                    className="rounded-sm hover:bg-orange-600 hover:text-white">Calibrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -6822,7 +6821,7 @@ export default function PlanTakeoff() {
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid grid-cols-3 gap-2">
-              {[["porte", "Porta"], ["fenetre", "Janela"], ["baie", "Baie"]].map(([k, l]) => (
+              {[["porte", "Porta"], ["fenetre", "Janela"], ["baie", "Vão"]].map(([k, l]) => (
                 <Button
                   key={k}
                   variant={pendingOpening.kind === k ? "default" : "outline"}
@@ -6855,7 +6854,7 @@ export default function PlanTakeoff() {
                 />
               </div>
               <div>
-                <Label className="text-[10px] uppercase">Nombre</Label>
+                <Label className="text-[10px] uppercase">Número</Label>
                 <Input
                   type="number" step="1" min="1" max="100"
                   value={pendingOpening.count}
@@ -6897,7 +6896,7 @@ export default function PlanTakeoff() {
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-2">
-              <Label>Nom</Label>
+              <Label>Nome</Label>
               <Input value={pendingRoomName} onChange={(e) => setPendingRoomName(e.target.value)}
                      data-testid="room-name-input" className="rounded-sm h-10" autoFocus />
             </div>
@@ -6941,13 +6940,13 @@ export default function PlanTakeoff() {
                   </div>
                 </div>
                 <div className="grid gap-1">
-                  <Label className="text-xs">Marge (%)</Label>
+                  <Label className="text-xs">Margem (%)</Label>
                   <Input type="number" value={chiffrageMargin} onChange={(e) => setChiffrageMargin(e.target.value)}
                          data-testid="chiffrage-margin" className="h-9 w-20" />
                 </div>
                 <Button onClick={runChiffrage} disabled={chiffrageLoading} data-testid="chiffrage-run"
                         className="h-9 rounded-sm gap-2">
-                  <Calculator className="h-4 w-4" /> {chiffrageLoading ? "Calcul…" : "Calculer"}
+                  <Calculator className="h-4 w-4" /> {chiffrageLoading ? "Cálculo…" : "Calcular"}
                 </Button>
               </div>
 
@@ -6995,9 +6994,9 @@ export default function PlanTakeoff() {
                       <span key={ov.ouvrage_id} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 pl-2 pr-1 py-0.5 text-[11px]">
                         <button type="button" onClick={() => applyOuvrage(ov)}
                                 data-testid={`apply-ouvrage-${ov.ouvrage_id}`}
-                                className="hover:text-primary" title="Appliquer cet ouvrage">
+                                className="hover:text-primary" title="Aplicar este artigo">
                           {ov.name} <span className="text-muted-foreground">· {ov.poste}</span>
-                          {ov.is_shared && <span className="ml-1 rounded-full bg-primary/15 text-primary px-1 text-[9px]" title={`Partilhado por${ov.owner_name || "a equipa"}`}>equipa</span>}
+                          {ov.is_shared && <span className="ml-1 rounded-full bg-primary/15 text-primary px-1 text-[9px]" title={`Partilhado por ${ov.owner_name || "a equipa"}`}>equipa</span>}
                         </button>
                         {ov.is_mine !== false && (
                           <button type="button" onClick={() => deleteOuvrage(ov.ouvrage_id)}
@@ -7048,7 +7047,7 @@ export default function PlanTakeoff() {
                   <div className="flex flex-wrap justify-end gap-4 text-sm">
                     <span>Total s/ IVA: <b className="num">{chiffrageResult.totals.ht.toFixed(2)} €</b></span>
                     <span>+ Marge {chiffrageResult.totals.margin_pct}% : <b className="num">{chiffrageResult.totals.ht_with_margin.toFixed(2)} €</b></span>
-                    <span>TTC : <b className="num text-primary">{chiffrageResult.totals.ttc.toFixed(2)} €</b></span>
+                    <span>c/ IVA: <b className="num text-primary">{chiffrageResult.totals.ttc.toFixed(2)} €</b></span>
                   </div>
                 </div>
               )}
@@ -7068,7 +7067,7 @@ export default function PlanTakeoff() {
       <Dialog open={!!pageChiffrage} onOpenChange={(o) => { if (!o) setPageChiffrage(null); }}>
         <DialogContent className="rounded-sm max-w-2xl z-[70]" overlayClassName="z-[70]" data-testid="page-chiffrage-dialog">
           <DialogHeader>
-            <DialogTitle>Orçamentação da página — {pageChiffrage?.count} poste(s)</DialogTitle>
+            <DialogTitle>Orçamentação da página — {pageChiffrage?.count} artigo(s)</DialogTitle>
             <DialogDescription>
               Estimativa de todas as medições com um artigo definido, com os seus preços/rácios guardados.
             </DialogDescription>
@@ -7089,7 +7088,7 @@ export default function PlanTakeoff() {
               )}
               <div className="flex justify-end gap-4 text-sm font-semibold border-t border-border pt-2">
                 <span>Total s/ IVA: <span className="num">{pageChiffrage.totals.ht_with_margin.toFixed(2)} €</span></span>
-                <span>TTC : <span className="num text-primary">{pageChiffrage.totals.ttc.toFixed(2)} €</span></span>
+                <span>c/ IVA: <span className="num text-primary">{pageChiffrage.totals.ttc.toFixed(2)} €</span></span>
               </div>
             </div>
           )}
@@ -7123,7 +7122,7 @@ export default function PlanTakeoff() {
             <Button size="sm" variant={priceLibTab === "prices" ? "default" : "outline"}
                     onClick={() => setPriceLibTab("prices")} data-testid="price-lib-tab-prices" className="rounded-sm">Preços unitários</Button>
             <Button size="sm" variant={priceLibTab === "ratios" ? "default" : "outline"}
-                    onClick={() => setPriceLibTab("ratios")} data-testid="price-lib-tab-ratios" className="rounded-sm">Ratios</Button>
+                    onClick={() => setPriceLibTab("ratios")} data-testid="price-lib-tab-ratios" className="rounded-sm">Rácios</Button>
           </div>
           <div className="grid grid-cols-2 gap-2 max-h-[50vh] overflow-auto pr-1">
             {(priceLib[priceLibTab] || []).map((r) => (
@@ -7139,7 +7138,7 @@ export default function PlanTakeoff() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPriceLibOpen(false)} className="rounded-sm">Cancelar</Button>
             <Button onClick={savePriceLib} disabled={priceLibSaving} data-testid="price-lib-save" className="rounded-sm gap-2">
-              <Save className="h-4 w-4" /> {priceLibSaving ? "Enregistrement…" : "Guardar"}
+              <Save className="h-4 w-4" /> {priceLibSaving ? "A guardar…" : "Guardar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -7157,7 +7156,7 @@ export default function PlanTakeoff() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="grid gap-1">
-                <Label className="text-xs">Aire (m²)</Label>
+                <Label className="text-xs">Área (m²)</Label>
                 <Input type="number" step="0.01" value={roomPresetIn.area_m2} data-testid="preset-area"
                        onChange={(e) => setRoomPresetIn((s) => ({ ...s, area_m2: e.target.value }))} className="h-9" />
               </div>
@@ -7180,42 +7179,42 @@ export default function PlanTakeoff() {
             </div>
             <div className="flex flex-wrap items-end gap-4">
               <label className="flex items-center gap-2 text-xs" data-testid="preset-inc-sol">
-                <input type="checkbox" checked={roomPresetIn.sol} onChange={(e) => setRoomPresetIn((s) => ({ ...s, sol: e.target.checked }))} /> Sol
+                <input type="checkbox" checked={roomPresetIn.sol} onChange={(e) => setRoomPresetIn((s) => ({ ...s, sol: e.target.checked }))} /> Pavimento
               </label>
               <select value={roomPresetIn.sol_poste} disabled={!roomPresetIn.sol} data-testid="preset-sol-poste"
                       onChange={(e) => setRoomPresetIn((s) => ({ ...s, sol_poste: e.target.value }))}
                       className="h-8 rounded-md border border-border bg-background px-2 text-xs">
-                <option value="carrelage">Carrelage</option>
-                <option value="parquet">Parquet</option>
-                <option value="chape">Chape</option>
+                <option value="carrelage">Revestimento cerâmico</option>
+                <option value="parquet">Soalho</option>
+                <option value="chape">Betonilha</option>
               </select>
               <label className="flex items-center gap-2 text-xs" data-testid="preset-inc-plinthes">
-                <input type="checkbox" checked={roomPresetIn.plinthes} onChange={(e) => setRoomPresetIn((s) => ({ ...s, plinthes: e.target.checked }))} /> Plinthes
+                <input type="checkbox" checked={roomPresetIn.plinthes} onChange={(e) => setRoomPresetIn((s) => ({ ...s, plinthes: e.target.checked }))} /> Rodapés
               </label>
               <label className="flex items-center gap-2 text-xs" data-testid="preset-inc-peinture">
                 <input type="checkbox" checked={roomPresetIn.peinture_murs} onChange={(e) => setRoomPresetIn((s) => ({ ...s, peinture_murs: e.target.checked }))} /> Pintura de paredes
               </label>
               <label className="flex items-center gap-2 text-xs" data-testid="preset-inc-plafond">
-                <input type="checkbox" checked={roomPresetIn.plafond} onChange={(e) => setRoomPresetIn((s) => ({ ...s, plafond: e.target.checked }))} /> Plafond
+                <input type="checkbox" checked={roomPresetIn.plafond} onChange={(e) => setRoomPresetIn((s) => ({ ...s, plafond: e.target.checked }))} /> Teto
               </label>
               <select value={roomPresetIn.plafond_poste} disabled={!roomPresetIn.plafond} data-testid="preset-plafond-poste"
                       onChange={(e) => setRoomPresetIn((s) => ({ ...s, plafond_poste: e.target.value }))}
                       className="h-8 rounded-md border border-border bg-background px-2 text-xs">
-                <option value="peinture">Peinture plafond</option>
-                <option value="plafond">Plafond placo</option>
+                <option value="peinture">Pintura de teto</option>
+                <option value="plafond">Teto em pladur</option>
               </select>
               <div className="grid gap-1">
-                <Label className="text-xs">Couches peinture</Label>
+                <Label className="text-xs">Demãos de tinta</Label>
                 <Input type="number" min={1} value={roomPresetIn.couches} data-testid="preset-couches"
                        onChange={(e) => setRoomPresetIn((s) => ({ ...s, couches: e.target.value }))} className="h-8 w-20" />
               </div>
               <div className="grid gap-1">
-                <Label className="text-xs">Marge (%)</Label>
+                <Label className="text-xs">Margem (%)</Label>
                 <Input type="number" value={roomPresetIn.margin_pct} data-testid="preset-margin"
                        onChange={(e) => setRoomPresetIn((s) => ({ ...s, margin_pct: e.target.value }))} className="h-8 w-20" />
               </div>
               <Button onClick={runRoomPreset} disabled={roomPresetLoading} data-testid="preset-run" className="h-9 rounded-sm gap-2">
-                <Calculator className="h-4 w-4" /> {roomPresetLoading ? "Calcul…" : "Orçamentar a divisão"}
+                <Calculator className="h-4 w-4" /> {roomPresetLoading ? "Cálculo…" : "Orçamentar a divisão"}
               </Button>
             </div>
 
@@ -7232,7 +7231,7 @@ export default function PlanTakeoff() {
                 ))}
                 <div className="flex justify-end gap-4 text-sm font-semibold border-t border-border pt-2">
                   <span>Total s/ IVA: <span className="num">{roomPresetResult.totals.ht_with_margin.toFixed(2)} €</span></span>
-                  <span>TTC : <span className="num text-primary">{roomPresetResult.totals.ttc.toFixed(2)} €</span></span>
+                  <span>c/ IVA: <span className="num text-primary">{roomPresetResult.totals.ttc.toFixed(2)} €</span></span>
                 </div>
               </div>
             )}
@@ -7256,7 +7255,7 @@ export default function PlanTakeoff() {
           <div className="flex items-center gap-2">
             <Input value={metreLabel} onChange={(e) => setMetreLabel(e.target.value)}
                    placeholder="Nome da versão (ex.: Antes da alteração do cliente)" data-testid="metre-version-label" className="h-9 flex-1" />
-            <Button size="sm" onClick={snapshotMetre} data-testid="metre-snapshot-btn" className="rounded-sm gap-1"><Save className="h-4 w-4" /> Figer</Button>
+            <Button size="sm" onClick={snapshotMetre} data-testid="metre-snapshot-btn" className="rounded-sm gap-1"><Save className="h-4 w-4" /> Fixar</Button>
           </div>
           <div className="space-y-1.5 max-h-48 overflow-auto">
             {metreVersions.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma versão guardada.</p>}
@@ -7275,10 +7274,10 @@ export default function PlanTakeoff() {
                 <span>{metreCompare.a.label} → {metreCompare.b.label}</span>
                 <span className={metreCompare.delta.ht >= 0 ? "text-emerald-600" : "text-red-600"}>{metreCompare.delta.ht >= 0 ? "+" : ""}{metreCompare.delta.ht.toFixed(2)} € HT</span>
               </div>
-              <div className="text-[11px] text-muted-foreground">Δ área {metreCompare.delta.area_m2} m² · Δ linear {metreCompare.delta.length_ml} ml · Δ mesures {metreCompare.delta.measures}</div>
+              <div className="text-[11px] text-muted-foreground">Δ área {metreCompare.delta.area_m2} m² · Δ linear {metreCompare.delta.length_ml} ml · Δ medições {metreCompare.delta.measures}</div>
               {metreCompare.by_poste.length > 0 && (
                 <table className="w-full text-xs">
-                  <thead className="text-muted-foreground"><tr><th className="text-left">Poste</th><th className="text-right">Qtd. A→B</th><th className="text-right">Δ HT</th></tr></thead>
+                  <thead className="text-muted-foreground"><tr><th className="text-left">Artigo</th><th className="text-right">Qtd. A→B</th><th className="text-right">Δ HT</th></tr></thead>
                   <tbody>
                     {metreCompare.by_poste.map((p) => (
                       <tr key={p.poste} className="border-t border-border">
@@ -7331,15 +7330,15 @@ export default function PlanTakeoff() {
             <DialogTitle>Comparar as definições betão</DialogTitle>
             <DialogDescription>Medições da planta atual segundo cada tipo de obra — para ajudar na escolha.</DialogDescription>
           </DialogHeader>
-          {compareBusy && <p className="text-sm text-primary animate-pulse">Calcul en cours…</p>}
+          {compareBusy && <p className="text-sm text-primary animate-pulse">Cálculo em curso…</p>}
           {!compareBusy && compareData && (
             <table className="w-full text-xs" data-testid="beton-compare-table">
               <thead className="bg-muted/60"><tr>
-                <th className="text-left px-2 py-1">Poste</th>
+                <th className="text-left px-2 py-1">Artigo</th>
                 {compareData.map((c) => <th key={c.name} className="text-right px-2 py-1">{c.name}</th>)}
               </tr></thead>
               <tbody>
-                {[["Betão total", "beton_total_m3", "m³"], ["Aciers", "acier_total_kg", "kg"],
+                {[["Betão total", "beton_total_m3", "m³"], ["Aços", "acier_total_kg", "kg"],
                   ["Pilares (betão)", "beton_poteaux_m3", "m³"], ["Vigas (betão)", "beton_poutres_m3", "m³"],
                   ["Lajes (betão)", "beton_dalles_m3", "m³"], ["Paredes (betão)", "beton_voiles_m3", "m³"]].map(([lbl, k, u]) => (
                   <tr key={k} className="border-t border-border">

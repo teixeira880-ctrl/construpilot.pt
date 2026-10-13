@@ -17,8 +17,8 @@ import { ChantierPilot } from "@/components/chantiers/ChantierPilot";
 import { ChantierCostsPanel } from "@/components/chantiers/ChantierCostsPanel";
 
 const FILE = process.env.REACT_APP_BACKEND_URL + "/api/site/file?path=";
-const DOC_STATUS = { draft: "Brouillon", sent: "Enviado", signed: "Assinado", refused: "Recusado", paid: "Paga", overdue: "En retard", partial: "Partiel", cancelled: "Anulado" };
-const JOB_STATUS = { done: "Concluída", needs_review: "A verificar", partial: "Partielle", failed: "Falha", running: "En cours", queued: "En attente" };
+const DOC_STATUS = { draft: "Rascunho", sent: "Enviado", signed: "Assinado", refused: "Recusado", paid: "Paga", overdue: "En retard", partial: "Parcial", cancelled: "Anulado" };
+const JOB_STATUS = { done: "Concluída", needs_review: "A verificar", partial: "Partielle", failed: "Falha", running: "Em curso", queued: "Em espera" };
 const date = (d) => (d || "").slice(0, 10);
 
 const Section = ({ icon: Icon, title, count, action, children, testId }) => (
@@ -36,7 +36,7 @@ const Row = ({ title, sub, right, onOpen, testId }) => (
   <div className="flex items-center gap-3 px-4 py-2.5" data-testid={testId}>
     <div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{title}</p><p className="text-[11px] text-muted-foreground truncate">{sub}</p></div>
     {right}
-    {onOpen && <Button size="icon" variant="ghost" className="h-7 w-7" title="Ouvrir" onClick={onOpen}><ExternalLink className="h-3.5 w-3.5" /></Button>}
+    {onOpen && <Button size="icon" variant="ghost" className="h-7 w-7" title="Abrir" onClick={onOpen}><ExternalLink className="h-3.5 w-3.5" /></Button>}
   </div>
 );
 
@@ -68,8 +68,8 @@ function AttachDialog({ open, onOpenChange, chantierId, onDone }) {
               <button key={d.doc_id} type="button" disabled={busy} onClick={() => attach("document", d.doc_id)} className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted flex justify-between gap-2" data-testid={`attach-doc-${d.doc_id}`}>
                 <span className="truncate">{d.title || d.number || d.doc_id}</span><span className="text-muted-foreground shrink-0">{date(d.created_at)}</span></button>))}
           </div>
-          {[["hr_project", "Projets terrain / pointages", projects, "project_id"], ["purchase", "Commandes d’achat", orders, "order_id"]].map(([kind, label, items, key]) => <div key={kind}><p className="text-xs font-semibold uppercase text-muted-foreground mb-1">{label}</p>{!items.length ? <p className="text-sm text-muted-foreground">Nenhum elemento livre.</p> : items.slice(0, 100).map(item => <button key={item[key]} disabled={busy} type="button" className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted" onClick={() => attach(kind, item[key])}>{item.name || item.project || item[key]}</button>)}</div>)}
-          <div><p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Plans</p>
+          {[["hr_project", "Projetos de terreno / registos de horas", projects, "project_id"], ["purchase", "Encomendas de compra", orders, "order_id"]].map(([kind, label, items, key]) => <div key={kind}><p className="text-xs font-semibold uppercase text-muted-foreground mb-1">{label}</p>{!items.length ? <p className="text-sm text-muted-foreground">Nenhum elemento livre.</p> : items.slice(0, 100).map(item => <button key={item[key]} disabled={busy} type="button" className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted" onClick={() => attach(kind, item[key])}>{item.name || item.project || item[key]}</button>)}</div>)}
+          <div><p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Plantas</p>
             {plans.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma planta livre.</p> : plans.slice(0, 40).map((p) => (
               <button key={p.plan_id} type="button" disabled={busy} onClick={() => attach("plan", p.plan_id)} className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted flex justify-between gap-2" data-testid={`attach-plan-${p.plan_id}`}>
                 <span className="truncate">{p.filename || p.plan_id}</span><span className="text-muted-foreground shrink-0">{date(p.created_at)}</span></button>))}
@@ -97,7 +97,7 @@ function ChantierDetailContent() {
   const [params, setParams] = useSearchParams();
   const requestedTab = params.get("tab");
   const tab = ["documents", "budget", "exchanges", "reception"].includes(requestedTab) ? requestedTab : ["messages", "issues"].includes(requestedTab) ? "exchanges" : "overview";
-  const tabs = [["overview", "Vue d’ensemble"], ["documents", "Plans & documents"], ["budget", "Budget & achats"], ["exchanges", "Conversas"], ["reception", "Receção"]];
+  const tabs = [["overview", "Visão geral"], ["documents", "Plantas e documentos"], ["budget", "Orçamento e compras"], ["exchanges", "Conversas"], ["reception", "Receção"]];
   const selectTab = key => { const next = new URLSearchParams(params); next.set("tab", key); setParams(next); };
   const [inbox, setInbox] = useState({ unread: {}, open_issues: 0, new_issues: 0 });
 
@@ -111,7 +111,7 @@ function ChantierDetailContent() {
     catch { toast.error("Não foi possível eliminar"); }
   };
 
-  if (error) return <div className="surface p-8 text-center text-sm" data-testid="chantier-detail-error">Dossier introuvable. <Link to="/chantiers" className="text-primary underline">Voltar às obras</Link></div>;
+  if (error) return <div className="surface p-8 text-center text-sm" data-testid="chantier-detail-error">Processo não encontrado. <Link to="/chantiers" className="text-primary underline">Voltar às obras</Link></div>;
   if (!data) return <div className="text-sm text-muted-foreground p-6">A carregar o processo…</div>;
 
   const c = data;
@@ -148,7 +148,7 @@ function ChantierDetailContent() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 max-w-full">
-          <Button variant="outline" className="gap-2" onClick={() => setAttach(true)} data-testid="chantier-attach-btn"><Link2 className="h-4 w-4" /> Rattacher</Button>
+          <Button variant="outline" className="gap-2" onClick={() => setAttach(true)} data-testid="chantier-attach-btn"><Link2 className="h-4 w-4" /> Associar</Button>
           <Button variant="outline" className="gap-2" onClick={() => setEdit(true)} data-testid="chantier-edit-btn"><Pencil className="h-4 w-4" /> Editar</Button>
           <Button variant="ghost" size="icon" onClick={remove} title="Eliminar" data-testid="chantier-delete-btn"><Trash2 className="h-4 w-4" /></Button>
         </div>
@@ -185,22 +185,22 @@ function ChantierDetailContent() {
         <Section icon={FileText} title="Orçamento" count={quotes.length} testId="chantier-quotes" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/devis-editeur${ctx}`)} data-testid="chantier-quotes-new"><Plus className="h-3.5 w-3.5" /> Orçamento</Button>}>
           {quotes.length === 0 ? <Empty>Nenhum orçamento. O cliente do processo será pré-preenchido.</Empty> : quotes.map((d) => <Row key={d.doc_id} testId={`chantier-doc-${d.doc_id}`} title={d.title || d.number || "Orçamento"} sub={`${d.number || "brouillon"} · ${date(d.created_at)}`} right={<><Badge variant="outline" className="rounded-sm text-[10px]">{DOC_STATUS[d.status] || d.status}</Badge><span className="num font-bold text-sm w-24 text-right">{eur(d.totals?.ttc)}</span></>} onOpen={() => nav(`/devis-editeur/${d.doc_id}`)} />)}
         </Section>
-        <Section icon={FileText} title="Factures & avoirs" count={invoices.length} testId="chantier-invoices">
-          {invoices.length === 0 ? <Empty>Nenhuma fatura para esta obra.</Empty> : invoices.map((d) => <Row key={d.doc_id} testId={`chantier-doc-${d.doc_id}`} title={d.title || d.number} sub={`${d.number || ""} · ${date(d.created_at)}${d.paid > 0 ? `· pago${eur(d.paid)}` : ""}`} right={<><Badge variant="outline" className="rounded-sm text-[10px]">{DOC_STATUS[d.status] || d.status}</Badge><span className="num font-bold text-sm w-24 text-right">{eur(d.totals?.ttc)}</span></>} onOpen={() => nav(`/devis-editeur/${d.doc_id}`)} />)}
+        <Section icon={FileText} title="Faturas e notas de crédito" count={invoices.length} testId="chantier-invoices">
+          {invoices.length === 0 ? <Empty>Nenhuma fatura para esta obra.</Empty> : invoices.map((d) => <Row key={d.doc_id} testId={`chantier-doc-${d.doc_id}`} title={d.title || d.number} sub={`${d.number || ""} · ${date(d.created_at)}${d.paid > 0 ? ` · pago ${eur(d.paid)}` : ""}`} right={<><Badge variant="outline" className="rounded-sm text-[10px]">{DOC_STATUS[d.status] || d.status}</Badge><span className="num font-bold text-sm w-24 text-right">{eur(d.totals?.ttc)}</span></>} onOpen={() => nav(`/devis-editeur/${d.doc_id}`)} />)}
         </Section>
-        <Section icon={Ruler} title="Plantas e medições" count={c.plans.length} testId="chantier-plans" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/plan${ctx}`)} data-testid="chantier-plans-new"><Plus className="h-3.5 w-3.5" /> Plan</Button>}>
+        <Section icon={Ruler} title="Plantas e medições" count={c.plans.length} testId="chantier-plans" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/plan${ctx}`)} data-testid="chantier-plans-new"><Plus className="h-3.5 w-3.5" /> Planta</Button>}>
           {c.plans.length === 0 ? <Empty>Nenhuma planta associada.</Empty> : c.plans.map((p) => <Row key={p.plan_id} testId={`chantier-plan-${p.plan_id}`} title={p.filename || p.plan_id} right={<Link className="text-xs text-primary underline min-h-10 flex items-center" to={`/analyse/${p.plan_id}`}>Fontes e revisões</Link>} sub={`${(p.kind || "").toUpperCase()} · ${p.page_count || 1} page(s) · ${date(p.created_at)}`} onOpen={() => nav(`/plan?open=${p.plan_id}`)} />)}
         </Section>
-        <Section icon={Layers} title="Análises de plantas Pro" count={c.plans_pro.length} testId="chantier-plans-pro" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/plans-pro${ctx}`)} data-testid="chantier-plans-pro-new"><Plus className="h-3.5 w-3.5" /> Analyse</Button>}>
+        <Section icon={Layers} title="Análises de plantas Pro" count={c.plans_pro.length} testId="chantier-plans-pro" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/plans-pro${ctx}`)} data-testid="chantier-plans-pro-new"><Plus className="h-3.5 w-3.5" /> Análise</Button>}>
           {c.plans_pro.length === 0 ? <Empty>Nenhuma análise Autodesk / visão IA.</Empty> : c.plans_pro.map((j) => <Row key={j.job_id} testId={`chantier-job-${j.job_id}`} title={j.filename} sub={date(j.created_at)} right={<Badge variant="outline" className="rounded-sm text-[10px]">{JOB_STATUS[j.status] || j.status}</Badge>} onOpen={() => nav(`/plans-pro?job=${j.job_id}`)} />)}
         </Section>
-        <Section icon={Wrench} title="Diagnósticos (patologias)" count={c.diagnostics.length} testId="chantier-diagnostics" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/btp-solver${ctx}`)} data-testid="chantier-diagnostics-new"><Plus className="h-3.5 w-3.5" /> Diagnostic</Button>}>
-          {c.diagnostics.length === 0 ? <Empty>Nenhum diagnóstico.</Empty> : c.diagnostics.map((p) => <Row key={p.problem_id} testId={`chantier-problem-${p.problem_id}`} title={(p.description || "").slice(0, 90)} sub={[p.domain, p.urgency, date(p.created_at)].filter(Boolean).join(" · ")} right={<Badge variant="outline" className="rounded-sm text-[10px]">{p.status === "done" ? "Terminado" : p.status === "error" ? "Falha" : "En cours"}</Badge>} onOpen={() => nav(`/btp-solver?id=${p.problem_id}`)} />)}
+        <Section icon={Wrench} title="Diagnósticos (patologias)" count={c.diagnostics.length} testId="chantier-diagnostics" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/btp-solver${ctx}`)} data-testid="chantier-diagnostics-new"><Plus className="h-3.5 w-3.5" /> Diagnóstico</Button>}>
+          {c.diagnostics.length === 0 ? <Empty>Nenhum diagnóstico.</Empty> : c.diagnostics.map((p) => <Row key={p.problem_id} testId={`chantier-problem-${p.problem_id}`} title={(p.description || "").slice(0, 90)} sub={[p.domain, p.urgency, date(p.created_at)].filter(Boolean).join(" · ")} right={<Badge variant="outline" className="rounded-sm text-[10px]">{p.status === "done" ? "Terminado" : p.status === "error" ? "Falha" : "Em curso"}</Badge>} onOpen={() => nav(`/btp-solver?id=${p.problem_id}`)} />)}
         </Section>
         <Section icon={Camera} title="Relatórios e reservas" count={c.reports.length + c.reserves.length} testId="chantier-reports" action={<Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => nav(`/suivi-chantier${ctx}`)} data-testid="chantier-reports-new"><Plus className="h-3.5 w-3.5" /> Ata</Button>}>
           {c.reports.length + c.reserves.length === 0 ? <Empty>Nenhum relatório. Os relatórios cujo nome de obra corresponda são retomados automaticamente.</Empty> : <>
             {c.reports.map((r) => <Row key={r.report_id} testId={`chantier-report-${r.report_id}`} title={r.title || "Ata"} sub={`${date(r.created_at)} · ${(r.photos || []).length} photo(s)`} right={<PublishToggle chantierId={chantierId} report={r} onChanged={load} />} />)}
-            {c.reserves.map((r) => <Row key={r.reserve_id} testId={`chantier-reserve-${r.reserve_id}`} title={`Reserva —${r.lot || "lot"} : ${r.description}`} sub={`${r.company || ""} ${date(r.created_at)}`} right={<Badge variant="outline" className="rounded-sm text-[10px]">{r.status || "ouverte"}</Badge>} />)}
+            {c.reserves.map((r) => <Row key={r.reserve_id} testId={`chantier-reserve-${r.reserve_id}`} title={`Reserva — ${r.lot || "lot"} : ${r.description}`} sub={`${r.company || ""} ${date(r.created_at)}`} right={<Badge variant="outline" className="rounded-sm text-[10px]">{r.status || "aberta"}</Badge>} />)}
           </>}
         </Section>
       </div>

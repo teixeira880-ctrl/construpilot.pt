@@ -50,13 +50,13 @@ export default function PhotoMeasure() {
     if (!measures.length) return;
     const lines = measures.map((m, i) => (
       m.type === "distance"
-        ? { designation: `Medição em fotografia — comprimento${i + 1}`, unit: "ml",
+        ? { designation: `Medição em fotografia — comprimento ${i + 1}`, unit: "ml",
             qty: Number((m.value / 1000).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
-        : { designation: `Medição em fotografia — área${i + 1}`, unit: "m²",
+        : { designation: `Medição em fotografia — área ${i + 1}`, unit: "m²",
             qty: Number((m.value / 1e6).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
     ));
     sessionStorage.setItem("construpilot_pending_ouvrages", JSON.stringify(lines));
-    toast.success(`${lines.length}medição(ões) enviada(s) para o orçamento`);
+    toast.success(`${lines.length} medição(ões) enviada(s) para o orçamento`);
     nav("/devis-editeur");
   };
 
@@ -72,7 +72,7 @@ export default function PhotoMeasure() {
       setMeasures([]);
       setMode("calibrate");
     };
-    im.onerror = () => toast.error("Image illisible");
+    im.onerror = () => toast.error("Imagem ilegível");
     im.src = url;
   };
 
@@ -146,7 +146,7 @@ export default function PhotoMeasure() {
                data-testid="pm-gallery-input" />
         <Button variant="outline" className="gap-2" onClick={() => document.getElementById("pm-gallery").click()}
                 data-testid="pm-gallery-btn">
-          <Images className="h-4 w-4" /> Galerie
+          <Images className="h-4 w-4" /> Galeria
         </Button>
         <input type="file" accept="image/*" capture="environment" className="hidden" id="pm-cam"
                onChange={(e) => { loadFile(e.target.files?.[0]); e.target.value = ""; }}
@@ -190,14 +190,14 @@ export default function PhotoMeasure() {
                 <div className="flex rounded-md overflow-hidden border border-border ml-2">
                   <button onClick={() => { setMode("distance"); setPending([]); }}
                           className={`px-3 py-1.5 text-sm flex items-center gap-1 ${mode === "distance" ? "bg-primary text-primary-foreground" : "bg-background"}`}
-                          data-testid="pm-mode-distance"><Move className="h-3.5 w-3.5" /> Distance</button>
+                          data-testid="pm-mode-distance"><Move className="h-3.5 w-3.5" /> Distância</button>
                   <button onClick={() => { setMode("area"); setPending([]); }}
                           className={`px-3 py-1.5 text-sm flex items-center gap-1 ${mode === "area" ? "bg-primary text-primary-foreground" : "bg-background"}`}
                           data-testid="pm-mode-area"><Square className="h-3.5 w-3.5" /> Superfície</button>
                 </div>
                 <button onClick={() => { setMode("calibrate"); setPending([]); setMmPerPx(null); }}
                         className="text-xs text-muted-foreground underline ml-1" data-testid="pm-recalibrate">
-                  Recalibrer
+                  Recalibrar
                 </button>
                 {mode === "area" && (
                   <Button size="sm" className="ml-1" onClick={closePolygon} data-testid="pm-close-polygon">
@@ -274,7 +274,7 @@ export default function PhotoMeasure() {
                      data-testid={`pm-result-${i}`}>
                   <span className="flex items-center gap-2">
                     {m.type === "distance" ? <Move className="h-3.5 w-3.5 text-primary" /> : <Square className="h-3.5 w-3.5 text-primary" />}
-                    {m.type === "distance" ? "Distance" : "Superfície"}
+                    {m.type === "distance" ? "Distância" : "Superfície"}
                   </span>
                   <span className="font-semibold">{m.type === "distance" ? fmtLen(m.value) : fmtArea(m.value)}</span>
                   <button onClick={() => setMeasures((arr) => arr.filter((_, j) => j !== i))}
@@ -297,14 +297,14 @@ export default function PhotoMeasure() {
               <div className="mx-auto border-2 border-dashed border-primary rounded-md bg-primary/5 flex items-center justify-center"
                    style={{ width: 105, height: 148 }} data-testid="pm-a4-frame">
                 <span className="text-[11px] font-semibold text-primary text-center leading-tight">
-                  Feuille A4<br />21 × 29,7 cm
+                  Folha A4<br />21 × 29,7 cm
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-2">Coloque-a plana na planta a medir</p>
             </div>
             <ol className="text-left text-sm text-muted-foreground space-y-2 max-w-xs list-decimal list-inside">
               <li>Coloque uma folha <b>A4</b> na parede ou no chão a medir.</li>
-              <li>Tire a foto <b>bien en face</b>, sem ângulo, folha totalmente visível.</li>
+              <li>Tire a foto <b>bem de frente</b>, sem ângulo, folha totalmente visível.</li>
               <li>Calibre a escala clicando nos 2 cantos de um limite da folha.</li>
               <li>Meça depois distâncias e superfícies.</li>
             </ol>

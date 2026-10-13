@@ -8,7 +8,7 @@ export const UpgradeLock = ({ title, requiredLevel, benefit, iconSize = 14, clas
   <HoverCard openDelay={120} closeDelay={80}>
     <HoverCardTrigger asChild>
       <span className={`workspace-lock-icon inline-flex items-center ${className}`} data-testid="upgrade-lock"
-        aria-label={`Fonction ${LEVEL_LABELS[requiredLevel] || "payante"}— bloqueada`}>
+        aria-label={`Função ${LEVEL_LABELS[requiredLevel] || "payante"} — bloqueada`}>
         <Lock size={iconSize} aria-hidden="true" />
       </span>
     </HoverCardTrigger>
@@ -16,7 +16,7 @@ export const UpgradeLock = ({ title, requiredLevel, benefit, iconSize = 14, clas
       onClick={(e) => { e.stopPropagation(); }}>
       <div className="flex items-center gap-1.5 text-primary">
         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-        <span className="text-[10px] font-bold uppercase tracking-wide">{LEVEL_LABELS[requiredLevel] || "Offre payante"}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wide">{LEVEL_LABELS[requiredLevel] || "Oferta paga"}</span>
       </div>
       <p className="mt-2 text-sm font-semibold leading-snug">{title}</p>
       <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{benefit}</p>

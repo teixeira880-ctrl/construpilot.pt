@@ -24,7 +24,7 @@ export default function RadarSitadelPanel() {
   return <div className="space-y-3" data-testid="radar-sitadel-panel">
     <h2 className="text-lg font-semibold">Radar · dados oficiais de licenças</h2>
     {error && <div><p role="alert" className="text-sm text-red-700" data-testid="sitadel-admin-error">{error}</p><Button variant="outline" size="sm" onClick={load} data-testid="sitadel-admin-retry">Tentar novamente</Button></div>}
-    {status ? <p className="text-sm" data-testid="sitadel-count">{status.count} permis officiels disponibles</p> : !error && <p role="status" className="text-sm text-muted-foreground" data-testid="sitadel-admin-loading">A carregar as licenças oficiais…</p>}
+    {status ? <p className="text-sm" data-testid="sitadel-count">{status.count} licenças oficiais disponíveis</p> : !error && <p role="status" className="text-sm text-muted-foreground" data-testid="sitadel-admin-loading">A carregar as licenças oficiais…</p>}
     <RadarOfficialSource sync={status?.sync} onRefresh={load} />
   </div>;
 }

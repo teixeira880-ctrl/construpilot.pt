@@ -42,7 +42,7 @@ export function QuoteRequestForm({ slug, companyName, accent }) {
         <label className="text-sm grid gap-1">Nome e apelido *<input className={field} value={form.name} onChange={set("name")} required minLength={2} maxLength={120} data-testid="quote-request-name" /></label>
         <label className="text-sm grid gap-1">E-mail *<input type="email" className={field} value={form.email} onChange={set("email")} required data-testid="quote-request-email" /></label>
         <label className="text-sm grid gap-1">Telefone<input type="tel" className={field} value={form.phone} onChange={set("phone")} maxLength={40} data-testid="quote-request-phone" /></label>
-        <label className="text-sm grid gap-1">Code postal<input className={field} value={form.postal_code} onChange={set("postal_code")} maxLength={12} data-testid="quote-request-postal" /></label>
+        <label className="text-sm grid gap-1">Código postal<input className={field} value={form.postal_code} onChange={set("postal_code")} maxLength={12} data-testid="quote-request-postal" /></label>
         <label className="text-sm grid gap-1 sm:col-span-2">Morada da obra<input className={field} value={form.address} onChange={set("address")} maxLength={200} data-testid="quote-request-address" /></label>
       </div>
       <label className="text-sm grid gap-1">As suas obras *<textarea className={field} rows={4} value={form.description} onChange={set("description")} required minLength={10} maxLength={3000} placeholder="Ex.: Remodelação completa de uma casa de banho de 6 m², substituição da banheira por um duche…" data-testid="quote-request-description" /></label>
@@ -51,7 +51,7 @@ export function QuoteRequestForm({ slug, companyName, accent }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-slate-500">As suas coordenadas são transmitidas apenas a {companyName}.</p>
         <button type="submit" disabled={state === "sending"} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium disabled:opacity-60" style={{ background: accent }} data-testid="quote-request-submit">
-          <Send className="h-4 w-4" /> {state === "sending" ? "Envoi…" : "Enviar o meu pedido"}
+          <Send className="h-4 w-4" /> {state === "sending" ? "A enviar…" : "Enviar o meu pedido"}
         </button>
       </div>
     </form>

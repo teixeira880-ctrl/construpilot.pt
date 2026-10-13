@@ -18,8 +18,8 @@ export const StateEmailDialog = ({ open, onClose, conversationId, meeting }) => 
     setBusy(true);
     try {
       const { data } = await api.post(`/assistant/conversations/${conversationId}/state/email`, { to: list, message, meeting: meeting || null, attendees: attendees || null, include_agenda: agenda, include_state: state });
-      if (data.failed?.length) toast.error(`Falha para${data.failed.map((f) => f.to).join(", ")}`);
-      if (data.sent?.length) { toast.success(`Enviado a${data.sent.join(", ")}`); onClose(); }
+      if (data.failed?.length) toast.error(`Falha para ${data.failed.map((f) => f.to).join(", ")}`);
+      if (data.sent?.length) { toast.success(`Enviado a ${data.sent.join(", ")}`); onClose(); }
     } catch (e) { toast.error(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Envio impossível"); }
     finally { setBusy(false); }
   };
@@ -28,9 +28,9 @@ export const StateEmailDialog = ({ open, onClose, conversationId, meeting }) => 
       <DialogTitle className="text-base">Enviar o processo por e-mail</DialogTitle>
       <DialogDescription className="text-xs">Ordem de trabalhos e estado do processo em PDF, enviados a partir do ConstruPilot; as respostas chegam-lhe diretamente.</DialogDescription>
       <div className="grid gap-2 text-sm">
-        <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="architecte@exemple.fr, conducteur@exemple.fr" aria-label="Destinataires" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-to" />
-        <input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="Participants (optionnel)" aria-label="Participants" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-attendees" />
-        <textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message d'accompagnement (optionnel)" aria-label="Message" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-message" />
+        <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="architecte@exemple.fr, conducteur@exemple.fr" aria-label="Destinatários" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-to" />
+        <input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="Participantes (opcional)" aria-label="Participantes" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-attendees" />
+        <textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Mensagem de acompanhamento (opcional)" aria-label="Mensagem" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-message" />
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={agenda} onChange={(e) => setAgenda(e.target.checked)} data-testid="state-email-agenda" /> Ordem de trabalhos{meeting ? ` (${meeting})` : ""}</label>
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={state} onChange={(e) => setState(e.target.checked)} data-testid="state-email-state" /> Estado do processo (1 página)</label>
         <div className="flex justify-end gap-2 pt-1">

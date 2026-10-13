@@ -21,7 +21,7 @@ export function AutoFixCard({ projectId, canEdit, isAdmin }) {
   };
   const runNow = async () => {
     setBusy(true);
-    try { const r = await api.post(`/growth/projects/${projectId}/autofix/run`); toast.success(`${r.data.counts?.fixed ?? 0}correção(ões) aplicada(s),${r.data.counts?.manual ?? 0}a tratar manualmente`); reload(); }
+    try { const r = await api.post(`/growth/projects/${projectId}/autofix/run`); toast.success(`${r.data.counts?.fixed ?? 0} correção(ões) aplicada(s), ${r.data.counts?.manual ?? 0} a tratar manualmente`); reload(); }
     catch (e) { toast.error(err(e)); } finally { setBusy(false); }
   };
   return <div className="surface p-4 space-y-3" data-testid="growth-autofix">
@@ -29,13 +29,13 @@ export function AutoFixCard({ projectId, canEdit, isAdmin }) {
       <Wrench className="h-4 w-4 text-primary" /><p className="font-semibold text-sm">Correção automática dos erros</p>
       <Badge variant="outline" className={`rounded-sm ${data.enabled ? "border-primary text-primary" : ""}`} data-testid="growth-autofix-state">{data.enabled ? "ativada" : "desativada"}</Badge>
       <div className="ms-auto flex gap-2">
-        {isAdmin && <Button size="sm" variant="outline" className="h-8" onClick={toggle} data-testid="growth-autofix-toggle">{data.enabled ? "Desativar" : "Activer"}</Button>}
-        {canEdit && <Button size="sm" className="h-8 gap-1" onClick={runNow} disabled={busy || data.running} data-testid="growth-autofix-run"><RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Corriger maintenant</Button>}
+        {isAdmin && <Button size="sm" variant="outline" className="h-8" onClick={toggle} data-testid="growth-autofix-toggle">{data.enabled ? "Desativar" : "Ativar"}</Button>}
+        {canEdit && <Button size="sm" className="h-8 gap-1" onClick={runNow} disabled={busy || data.running} data-testid="growth-autofix-run"><RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Corrigir agora</Button>}
       </div>
     </div>
     <p className="text-xs text-muted-foreground">Após cada auditoria e todas as noites: títulos e descrições reescritos e aplicados, canonicals forçadas, redirecionamentos 404 para a página mais próxima. Uma correção só é contada como «corrigida» quando a nova auditoria já não encontra o problema. O que exige uma alteração do código é listado com o seu motivo — nunca falsos sucessos.</p>
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-      {[["Problemas em aberto", data.open, AlertTriangle, "open"], ["Correções aplicadas", c.fixed ?? 0, CheckCircle2, "fixed"], ["A aguardar nova auditoria", data.fixing.length, Clock, "awaiting"], ["Manuelles", c.manual ?? 0, Wrench, "manual"]].map(([l, v, I, t]) => (
+      {[["Problemas em aberto", data.open, AlertTriangle, "open"], ["Correções aplicadas", c.fixed ?? 0, CheckCircle2, "fixed"], ["A aguardar nova auditoria", data.fixing.length, Clock, "awaiting"], ["Manuais", c.manual ?? 0, Wrench, "manual"]].map(([l, v, I, t]) => (
         <div key={l} className="rounded-md border p-2" data-testid={`growth-autofix-${t}`}><p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><I className="h-3 w-3" /> {l}</p><p className="font-display font-bold text-lg num">{v}</p></div>))}
     </div>
     {data.reappeared > 0 && <p className="text-xs rounded-md border border-amber-400/50 bg-amber-50 dark:bg-amber-950/30 p-2" data-testid="growth-autofix-reappeared"><AlertTriangle className="inline h-3.5 w-3.5 me-1 text-amber-600" /> {data.reappeared} problema(s) novamente detetado(s) apesar de uma correção aplicada: a versão publicada do site provavelmente ainda não inclui estas correções (republicar).</p>}

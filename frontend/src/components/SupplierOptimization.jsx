@@ -12,7 +12,7 @@ export const SupplierOptimization = ({ optim }) => {
           <p className="num mt-3 text-xl font-bold">{eur(optim.best_single?.total)}</p>
         </div>
         <div className="surface p-6 border-primary">
-          <p className="overline">Multi-fournisseurs</p>
+          <p className="overline">Multi-fornecedores</p>
           <p className="num mt-3 text-xl font-bold text-primary">{eur(optim.multi_supplier?.total)}</p>
         </div>
         <div className="surface p-6">
@@ -24,7 +24,7 @@ export const SupplierOptimization = ({ optim }) => {
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-              <TableHead>Poste</TableHead>
+              <TableHead>Artigo</TableHead>
               <TableHead className="text-right">Qtd.</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead className="text-right">PU</TableHead>
@@ -45,7 +45,7 @@ export const SupplierOptimization = ({ optim }) => {
         </Table>
       </div>
       <p className="text-xs text-muted-foreground flex items-center gap-2">
-        <ShoppingCart className="h-3 w-3" /> Mode {optim.mode} — preço de demonstração, ligue as API de fornecedores para preços reais.
+        <ShoppingCart className="h-3 w-3" /> Modo {optim.mode} — preço de demonstração, ligue as API de fornecedores para preços reais.
       </p>
     </div>
   );

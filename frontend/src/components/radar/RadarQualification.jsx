@@ -33,10 +33,10 @@ export const RadarQualification = ({ opp, options, onUpdated }) => {
 
   return <section className="border-b border-border py-4 space-y-3" data-testid="radar-qualification">
     <div className="flex flex-wrap items-center gap-2 justify-between">
-      <p className="text-sm" data-testid="radar-client-category">Contact : <strong>{selectedLabel}</strong></p>
-      <Button size="sm" variant="outline" disabled={busy} data-testid="radar-qualification-edit" className="gap-1" onClick={() => { setEditing((value) => !value); setConfirmed(false); }}><Pencil className="h-3 w-3" />Qualifier</Button>
+      <p className="text-sm" data-testid="radar-client-category">Contacto: <strong>{selectedLabel}</strong></p>
+      <Button size="sm" variant="outline" disabled={busy} data-testid="radar-qualification-edit" className="gap-1" onClick={() => { setEditing((value) => !value); setConfirmed(false); }}><Pencil className="h-3 w-3" />Qualificar</Button>
     </div>
-    <p className="text-xs text-muted-foreground break-words" data-testid="radar-qualification-source">{opp.qualification ? `Confirmado por si ·${opp.qualification.source_note}` : opp.classification?.client_source === "sitadel" ? "Pessoa coletiva publicada nos dados oficiais. Atividade precisa não qualificada." : "Categoria não identificada nos dados públicos."}</p>
+    <p className="text-xs text-muted-foreground break-words" data-testid="radar-qualification-source">{opp.qualification ? `Confirmado por si · ${opp.qualification.source_note}` : opp.classification?.client_source === "sitadel" ? "Pessoa coletiva publicada nos dados oficiais. Atividade precisa não qualificada." : "Categoria não identificada nos dados públicos."}</p>
     {editing && <div className="space-y-3">
       <label className="grid gap-1 text-xs">Categoria
         <select value={category} disabled={busy} onChange={(e) => { setCategory(e.target.value); setConfirmed(false); }} data-testid="radar-qualification-category" className="w-full h-10 rounded-md border border-input bg-background px-2 text-sm">
@@ -51,7 +51,7 @@ export const RadarQualification = ({ opp, options, onUpdated }) => {
       </label>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={busy || !confirmed || note.trim().length < 3} data-testid="radar-qualification-save" onClick={save} className="gap-1">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Guardar</Button>
-        {opp.qualification && <Button size="sm" variant="outline" disabled={busy} data-testid="radar-qualification-remove" onClick={remove} className="gap-1"><Trash2 className="h-4 w-4" />Retirer</Button>}
+        {opp.qualification && <Button size="sm" variant="outline" disabled={busy} data-testid="radar-qualification-remove" onClick={remove} className="gap-1"><Trash2 className="h-4 w-4" />Remover</Button>}
       </div>
     </div>}
     {error && <p role="alert" className="text-xs text-red-700" data-testid="radar-qualification-error">{error}</p>}

@@ -53,12 +53,12 @@ const newEntry = (kind, vat = null) => {
 
 // Inséreur inline : options de blocs à insérer sous chaque ligne du devis.
 const BLOCK_OPTIONS = [
-  { id: "fourniture", label: "Fourniture", desc: "Materiais e equipamentos", Icon: Package, badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" },
+  { id: "fourniture", label: "Fornecimento", desc: "Materiais e equipamentos", Icon: Package, badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" },
   { id: "main_oeuvre", label: "Mão de obra", desc: "Tempo de trabalho e prestações", Icon: UserCheck, badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30" },
-  { id: "ouvrage", label: "Ouvrage", desc: "Montagem de subelementos", Icon: Layers, badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30" },
-  { id: "section", label: "Section", desc: "Título de capítulo principal", Icon: FolderPlus, badge: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 border-slate-700 dark:border-slate-300" },
-  { id: "subsection", label: "Sous-section", desc: "Subtítulo e subtotal", Icon: Folder, badge: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600" },
-  { id: "text", label: "Texte libre", desc: "Nota, descrição ou observação", Icon: FileText, badge: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30" },
+  { id: "ouvrage", label: "Artigo", desc: "Montagem de subelementos", Icon: Layers, badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30" },
+  { id: "section", label: "Secção", desc: "Título de capítulo principal", Icon: FolderPlus, badge: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 border-slate-700 dark:border-slate-300" },
+  { id: "subsection", label: "Subsecção", desc: "Subtítulo e subtotal", Icon: Folder, badge: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600" },
+  { id: "text", label: "Texto livre", desc: "Nota, descrição ou observação", Icon: FileText, badge: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30" },
   { id: "pagebreak", label: "Quebra de página", desc: "Separador de impressão PDF", Icon: Scissors, badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30" },
 ];
 
@@ -82,7 +82,7 @@ function LinePhotos({ slug, photos, onChange, size = 56, onZoom }) {
       } catch { toast.error("Falha no envio da fotografia"); }
     }
     setBusy(false);
-    if (added.length) { onChange([...list, ...added]); toast.success(added.length > 1 ? `${added.length}fotografias adicionadas` : "Fotografia adicionada"); }
+    if (added.length) { onChange([...list, ...added]); toast.success(added.length > 1 ? `${added.length} fotografias adicionadas` : "Fotografia adicionada"); }
   };
   const remove = async (pid) => {
     onChange(list.filter((p) => p.photo_id !== pid));
@@ -107,7 +107,7 @@ function LinePhotos({ slug, photos, onChange, size = 56, onZoom }) {
         <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} data-testid={`line-photo-add-${slug}`}
           style={dim}
           className="rounded-sm border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ImagePlus className="h-4 w-4" /><span className="text-[9px] mt-0.5">Photo</span></>}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ImagePlus className="h-4 w-4" /><span className="text-[9px] mt-0.5">Fotografia</span></>}
         </button>
       )}
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={upload} data-testid={`line-photo-input-${slug}`} />
@@ -163,7 +163,7 @@ const ensureBlocks = (lines) => {
   });
   const onlyNoCat = order.length === 1 && order[0] === "__nocat__";
   order.forEach((cat) => {
-    if (!onlyNoCat) out.push({ kind: "section", title: cat === "__nocat__" ? "Travaux" : cat, collapsed: false });
+    if (!onlyNoCat) out.push({ kind: "section", title: cat === "__nocat__" ? "Obras" : cat, collapsed: false });
     groups[cat].forEach((l) => out.push(l));
   });
   return out;
@@ -266,7 +266,7 @@ export default function QuoteEditor() {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/documents/cctp/extract", fd, { timeout: 300000 });
-      const lots = [...new Set((data.lines || []).map((l) => (l.category || "").trim() || "Autres"))];
+      const lots = [...new Set((data.lines || []).map((l) => (l.category || "").trim() || "Outros"))];
       if (lots.length <= 1) { applyCctp(data, new Set(lots)); return; }
       const selected = new Set(lots.filter(preselectLot));
       const remembered = lots.length - selected.size;
@@ -277,16 +277,16 @@ export default function QuoteEditor() {
   };
   const applyCctp = (data, selected, lots = null) => {
     if (lots && lots.length > 1) learnLots(lots, selected);
-    const keep = (data.lines || []).filter((l) => selected.has((l.category || "").trim() || "Autres"));
+    const keep = (data.lines || []).filter((l) => selected.has((l.category || "").trim() || "Outros"));
     const newLines = keep.map((l) => ({ ...blankLine(defVat), ...l, _saveToLib: false }));
     setLines((ls) => [...ls.filter((l) => l.designation?.trim() || Number(l.unit_price_ht) > 0), ...newLines]);
     if (!title && data.title) setTitle(data.title);
     if (data.prescriptions?.length) {
       const presc = data.prescriptions.map((p) => `• ${p.theme ? p.theme + " : " : ""}${p.text}`).join("\n");
-      setNotes((n) => (n?.trim() ? `${n.trim()}\n\nPrescriptions CCTP :\n${presc}` : `Prescriptions CCTP :\n${presc}`));
+      setNotes((n) => (n?.trim() ? `${n.trim()}\n\nPrescrições do caderno de encargos:\n${presc}` : `Prescrições do caderno de encargos:\n${presc}`));
     }
     const imposed = keep.filter((l) => l.imposed_materials?.length).length;
-    toast.success(`${newLines.length}artigo(s) importado(s) do caderno de encargos${data.ocr ? " (OCR)" : ""} · ${imposed}com materiais impostos ·${selected.size} lot(s)`);
+    toast.success(`${newLines.length} artigo(s) importado(s) do caderno de encargos${data.ocr ? " (OCR)" : ""} · ${imposed} com materiais impostos · ${selected.size} lot(s)`);
     setCctpPreview(null);
   };
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -502,7 +502,7 @@ export default function QuoteEditor() {
 
   const lotOrder = useMemo(() => {
     const seen = [];
-    lines.forEach((l) => { const c = (l.category || "").trim() || "Autres"; if (!seen.includes(c)) seen.push(c); });
+    lines.forEach((l) => { const c = (l.category || "").trim() || "Outros"; if (!seen.includes(c)) seen.push(c); });
     return seen;
   }, [lines]);
 
@@ -537,8 +537,8 @@ export default function QuoteEditor() {
   const knownLots = useMemo(() => {
     const s = new Set();
     lines.forEach((l) => { const c = (l.category || "").trim(); if (c) s.add(c); });
-    ["Obra grossa", "Cobertura", "Plomberie", "Eletricidade", "Peinture", "Menuiserie",
-     "Carrelage", "Isolation", "Sol", "Placo", "VRD"].forEach((c) => s.add(c));
+    ["Obra grossa", "Cobertura", "Canalização", "Eletricidade", "Pintura", "Carpintaria",
+     "Revestimento cerâmico", "Isolamento", "Pavimento", "Pladur", "VRD"].forEach((c) => s.add(c));
     return [...s];
   }, [lines]);
 
@@ -571,7 +571,7 @@ export default function QuoteEditor() {
       const c = Number(l.cost_price_ht) || 0, m = marginFor(l.category);
       return c > 0 && !(Number(l.unit_price_ht) > 0) && m > 0 ? { ...l, unit_price_ht: priceFromCost(c, m) } : l;
     }));
-    toast.success(`${targets.length}preço(s) de venda calculado(s) (margem alvo global ou por capítulo)`);
+    toast.success(`${targets.length} preço(s) de venda calculado(s) (margem alvo global ou por capítulo)`);
   };
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => {
     if (idx !== i) return l;
@@ -701,7 +701,7 @@ export default function QuoteEditor() {
     const order = [];
     const map = new Map();
     ls.forEach((l) => {
-      const c = (l.category || "").trim() || "Autres";
+      const c = (l.category || "").trim() || "Outros";
       if (!map.has(c)) { map.set(c, []); order.push(c); }
       map.get(c).push(l);
     });
@@ -1120,9 +1120,9 @@ export default function QuoteEditor() {
   const openSend = async () => {
     const targetPct = targetMargin || 0;
     if (totals.marginPct != null && targetPct > 0 && totals.marginPct < targetPct) {
-      const ok = window.confirm(`⚠️ Marge faible : ${totals.marginPct.toFixed(1)}% neste orçamento, abaixo do seu objetivo de${targetPct} %${lossLines ? ` (${lossLines} ouvrage${lossLines > 1 ? "s" : ""}com prejuízo)` : ""}.\n\nEnvoyer quand même ?`);
+      const ok = window.confirm(`⚠️ Marge faible : ${totals.marginPct.toFixed(1)} % neste orçamento, abaixo do seu objetivo de ${targetPct} %${lossLines ? ` (${lossLines} ouvrage${lossLines > 1 ? "s" : ""} com prejuízo)` : ""}.\n\nEnviar mesmo assim?`);
       if (!ok) return;
-    } else if (lossLines > 0 && !window.confirm(`⚠️ ${lossLines} ouvrage${lossLines > 1 ? "s" : ""}orçamentado${lossLines > 1 ? "s" : ""}com prejuízo neste orçamento.\n\nEnviar mesmo assim?`)) {
+    } else if (lossLines > 0 && !window.confirm(`⚠️ ${lossLines} ouvrage${lossLines > 1 ? "s" : ""} orçamentado${lossLines > 1 ? "s" : ""} com prejuízo neste orçamento.\n\nEnviar mesmo assim?`)) {
       return;
     }
     const c = clients.find((x) => x.client_id === clientId);
@@ -1186,7 +1186,7 @@ export default function QuoteEditor() {
             const { data: st } = await api.get(`/documents/send-status/${data.log_id}`);
             if (st.email_status === "sent") break;
             if (st.email_status === "failed") {
-              toast.error((isPT ? "E-mail NÃO entregue ao cliente : " : "E-mail NÃO entregue ao cliente:") + (st.error || ""), { duration: 15000 });
+              toast.error((isPT ? "E-mail NÃO entregue ao cliente : " : "E-mail NÃO entregue ao cliente: ") + (st.error || ""), { duration: 15000 });
               break;
             }
           } catch { break; }
@@ -1231,7 +1231,7 @@ export default function QuoteEditor() {
       </div>
       <div className="px-6 py-3 border-b border-border text-xs flex flex-wrap gap-x-6 gap-y-1">
         <span><span className="font-semibold text-muted-foreground">Cliente: </span>{_clientName || "—"}</span>
-        {projectAddress ? <span><span className="font-semibold text-muted-foreground">Adresse : </span>{projectAddress}</span> : null}
+        {projectAddress ? <span><span className="font-semibold text-muted-foreground">Morada: </span>{projectAddress}</span> : null}
       </div>
       <div className="px-4 py-3 overflow-x-auto">
         <table className="w-full text-xs border-collapse">
@@ -1252,14 +1252,14 @@ export default function QuoteEditor() {
               if (l.kind === "section") return (
                 <tr key={i} className="bg-[#0f172a]/[0.06] border-t border-border" data-testid={`preview-section-${i}`}>
                   <td className="py-1.5 pl-1 font-bold">{num}</td>
-                  <td className="py-1.5 font-bold uppercase text-[11px]" colSpan={5}>{l.title || "Section"}</td>
+                  <td className="py-1.5 font-bold uppercase text-[11px]" colSpan={5}>{l.title || "Secção"}</td>
                   <td className="py-1.5 pr-1 text-right num font-bold whitespace-nowrap">{eur(sectionSubtotals[i] || 0)}</td>
                 </tr>
               );
               if (l.kind === "subsection") return (
                 <tr key={i} className="border-t border-border/60">
                   <td className="py-1 pl-1 font-semibold">{num}</td>
-                  <td className="py-1 font-semibold text-[11px]" colSpan={6}>{l.title || "Sous-section"}</td>
+                  <td className="py-1 font-semibold text-[11px]" colSpan={6}>{l.title || "Subsecção"}</td>
                 </tr>
               );
               if (l.kind === "text") return (
@@ -1301,10 +1301,10 @@ export default function QuoteEditor() {
       <div className="px-6 py-4 border-t border-border flex justify-end">
         <div className="w-64 text-xs grid gap-1">
           <div className="flex justify-between"><span className="text-muted-foreground">Total s/ IVA</span><span className="num font-semibold">{eur(totals.ht)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">TVA</span><span className="num">{eur(totals.tvaTotal)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">IVA</span><span className="num">{eur(totals.tvaTotal)}</span></div>
           <div className="flex justify-between text-sm border-t border-border pt-1 mt-0.5"><span className="font-bold">Total c/ IVA</span><span className="num font-bold text-primary">{eur(totals.ttc)}</span></div>
           {Number(depositPct) > 0 && (
-            <div className="flex justify-between text-[11px] text-muted-foreground"><span>Acompte ({depositPct} %)</span><span className="num">{eur(totals.dep)}</span></div>
+            <div className="flex justify-between text-[11px] text-muted-foreground"><span>Adiantamento ({depositPct} %)</span><span className="num">{eur(totals.dep)}</span></div>
           )}
         </div>
       </div>
@@ -1366,7 +1366,7 @@ export default function QuoteEditor() {
             <input type="file" accept="audio/*" className="hidden" id="qe-audio-input"
                  onChange={(e) => { reviewVideo(e.target.files?.[0]); e.target.value = ""; }}
                  data-testid="editor-audio-input" />
-            <QuoteEditorMenu label="Importer" icon={Upload} testId="editor-import-menu">
+            <QuoteEditorMenu label="Importar" icon={Upload} testId="editor-import-menu">
             <DropdownMenuItem onSelect={() => document.getElementById("qe-plan-input").click()}
                   disabled={planBusy} data-testid="editor-add-plan-btn">
             {planBusy ? <Loader2 className="animate-spin" /> : <Ruler />} {t("crm.ed_add_plan")}
@@ -1407,7 +1407,7 @@ export default function QuoteEditor() {
           </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => downloadPdf(true)}
                   title="PDF com custos de produção e margens por lote — reservado à empresa" data-testid="editor-pdf-internal-btn">
-            <Download /> PDF interne (marges)
+            <Download /> PDF interno (margens)
           </DropdownMenuItem>
               {docType === "quote" && docId && (
             <DropdownMenuItem onSelect={() => nav(`/assistant?intent=quote&resumeQuote=${docId}`)}
@@ -1420,7 +1420,7 @@ export default function QuoteEditor() {
             <DropdownMenuItem onSelect={saveAsAiExample} disabled={aiExampleBusy}
                     title="Guardar este orçamento como exemplo de referência para a IA (aprendizagem global)"
                     data-testid="editor-ai-example-btn">
-              {aiExampleBusy ? <Loader2 className="animate-spin" /> : <GraduationCap />} Exemple IA
+              {aiExampleBusy ? <Loader2 className="animate-spin" /> : <GraduationCap />} Exemplo IA
             </DropdownMenuItem>
               )}
             </QuoteEditorMenu>
@@ -1441,7 +1441,7 @@ export default function QuoteEditor() {
           </Button>
           </div>
           <span className={`text-xs self-center ${saveState === "error" ? "text-red-500" : "text-muted-foreground"}`} data-testid="editor-save-state" aria-live="polite">
-            {saveState === "saving" ? "Enregistrement…" : saveState === "saved" ? "Guardado" : saveState === "error" ? "Falha — tentar novamente" : saveState === "dirty" ? "Alterações não guardadas" : ""}
+            {saveState === "saving" ? "A guardar…" : saveState === "saved" ? "Guardado" : saveState === "error" ? "Falha — tentar novamente" : saveState === "dirty" ? "Alterações não guardadas" : ""}
           </span>
         </div>
       </div>
@@ -1488,9 +1488,9 @@ export default function QuoteEditor() {
                     <div key={tpl.template_id} className="flex items-center gap-2 rounded-sm border border-border px-3 py-2" data-testid={`template-item-${tpl.template_id}`}>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold truncate">{tpl.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{(tpl.lines || []).length} ligne(s)</p>
+                        <p className="text-[11px] text-muted-foreground">{(tpl.lines || []).length} linha(s)</p>
                       </div>
-                      <Button size="sm" onClick={() => applyTemplate(tpl)} className="rounded-sm h-8" data-testid={`template-use-${tpl.template_id}`}>Utiliser</Button>
+                      <Button size="sm" onClick={() => applyTemplate(tpl)} className="rounded-sm h-8" data-testid={`template-use-${tpl.template_id}`}>Utilizar</Button>
                       <Button size="icon" variant="ghost" onClick={() => deleteTemplate(tpl.template_id)} className="h-8 w-8 text-destructive" data-testid={`template-del-${tpl.template_id}`}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
@@ -1521,7 +1521,7 @@ export default function QuoteEditor() {
                     <div className="w-full h-40 rounded-sm border border-border grid place-items-center text-[10px] text-muted-foreground">PDF…</div>
                   )}
                   {preview3d ? (
-                    <img src={preview3d} alt="Rendu 3D" data-testid="send-preview-3d"
+                    <img src={preview3d} alt="Renderização 3D" data-testid="send-preview-3d"
                          className="w-full h-40 object-contain rounded-sm border border-border bg-secondary/30" />
                   ) : (
                     <div className="w-full h-40 rounded-sm border border-dashed border-border grid place-items-center text-[10px] text-muted-foreground text-center px-2">{t("crm.ed_no_render3d")}</div>
@@ -1594,7 +1594,7 @@ export default function QuoteEditor() {
                   <option value="">{t("crm.ed_none")}</option>
                   {doneRenders.map((r) => (
                     <option key={r.render_id} value={r.render_id}>
-                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Rendu") + " · " + new Date(r.created_at).toLocaleDateString("fr-FR")}
+                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Renderização") + " · " + new Date(r.created_at).toLocaleDateString("fr-FR")}
                     </option>
                   ))}
                 </select>
@@ -1619,7 +1619,7 @@ export default function QuoteEditor() {
             {frozenInfo.doc_type === "quote"
               ? "Qualquer alteração das linhas, do cliente ou das condições criará uma nova revisão em rascunho (a voltar a assinar); esta versão continua consultável."
               : "Uma correção é feita através de uma nota de crédito: o conteúdo deste documento já não pode mudar."}
-            {frozenInfo.hash ? ` Empreinte ${String(frozenInfo.hash).slice(0, 10)}…` : ""}
+            {frozenInfo.hash ? ` Implantação ${String(frozenInfo.hash).slice(0, 10)}…` : ""}
           </span>
           {frozenInfo.superseded_by && (
             <Button size="sm" variant="outline" className="rounded-sm h-7 text-xs" onClick={() => nav(`/devis-editeur/${frozenInfo.superseded_by}`)} data-testid="editor-open-revision-btn">
@@ -1686,12 +1686,12 @@ export default function QuoteEditor() {
               <div>
                 <Label>{t("crm.firstname")}</Label>
                 <Input value={nc.first_name} onChange={(e) => setNc({ ...nc, first_name: e.target.value })}
-                       className="rounded-sm mt-1" data-testid="nc-first-name" placeholder="Jean" />
+                       className="rounded-sm mt-1" data-testid="nc-first-name" placeholder="João" />
               </div>
               <div>
                 <Label>{t("crm.lastname")}</Label>
                 <Input value={nc.last_name} onChange={(e) => setNc({ ...nc, last_name: e.target.value })}
-                       className="rounded-sm mt-1" data-testid="nc-last-name" placeholder="Dupont" />
+                       className="rounded-sm mt-1" data-testid="nc-last-name" placeholder="Silva" />
               </div>
             </div>
             <div>
@@ -1742,7 +1742,7 @@ export default function QuoteEditor() {
           <div className="flex flex-wrap gap-2">
             {photoPreviews.map((p, i) => (
               <div key={i} className="relative" data-testid={`photo-thumb-${i}`}>
-                <img src={p.src} alt={`Photo ${i + 1}`} className="h-16 w-16 object-cover rounded-sm border border-border" />
+                <img src={p.src} alt={`Fotografia ${i + 1}`} className="h-16 w-16 object-cover rounded-sm border border-border" />
                 <span className="absolute bottom-0 right-0 bg-primary text-primary-foreground text-[10px] px-1 rounded-tl-sm">
                   {p.count}
                 </span>
@@ -1775,17 +1775,17 @@ export default function QuoteEditor() {
             <Plus /> Mão de obra
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => addBlock("ouvrage")} data-testid="editor-add-ouvrage">
-            <Plus /> Ouvrage
+            <Plus /> Artigo
           </DropdownMenuItem>
 
           <DropdownMenuItem onSelect={() => addBlock("section")} data-testid="editor-add-section">
-            <Layers /> Section
+            <Layers /> Secção
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => addBlock("subsection")} data-testid="editor-add-subsection">
-            Sous-section
+            Subsecção
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => addBlock("text")} data-testid="editor-add-text">
-            <FileText /> Texte
+            <FileText /> Texto
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => addBlock("pagebreak")} data-testid="editor-add-pagebreak">
             Quebra de página
@@ -1803,8 +1803,8 @@ export default function QuoteEditor() {
                 onChange={(e) => { if (e.target.value !== "") setAllVat(Number(e.target.value)); }}
                 data-testid="bulk-vat-select"
                 className="rounded-sm border border-border bg-background px-2 h-8 text-sm">
-                <option value="">{isPT ? "Aplicar…" : "Appliquer…"}</option>
-                {vatRates.map((r) => <option key={r} value={r}>{r === 0 ? (isPT ? "0 % (subcontratação)" : "0 % (sous-traitance)") : `${r}%`}</option>)}
+                <option value="">{isPT ? "Aplicar…" : "Aplicar…"}</option>
+                {vatRates.map((r) => <option key={r} value={r}>{r === 0 ? (isPT ? "0 % (subcontratação)" : "0 % (subcontratação)") : `${r}%`}</option>)}
               </select>
             </div>
             <OuvrageComposeDialog onAdd={(line) => setLines((ls) => [...ls, { ...blankLine(), ...line, line_kind: "ouvrage", _saveToLib: false }])} />
@@ -1815,20 +1815,20 @@ export default function QuoteEditor() {
                   className="h-8 min-w-0 w-full sm:w-auto max-w-full rounded-sm border border-input bg-background px-2 text-xs" data-testid="editor-library-mode-select">
             <option value="shared_first">{isPT ? "ConstruPilot → empresa" : "ConstruPilot → entreprise"}</option>
             <option value="company_first">{isPT ? "Empresa → ConstruPilot" : "Entreprise → ConstruPilot"}</option>
-            <option value="company_only">{isPT ? "Só empresa" : "Entreprise uniquement"}</option>
+            <option value="company_only">{isPT ? "Só empresa" : "Apenas a empresa"}</option>
           </select>
           <span className="text-muted-foreground">{isPT ? "— usado para orçamentos por voz, foto, vídeo, planta e CCTP." : "— utilizado para orçamentos por ditado, foto, vídeo, projeto e caderno de encargos."}</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap rounded-sm border border-border/60 bg-secondary/30 px-3 py-2 text-xs" data-testid="editor-target-margin">
           <TrendingUp className="h-3.5 w-3.5 text-primary" />
-          <span className="font-medium">Marge cible</span>
+          <span className="font-medium">Margem alvo</span>
           <Input type="number" min="0" max="90" step="1" value={targetMargin || ""} placeholder="ex. 30"
                  onChange={(e) => setTargetMargin(Number(e.target.value) || 0)} onBlur={(e) => saveTargetMargin(e.target.value)}
                  className="rounded-sm h-7 w-20 num text-right" data-testid="editor-target-margin-input" />
           <span className="text-muted-foreground">% — o preço de venda calcula-se automaticamente a partir do custo quando uma linha não tem preço.</span>
           <Button size="sm" variant="ghost" className="h-7 rounded-sm gap-1 ml-auto" onClick={() => setShowLotMargins((s) => !s)} data-testid="editor-lot-margins-toggle">
-            <Layers className="h-3.5 w-3.5" /> Par lot {Object.keys(lotMargins).length ? `(${Object.keys(lotMargins).length})` : ""}
+            <Layers className="h-3.5 w-3.5" /> Por lote {Object.keys(lotMargins).length ? `(${Object.keys(lotMargins).length})` : ""}
           </Button>
           <Button size="sm" variant="ghost" className="h-auto min-h-7 max-w-full whitespace-normal text-left py-1 rounded-sm gap-1 text-primary" onClick={applyTargetMargin} data-testid="editor-apply-target-margin">
             <TrendingUp className="h-3.5 w-3.5" /> Aplicar às linhas sem preço
@@ -1858,13 +1858,13 @@ export default function QuoteEditor() {
         {fiscal?.known && fiscal.reduced_hint && (
           <div className="flex items-start gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2 text-xs" data-testid="fiscal-policy-hint">
             <div className="flex-1">
-              <b>Regime de IVA da empresa: {fiscal.country} — taux normal {fiscal.default_rate} %.</b> {fiscal.reduced_hint}
+              <b>Regime de IVA da empresa: {fiscal.country} — taxa normal {fiscal.default_rate} %.</b> {fiscal.reduced_hint}
               {lines.some((l) => l.vat_suggestion) && <span className="block mt-1">Sugestão a partir do texto: {lines.find((l) => l.vat_suggestion).vat_suggestion} % — {lines.find((l) => l.vat_suggestion).vat_suggestion_reason}</span>}
             </div>
             {lines.some((l) => l.vat_suggestion) && (
               <Button size="sm" variant="outline" onClick={() => setAllVat(lines.find((l) => l.vat_suggestion).vat_suggestion)}
                       className="rounded-sm h-7 text-xs shrink-0 text-primary border-primary/40" data-testid="fiscal-apply-suggestion">
-                Confirmer {lines.find((l) => l.vat_suggestion).vat_suggestion} %
+                Confirmar {lines.find((l) => l.vat_suggestion).vat_suggestion} %
               </Button>
             )}
           </div>
@@ -1911,12 +1911,12 @@ export default function QuoteEditor() {
                     title="Arrastar para reordenar" className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary touch-none px-0.5"
                     data-testid={`editor-line-drag-${i}`}><GripVertical className="h-4 w-4" /></span>
               <div className="flex flex-col">
-                <button type="button" onClick={() => moveLine(i, -1)} disabled={i === 0} title="Monter"
-                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Subir a linha${i + 1}`} data-testid={`editor-line-up-${i}`}><ChevronUp className="h-3.5 w-3.5" /></button>
-                <button type="button" onClick={() => moveLine(i, 1)} disabled={i === lines.length - 1} title="Descendre"
-                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Descer a linha${i + 1}`} data-testid={`editor-line-down-${i}`}><ChevronDown className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => moveLine(i, -1)} disabled={i === 0} title="Subir"
+                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Subir a linha ${i + 1}`} data-testid={`editor-line-up-${i}`}><ChevronUp className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => moveLine(i, 1)} disabled={i === lines.length - 1} title="Descer"
+                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Descer a linha ${i + 1}`} data-testid={`editor-line-down-${i}`}><ChevronDown className="h-3.5 w-3.5" /></button>
               </div>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => delLine(i)} aria-label={`Eliminar a linha${i + 1}`} data-testid={`editor-line-del-${i}`}><Trash2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => delLine(i)} aria-label={`Eliminar a linha ${i + 1}`} data-testid={`editor-line-del-${i}`}><Trash2 className="h-4 w-4" /></Button>
             </div>
           );
           const wrap = (el) => (<Fragment key={i}>{el}<InlineInserter index={i} onInsert={insertBlock} /></Fragment>);
@@ -1958,7 +1958,7 @@ export default function QuoteEditor() {
             );
           }
 
-          const KIND_LABEL = { fourniture: "Fourniture", main_oeuvre: "Mão de obra", ouvrage: "Ouvrage" };
+          const KIND_LABEL = { fourniture: "Fornecimento", main_oeuvre: "Mão de obra", ouvrage: "Artigo" };
           const lineHt = (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0) * (1 - (Number(l.discount_pct) || 0) / 100);
           return wrap(
           <div key={i} {...dragProps}
@@ -1967,17 +1967,17 @@ export default function QuoteEditor() {
             <div className="quote-line-heading">
               <span className="num text-xs font-bold text-muted-foreground w-12 shrink-0" data-testid={`editor-line-num-${i}`}>{num}</span>
               <select value={l.line_kind || "fourniture"} onChange={(e) => setLine(i, "line_kind", e.target.value)}
-                      className="rounded-sm border border-border bg-background px-1.5 h-6 text-[11px] font-medium" aria-label={`Tipo de linha${i + 1}`} data-testid={`editor-line-kind-${i}`}>
-                <option value="fourniture">Fourniture</option>
+                      className="rounded-sm border border-border bg-background px-1.5 h-6 text-[11px] font-medium" aria-label={`Tipo de linha ${i + 1}`} data-testid={`editor-line-kind-${i}`}>
+                <option value="fourniture">Fornecimento</option>
                 <option value="main_oeuvre">Mão de obra</option>
-                <option value="ouvrage">Ouvrage</option>
+                <option value="ouvrage">Artigo</option>
               </select>
               {l.line_kind === "ouvrage" && (
                 <button type="button" onClick={() => setLine(i, "_open", !l._open)}
                         className="inline-flex items-center gap-1 text-[11px] text-primary rounded-sm border border-primary/40 px-1.5 h-6"
                         data-testid={`editor-ouvrage-toggle-${i}`}>
                   {l._open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  Composants ({(l.components || []).length})
+                  Componentes ({(l.components || []).length})
                 </button>
               )}
               <div className="quote-line-actions"><Actions /></div>
@@ -2045,13 +2045,13 @@ export default function QuoteEditor() {
                             onDragStart={(e) => { compDragRef.current = { line: i, comp: ci }; e.dataTransfer.effectAllowed = "move"; }}
                             onDragEnd={() => { compDragRef.current = null; setCompDragOver(null); }}
                             title="Arrastar para mover" className="cursor-grab text-muted-foreground hover:text-foreground p-0.5" data-testid={`ouvrage-comp-drag-${i}-${ci}`}><GripVertical className="h-3.5 w-3.5" /></span>
-                      <button type="button" title="Monter" disabled={ci === 0}
+                      <button type="button" title="Subir" disabled={ci === 0}
                               onClick={() => { const a = [...(l.components || [])]; [a[ci - 1], a[ci]] = [a[ci], a[ci - 1]]; setComponents(i, a); }}
                               className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none p-0.5" data-testid={`ouvrage-comp-up-${i}-${ci}`}><ChevronUp className="h-3.5 w-3.5" /></button>
-                      <button type="button" title="Descendre" disabled={ci === (l.components || []).length - 1}
+                      <button type="button" title="Descer" disabled={ci === (l.components || []).length - 1}
                               onClick={() => { const a = [...(l.components || [])]; [a[ci + 1], a[ci]] = [a[ci], a[ci + 1]]; setComponents(i, a); }}
                               className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none p-0.5" data-testid={`ouvrage-comp-down-${i}-${ci}`}><ChevronDown className="h-3.5 w-3.5" /></button>
-                      <button type="button" title="Dupliquer"
+                      <button type="button" title="Duplicar"
                               onClick={() => { const a = [...(l.components || [])]; a.splice(ci + 1, 0, { ...c, photos: [...(c.photos || [])] }); setComponents(i, a); toast.success("Componente duplicado"); }}
                               className="text-primary hover:text-primary/70 p-0.5" data-testid={`ouvrage-comp-dup-${i}-${ci}`}><Copy className="h-3.5 w-3.5" /></button>
                       <button type="button" title="Eliminar" onClick={() => setComponents(i, (l.components || []).filter((_, j) => j !== ci))}
@@ -2066,7 +2066,7 @@ export default function QuoteEditor() {
                   </div>
                 ))}
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" className="h-7 rounded-sm gap-1 text-xs" onClick={() => addComponent(i, "fourniture")} data-testid={`ouvrage-add-fourniture-${i}`}><Plus className="h-3 w-3" /> Fourniture</Button>
+                  <Button size="sm" variant="outline" className="h-7 rounded-sm gap-1 text-xs" onClick={() => addComponent(i, "fourniture")} data-testid={`ouvrage-add-fourniture-${i}`}><Plus className="h-3 w-3" /> Fornecimento</Button>
                   <Button size="sm" variant="outline" className="h-7 rounded-sm gap-1 text-xs" onClick={() => addComponent(i, "main_oeuvre")} data-testid={`ouvrage-add-mo-${i}`}><Plus className="h-3 w-3" /> Mão de obra</Button>
                   <span className="ms-auto text-xs font-bold num" data-testid={`ouvrage-sum-${i}`}>PU = {eur(Number(l.unit_price_ht) || 0)}</span>
                 </div>
@@ -2091,7 +2091,7 @@ export default function QuoteEditor() {
                 <span className="text-[11px] text-muted-foreground">Custo de produção s/ IVA</span>
                 <Input type="number" step="0.01" min="0" value={l.cost_price_ht ?? 0}
                        onChange={(e) => setLine(i, "cost_price_ht", e.target.value)}
-                       className="rounded-sm h-7 text-xs w-24 num text-right" placeholder="MO + fournitures"
+                       className="rounded-sm h-7 text-xs w-24 num text-right" placeholder="MO + materiais"
                        data-testid={`editor-line-cost-${i}`} />
                 {!(Number(l.cost_price_ht) > 0) && (
                   <label className="flex items-center gap-1 text-[11px] text-muted-foreground" title="Assinale se esta linha não tem realmente nenhum custo de produção (caso contrário a margem global continua «custos incompletos»)">
@@ -2126,14 +2126,14 @@ export default function QuoteEditor() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Este caderno de encargos cobre várias especialidades</DialogTitle>
               <DialogDescription>Assinale apenas as especialidades que orçamenta. As outras não serão importadas no orçamento.
-                {cctpPreview?.remembered > 0 && <span className="block mt-1 text-primary" data-testid="cctp-lots-remembered">Pré-seleção baseada nas suas importações anteriores ({cctpPreview.remembered} lot{cctpPreview.remembered > 1 ? "s" : ""} desmarcado{cctpPreview.remembered > 1 ? "s" : ""} automatiquement).</span>}
+                {cctpPreview?.remembered > 0 && <span className="block mt-1 text-primary" data-testid="cctp-lots-remembered">Pré-seleção baseada nas suas importações anteriores ({cctpPreview.remembered} lot{cctpPreview.remembered > 1 ? "s" : ""} desmarcado{cctpPreview.remembered > 1 ? "s" : ""} automaticamente).</span>}
               </DialogDescription>
             </DialogHeader>
             {cctpPreview && (
               <>
                 <div className="space-y-1 max-h-[50vh] overflow-y-auto">
                   {cctpPreview.lots.map((lot) => {
-                    const n = cctpPreview.data.lines.filter((l) => ((l.category || "").trim() || "Autres") === lot).length;
+                    const n = cctpPreview.data.lines.filter((l) => ((l.category || "").trim() || "Outros") === lot).length;
                     const on = cctpPreview.selected.has(lot);
                     return (
                       <label key={lot} className={`flex items-center gap-3 rounded-sm border px-3 py-2 text-sm cursor-pointer ${on ? "border-primary/50 bg-primary/5" : "border-border opacity-70"}`} data-testid={`cctp-lot-${lot}`}>
@@ -2151,7 +2151,7 @@ export default function QuoteEditor() {
                     <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set() }))}>Nenhum</button>
                   </div>
                   <Button onClick={() => applyCctp(cctpPreview.data, cctpPreview.selected, cctpPreview.lots)} disabled={!cctpPreview.selected.size} className="rounded-sm gap-2" data-testid="cctp-lots-confirm">
-                    <Plus className="h-4 w-4" /> Importer {cctpPreview.selected.size} lot{cctpPreview.selected.size > 1 ? "s" : ""}
+                    <Plus className="h-4 w-4" /> Importar {cctpPreview.selected.size} lot{cctpPreview.selected.size > 1 ? "s" : ""}
                   </Button>
                 </div>
               </>
@@ -2178,7 +2178,7 @@ export default function QuoteEditor() {
               <div>
                 <Label className="text-xs text-muted-foreground">Duração das obras</Label>
                 <Input value={projectDuration} onChange={(e) => setProjectDuration(e.target.value)} disabled={isFrozen}
-                       placeholder="ex. 3 semaines" className="rounded-sm mt-1" data-testid="editor-project-duration" />
+                       placeholder="ex.: 3 semanas" className="rounded-sm mt-1" data-testid="editor-project-duration" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Arranque</Label>
@@ -2191,10 +2191,10 @@ export default function QuoteEditor() {
               <div className="quote-validity-controls flex flex-wrap gap-1 mt-1">
                 <Button type="button" size="sm" variant={validityDays > 0 ? "default" : "outline"} disabled={isFrozen}
                         className="rounded-sm h-8 text-xs" onClick={() => setValidityDays(validityDays > 0 ? validityDays : 30)}
-                        data-testid="editor-validity-auto">Automatique</Button>
+                        data-testid="editor-validity-auto">Automático</Button>
                 <Button type="button" size="sm" variant={validityDays > 0 ? "outline" : "default"} disabled={isFrozen}
                         className="rounded-sm h-8 text-xs" onClick={() => setValidityDays(0)}
-                        data-testid="editor-validity-manual">Date fixe</Button>
+                        data-testid="editor-validity-manual">Data fixa</Button>
                 {validityDays > 0 ? (
                   <div className="flex items-center gap-1 text-sm">
                     <Input type="number" min="1" max="365" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} disabled={isFrozen}
@@ -2235,7 +2235,7 @@ export default function QuoteEditor() {
                       onClick={() => setSchedule((p) => [...(p || []), { label: "", pct: 0 }])} data-testid="editor-schedule-add"><Plus className="h-3.5 w-3.5" /> Adicionar uma prestação</Button>
               {(schedule || []).length > 0 && (
                 <span className={`text-xs num font-semibold ${scheduleSum === 100 ? "text-emerald-600" : "text-amber-600"}`} data-testid="editor-schedule-sum">
-                  Total: {scheduleSum}%{scheduleSum !== 100 ? "(deve somar 100 %)" : ""}
+                  Total: {scheduleSum}%{scheduleSum !== 100 ? " (deve somar 100 %)" : ""}
                 </span>
               )}
             </div>
@@ -2271,7 +2271,7 @@ export default function QuoteEditor() {
                     {marginPct != null && (
                       <span data-testid={`editor-lot-margin-${cat}`}
                             className={`num text-[10px] px-1.5 rounded-sm ${loss > 0 || marginPct < 0 ? "bg-red-500/10 text-red-500" : marginPct < 15 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
-                        {loss > 0 ? `${loss}com prejuízo ·` : ""}marge {marginPct.toFixed(0)} %
+                        {loss > 0 ? `${loss} com prejuízo · ` : ""}marge {marginPct.toFixed(0)} %
                       </span>
                     )}
                     <span className="num font-semibold">{eur(ht)}</span>
@@ -2283,7 +2283,7 @@ export default function QuoteEditor() {
           {totals.vatUnset > 0 && (
             <p className="rounded-sm px-3 py-2 mb-1 text-xs bg-amber-500/10 border border-amber-500/40 text-amber-700" data-testid="editor-vat-unset-alert">
               {totals.vatUnset} ligne{totals.vatUnset > 1 ? "s" : ""} sem taxa de IVA escolhida — o total c/ IVA é calculado sem IVA nestas linhas.
-              {fiscal?.known ? ` Taux normal ${fiscal.country} : ${fiscal.default_rate} %.` : "Indique o país da empresa no seu perfil para obter as taxas propostas."}
+              {fiscal?.known ? ` Taxa normal ${fiscal.country} : ${fiscal.default_rate} %.` : " Indique o país da empresa no seu perfil para obter as taxas propostas."}
             </p>
           )}
           {totals.margin == null && totals.coverage.known > 0 && (

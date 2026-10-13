@@ -44,7 +44,7 @@ export const DocumentViewerProvider = ({ children }) => {
           {error ? <p className="text-sm p-4" data-testid="document-viewer-error">Documento indisponível. Feche e tente novamente.</p>
             : !url || !doc || (isPdf && !pages) ? <Loader2 className="h-5 w-5 animate-spin" />
             : isPdf ? <div className="w-full grid gap-3 p-2" data-testid="document-viewer-pdf">
-                {pages.pages.map((p, i) => <img key={i} src={`data:image/jpeg;base64,${p}`} alt={`Page ${i + 1}`} className="w-full bg-white shadow-sm" data-testid={`document-viewer-pdf-page-${i + 1}`} />)}
+                {pages.pages.map((p, i) => <img key={i} src={`data:image/jpeg;base64,${p}`} alt={`Página ${i + 1}`} className="w-full bg-white shadow-sm" data-testid={`document-viewer-pdf-page-${i + 1}`} />)}
                 {pages.failed && <p className="text-sm p-4">Pré-visualização indisponível: utilize «Transferir».</p>}
                 {pages.total_pages > pages.pages.length && <p className="text-xs text-muted-foreground px-2">Pré-visualização das {pages.pages.length} primeiras páginas de {pages.total_pages} — o PDF completo pode ser transferido.</p>}
               </div>
@@ -61,5 +61,5 @@ export const DocumentViewerProvider = ({ children }) => {
 
 export const useDocumentViewer = () => {
   const setDoc = useContext(ViewerContext);
-  return (path, filename, title) => { if (!path) return toast.error("Document indisponible"); setDoc({ path, filename, title }); };
+  return (path, filename, title) => { if (!path) return toast.error("Documento indisponível"); setDoc({ path, filename, title }); };
 };

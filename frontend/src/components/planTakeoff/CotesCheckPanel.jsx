@@ -39,15 +39,15 @@ function Summary({ s }) {
       <Badge className={`rounded-sm border ${CLS[s.verdict]}`} data-testid="cotes-verdict">{LABEL[s.verdict]}</Badge>
       <span className="text-[11px] text-muted-foreground">
         {s.total} cotes · {s.ok} OK · {s.warn} a verificar · <b className="text-red-700">{s.ko} incoerência(s)</b>
-        {s.ignored > 0 && ` · ${s.ignored}ignorada(s)`}
-        {s.chains_total > 0 && ` · ${s.chains_total}cadeia(s) (${s.chains_ko} KO)`}
-        {s.facades_total > 0 && ` · ${s.facades_total}fachada(s) oposta(s) (${s.facades_ko} KO)`}
-        {s.elements_total > 0 && ` · ${s.elements_total}elemento(s) (${s.elements_ko} KO)`}
-        {(s.anchors_ko > 0 || s.anchors_warn > 0) && ` · ${s.anchors_ko + s.anchors_warn}cota(s) não associada(s)`} · diferença máx. {s.max_delta_cm} cm
+        {s.ignored > 0 && ` · ${s.ignored} ignorada(s)`}
+        {s.chains_total > 0 && ` · ${s.chains_total} cadeia(s) (${s.chains_ko} KO)`}
+        {s.facades_total > 0 && ` · ${s.facades_total} fachada(s) oposta(s) (${s.facades_ko} KO)`}
+        {s.elements_total > 0 && ` · ${s.elements_total} elemento(s) (${s.elements_ko} KO)`}
+        {(s.anchors_ko > 0 || s.anchors_warn > 0) && ` · ${s.anchors_ko + s.anchors_warn} cota(s) não associada(s)`} · diferença máx. {s.max_delta_cm} cm
       </span>
       {s.conclusion && (
         <p className={`w-full text-[11px] px-1.5 py-1 rounded-sm border ${CLS[s.verdict]}`} data-testid="cotes-conclusion">
-          <b>Conclusion rapide :</b> {s.conclusion}
+          <b>Conclusão rápida:</b> {s.conclusion}
         </p>
       )}
     </div>
@@ -62,7 +62,7 @@ function Facades({ facades }) {
       {facades.map((f, i) => (
         <div key={i} className={`text-[11px] px-1.5 py-1 rounded-sm border ${CLS[f.status]}`} data-testid={`cotes-facade-${i}`}>
           #{f.a_index} {f.a_m.toFixed(2)} m ({f.a_side}) ↔ #{f.b_index} {f.b_m.toFixed(2)} m ({f.b_side}) : diferença {f.delta_cm > 0 ? "+" : ""}{f.delta_cm} cm — {f.niveau}
-          {f.status === "ko" && "· implantação não confirmada como retangular, a esclarecer (cota única / diagonal / planta de eixos)"}
+          {f.status === "ko" && " · implantação não confirmada como retangular, a esclarecer (cota única / diagonal / planta de eixos)"}
           {f.diag && (
             <div className="mt-0.5 font-mono" data-testid={`cotes-facade-diag-${i}`}>
               Esquadria: diagonais ≈ {f.diag.d1_m.toFixed(2)} m / {f.diag.d2_m.toFixed(2)} m → diferença ≈ {Math.abs(f.diag.diff_cm)} cm · desvio angular ≈ {f.diag.angle_deg}° (L {f.diag.L_m.toFixed(2)} × W {f.diag.W_m.toFixed(2)} m, desfasamento {f.diag.offset_cm} cm)
@@ -81,7 +81,7 @@ function Row({ it, selected, onFocus, onEdit, onToggleIgnore, busy }) {
   useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
   const save = async () => {
     const v = Number(String(val).replace(",", "."));
-    if (!v || v <= 0) return toast.error("Valeur invalide");
+    if (!v || v <= 0) return toast.error("Valor inválido");
     await onEdit(it.index, v);
     setEditing(false);
   };
@@ -89,7 +89,7 @@ function Row({ it, selected, onFocus, onEdit, onToggleIgnore, busy }) {
     <tr className={`border-t whitespace-nowrap cursor-pointer ${selected ? "bg-amber-100 text-slate-900" : "hover:bg-muted/60"} ${it.ignored ? "opacity-50" : ""}`}
         data-testid={`cotes-row-${it.index}`} onClick={() => onFocus(it)}>
       <td className="px-1 num">{it.index}<sup className="text-[8px] text-muted-foreground ml-0.5" title={SRC_TITLE[it.source] || ""}>{SRC[it.source] || ""}</sup></td>
-      <td className="px-1 truncate max-w-[110px]" title={`${it.location || ""}${it.edited ? `(corrigida, lida${it.original_m})` : ""}`}>
+      <td className="px-1 truncate max-w-[110px]" title={`${it.location || ""}${it.edited ? ` (corrigida, lida ${it.original_m})` : ""}`}>
         {it.location || "—"}{it.edited && <span className="text-amber-700"> ✎</span>}
       </td>
       <td className="px-1 text-right num" onClick={(e) => { if (editing) e.stopPropagation(); }}>
@@ -124,7 +124,7 @@ function Row({ it, selected, onFocus, onEdit, onToggleIgnore, busy }) {
 }
 
 const SRC = { pdf: "V", dxf: "D", ai: "IA" };
-const SRC_TITLE = { pdf: "Cote vectorielle PDF (mesure exacte)", dxf: "Cote DXF (mesure exacte)", ai: "Cote lue par l'IA (mesure pixel)" };
+const SRC_TITLE = { pdf: "Cota vetorial PDF (medição exata)", dxf: "Cota DXF (medição exata)", ai: "Cota lida pela IA (medição em píxeis)" };
 
 function Reading({ r, calib }) {
   if (!r || r.source === "ai" || !r.source) return null;
@@ -133,12 +133,12 @@ function Reading({ r, calib }) {
   return (
     <div className="text-[11px] border border-sky-300 bg-sky-50 text-sky-900 rounded-sm px-1.5 py-1 grid gap-0.5" data-testid="cotes-reading">
       <div>
-        <b>Lecture {r.source === "dxf" ? "DXF exacte" : "vectorielle PDF + IA (hybride)"}</b>
+        <b>Lecture {r.source === "dxf" ? "DXF exata" : "vetorial PDF + IA (híbrida)"}</b>
         {r.source === "pdf_vector+ai" && cross && (
           <> : {cross.vector} cota(s) medidas ao mm no PDF · {cross.confirmed} confirmada(s) pela IA
-            {cross.ai_only > 0 && ` · ${cross.ai_only}lida(s) só pela IA (não verificadas, nunca KO)`}</>
+            {cross.ai_only > 0 && ` · ${cross.ai_only} lida(s) só pela IA (não verificadas, nunca KO)`}</>
         )}
-        {eff && <> · escala efetiva 1/{eff}{calib?.scale_denominator && Math.abs(eff - calib.scale_denominator) > 0.5 ? `(declarada 1/${calib.scale_denominator}— PDF reduzido)` : ""}</>}
+        {eff && <> · escala efetiva 1/{eff}{calib?.scale_denominator && Math.abs(eff - calib.scale_denominator) > 0.5 ? ` (declarada 1/${calib.scale_denominator} — PDF reduzido)` : ""}</>}
       </div>
       {cross?.divergences?.length > 0 && (
         <div data-testid="cotes-divergences">
@@ -188,8 +188,8 @@ function AutoSpans({ spans }) {
   if (!spans?.length) return null;
   return (
     <div className="grid gap-1" data-testid="cotes-auto-spans">
-      <p className="text-[11px] font-medium">Mesures automatiques — {spans.length} distância(s) desenhada(s) sem cota na planta
-        <button className="underline ml-2" onClick={() => setOpen(!open)} data-testid="cotes-auto-spans-toggle">{open ? "Reduzir" : "Afficher"}</button></p>
+      <p className="text-[11px] font-medium">Medições automáticas — {spans.length} distância(s) desenhada(s) sem cota na planta
+        <button className="underline ml-2" onClick={() => setOpen(!open)} data-testid="cotes-auto-spans-toggle">{open ? "Reduzir" : "Mostrar"}</button></p>
       {open && (
         <div className="text-[11px] grid grid-cols-2 sm:grid-cols-3 gap-1">
           {spans.map((sp) => (
@@ -224,12 +224,12 @@ function SendDialog({ open, onClose, plan, pageIndex, report, onSent }) {
   const [copyMe, setCopyMe] = useState(true);
   const [busy, setBusy] = useState(false);
   const send = async () => {
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Adresse e-mail invalide");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Endereço de e-mail inválido");
     setBusy(true);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/cotes/send`,
         { page_index: pageIndex, to_email: email, message, copy_me: copyMe });
-      toast.success(`Relatório enviado a${data.sent_to}${data.copy_sent ? "(cópia recebida)" : ""}`, { duration: 7000 });
+      toast.success(`Relatório enviado a ${data.sent_to}${data.copy_sent ? " (cópia recebida)" : ""}`, { duration: 7000 });
       onSent?.();
       onClose();
     } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
@@ -242,14 +242,14 @@ function SendDialog({ open, onClose, plan, pageIndex, report, onSent }) {
           <DialogTitle>Enviar o relatório de controlo das cotas</DialogTitle>
           <DialogDescription>
             O PDF (síntese, todas as cotas, cadeias e planta anotada) segue em anexo no e-mail.
-            {report && ` Verdict actuel : ${LABEL[report.summary.verdict]} — ${report.summary.ko}incoerência(s).`}
+            {report && ` Veredicto atual: ${LABEL[report.summary.verdict]} — ${report.summary.ko} incoerência(s).`}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
           <Label className="text-xs">Destinatário (arquiteto, cliente, gabinete de projeto)</Label>
           <Input type="email" placeholder="architecte@exemple.fr" value={email} onChange={(e) => setEmail(e.target.value)}
                  className="rounded-sm" data-testid="cotes-send-email" />
-          <Label className="text-xs">Message (optionnel)</Label>
+          <Label className="text-xs">Mensagem (opcional)</Label>
           <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="rounded-sm text-sm"
                     placeholder="Bom dia, junto envio o controlo das cotas da planta…" data-testid="cotes-send-message" />
           <label className="flex items-center gap-2 text-xs">
@@ -314,16 +314,16 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
 
   const run = () => apply(
     () => runCotesJob(`/takeoffs/${plan.plan_id}/cotes/check`, { page_index: pageIndex, tol_pct: Number(tolPct) || 2, tol_cm: Number(tolCm) || 0 }),
-    (d) => `${d.summary.total}cotas controladas —${d.summary.ko}incoerência(s)` + (d.auto_calibrated ? "· escala calibrada automaticamente" : ""));
+    (d) => `${d.summary.total} cotas controladas — ${d.summary.ko} incoerência(s)` + (d.auto_calibrated ? " · escala calibrada automaticamente" : ""));
   const recompute = () => apply(
     () => api.post(`/takeoffs/${plan.plan_id}/cotes/recompute`, { page_index: pageIndex, tol_pct: Number(tolPct) || 2, tol_cm: Number(tolCm) || 0 }),
-    (d) => `Recalculado com ±${d.tolerance.pct} % / ${d.tolerance.cm} cm — ${d.summary.ko}incoerência(s)`);
+    (d) => `Recalculado com ±${d.tolerance.pct} % / ${d.tolerance.cm} cm — ${d.summary.ko} incoerência(s)`);
   const editItem = (index, indicated_m) => apply(
     () => api.patch(`/takeoffs/${plan.plan_id}/cotes/items/${index}`, { page_index: pageIndex, indicated_m }),
-    () => `Cote #${index}corrigida e relatório recalculado`);
+    () => `Cote #${index} corrigida e relatório recalculado`);
   const toggleIgnore = (it) => apply(
     () => api.patch(`/takeoffs/${plan.plan_id}/cotes/items/${it.index}`, { page_index: pageIndex, ignored: !it.ignored }),
-    () => (it.ignored ? `Cote #${it.index}reintegrada` : `Cote #${it.index}ignorada`));
+    () => (it.ignored ? `Cote #${it.index} reintegrada` : `Cote #${it.index} ignorada`));
 
   const showOverlay = async () => {
     try {
@@ -373,12 +373,12 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       <div className="flex gap-2">
         <Button size="sm" className="flex-1 justify-start gap-2 rounded-sm" disabled={busy} onClick={run} data-testid="cotes-check-btn">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}
-          {busy ? "A ler e medir as cotas…" : report ? "Relancer (relecture IA)" : "Controlar as cotas"}
+          {busy ? "A ler e medir as cotas…" : report ? "Repetir (releitura IA)" : "Controlar as cotas"}
         </Button>
         {tolChanged && (
           <Button size="sm" variant="outline" className="gap-1 rounded-sm" disabled={busy} onClick={recompute}
                   title="Recalcular com a nova tolerância, sem reler a planta" data-testid="cotes-recompute-btn">
-            <RefreshCw className="h-3.5 w-3.5" /> Recalculer
+            <RefreshCw className="h-3.5 w-3.5" /> Recalcular
           </Button>
         )}
       </div>
@@ -394,7 +394,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
           <div className="max-h-64 overflow-auto border rounded-sm" data-testid="cotes-table">
             <table className="w-full text-[11px]">
               <thead className="bg-muted sticky top-0">
-                <tr><th className="px-1 text-left">#</th><th className="px-1 text-left">Localisation</th>
+                <tr><th className="px-1 text-left">#</th><th className="px-1 text-left">Localização</th>
                   <th className="px-1 text-right">Cote (m)</th><th className="px-1 text-right">Medido (m)</th>
                   <th className="px-1 text-right">Diferença (cm)</th><th className="px-1"></th><th className="px-1"></th></tr>
               </thead>
@@ -428,7 +428,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
               <FileDown className="h-3.5 w-3.5" /> PDF
             </Button>
             <Button size="sm" className="flex-1 gap-2 rounded-sm" onClick={downloadRapport} title="Relatório de controlo da planta ConstruPilot (capa, resumo, cálculos, planta anotada CP-xx, fichas, checklist)" data-testid="cotes-rapport-btn">
-              <FileText className="h-3.5 w-3.5" /> Rapport
+              <FileText className="h-3.5 w-3.5" /> Relatório
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={() => setSendOpen(true)} data-testid="cotes-send-btn">
               <Mail className="h-3.5 w-3.5" /> Enviar
@@ -436,7 +436,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
           </div>
           {report.last_sent && (
             <p className="text-[11px] text-muted-foreground" data-testid="cotes-last-sent">
-              Dernier envoi : {report.last_sent.to_email} · {new Date(report.last_sent.sent_at).toLocaleString("fr-FR")}
+              Último envio: {report.last_sent.to_email} · {new Date(report.last_sent.sent_at).toLocaleString("fr-FR")}
             </p>
           )}
           <SendDialog open={sendOpen} onClose={() => setSendOpen(false)} plan={plan} pageIndex={pageIndex}

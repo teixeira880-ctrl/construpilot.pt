@@ -14,7 +14,7 @@ import {
 const ICONS = { FileText, ReceiptText, Ruler, ScanLine, GitCompare, ShieldCheck };
 const STATUS = {
   queued: { label: "En file", cls: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
-  running: { label: "En cours", cls: "bg-blue-500/15 text-blue-600 border-blue-500/30", icon: Loader2, spin: true },
+  running: { label: "Em curso", cls: "bg-blue-500/15 text-blue-600 border-blue-500/30", icon: Loader2, spin: true },
   done: { label: "Terminado", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: CheckCircle2 },
   error: { label: "Falha", cls: "bg-destructive/15 text-destructive border-destructive/30", icon: AlertTriangle },
   proposed: { label: "Proposto", cls: "bg-muted text-muted-foreground border-border", icon: Clock },
@@ -22,9 +22,9 @@ const STATUS = {
 
 const resultSummary = (r) => {
   const x = r.result || {};
-  if (x.kind === "summary") return `${x.total_measures} mesure(s) · ${x.total_openings} ouverture(s)`;
-  if (x.kind === "detect") return `${x.total_walls}parede(s) ·${x.total_openings}vão(s) — calibração necessária`;
-  if (x.kind === "pdf") return `${x.levels}nível(is) · processo PDF pronto`;
+  if (x.kind === "summary") return `${x.total_measures} medição(ões) · ${x.total_openings} vão(s)`;
+  if (x.kind === "detect") return `${x.total_walls} parede(s) · ${x.total_openings} vão(s) — calibração necessária`;
+  if (x.kind === "pdf") return `${x.levels} nível(is) · processo PDF pronto`;
   if (x.kind === "quote") return "Orçamento consolidado criado";
   if (x.kind === "compare") return "Comparação de plantas pronta";
   return "";
@@ -125,7 +125,7 @@ function AgentsHubContent() {
       <header className="mb-6">
         {chantierId && <Button variant="ghost" className="mb-3" onClick={() => nav(`/chantiers/${encodeURIComponent(chantierId)}`)}><ArrowLeft size={16} /> Voltar ao processo · controlo limitado a esta obra</Button>}
         <p className="text-xs uppercase tracking-widest text-primary font-semibold flex items-center gap-2">
-          <Bot className="h-4 w-4" /> Agents IA
+          <Bot className="h-4 w-4" /> Agentes IA
         </p>
         <h1 className="font-display text-3xl lg:text-4xl font-extrabold mt-1">O seu piloto de projeto</h1>
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
@@ -147,7 +147,7 @@ function AgentsHubContent() {
                     <h3 className="font-display font-bold">{a.name}</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">{a.desc}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary"><Play className="h-3.5 w-3.5" /> Lancer</span>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary"><Play className="h-3.5 w-3.5" /> Lançar</span>
                 </button>
               );
             })}
@@ -157,7 +157,7 @@ function AgentsHubContent() {
             {loadError && <p role="alert" className="text-sm text-destructive mb-3">Impossível carregar as tarefas. Atualize para tentar novamente.</p>}
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display text-xl font-bold">Execuções recentes</h2>
-              <Button size="sm" variant="ghost" onClick={loadRuns} data-testid="agent-runs-refresh">Actualiser</Button>
+              <Button size="sm" variant="ghost" onClick={loadRuns} data-testid="agent-runs-refresh">Atualizar</Button>
             </div>
             {runs.length === 0 ? (
               <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">
@@ -186,7 +186,7 @@ function AgentsHubContent() {
                           )}
                           {r.result?.edit && (
                             <Button size="sm" variant="outline" onClick={() => nav(r.result.edit)} data-testid={`agent-open-${r.run_id}`}>
-                              <Pencil className="h-3.5 w-3.5 mr-1" /> Ouvrir
+                              <Pencil className="h-3.5 w-3.5 mr-1" /> Abrir
                             </Button>
                           )}
                           {r.result?.needs_calibration && r.result?.edit_plan_id && (
@@ -254,7 +254,7 @@ function AgentsHubContent() {
                 <label className="flex items-start gap-3 text-sm"><input type="radio" name="supervisor-mode" checked={box.params.mode === "repair"} onChange={() => setParam("mode", "repair")} className="mt-1" /><span><strong>Controlar e corrigir automaticamente</strong><br />Recálculo dos valores derivados, histórico e opção de anulação.</span></label>
                 <label className="flex items-start gap-3 text-sm"><input type="radio" name="supervisor-mode" checked={box.params.mode === "audit"} onChange={() => setParam("mode", "audit")} className="mt-1" /><span><strong>Apenas controlar</strong><br />Ver as diferenças antes de alterar os dados.</span></label>
               </div> : <div>
-                <p className="text-sm font-semibold mb-1.5">Instruction (facultatif)</p>
+                <p className="text-sm font-semibold mb-1.5">Instrução (opcional)</p>
                 <Textarea rows={2} value={box.prompt} onChange={(e) => setBox((b) => ({ ...b, prompt: e.target.value }))}
                   placeholder="Ex.: agrupar por piso, chamar ao projeto «Moradia Duarte»…" data-testid="agent-prompt" />
               </div>}
@@ -288,7 +288,7 @@ function AgentsHubContent() {
 
               {needsParams && (box.run.plan_status || []).length > 0 && (
                 <div>
-                  <p className="text-sm font-semibold mb-2">Niveaux (modifiables)</p>
+                  <p className="text-sm font-semibold mb-2">Pisos (editáveis)</p>
                   <div className="space-y-2">
                     {box.run.plan_status.map((s) => (
                       <div key={s.plan_id} className="flex items-center gap-3">
@@ -303,12 +303,12 @@ function AgentsHubContent() {
               {needsParams && (
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs font-semibold mb-1">Marge cible (%)</p>
+                    <p className="text-xs font-semibold mb-1">Margem alvo (%)</p>
                     <Input type="number" value={box.params.margin_pct} onChange={(e) => setParam("margin_pct", parseFloat(e.target.value) || 0)} data-testid="agent-margin" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold mb-1">Nome do projeto</p>
-                    <Input value={box.params.project_name} onChange={(e) => setParam("project_name", e.target.value)} placeholder="Ex : Villa Durand" data-testid="agent-project-name" />
+                    <Input value={box.params.project_name} onChange={(e) => setParam("project_name", e.target.value)} placeholder="Ex.: Moradia Duarte" data-testid="agent-project-name" />
                   </div>
                   <div><p className="text-xs font-semibold mb-1">Cliente</p><Input value={box.params.client_name} onChange={(e) => setParam("client_name", e.target.value)} placeholder="Nome do cliente" data-testid="agent-client-name" /></div>
                   <div><p className="text-xs font-semibold mb-1">E-mail cliente</p><Input value={box.params.client_email} onChange={(e) => setParam("client_email", e.target.value)} placeholder="client@email.fr" data-testid="agent-client-email" /></div>

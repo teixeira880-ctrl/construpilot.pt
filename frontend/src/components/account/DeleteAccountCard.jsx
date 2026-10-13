@@ -66,7 +66,7 @@ export const DeleteAccountCard = () => {
           )}
           <div className="grid gap-1.5">
             <Label htmlFor="del-confirm" className="text-xs">
-              Tapez <strong>ELIMINAR</strong> para confirmar
+              Escreva <strong>ELIMINAR</strong> para confirmar
             </Label>
             <Input id="del-confirm" value={confirm} required placeholder="ELIMINAR"
                    onChange={(e) => setConfirm(e.target.value)}

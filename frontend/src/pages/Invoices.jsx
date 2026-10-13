@@ -71,7 +71,7 @@ export default function Invoices() {
     setBatchBusy(true);
     try {
       const { data } = await api.post("/documents/issue-batch", { doc_ids: selected });
-      toast.success(`${data.issued}fatura(s) emitida(s) ·${data.conformes} conforme(s) EN16931`);
+      toast.success(`${data.issued} fatura(s) emitida(s) · ${data.conformes} conforme(s) EN16931`);
       setSelected([]); load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Emissão em lote impossível"); }
     finally { setBatchBusy(false); }
@@ -146,7 +146,7 @@ export default function Invoices() {
   const removeInvoice = async (inv) => {
     if (!(await confirm({
       title: "Eliminar esta fatura?",
-      description: `A fatura${inv.number || ""}será eliminada definitivamente.`,
+      description: `A fatura ${inv.number || ""} será eliminada definitivamente.`,
       confirmLabel: "Eliminar",
     }))) return;
     try {
@@ -238,7 +238,7 @@ export default function Invoices() {
           <p className="text-xs text-muted-foreground mt-0.5">Receba, aceite ou recuse as suas faturas fornecedores através de uma plataforma certificada.</p>
         </div>
         <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
-          Ouvrir <ArrowRight className="h-4 w-4" />
+          Abrir <ArrowRight className="h-4 w-4" />
         </span>
       </button>
 
@@ -322,7 +322,7 @@ export default function Invoices() {
                   {inv.facturx_validation && (
                     <span className={`h-2 w-2 rounded-full ${inv.facturx_validation.valid ? "bg-emerald-500" : inv.facturx_validation.source === "local" ? "bg-amber-500" : "bg-red-500"}`} />
                   )}
-                  Valider
+                  Validar
                 </Button>
                 <Button size="sm" variant="ghost" className="rounded-sm h-8 w-8 p-0 text-muted-foreground hover:text-red-600" data-testid={`invoice-delete-${inv.doc_id}`}
                   onClick={() => removeInvoice(inv)}><Trash2 className="h-4 w-4" /></Button>

@@ -39,9 +39,9 @@ export const CompanyContactSearch = ({ opp, onSaved }) => {
     {result?.candidates.map((c) => <div key={c.siren} className="border-t border-border py-3 space-y-1 break-words" data-testid={`radar-company-candidate-${c.siren}`}>
       <p className="font-semibold text-sm" data-testid={`radar-company-name-${c.siren}`}>{c.nom}</p>
       <p className="text-xs" data-testid={`radar-company-address-${c.siren}`}>{c.adresse_complete}</p>
-      <p className="text-xs text-muted-foreground" data-testid={`radar-company-siren-${c.siren}`}>SIREN {c.siren}</p>
+      <p className="text-xs text-muted-foreground" data-testid={`radar-company-siren-${c.siren}`}>NIPC {c.siren}</p>
       <a href={c.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary inline-flex gap-1 underline" data-testid={`radar-company-source-${c.siren}`}>
-        Annuaire officiel <ExternalLink className="h-3 w-3" />
+        Diretório oficial <ExternalLink className="h-3 w-3" />
       </a>
       <div><Button size="sm" variant={selected?.siren === c.siren ? "default" : "outline"} disabled={busy}
         onClick={() => { setSelected(c); setConfirmed(false); }} className="gap-1" data-testid={`radar-company-select-${c.siren}`}>

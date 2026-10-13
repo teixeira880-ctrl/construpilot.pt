@@ -3,15 +3,15 @@ import { useI18n } from "@/context/I18nContext";
 const copy = {
   fr: {
     animatedBackground: "Fundo animado", motionReduced: "Reduzido no dispositivo", motionPaused: "En pause", motionOn: "Ativo",
-    hello: "Bonjour", overview: "Vue d’ensemble", intro: "Os seus projetos, documentos e próximas ações.",
-    essentials: "L’essentiel", shortcuts: "Acessos rápidos", category: "Categoria", all: "Todas as ferramentas",
+    hello: "Olá", overview: "Visão geral", intro: "Os seus projetos, documentos e próximas ações.",
+    essentials: "O essencial", shortcuts: "Acessos rápidos", category: "Categoria", all: "Todas as ferramentas",
     explore: "Explorar ferramentas", exploreHint: "O essencial à mão. Encontre as outras ferramentas por categoria ou pesquisa.",
-    current: "Page actuelle", help: "Precisa de ajuda?", helpHint: "Guias e assistência", moreFavorites: "Todos os favoritos",
+    current: "Página atual", help: "Precisa de ajuda?", helpHint: "Guias e assistência", moreFavorites: "Todos os favoritos",
     pin: "Manter o menu aberto", unpin: "Recolher o menu", showMenu: "Abrir a navegação",
     newSite: "Nova obra", sitesDesc: "Clientes, plantas e documentos juntos.",
-    assistantShort: "Assistant", quoteShort: "Novo orçamento", planShort: "Plantas e medições", estimateShort: "Estimar um projeto",
-    progress: "Progresso dos trabalhos", noLots: "Progresso por preencher", today: "A acompanhar hoje", next: "Prochaine action",
-    otherActions: "Autres actions", running: "analyses en cours", clear: "Sem ações pendentes de momento.",
+    assistantShort: "Assistente", quoteShort: "Novo orçamento", planShort: "Plantas e medições", estimateShort: "Estimar um projeto",
+    progress: "Progresso dos trabalhos", noLots: "Progresso por preencher", today: "A acompanhar hoje", next: "Próxima ação",
+    otherActions: "Outras ações", running: "analyses en cours", clear: "Sem ações pendentes de momento.",
     edit: "Editar", privacy: "Privacidade", legal: "Informação legal", settings: "Conta e definições", upgrade: "Conhecer os planos",
   },
   pt: {

@@ -5,16 +5,16 @@ import { eur2 } from "@/lib/api";
 
 async function dlComparePdf(id) {
   const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/assistant/comparisons/${id}/pdf`, {  credentials: "include" });
-  if (!res.ok) return toast.error("PDF indisponible");
+  if (!res.ok) return toast.error("PDF indisponível");
   const url = URL.createObjectURL(await res.blob()); const el = document.createElement("a"); el.href = url; el.download = "comparaison-construpilot.pdf"; el.click(); URL.revokeObjectURL(url);
 }
 
 const STATUS = {
-  identical: ["Identique", "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"],
+  identical: ["Idêntico", "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"],
   different_quantity: ["Quantidade ≠", "bg-amber-500/15 text-amber-700 dark:text-amber-400"],
   different_price: ["Preço ≠", "bg-orange-500/15 text-orange-700 dark:text-orange-400"],
   different_scope: ["Âmbito ≠", "bg-sky-500/15 text-sky-700 dark:text-sky-400"],
-  only_a: ["Seulement A", "bg-muted text-muted-foreground"], only_b: ["Seulement B", "bg-muted text-muted-foreground"],
+  only_a: ["Apenas A", "bg-muted text-muted-foreground"], only_b: ["Apenas B", "bg-muted text-muted-foreground"],
   to_confirm: ["A confirmar", "bg-violet-500/15 text-violet-700 dark:text-violet-400"],
 };
 const IMP = { high: "border-l-red-500", medium: "border-l-amber-500", low: "border-l-slate-300" };
@@ -25,10 +25,10 @@ const q = (v, u) => (v === null || v === undefined ? "—" : `${v} ${u || ""}`.t
 function DocHead({ tag, d, name }) {
   return (
     <div className="rounded-sm border bg-background p-2" data-testid={`compare-doc-${tag.toLowerCase()}`}>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Document {tag}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Documento {tag}</div>
       <b className="block truncate" title={name}>{name}</b>
-      <div className="text-muted-foreground">{d.issuer || "—"}{d.date ? ` · ${d.date}` : ""} · {d.lines_count} ligne(s)</div>
-      <div>HT {n(d.total_ht)} · TVA {d.vat_rate ?? "—"} % · <b>TTC {n(d.total_ttc)}</b></div>
+      <div className="text-muted-foreground">{d.issuer || "—"}{d.date ? ` · ${d.date}` : ""} · {d.lines_count} linha(s)</div>
+      <div>HT {n(d.total_ht)} · TVA {d.vat_rate ?? "—"} % · <b>c/ IVA {n(d.total_ttc)}</b></div>
     </div>
   );
 }
@@ -44,7 +44,7 @@ export function CompareCard({ r }) {
       {c.line_matches.length > 0 && (
         <div className="overflow-x-auto rounded-sm border bg-background">
           <table className="w-full text-[11px]" data-testid="compare-table">
-            <thead className="bg-muted/40 text-[10px] uppercase"><tr><th className="px-2 py-1 text-left">Poste</th><th className="px-2 py-1 text-right">Qtd A / B</th><th className="px-2 py-1 text-right">PU A / B</th><th className="px-2 py-1 text-right">Total A / B</th><th className="px-2 py-1 text-right">Desvio</th><th className="px-2 py-1">Statut</th></tr></thead>
+            <thead className="bg-muted/40 text-[10px] uppercase"><tr><th className="px-2 py-1 text-left">Artigo</th><th className="px-2 py-1 text-right">Qtd A / B</th><th className="px-2 py-1 text-right">PU A / B</th><th className="px-2 py-1 text-right">Total A / B</th><th className="px-2 py-1 text-right">Desvio</th><th className="px-2 py-1">Estado</th></tr></thead>
             <tbody>
               {rows.map((l, i) => {
                 const [lbl, cls] = STATUS[l.status] || [l.status, ""];

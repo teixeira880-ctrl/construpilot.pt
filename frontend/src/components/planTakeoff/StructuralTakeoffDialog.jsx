@@ -18,7 +18,7 @@ const FIELDS = [
   ["beam_h_m", "Viga altura (m)", 0.5, 0.01],
   ["col_w_m", "Pilar largura (m)", 0.2, 0.01],
   ["col_h_m", "Pilar altura (m)", 0.2, 0.01],
-  ["margin_pct", "Marge (%)", 12, 1],
+  ["margin_pct", "Margem (%)", 12, 1],
 ];
 
 const eur = (n) => (n ?? 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " €";
@@ -62,8 +62,8 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
       setEstimate(data);
       if (data.metre) setMetre(data.metre);
       const src = data.scale_source === "calibration"
-        ? "(escala recalculada na sua calibração)" : "";
-      toast.success(`Estimation : ${eur(data.totals?.ttc)} TTC${src}`);
+        ? " (escala recalculada na sua calibração)" : "";
+      toast.success(`Estimation : ${eur(data.totals?.ttc)} c/ IVA${src}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Estimativa impossível"); }
     finally { setBusy(false); }
   };
@@ -73,7 +73,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
     try {
       const body = buildBody();
       const { data } = await api.post(`/takeoffs/${planId}/metre-to-quote`, body);
-      toast.success(`Orçamento criado (${data.line_count}linhas) — a abrir o editor…`);
+      toast.success(`Orçamento criado (${data.line_count} linhas) — a abrir o editor…`);
       onClose();
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Envio para orçamento impossível"); }
@@ -102,11 +102,11 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
           <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
               {[["Paredes betão", `${M.walls_ml} ml`], ["Divisórias (exceto betão)", `${M.partitions_ml ?? 0} ml`],
-                ["Poutres", `${M.beams_ml} ml`],
-                ["Poteaux", M.columns_count], ["Linteaux", `${M.linteaux_ml} ml`],
-                ["Planchers (emprise)", `${M.footprint_m2 ?? M.slab_area_m2 ?? 0} m²`],
-                ["Escaliers", M.escaliers_count ?? 0],
-                ["Portes", op.portes], ["Janelas", op.fenetres],
+                ["Vigas", `${M.beams_ml} ml`],
+                ["Pilares", M.columns_count], ["Padieiras", `${M.linteaux_ml} ml`],
+                ["Pavimentos (área)", `${M.footprint_m2 ?? M.slab_area_m2 ?? 0} m²`],
+                ["Escadas", M.escaliers_count ?? 0],
+                ["Portas", op.portes], ["Janelas", op.fenetres],
                 ["Reservas", res.count]].map(([k, v]) => (
                 <div key={k} className="rounded-sm border p-2" data-testid={`metre-${k}`}>
                   <div className="text-xs text-muted-foreground">{k}</div>
@@ -154,7 +154,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
               </div>
               <Button onClick={run} disabled={busy} className="mt-3 gap-2" data-testid="structural-compute-btn">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-                Calculer l'estimation
+                Calcular a estimativa
               </Button>
             </div>
 
@@ -191,8 +191,8 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
               <div className="border-t pt-4 space-y-3">
                 <div className="grid grid-cols-3 gap-2 text-sm">
                   <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Betão</div><div className="font-semibold">{t.beton_m3} m³</div></div>
-                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Aciers</div><div className="font-semibold">{t.acier_kg} kg</div></div>
-                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Coffrage</div><div className="font-semibold">{t.coffrage_m2} m²</div></div>
+                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Aços</div><div className="font-semibold">{t.acier_kg} kg</div></div>
+                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Cofragem</div><div className="font-semibold">{t.coffrage_m2} m²</div></div>
                 </div>
 
                 {estimate.by_category && estimate.by_category.length > 0 && (
@@ -204,8 +204,8 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                           <tr>
                             <th className="text-left p-2">Categoria</th>
                             <th className="p-2 text-right">Betão (m³)</th>
-                            <th className="p-2 text-right">Coffrage (m²)</th>
-                            <th className="p-2 text-right">Aciers (kg)</th>
+                            <th className="p-2 text-right">Cofragem (m²)</th>
+                            <th className="p-2 text-right">Aço (kg)</th>
                             <th className="p-2 text-right">€ HT</th>
                           </tr>
                         </thead>
@@ -250,8 +250,8 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                 ))}
                 <div className="flex justify-end gap-6 text-sm border-t pt-2" data-testid="structural-totals">
                   <span>HT : <b>{eur(t.ht)}</b></span>
-                  <span>TVA {Math.round(t.tva_rate * 100)}% : {eur(t.tva)}</span>
-                  <span className="text-primary">TTC : <b>{eur(t.ttc)}</b></span>
+                  <span>IVA {Math.round(t.tva_rate * 100)}% : {eur(t.tva)}</span>
+                  <span className="text-primary">c/ IVA: <b>{eur(t.ttc)}</b></span>
                 </div>
                 <div className="flex justify-end pt-1">
                   <Button onClick={inject} disabled={injecting} className="gap-2"

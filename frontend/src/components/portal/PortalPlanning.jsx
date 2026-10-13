@@ -3,7 +3,7 @@ import { CalendarRange, CheckCircle2, Clock, Circle, AlertTriangle } from "lucid
 
 const fr = (d) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : "—");
 const ST = {
-  termine: ["Terminado", CheckCircle2, "text-emerald-600"], en_cours: ["En cours", Clock, "text-sky-600"],
+  termine: ["Terminado", CheckCircle2, "text-emerald-600"], en_cours: ["Em curso", Clock, "text-sky-600"],
   a_venir: ["Brevemente", Circle, "text-slate-400"], en_retard: ["A confirmar", AlertTriangle, "text-amber-600"],
 };
 

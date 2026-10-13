@@ -9,11 +9,11 @@ import { toast } from "sonner";
 import { SolverCharts } from "@/components/btpSolver/SolverCharts";
 
 const DOMAIN_LABELS = {
-  fissures: "Fissures", humidite: "Humidade", thermique: "Thermique",
-  structure: "Structure", sinistre: "Sinistre", reception: "Receção",
-  autre: "Autre",
+  fissures: "Fissuras", humidite: "Humidade", thermique: "Térmica",
+  structure: "Estrutura", sinistre: "Sinistre", reception: "Receção",
+  autre: "Outro",
 };
-const URGENCY_LABELS = { informative: "Informative", planned: "Planeada", urgent: "Urgente", immediate: "Imediata" };
+const URGENCY_LABELS = { informative: "Informativa", planned: "Planeada", urgent: "Urgente", immediate: "Imediata" };
 const URGENCY_STYLES = {
   informative: "bg-slate-500/15 text-slate-600 border-slate-500/30",
   planned: "bg-blue-500/15 text-blue-600 border-blue-500/30",
@@ -44,7 +44,7 @@ export default function BtpSolver() {
     try {
       const { data } = await api.post(`/btp-solver/${result.problem_id}/to-quote`, { solution_id: solutionId || null });
       toast.success(`Rascunho de orçamento criado (${data.lines} ligne${data.lines > 1 ? "s" : ""}, ${Math.round(data.total_ht || 0)} € HT)`, {
-        action: { label: "Ouvrir", onClick: () => navigate(data.url) },
+        action: { label: "Abrir", onClick: () => navigate(data.url) },
       });
       navigate(data.url);
     } catch (err) {
@@ -66,7 +66,7 @@ export default function BtpSolver() {
         const { data } = await api.post("/btp-solver/photos", fd, { headers: { "Content-Type": "multipart/form-data" } });
         setPhotos((p) => [...p, { ...data, name: f.name, preview: URL.createObjectURL(f) }]);
       } catch (err) {
-        toast.error(err?.response?.data?.detail || `Photo « ${f.name}» recusada`);
+        toast.error(err?.response?.data?.detail || `Photo « ${f.name} » recusada`);
       }
     }
     setUploadingPhoto(false);
@@ -91,7 +91,7 @@ export default function BtpSolver() {
       const { data } = await api.get(`/btp-solver/${id}`);
       if (data.status === "running") { setLoading(true); startPolling(id); return; }
       setResult(data);
-    } catch { toast.error("Diagnostic introuvable"); }
+    } catch { toast.error("Diagnóstico não encontrado"); }
   };
 
   // A10 — polling sans chevauchement ; perte réseau ≠ échec de l'analyse
@@ -175,7 +175,7 @@ export default function BtpSolver() {
           </label>
           <label className="grid gap-1 text-sm">
             <span>Tipo de edifício</span>
-            <input className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Maison individuelle" value={typeBat} onChange={(e) => setTypeBat(e.target.value)} />
+            <input className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Moradia unifamiliar" value={typeBat} onChange={(e) => setTypeBat(e.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
             <span>Superfície (m²)</span>
@@ -190,10 +190,10 @@ export default function BtpSolver() {
             <input type="number" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={budget} onChange={(e) => setBudget(e.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            <span>Urgence ressentie</span>
+            <span>Urgência sentida</span>
             <select className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={urgence} onChange={(e) => setUrgence(e.target.value)}>
               <option value="">—</option>
-              <option value="informative">Informative</option>
+              <option value="informative">Informativa</option>
               <option value="planned">Planeada</option>
               <option value="urgent">Urgente</option>
               <option value="immediate">Imediata</option>
@@ -219,7 +219,7 @@ export default function BtpSolver() {
         </div>
         <div className="flex justify-end">
           <button type="submit" data-testid="solver-submit-btn" disabled={loading} className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-60">
-            {loading ? "Analyse en cours…" : "Analyser"}
+            {loading ? "Análise em curso…" : "Analisar"}
           </button>
         </div>
       </form>
@@ -276,7 +276,7 @@ export default function BtpSolver() {
 
           {result.causes?.length > 0 && (
             <div data-testid="solver-causes">
-              <h2 className="text-lg font-semibold mb-3">Causes probables</h2>
+              <h2 className="text-lg font-semibold mb-3">Causas prováveis</h2>
               <ul className="space-y-2">
                 {result.causes.map((c, i) => (
                   <li key={i} className="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
@@ -324,7 +324,7 @@ export default function BtpSolver() {
                         <div><span className="text-slate-500">Duração:</span> {s.duration_days_min}–{s.duration_days_max || s.duration_days_min} j</div>
                       )}
                       <div><span className="text-slate-500">Risque :</span> {s.risk}</div>
-                      {s.warranty_years && <div><span className="text-slate-500">Garantie :</span> {s.warranty_years} ans</div>}
+                      {s.warranty_years && <div><span className="text-slate-500">Garantia:</span> {s.warranty_years} ans</div>}
                     </div>
                     {s.steps?.length > 0 && (
                       <details className="text-sm">
@@ -342,7 +342,7 @@ export default function BtpSolver() {
 
           {result.charts?.length > 0 && (
             <div data-testid="solver-charts">
-              <h2 className="text-lg font-semibold mb-3">Comparatifs visuels</h2>
+              <h2 className="text-lg font-semibold mb-3">Comparativos visuais</h2>
               <SolverCharts charts={result.charts} />
             </div>
           )}
@@ -373,7 +373,7 @@ export default function BtpSolver() {
                 <button type="button" data-testid={`solver-history-${h.problem_id}`} onClick={() => openProblem(h.problem_id)}
                         className="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 p-3 text-sm hover:border-emerald-500/50">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium truncate">{DOMAIN_LABELS[h.domain] || h.domain || "Diagnostic"}</span>
+                    <span className="font-medium truncate">{DOMAIN_LABELS[h.domain] || h.domain || "Diagnóstico"}</span>
                     <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("fr-FR") : h.status === "error" ? "Erro" : "En cours…"}</span>
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 mt-1">{h.summary || h.description}</p>

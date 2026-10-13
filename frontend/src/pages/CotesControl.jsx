@@ -48,7 +48,7 @@ function PlanPreview({ plan, pageIndex, highlight, interiorId, mode }) {
   } : null;
   return (
     <div className="relative border rounded-sm bg-white overflow-hidden min-h-[320px] flex items-center justify-center" data-testid="cotes-page-preview">
-      {src ? <img src={src} alt="Plan" className="w-full h-auto" data-testid="cotes-page-img" />
+      {src ? <img src={src} alt="Planta" className="w-full h-auto" data-testid="cotes-page-img" />
            : <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
       {box && <div className="absolute border-4 border-amber-400 rounded-sm pointer-events-none animate-pulse"
                    style={{ ...box, boxShadow: "0 0 0 9999px rgba(15,23,42,0.25)", padding: 12, margin: -12 }} data-testid="cotes-page-highlight" />}
@@ -99,7 +99,7 @@ export default function CotesControl() {
       fd.append("file", file);
       if (cadUnit) fd.append("cad_unit", cadUnit);
       const data = await uploadPlan(fd);
-      toast.success(`Plan « ${file.name}» importada — lance o controlo das cotas`);
+      toast.success(`Plan « ${file.name} » importada — lance o controlo das cotas`);
       await loadPlans();
       select(data.plan_id);
     } catch (e) {
@@ -117,8 +117,8 @@ export default function CotesControl() {
     try {
       const data = await runCotesJob(`/takeoffs/${plan.plan_id}/cotes/check-all`, { tol_pct: 2, tol_cm: 3 });
       const s = data.summary;
-      if (s) toast.success(`${s.pages}página(s) controlada(s) —${s.total} cotes, ${s.ko}incoerência(s)` +
-        (data.errors?.length ? ` · ${data.errors.length}página(s) sem cota legível` : ""), { duration: 8000 });
+      if (s) toast.success(`${s.pages} página(s) controlada(s) — ${s.total} cotes, ${s.ko} incoerência(s)` +
+        (data.errors?.length ? ` · ${data.errors.length} página(s) sem cota legível` : ""), { duration: 8000 });
       else toast.error(data.errors?.[0]?.error || "Nenhuma cota legível");
       await loadPlan(plan.plan_id);
     } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Controlo multipágina impossível"); }
@@ -168,7 +168,7 @@ export default function CotesControl() {
               const r = p.cotes_checks?.["0"];
               return (
                 <SelectItem key={p.plan_id} value={p.plan_id} data-testid={`cotes-plan-option-${p.plan_id}`}>
-                  {p.filename || p.plan_id}{r ? ` — ${VERDICT[r.summary.verdict][0]} (${r.summary.ko} KO)` : "— não controlado"}
+                  {p.filename || p.plan_id}{r ? ` — ${VERDICT[r.summary.verdict][0]} (${r.summary.ko} KO)` : " — não controlado"}
                 </SelectItem>
               );
             })}
@@ -177,7 +177,7 @@ export default function CotesControl() {
         {pageCount > 1 && (
           <Select value={String(pageIndex)} onValueChange={(v) => { setPageIndex(Number(v)); setHighlight(null); }}>
             <SelectTrigger className="w-[150px] rounded-sm" data-testid="cotes-page-select"><SelectValue /></SelectTrigger>
-            <SelectContent>{plan.pages.map((_, i) => <SelectItem key={i} value={String(i)}>Page {i + 1}</SelectItem>)}</SelectContent>
+            <SelectContent>{plan.pages.map((_, i) => <SelectItem key={i} value={String(i)}>Página {i + 1}</SelectItem>)}</SelectContent>
           </Select>
         )}
         {plan && (
@@ -188,20 +188,20 @@ export default function CotesControl() {
         {plan && pageCount > 1 && (
           <Button size="sm" className="rounded-sm gap-2" disabled={allBusy} onClick={checkAll} data-testid="cotes-check-all-btn">
             {allBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
-            {allBusy ? `Controlo das${pageCount} pages…` : `Controlar as${pageCount} pages`}
+            {allBusy ? `Controlo das ${pageCount} páginas…` : `Controlar as ${pageCount} pages`}
           </Button>
         )}
         {plan && checkedPages > 1 && (
           <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={downloadAll} data-testid="cotes-pdf-all-btn">
-            <FileDown className="h-3.5 w-3.5" /> PDF global ({checkedPages} pages)
+            <FileDown className="h-3.5 w-3.5" /> PDF global ({checkedPages} páginas)
           </Button>
         )}
         {report && <span className={`text-sm font-medium ${VERDICT[report.summary.verdict][1]}`} data-testid="cotes-control-verdict">{VERDICT[report.summary.verdict][0]}</span>}
-        {report?.under_review && <span className="text-xs px-2 py-0.5 rounded-sm bg-orange-500/15 text-orange-700 border border-orange-400" data-testid="cotes-under-review">A rever · {report.open_issues} signalement(s) ouvert(s)</span>}
+        {report?.under_review && <span className="text-xs px-2 py-0.5 rounded-sm bg-orange-500/15 text-orange-700 border border-orange-400" data-testid="cotes-under-review">A rever · {report.open_issues} ocorrência(s) em aberto</span>}
         {report && <ReportIssueButton plan={plan} pageIndex={pageIndex} target={interiorId || (highlight ? `Cote n° ${highlight.index}` : "")} onReported={() => { setIssueKey((k) => k + 1); loadPlan(plan.plan_id); }} />}
         {report?.interior && (
           <div className="inline-flex rounded-sm border overflow-hidden text-xs" data-testid="cotes-view-mode">
-            <button className={`px-2.5 py-1 transition-colors ${mode === "cotes" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`} onClick={() => setMode("cotes")} data-testid="cotes-mode-cotes">Cotes</button>
+            <button className={`px-2.5 py-1 transition-colors ${mode === "cotes" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`} onClick={() => setMode("cotes")} data-testid="cotes-mode-cotes">Cotas</button>
             <button className={`px-2.5 py-1 transition-colors ${mode === "interior" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`} onClick={() => setMode("interior")} data-testid="cotes-mode-interior">Dimensões interiores</button>
           </div>
         )}

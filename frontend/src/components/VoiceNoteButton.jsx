@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export default function VoiceNoteButton({ onText, size = "sm", className = "", label = "Dicter" }) {
+export default function VoiceNoteButton({ onText, size = "sm", className = "", label = "Ditar" }) {
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [secs, setSecs] = useState(0);
@@ -29,13 +29,13 @@ export default function VoiceNoteButton({ onText, size = "sm", className = "", l
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
-        if (blob.size < 2000) { toast.error("Enregistrement trop court"); return; }
+        if (blob.size < 2000) { toast.error("Gravação demasiado curta"); return; }
         setBusy(true);
         try {
           const fd = new FormData();
           fd.append("file", blob, "note-vocale.webm");
           const { data } = await api.post("/documents/video-transcribe", fd, { timeout: 120000 });
-          if (data.transcript?.trim()) { onText?.(data.transcript.trim()); toast.success("Note vocale transcrite"); }
+          if (data.transcript?.trim()) { onText?.(data.transcript.trim()); toast.success("Nota de voz transcrita"); }
           else toast.error("Nenhuma fala detetada");
         } catch (e) {
           toast.error(e?.response?.data?.detail || "Transcrição impossível");
@@ -60,7 +60,7 @@ export default function VoiceNoteButton({ onText, size = "sm", className = "", l
             className={`rounded-sm gap-2 ${className}`} data-testid="voice-note-btn"
             title="Dite a sua obra: a IA transcreve a sua nota de voz">
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-      {busy ? "Transcription…" : recording ? `Stop · ${secs}s` : label}
+      {busy ? "Transcrição…" : recording ? `Stop · ${secs}s` : label}
     </Button>
   );
 }

@@ -41,7 +41,7 @@ export default function Marketplace() {
       };
       const { data } = await api.post("/marketplace/leads", payload);
       setPreview(data);
-      toast.success("Pedido enviado — pontuação de qualidade:" + data.score + "/100");
+      toast.success("Pedido enviado — pontuação de qualidade: " + data.score + "/100");
       setForm({ name: user?.name || "", email: user?.email || "", phone: "", address: "",
                 budget: "", surface: "", delay_days: "", description: "", trade: "" });
     } catch (err) {
@@ -68,7 +68,7 @@ export default function Marketplace() {
         <form onSubmit={submit} className="md:col-span-2 surface p-6 grid gap-4" data-testid="marketplace-form">
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label>Nom complet *</Label>
+              <Label>Nome completo *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                      className="rounded-sm h-11" required data-testid="ld-name" />
             </div>
@@ -85,10 +85,10 @@ export default function Marketplace() {
             <div className="grid gap-2">
               <Label>Morada da obra</Label>
               <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
-                     className="rounded-sm h-11" placeholder="Rue, code postal, ville" data-testid="ld-address" />
+                     className="rounded-sm h-11" placeholder="Rua, código postal, localidade" data-testid="ld-address" />
             </div>
             <div className="grid gap-2">
-              <Label>Budget approximatif €</Label>
+              <Label>Orçamento aproximado €</Label>
               <Input type="number" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })}
                      className="rounded-sm h-11 num" data-testid="ld-budget" />
             </div>
@@ -117,7 +117,7 @@ export default function Marketplace() {
           </div>
           <Button type="submit" disabled={busy} data-testid="ld-submit"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-            <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Enviar o pedido"}
+            <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o pedido"}
           </Button>
         </form>
 

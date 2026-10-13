@@ -108,7 +108,7 @@ export const ProfileForm = () => {
         </div>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="pf-name" className="text-xs">Nom complet</Label>
+        <Label htmlFor="pf-name" className="text-xs">Nome completo</Label>
         <Input id="pf-name" value={name} required minLength={2} maxLength={80}
                onChange={(e) => setName(e.target.value)}
                data-testid="profile-name-input" className="rounded-sm" />

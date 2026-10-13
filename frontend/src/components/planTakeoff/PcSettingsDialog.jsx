@@ -14,23 +14,23 @@ const PRICE_LABELS = {
   engins_levage: ["Máquinas & equipamentos (grua, betoneira)", "forfait"],
   echafaudage: ["Andaime (aluguer + montagem)", "forfait"],
   protection_securite: ["Proteção coletiva & segurança (guarda-corpos, redes, PPSPS)", "forfait"],
-  terrassement_complet: ["Terrassement complet (fouilles, remblais)", "forfait"],
+  terrassement_complet: ["Terraplanagem completa (escavações, aterros)", "forfait"],
   beton_proprete: ["Betão de limpeza", "m³"],
   beton_semelle: ["Betão sapatas C25/30", "m³"],
-  acier_semelle: ["Aciers semelles", "kg"],
+  acier_semelle: ["Aços sapatas", "kg"],
   fondations_moe: ["Execução de fundações", "forfait"],
   beton_dalle: ["Betão laje RDC", "m³"],
-  treillis_dalle: ["Treillis ST25C", "kg"],
+  treillis_dalle: ["Malha ST25C", "kg"],
   coffrage_rive: ["Cofragem de bordas", "ml"],
   plancher_etage: ["Pavimento de piso completo", "forfait/niv."],
   mur_isobrique: ["Parede tijolo isotérmico 20", "m²"],
   chainage_beton: ["Betão cintas", "m³"],
   acier_chainage: ["Aços cintas", "kg"],
-  linteau: ["Linteaux BA", "ml"],
+  linteau: ["Padieiras BA", "ml"],
   escalier_beton: ["Betão escada", "m³"],
   acier_escalier: ["Aços escada", "kg"],
-  charpente_trad: ["Charpente traditionnelle", "forfait"],
-  couverture_tuiles: ["Couverture tuiles", "forfait"],
+  charpente_trad: ["Carpintaria tradicional", "forfait"],
+  couverture_tuiles: ["Cobertura de telhas", "forfait"],
   menuiseries_ext: ["Caixilharias ext. (janelas)", "forfait"],
 };
 
@@ -134,7 +134,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
                    data-testid="pc-settings-crew-input" className="rounded-sm num" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-rate" className="text-xs">Taux horaire MO (€/h)</Label>
+            <Label htmlFor="pc-rate" className="text-xs">Taxa horária MO (€/h)</Label>
             <Input id="pc-rate" type="number" min="20" max="150" value={rate}
                    onChange={(e) => setRate(e.target.value)}
                    data-testid="pc-settings-rate-input" className="rounded-sm num" />
@@ -185,8 +185,8 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
             <select value={notifyMode} onChange={(e) => setNotifyMode(e.target.value)}
                     data-testid="pc-settings-notify-select"
                     className="h-9 rounded-sm border border-input bg-background px-2 text-sm">
-              <option value="email">Par email</option>
-              <option value="sms">Par SMS</option>
+              <option value="email">Por email</option>
+              <option value="sms">Por SMS</option>
               <option value="both">Email + SMS</option>
               <option value="off">Não me avisar</option>
             </select>
@@ -204,7 +204,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         <table className="w-full text-xs border border-border">
           <thead>
             <tr className="bg-muted text-left">
-              <th className="p-1.5">Poste</th>
+              <th className="p-1.5">Artigo</th>
               <th className="p-1.5">Un.</th>
               <th className="p-1.5 text-right">PU materiais €</th>
               <th className="p-1.5 text-right">PU mão de obra €</th>

@@ -26,7 +26,7 @@ export default function CompanyPublic() {
     <div className="min-h-screen bg-white text-slate-900" data-testid="company-public-page" style={{ "--accent": accent }}>
       <header className="border-b" style={{ borderColor: accent }}>
         <div className="max-w-5xl mx-auto px-5 py-8 flex flex-col md:flex-row md:items-center gap-6">
-          {data.has_logo && <img src={`${BASE}/api/branding/${data.user_id}/logo`} alt={`Logo ${data.company_name}`} className="h-20 w-20 object-contain rounded-lg border bg-white" />}
+          {data.has_logo && <img src={`${BASE}/api/branding/${data.user_id}/logo`} alt={`Logótipo ${data.company_name}`} className="h-20 w-20 object-contain rounded-lg border bg-white" />}
           <div className="flex-1">
             <h1 className="text-3xl md:text-4xl font-semibold" data-testid="company-public-name">{data.company_name}</h1>
             {data.tagline && <p className="text-lg text-slate-600 mt-1" data-testid="company-public-tagline">{data.tagline}</p>}
@@ -69,7 +69,7 @@ export default function CompanyPublic() {
 
         {data.show_reviews && reviews.length > 0 && (
           <section data-testid="company-public-reviews">
-            <h2 className="text-lg font-semibold mb-4">Avis clients</h2>
+            <h2 className="text-lg font-semibold mb-4">Opiniões de clientes</h2>
             <div className="grid md:grid-cols-2 gap-4">
               {reviews.map((r, i) => (
                 <blockquote key={i} className="rounded-xl border p-4 text-sm">

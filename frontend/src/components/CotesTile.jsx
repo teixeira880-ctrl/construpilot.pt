@@ -29,7 +29,7 @@ export const CotesTile = () => {
           {last ? (
             <p className="text-sm text-muted-foreground mt-1" data-testid="cotes-tile-last">
               Último controlo: <b className="text-foreground">{last.filename || last.plan_id}</b>
-              {last.pages_checked > 1 ? ` (${last.pages_checked} pages)` : ""} ·{" "}
+              {last.pages_checked > 1 ? ` (${last.pages_checked} páginas)` : ""} ·{" "}
               {last.summary?.total} cotes · <b className="text-red-700">{last.summary?.ko} incoerência(s)</b> ·{" "}
               {new Date(last.checked_at).toLocaleDateString("fr-FR")}
             </p>
@@ -41,7 +41,7 @@ export const CotesTile = () => {
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1">
           {v && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${v.cls}`} data-testid="cotes-tile-verdict">{v.label}</span>}
-          <span className="text-sky-700 font-bold">{last ? "Ver →" : "Ouvrir →"}</span>
+          <span className="text-sky-700 font-bold">{last ? "Ver →" : "Abrir →"}</span>
         </div>
       </div>
     </Link>

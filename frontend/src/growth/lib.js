@@ -23,5 +23,5 @@ export const err = (e, fallback = "Ação impossível") => {
   return typeof d === "string" ? d : d?.message || fallback;
 };
 export const SEV = { haute: "bg-red-500/15 text-red-700 dark:text-red-300", moyenne: "bg-amber-500/15 text-amber-700 dark:text-amber-300", basse: "bg-muted text-muted-foreground" };
-export const STATUS_FR = { queued: "en attente", running: "en cours", completed: "concluída", stopped: "parado", failed: "falha", interrupted: "interrompu", estimated: "estimada", budget_reached: "plafond atteint",
+export const STATUS_FR = { queued: "pendente", running: "en cours", completed: "concluída", stopped: "parado", failed: "falha", interrupted: "interrompu", estimated: "estimada", budget_reached: "teto atingido",
   idea: "ideia", brief: "brief", draft: "brouillon", review: "a rever", approved: "aprovado", scheduled: "agendado", published: "publicado", archived: "arquivado", todo: "a fazer", doing: "en cours", done: "fait", fixing: "correção aplicada", fixed: "corrigido", ignored: "ignorado", open: "ouvert" };

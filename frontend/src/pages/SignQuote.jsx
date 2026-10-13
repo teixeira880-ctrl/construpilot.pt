@@ -32,7 +32,7 @@ export default function SignQuote() {
         const { data } = await axios.get(`${API}/quotes/public/sign/${token}`);
         if (alive) setData(data);
       } catch (e) {
-        toast.error(e?.response?.data?.detail || "Lien invalide");
+        toast.error(e?.response?.data?.detail || "Ligação inválida");
       } finally {
         if (alive) setLoading(false);
       }
@@ -49,7 +49,7 @@ export default function SignQuote() {
       try {
         const { data: st } = await axios.get(`${API}/quotes/deposit/status/${sid}`);
         if (st.payment_status === "paid") {
-          toast.success(`Sinal de${eur(st.amount)}pago — obrigado!`);
+          toast.success(`Sinal de ${eur(st.amount)} pago — obrigado!`);
           await reload();
           searchParams.delete("session_id"); setSearchParams(searchParams, { replace: true });
           return;
@@ -71,7 +71,7 @@ export default function SignQuote() {
         { origin_url: window.location.origin });
       window.location.href = r.url;
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Paiement indisponible");
+      toast.error(e?.response?.data?.detail || "Pagamento indisponível");
       setPayBusy(false);
     }
   };
@@ -146,7 +146,7 @@ export default function SignQuote() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><p className="text-muted-foreground text-xs">Cliente</p>
               <p className="font-bold">{data.client_name || data.client_email}</p></div>
-            <div><p className="text-muted-foreground text-xs">Gamme</p>
+            <div><p className="text-muted-foreground text-xs">Gama</p>
               <p className="font-bold capitalize">{data.finish || "std"} · {data.floor_material}</p></div>
           </div>
           <div className="bg-primary text-primary-foreground rounded-sm p-6 text-center">
@@ -179,7 +179,7 @@ export default function SignQuote() {
                 <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-600" />
                 <p className="font-display text-lg font-bold">Sinal pago — obrigado!</p>
                 <p className="text-sm text-muted-foreground">
-                  {eur(data.deposit.paid_amount)} recebido{data.deposit.paid_at ? ` le ${new Date(data.deposit.paid_at).toLocaleDateString("fr-FR")}` : ""}. Votre chantier peut démarrer.
+                  {eur(data.deposit.paid_amount)} recebido{data.deposit.paid_at ? ` le ${new Date(data.deposit.paid_at).toLocaleDateString("fr-FR")}` : ""}. A sua obra pode começar.
                 </p>
               </div>
             ) : data.deposit?.enabled ? (
@@ -194,7 +194,7 @@ export default function SignQuote() {
                         className="w-full rounded-sm bg-primary text-primary-foreground px-6 py-3 font-bold
                                    hover:bg-orange-600 transition disabled:opacity-50 inline-flex items-center justify-center gap-2">
                   {payBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                  {payBusy ? "A redirecionar para o pagamento…" : `Pagar o sinal de${eur(data.deposit.amount)}`}
+                  {payBusy ? "A redirecionar para o pagamento…" : `Pagar o sinal de ${eur(data.deposit.amount)}`}
                 </button>
                 <p className="text-[10px] text-muted-foreground text-center">Cartão de teste: 4242 4242 4242 4242 · data futura · CVC qualquer</p>
               </div>
@@ -204,7 +204,7 @@ export default function SignQuote() {
           <div className="surface p-8 space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <PenLine className="h-5 w-5 text-primary" />
-              <p className="font-display text-lg font-bold">Signez ci-dessous</p>
+              <p className="font-display text-lg font-bold">Assine abaixo</p>
             </div>
             <label className="block text-xs text-muted-foreground mb-1">O seu nome completo *</label>
             <input value={signerName} onChange={(e) => setSignerName(e.target.value)}
@@ -225,7 +225,7 @@ export default function SignQuote() {
             <div className="flex gap-2 justify-end">
               <button onClick={clear} data-testid="sign-clear-btn"
                       className="rounded-sm border border-border px-4 py-2 text-sm inline-flex items-center gap-2 hover:bg-secondary">
-                <RotateCcw className="h-3 w-3" /> Effacer
+                <RotateCcw className="h-3 w-3" /> Apagar
               </button>
               <button onClick={submit} disabled={signing || !hasStroke || !signerName.trim()}
                       data-testid="sign-submit-btn"
@@ -233,7 +233,7 @@ export default function SignQuote() {
                                  hover:bg-orange-600 transition disabled:opacity-40 disabled:cursor-not-allowed
                                  inline-flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
-                {signing ? "Envoi…" : "Bom para acordo"}
+                {signing ? "A enviar…" : "Bom para acordo"}
               </button>
             </div>
             <p className="text-[10px] text-muted-foreground border-t border-border pt-3">

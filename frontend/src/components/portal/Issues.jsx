@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DictateButton } from "@/components/voice/VoiceButtons";
 
-const URG = { low: ["Faible", "bg-muted text-muted-foreground"], normal: ["Normale", "bg-amber-500/10 text-amber-700 border-amber-500/30"], high: ["Urgent", "bg-red-500/10 text-red-700 border-red-500/30"] };
+const URG = { low: ["Faible", "bg-muted text-muted-foreground"], normal: ["Normal", "bg-amber-500/10 text-amber-700 border-amber-500/30"], high: ["Urgent", "bg-red-500/10 text-red-700 border-red-500/30"] };
 const ST = { new: "bg-red-500/10 text-red-700 border-red-500/30", in_progress: "bg-amber-500/10 text-amber-700 border-amber-500/30", scheduled: "bg-blue-500/10 text-blue-700 border-blue-500/30", resolved: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30", closed: "bg-muted text-muted-foreground" };
 const date = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR") : "");
 
@@ -52,7 +52,7 @@ function IssueRow({ issue, labels, chantierId, api, onChanged }) {
           <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="h-9 rounded-md border border-input bg-background px-2 text-sm" data-testid={`issue-status-select-${issue.issue_id}`}>
             {Object.entries(labels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <Input value={form.assignee} onChange={(e) => setForm((f) => ({ ...f, assignee: e.target.value }))} placeholder="Responsable (entreprise / sous-traitant)" className="h-9" data-testid={`issue-assignee-${issue.issue_id}`} />
+          <Input value={form.assignee} onChange={(e) => setForm((f) => ({ ...f, assignee: e.target.value }))} placeholder="Responsável (empresa / subempreiteiro)" className="h-9" data-testid={`issue-assignee-${issue.issue_id}`} />
           <Input type="date" value={form.target_date} onChange={(e) => setForm((f) => ({ ...f, target_date: e.target.value }))} className="h-9" data-testid={`issue-date-${issue.issue_id}`} />
           <div className="sm:col-span-3 grid gap-1">
             <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">Resposta publicada para o convidado (redigida e validada por si — nunca texto IA em bruto)</span>
@@ -76,7 +76,7 @@ export function ChantierIssuesPanel({ chantierId, api }) {
     <section className="surface" data-testid="chantier-issues">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <AlertTriangle className="h-4 w-4 text-primary" /><p className="font-display font-bold text-sm">Problemas assinalados</p>
-        <Badge variant="outline" className="rounded-sm" data-testid="issues-open-count">{open} ouvert(s)</Badge>
+        <Badge variant="outline" className="rounded-sm" data-testid="issues-open-count">{open} em aberto</Badge>
         <span className="ms-auto text-[11px] text-muted-foreground inline-flex items-center gap-1"><Camera className="h-3 w-3" /> Cada ocorrência cria uma reserva no acompanhamento da obra</span>
       </div>
       {data.issues.length === 0 ? <p className="px-4 py-4 text-sm text-muted-foreground">Nenhum problema assinalado pelos seus convidados.</p>

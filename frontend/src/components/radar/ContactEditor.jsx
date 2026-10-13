@@ -4,9 +4,9 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const FIELDS = [["nom", "Nom / raison sociale"], ["societe", "Sociedade"], ["adresse1", "Adresse postale"],
-  ["adresse2", "Complemento"], ["cp", "Code postal"], ["ville", "Ville"], ["siren", "SIREN"],
-  ["siret", "SIRET"], ["email", "E-mail"], ["telephone", "Telefone"]];
+const FIELDS = [["nom", "Nome / denominação social"], ["societe", "Sociedade"], ["adresse1", "Morada postal"],
+  ["adresse2", "Complemento"], ["cp", "Código postal"], ["ville", "Cidade"], ["siren", "NIPC"],
+  ["siret", "Estabelecimento"], ["email", "E-mail"], ["telephone", "Telefone"]];
 export const contactError = (e) => typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Verifique os contactos e a sua origem.";
 
 export const ContactEditor = ({ opp, onSaved, onCancel }) => {
@@ -38,7 +38,7 @@ export const ContactEditor = ({ opp, onSaved, onCancel }) => {
       <Input className="mt-1" value={note} onChange={(e) => setNote(e.target.value)} required minLength={3} maxLength={240}
         placeholder="Ex.: contactos transmitidos pelo cliente" data-testid="radar-contact-source-note" />
     </label>
-    <label className="block text-xs">Lien source (facultatif)
+    <label className="block text-xs">Ligação da fonte (opcional)
       <Input className="mt-1" type="url" value={url} onChange={(e) => setUrl(e.target.value)} data-testid="radar-contact-source-url" />
     </label>
     <label className="flex items-start gap-2 text-xs">

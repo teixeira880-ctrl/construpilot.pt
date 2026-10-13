@@ -19,17 +19,17 @@ export const offerSentence = (offer, lang = "fr") => {
   const pro = offer.entry_price_eur?.pro;
   const part = offer.entry_price_eur?.particulier;
   if (lang === "pt") {
-    const after = [part && `${part}€/mês para particulares`, pro && `${pro}€/mês para profissionais`]
+    const after = [part && `${part} €/mês para particulares`, pro && `${pro} €/mês para profissionais`]
       .filter(Boolean).join(" · ");
     return offer.free_promo
       ? `Durante a fase de lançamento, todas as funções estão acessíveis sem cartão. Os planos publicados (${after}) só se aplicam no fim desta fase, e será avisado antes de qualquer pagamento.`
-      : `Existe um plano gratuito. Planos pagos: ${after}${offer.trial_days ? `, com ${offer.trial_days}dias de experiência` : ""}.`;
+      : `Existe um plano gratuito. Planos pagos: ${after}${offer.trial_days ? `, com ${offer.trial_days} dias de experiência` : ""}.`;
   }
-  const after = [part && `${part}€/mês para particulares`, pro && `${pro}€/mês para profissionais`]
+  const after = [part && `${part} €/mês para particulares`, pro && `${pro} €/mês para profissionais`]
     .filter(Boolean).join(" · ");
   return offer.free_promo
     ? `Durante a fase de lançamento, todas as funções estão acessíveis sem cartão bancário. Os preços publicados (${after}) serão aplicados no fim desta fase, e será avisado antes de qualquer pagamento.`
-    : `Existe uma oferta gratuita. Subscrições:${after}${offer.trial_days ? `, com${offer.trial_days} jours d'essai` : ""}.`;
+    : `Existe uma oferta gratuita. Subscrições: ${after}${offer.trial_days ? `, com ${offer.trial_days} dias de experiência` : ""}.`;
 };
 
 /** Bandeau à afficher partout où l'offre est évoquée — jamais de texte de prix en dur. */

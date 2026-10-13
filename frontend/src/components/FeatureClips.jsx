@@ -26,7 +26,7 @@ export const FeatureClips = ({ title = "Cada função em vídeo", subtitle = "De
     <section className="max-w-6xl mx-auto px-4 py-14 w-full" data-testid="feature-clips">
       <div className="text-center mb-10">
         <p className="text-xs uppercase tracking-widest text-primary font-semibold flex items-center justify-center gap-2">
-          <Film className="h-4 w-4" /> Fonction par fonction
+          <Film className="h-4 w-4" /> Função a função
         </p>
         <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight mt-2">{title}</h2>
         <p className="text-sm text-muted-foreground mt-3 max-w-2xl mx-auto">{subtitle}</p>

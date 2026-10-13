@@ -36,7 +36,7 @@ export default function PcSignPage() {
         const { data: st } = await api.get(`/pc/deposit/status/${sid}`);
         if (st.payment_status === "paid") {
           clearInterval(timer);
-          toast.success(`Pagamento de${eur(st.amount)}recebido — obrigado!`);
+          toast.success(`Pagamento de ${eur(st.amount)} recebido — obrigado!`);
           load();
         } else if (["expired", "failed"].includes(st.payment_status) || tries > 12) {
           clearInterval(timer);
@@ -123,7 +123,7 @@ export default function PcSignPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             Elaborado a {String(data.generated_at || "").slice(0, 10)}
-            {data.planning?.total_days ? `· obra estimada${data.planning.total_days} jours (${data.planning.total_weeks} semaines)` : ""}
+            {data.planning?.total_days ? ` · obra estimada ${data.planning.total_days} jours (${data.planning.total_weeks} semanas)` : ""}
           </p>
         </header>
 
@@ -158,8 +158,8 @@ export default function PcSignPage() {
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[["Betão", `${num(t.beton_m3, 1)} m³`], ["Aciers", `${num(t.acier_kg)} kg`],
-            ["Briques isobrique", `${num(t.briques_u)} u`], ["Total c/ IVA", eur(t.ttc)]].map(([k, v]) => (
+          {[["Betão", `${num(t.beton_m3, 1)} m³`], ["Aços", `${num(t.acier_kg)} kg`],
+            ["Tijolos térmicos", `${num(t.briques_u)} u`], ["Total c/ IVA", eur(t.ttc)]].map(([k, v]) => (
             <div key={k} className="surface p-3">
               <p className="text-[10px] text-muted-foreground">{k}</p>
               <p className="font-display font-bold num">{v}</p>
@@ -242,12 +242,12 @@ export default function PcSignPage() {
               <CreditCard className="h-4 w-4 text-primary" /> Pagar o sinal para iniciar a obra
             </p>
             <p className="text-sm text-muted-foreground">
-              Sinal de <b>{num(dep.pct)} %</b> — soit <b>{eur(dep.amount)}</b> num total de {eur(t.ttc)} c/ IVA. Pagamento seguro por cartão bancário (Stripe).
+              Sinal de <b>{num(dep.pct)} %</b> — ou seja <b>{eur(dep.amount)}</b> num total de {eur(t.ttc)} c/ IVA. Pagamento seguro por cartão bancário (Stripe).
             </p>
             <Button onClick={payDeposit} disabled={payBusy === "deposit"}
                     className="rounded-sm w-full gap-2" data-testid="pc-deposit-pay-btn">
               <CreditCard className="h-4 w-4" />
-              {payBusy === "deposit" ? "A redirecionar para o pagamento…" : `Pagar o sinal de${eur(dep.amount)}`}
+              {payBusy === "deposit" ? "A redirecionar para o pagamento…" : `Pagar o sinal de ${eur(dep.amount)}`}
             </Button>
           </div>
         ))}
@@ -289,8 +289,8 @@ export default function PcSignPage() {
               <CreditCard className="h-4 w-4 text-primary" /> Faturação da obra
             </p>
             <p className="text-sm text-muted-foreground">
-              Pago: <b className="text-emerald-600">{eur(bill.paid)}</b> sur {eur(bill.total_ttc)} TTC
-              {bill.remaining_to_pay > 0 ? <> — reste <b>{eur(bill.remaining_to_pay)}</b></> : " — obra liquidada, obrigado!"}
+              Pago: <b className="text-emerald-600">{eur(bill.paid)}</b> sur {eur(bill.total_ttc)} c/ IVA
+              {bill.remaining_to_pay > 0 ? <> — restante <b>{eur(bill.remaining_to_pay)}</b></> : " — obra liquidada, obrigado!"}
             </p>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-emerald-500 transition-all" style={{ width: `${paidPct}%` }} />
@@ -301,7 +301,7 @@ export default function PcSignPage() {
                      data-testid={`pc-client-situation-${s.sit_no}`}>
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span>
-                      <b>{s.is_final ? "Fatura de saldo" : `Situation n° ${s.sit_no}`}</b>
+                      <b>{s.is_final ? "Fatura de saldo" : `Auto de medição n.º ${s.sit_no}`}</b>
                       <span className="text-muted-foreground text-xs"> · {s.invoice_no}</span>
                     </span>
                     <span className="num font-semibold shrink-0">{eur(s.amount)}</span>
@@ -325,7 +325,7 @@ export default function PcSignPage() {
                               className="h-7 rounded-sm text-xs gap-1.5"
                               data-testid={`pc-client-situation-${s.sit_no}-pay-btn`}>
                         <CreditCard className="h-3 w-3" />
-                        {payBusy === s.sit_id ? "Redirection…" : `Pagar${eur(s.amount)} par carte`}
+                        {payBusy === s.sit_id ? "A redirecionar…" : `Pagar ${eur(s.amount)} par carte`}
                       </Button>
                     )}
                   </div>

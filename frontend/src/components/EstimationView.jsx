@@ -23,7 +23,7 @@ export const EstimationView = ({ est, projectId }) => {
             {eur(est.total_min)} <span className="text-muted-foreground font-normal">–</span> {eur(est.total_max)}
           </p>
           <p className="mt-3 text-base text-muted-foreground">
-            {est.project_type_name} · {num(est.surface, 1)} m² · finition {est.finish_level_name} ·
+            {est.project_type_name} · {num(est.surface, 1)} m² · acabamento {est.finish_level_name} ·
             <span className="num"> {eur2(est.price_per_sqm)}/m²</span>
           </p>
           <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -47,7 +47,7 @@ export const EstimationView = ({ est, projectId }) => {
         <Stat label="Outro" value={eur(b.labour)} testId="stat-labour" />
         <Stat label="Outro" value={eur(b.equipment_rental)} testId="stat-equipment" />
         <Stat label="Resíduos / evacuação" value={eur(b.waste_disposal)} testId="stat-waste" />
-        <Stat label="Margem imprevistos" value={eur(b.contingency)} sub={`${Math.round(b.contingency_rate * 100)}% recomendados`} testId="stat-contingency" accent />
+        <Stat label="Margem imprevistos" value={eur(b.contingency)} sub={`${Math.round(b.contingency_rate * 100)} % recomendados`} testId="stat-contingency" accent />
       </div>
 
       {est.safety_alerts?.length > 0 && (
@@ -68,7 +68,7 @@ export const EstimationView = ({ est, projectId }) => {
       <Tabs defaultValue="lots">
         <TabsList className="rounded-sm flex-wrap h-auto">
           <TabsTrigger value="lots" className="rounded-sm" data-testid="tab-lots">Preço por lote</TabsTrigger>
-          <TabsTrigger value="planning" className="rounded-sm" data-testid="tab-planning">Planning</TabsTrigger>
+          <TabsTrigger value="planning" className="rounded-sm" data-testid="tab-planning">Planeamento</TabsTrigger>
           <TabsTrigger value="diy" className="rounded-sm" data-testid="tab-diy">DIY ou artesão</TabsTrigger>
         </TabsList>
 
@@ -77,13 +77,13 @@ export const EstimationView = ({ est, projectId }) => {
             <Table data-testid="lots-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Lot</TableHead>
+                  <TableHead>Lote</TableHead>
                   <TableHead className="text-right">Quantidade</TableHead>
                   <TableHead className="text-right">Materiais</TableHead>
                   <TableHead className="text-right">Outro</TableHead>
                   <TableHead className="text-right">Preço / unidade</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Temps</TableHead>
+                  <TableHead className="text-right">Tempo</TableHead>
                   <TableHead>Dificuldade</TableHead>
                   <TableHead className="min-w-[200px]">Equipamento necessário</TableHead>
                 </TableRow>
@@ -146,10 +146,10 @@ export const EstimationView = ({ est, projectId }) => {
                 <p className="num mt-3 text-2xl font-bold text-emerald-500">
                   <TrendingDown className="inline h-5 w-5 mr-1" />{eur(dp.savings)}
                 </p>
-                <p className="num mt-1 text-xs text-muted-foreground">soit {dp.savings_pct} % · risque {dp.risk}</p>
+                <p className="num mt-1 text-xs text-muted-foreground">soit {dp.savings_pct} % · risco {dp.risk}</p>
               </div>
               <div className="lg:col-span-3 surface p-6">
-                <p className="overline">Conclusion ConstruPilot</p>
+                <p className="overline">Conclusão ConstruPilot</p>
                 <p className="mt-3 text-sm">{dp.conclusion}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {dp.diy_tasks.map((t) => (

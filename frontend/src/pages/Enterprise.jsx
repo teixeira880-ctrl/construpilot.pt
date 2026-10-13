@@ -49,7 +49,7 @@ export default function Enterprise() {
 
       <div className="grid md:grid-cols-3 gap-4">
         {[
-          { icon: Building2, title: "Grands comptes", desc: "Promotores, seguradoras, franquias, grupos imobiliários." },
+          { icon: Building2, title: "Grandes contas", desc: "Promotores, seguradoras, franquias, grupos imobiliários." },
           { icon: Server, title: "SSO & API dedicada", desc: "Autenticação centralizada, endpoints privados, sandbox." },
           { icon: Zap, title: "Compromisso de serviço", desc: "Nível de disponibilidade, suporte prioritário e interlocutor dedicado definidos no contrato." },
         ].map((f, i) => (
@@ -66,7 +66,7 @@ export default function Enterprise() {
       <form onSubmit={submit} className="surface p-6 grid gap-4" data-testid="enterprise-form">
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label>Entreprise *</Label>
+            <Label>Empresa *</Label>
             <Input required value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} data-testid="ent-company" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
@@ -74,7 +74,7 @@ export default function Enterprise() {
             <Input required value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} data-testid="ent-name" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>Email professionnel *</Label>
+            <Label>Email profissional *</Label>
             <Input type="email" required value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} data-testid="ent-email" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
@@ -82,8 +82,8 @@ export default function Enterprise() {
             <Input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} data-testid="ent-phone" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>Fonction</Label>
-            <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Direction, CTO, achats…" className="rounded-sm h-11" />
+            <Label>Função</Label>
+            <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Direção, CTO, compras…" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
             <Label>Dimensão da empresa</Label>
@@ -106,12 +106,12 @@ export default function Enterprise() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label>Volume mensal estimado</Label>
-            <Input value={form.volume_estimate} onChange={(e) => setForm({ ...form, volume_estimate: e.target.value })} placeholder="Ex : 5 000 estimations / mois" className="rounded-sm h-11" />
+            <Input value={form.volume_estimate} onChange={(e) => setForm({ ...form, volume_estimate: e.target.value })} placeholder="Ex: 5 000 estimativas / mês" className="rounded-sm h-11" />
           </div>
           <div className="flex flex-col gap-2 pt-6">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.sso_required} onChange={(e) => setForm({ ...form, sso_required: e.target.checked })} data-testid="ent-sso" />
-              SSO requis (SAML / OIDC)
+              SSO obrigatório (SAML / OIDC)
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.sla_required} onChange={(e) => setForm({ ...form, sla_required: e.target.checked })} data-testid="ent-sla" />
@@ -124,7 +124,7 @@ export default function Enterprise() {
           <Textarea rows={3} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="rounded-sm" />
         </div>
         <Button type="submit" disabled={busy} data-testid="ent-submit" className="rounded-sm gap-2 justify-self-start hover:bg-orange-600 hover:text-white">
-          <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Enviar o meu pedido"}
+          <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o meu pedido"}
           <ArrowRight className="h-4 w-4" />
         </Button>
         <p className="text-xs text-muted-foreground">

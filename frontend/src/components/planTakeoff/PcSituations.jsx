@@ -29,8 +29,8 @@ export const PcSituations = ({ planId }) => {
     try {
       const { data: r } = await api.post(`/takeoffs/${planId}/pc-study/situations`,
         solde ? { solde: true } : { pct_cumul: parseFloat(pct) });
-      toast.success(`Fatura${r.situation.invoice_no} de ${eur(r.situation.amount)}emitida`
-        + (r.emailed ? "e enviada ao cliente" : "(nenhum email cliente — envie primeiro o estudo)"));
+      toast.success(`Fatura ${r.situation.invoice_no} de ${eur(r.situation.amount)} emitida`
+        + (r.emailed ? " e enviada ao cliente" : " (nenhum email cliente — envie primeiro o estudo)"));
       setPct("");
       load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Faturação impossível"); }
@@ -64,8 +64,8 @@ export const PcSituations = ({ planId }) => {
                    className="flex items-center justify-between gap-2 text-xs border border-border rounded-sm px-2 py-1.5"
                    data-testid={`pc-situation-${s.sit_no}`}>
                 <span className="truncate">
-                  <b>{s.is_final ? "Solde final" : `Situation n° ${s.sit_no}`}</b>
-                  {!s.is_final && ` — ${num(s.pct_cumul)}% acumulado`}
+                  <b>{s.is_final ? "Saldo final" : `Auto de medição n.º ${s.sit_no}`}</b>
+                  {!s.is_final && ` — ${num(s.pct_cumul)} % acumulado`}
                   <span className="text-muted-foreground"> · {s.invoice_no}</span>
                 </span>
                 <span className="flex items-center gap-2 shrink-0">
@@ -108,7 +108,7 @@ export const PcSituations = ({ planId }) => {
           </div>
         ) : (
           <p className="text-xs text-emerald-600 font-semibold" data-testid="pc-situations-complete">
-            ✓ 100 % do contrato faturado{b.remaining_to_pay <= 0.01 ? "e recebido — obra liquidada!" : " — en attente d'encaissement."}
+            ✓ 100 % do contrato faturado{b.remaining_to_pay <= 0.01 ? " e recebido — obra liquidada!" : " — a aguardar recebimento."}
           </p>
         )}
         <p className="text-[10px] text-muted-foreground">

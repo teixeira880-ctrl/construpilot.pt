@@ -1,8 +1,8 @@
 export const WORKSPACE_EXTRA = {
   fr: {
     permissionsLoading: "A verificar os acessos…", permissionsError: "Acessos profissionais temporariamente bloqueados: não foi possível verificar as permissões.", accessDenied: "A sua função não permite este acesso.",
-    thinking: "O ConstruPilot está a analisar…", assistantError: "Assistant indisponible", transcriptionError: "Transcrição impossível", microphoneError: "Micro indisponible", documentAdded: "Documento adicionado ao contexto", importError: "Não foi possível importar", copyError: "Copie indisponible", sources: "Sources Internet", interrupted: "Resposta interrompida.",
-    leadTitle: "Demande ConstruPilot", budget: "Budget", address: "Adresse", availability: "Disponibilidade", trade: "Especialidade", description: "Description", call: "Appeler", days: "j", newLead: "Novo", leadSubject: "O seu pedido ConstruPilot", personalMore: "Novo projeto e estimativa.",
+    thinking: "O ConstruPilot está a analisar…", assistantError: "Assistente indisponível", transcriptionError: "Transcrição impossível", microphoneError: "Microfone indisponível", documentAdded: "Documento adicionado ao contexto", importError: "Não foi possível importar", copyError: "Cópia indisponível", sources: "Fontes da Internet", interrupted: "Resposta interrompida.",
+    leadTitle: "Pedido ConstruPilot", budget: "Orçamento", address: "Morada", availability: "Disponibilidade", trade: "Especialidade", description: "Descrição", call: "Ligar", days: "j", newLead: "Novo", leadSubject: "O seu pedido ConstruPilot", personalMore: "Novo projeto e estimativa.",
   },
   pt: {
     permissionsLoading: "A verificar os acessos…", permissionsError: "Acessos profissionais temporariamente bloqueados: não foi possível verificar as permissões.", accessDenied: "A sua função não permite este acesso.",

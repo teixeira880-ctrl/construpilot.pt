@@ -30,15 +30,15 @@ const EXAMPLE =
 
 // Data for Interactive3D hero demo — plan de maison réaliste (5 pièces + ouvertures)
 const HERO_ROOMS = [
-  { name: "Cuisine", polygon_px: [[0,0],[320,0],[320,260],[0,260]], centroid_px: [160,130],
+  { name: "Cozinha", polygon_px: [[0,0],[320,0],[320,260],[0,260]], centroid_px: [160,130],
     openings: [{ kind: "fenetre", width_m: 1.2 }, { kind: "porte", width_m: 0.8 }] },
   { name: "Sala de estar", polygon_px: [[0,260],[480,260],[480,600],[0,600]], centroid_px: [240,430],
     openings: [{ kind: "baie", width_m: 2.4 }, { kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.9 }] },
   { name: "Entrada", polygon_px: [[320,0],[480,0],[480,260],[320,260]], centroid_px: [400,130],
     openings: [{ kind: "porte", width_m: 1.0 }, { kind: "porte", width_m: 0.8 }] },
-  { name: "Chambre 1", polygon_px: [[480,0],[800,0],[800,300],[480,300]], centroid_px: [640,150],
+  { name: "Quarto 1", polygon_px: [[480,0],[800,0],[800,300],[480,300]], centroid_px: [640,150],
     openings: [{ kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.8 }] },
-  { name: "Chambre 2", polygon_px: [[480,300],[800,300],[800,600],[480,600]], centroid_px: [640,450],
+  { name: "Quarto 2", polygon_px: [[480,300],[800,300],[800,600],[480,600]], centroid_px: [640,450],
     openings: [{ kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.8 }] },
 ];
 const HERO_WALLS = [
@@ -56,7 +56,7 @@ const HERO_WALLS = [
 
 const STEPS = [
   { icon: MessageSquare, title: "Descrevo o meu projeto", text: "Numa frase, como a um profissional." },
-  { icon: Sparkles, title: "ConstruPilot comprend", text: "Especialidades, superfícies, nível de acabamento, riscos." },
+  { icon: Sparkles, title: "ConstruPilot compreende", text: "Especialidades, superfícies, nível de acabamento, riscos." },
   { icon: Calculator, title: "O motor calcula", text: "Quantidades e preços determinísticos, verificáveis." },
   { icon: Search, title: "Encontro os melhores preços", text: "Comparação multi-fornecedores e cesto otimizado." },
   { icon: Wrench, title: "Sei o que fazer eu próprio", text: "Guias passo a passo e níveis de dificuldade." },
@@ -64,21 +64,21 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculateurs pros", dKey: "landing.feat.calc_d", text: "Pintura, azulejos, pladur, betão, isolamento: quantidades exatas com margens.", to: "/calculateurs", span: "md:col-span-4" },
+  { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculadoras profissionais", dKey: "landing.feat.calc_d", text: "Pintura, azulejos, pladur, betão, isolamento: quantidades exatas com margens.", to: "/calculateurs", span: "md:col-span-4" },
   { icon: Search, tKey: "landing.feat.price_t", title: "Comparador de preços", dKey: "landing.feat.price_d", text: "Preços recolhidos nas lojas de materiais de construção, com data da recolha, histórico das suas pesquisas e alertas.", to: "/prix", span: "md:col-span-4" },
   { icon: Cuboid, tKey: "landing.feat.threed_t", title: "Geração 3D", dKey: "landing.feat.threed_d", text: "Visualize o seu projeto em três dimensões a partir de uma simples planta 2D.", to: "/plan", span: "md:col-span-8 lg:col-span-4" },
   { icon: Wrench, tKey: "landing.feat.diy_t", title: "Modo «faço eu mesmo»", dKey: "landing.feat.diy_d", text: "Materiais calculados + guia profissional passo a passo.", to: "/diy", span: "md:col-span-4 lg:col-span-4" },
-  { icon: Camera, tKey: "landing.feat.photo_t", title: "Estimation par photo", dKey: "landing.feat.photo_d", text: "A IA identifica a divisão, o seu estado e as obras prováveis.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
+  { icon: Camera, tKey: "landing.feat.photo_t", title: "Estimativa por foto", dKey: "landing.feat.photo_d", text: "A IA identifica a divisão, o seu estado e as obras prováveis.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
   { icon: FileText, tKey: "landing.feat.scan_t", title: "Scanner de orçamentos", dKey: "landing.feat.scan_d", text: "Preço baixo, correto, alto: a IA analisa e compara os seus orçamentos.", to: "/scanner-devis", span: "md:col-span-4 lg:col-span-4" },
 ];
 
 const AUDIENCES = [
-  { icon: HardHat, key: "landing.for_pro", title: "Artisans BTP", textKey: "landing.for_pro_text", text: "Gere os seus orçamentos para clientes com declaração para IVA a 6 %, assinatura eletrónica e acompanhamento de abertura." },
-  { icon: HomeIcon, key: "landing.for_particulier", title: "Particuliers", textKey: "landing.for_particulier_text", text: "Estime a sua renovação antes de contactar um profissional. Compare os orçamentos recebidos." },
-  { icon: Building2, key: "landing.aud.arch_t", title: "Architectes", textKey: "landing.aud.arch_d", text: "Medição 2D automática a partir das suas plantas PDF/DXF, orçamento instantâneo por lote, render 3D para os seus clientes." },
-  { icon: Store, key: "landing.aud.merch_t", title: "Marchands", textKey: "landing.aud.merch_d", text: "Os seus preços, comparados em tempo real. Gere a lista de compras a partir de uma planta." },
+  { icon: HardHat, key: "landing.for_pro", title: "Artesãos construção", textKey: "landing.for_pro_text", text: "Gere os seus orçamentos para clientes com declaração para IVA a 6 %, assinatura eletrónica e acompanhamento de abertura." },
+  { icon: HomeIcon, key: "landing.for_particulier", title: "Particulares", textKey: "landing.for_particulier_text", text: "Estime a sua renovação antes de contactar um profissional. Compare os orçamentos recebidos." },
+  { icon: Building2, key: "landing.aud.arch_t", title: "Arquitetos", textKey: "landing.aud.arch_d", text: "Medição 2D automática a partir das suas plantas PDF/DXF, orçamento instantâneo por lote, render 3D para os seus clientes." },
+  { icon: Store, key: "landing.aud.merch_t", title: "Comerciantes", textKey: "landing.aud.merch_d", text: "Os seus preços, comparados em tempo real. Gere a lista de compras a partir de uma planta." },
   { icon: GraduationCap, key: "landing.aud.school_t", title: "Escolas de construção", textKey: "landing.aud.school_d", text: "Um campo de treino pedagógico: IA, calculadoras e guias de ofício gratuitos." },
-  { icon: Factory, key: "landing.aud.dev_t", title: "Promoteurs", textKey: "landing.aud.dev_d", text: "Orçamento rápido para as suas propostas. Orçamento multiplanta consolidado, tour de vídeo 3D para anexar." },
+  { icon: Factory, key: "landing.aud.dev_t", title: "Promotores", textKey: "landing.aud.dev_d", text: "Orçamento rápido para as suas propostas. Orçamento multiplanta consolidado, tour de vídeo 3D para anexar." },
 ];
 
 const FAQ = [
@@ -290,7 +290,7 @@ export default function Landing() {
                     data-testid="hero-ai-input"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder={t("landing.hero.placeholder", `Descreva o seu projeto — ex.: «${EXAMPLE} »`)}
+                    placeholder={t("landing.hero.placeholder", `Descreva o seu projeto — ex.: « ${EXAMPLE} »`)}
                     rows={3}
                     className="resize-none border-0 bg-transparent text-base focus-visible:ring-0 rounded-lg"
                   />
@@ -310,7 +310,7 @@ export default function Landing() {
                       onClick={() => setDescription(EXAMPLE)} data-testid="hero-example-btn"
                       className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
                     >
-                      {t("landing.hero.example_btn", "Utiliser l'exemple")}
+                      {t("landing.hero.example_btn", "Usar o exemplo")}
                     </button>
                     <Button
                       onClick={launch} data-testid="hero-submit-btn"
@@ -345,7 +345,7 @@ export default function Landing() {
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-foreground">{t("landing.hero.trust_title", "Concebido para os profissionais da construção")}</span>
-                  <span className="text-xs">{t("landing.hero.trust_subtitle", "Artisans, PME & architectes")}</span>
+                  <span className="text-xs">{t("landing.hero.trust_subtitle", "Artesãos, PME e arquitetos")}</span>
                 </div>
               </div>
             </motion.div>
@@ -360,7 +360,7 @@ export default function Landing() {
                <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent rounded-2xl pointer-events-none" />
                <div className="relative h-full w-full rounded-2xl border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden bg-card/50 backdrop-blur-sm p-4">
                   <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-1 pointer-events-none">
-                     <span className="text-[10px] uppercase font-bold tracking-widest text-primary">{t("landing.hero.live_view", "Vue en direct")}</span>
+                     <span className="text-[10px] uppercase font-bold tracking-widest text-primary">{t("landing.hero.live_view", "Vista em direto")}</span>
                      <span className="text-sm font-semibold">{t("landing.hero.plan3d", "Geração de planta 3D")}</span>
                   </div>
                   {/* Reuse the existing Interactive3D component with mock data */}
@@ -392,9 +392,9 @@ export default function Landing() {
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.6 }}
             >
-              <p className="overline">{t("landing.video.overline", "En 1 minute")}</p>
+              <p className="overline">{t("landing.video.overline", "Em 1 minuto")}</p>
               <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-                {t("landing.video.title_a", "Voyez comment ConstruPilot")}<br className="hidden md:block" />
+                {t("landing.video.title_a", "Veja como o ConstruPilot")}<br className="hidden md:block" />
                 <span className="text-primary italic">{t("landing.video.title_b", "lê os seus projetos")}</span>
               </h2>
               <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
@@ -416,7 +416,7 @@ export default function Landing() {
               <div className="mt-10">
                 <Link to="/inscription">
                   <Button size="lg" className="rounded-lg gap-2 shadow-md" data-testid="video-cta-btn">
-                    <Sparkles className="h-4 w-4" /> {t("landing.video.cta", "Essayer gratuitement")}
+                    <Sparkles className="h-4 w-4" /> {t("landing.video.cta", "Experimentar gratuitamente")}
                   </Button>
                 </Link>
               </div>
@@ -453,7 +453,7 @@ export default function Landing() {
                     className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
                   >
                     {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    {videoMuted ? t("landing.master_video.unmute", "Ativar o som") : t("landing.master_video.sound", "Son")}
+                    {videoMuted ? t("landing.master_video.unmute", "Ativar o som") : t("landing.master_video.sound", "Som")}
                   </button>
                 </div>
               </div>
@@ -475,7 +475,7 @@ export default function Landing() {
       {/* ── BENTO FEATURES GRID ────────────────────────────── */}
       <section className="mx-auto max-w-[1500px] px-6 lg:px-10 py-24 lg:py-32">
         <div className="max-w-2xl">
-          <p className="overline">{t("landing.feat.overline", "L'arsenal complet")}</p>
+          <p className="overline">{t("landing.feat.overline", "O arsenal completo")}</p>
           <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
             {t("landing.feat.title_a", "Ferramentas de profissional,")} <br className="hidden md:block" />
             <span className="text-muted-foreground">{t("landing.feat.title_b", "repensadas para a eficiência.")}</span>
@@ -520,7 +520,7 @@ export default function Landing() {
         <div className="mx-auto max-w-[1500px] px-6 lg:px-10 py-24 lg:py-32">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
             <div className="max-w-xl">
-              <p className="overline">{t("landing.cat.overline", "Catalogue travaux")}</p>
+              <p className="overline">{t("landing.cat.overline", "Catálogo de trabalhos")}</p>
               <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
                 {t("landing.cat.title", "Comece com o pé direito")}
               </h2>
@@ -557,7 +557,7 @@ export default function Landing() {
                   <div>
                     <h3 className="font-display text-2xl font-semibold text-white leading-tight">{pt.name}</h3>
                     <div className="mt-3 flex items-center gap-2 text-sm text-primary font-medium opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                      {t("landing.cat.estimate_now", "Estimer maintenant")} <ArrowRight className="h-4 w-4" />
+                      {t("landing.cat.estimate_now", "Estimar agora")} <ArrowRight className="h-4 w-4" />
                     </div>
                   </div>
                 </div>
@@ -591,7 +591,7 @@ export default function Landing() {
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link to="/diy">
                   <Button className="rounded-full px-8 shadow-md">
-                    <Wrench className="mr-2 h-4 w-4" /> {t("landing.cmp.diy_btn", "Mode Autonomie")}
+                    <Wrench className="mr-2 h-4 w-4" /> {t("landing.cmp.diy_btn", "Modo Autonomia")}
                   </Button>
                 </Link>
                 <Link to="/estimation">
@@ -622,7 +622,7 @@ export default function Landing() {
               <div className="sm:col-span-2 p-5 border border-border rounded-2xl bg-background/50 flex items-start gap-4">
                 <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">{t("landing.cmp.ai_label", "Analyse IA (SDB 8 m²) :")}</strong> {t("landing.cmp.ai_text", "Pintura e acabamentos possíveis por um iniciante. Canalização e quadro elétrico a confiar a um profissional certificado.")}
+                  <strong className="text-foreground">{t("landing.cmp.ai_label", "Análise IA (WC 8 m²):")}</strong> {t("landing.cmp.ai_text", "Pintura e acabamentos possíveis por um iniciante. Canalização e quadro elétrico a confiar a um profissional certificado.")}
                 </p>
               </div>
             </div>

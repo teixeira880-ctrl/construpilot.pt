@@ -21,12 +21,12 @@ import { Input } from "@/components/ui/input";
 
 const TABS = [
   { id: "rooms", label: "Divisões", icon: Square },
-  { id: "openings", label: "Ouvertures", icon: DoorOpen },
-  { id: "counters", label: "Compteurs", icon: Hash },
-  { id: "notes", label: "Notes", icon: StickyNote },
-  { id: "angles", label: "Angles", icon: Triangle },
-  { id: "pitched", label: "Toitures", icon: MountainSnow },
-  { id: "measures", label: "Mesures", icon: Ruler },
+  { id: "openings", label: "Vãos", icon: DoorOpen },
+  { id: "counters", label: "Contadores", icon: Hash },
+  { id: "notes", label: "Notas", icon: StickyNote },
+  { id: "angles", label: "Ângulos", icon: Triangle },
+  { id: "pitched", label: "Coberturas", icon: MountainSnow },
+  { id: "measures", label: "Medições", icon: Ruler },
 ];
 
 function Row({ icon: Icon, testId, primary, secondary, badge, onFocus, onEdit, onDelete, onExtra, extraLabel, extraIcon: ExtraIcon, onExtra2, extra2Label, extra2Icon: Extra2Icon, badgeColor, className = "", trailing = null }) {
@@ -156,7 +156,7 @@ export default function ObjectPanel({
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background sticky top-0 z-10">
         <div>
-          <p className="font-display font-bold text-sm">Objets ({totalObjects})</p>
+          <p className="font-display font-bold text-sm">Objetos ({totalObjects})</p>
           <p className="text-[10px] text-muted-foreground">Painel Objetos — edição inline</p>
         </div>
         <Button size="icon" variant="ghost" onClick={onClose} data-testid="object-panel-close" className="h-7 w-7 relative z-20">
@@ -216,8 +216,8 @@ export default function ObjectPanel({
                       primary={r.name || "Divisão"}
                       secondary={
                         attachedPreset
-                          ? `Modelo:${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
-                          : `${r.perimeter_m || 0}m lineares ·${r.ceiling_height_m || r.height_m || 2.5} m HSP`
+                          ? `Modelo: ${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
+                          : `${r.perimeter_m || 0} m lineares · ${r.ceiling_height_m || r.height_m || 2.5} m pé-direito`
                       }
                       badge={`${r.surface_m2 ?? 0} m²`}
                       badgeColor={attachedPreset ? attachedPreset.color : "#f97316"}
@@ -247,7 +247,7 @@ export default function ObjectPanel({
                             className="text-[10px] text-destructive hover:underline"
                             data-testid={`room-preset-detach-${r.room_id}`}
                           >
-                            Retirer
+                            Remover
                           </button>
                         )}
                         {presetPickerRoomId === r.room_id && (
@@ -295,7 +295,7 @@ export default function ObjectPanel({
                 key={`${r.room_id}-op-${idx}`}
                 icon={DoorOpen}
                 testId={`object-row-opening-${r.room_id}-${idx}`}
-                primary={`${o.kind || "Ouverture"} — ${r.name}`}
+                primary={`${o.kind || "Vão"} — ${r.name}`}
                 secondary={`${o.width_m || "?"} × ${o.height_m || "?"} m`}
                 badge={`${((o.width_m || 0) * (o.height_m || 0)).toFixed(2)} m²`}
                 badgeColor="#a855f7"
@@ -359,8 +359,8 @@ export default function ObjectPanel({
                   <Row
                     icon={StickyNote}
                     testId={`object-row-note-${n.id}`}
-                    primary={n.text || "Note vide"}
-                    secondary={`Position ${Math.round(n.x)}, ${Math.round(n.y)} px`}
+                    primary={n.text || "Nota vazia"}
+                    secondary={`Posição ${Math.round(n.x)}, ${Math.round(n.y)} px`}
                     badgeColor="#eab308"
                     onFocus={() => onFocusObject?.({ kind: "note", data: n })}
                     onEdit={onEditNote ? () => startEdit(n.id, n.text) : null}
@@ -382,8 +382,8 @@ export default function ObjectPanel({
                   key={a.id}
                   icon={Triangle}
                   testId={`object-row-angle-${a.id}`}
-                  primary={a.label || `Angle ${a.degrees.toFixed(1)}°`}
-                  secondary={`Pente ${rise}/12 (US)`}
+                  primary={a.label || `Ângulo ${a.degrees.toFixed(1)}°`}
+                  secondary={`Inclinação ${rise}/12 (US)`}
                   badge={`${a.degrees.toFixed(1)}°`}
                   badgeColor="#a855f7"
                   onFocus={() => onFocusObject?.({ kind: "angle", data: a })}
@@ -402,8 +402,8 @@ export default function ObjectPanel({
                 key={s.id}
                 icon={MountainSnow}
                 testId={`object-row-pitched-${s.id}`}
-                primary={s.label || `Cobertura${s.pitch_degrees}°`}
-                secondary={`Projetado${s.projected_area_m2}m² → Real${s.real_area_m2} m²`}
+                primary={s.label || `Cobertura ${s.pitch_degrees}°`}
+                secondary={`Projetado ${s.projected_area_m2} m² → Real ${s.real_area_m2} m²`}
                 badge={`${s.real_area_m2} m²`}
                 badgeColor="#3b82f6"
                 onFocus={() => onFocusObject?.({ kind: "pitched", data: s })}
@@ -479,7 +479,7 @@ export default function ObjectPanel({
                     <Button size="sm" onClick={() => { onMergeMeasures(mergeSel); setMergeSel([]); }}
                             data-testid="merge-measures-btn"
                             className="mt-2 w-full rounded-sm gap-2 h-8">
-                      Fusionner {mergeSel.length} cotes
+                      Fundir {mergeSel.length} cotes
                     </Button>
                   )}
                   {mergeSel.length === 1 && (
@@ -511,12 +511,12 @@ export default function ObjectPanel({
                 || kind === "manual_linear" || m.length_m != null || m.value_m != null);
               const nOpen = (m.openings || []).length;
               const dedTxt = nOpen ? ` · −${nOpen} ouv.` : "";
-              const primary = m.label || (kind === "distance" ? "Distance" : kind === "polygon" ? "Superfície" : kind === "cumulative" ? "Parede acumulada" : kind === "cumulative_area" ? "Área acumulada" : kind === "manual_area" ? "Superfície" : kind === "manual_linear" ? "Linear" : isArea ? "Superfície" : "Mesure");
-              const kindTxt = kind === "distance" ? "Distance"
+              const primary = m.label || (kind === "distance" ? "Distância" : kind === "polygon" ? "Superfície" : kind === "cumulative" ? "Parede acumulada" : kind === "cumulative_area" ? "Área acumulada" : kind === "manual_area" ? "Superfície" : kind === "manual_linear" ? "Linear" : isArea ? "Superfície" : "Medição");
+              const kindTxt = kind === "distance" ? "Distância"
                 : kind === "polygon" ? "Superfície"
-                : kind === "cumulative" ? `Parede ·${(m.segments || []).length}troço(s)${dedTxt}`
-                : kind === "cumulative_area" ? `Área ·${(m.polygons || []).length} zone(s)`
-                : kind === "manual_area" ? (m.slope_pct ? `Área · vertente${m.slope_pct}%` : "Superfície")
+                : kind === "cumulative" ? `Parede · ${(m.segments || []).length} troço(s)${dedTxt}`
+                : kind === "cumulative_area" ? `Área · ${(m.polygons || []).length} zone(s)`
+                : kind === "manual_area" ? (m.slope_pct ? `Área · vertente ${m.slope_pct}%` : "Superfície")
                 : kind === "manual_linear" ? "Linear"
                 : isArea ? "Superfície" : isLinear ? "Linear" : "Perímetro";
               const badge = isArea ? `${(m.area_m2 ?? m.wall_area_net_m2 ?? 0).toFixed(2)} m²` : `${(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
@@ -563,7 +563,7 @@ export default function ObjectPanel({
                     className="flex-1 min-w-0"
                     testId={`object-row-measure-${idx}`}
                     primary={primary}
-                    secondary={`${kindTxt}${areaTxt}· criada${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
+                    secondary={`${kindTxt}${areaTxt} · criada ${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
                     badge={badgeNode}
                     badgeColor={m.color || "#0d9488"}
                     onFocus={() => onFocusObject?.({ kind: "measure", data: m })}
@@ -580,7 +580,7 @@ export default function ObjectPanel({
                               title="Orçamentar este artigo (composição + estimativa)"
                               data-testid={`object-row-measure-${idx}-chiffrer`}
                               className="shrink-0 rounded-sm border border-primary/40 px-1.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10">
-                        € Chiffrer
+                        € Orçamentar
                       </button>
                     ) : null}
                   />

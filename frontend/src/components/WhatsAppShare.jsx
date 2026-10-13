@@ -26,12 +26,12 @@ const buildMessage = ({ project, estimation, link }) => {
   const max = estimation?.total_max;
   const surface = project?.surface || estimation?.surface;
   const parts = [
-    `📐 *Estimation ConstruPilot — ${project?.name || "Projet"}*`,
-    surface ? `Área:${surface} m²` : null,
+    `📐 *Estimation ConstruPilot — ${project?.name || "Projeto"}*`,
+    surface ? `Área: ${surface} m²` : null,
     total ? `Orçamento estimado: *${eur(total)}*${min && max ? ` (${eur(min)} – ${eur(max)})` : ""}` : null,
-    estimation?.finish_level_name ? `Finition : ${estimation.finish_level_name}` : null,
+    estimation?.finish_level_name ? `Acabamento: ${estimation.finish_level_name}` : null,
     "",
-    link ? `Ver o detalhe 👉${link}` : null,
+    link ? `Ver o detalhe 👉 ${link}` : null,
     "",
     "— ConstruPilot",
   ].filter(Boolean);
@@ -40,7 +40,7 @@ const buildMessage = ({ project, estimation, link }) => {
 
 const EXPIRY_OPTIONS = [
   { value: "never", label: "Sem expiração", days: null },
-  { value: "1", label: "24 heures", days: 1 },
+  { value: "1", label: "24 horas", days: 1 },
   { value: "7", label: "7 jours", days: 7 },
   { value: "30", label: "30 jours", days: 30 },
 ];
@@ -118,7 +118,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
     const url = p ? `https://wa.me/${p.replace("+", "")}?text=${text}`
                   : `https://wa.me/?text=${text}`;
     window.open(url, "_blank", "noopener");
-    toast.success("WhatsApp ouvert");
+    toast.success("WhatsApp aberto");
   };
 
   const sendSmsNative = () => {
@@ -126,7 +126,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
     const p = cleanPhone(phone);
     // sms: opens native app on mobile; on desktop, may prompt an SMS handler.
     window.open(`sms:${p}?body=${text}`, "_blank", "noopener");
-    toast.success("Application SMS ouverte");
+    toast.success("Aplicação SMS aberta");
   };
 
   const sendSmsTwilio = async () => {
@@ -161,7 +161,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
             variant="outline" data-testid="whatsapp-share-btn"
             className="rounded-sm gap-2 border-emerald-500/50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
           >
-            <MessageCircle className="h-4 w-4" /> Partager
+            <MessageCircle className="h-4 w-4" /> Partilhar
           </Button>
         )}
       </DialogTrigger>
@@ -184,7 +184,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
           {projectId && (
             <div className="grid gap-2 border border-border p-3 rounded-sm bg-secondary/30">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <Label className="mb-0">Lien public</Label>
+                <Label className="mb-0">Ligação pública</Label>
                 <div className="flex items-center gap-2">
                   <Select value={expiryChoice} onValueChange={setExpiryChoice}>
                     <SelectTrigger className="rounded-sm h-8 text-xs w-[130px]" data-testid="share-expiry-select">
@@ -199,7 +199,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
                   {link ? (
                     <>
                       <Button size="sm" variant="ghost" onClick={copyLink} className="rounded-sm gap-1 text-xs h-8">
-                        <Copy className="h-3 w-3" /> Copier
+                        <Copy className="h-3 w-3" /> Copiar
                       </Button>
                       <Button size="sm" variant="ghost" onClick={revokeLink} disabled={busy} className="rounded-sm gap-1 text-xs h-8 text-destructive">
                         Revogar
@@ -242,7 +242,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
           )}
 
           <div className="grid gap-2">
-            <Label>Message</Label>
+            <Label>Mensagem</Label>
             <Textarea
               value={displayMsg} onChange={(e) => setMessage(e.target.value)}
               rows={7} data-testid="whatsapp-message"
@@ -268,7 +268,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
           <TabsContent value="wa" className="mt-3">
             <Button onClick={sendWhatsApp} data-testid="whatsapp-send-btn"
                     className="w-full rounded-sm gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-              <MessageCircle className="h-4 w-4" /> Ouvrir WhatsApp
+              <MessageCircle className="h-4 w-4" /> Abrir WhatsApp
             </Button>
           </TabsContent>
           <TabsContent value="sms" className="mt-3 grid gap-2">
@@ -284,7 +284,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
             </Button>
             {!smsCfg.twilio_enabled && (
               <p className="text-xs text-muted-foreground text-center">
-                Ajoutez <span className="font-mono">TWILIO_AUTH_TOKEN</span> et <span className="font-mono">TWILIO_FROM_NUMBER</span> dans <span className="font-mono">.env</span> para ativar o envio por servidor.
+                Adicione <span className="font-mono">TWILIO_AUTH_TOKEN</span> et <span className="font-mono">TWILIO_FROM_NUMBER</span> dans <span className="font-mono">.env</span> para ativar o envio por servidor.
               </p>
             )}
           </TabsContent>

@@ -28,7 +28,7 @@ export default function Referrals() {
 
   const shareWhatsapp = () => {
     if (!data?.share_url) return;
-    const text = `Olá! Uso o ConstruPilot para orçamentar as minhas obras em 30 s. Experimenta com a minha ligação:${data.share_url}`;
+    const text = `Olá! Uso o ConstruPilot para orçamentar as minhas obras em 30 s. Experimenta com a minha ligação: ${data.share_url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -47,17 +47,17 @@ export default function Referrals() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Parrainage — 30 jours Pro offerts par filleul"
+        title="Recomendação — 30 dias Pro oferecidos por indicado"
         description="Convide os seus colegas artesãos no ConstruPilot e ganhe 30 dias Pro gratuitos por cada inscrição, até 12 meses de subscrição oferecidos."
         keywords="referência ConstruPilot, convite amigo, afilhado, referenciador, mês Pro oferecido, programa de recompensas"
         canonical="/parrainage"
       />
       <SectionTitle as="h1" over="Programa de recomendação"
-        title={`Recomende colegas, ganhe${data.bonus_days_cap / 30} mois Pro`}>
+        title={`Recomende colegas, ganhe ${data.bonus_days_cap / 30} meses Pro`}>
         <span>
           Por cada profissional que convida, oferecemos-lhe{" "}
-          <b className="text-primary">30 jours Pro gratuits</b> (plafond{" "}
-          {data.bonus_days_cap} jours = {data.bonus_days_cap / 30} mois).
+          <b className="text-primary">30 dias Pro gratuitos</b> (plafond{" "}
+          {data.bonus_days_cap} jours = {data.bonus_days_cap / 30} meses).
         </span>
       </SectionTitle>
 
@@ -84,7 +84,7 @@ export default function Referrals() {
           />
           <Button onClick={copy} data-testid="referral-copy-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white h-11">
-            {copied ? <><Check className="h-4 w-4" /> Copiado</> : <><Copy className="h-4 w-4" /> Copier</>}
+            {copied ? <><Check className="h-4 w-4" /> Copiado</> : <><Copy className="h-4 w-4" /> Copiar</>}
           </Button>
         </div>
 
@@ -102,10 +102,10 @@ export default function Referrals() {
 
       {/* Card 2 : Stats */}
       <section className="grid md:grid-cols-3 gap-4" data-testid="referral-stats">
-        <StatBig icon={Users} value={data.total_referrals} label="Filleuls inscrits"
+        <StatBig icon={Users} value={data.total_referrals} label="Afilhados inscritos"
                  testid="referral-stat-count" />
         <StatBig icon={TrendingUp} value={`${data.bonus_days_earned} jours`}
-                 label={`${monthsEarned} mois Pro offert${monthsEarned > 1 ? "s" : ""}`}
+                 label={`${monthsEarned} mês Pro oferecido${monthsEarned > 1 ? "s" : ""}`}
                  testid="referral-stat-days" />
         <StatBig icon={Gift} value={`${data.bonus_days_cap - data.bonus_days_earned} jours`}
                  label="Restantes no limite" testid="referral-stat-remaining" />
@@ -114,7 +114,7 @@ export default function Referrals() {
       {/* Progress bar */}
       <section className="surface p-6">
         <div className="flex justify-between items-baseline mb-3">
-          <p className="overline">Progression vers 12 mois offerts</p>
+          <p className="overline">Progressão para 12 meses oferecidos</p>
           <p className="num text-primary font-bold">
             {data.bonus_days_earned} / {data.bonus_days_cap} j
           </p>
@@ -135,7 +135,7 @@ export default function Referrals() {
               <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0"
                    data-testid={`referral-row-${i}`}>
                 <div>
-                  <p className="font-bold text-sm">{r.name || "Filleul"}</p>
+                  <p className="font-bold text-sm">{r.name || "Afilhado"}</p>
                   <p className="text-[11px] text-muted-foreground">{r.email_masked}</p>
                 </div>
                 <span className="text-[10px] text-muted-foreground num">
@@ -158,11 +158,11 @@ export default function Referrals() {
           <li className="flex gap-3">
             <span className="h-6 w-6 shrink-0 grid place-items-center bg-primary text-white text-xs font-bold rounded-sm">2</span>
             Cada pessoa que se inscreve através da sua ligação credita-o automaticamente de{" "}
-            <b>+30 jours Pro</b>.
+            <b>+30 dias Pro</b>.
           </li>
           <li className="flex gap-3">
             <span className="h-6 w-6 shrink-0 grid place-items-center bg-primary text-white text-xs font-bold rounded-sm">3</span>
-            Até <b>12 mois d'abonnement Pro offerts</b> (plafond 360 jours).
+            Até <b>12 meses de subscrição Pro oferecidos</b> (limite 360 dias).
           </li>
         </ol>
       </section>

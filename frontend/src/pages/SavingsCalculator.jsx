@@ -85,15 +85,15 @@ export default function SavingsCalculator() {
         <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 h-fit">
           <h2 className="font-display text-lg font-bold mb-4">Os seus números</h2>
           <div className="space-y-4">
-            <NumField id="input-ca" label="Chiffre d'affaires annuel" val={ca} set={setCa} suffix="€/an" step={10000} />
+            <NumField id="input-ca" label="Volume de negócios anual" val={ca} set={setCa} suffix="€/an" step={10000} />
             <div className="h-px bg-border my-1" />
             <p className="text-xs font-semibold text-foreground">Custo de um perfil de estudos / orçamentos / medições</p>
-            <NumField id="input-brut" label="Salaire brut mensuel" val={brut} set={setBrut} suffix="€" step={100} />
-            <NumField id="input-charges" label="Charges patronales (URSSAF…)" val={charges} set={setCharges} suffix="%" />
+            <NumField id="input-brut" label="Salário bruto mensal" val={brut} set={setBrut} suffix="€" step={100} />
+            <NumField id="input-charges" label="Encargos patronais (Segurança Social…)" val={charges} set={setCharges} suffix="%" />
             <NumField id="input-frais" label="Custos gerados (posto, software, seguros…)" val={frais} set={setFrais} suffix="€" step={50} />
             <div className="rounded-lg bg-secondary/50 p-3 text-sm">
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Salaire brut</span><span className="num">{eur(brut)}</span></div>
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">+ Charges {charges || 0}%</span><span className="num">+ {eur(r.charges_eur)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Salário bruto</span><span className="num">{eur(brut)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">+ Encargos {charges || 0}%</span><span className="num">+ {eur(r.charges_eur)}</span></div>
               <div className="flex items-center justify-between"><span className="text-muted-foreground">+ Custos gerados</span><span className="num">+ {eur(frais)}</span></div>
               <div className="flex items-center justify-between font-bold text-primary mt-1 pt-1 border-t border-border">
                 <span>= Custo para o empregador / mês</span><span className="num">{eur(r.loaded)}</span>
@@ -107,14 +107,14 @@ export default function SavingsCalculator() {
         <div className="lg:col-span-3">
           <div className="grid sm:grid-cols-3 gap-3">
             <Stat icon={TrendingDown} label="A · Perdas evitadas (2% do volume de negócios)" value={eur(r.A)} sub={`${eur(r.Alow)} – ${eur(r.Ahigh)}/mois`} />
-            <Stat icon={Users} label="B · Pessoal automatizado" value={eur(r.B)} sub={`${r.fte.toFixed(2).replace(".", ",")} ETP × ${eur(r.loaded)}`} />
+            <Stat icon={Users} label="B · Pessoal automatizado" value={eur(r.B)} sub={`${r.fte.toFixed(2).replace(".", ",")} ETI × ${eur(r.loaded)}`} />
             <Stat icon={Calculator} label="TOTAL estimado / mês" value={eur(r.total)} sub={`${eur(r.totalLow)} – ${eur(r.totalHigh)}`} accent />
           </div>
 
           <div className="mt-4 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-transparent p-6">
             <p className="text-sm text-muted-foreground">Poupança estimada num ano</p>
             <p className="font-display text-4xl sm:text-5xl font-extrabold text-primary mt-1" data-testid="result-total">{eur(r.total * 12)}</p>
-            <p className="text-sm text-muted-foreground mt-1">soit environ <strong>{eur(r.total)}/mois</strong> (cenário típico)</p>
+            <p className="text-sm text-muted-foreground mt-1">ou seja, cerca de <strong>{eur(r.total)}/mois</strong> (cenário típico)</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <a href={pdfUrl} target="_blank" rel="noreferrer" data-testid="download-pdf-btn">
                 <Button size="lg" className="rounded-full gap-2 font-bold"><Download className="h-5 w-5" /> Descarregar o PDF</Button>
@@ -134,13 +134,13 @@ export default function SavingsCalculator() {
                 <h3 className="font-display text-lg font-bold flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Receber a minha análise e ser contactado</h3>
                 <p className="text-sm text-muted-foreground mt-1">Deixe os seus contactos: enviamos-lhe o detalhe e respondemos às suas perguntas.</p>
                 <div className="mt-3 grid sm:grid-cols-3 gap-3">
-                  <Input type="email" placeholder="E-mail professionnel*" value={lead.email} onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))} data-testid="lead-email" />
-                  <Input placeholder="Entreprise" value={lead.company} onChange={(e) => setLead((l) => ({ ...l, company: e.target.value }))} data-testid="lead-company" />
+                  <Input type="email" placeholder="E-mail profissional*" value={lead.email} onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))} data-testid="lead-email" />
+                  <Input placeholder="Empresa" value={lead.company} onChange={(e) => setLead((l) => ({ ...l, company: e.target.value }))} data-testid="lead-company" />
                   <Input placeholder="Telefone" value={lead.phone} onChange={(e) => setLead((l) => ({ ...l, phone: e.target.value }))} data-testid="lead-phone" />
                 </div>
                 <input type="text" tabIndex={-1} autoComplete="off" value={lead.website} onChange={(e) => setLead((l) => ({ ...l, website: e.target.value }))} className="hidden" aria-hidden />
                 <Button onClick={sendLead} disabled={lead.loading} className="mt-3 rounded-full gap-2" data-testid="lead-send-btn">
-                  {lead.loading ? "Envoi…" : <>Enviar <ArrowRight className="h-4 w-4" /></>}
+                  {lead.loading ? "A enviar…" : <>Enviar <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               </>
             )}

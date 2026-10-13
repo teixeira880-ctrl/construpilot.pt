@@ -11,7 +11,7 @@ export const RadarContactPanel = ({ opp, onUpdated }) => {
   const [deleting, setDeleting] = useState(false);
   const pr = opp.promoteur;
   const provenance = opp.contact_provenance;
-  const business = ["ENTREPRISE", "PROMOTEUR", "SCI", "BAILLEUR", "COLLECTIVITE"].includes(opp.mo);
+  const business = ["ENTREPRISE", "PROMOTOR", "SCI", "SENHORIO", "COLLECTIVITE"].includes(opp.mo);
   const saved = (data) => { onUpdated(data); setMode(null); toast.success("Dados de contacto guardados na sua conta"); };
   const remove = async () => {
     if (!window.confirm("Remover os seus contactos guardados? Os dados do ficheiro importado serão conservados.")) return;
@@ -25,7 +25,7 @@ export const RadarContactPanel = ({ opp, onUpdated }) => {
       {pr && Object.values(pr).some(Boolean) ? <>
         <p className="font-semibold text-sm break-words" data-testid="radar-promoteur-nom">{pr.nom || "Nome não comunicado"}</p>
         <p className="text-sm break-words" data-testid="radar-promoteur-adresse">{[pr.adresse1, pr.adresse2, [pr.cp, pr.ville].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "Morada não comunicada"}</p>
-        {pr.siren && <p className="text-xs" data-testid="radar-promoteur-siren">SIREN {pr.siren}</p>}
+        {pr.siren && <p className="text-xs" data-testid="radar-promoteur-siren">NIPC {pr.siren}</p>}
         {(pr.email || pr.telephone) && <p className="text-xs break-words" data-testid="radar-promoteur-channels">{[pr.email, pr.telephone].filter(Boolean).join(" · ")}</p>}
         <p className="text-xs text-muted-foreground break-words" data-testid="radar-contact-provenance">{provenance?.label || (opp.source?.kind === "sitadel_official" ? "Requerente pessoa coletiva publicado pelo SDES · morada postal por completar" : "Dados do ficheiro importado · não verificados")}</p>
         {provenance?.source_url && /^https?:\/\//.test(provenance.source_url) && <a href={provenance.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary underline" data-testid="radar-contact-source-link">Consultar a fonte <ExternalLink className="h-3 w-3" /></a>}
@@ -35,7 +35,7 @@ export const RadarContactPanel = ({ opp, onUpdated }) => {
       {opp.coordonnees_status !== "complet" && opp.adresse && opp.cp && opp.commune && <p className="text-xs" data-testid="radar-terrain-fallback">Na ausência da morada do contacto, a carta será preparada para a morada do terreno, à atenção do dono de obra.</p>}
       <div className="flex flex-wrap gap-2 pt-1">
         <Button variant="outline" size="sm" className="gap-1" onClick={() => setMode(mode === "manual" ? null : "manual")} data-testid="radar-contact-edit"><Pencil className="h-3.5 w-3.5" />{pr ? "Completar / editar" : "Adicionar um contacto"}</Button>
-        {business && <Button variant="outline" size="sm" className="gap-1" onClick={() => setMode(mode === "search" ? null : "search")} data-testid="radar-contact-search-toggle"><Search className="h-3.5 w-3.5" />Annuaire entreprises</Button>}
+        {business && <Button variant="outline" size="sm" className="gap-1" onClick={() => setMode(mode === "search" ? null : "search")} data-testid="radar-contact-search-toggle"><Search className="h-3.5 w-3.5" />Diretório de empresas</Button>}
         {provenance && <Button variant="ghost" size="sm" disabled={deleting} onClick={remove} title="Remover os meus dados de contacto" aria-label="Remover os meus dados de contacto" data-testid="radar-contact-delete"><Trash2 className="h-4 w-4" /></Button>}
       </div>
       {mode === "manual" && <ContactEditor opp={opp} onSaved={saved} onCancel={() => setMode(null)} />}

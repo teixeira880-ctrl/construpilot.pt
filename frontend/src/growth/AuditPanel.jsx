@@ -62,12 +62,12 @@ export function AuditPanel({ projectId, canEdit }) {
           <div className="flex flex-wrap items-center gap-2"><Badge className={`rounded-sm border-0 ${SEV[i.severity]}`}>{i.severity}</Badge><span className="font-medium">{i.kind}</span>
             <Badge variant="outline" className="rounded-sm text-[10px]">{i.is_fact ? "fait" : "hipótese"}</Badge><span className="text-[11px] text-muted-foreground">effort {i.effort} · {dt(i.observed_at)}</span>
             <a className="text-[11px] underline truncate max-w-[360px]" href={i.url} target="_blank" rel="noreferrer">{i.url}</a></div>
-          <p className="text-xs"><strong>Preuve :</strong> {i.evidence}</p>
+          <p className="text-xs"><strong>Prova:</strong> {i.evidence}</p>
           <p className="text-xs text-muted-foreground"><strong>Consequência:</strong> {i.consequence} · <strong>Correction :</strong> {i.fix}</p>
           {i.status === "fixing" && <p className="text-xs text-primary" data-testid={`growth-issue-fixing-${i.issue_id}`}>Correção automática aplicada: {i.fix_applied} — confirmada na próxima nova auditoria.</p>}
           {i.fix_active && <p className="text-xs text-amber-700" data-testid={`growth-issue-reappeared-${i.issue_id}`}>{i.fix_note}</p>}
           {canEdit && i.status === "open" && <div className="flex gap-2"><Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => toAction(i)} data-testid={`growth-issue-action-${i.issue_id}`}><ListPlus className="h-3.5 w-3.5" /> Criar uma ação</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIssue(i, "fixed")}>Corrigido</Button><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIssue(i, "ignored")}>Ignorer</Button></div>}
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIssue(i, "fixed")}>Corrigido</Button><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIssue(i, "ignored")}>Ignorar</Button></div>}
         </li>)}
       </ul>
       <details className="text-xs"><summary className="cursor-pointer text-muted-foreground">{detail.pages.length} páginas exploradas</summary>

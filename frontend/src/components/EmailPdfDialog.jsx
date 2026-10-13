@@ -28,7 +28,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.to) return toast.error("Adresse email requise");
+    if (!form.to) return toast.error("E-mail necessário");
     setBusy(true);
     try {
       await api.post("/estimation/pdf/email", {
@@ -36,7 +36,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
         to: form.to,
         message: form.message,
       });
-      toast.success(`Orçamento enviado a${form.to}`);
+      toast.success(`Orçamento enviado a ${form.to}`);
       setOpen(false);
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Envio impossível");
@@ -73,7 +73,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
             />
           </div>
           <div className="grid gap-2">
-            <Label>Message (optionnel)</Label>
+            <Label>Mensagem (opcional)</Label>
             <Textarea
               rows={4} value={form.message}
               onChange={(e) => setForm({ ...form, message: e.target.value })}
@@ -86,7 +86,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
             Desde <b>onboarding@resend.dev</b> · o destinatário recebe o PDF em anexo.
           </div>
           <Button type="submit" disabled={busy} data-testid="email-pdf-send" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Enviar orçamento"}
+            <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar orçamento"}
           </Button>
         </form>
       </DialogContent>

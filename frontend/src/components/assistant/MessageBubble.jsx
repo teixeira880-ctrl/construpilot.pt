@@ -41,7 +41,7 @@ export function MessageBubble({ m, live, onCorrect, testId }) {
         <button className="underline" data-testid={`${id}-copy`} onClick={async () => { try { await navigator.clipboard.writeText(m.content); toast.success(ui("copied")); } catch { toast.error(ui("copyError")); } }}><Copy size={13} />{ui("copy")}</button>
         {onCorrect && <button className="underline" data-testid={`${id}-correct`} onClick={() => onCorrect(m)}><CornerUpLeft size={13} />{ui("correct")}</button>}
         {!mine && m.content && !live && <ListenButton label={studio("listen")} text={m.content} testId={`${id}-listen`} className="ms-1" />}
-        {m.message_id && <button className="underline" data-testid={`${id}-export-pdf`} onClick={() => view(`/assistant/messages/${m.message_id}/pdf`, "ConstruPilot-solution-technique.pdf", "Solution technique (PDF)")}><Download size={13} />PDF</button>}
+        {m.message_id && <button className="underline" data-testid={`${id}-export-pdf`} onClick={() => view(`/assistant/messages/${m.message_id}/pdf`, "ConstruPilot-solution-technique.pdf", "Solução técnica (PDF)")}><Download size={13} />PDF</button>}
         {m.model && <span data-testid={`${id}-model`}>{ui(m.response_mode === "thorough" ? "thorough" : "fast")}</span>}
       </div>}
     </div>

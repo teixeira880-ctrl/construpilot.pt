@@ -26,7 +26,7 @@ export const MentionsLegales = () => (
       Sede: [A COMPLETAR — morada]<br />
       NIPC: [A COMPLETAR] · NIF intracomunitário: [A COMPLETAR]<br />
       Diretor da publicação: [A COMPLETAR — nome]<br />
-      Contact : <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+      Contacto: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
     </p>
 
     <h2>2. Alojamento</h2>
@@ -48,7 +48,7 @@ export const MentionsLegales = () => (
     <h2>5. Links e contacto</h2>
     <p>
       Ver também o nosso <Link to="/confidentialite">Política de privacidade</Link> e os nossos{" "}
-      <Link to="/cgv">Condições gerais</Link>. Pour toute réclamation :{" "}
+      <Link to="/cgv">Condições gerais</Link>. Para qualquer reclamação:{" "}
       <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
     </p>
   </LegalLayout>
@@ -61,7 +61,7 @@ export const Confidentialite = () => (
     </p>
 
     <h2>1. Responsável pelo tratamento</h2>
-    <p>{EDITOR} — contact : <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p>
+    <p>{EDITOR} — contacto: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p>
 
     <h2>2. Dados recolhidos</h2>
     <p>
@@ -78,7 +78,7 @@ export const Confidentialite = () => (
       Execução do contrato, obrigações legais (faturação), e interesse legítimo. Os dados são conservados durante a relação contratual e depois arquivados segundo os prazos legais aplicáveis.
     </p>
 
-    <h2>5. Partage</h2>
+    <h2>5. Partilha</h2>
     <p>
       Os seus dados nunca são vendidos. Podem ser transmitidos aos nossos subcontratantes técnicos (alojamento, pagamento Stripe, envio de e-mails) estritamente para o funcionamento do serviço.
     </p>
@@ -86,8 +86,7 @@ export const Confidentialite = () => (
     <h2>6. Os seus direitos</h2>
     <p>
       Dispõe de um direito de acesso, retificação, eliminação, portabilidade, limitação e oposição. Exerça-os em{" "}
-      <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Vous pouvez saisir la CNIL en cas de
-      litige (www.cnil.fr).
+      <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Pode contactar a CNPD em caso de litígio (www.cnpd.pt).
     </p>
 
     <h2>7. Cookies</h2>
@@ -131,7 +130,7 @@ export const CGV = () => (
       <Link to="/confidentialite">Política de privacidade</Link>.
     </p>
 
-    <h2>7. Droit applicable</h2>
+    <h2>7. Direito aplicável</h2>
     <p>
       As presentes condições estão sujeitas ao direito francês. Em caso de litígio, será procurada uma solução amigável antes de qualquer ação judicial.
     </p>

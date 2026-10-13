@@ -48,7 +48,7 @@ export default function ProVerified() {
     return (
       <div className="min-h-[60vh] grid place-items-center text-center px-4" data-testid="pv-error">
         <div>
-          <p className="text-lg font-semibold">Profil introuvable</p>
+          <p className="text-lg font-semibold">Perfil não encontrado</p>
           <p className="text-sm text-muted-foreground mt-1">Este link de verificação já não é válido.</p>
           <Link to="/"><Button variant="outline" className="mt-4">Voltar ao início</Button></Link>
         </div>
@@ -94,13 +94,13 @@ export default function ProVerified() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Elementos verificados</h2>
           {data.siret && (
             <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> SIRET</span>
+              <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Estabelecimento</span>
               <span className="font-mono">{data.siret}</span>
             </div>
           )}
           {data.certifications && data.certifications.map((c, i) => (
             <div key={i} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2"><Award className="h-4 w-4 text-primary" /> Certification</span>
+              <span className="flex items-center gap-2"><Award className="h-4 w-4 text-primary" /> Certificação</span>
               <span className="font-semibold">
                 {CERT_LABELS[c.code] || (c.code || "").toUpperCase()}
                 {c.number ? ` (n° ${c.number})` : ""}
@@ -113,7 +113,7 @@ export default function ProVerified() {
       {/* Avis clients */}
       <Card className="p-6 space-y-4" data-testid="pv-reviews">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Avis clients</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Opiniões de clientes</h2>
           {reviews.count > 0 && (
             <span className="flex items-center gap-2 text-sm font-semibold" data-testid="pv-rating">
               <Stars value={reviews.average} /> {reviews.average}/5 · {reviews.count} avis
@@ -123,7 +123,7 @@ export default function ProVerified() {
         {reviews.count === 0 ? (
           <p className="text-sm text-muted-foreground">Ainda sem avaliações publicadas.</p>
         ) : reviews.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{reviews.count} avis recueilli(s).</p>
+          <p className="text-sm text-muted-foreground">{reviews.count} avaliação(ões) recolhida(s).</p>
         ) : (
           <div className="space-y-3">
             {reviews.items.map((r, i) => (

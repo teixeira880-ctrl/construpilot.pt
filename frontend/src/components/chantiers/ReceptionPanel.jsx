@@ -13,9 +13,9 @@ const BASE = process.env.REACT_APP_BACKEND_URL;
 const DECISIONS = [
   ["sans_reserve", "Sem reservas"],
   ["avec_reserve", "Com reservas"],
-  ["refus", "Receção recusada"],
+  ["rejeição", "Receção recusada"],
 ];
-const STATUS = { draft: ["Brouillon", "bg-slate-100 text-slate-600"], published: ["Partilhado com o cliente", "bg-sky-100 text-sky-700"], signed: ["Assinado pelo cliente", "bg-emerald-100 text-emerald-700"] };
+const STATUS = { draft: ["Rascunho", "bg-slate-100 text-slate-600"], published: ["Partilhado com o cliente", "bg-sky-100 text-sky-700"], signed: ["Assinado pelo cliente", "bg-emerald-100 text-emerald-700"] };
 
 export function ReceptionPanel({ chantierId }) {
   const [list, setList] = useState([]);
@@ -72,12 +72,12 @@ export function ReceptionPanel({ chantierId }) {
                 <p className="text-xs text-muted-foreground">
                   Receção {(pv.date_reception || "").slice(0, 10)} · {(pv.reserves || []).length} reserva(s)
                   {pv.pro_signature?.name ? ` · entreprise : ${pv.pro_signature.name}` : ""}
-                  {pv.client_signature?.name ? `· cliente:${pv.client_signature.name}` : ""}
+                  {pv.client_signature?.name ? ` · cliente: ${pv.client_signature.name}` : ""}
                 </p>
               </div>
               <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${cls}`}>{label}</span>
-              {!pv.pro_signature && <Button size="sm" variant="outline" className="h-7 rounded-sm text-[11px] gap-1" onClick={() => sign(pv)} data-testid={`pv-sign-${pv.pv_id}`}><PenLine className="h-3 w-3" /> Signer</Button>}
-              {pv.status === "draft" && <Button size="sm" variant="outline" className="h-7 rounded-sm text-[11px] gap-1" onClick={() => publish(pv)} data-testid={`pv-publish-${pv.pv_id}`}><Send className="h-3 w-3" /> Partager</Button>}
+              {!pv.pro_signature && <Button size="sm" variant="outline" className="h-7 rounded-sm text-[11px] gap-1" onClick={() => sign(pv)} data-testid={`pv-sign-${pv.pv_id}`}><PenLine className="h-3 w-3" /> Assinar</Button>}
+              {pv.status === "draft" && <Button size="sm" variant="outline" className="h-7 rounded-sm text-[11px] gap-1" onClick={() => publish(pv)} data-testid={`pv-publish-${pv.pv_id}`}><Send className="h-3 w-3" /> Partilhar</Button>}
               <a href={`${BASE}/api/chantiers/receptions/${pv.pv_id}/pdf`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-sm border px-2.5 py-1.5 text-[11px] hover:bg-secondary" data-testid={`pv-pdf-${pv.pv_id}`}><Download className="h-3 w-3" /> PDF</a>
               {!pv.client_signature && <button onClick={() => remove(pv)} className="text-muted-foreground hover:text-red-500" data-testid={`pv-delete-${pv.pv_id}`}><Trash2 className="h-3.5 w-3.5" /></button>}
               {pv.client_signature && <CheckCircle2 className="h-4 w-4 text-emerald-600" title="Assinado pelo cliente" />}
@@ -114,14 +114,14 @@ export function ReceptionPanel({ chantierId }) {
               </div>
               {form.reserves.map((r, i) => (
                 <div key={i} className="flex items-center gap-2 mt-1" data-testid={`pv-reserve-row-${i}`}>
-                  <Input value={r.lot} placeholder="Lot" onChange={(e) => setForm((f) => ({ ...f, reserves: f.reserves.map((x, j) => j === i ? { ...x, lot: e.target.value } : x) }))} className="rounded-sm h-8 w-28 text-sm" />
+                  <Input value={r.lot} placeholder="Lote" onChange={(e) => setForm((f) => ({ ...f, reserves: f.reserves.map((x, j) => j === i ? { ...x, lot: e.target.value } : x) }))} className="rounded-sm h-8 w-28 text-sm" />
                   <Input value={r.description} placeholder="Descrição da reserva" onChange={(e) => setForm((f) => ({ ...f, reserves: f.reserves.map((x, j) => j === i ? { ...x, description: e.target.value } : x) }))} className="rounded-sm h-8 flex-1 text-sm" data-testid={`pv-reserve-desc-${i}`} />
                   <button type="button" onClick={() => setForm((f) => ({ ...f, reserves: f.reserves.filter((_, j) => j !== i) }))} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               ))}
             </div>
             <div>
-              <Label className="text-xs">Observations</Label>
+              <Label className="text-xs">Observações</Label>
               <Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} className="rounded-sm mt-1 resize-none" placeholder="ex.: Reservas a levantar em 30 dias" data-testid="pv-notes" />
             </div>
             <Button onClick={create} disabled={busy} className="rounded-sm gap-2" data-testid="pv-create-confirm">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />} Criar o auto</Button>

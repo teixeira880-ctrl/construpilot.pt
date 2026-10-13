@@ -286,7 +286,7 @@ export default function PlanCanvas({
           ctx.beginPath(); ctx.moveTo(x + nx * tick, y + ny * tick); ctx.lineTo(x - nx * tick, y - ny * tick); ctx.stroke();
         });
         const label = c.status === "ok" && eff !== "ok"
-          ? `#${c.index} ${Number(c.indicated_m).toFixed(2)} ${c.facade_status ? "FACHADA" : "CHAÎNE"} ${eff === "ko" ? "KO" : "?"}`
+          ? `#${c.index} ${Number(c.indicated_m).toFixed(2)} ${c.facade_status ? "FACHADA" : "CADEIA"} ${eff === "ko" ? "KO" : "?"}`
           : c.status === "ok"
           ? `#${c.index} ${Number(c.measured_m).toFixed(2)}`
           : `#${c.index} ${Number(c.indicated_m).toFixed(2)}→${Number(c.measured_m).toFixed(2)} (${c.delta_cm > 0 ? "+" : ""}${Math.round(c.delta_cm)} cm)`;
@@ -396,7 +396,7 @@ export default function PlanCanvas({
         ctx.font = `bold ${11 / zoom}px system-ui`;
         ctx.fillStyle = deltaBad ? "#b45309" : "#15803d";
         ctx.fillText(
-          `escrito${r.surface_written_m2} m² (${delta > 0 ? "+" : ""}${delta}%)`,
+          `escrito ${r.surface_written_m2} m² (${delta > 0 ? "+" : ""}${delta}%)`,
           cx, cy + 32 / zoom
         );
       }
@@ -499,7 +499,7 @@ export default function PlanCanvas({
       const val = fillPoly
         ? `${Number(m.area_m2 ?? 0).toFixed(2)} m²`
         : `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
-      const suffix = isCumul ? ` (${segs.length}troços)` : isCumulArea ? ` (${segs.length} zones)` : "";
+      const suffix = isCumul ? ` (${segs.length} troços)` : isCumulArea ? ` (${segs.length} zones)` : "";
       const label = (m.label ? `${m.label} · ${val}` : val) + suffix;
       ctx.font = `bold ${12 / zoom}px system-ui`;
       const w = ctx.measureText(label).width + 8 / zoom;
@@ -598,7 +598,7 @@ export default function PlanCanvas({
     (annotations.notes || []).forEach((n) => {
       const pad = 6 / zoom;
       ctx.font = `${12 / zoom}px system-ui`;
-      const txt = (n.text || "Note vide").slice(0, 60);
+      const txt = (n.text || "Nota vazia").slice(0, 60);
       const w = Math.max(ctx.measureText(txt).width + pad * 2, 40 / zoom);
       const h = 22 / zoom;
       // Yellow sticky

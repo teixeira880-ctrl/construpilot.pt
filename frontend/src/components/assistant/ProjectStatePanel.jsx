@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
-const SECTIONS = [["decisions", "Decisões em vigor"], ["discarded_documents", "Documentos afastados"], ["open_points", "Points ouverts"]];
+const SECTIONS = [["decisions", "Decisões em vigor"], ["discarded_documents", "Documentos afastados"], ["open_points", "Pontos em aberto"]];
 const STATUS = { current: "courante", superseded: "substituída", to_confirm: "a confirmar" };
 const KIND = { schema_de_principe: "esquema de princípio", validation_execution: "validação de execução", fait: "fait", hypothese: "hipótese", action: "action" };
 
@@ -22,9 +22,9 @@ const Entry = ({ e, section, onSave, onRemove, conversationId, onChange }) => {
   return <li className="py-1.5 border-b border-border/40 text-xs" data-testid={id}>
     {editing ? <div className="grid gap-1">
       <textarea rows={2} value={statement} onChange={(ev) => setStatement(ev.target.value)} className="w-full rounded-sm border px-1 py-0.5 bg-background" aria-label="Enunciado" data-testid={`${id}-statement`} />
-      <input value={source} onChange={(ev) => setSource(ev.target.value)} className="w-full rounded-sm border px-1 py-0.5 bg-background" aria-label="Source" placeholder="Fonte (peça, página, mensagem)" data-testid={`${id}-source`} />
+      <input value={source} onChange={(ev) => setSource(ev.target.value)} className="w-full rounded-sm border px-1 py-0.5 bg-background" aria-label="Fonte" placeholder="Fonte (peça, página, mensagem)" data-testid={`${id}-source`} />
       <div className="grid grid-cols-2 gap-1">
-        <input value={owner} onChange={(ev) => setOwner(ev.target.value)} className="rounded-sm border px-1 py-0.5 bg-background" aria-label="Responsable" placeholder="Responsable" data-testid={`${id}-owner`} />
+        <input value={owner} onChange={(ev) => setOwner(ev.target.value)} className="rounded-sm border px-1 py-0.5 bg-background" aria-label="Responsável" placeholder="Responsável" data-testid={`${id}-owner`} />
         <input value={deadline} onChange={(ev) => setDeadline(ev.target.value)} className="rounded-sm border px-1 py-0.5 bg-background" aria-label="Prazo" placeholder="Prazo (22/09/2026)" data-testid={`${id}-deadline`} />
       </div>
       <div className="flex gap-1">
@@ -34,11 +34,11 @@ const Entry = ({ e, section, onSave, onRemove, conversationId, onChange }) => {
     </div> : <>
       <div><span className={`inline-block rounded-sm px-1 mr-1 ${e.status === "current" ? "bg-emerald-500/15" : e.status === "to_confirm" ? "bg-amber-500/15" : "bg-muted line-through"}`}>{STATUS[e.status] || e.status}</span>
         <span className="text-muted-foreground">{KIND[e.kind] || e.kind} · </span>{e.statement}</div>
-      <div className="text-muted-foreground">Source : {e.source} · {e.author === "user" ? "vous" : "assistant"}{(e.owner || e.deadline) && <> · <b>{e.owner || "resp. a designar"}</b> · {e.deadline || "prazo a fixar"}</>}</div>
+      <div className="text-muted-foreground">Fonte: {e.source} · {e.author === "user" ? "vous" : "assistant"}{(e.owner || e.deadline) && <> · <b>{e.owner || "resp. a designar"}</b> · {e.deadline || "prazo a fixar"}</>}</div>
       <div className="flex gap-3 mt-0.5">
-        <button type="button" className="underline text-[11px] flex items-center gap-1" onClick={() => setEditing(true)} data-testid={`${id}-edit`}><Pencil size={10} /> Corriger</button>
+        <button type="button" className="underline text-[11px] flex items-center gap-1" onClick={() => setEditing(true)} data-testid={`${id}-edit`}><Pencil size={10} /> Corrigir</button>
         {e.status !== "superseded" && <button type="button" className="underline text-[11px]" onClick={() => onSave({ ...e, section, status: "superseded" })} data-testid={`${id}-supersede`}>Marcar como substituída</button>}
-        <button type="button" className="underline text-[11px] flex items-center gap-1 text-destructive" onClick={() => onRemove(e, section)} data-testid={`${id}-remove`}><Trash2 size={10} /> Retirer</button>
+        <button type="button" className="underline text-[11px] flex items-center gap-1 text-destructive" onClick={() => onRemove(e, section)} data-testid={`${id}-remove`}><Trash2 size={10} /> Remover</button>
       </div>
       <EntryPhotos conversationId={conversationId} entry={e} onChange={onChange} />
     </>}
@@ -64,8 +64,8 @@ export const ProjectStatePanel = ({ conversationId, refreshKey }) => {
     setResending(log.at);
     try {
       const { data } = await api.post(`/assistant/conversations/${conversationId}/state/email`, { to: log.to, meeting: log.meeting || null, include_agenda: (log.documents || []).includes("ordre-du-jour.pdf"), include_state: (log.documents || []).includes("etat-du-dossier.pdf"), message: "" });
-      if (data.sent?.length) toast.success(`Remetido para${data.sent.join(", ")}(versão atual do processo)`);
-      if (data.failed?.length) toast.error(`Falha para${data.failed.map((f) => f.to).join(", ")}`);
+      if (data.sent?.length) toast.success(`Remetido para ${data.sent.join(", ")} (versão atual do processo)`);
+      if (data.failed?.length) toast.error(`Falha para ${data.failed.map((f) => f.to).join(", ")}`);
       await loadEmails();
     } catch { toast.error("Não foi possível reenviar"); } finally { setResending(null); }
   };
@@ -81,9 +81,9 @@ export const ProjectStatePanel = ({ conversationId, refreshKey }) => {
     try { await api.put(`/assistant/conversations/${conversationId}/state`, body); toast.success(success); await load(); }
     catch (e) { toast.error(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Não foi possível atualizar"); }
   };
-  const save = (e) => put({ section: e.section, entry_id: e.entry_id, statement: e.statement, source: e.source || "utilisateur", status: e.status, kind: e.kind, owner: e.owner || null, deadline: e.deadline || null }, "Entrada corrigida — as outras entradas ficam inalteradas");
+  const save = (e) => put({ section: e.section, entry_id: e.entry_id, statement: e.statement, source: e.source || "utilizador", status: e.status, kind: e.kind, owner: e.owner || null, deadline: e.deadline || null }, "Entrada corrigida — as outras entradas ficam inalteradas");
   const remove = (e, section) => put({ section, entry_id: e.entry_id, statement: e.statement, source: e.source, remove: true }, "Entrada removida");
-  const add = () => { if (!draft.statement.trim()) return; put({ section: adding, statement: draft.statement, source: draft.source || "utilisateur" }, "Entrada adicionada").then(() => { setAdding(null); setDraft({ statement: "", source: "" }); }); };
+  const add = () => { if (!draft.statement.trim()) return; put({ section: adding, statement: draft.statement, source: draft.source || "utilizador" }, "Entrada adicionada").then(() => { setAdding(null); setDraft({ statement: "", source: "" }); }); };
   return <section className="mx-3 mb-2 rounded-md border border-border bg-muted/30 text-xs" data-testid="project-state-panel">
     <button type="button" className="w-full flex items-center justify-between px-3 py-2 font-semibold" onClick={() => setOpen((o) => !o)} data-testid="project-state-toggle">
       <span className="flex items-center gap-1"><BookMarked size={14} /> Estado do processo ({total}) · revisão {state.revision}</span>{open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -94,7 +94,7 @@ export const ProjectStatePanel = ({ conversationId, refreshKey }) => {
           <button type="button" className="underline text-[11px] flex items-center gap-1" onClick={() => { setAdding(key); setDraft({ statement: "", source: "" }); }} data-testid={`project-state-add-${key}`}><Plus size={10} /> Adicionar</button></div>
         {adding === key && <div className="grid gap-1 my-1 p-2 rounded-sm border bg-background" data-testid={`project-state-form-${key}`}>
           <textarea rows={2} value={draft.statement} onChange={(e) => setDraft((d) => ({ ...d, statement: e.target.value }))} placeholder="Enunciado factual" aria-label="Enunciado" className="rounded-sm border px-1 py-0.5 bg-background" data-testid="project-state-new-statement" />
-          <input value={draft.source} onChange={(e) => setDraft((d) => ({ ...d, source: e.target.value }))} placeholder="Fonte (peça, página, e-mail…)" aria-label="Source" className="rounded-sm border px-1 py-0.5 bg-background" data-testid="project-state-new-source" />
+          <input value={draft.source} onChange={(e) => setDraft((d) => ({ ...d, source: e.target.value }))} placeholder="Fonte (peça, página, e-mail…)" aria-label="Fonte" className="rounded-sm border px-1 py-0.5 bg-background" data-testid="project-state-new-source" />
           <div className="flex gap-1"><Button size="sm" className="h-7 text-xs" onClick={add} data-testid="project-state-new-save">Guardar</Button><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAdding(null)} data-testid="project-state-new-cancel">Cancelar</Button></div>
         </div>}
         <ul>{(state[key] || []).map((e) => <Entry key={e.entry_id} e={e} section={key} onSave={save} onRemove={remove} conversationId={conversationId} onChange={load} />)}</ul>
@@ -107,12 +107,12 @@ export const ProjectStatePanel = ({ conversationId, refreshKey }) => {
         <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setReportOpen(true)} data-testid="project-state-report"><ClipboardCheck size={12} /> Ata</Button>
       </div>
       {emails.length > 0 && <div className="pt-1 border-t border-border/40" data-testid="project-state-emails">
-        <b>Envois ({emails.length})</b>
+        <b>Envios ({emails.length})</b>
         <ul>{emails.map((l) => <li key={l.at} className="flex flex-wrap items-center gap-x-2 py-0.5 text-[11px]" data-testid={`state-email-log-${l.at}`}>
           <span className="text-muted-foreground">{new Date(l.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</span>
-          <span>{(l.to || []).join(", ")}{l.failed?.length ? `· falha:${l.failed.map((f) => f.to).join(", ")}` : ""}</span>
+          <span>{(l.to || []).join(", ")}{l.failed?.length ? ` · falha: ${l.failed.map((f) => f.to).join(", ")}` : ""}</span>
           <span className="text-muted-foreground">{(l.documents || []).map((d) => d.replace(".pdf", "")).join(" + ")}</span>
-          <button type="button" className="underline flex items-center gap-1" disabled={resending === l.at} onClick={() => resend(l)} data-testid="state-email-resend"><RotateCw size={10} className={resending === l.at ? "animate-spin" : ""} /> Renvoyer</button>
+          <button type="button" className="underline flex items-center gap-1" disabled={resending === l.at} onClick={() => resend(l)} data-testid="state-email-resend"><RotateCw size={10} className={resending === l.at ? "animate-spin" : ""} /> Reenviar</button>
         </li>)}</ul>
       </div>}
       <MeetingReportDialog open={reportOpen} onClose={() => setReportOpen(false)} conversationId={conversationId} meeting={meeting} state={state} onDone={load} />

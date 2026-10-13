@@ -39,7 +39,7 @@ export default function SupplierPortal() {
 
   const submitClaim = async (e) => {
     e.preventDefault();
-    if (!claim.contact_name || !claim.contact_email) return toast.error("Nom + email requis");
+    if (!claim.contact_name || !claim.contact_email) return toast.error("Nome + email obrigatórios");
     setBusy(true);
     try {
       await api.post("/suppliers/claim", claim);
@@ -49,13 +49,13 @@ export default function SupplierPortal() {
     finally { setBusy(false); }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
   if (!data) return <div className="surface p-10 text-center">A carregar…</div>;
 
   if (!data.verified) {
     return (
       <div className="grid gap-8">
-        <SectionTitle over="Espace Fournisseurs" title="Reclame a sua empresa no ConstruPilot">
+        <SectionTitle over="Espaço Fornecedores" title="Reclame a sua empresa no ConstruPilot">
           Acompanhe os seus cliques, redirecionamentos, GMV e comissões provenientes do comparador. Desbloqueie também os anúncios patrocinados (brevemente).
         </SectionTitle>
         <form onSubmit={submitClaim} className="surface p-6 grid gap-4 max-w-lg" data-testid="supplier-claim-form">
@@ -73,7 +73,7 @@ export default function SupplierPortal() {
             <Input required value={claim.contact_name} onChange={(e) => setClaim({ ...claim, contact_name: e.target.value })} data-testid="supplier-claim-name" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>Email professionnel *</Label>
+            <Label>Email profissional *</Label>
             <Input type="email" required value={claim.contact_email} onChange={(e) => setClaim({ ...claim, contact_email: e.target.value })} data-testid="supplier-claim-email" className="rounded-sm h-11" />
           </div>
           <Button type="submit" disabled={busy} data-testid="supplier-claim-submit" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
@@ -93,23 +93,23 @@ export default function SupplierPortal() {
             <p className="overline">Painel de controlo fornecedor</p>
             <h1 className="font-display text-3xl font-extrabold tracking-tighter">{SUPPLIERS.find((s) => s.key === data.supplier_key)?.label || data.supplier_key}</h1>
           </div>
-          <Badge variant="outline" className="rounded-sm border-emerald-500/40 text-emerald-500" data-testid="supplier-verified">Verified</Badge>
+          <Badge variant="outline" className="rounded-sm border-emerald-500/40 text-emerald-500" data-testid="supplier-verified">Verificado</Badge>
         </div>
         <Select value={String(days)} onValueChange={(v) => setDays(Number(v))}>
           <SelectTrigger className="rounded-sm w-40" data-testid="supplier-days"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">7 derniers jours</SelectItem>
-            <SelectItem value="30">30 derniers jours</SelectItem>
-            <SelectItem value="90">90 derniers jours</SelectItem>
+            <SelectItem value="7">Últimos 7 dias</SelectItem>
+            <SelectItem value="30">Últimos 30 dias</SelectItem>
+            <SelectItem value="90">Últimos 90 dias</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid md:grid-cols-4 gap-4" data-testid="supplier-kpis">
-        <Stat icon={MousePointerClick} label="Clics" value={data.clicks} />
-        <Stat icon={ExternalLink} label="Redirections" value={data.redirects} />
-        <Stat icon={TrendingUp} label="Conversions" value={data.conversions} />
-        <Stat icon={Package} label="Commission (€)" value={eur2(data.commission_eur || 0)} accent />
+        <Stat icon={MousePointerClick} label="Cliques" value={data.clicks} />
+        <Stat icon={ExternalLink} label="Redirecionamentos" value={data.redirects} />
+        <Stat icon={TrendingUp} label="Conversões" value={data.conversions} />
+        <Stat icon={Package} label="Comissão (€)" value={eur2(data.commission_eur || 0)} accent />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -118,7 +118,7 @@ export default function SupplierPortal() {
           {data.top_products?.length ? (
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Produit (URL)</TableHead><TableHead className="text-right">Clics</TableHead>
+                <TableHead>Produto (URL)</TableHead><TableHead className="text-right">Cliques</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {data.top_products.map((p) => (
@@ -134,7 +134,7 @@ export default function SupplierPortal() {
           )}
         </div>
         <div className="surface p-6" data-testid="supplier-top-queries">
-          <p className="overline mb-4">Top recherches</p>
+          <p className="overline mb-4">Top pesquisas</p>
           {data.top_queries?.length ? (
             <ul className="grid gap-2">
               {data.top_queries.map((q) => (

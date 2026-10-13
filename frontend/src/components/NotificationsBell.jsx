@@ -97,7 +97,7 @@ export function NotificationsBell() {
       <DropdownMenuContent align="end" className="w-80 rounded-sm p-0"
                             data-testid="notif-dropdown">
         <div className="flex items-center justify-between border-b border-border p-3">
-          <p className="font-display font-bold text-sm">Notifications</p>
+          <p className="font-display font-bold text-sm">Notificações</p>
           {unread > 0 && (
             <button onClick={markAll} className="text-[10px] text-primary hover:underline"
                     data-testid="notif-mark-all">

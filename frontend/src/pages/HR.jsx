@@ -86,7 +86,7 @@ function WorkersTab({ t }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const save = async () => {
-    if (!form.name || !form.email || !form.password) return toast.error(t("hr.need_identity") || "Champs requis");
+    if (!form.name || !form.email || !form.password) return toast.error(t("hr.need_identity") || "Campos obrigatórios");
     setSaving(true);
     try {
       await api.post("/hr/workers", {

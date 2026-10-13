@@ -44,7 +44,7 @@ export function PricingPrefsCard() {
       </div>
       <div className="flex items-end gap-2">
         <div className="flex-1 max-w-[160px]">
-          <Label htmlFor="default-margin" className="text-xs">Marge (%)</Label>
+          <Label htmlFor="default-margin" className="text-xs">Margem (%)</Label>
           <Input id="default-margin" type="number" step="1" min="0" max="90" value={margin}
                  onChange={(e) => setMargin(e.target.value)} placeholder="ex : 15"
                  className="rounded-sm num mt-1" data-testid="default-margin-input" />

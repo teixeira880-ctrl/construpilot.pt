@@ -6,8 +6,8 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 
-const SCOPE = { user: "Moi", project: "Obra", company: "Entreprise" };
-const SOURCE = { automatic_style: "Habitude automatique", style_proposal: "Hábito proposto", assistant_proposal: "Proposta a validar", assistant: "Assistente (com acordo)", manual: "Saisie manuelle" };
+const SCOPE = { user: "Eu", project: "Obra", company: "Empresa" };
+const SOURCE = { automatic_style: "Hábito automático", style_proposal: "Hábito proposto", assistant_proposal: "Proposta a validar", assistant: "Assistente (com acordo)", manual: "Introdução manual" };
 const fmt = (d) => (d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
 
 function PrefRow({ p, onChange }) {
@@ -37,7 +37,7 @@ function PrefRow({ p, onChange }) {
       </td>
       <td className="px-3 py-2 align-top text-xs"><span className="px-1.5 py-0.5 rounded-sm border bg-muted/40">{SCOPE[p.scope] || p.scope}</span></td>
       <td className="px-3 py-2 align-top text-xs text-muted-foreground">{SOURCE[p.source] || p.source}<br />{fmt(p.created_at)}{p.last_used_at && <><br /><span>utilizada em</span> {fmt(p.last_used_at)}</>}</td>
-      <td className="px-3 py-2 align-top text-xs"><span className={`px-1.5 py-0.5 rounded-sm ${p.active ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`} data-testid={`pref-status-${p.pref_id}`}>{p.active ? "Active" : "Desativada"}</span></td>
+      <td className="px-3 py-2 align-top text-xs"><span className={`px-1.5 py-0.5 rounded-sm ${p.active ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`} data-testid={`pref-status-${p.pref_id}`}>{p.active ? "Ativa" : "Desativada"}</span></td>
       <td className="px-3 py-2 align-top">
         <div className="flex gap-1 justify-end">
           {edit ? (<>
@@ -65,11 +65,11 @@ function AddPref({ canCompany, onAdded }) {
   if (!open) return <Button size="sm" className="rounded-sm gap-1" onClick={() => setOpen(true)} data-testid="pref-add-btn"><Plus className="h-4 w-4" /> Adicionar uma regra</Button>;
   return (
     <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto_auto] items-end border rounded-sm p-3 bg-muted/30" data-testid="pref-add-form">
-      <label className="grid gap-1 text-xs">Categoria<input className="border rounded-sm px-2 py-1.5 text-sm bg-background" placeholder="ex. Carrelage" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} data-testid="pref-add-category" /></label>
+      <label className="grid gap-1 text-xs">Categoria<input className="border rounded-sm px-2 py-1.5 text-sm bg-background" placeholder="ex.: Revestimento cerâmico" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} data-testid="pref-add-category" /></label>
       <label className="grid gap-1 text-xs">Regra<input className="border rounded-sm px-2 py-1.5 text-sm bg-background" placeholder="ex.: Sempre 10 % de perdas no mosaico" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} data-testid="pref-add-value" /></label>
       <label className="grid gap-1 text-xs">Âmbito
         <select className="border rounded-sm px-2 py-1.5 text-sm bg-background h-[34px]" value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} data-testid="pref-add-scope">
-          <option value="user">Moi</option>{canCompany && <option value="company">Entreprise</option>}
+          <option value="user">Eu</option>{canCompany && <option value="company">Empresa</option>}
         </select>
       </label>
       <div className="flex gap-1"><Button size="sm" className="rounded-sm" onClick={submit} data-testid="pref-add-submit">Guardar</Button><Button size="sm" variant="ghost" className="rounded-sm" onClick={() => setOpen(false)} data-testid="pref-add-cancel">Cancelar</Button></div>
@@ -93,7 +93,7 @@ export default function Preferences() {
   };
   const clearAll = async () => {
     if (!window.confirm("Apagar TODA a memória do assistente para a sua conta? Esta ação é irreversível.")) return;
-    const r = await api.delete("/assistant/preferences"); toast.success(`${r.data.deleted}preferência(s) apagada(s)`); load();
+    const r = await api.delete("/assistant/preferences"); toast.success(`${r.data.deleted} preferência(s) apagada(s)`); load();
   };
   const canCompany = !!user?.organization_id && user?.account_type !== "particulier" && ["admin", "owner", "manager"].includes(user?.role);
   const active = (prefs || []).filter((p) => p.active).length;
@@ -101,13 +101,13 @@ export default function Preferences() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 grid gap-6" data-testid="preferences-page">
       <header className="grid gap-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground"><Link to="/assistant" className="underline" data-testid="prefs-back-assistant">Assistant BTP</Link> / Mémoire et préférences</div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground"><Link to="/assistant" className="underline" data-testid="prefs-back-assistant">Assistente Construção</Link> / Memória e preferências</div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2"><Brain className="h-7 w-7 text-primary" /> Memória e preferências</h1>
         <p className="text-sm text-muted-foreground max-w-3xl">
           O que o assistente reteve dos seus hábitos (apenas com o seu acordo) e as regras introduzidas manualmente. Uma regra ativa aplica-se a cada resposta salvo instrução contrária pontual. Pode modificá-la, desativá-la, eliminá-la ou apagar tudo.
         </p>
       </header>
-      {settings && <section className="border rounded-md p-4 grid gap-3" aria-label="Apprentissage">
+      {settings && <section className="border rounded-md p-4 grid gap-3" aria-label="Aprendizagem">
         <label className="text-sm">Aprendizagem dos meus hábitos <select className="mt-1 w-full sm:w-auto max-w-full border bg-background rounded-sm p-2" value={settings.learning_mode} onChange={e => saveSettings({ ...settings, learning_mode: e.target.value })} data-testid="prefs-learning-mode">
           <option value="off">Desativado</option><option value="suggest">Propor-me os hábitos a memorizar</option><option value="automatic">Memorizar automaticamente o tom, a língua e o comprimento</option>
         </select></label>
@@ -115,16 +115,16 @@ export default function Preferences() {
         <label className="text-sm flex gap-2"><input type="checkbox" checked={settings.web_enabled} onChange={e => saveSettings({ ...settings, web_enabled: e.target.checked })} data-testid="prefs-web-enabled" /> Autorizar as pesquisas na Internet</label>
       </section>}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm" data-testid="prefs-count">{prefs ? `${active} active(s) · ${prefs.length}no total` : "A carregar…"}</span>
+        <span className="text-sm" data-testid="prefs-count">{prefs ? `${active} active(s) · ${prefs.length} no total` : "A carregar…"}</span>
         <div className="ml-auto flex flex-wrap gap-2">
           <AddPref canCompany={canCompany} onAdded={(p) => setPrefs((cur) => [p, ...(cur || [])])} />
-          <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={exportJson} data-testid="prefs-export-btn"><Download className="h-4 w-4" /> Exporter (JSON)</Button>
+          <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={exportJson} data-testid="prefs-export-btn"><Download className="h-4 w-4" /> Exportar (JSON)</Button>
           <Button size="sm" variant="outline" className="rounded-sm gap-1 text-red-600 border-red-300" onClick={clearAll} disabled={!prefs?.length} data-testid="prefs-clear-btn"><Trash2 className="h-4 w-4" /> Apagar tudo</Button>
         </div>
       </div>
       <div className="border rounded-sm overflow-x-auto bg-card">
         <table className="w-full text-left" data-testid="prefs-table">
-          <thead className="bg-muted/40 text-xs uppercase tracking-wide"><tr><th className="px-3 py-2">Categoria</th><th className="px-3 py-2">Regra memorizada</th><th className="px-3 py-2">Âmbito</th><th className="px-3 py-2">Source / dates</th><th className="px-3 py-2">Estado</th><th className="px-3 py-2" /></tr></thead>
+          <thead className="bg-muted/40 text-xs uppercase tracking-wide"><tr><th className="px-3 py-2">Categoria</th><th className="px-3 py-2">Regra memorizada</th><th className="px-3 py-2">Âmbito</th><th className="px-3 py-2">Origem / datas</th><th className="px-3 py-2">Estado</th><th className="px-3 py-2" /></tr></thead>
           <tbody>
             {prefs?.length === 0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-muted-foreground" data-testid="prefs-empty">Nenhuma preferência memorizada. Diga por exemplo ao assistente: « Lembra-te de que conto sempre 10 % de perdas no ladrilho ».</td></tr>}
             {(prefs || []).map((p) => <PrefRow key={p.pref_id} p={p} onChange={onChange} />)}

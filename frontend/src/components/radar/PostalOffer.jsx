@@ -35,7 +35,7 @@ export const PostalPacks = ({ packs = [], disabled }) => {
       const { data } = await api.post("/radar/postal/credits/checkout", { pack_id: pack.pack_id, origin_url: window.location.origin }, { timeout: 30000 });
       window.location.assign(data.url);
     } catch (e) {
-      toast.error(e?.response?.data?.detail?.message || e?.response?.data?.detail || "Paiement indisponible");
+      toast.error(e?.response?.data?.detail?.message || e?.response?.data?.detail || "Pagamento indisponível");
       setBuying(null);
     }
   };

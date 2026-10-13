@@ -12,11 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 
 const TRADE_META = {
-  paint:      { icon: Palette,    label: "Peinture",  color: "#eab308" },
-  floor_tile: { icon: Grid3x3,    label: "Carrelage", color: "#f97316" },
+  paint:      { icon: Palette,    label: "Pintura",  color: "#eab308" },
+  floor_tile: { icon: Grid3x3,    label: "Revestimento cerâmico", color: "#f97316" },
   drywall:    { icon: Layers,     label: "Pladurista", color: "#22c55e" },
-  insulation: { icon: Package,    label: "Isolation", color: "#a855f7" },
-  plinths:    { icon: Ruler,      label: "Plinthes",  color: "#3b82f6" },
+  insulation: { icon: Package,    label: "Isolamento", color: "#a855f7" },
+  plinths:    { icon: Ruler,      label: "Rodapés",  color: "#3b82f6" },
   masonry:    { icon: Blocks,     label: "Alvenaria", color: "#78716c" },
 };
 
@@ -87,8 +87,8 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
                 <select value={material} onChange={(e) => { setMaterial(e.target.value); setBond(""); setBlock(""); }}
                   data-testid="masonry-material"
                   className="h-9 rounded-md border border-border bg-background text-sm px-2">
-                  <option value="parpaing">Parpaing (sable + ciment)</option>
-                  <option value="brique">Brique</option>
+                  <option value="parpaing">Bloco (areia + cimento)</option>
+                  <option value="brique">Tijolo</option>
                 </select>
               </label>
               {blocks.length > 0 && (
@@ -105,11 +105,11 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
               )}
               {material === "brique" && (
                 <label className="text-xs">
-                  <span className="block text-muted-foreground mb-1">Liant</span>
+                  <span className="block text-muted-foreground mb-1">Ligante</span>
                   <select value={bond || "colle"} onChange={(e) => setBond(e.target.value)}
                     data-testid="masonry-bond"
                     className="h-9 rounded-md border border-border bg-background text-sm px-2">
-                    <option value="colle">Mortier-colle (joint mince)</option>
+                    <option value="colle">Argamassa-cola (junta fina)</option>
                     <option value="mousse">Espuma poliuretano</option>
                   </select>
                 </label>
@@ -126,8 +126,8 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground mt-2" data-testid="masonry-ratios-hint">
-              Parpaing : ~{fmt(ratios.cement_kg_per_m2 ?? 7)} kg de cimento e {fmt(ratios.sand_m3_per_m2 ?? 0.03, 3)} m³ de areia por m² de parede. Tijolo : argamassa-cola (~{fmt(ratios.glue_kg_per_m2 ?? 5)} kg/m²) ou espuma PU (~1 para {fmt(ratios.foam_m2_per_can ?? 8)} m²).
-              {" "}Enduit : gobetis {fmt(ratios.gobetis_kg_per_m2 ?? 5)} kg/m² + corps d'enduit {fmt(ratios.render_kg_per_m2 ?? 25)} kg/m². Pertes {fmt(ratios.loss_pct ?? 5)} %.
+              Bloco : ~{fmt(ratios.cement_kg_per_m2 ?? 7)} kg de cimento e {fmt(ratios.sand_m3_per_m2 ?? 0.03, 3)} m³ de areia por m² de parede. Tijolo : argamassa-cola (~{fmt(ratios.glue_kg_per_m2 ?? 5)} kg/m²) ou espuma PU (~1 para {fmt(ratios.foam_m2_per_can ?? 8)} m²).
+              {" "}Reboco: chapisco {fmt(ratios.gobetis_kg_per_m2 ?? 5)} kg/m² + camada de reboco {fmt(ratios.render_kg_per_m2 ?? 25)} kg/m². Perdas {fmt(ratios.loss_pct ?? 5)} %.
             </p>
           </div>
 

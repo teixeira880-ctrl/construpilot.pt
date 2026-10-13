@@ -196,7 +196,7 @@ export default function Pricing() {
       {audience === "pro" && (
         <div className="surface p-6 md:p-8 rounded-sm border-primary/30 flex flex-col md:flex-row md:items-center gap-6" data-testid="invoicing-addon-banner">
           <div className="flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Option</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Opção</p>
             <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Faturação & faturação eletrónica (Factur-X)</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
               Crie faturas, converta os seus orçamentos em 1 clique, acompanhe os pagamentos e gere faturas eletrónicas conformes Factur-X. <strong>Incluído gratuitamente no Pro Business</strong>, ou em opção para os assinantes Premium e Pro.
@@ -207,7 +207,7 @@ export default function Pricing() {
             <Button className="rounded-sm mt-3 w-full md:w-auto" data-testid="pricing-invoicing-addon-cta"
               disabled={busy === "invoicing_addon_monthly"}
               onClick={() => subscribe({ plan_id: "invoicing_addon_monthly" })}>
-              {busy === "invoicing_addon_monthly" ? t("pricing.redirecting") : "Activer l'option"}
+              {busy === "invoicing_addon_monthly" ? t("pricing.redirecting") : "Ativar a opção"}
             </Button>
           </div>
         </div>

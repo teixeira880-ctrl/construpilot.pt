@@ -42,7 +42,7 @@ export default function VerifyEmail() {
             <div className="mx-auto h-16 w-16 rounded-full bg-red-500/10 grid place-items-center mb-4">
               <XCircle className="h-9 w-9 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold">Lien invalide</h1>
+            <h1 className="text-2xl font-bold">Ligação inválida</h1>
             <p className="text-sm text-muted-foreground mt-2">
               Este link de confirmação já não é válido ou já foi utilizado.
             </p>

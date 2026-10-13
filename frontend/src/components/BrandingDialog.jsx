@@ -71,7 +71,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
   const onLogoChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 400 * 1024) return toast.error("Logo trop volumineux (max 400 Ko)");
+    if (file.size > 400 * 1024) return toast.error("Logótipo demasiado grande (máx 400 Ko)");
     const reader = new FileReader();
     reader.onload = () => setLogoB64(reader.result);
     reader.readAsDataURL(file);
@@ -130,7 +130,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           <div className="grid gap-2">
             <Label>Nome da sociedade</Label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)}
-                   placeholder="Ex : BTP Construction SAS" disabled={!canEdit}
+                   placeholder="Ex: BTP Construction SAS" disabled={!canEdit}
                    data-testid="branding-company-input"
                    className="rounded-sm h-11" maxLength={120} />
           </div>
@@ -145,7 +145,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
             </p>
           </div>
           <div className="grid gap-2">
-            <Label>Ligne contact</Label>
+            <Label>Linha de contacto</Label>
             <Textarea value={contactLine} onChange={(e) => setContactLine(e.target.value)}
                       placeholder="12 rue de la Paix · 75002 Paris · 01 23 45 67 89 · contact@…"
                       disabled={!canEdit}
@@ -181,13 +181,13 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label>SIRET</Label>
+                  <Label>Estabelecimento</Label>
                   <Input value={siret} onChange={(e) => setSiret(e.target.value)}
-                         placeholder="14 chiffres" disabled={!canEdit}
+                         placeholder="14 dígitos" disabled={!canEdit}
                          data-testid="branding-siret-input" className="rounded-sm h-11 num" maxLength={14} />
                 </div>
                 <div className="grid gap-2">
-                  <Label>TVA intracom.</Label>
+                  <Label>NIF intracom.</Label>
                   <Input value={vat} onChange={(e) => setVat(e.target.value)}
                          placeholder="FR12345678901" disabled={!canEdit}
                          data-testid="branding-vat-input" className="rounded-sm h-11 num" maxLength={20} />
@@ -198,26 +198,26 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           )}
 
           <div className="grid gap-2">
-            <Label>Adresse (rue)</Label>
+            <Label>Morada (rua)</Label>
             <Input value={address} onChange={(e) => setAddress(e.target.value)}
                    placeholder="12 rue de la Paix" disabled={!canEdit}
                    data-testid="branding-address-input" className="rounded-sm h-11" maxLength={160} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-2">
-              <Label>Code postal</Label>
+              <Label>Código postal</Label>
               <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)}
                      placeholder="75002" disabled={!canEdit}
                      data-testid="branding-postal-input" className="rounded-sm h-11 num" maxLength={12} />
             </div>
             <div className="grid gap-2">
-              <Label>Ville</Label>
+              <Label>Cidade</Label>
               <Input value={city} onChange={(e) => setCity(e.target.value)}
-                     placeholder="Paris" disabled={!canEdit}
+                     placeholder="Lisboa" disabled={!canEdit}
                      data-testid="branding-city-input" className="rounded-sm h-11" maxLength={80} />
             </div>
             <div className="grid gap-2">
-              <Label>Pays</Label>
+              <Label>País</Label>
               <Input value={country} onChange={(e) => setCountry(e.target.value.toUpperCase())}
                      placeholder="FR" disabled={!canEdit}
                      data-testid="branding-country-input" className="rounded-sm h-11 num" maxLength={2} />
@@ -226,7 +226,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
 
 
           <div className="grid gap-2">
-            <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-primary" /> Zones d'intervention</Label>
+            <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-primary" /> Zonas de intervenção</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
               Cidades ou distritos abrangidos, separados por vírgulas. Serve para lhe atribuir automaticamente os pedidos da sua área.
             </p>
@@ -242,7 +242,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
               IBAN, BIC e banco. Exibidos apenas nas suas faturas para facilitar o pagamento.
             </p>
             <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)}
-                      placeholder={"IBAN : FR76 3000 4000 0512 3456 7890 143\nBIC : BNPAFRPPXXX\nBanque : BNP Paribas"}
+                      placeholder={"IBAN: PT50 0035 0000 0000 0000 0000 0 BIC: CGDIPTPL Banco: Caixa Geral de Depósitos"}
                       disabled={!canEdit} rows={3} maxLength={600}
                       data-testid="branding-bank-input"
                       className="rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-y" />
@@ -250,7 +250,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
 
 
           <div className="grid gap-2">
-            <Label className="flex items-center gap-1"><Award className="h-3.5 w-3.5 text-primary" /> Certifications</Label>
+            <Label className="flex items-center gap-1"><Award className="h-3.5 w-3.5 text-primary" /> Certificações</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
               Selecione as suas qualificações e indique o seu n.º de certificado (opcional).
             </p>
@@ -284,20 +284,20 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
                       data-testid="branding-default-msg-input"
                       className="rounded-sm text-sm" rows={5} maxLength={1500} />
             <p className="text-[11px] text-muted-foreground">
-              Reutilizado automaticamente em cada envio. Variáveis: <b>{"{client}"}</b>, <b>{"{entreprise}"}</b>, <b>{"{numero}"}</b>. Laissez vide pour le message type automatique.
+              Reutilizado automaticamente em cada envio. Variáveis: <b>{"{client}"}</b>, <b>{"{entreprise}"}</b>, <b>{"{numero}"}</b>. Deixe vazio para a mensagem tipo automática.
             </p>
           </div>
 
           <div className="grid gap-2">
-            <Label>Logo (PNG/JPG, max 400 Ko)</Label>
+            <Label>Logótipo (PNG/JPG, máx 400 Ko)</Label>
             {logoB64 ? (
               <div className="flex items-center gap-3 border border-border rounded-sm p-3 bg-secondary/30">
                 <img src={logoB64.startsWith("data:") ? logoB64 : `data:image/png;base64,${logoB64}`}
-                     alt="Logo" className="h-16 w-16 object-contain" data-testid="branding-logo-preview" />
+                     alt="Logótipo" className="h-16 w-16 object-contain" data-testid="branding-logo-preview" />
                 {canEdit && (
                   <Button size="sm" variant="ghost" onClick={removeLogo} data-testid="branding-logo-remove"
                           className="rounded-sm gap-1 ml-auto text-destructive">
-                    <Trash2 className="h-3 w-3" /> Retirer
+                    <Trash2 className="h-3 w-3" /> Remover
                   </Button>
                 )}
               </div>

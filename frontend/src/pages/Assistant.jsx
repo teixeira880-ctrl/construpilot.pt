@@ -76,8 +76,8 @@ export default function Assistant() {
   const [pickFile, setPickFile] = useState(null);
   const [prefs, setPrefs] = useState([]);
   const [text, setText] = useState(() => searchParams.get("resumeQuote")
-    ? `Retoma o orçamento existente (doc_id:${searchParams.get("resumeQuote")}): relê-o com read_quote_draft e depois aplica as seguintes alterações —`
-    : searchParams.get("intent") === "supervise" ? "Verifica os dados do meu processo, identifica as incoerências e corrige automaticamente os valores recalculáveis. O meu pedido:" : searchParams.get("intent") === "quote" ? quoteText("quotePrompt") : searchParams.get("intent") === "research" ? "Pesquisa documental técnica (com fontes verificáveis) — país da obra: PT. Pergunta:" : "");
+    ? `Retoma o orçamento existente (doc_id: ${searchParams.get("resumeQuote")}): relê-o com read_quote_draft e depois aplica as seguintes alterações — `
+    : searchParams.get("intent") === "supervise" ? "Verifica os dados do meu processo, identifica as incoerências e corrige automaticamente os valores recalculáveis. O meu pedido: " : searchParams.get("intent") === "quote" ? quoteText("quotePrompt") : searchParams.get("intent") === "research" ? "Pesquisa documental técnica (com fontes verificáveis) — país da obra: PT. Pergunta: " : "");
   const [busy, setBusy] = useState(false);
   const [rec, setRec] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -183,11 +183,11 @@ export default function Assistant() {
   const nameOf = (id) => plans.find((p) => p.plan_id === id)?.filename || docs.find((d) => d.doc_id === id)?.filename || id;
   const removeConv = async (c) => {
     const pt = lang === "pt";
-    const ok = await confirm({ title: pt ? "Mover esta conversa para a reciclagem?" : "Mover esta conversa para o lixo?", description: pt ? `« ${c.title} » ficará recuperável durante 30 dias.` : `« ${c.title}» continuará recuperável durante 30 dias no lixo.`, confirmLabel: pt ? "Mover" : "Mover para o lixo" });
+    const ok = await confirm({ title: pt ? "Mover esta conversa para a reciclagem?" : "Mover esta conversa para o lixo?", description: pt ? `« ${c.title} » ficará recuperável durante 30 dias.` : `« ${c.title} » continuará recuperável durante 30 dias no lixo.`, confirmLabel: pt ? "Mover" : "Mover para o lixo" });
     if (!ok) return;
     try {
       await api.delete(`/assistant/conversations/${c.conversation_id}`);
-      toast.success(pt ? "Conversa movida para a reciclagem" : "Conversa movida para o lixo — recuperável durante 30 dias", { action: { label: pt ? "Reciclagem" : "Corbeille", onClick: () => window.location.assign("/corbeille") } });
+      toast.success(pt ? "Conversa movida para a reciclagem" : "Conversa movida para o lixo — recuperável durante 30 dias", { action: { label: pt ? "Reciclagem" : "Lixo", onClick: () => window.location.assign("/corbeille") } });
       if (conv?.conversation_id === c.conversation_id) { activeConversation.current = null; setConv(null); setActivePlans([]); setActiveDocs([]); setPending([]); setSearchParams({}, { replace: true }); }
       loadConvs();
     } catch (e) { toast.error(e?.response?.data?.detail || ui("chatError")); }
@@ -300,10 +300,10 @@ export default function Assistant() {
     "Write a site report with observed facts, decisions, actions, owners and known dates. My notes: ",
     "Help me solve this site problem. Check the documents and suggest the next actions: ",
   ] : [
-    "Prepara uma resposta profissional a este e-mail. Destinatário e objetivo: E-mail recebido:",
-    "Analisa as paredes interiores parede a parede da planta anexa. Identifica as faces, verifica as cotas e indica o que falta confirmar. Âmbito:",
-    "Redige uma ata com os factos constatados, decisões, ações, responsáveis e datas conhecidas. As minhas notas:",
-    "Ajuda-me a resolver este problema de obra. Verifica as peças, explica as causas possíveis e propõe as próximas ações:",
+    "Prepara uma resposta profissional a este e-mail. Destinatário e objetivo: E-mail recebido: ",
+    "Analisa as paredes interiores parede a parede da planta anexa. Identifica as faces, verifica as cotas e indica o que falta confirmar. Âmbito: ",
+    "Redige uma ata com os factos constatados, decisões, ações, responsáveis e datas conhecidas. As minhas notas: ",
+    "Ajuda-me a resolver este problema de obra. Verifica as peças, explica as causas possíveis e propõe as próximas ações: ",
   ];
   const removeContext = (id, kind) => {
     if (kind === "plan") setActivePlans(a => a.filter(x => x !== id)); else setActiveDocs(a => a.filter(x => x !== id));
@@ -349,7 +349,7 @@ export default function Assistant() {
           <div className="assistant-welcome-brand"><AssistantMark size={64} data-testid="assistant-mark" /><span>{studio("eyebrow")}</span></div>
           <h2>{studio("title")}</h2><p>{studio("intro")}</p>
           <div className="assistant-prompts">
-            {(canQuote ? [["quote", FileText, quoteText("quotePrompt")]] : [["solve", Wrench, prompts[3]]]).concat([["analyse", Ruler, prompts[1]], ["report", ClipboardList, prompts[2]], ["mail", Mail, prompts[0]]]).map(([key, Icon, value]) =>
+            {(canQuote ? [["quote", FileText, quoteText("quotePrompt")]] : [["solve", Wrench, prompts[3]]]).concat([["análise", Ruler, prompts[1]], ["report", ClipboardList, prompts[2]], ["mail", Mail, prompts[0]]]).map(([key, Icon, value]) =>
               <button key={key} type="button" onClick={() => seedText(value)} data-testid={`assistant-prompt-${key}`}>
                 <Icon size={19} aria-hidden="true" /><span className="assistant-prompt-text"><strong>{studio(key)}</strong><small>{studio(`${key}Desc`)}</small></span><ArrowUpRight className="assistant-prompt-arrow" aria-hidden="true" />
               </button>)}

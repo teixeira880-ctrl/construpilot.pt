@@ -43,11 +43,11 @@ export default function PostalPaymentReturn() {
       {state === "ok" && <>
         {dispatched || !letter ? <CheckCircle2 className="h-14 w-14 mx-auto text-emerald-500" /> : <Mail className="h-14 w-14 mx-auto text-amber-500" />}
         <p className="font-display text-2xl font-bold" data-testid="postal-payment-title">
-          {!letter ? `${view.letters}créditos de correio adicionados` : dispatched ? "Carta paga e enviada" : "Pagamento recebido"}
+          {!letter ? `${view.letters} créditos de correio adicionados` : dispatched ? "Carta paga e enviada" : "Pagamento recebido"}
         </p>
         <p className="text-sm text-muted-foreground" data-testid="postal-payment-detail">
-          {!letter && `Pagamento de${euros(view.amount_cents)}c/ IVA confirmado · saldo:${view.offer?.credits ?? 0}créditos.`}
-          {letter && dispatched && `A Merci Facteur aceitou a carta (n.º${view.postal.envoi_id}) · ${euros(view.amount_cents)} TTC.`}
+          {!letter && `Pagamento de ${euros(view.amount_cents)} c/ IVA confirmado · saldo: ${view.offer?.credits ?? 0} créditos.`}
+          {letter && dispatched && `A Merci Facteur aceitou a carta (n.º ${view.postal.envoi_id}) · ${euros(view.amount_cents)} c/ IVA.`}
           {letter && !dispatched && (view.fulfillment === "credited"
             ? `Não foi possível transmitir a carta (${view.fulfillment_error?.message || "preço expirado"}). Foi adicionado um crédito de correio à sua empresa: volte a lançar o envio a partir do radar.`
             : view.postal?.error_message || "Resultado a verificar no acompanhamento das cartas.")}

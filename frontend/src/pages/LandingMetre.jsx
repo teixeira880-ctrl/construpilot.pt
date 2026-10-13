@@ -11,12 +11,12 @@ import { Nav, Footer } from "@/components/Nav";
 import { SEO } from "@/components/SEO";
 
 const ROOMS = [
-  ["Salon", 24], ["Cuisine", 11], ["Ch. 1", 14], ["Ch. 2", 12], ["Ch. 3", 11], ["SDB", 5], ["Entrada", 8], ["WC", 2],
+  ["Sala", 24], ["Cozinha", 11], ["Ch. 1", 14], ["Ch. 2", 12], ["Ch. 3", 11], ["WC", 5], ["Entrada", 8], ["WC", 2],
 ];
 const LOTS = [
   ["Demolição e remoção", 3640, 34], ["Pladur e isolamento", 9860, 31], ["Eletricidade", 7420, 28],
-  ["Plomberie", 6980, 27], ["Azulejo e mosaico", 5760, 33], ["Carpintaria interior", 8340, 30],
-  ["Peinture", 9120, 36], ["Sols", 7480, 29], ["Acabamentos e limpeza", 3880, 22],
+  ["Canalização", 6980, 27], ["Azulejo e mosaico", 5760, 33], ["Carpintaria interior", 8340, 30],
+  ["Pintura", 9120, 36], ["Pavimentos", 7480, 29], ["Acabamentos e limpeza", 3880, 22],
 ];
 const TOTAL = LOTS.reduce((a, l) => a + l[1], 0);
 const MARGE = Math.round(LOTS.reduce((a, l) => a + l[1] * l[2] / 100, 0));
@@ -136,11 +136,11 @@ export default function LandingMetre() {
               text="A planta, as fotografias da visita, a descrição, uma nota de voz ditada na obra, o mapa de quantidades. Nenhum formulário para preencher.">
           <div className="text-xs space-y-2">
             <div className="flex items-center justify-between"><span className="font-bold">Obra · Apartamento T4 · Lyon 6ᵉ</span><span className="text-primary flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Recebido</span></div>
-            {[["Plan-T4-architecte.pdf · 1/50", FileText], ["Nota de voz · 1:12 · «T4 para refazer completamente…»", Mic], ["DPGF architecte · 9 lots · 61 postes", Receipt]].map(([l, I], i) => (
+            {[["Plan-T4-architecte.pdf · 1/50", FileText], ["Nota de voz · 1:12 · «T4 para refazer completamente…»", Mic], ["DPGF arquiteto · 9 lotes · 61 artigos", Receipt]].map(([l, I], i) => (
               <motion.div key={l} initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 + i * 0.15 }}
                           className="flex items-center gap-2 rounded-md bg-secondary/40 px-3 py-2"><I className="h-4 w-4 text-primary" /> {l}</motion.div>
             ))}
-            <div className="flex gap-1.5 pt-1">{["Salon", "Cuisine", "SDB"].map((p) => <span key={p} className="h-12 flex-1 rounded-md bg-primary/10 grid place-items-center text-[10px] text-muted-foreground">{p}</span>)}</div>
+            <div className="flex gap-1.5 pt-1">{["Sala", "Cozinha", "WC"].map((p) => <span key={p} className="h-12 flex-1 rounded-md bg-primary/10 grid place-items-center text-[10px] text-muted-foreground">{p}</span>)}</div>
           </div>
         </Step>
 
@@ -155,7 +155,7 @@ export default function LandingMetre() {
               ))}
             </div>
             <div className="grid grid-cols-4 gap-2 mt-3">
-              {[["Sol", 87, " m²"], ["Paredes desenvolvidas", 237, " m²"], ["Plafonds", 87, " m²"], ["Plinthes", 63, " ml"]].map(([l, v, u]) => (
+              {[["Pavimento", 87, " m²"], ["Paredes desenvolvidas", 237, " m²"], ["Tetos", 87, " m²"], ["Rodapés", 63, " ml"]].map(([l, v, u]) => (
                 <div key={l} className="rounded-md bg-secondary/40 p-2"><p className="text-[10px] text-muted-foreground">{l}</p><p className="font-bold text-sm"><Counter to={v} suffix={u} /></p></div>
               ))}
             </div>
@@ -181,7 +181,7 @@ export default function LandingMetre() {
         </Step>
 
         <motion.div {...fade()} className="text-center">
-          <p className="font-display text-2xl md:text-3xl font-bold">Laissez <span className="text-primary">a IA gerir as suas medições</span>, e concentre-se nos seus clientes.</p>
+          <p className="font-display text-2xl md:text-3xl font-bold">Deixe <span className="text-primary">a IA gerir as suas medições</span>, e concentre-se nos seus clientes.</p>
           <Button asChild size="lg" className="rounded-full gap-2 h-12 px-7 mt-5" data-testid="metre-cta-mid"><Link to="/inscription?signup=1&plan=pro">Ver em ação <ArrowRight className="h-4 w-4" /></Link></Button>
           <p className="text-xs text-muted-foreground mt-2">Teste gratuito · Sem compromisso</p>
         </motion.div>
@@ -197,7 +197,7 @@ export default function LandingMetre() {
             </blockquote>
             <p className="text-sm text-muted-foreground mt-3">Pascal M. · Empresa geral de construção · Villeurbanne · testemunho ilustrativo</p>
             <div className="grid grid-cols-3 gap-3 mt-8">
-              {[[Clock, "5 h", "ganhas / semana"], [Sparkles, "30 s", "para um orçamento rascunho"], [TrendingUp, "lot par lot", "marge visible avant signature"]].map(([I, b, s]) => (
+              {[[Clock, "5 h", "ganhas / semana"], [Sparkles, "30 s", "para um orçamento rascunho"], [TrendingUp, "especialidade por especialidade", "margem visível antes da assinatura"]].map(([I, b, s]) => (
                 <div key={s} className="surface rounded-xl p-4"><I className="h-4 w-4 text-primary" /><p className="font-display font-bold text-lg mt-2">{b}</p><p className="text-[11px] text-muted-foreground">{s}</p></div>
               ))}
             </div>
@@ -210,7 +210,7 @@ export default function LandingMetre() {
             <p className="mt-4"><span className="num text-4xl font-extrabold">149 €</span> <span className="text-sm text-muted-foreground">s/ IVA / mês · sem compromisso · 7 dias de teste</span></p>
             <p className="text-xs text-muted-foreground">Pro Business (equipas, multi-utilizadores): 249 € s/ IVA / mês</p>
             <ul className="text-sm space-y-2 mt-5">
-              {["Orçamentos e faturas ilimitados (sinal, autos de medição, saldo, Factur-X)", "Medições IA: o plano torna-se superfícies e trabalhos", "Fotos, vídeos, notas de voz e cotas dos seus planos lidos pela IA", "DPGF recebida lida e orçamentada aos seus preços", "Margem previsional por especialidade + alerta «a perder»", "Recuperação da sua biblioteca a partir dos seus antigos orçamentos PDF", "Chantiers, clients, relances, signature en ligne"].map((f) => (
+              {["Orçamentos e faturas ilimitados (sinal, autos de medição, saldo, Factur-X)", "Medições IA: o plano torna-se superfícies e trabalhos", "Fotos, vídeos, notas de voz e cotas dos seus planos lidos pela IA", "DPGF recebida lida e orçamentada aos seus preços", "Margem previsional por especialidade + alerta «a perder»", "Recuperação da sua biblioteca a partir dos seus antigos orçamentos PDF", "Obras, clientes, reforços, assinatura online"].map((f) => (
                 <li key={f} className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> {f}</li>
               ))}
             </ul>

@@ -26,11 +26,11 @@ const JS_SNIPPET = `import axios from "axios"; const api = axios.create({ baseUR
 const USE_CASES = [
   { icon: Package, title: "Distribuidor de materiais",
     desc: "Adicione um simulador de renovação ao seu site comercial. Converta os visitantes em carrinhos médios superiores graças à estimativa antes da compra." },
-  { icon: Zap, title: "Constructeur / Franchise",
+  { icon: Zap, title: "Construtor / Franchise",
     desc: "Estime instantaneamente o orçamento de um cliente na sua sala de exposição, gere um PDF marcado com o seu logótipo e converta no local." },
   { icon: Search, title: "Agência imobiliária",
     desc: "Orçamente as renovações de um imóvel durante a visita. Venda melhor mostrando o custo real dos trabalhos." },
-  { icon: Calculator, title: "Assureur",
+  { icon: Calculator, title: "Seguradora",
     desc: "Estime os sinistros e renovações pós-incidente através do nosso motor. Reduza os prazos de perícia." },
 ];
 
@@ -45,7 +45,7 @@ const CodeBlock = ({ code, testid }) => {
       <pre className="text-xs bg-secondary/40 border border-border p-4 rounded-sm overflow-x-auto" data-testid={testid}>
         <code>{code}</code>
       </pre>
-      <button onClick={copy} className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-sm bg-background/80 hover:bg-primary hover:text-primary-foreground transition-colors opacity-0 group-hover:opacity-100" aria-label="Copier">
+      <button onClick={copy} className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-sm bg-background/80 hover:bg-primary hover:text-primary-foreground transition-colors opacity-0 group-hover:opacity-100" aria-label="Copiar">
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </button>
     </div>
@@ -83,7 +83,7 @@ export default function Docs() {
           </li>
           <li className="flex gap-3">
             <span className="num h-7 w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">2</span>
-            <span>Gere a sua primeira chave a partir de<Link to="/developpeurs" className="text-primary underline">Espaço Programadores</Link>. Elle commence par <code className="bg-secondary px-1 rounded-sm">ckp_live_</code>.</span>
+            <span>Gere a sua primeira chave a partir de<Link to="/developpeurs" className="text-primary underline">Espaço Programadores</Link>. Começa por <code className="bg-secondary px-1 rounded-sm">ckp_live_</code>.</span>
           </li>
           <li className="flex gap-3">
             <span className="num h-7 w-7 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">3</span>
@@ -94,9 +94,9 @@ export default function Docs() {
 
       <Tabs defaultValue="estimation" data-testid="docs-tabs">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="estimation" className="rounded-sm" data-testid="docs-tab-estimation">Estimation</TabsTrigger>
+          <TabsTrigger value="estimation" className="rounded-sm" data-testid="docs-tab-estimation">Estimativa</TabsTrigger>
           <TabsTrigger value="prices" className="rounded-sm" data-testid="docs-tab-prices">Preços de materiais</TabsTrigger>
-          <TabsTrigger value="calculators" className="rounded-sm" data-testid="docs-tab-calculators">Calculateurs</TabsTrigger>
+          <TabsTrigger value="calculators" className="rounded-sm" data-testid="docs-tab-calculators">Calculadoras</TabsTrigger>
           <TabsTrigger value="js" className="rounded-sm" data-testid="docs-tab-js">Node.js / axios</TabsTrigger>
         </TabsList>
 
@@ -113,7 +113,7 @@ export default function Docs() {
         <TabsContent value="calculators" className="mt-6 grid gap-4">
           <h3 className="font-display font-bold text-lg">POST /api/v1/public/calculators</h3>
           <p className="text-sm text-muted-foreground">
-            Types : <code className="bg-secondary px-1 rounded-sm">paint</code>,{" "}
+            Tipos: <code className="bg-secondary px-1 rounded-sm">paint</code>,{" "}
             <code className="bg-secondary px-1 rounded-sm">tile</code>,{" "}
             <code className="bg-secondary px-1 rounded-sm">drywall</code>,{" "}
             <code className="bg-secondary px-1 rounded-sm">concrete</code>,{" "}

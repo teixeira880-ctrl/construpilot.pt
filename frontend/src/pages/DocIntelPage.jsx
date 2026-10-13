@@ -61,7 +61,7 @@ export default function DocIntelPage() {
     try {
       const { data } = await api.post(`/doc-intel/${current.import_id}/plan-reconcile`, { plan_id: selectedPlan });
       setCurrent({ ...current, plan_reconciliation: data });
-      toast.success(`Comparação com a planta concluída:${data.summary.ecarts}diferença(s) em${data.summary.compared}artigo(s) comparado(s)`);
+      toast.success(`Comparação com a planta concluída: ${data.summary.ecarts} diferença(s) em ${data.summary.compared} artigo(s) comparado(s)`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Comparação impossível"); }
     setPlanReconciling(false);
   };
@@ -70,7 +70,7 @@ export default function DocIntelPage() {
     if (!current || !c.devis_line_id) return;
     try {
       await api.patch(`/doc-intel/${current.import_id}/lines/${c.devis_line_id}`, { qty: c.measured });
-      toast.success(`Orçamento corrigido: «${c.devis.designation} » → ${num(c.measured)} ${c.unit}`);
+      toast.success(`Orçamento corrigido: « ${c.devis.designation} » → ${num(c.measured)} ${c.unit}`);
       // rafraîchit l'analyse (arithmétique) puis le rapprochement plan
       const { data: fresh } = await api.get(`/doc-intel/${current.import_id}`);
       const { data: rec } = await api.post(`/doc-intel/${current.import_id}/plan-reconcile`, { plan_id: selectedPlan });
@@ -82,7 +82,7 @@ export default function DocIntelPage() {
     if (!current || !selectedPlan) return;
     try {
       const { data: rec } = await api.post(`/doc-intel/${current.import_id}/plan-reconcile/apply-all`, { plan_id: selectedPlan });
-      toast.success(`${rec.corrected}linha(s) de orçamento alinhada(s) com a medição`);
+      toast.success(`${rec.corrected} linha(s) de orçamento alinhada(s) com a medição`);
       const { data: fresh } = await api.get(`/doc-intel/${current.import_id}`);
       setCurrent({ ...fresh, plan_reconciliation: rec });
     } catch (e) { toast.error(e?.response?.data?.detail || "Correção em lote impossível"); }
@@ -135,7 +135,7 @@ export default function DocIntelPage() {
       const { data } = await api.post(`/doc-intel/${current.import_id}/reconcile`, fd,
         { headers: { "Content-Type": "multipart/form-data" } });
       setCurrent({ ...current, reconciliation: data });
-      toast.success(`Comparação concluída:${data.summary.anomalies}ponto(s) a verificar`);
+      toast.success(`Comparação concluída: ${data.summary.anomalies} ponto(s) a verificar`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Comparação impossível"); }
     setReconciling(false);
     if (cctpRef.current) cctpRef.current.value = "";
@@ -181,7 +181,7 @@ export default function DocIntelPage() {
   (res?.lines || []).forEach((l) => (l.flags || []).forEach((f) =>
     anomalies.push({ kind: flagLabel(f), where: l.provenance?.designation || `${l.sheet}!${l.row}`, txt: l.designation })));
   (arith?.checks || []).filter((c) => c.status === "mismatch").forEach((c) =>
-    anomalies.push({ kind: "Diferença aritmética", where: c.provenance || `${c.sheet}!${c.row}`, txt: `calculado${num(c.computed)} ≠ fichier ${num(c.file_amount)}` }));
+    anomalies.push({ kind: "Diferença aritmética", where: c.provenance || `${c.sheet}!${c.row}`, txt: `calculado ${num(c.computed)} ≠ ficheiro ${num(c.file_amount)}` }));
   (res?.warnings || []).forEach((w) => anomalies.push({ kind: w.type === "scanned_page" ? "Página digitalizada (OCR necessário)" : w.type === "hidden_sheet" ? "Folha oculta" : w.type, where: w.sheet ? w.sheet : w.page ? `page ${w.page}` : "—", txt: w.message }));
 
   return (
@@ -189,8 +189,7 @@ export default function DocIntelPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Análise de documentos</h1>
         <p className="mt-2 text-muted-foreground text-sm">
-          Importe um mapa de quantidades/orçamento Excel, um PDF ou uma <strong>imagem (fatura, orçamento, caderno de encargos digitalizado ou fotografado)</strong>.
-          Les documents scannés sont lus par IA (OCR) — l'IA <strong>regista os campos tal como apresentados, sem nunca calcular</strong> ; cada dado fica ligado à sua fonte e a aritmética é recontrolada de forma determinística.
+          Importe um mapa de quantidades/orçamento Excel, um PDF ou uma <strong>imagem (fatura, orçamento, caderno de encargos digitalizado ou fotografado)</strong>. Os documentos digitalizados são lidos por IA (OCR) — a IA <strong>regista os campos tal como apresentados, sem nunca calcular</strong> ; cada dado fica ligado à sua fonte e a aritmética é recontrolada de forma determinística.
         </p>
       </div>
 
@@ -209,10 +208,10 @@ export default function DocIntelPage() {
           </div>
           <Button onClick={() => fileRef.current?.click()} disabled={busy} data-testid="doc-intel-upload-btn"
                   className="gap-2">
-            <UploadCloud className="h-4 w-4" /> {busy ? "Analyse…" : "Importar e analisar"}
+            <UploadCloud className="h-4 w-4" /> {busy ? "Análise…" : "Importar e analisar"}
           </Button>
           <Button variant="outline" onClick={load} disabled={loading} className="gap-2 ml-auto">
-            <RefreshCw className="h-4 w-4" /> Actualiser
+            <RefreshCw className="h-4 w-4" /> Atualizar
           </Button>
         </div>
       </div>
@@ -234,7 +233,7 @@ export default function DocIntelPage() {
               <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
                 <span>{it.lines} lignes</span>
                 {it.ocr && <Badge variant="outline" className="h-4 border-indigo-400 text-indigo-600 text-[10px] gap-0.5"><Sparkles className="h-2.5 w-2.5" /> IA</Badge>}
-                {it.warnings > 0 && <Badge variant="outline" className="h-4 border-amber-400 text-amber-600 text-[10px]">{it.warnings} alerte(s)</Badge>}
+                {it.warnings > 0 && <Badge variant="outline" className="h-4 border-amber-400 text-amber-600 text-[10px]">{it.warnings} alerta(s)</Badge>}
                 {it.arithmetic?.mismatches > 0 && <Badge variant="outline" className="h-4 border-red-400 text-red-600 text-[10px]">{it.arithmetic.mismatches} diferença(s)</Badge>}
               </div>
             </button>
@@ -251,7 +250,7 @@ export default function DocIntelPage() {
                 <Badge variant="outline">{res.format?.toUpperCase()}</Badge>
                 {res.ocr?.engine && (
                   <Badge variant="outline" className="border-indigo-400 text-indigo-600 gap-1">
-                    <Sparkles className="h-3 w-3" /> Lu par IA · {res.ocr.engine === "gemini-user" ? "Assistant BTP" : "IA (repli)"}
+                    <Sparkles className="h-3 w-3" /> Lu par IA · {res.ocr.engine === "gemini-user" ? "Assistente Construção" : "IA (recurso)"}
                   </Badge>
                 )}
                 {res.language && <Badge variant="outline">{res.language.toUpperCase()}</Badge>}
@@ -265,7 +264,7 @@ export default function DocIntelPage() {
               {arith && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="doc-intel-arith">
                   {[["Total s/ IVA calculado", `${num(arith.summary.sum_computed_ht)} €`, Sigma],
-                    ["TVA", arith.summary.vat_amount != null ? `${num(arith.summary.vat_amount)} €` : "—", Sigma],
+                    ["IVA", arith.summary.vat_amount != null ? `${num(arith.summary.vat_amount)} €` : "—", Sigma],
                     ["Total c/ IVA", arith.summary.total_ttc != null ? `${num(arith.summary.total_ttc)} €` : "—", Sigma],
                     ["Diferenças detetadas", `${arith.summary.mismatches}`, AlertTriangle]].map(([k, v, Ic]) => (
                     <div key={k} className="rounded-md border border-border p-3">
@@ -306,7 +305,7 @@ export default function DocIntelPage() {
                            data-testid="reconcile-cctp-file" onChange={(e) => doReconcile(e.target.files?.[0])} />
                     <Button size="sm" variant="outline" className="gap-2" disabled={reconciling}
                             data-testid="reconcile-btn" onClick={() => cctpRef.current?.click()}>
-                      <UploadCloud className="h-4 w-4" /> {reconciling ? "Analyse…" : (current.reconciliation ? "Relançar com um caderno de encargos" : "Anexar o caderno de encargos (PDF)")}
+                      <UploadCloud className="h-4 w-4" /> {reconciling ? "Análise…" : (current.reconciliation ? "Relançar com um caderno de encargos" : "Anexar o caderno de encargos (PDF)")}
                     </Button>
                   </div>
                   {!current.reconciliation ? (
@@ -326,7 +325,7 @@ export default function DocIntelPage() {
                             <li key={a.signature} className="p-2 text-sm" data-testid={`reconcile-anomaly-${a.signature}`}>
                               <div className="flex items-start gap-2">
                                 <Badge variant="outline" className="shrink-0 border-amber-400 text-amber-700">
-                                  {a.type === "thickness_mismatch" ? "Diferença de espessura" : a.type === "prescribed_not_found" ? "Omission possible" : "Double comptage"}
+                                  {a.type === "thickness_mismatch" ? "Diferença de espessura" : a.type === "prescribed_not_found" ? "Omission possible" : "Contagem dupla"}
                                 </Badge>
                                 <span className="flex-1">{a.message}</span>
                                 <Button size="sm" variant="ghost" className="h-7 gap-1 text-muted-foreground"
@@ -363,7 +362,7 @@ export default function DocIntelPage() {
                     </select>
                     <Button size="sm" variant="outline" className="gap-2" disabled={planReconciling || !selectedPlan}
                             data-testid="plan-reconcile-btn" onClick={doPlanReconcile}>
-                      <Link2 className="h-4 w-4" /> {planReconciling ? "Analyse…" : "Comparer"}
+                      <Link2 className="h-4 w-4" /> {planReconciling ? "Análise…" : "Comparar"}
                     </Button>
                   </div>
                   {!current.plan_reconciliation ? (
@@ -400,10 +399,10 @@ export default function DocIntelPage() {
                             <li key={c.measurement_id} className="p-2 text-sm" data-testid={`plan-comp-${c.measurement_id}`}>
                               <div className="flex items-start gap-2">
                                 <Badge variant="outline" className={c.flag ? "shrink-0 border-amber-400 text-amber-700" : "shrink-0 border-emerald-400 text-emerald-700"}>
-                                  {c.flag ? `Desvio${c.delta_pct > 0 ? "+" : ""}${c.delta_pct}%` : "OK"}
+                                  {c.flag ? `Desvio ${c.delta_pct > 0 ? "+" : ""}${c.delta_pct}%` : "OK"}
                                 </Badge>
                                 <span className="flex-1">{c.label} — medido <b className="num">{num(c.measured)} {c.unit}</b> vs orçamento <b className="num">{num(c.devis_qty)} {c.unit}</b></span>
-                                {c.source === "dxf" && <Badge variant="outline" className="h-4 border-sky-400 text-sky-600 text-[10px]">CAO</Badge>}
+                                {c.source === "dxf" && <Badge variant="outline" className="h-4 border-sky-400 text-sky-600 text-[10px]">CAD</Badge>}
                                 {c.method === "semântico" && <Badge variant="outline" className="h-4 border-primary/40 text-primary text-[10px]">semântico</Badge>}
                                 {c.flag && c.devis_line_id && (
                                   <Button size="sm" variant="outline" className="h-6 gap-1 text-[11px]"
@@ -438,7 +437,7 @@ export default function DocIntelPage() {
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50 text-left">
                       <tr>
-                        {["Lot", "Designação", "Qtd.", "Un.", "PU", "Montante do ficheiro", "Calculado", "Desvio", "Source", "Flags"].map((h) => (
+                        {["Lote", "Designação", "Qtd.", "Un.", "PU", "Montante do ficheiro", "Calculado", "Desvio", "Fonte", "Flags"].map((h) => (
                           <th key={h} className="px-2 py-2 font-semibold whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -483,10 +482,10 @@ export default function DocIntelPage() {
                   </div>
                   {res.ocr.document && (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 text-xs">
-                      {[["Type", res.ocr.document.document_type], ["Fornecedor", res.ocr.document.supplier_name],
+                      {[["Tipo", res.ocr.document.document_type], ["Fornecedor", res.ocr.document.supplier_name],
                         ["Cliente", res.ocr.document.customer_name], ["N°", res.ocr.document.doc_number],
-                        ["Date", res.ocr.document.issue_date], ["Devise", res.ocr.document.currency],
-                        ["Sous-total", res.ocr.document.subtotal], ["TVA", res.ocr.document.tax],
+                        ["Data", res.ocr.document.issue_date], ["Moeda", res.ocr.document.currency],
+                        ["Subtotal", res.ocr.document.subtotal], ["IVA", res.ocr.document.tax],
                         ["Total", res.ocr.document.total]].filter(([, v]) => v).map(([k, v]) => (
                         <div key={k} className="rounded-md border border-indigo-200 bg-white px-2 py-1">
                           <div className="text-[10px] uppercase text-muted-foreground">{k}</div>
@@ -527,7 +526,7 @@ export default function DocIntelPage() {
                   <div className="flex flex-wrap gap-2 text-xs">
                     {(res.pages || []).map((p) => (
                       <Badge key={p.page} variant="outline" className={p.ocr ? "border-indigo-400 text-indigo-600" : p.scanned ? "border-amber-400 text-amber-600" : ""}>
-                        Page {p.page} · {p.lines} lignes{p.ocr ? " · IA (OCR)" : p.scanned ? " · scan (OCR)" : ""}{p.tables ? ` · ${p.tables} tableau(x)` : ""}
+                        Página {p.page} · {p.lines} lignes{p.ocr ? " · IA (OCR)" : p.scanned ? " · scan (OCR)" : ""}{p.tables ? ` · ${p.tables} tableau(x)` : ""}
                       </Badge>
                     ))}
                   </div>

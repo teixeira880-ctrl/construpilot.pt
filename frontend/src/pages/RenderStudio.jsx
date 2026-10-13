@@ -11,14 +11,14 @@ import { api } from "@/lib/api";
 import { SEO } from "@/components/SEO";
 
 const RATIOS = [
-  { v: "1280:720", label: "Paysage 16:9" },
-  { v: "720:1280", label: "Portrait 9:16" },
+  { v: "1280:720", label: "Paisagem 16:9" },
+  { v: "720:1280", label: "Retrato 9:16" },
   { v: "960:960", label: "Quadrado 1:1" },
 ];
 
 const STYLES = [
-  { key: "moderne", label: "Moderne", suffix: "estilo moderno, linhas depuradas, materiais contemporâneos, tons neutros e luminosos" },
-  { key: "classique", label: "Classique", suffix: "estilo clássico e acolhedor, materiais tradicionais, acabamentos elegantes e intemporais" },
+  { key: "moderne", label: "Moderno", suffix: "estilo moderno, linhas depuradas, materiais contemporâneos, tons neutros e luminosos" },
+  { key: "classique", label: "Clássico", suffix: "estilo clássico e acolhedor, materiais tradicionais, acabamentos elegantes e intemporais" },
   { key: "economique", label: "Económico", suffix: "acabamentos simples e económicos, materiais standard de entrada de gama, orçamento controlado" },
 ];
 
@@ -74,7 +74,7 @@ function HistoryThumb({ render }) {
     <div className="grid grid-cols-2 gap-1">
       <div className="relative">
         {beforeUrl ? <img src={beforeUrl} alt="avant" className="h-24 w-full object-cover rounded-md" /> : <div className="h-24 w-full rounded-md bg-muted" />}
-        <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">Avant</span>
+        <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">Antes</span>
       </div>
       <div className="relative">
         {render.status === "done" && afterUrl ? (
@@ -137,7 +137,7 @@ export default function RenderStudio() {
     try {
       const { data } = await api.get(`/projects/${pid}/photos`);
       setProjPhotos(data.photos || []);
-    } catch { toast.error("Photos indisponibles"); }
+    } catch { toast.error("Fotografias indisponíveis"); }
   };
 
   const onFile = (f) => {
@@ -213,7 +213,7 @@ export default function RenderStudio() {
 
   const generate = async () => {
     if (!canGenerate) return toast.error(source === "upload" ? "Importe uma foto" : "Escolha uma foto do projeto");
-    if (quota && !quota.unlimited && quota.remaining <= 0) return toast.error("Quota mensuel atteint");
+    if (quota && !quota.unlimited && quota.remaining <= 0) return toast.error("Quota mensal atingida");
     setBusy(true); setCurrent(null); setShareUrl(""); setVariants([]);
     try {
       const fd = new FormData();
@@ -275,7 +275,7 @@ export default function RenderStudio() {
         <div className="ml-auto flex items-center gap-2">
           {quota && (
             <Badge variant="secondary" data-testid="render-quota-badge">
-              {quota.unlimited ? "Renderizações ilimitadas" : `${quota.used}/${quota.limit}este mês`}
+              {quota.unlimited ? "Renderizações ilimitadas" : `${quota.used}/${quota.limit} este mês`}
             </Badge>
           )}
           <Badge variant="outline" className="hidden sm:inline-flex">Pro / Business</Badge>
@@ -288,7 +288,7 @@ export default function RenderStudio() {
           {/* Sélecteur de source */}
           <div className="flex gap-2">
             <Button variant={source === "upload" ? "default" : "outline"} onClick={() => setSource("upload")} className="flex-1" data-testid="render-source-upload">
-              <Upload className="h-4 w-4 mr-1.5" /> Importer
+              <Upload className="h-4 w-4 mr-1.5" /> Importar
             </Button>
             <Button variant={source === "project" ? "default" : "outline"} onClick={() => setSource("project")} className="flex-1" data-testid="render-source-project">
               <FolderOpen className="h-4 w-4 mr-1.5" /> A partir de um projeto
@@ -335,7 +335,7 @@ export default function RenderStudio() {
           )}
 
           <div>
-            <label className="text-sm font-medium">Prompt (optionnel)</label>
+            <label className="text-sm font-medium">Prompt (opcional)</label>
             <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} maxLength={1000} rows={3}
               placeholder="Ex: cozinha moderna terminada, pavimento em parquet claro, paredes pintadas de branco, bancada em quartzo…"
               className="mt-1" data-testid="render-prompt-input" />
@@ -343,7 +343,7 @@ export default function RenderStudio() {
 
           <div className="flex gap-2">
             <Button variant={kind === "image" ? "default" : "outline"} onClick={() => setKind("image")} className="flex-1" data-testid="render-kind-image">
-              <ImageIcon className="h-4 w-4 mr-1.5" /> Photo
+              <ImageIcon className="h-4 w-4 mr-1.5" /> Fotografia
             </Button>
             <Button variant={kind === "video" ? "default" : "outline"} onClick={() => setKind("video")} className="flex-1" data-testid="render-kind-video">
               <Video className="h-4 w-4 mr-1.5" /> Vídeo
@@ -352,7 +352,7 @@ export default function RenderStudio() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium">Format</label>
+              <label className="text-sm font-medium">Formato</label>
               <select value={ratio} onChange={(e) => setRatio(e.target.value)} className="mt-1 w-full h-10 rounded-md border border-border bg-background px-3 text-sm" data-testid="render-ratio-select">
                 {RATIOS.map((r) => <option key={r.v} value={r.v}>{r.label}</option>)}
               </select>
@@ -361,8 +361,8 @@ export default function RenderStudio() {
               <div>
                 <label className="text-sm font-medium">Duração</label>
                 <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="mt-1 w-full h-10 rounded-md border border-border bg-background px-3 text-sm" data-testid="render-duration-select">
-                  <option value={5}>5 secondes</option>
-                  <option value={10}>10 secondes</option>
+                  <option value={5}>5 segundos</option>
+                  <option value={10}>10 segundos</option>
                 </select>
               </div>
             )}
@@ -411,7 +411,7 @@ export default function RenderStudio() {
                 {!current && <div className="h-56 grid place-items-center text-sm text-muted-foreground">A renderização aparecerá aqui</div>}
                 {current?.status === "processing" && (
                   <div className="h-56 grid place-items-center text-sm text-muted-foreground" data-testid="render-processing">
-                    <div className="text-center"><Loader2 className="h-7 w-7 mx-auto mb-2 animate-spin" /> Geração {current.kind === "video" ? "vídeo" : "image"} en cours…</div>
+                    <div className="text-center"><Loader2 className="h-7 w-7 mx-auto mb-2 animate-spin" /> Geração {current.kind === "video" ? "vídeo" : "image"} em curso…</div>
                   </div>
                 )}
                 {current?.status === "failed" && <div className="h-56 grid place-items-center text-sm text-destructive" data-testid="render-failed">{current.error || "A geração falhou"}</div>}
@@ -449,14 +449,14 @@ export default function RenderStudio() {
       {/* Historique */}
       {history.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-lg font-semibold mb-3">Historique</h2>
+          <h2 className="text-lg font-semibold mb-3">Histórico</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="render-history">
             {history.map((r) => (
               <div key={r.render_id} className="rounded-xl border border-border bg-card p-3 space-y-2">
                 <HistoryThumb render={r} />
                 <div className="flex items-center justify-between">
                   <Badge variant={r.status === "done" ? "default" : r.status === "failed" ? "destructive" : "secondary"} className="text-[10px]">
-                    {r.kind === "video" ? "Vídeo" : "Photo"} · {r.status === "done" ? "Pronto" : r.status === "failed" ? "Falha" : "En cours"}
+                    {r.kind === "video" ? "Vídeo" : "Fotografia"} · {r.status === "done" ? "Pronto" : r.status === "failed" ? "Falha" : "Em curso"}
                   </Badge>
                   <div className="flex items-center gap-1">
                     {r.status === "done" && (

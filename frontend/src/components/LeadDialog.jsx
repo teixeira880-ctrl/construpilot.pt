@@ -58,7 +58,7 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label>Nom complet</Label>
+              <Label>Nome completo</Label>
               <Input required value={form.name} onChange={set("name")} data-testid="lead-name-input" className="rounded-sm" />
             </div>
             <div className="grid gap-2">
@@ -70,7 +70,7 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
               <Input required value={form.phone} onChange={set("phone")} data-testid="lead-phone-input" className="rounded-sm" />
             </div>
             <div className="grid gap-2">
-              <Label>Budget (€)</Label>
+              <Label>Orçamento (€)</Label>
               <Input type="number" value={form.budget} onChange={set("budget")} data-testid="lead-budget-input" className="rounded-sm num" />
             </div>
           </div>
@@ -87,7 +87,7 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
             <Textarea rows={4} value={form.description} onChange={set("description")} data-testid="lead-description-input" className="rounded-sm" />
           </div>
           <Button type="submit" disabled={busy} data-testid="submit-lead-btn" className="rounded-sm hover:bg-orange-600 hover:text-white">
-            {busy ? "Envoi…" : "Enviar o meu pedido"}
+            {busy ? "A enviar…" : "Enviar o meu pedido"}
           </Button>
         </form>
       </DialogContent>

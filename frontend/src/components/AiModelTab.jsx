@@ -115,7 +115,7 @@ export default function AiModelTab() {
     try {
       const { data: res } = await api.post("/admin/ai-gemini-backend/test");
       if (res.ok) toast.success("Chave Google válida — ligação bem-sucedida");
-      else toast.error(`Chave Google:${res.status}`);
+      else toast.error(`Chave Google: ${res.status}`);
     } catch {
       toast.error("Teste da chave impossível");
     } finally {
@@ -129,7 +129,7 @@ export default function AiModelTab() {
 
   return (
     <div className="max-w-3xl space-y-8" data-testid="admin-ai-section">
-      <SectionTitle over="Intelligence artificielle" title="Seletor de modelo IA">
+      <SectionTitle over="Inteligência artificial" title="Seletor de modelo IA">
         Escolha o modelo utilizado para a geração de texto (estimativa Smart Project, coach IA, análises). A análise de imagens utiliza sempre um modelo visão dedicado.
       </SectionTitle>
 
@@ -148,8 +148,7 @@ export default function AiModelTab() {
             </p>
             {!k.active && (
               <p className="text-xs text-amber-800 mt-1" data-testid="admin-openai-key-reason">
-                Desde {k.since ? new Date(k.since).toLocaleString("fr-FR") : "—"} · motif : {k.reason || "—"}.
-                Rechargez le crédit sur platform.openai.com puis réactivez ; un test de connexion est effectué.
+                Desde {k.since ? new Date(k.since).toLocaleString("fr-FR") : "—"} · motif : {k.reason || "—"}. Recarregue o crédito em platform.openai.com e depois reative; é efetuado um teste de ligação.
               </p>
             )}
             {k.active && (
@@ -188,7 +187,7 @@ export default function AiModelTab() {
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 ) : active ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-primary">
-                    <Check className="h-3.5 w-3.5" /> Actif
+                    <Check className="h-3.5 w-3.5" /> Ativo
                   </span>
                 ) : null}
               </div>
@@ -196,7 +195,7 @@ export default function AiModelTab() {
               <p className="text-xs text-muted-foreground mt-1">{o.desc}</p>
               <div className="mt-4 space-y-1.5">
                 <Rating icon={Sparkles} label="Qualidade" value={o.quality || 1} />
-                <Rating icon={Gauge} label="Vitesse" value={o.speed || 1} />
+                <Rating icon={Gauge} label="Velocidade" value={o.speed || 1} />
                 <Rating icon={Coins} label="Custo relativo" value={o.cost || 1} />
               </div>
               <p className="text-[11px] text-muted-foreground/70 mt-3 font-mono">{o.model}</p>
@@ -206,14 +205,13 @@ export default function AiModelTab() {
       </div>
 
       <p className="text-xs text-muted-foreground" data-testid="admin-ai-current">
-        Modelo ativo: <strong>{data.options.find((o) => o.tier === data.current)?.label}</strong>.
-        La modification est immédiate pour toutes les prochaines requêtes IA.
+        Modelo ativo: <strong>{data.options.find((o) => o.tier === data.current)?.label}</strong>. A alteração é imediata para todos os próximos pedidos IA.
       </p>
 
       {/* --- Backend Gemini : Emergent vs Google natif --- */}
       {gemini && (
         <div className="space-y-4" data-testid="admin-gemini-backend">
-          <SectionTitle over="Vision & plans" title="Motor IA Assistente Construção (plantas, medições)">
+          <SectionTitle over="Visão e plantas" title="Motor IA Assistente Construção (plantas, medições)">
             Escolha como são executadas as chamadas do motor IA Assistente Construção: através da chave universal Emergent, ou diretamente na Google com a sua própria chave (faturação Google, alias gemini pro/flash latest).
           </SectionTitle>
           <div className="grid sm:grid-cols-2 gap-4" data-testid="admin-gemini-options">
@@ -236,7 +234,7 @@ export default function AiModelTab() {
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : active ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-primary">
-                        <Check className="h-3.5 w-3.5" /> Actif
+                        <Check className="h-3.5 w-3.5" /> Ativo
                       </span>
                     ) : null}
                   </div>
@@ -271,7 +269,7 @@ export default function AiModelTab() {
 
       {/* --- Suivi des coûts / usage IA --- */}
       <div className="space-y-4" data-testid="admin-ai-usage">
-        <SectionTitle over="Consommation" title="Acompanhamento das chamadas IA">
+        <SectionTitle over="Consumo" title="Acompanhamento das chamadas IA">
           Número de chamadas ao modelo por funcionalidade e por modelo. Total:{" "}
           <strong data-testid="admin-ai-usage-total">{num(usage?.total_calls || 0)}</strong> appels.
         </SectionTitle>
@@ -314,7 +312,7 @@ export default function AiModelTab() {
 
       {/* --- Graphique de consommation (30 j) --- */}
       <div className="space-y-4" data-testid="admin-ai-daily">
-        <SectionTitle over="Tendance" title="Consommation IA — 30 derniers jours" />
+        <SectionTitle over="Tendência" title="Consumo IA — últimos 30 dias" />
         {daily && daily.total > 0 ? (
           <div className="surface p-4 rounded-sm" style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -340,21 +338,21 @@ export default function AiModelTab() {
 
       {/* --- Alerte budget IA --- */}
       <div className="space-y-4" data-testid="admin-ai-budget">
-        <SectionTitle over="Controlo de custos" title="Alerte budget IA">
+        <SectionTitle over="Controlo de custos" title="Alerta orçamento IA">
           Receba um email quando o número de chamadas IA do mês ultrapassar um limite.
           {budget && (
             <> Este mês: <strong data-testid="admin-ai-budget-month">{num(budget.month_calls)}</strong> appels
-            {budget.threshold ? <> / {num(budget.threshold)} (seuil)</> : null}.</>
+            {budget.threshold ? <> / {num(budget.threshold)} (limiar)</> : null}.</>
           )}
         </SectionTitle>
         <div className="surface p-4 rounded-sm grid sm:grid-cols-3 gap-3 items-end">
           <div>
-            <Label>Seuil d'appels / mois</Label>
+            <Label>Limite de chamadas / mês</Label>
             <Input type="number" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)}
                    placeholder="Ex : 500" className="rounded-sm num mt-1" data-testid="admin-ai-budget-threshold" />
           </div>
           <div>
-            <Label>Email d'alerte (optionnel)</Label>
+            <Label>Email de alerta (opcional)</Label>
             <Input type="email" value={alertEmail} onChange={(e) => setAlertEmail(e.target.value)}
                    placeholder="admin@construpilot.fr" className="rounded-sm mt-1" data-testid="admin-ai-budget-email" />
           </div>

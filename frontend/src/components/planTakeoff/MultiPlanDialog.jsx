@@ -50,7 +50,7 @@ export function MultiPlanDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-sm max-w-lg" data-testid="multi-quote-dialog">
         <DialogHeader>
-          <DialogTitle>Projet multi-plans</DialogTitle>
+          <DialogTitle>Projeto multiplanta</DialogTitle>
           <DialogDescription>
             Combine várias plantas (estrutura, pisos da moradia, ampliações…) num único documento.
             <br /><b>Medição agrupada</b> = apenas as cotas calculadas (m² / ml), sem preço nem IVA.
@@ -102,7 +102,7 @@ export function MultiPlanDialog({
                 const on = multiSelected.includes(p.plan_id);
                 const sub = subcontractSel.includes(p.plan_id);
                 const isGros = !!p.structural_metre;
-                const kindLbl = isGros ? "🏢 Estrutura" : (p.rooms?.length ? "🏠 Maison" : "Plan");
+                const kindLbl = isGros ? "🏢 Estrutura" : (p.rooms?.length ? "🏠 Maison" : "Planta");
                 const linkedCount = (p.ferraillage_plan_ids || []).length;
                 return (
                   <div key={p.plan_id}
@@ -116,7 +116,7 @@ export function MultiPlanDialog({
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold truncate">
                           {p.filename || p.plan_id}
-                          {p.plan_id === plan?.plan_id && <span className="text-primary ml-1 text-[10px]">(en cours)</span>}
+                          {p.plan_id === plan?.plan_id && <span className="text-primary ml-1 text-[10px]">(em curso)</span>}
                         </p>
                         <p className="text-[10px] text-muted-foreground num">
                           {kindLbl} · {p.rooms?.length || 0} divisões · {(p.rooms?.reduce((s, r) => s + (r.surface_m2 || 0), 0) || 0).toFixed(1)} m²
@@ -131,14 +131,14 @@ export function MultiPlanDialog({
                                  onChange={(e) => toggleSub(p.plan_id, e.target.checked)}
                                  data-testid={`multi-subcontract-${p.plan_id}`}
                                  className="accent-primary h-3.5 w-3.5" />
-                          Sous-traitance (TVA 0 %)
+                          Subempreitada (IVA 0 %)
                         </label>
                         {isGros && (
                           <button type="button"
                                   onClick={() => setLinkOpenFor(linkOpenFor === p.plan_id ? null : p.plan_id)}
                                   data-testid={`multi-link-ferraillage-${p.plan_id}`}
                                   className="flex items-center gap-1 text-[11px] text-primary hover:underline">
-                            <Link2 className="h-3 w-3" /> Rattacher ferraillage
+                            <Link2 className="h-3 w-3" /> Associar armaduras
                           </button>
                         )}
                       </div>

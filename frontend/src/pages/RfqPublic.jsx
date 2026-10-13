@@ -42,7 +42,7 @@ export default function RfqPublic() {
     try {
       await axios.post(`${API}/public/rfq/${token}`, { prices: clean, note, contact_name: name });
       setDone(true);
-      toast.success("Offre transmise");
+      toast.success("Proposta transmitida");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally { setBusy(false); }
@@ -69,7 +69,7 @@ export default function RfqPublic() {
           <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-5 flex gap-3" data-testid="rfq-done">
             <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
             <div className="text-sm">
-              <p className="font-semibold">Offre transmise — {eur(total)} HT</p>
+              <p className="font-semibold">Proposta transmitida — {eur(total)} HT</p>
               <p className="text-muted-foreground mt-1">{data.company} recebeu os seus preços. Obrigado.</p>
             </div>
           </div>
@@ -78,7 +78,7 @@ export default function RfqPublic() {
             <div className="mt-6 rounded-sm border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-secondary/40">
-                  <tr><th className="text-left p-2">Prestation</th><th className="p-2">Qtd.</th>
+                  <tr><th className="text-left p-2">Prestação</th><th className="p-2">Qtd.</th>
                     <th className="p-2">U.</th><th className="p-2 text-right">O seu PU s/ IVA</th>
                     <th className="p-2 text-right">Total s/ IVA</th></tr>
                 </thead>

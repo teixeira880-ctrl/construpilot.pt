@@ -46,7 +46,7 @@ export default function QuoteScanner() {
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     const isImg = /image\/(jpeg|png|webp|jpg)/.test(file.type);
     if (!isPdf && !isImg) return toast.error("Formatos aceites: JPEG, PNG, WEBP ou PDF");
-    if (file.size > 15 * 1024 * 1024) return toast.error("Fichier trop lourd (max 15 Mo)");
+    if (file.size > 15 * 1024 * 1024) return toast.error("Ficheiro demasiado pesado (máx. 15 MB)");
     const reader = new FileReader();
     reader.onload = () => {
       const b64only = String(reader.result).split(",")[1];
@@ -107,7 +107,7 @@ export default function QuoteScanner() {
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="surface p-6 grid gap-5">
           <div className="grid gap-2">
-            <Label>Entreprise</Label>
+            <Label>Empresa</Label>
             <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nome da empresa" data-testid="quote-company-input" className="rounded-sm" />
           </div>
           <div className="grid gap-2">
@@ -125,7 +125,7 @@ export default function QuoteScanner() {
                 <>
                   <Upload className="h-6 w-6 mx-auto text-muted-foreground" />
                   <p className="mt-2 text-sm text-muted-foreground">Importar uma imagem ou um PDF do orçamento</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">JPEG · PNG · WEBP · PDF · 15 Mo max</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">JPEG · PNG · WEBP · PDF · 15 MB máx</p>
                 </>
               )}
             </label>
@@ -136,7 +136,7 @@ export default function QuoteScanner() {
             <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} data-testid="quote-text-input" className="rounded-sm" placeholder="Prestação, quantidades, preços unitários, total…" />
           </div>
           <Button onClick={analyse} disabled={busy} data-testid="analyse-quote-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Sparkles className="h-4 w-4" /> {busy ? "Analyse…" : "Analisar este orçamento"}
+            <Sparkles className="h-4 w-4" /> {busy ? "Análise…" : "Analisar este orçamento"}
           </Button>
         </div>
 
@@ -144,7 +144,7 @@ export default function QuoteScanner() {
           <div className="surface p-6 grid gap-5" data-testid="quote-analysis-result">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="overline">{a.company || company || "Entreprise"}</p>
+                <p className="overline">{a.company || company || "Empresa"}</p>
                 <p className="num mt-2 text-2xl font-bold">{eur(a.total_ttc || a.total_ht)}</p>
               </div>
               <Badge variant="outline" className={`rounded-sm ${v.cls}`} data-testid="quote-verdict">{v.label}</Badge>
@@ -163,7 +163,7 @@ export default function QuoteScanner() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                      <TableHead>Prestation</TableHead>
+                      <TableHead>Prestação</TableHead>
                       <TableHead className="text-right">Qtd.</TableHead>
                       <TableHead className="text-right">PU</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -182,8 +182,8 @@ export default function QuoteScanner() {
                 </Table>
               </div>
             )}
-            {[["Elementos potencialmente esquecidos", a.missing_items], ["Exclusions", a.exclusions],
-              ["Garanties", a.warranties], ["Conselhos de negociação", a.negotiation_tips]].map(([label, arr]) =>
+            {[["Elementos potencialmente esquecidos", a.missing_items], ["Exclusões", a.exclusions],
+              ["Garantias", a.warranties], ["Conselhos de negociação", a.negotiation_tips]].map(([label, arr]) =>
               arr?.length > 0 ? (
                 <div key={label}>
                   <p className="overline text-muted-foreground">{label}</p>
@@ -217,7 +217,7 @@ export default function QuoteScanner() {
                   onClick={() => setSelected(on ? selected.filter((x) => x !== q.quote_id) : [...selected, q.quote_id])}
                   className={`surface p-5 text-left transition-colors ${on ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}
                 >
-                  <p className="overline text-muted-foreground">{q.company || "Entreprise"}</p>
+                  <p className="overline text-muted-foreground">{q.company || "Empresa"}</p>
                   <p className="num mt-2 text-lg font-bold">{eur(q.analysis?.total_ttc || q.analysis?.total_ht)}</p>
                   <Badge variant="outline" className={`mt-3 rounded-sm ${(VERDICT[q.analysis?.verdict] || VERDICT.correct).cls}`}>
                     {(VERDICT[q.analysis?.verdict] || VERDICT.correct).label}
@@ -230,7 +230,7 @@ export default function QuoteScanner() {
           {comparison && (
             <div className="surface p-6 grid gap-5" data-testid="quote-comparison-result">
               <div>
-                <p className="overline flex items-center gap-2"><Trophy className="h-4 w-4" /> Classement</p>
+                <p className="overline flex items-center gap-2"><Trophy className="h-4 w-4" /> Classificação</p>
                 <div className="mt-4 grid gap-3">
                   {(comparison.ranking || []).map((r, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-4 border-b border-border pb-3">
@@ -260,7 +260,7 @@ export default function QuoteScanner() {
                 ) : null)}
               {comparison.recommendation && (
                 <div className="p-4 rounded-sm border border-primary/40 bg-primary/5">
-                  <p className="overline">Recommandation ConstruPilot</p>
+                  <p className="overline">Recomendação ConstruPilot</p>
                   <p className="mt-2 text-sm">{comparison.recommendation}</p>
                 </div>
               )}

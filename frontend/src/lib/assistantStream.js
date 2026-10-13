@@ -5,7 +5,7 @@ export async function streamAssistant(payload, { signal, onEvent }) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    let detail = "Assistant indisponible";
+    let detail = "Assistente indisponível";
     try { detail = (await res.json()).detail || detail; } catch { /* ignore */ }
     throw new Error(detail);
   }
@@ -16,7 +16,7 @@ export async function streamAssistant(payload, { signal, onEvent }) {
     const data = block.split(/\r?\n/).filter(l => l.startsWith("data:")).map(l => l.slice(5).trimStart()).join("\n");
     if (!data) return;
     const event = JSON.parse(data);
-    if (event.type === "error") throw new Error(event.error || "Assistant indisponible");
+    if (event.type === "error") throw new Error(event.error || "Assistente indisponível");
     if (event.type === "done") completed = true;
     onEvent(event);
   };

@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 
 const STATE_STYLE = {
   ok: { cls: "text-primary", label: "Sob controlo" },
-  warning: { cls: "text-amber-500", label: "Alerte 400 €" },
+  warning: { cls: "text-amber-500", label: "Alerta 400 €" },
   frozen: { cls: "text-orange-500", label: "Congelado a 440 €" },
   exceeded: { cls: "text-red-600", label: "Teto ultrapassado" },
 };
@@ -68,12 +68,12 @@ export default function BudgetCapPanel() {
             Plafond d'exploitation — {eur(data.cap_eur)} / mois
           </h2>
           <p className="text-xs text-muted-foreground">
-            Mois {data.month} · alerta a {eur(data.warning_at)} · congelamento de novos compromissos a {eur(data.freeze_at)} · reserva preservada {eur(data.reserve_eur)}
+            Mês {data.month} · alerta a {eur(data.warning_at)} · congelamento de novos compromissos a {eur(data.freeze_at)} · reserva preservada {eur(data.reserve_eur)}
           </p>
         </div>
         <Button size="sm" variant="outline" className="rounded-sm gap-1" onClick={load} disabled={busy}
                 data-testid="cap-refresh">
-          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Actualiser
+          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Atualizar
         </Button>
       </div>
 
@@ -82,7 +82,7 @@ export default function BudgetCapPanel() {
           ["Gasto (confirmado)", data.confirmed_eur, "cap-confirmed"],
           ["Estimado (não faturado)", data.estimated_eur, "cap-estimated"],
           ["Compromissos reservados", data.held_eur, "cap-held"],
-          ["Reste disponible", data.remaining_eur, "cap-remaining"],
+          ["Disponível restante", data.remaining_eur, "cap-remaining"],
         ].map(([label, value, tid]) => (
           <div key={tid} className="surface rounded-md p-4" data-testid={tid}>
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground">{label}</p>
@@ -110,22 +110,22 @@ export default function BudgetCapPanel() {
         )}
         <p className="mt-2 text-[11px] text-muted-foreground">
           Fonte de custos: {data.cost_source.last_sync
-            ? `última reconciliação há${data.cost_source.days_since} jour(s)`
-            : "nunca reconciliada"}{data.cost_source.stale ? "— considerada desatualizada" : ""}.
-          {data.incomplete && "Algumas linhas não têm montante utilizável: o total está por isso incompleto."}
+            ? `última reconciliação há ${data.cost_source.days_since} dia(s)`
+            : "nunca reconciliada"}{data.cost_source.stale ? " — considerada desatualizada" : ""}.
+          {data.incomplete && " Algumas linhas não têm montante utilizável: o total está por isso incompleto."}
         </p>
       </div>
 
       <section className="grid gap-3" data-testid="cap-envelopes">
-        <p className="font-semibold text-sm">Enveloppes par poste</p>
+        <p className="font-semibold text-sm">Envelopes por rubrica</p>
         <div className="surface rounded-md overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="px-4 py-2.5">Poste</th>
-                <th className="px-4 py-2.5 text-right">Enveloppe</th>
+                <th className="px-4 py-2.5">Artigo</th>
+                <th className="px-4 py-2.5 text-right">Envelope</th>
                 <th className="px-4 py-2.5 text-right">Utilizado</th>
-                <th className="px-4 py-2.5 text-right">Reste</th>
+                <th className="px-4 py-2.5 text-right">Restante</th>
               </tr>
             </thead>
             <tbody>
@@ -166,7 +166,7 @@ export default function BudgetCapPanel() {
                    onChange={(e) => setSim((s) => ({ ...s, amount_eur: e.target.value }))}
                    className="h-9 w-28 rounded-sm" data-testid="cap-sim-amount" />
           </label>
-          <label className="text-xs text-muted-foreground grid gap-1">Poste
+          <label className="text-xs text-muted-foreground grid gap-1">Artigo
             <select value={sim.envelope} onChange={(e) => setSim((s) => ({ ...s, envelope: e.target.value }))}
                     className="h-9 rounded-sm border border-border bg-background px-2 text-sm"
                     data-testid="cap-sim-envelope">
@@ -180,8 +180,8 @@ export default function BudgetCapPanel() {
         {verdict && (
           <p className={`text-sm ${verdict.allowed ? "text-primary" : "text-red-600"}`} data-testid="cap-sim-verdict">
             {verdict.allowed
-              ? `Autorizado — total projetado${eur(verdict.projected_used_eur)} sur ${eur(verdict.cap_eur)}`
-              : `Recusado —${verdict.reason}`}
+              ? `Autorizado — total projetado ${eur(verdict.projected_used_eur)} sur ${eur(verdict.cap_eur)}`
+              : `Recusado — ${verdict.reason}`}
           </p>
         )}
       </section>

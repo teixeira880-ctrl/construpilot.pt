@@ -55,7 +55,7 @@ export function ParamLibraryPromo() {
             <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3">
               {(pt
                 ? ["1 127 linhas de receitas", "12 especialidades", "Custos horários 2026", "IVA 6 / 13 / 23 %"]
-                : ["1 127 linhas de receitas", "12 especialidades", "Taux horaires 2026", "TVA 5,5 / 10 / 20 %"]
+                : ["1 127 linhas de receitas", "12 especialidades", "Taxas horárias 2026", "IVA 5,5 / 10 / 20 %"]
               ).map((t) => (
                 <div key={t} className="flex items-center gap-2 text-sm text-white/80">
                   <CheckCircle2 className="h-4 w-4 text-primary" /> {t}

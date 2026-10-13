@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 
-export const CHANTIER_STATUS = { prospect: "Prospect", en_cours: "En cours", termine: "Terminado" };
+export const CHANTIER_STATUS = { prospect: "Prospect", en_cours: "Em curso", termine: "Terminado" };
 const EMPTY = { name: "", client_id: "", address: "", postal_code: "", city: "", status: "en_cours", notes: "" };
 
 export function ChantierFormDialog({ open, onOpenChange, chantier, clientId, onSaved }) {
@@ -47,18 +47,18 @@ export function ChantierFormDialog({ open, onOpenChange, chantier, clientId, onS
               {clients.map((c) => <option key={c.client_id} value={c.client_id}>{label(c)}</option>)}
             </select></div>
           <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-3"><Label htmlFor="cht-addr">Adresse</Label><Input id="cht-addr" value={form.address} onChange={set("address")} data-testid="chantier-address-input" /></div>
-            <div><Label htmlFor="cht-cp">Code postal</Label><Input id="cht-cp" value={form.postal_code} onChange={set("postal_code")} data-testid="chantier-postal-input" /></div>
-            <div className="col-span-2"><Label htmlFor="cht-city">Ville</Label><Input id="cht-city" value={form.city} onChange={set("city")} data-testid="chantier-city-input" /></div>
+            <div className="col-span-3"><Label htmlFor="cht-addr">Morada</Label><Input id="cht-addr" value={form.address} onChange={set("address")} data-testid="chantier-address-input" /></div>
+            <div><Label htmlFor="cht-cp">Código postal</Label><Input id="cht-cp" value={form.postal_code} onChange={set("postal_code")} data-testid="chantier-postal-input" /></div>
+            <div className="col-span-2"><Label htmlFor="cht-city">Cidade</Label><Input id="cht-city" value={form.city} onChange={set("city")} data-testid="chantier-city-input" /></div>
           </div>
-          <div><Label htmlFor="cht-status">Statut</Label>
+          <div><Label htmlFor="cht-status">Estado</Label>
             <select id="cht-status" value={form.status} onChange={set("status")} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" data-testid="chantier-status-select">
               {Object.entries(CHANTIER_STATUS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select></div>
-          <div><Label htmlFor="cht-notes">Notes</Label><textarea id="cht-notes" value={form.notes} onChange={set("notes")} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" data-testid="chantier-notes-input" /></div>
+          <div><Label htmlFor="cht-notes">Notas</Label><textarea id="cht-notes" value={form.notes} onChange={set("notes")} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" data-testid="chantier-notes-input" /></div>
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="chantier-form-cancel">Cancelar</Button>
-            <Button type="submit" disabled={busy} data-testid="chantier-form-submit">{busy ? "Enregistrement…" : chantier ? "Guardar" : "Criar o processo"}</Button>
+            <Button type="submit" disabled={busy} data-testid="chantier-form-submit">{busy ? "A guardar…" : chantier ? "Guardar" : "Criar o processo"}</Button>
           </div>
         </form>
       </DialogContent>

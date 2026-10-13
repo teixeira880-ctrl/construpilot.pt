@@ -11,12 +11,12 @@ import StructureManualPanels from "./StructureManualPanels";
 import StructureLintelPanel, { DEFAULT_LINTEL } from "./StructureLintelPanel";
 
 const BASE = "/structuro/calc/studies";
-const TYPES = { slab: "Laje", beam: "Viga", wall: "Mur", column: "Pilar", footing: "Sapata" };
+const TYPES = { slab: "Laje", beam: "Viga", wall: "Parede", column: "Pilar", footing: "Sapata" };
 const COLORS = { slab: "#b9c9c0", beam: "#b46b42", wall: "#17574b", column: "#9d3e26", footing: "#837466" };
 const number = value => value === "" ? null : Number(value);
 const errorMessage = e => typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Verifique os valores e os campos obrigatórios.";
 const emptySource = () => ({ document: "", page: null, note: "" });
-const blankElement = id => ({ id, kind: "wall", level: "RDC", material: "A precisar", length_m: null, width_m: null, height_m: null,
+const blankElement = id => ({ id, kind: "wall", level: "R/C", material: "A precisar", length_m: null, width_m: null, height_m: null,
   x_m: null, y_m: null, angle_deg: 0, density_kn_m3: null, ei_kn_m2: null, source: emptySource(), mechanics_source: emptySource(),
   reviewed: false, loads: [], supports: [] });
 const selectClass = "border rounded-md p-2 bg-background text-sm w-full";
@@ -34,7 +34,7 @@ function Plan({ model, level }) {
   const xmin = Math.min(...points.map(p => p[0])), xmax = Math.max(...points.map(p => p[0]));
   const ymin = Math.min(...points.map(p => p[1])), ymax = Math.max(...points.map(p => p[1]));
   const span = Math.max(xmax - xmin, ymax - ymin, 1), pad = span * .12;
-  return <><svg role="img" aria-label={`Planta de princípio${level}`} className="w-full h-80 bg-[#f8faf7] rounded-xl border" viewBox={`${xmin - pad} ${ymin - pad} ${xmax - xmin + 2 * pad} ${ymax - ymin + 2 * pad}`}>
+  return <><svg role="img" aria-label={`Planta de princípio ${level}`} className="w-full h-80 bg-[#f8faf7] rounded-xl border" viewBox={`${xmin - pad} ${ymin - pad} ${xmax - xmin + 2 * pad} ${ymax - ymin + 2 * pad}`}>
     {shapes.sort((a, b) => Number(a.e.kind !== "slab") - Number(b.e.kind !== "slab")).map(({ e, pts }) => <g key={e.id}>
       <polygon points={pts.map(p => p.join(",")).join(" ")} fill={COLORS[e.kind]} fillOpacity=".14" stroke={COLORS[e.kind]} strokeWidth={span / 220} strokeDasharray={e.reviewed ? undefined : `${span / 60} ${span / 90}`} />
       <text x={pts.reduce((s, p) => s + p[0], 0) / 4} y={pts.reduce((s, p) => s + p[1], 0) / 4} textAnchor="middle" fontSize={span / 35} fill="#173c32">{e.id}</text>
@@ -47,41 +47,41 @@ function ElementEditor({ element: e, model, update }) {
   const editLoad = (i, patch) => set("loads", e.loads.map((x, k) => k === i ? { ...x, ...patch } : x));
   const editSupport = (i, patch) => set("supports", e.supports.map((x, k) => k === i ? { ...x, ...patch } : x));
   return <Card className="p-5 space-y-5">
-    <div className="flex items-center gap-3"><b>{e.id}</b><select aria-label="Nature" className={selectClass} value={e.kind} onChange={ev => update({ ...e, kind: ev.target.value, reviewed: false, supports: [], loads: [] })}>
+    <div className="flex items-center gap-3"><b>{e.id}</b><select aria-label="Natureza" className={selectClass} value={e.kind} onChange={ev => update({ ...e, kind: ev.target.value, reviewed: false, supports: [], loads: [] })}>
       {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <Input aria-label="Niveau" value={e.level} onChange={ev => set("level", ev.target.value)} /></div>
+      <Input aria-label="Piso" value={e.level} onChange={ev => set("level", ev.target.value)} /></div>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {[["length_m", "Comprimento (m)"], ["width_m", "Largura (m)"], ["height_m", "Altura / espessura (m)"], ["density_kn_m3", "Poids volumique (kN/m³)"],
-        ["x_m", "Origine x (m)"], ["y_m", "Origine y (m)"], ["angle_deg", "Rotation (°)"], ...(e.kind === "beam" ? [["ei_kn_m2", "Rigidez EI (kN.m²), opcional"]] : [])].map(([key, title]) =>
+      {[["length_m", "Comprimento (m)"], ["width_m", "Largura (m)"], ["height_m", "Altura / espessura (m)"], ["density_kn_m3", "Peso volúmico (kN/m³)"],
+        ["x_m", "Origem x (m)"], ["y_m", "Origem y (m)"], ["angle_deg", "Rotation (°)"], ...(e.kind === "beam" ? [["ei_kn_m2", "Rigidez EI (kN.m²), opcional"]] : [])].map(([key, title]) =>
         <label className="text-xs space-y-1" key={key}>{title}<Input type="number" step="any" value={e[key] ?? ""} onChange={ev => set(key, number(ev.target.value))} /></label>)}
     </div>
     <label className="block text-xs space-y-1">Material<Input value={e.material} onChange={ev => set("material", ev.target.value)} /></label>
-    {e.source.document && <p className="text-xs text-muted-foreground">Source : {e.source.document} · page {e.source.page ?? "a precisar"}</p>}
+    {e.source.document && <p className="text-xs text-muted-foreground">Fonte: {e.source.document} · page {e.source.page ?? "a precisar"}</p>}
     <label className="block text-xs space-y-1">Fonte das dimensões / controlo das cotas<Input value={e.source.note} onChange={ev => set("source", { ...e.source, note: ev.target.value })} placeholder="Planta, página, cota ou levantamento no local" /></label>
     <label className="block text-xs space-y-1">Justificação mecânica<Input value={e.mechanics_source.note} onChange={ev => set("mechanics_source", { ...e.mechanics_source, note: ev.target.value })} placeholder="Peso volúmico, rigidez adotada, distribuição e apoios centrados" /></label>
     <section className="space-y-2"><h3 className="font-medium text-sm">Cargas adicionadas ao peso próprio</h3>
       <p className="text-xs text-muted-foreground">O peso próprio é calculado separadamente. Não o introduza uma segunda vez. Sem linha: nenhum outro carregamento.</p>
       {e.loads.map((load, i) => <div className="grid md:grid-cols-6 gap-2 border rounded p-2" key={i}>
-        <select aria-label="Action" className={selectClass} value={load.action} onChange={ev => editLoad(i, { action: ev.target.value })}>{model.actions.map(a => <option key={a.id}>{a.id}</option>)}</select>
+        <select aria-label="Ação" className={selectClass} value={load.action} onChange={ev => editLoad(i, { action: ev.target.value })}>{model.actions.map(a => <option key={a.id}>{a.id}</option>)}</select>
         <select aria-label="Distribuição" className={selectClass} value={load.mode} onChange={ev => editLoad(i, { mode: ev.target.value, position_m: null })}>
-          <option value="point">Ponctuelle (kN)</option>{["wall", "beam"].includes(e.kind) && <option value="line">Linear (kN/m)</option>}{e.kind === "slab" && <option value="surface">Surfacique (kN/m²)</option>}
+          <option value="point">Pontual (kN)</option>{["wall", "beam"].includes(e.kind) && <option value="line">Linear (kN/m)</option>}{e.kind === "slab" && <option value="surface">Surfacique (kN/m²)</option>}
         </select>
         <Input aria-label="Valor da carga" type="number" min="0" step="any" value={load.value ?? ""} onChange={ev => editLoad(i, { value: number(ev.target.value) })} />
         {e.kind === "beam" && load.mode === "point" ? <Input aria-label="Posição a partir do apoio esquerdo (m)" placeholder="Position (m)" type="number" step="any" value={load.position_m ?? ""} onChange={ev => editLoad(i, { position_m: number(ev.target.value) })} /> : <span />}
         <Input aria-label="Fonte da carga" placeholder="Justificação da carga" value={load.source.note} onChange={ev => editLoad(i, { source: { ...load.source, note: ev.target.value } })} />
-        <Button variant="ghost" onClick={() => set("loads", e.loads.filter((_, k) => k !== i))}>Retirer</Button>
+        <Button variant="ghost" onClick={() => set("loads", e.loads.filter((_, k) => k !== i))}>Remover</Button>
       </div>)}
       <Button variant="outline" size="sm" onClick={() => set("loads", [...e.loads, { action: model.actions[0]?.id || "G", mode: "point", value: null, position_m: null, source: emptySource() }])}>Adicionar uma carga</Button>
     </section>
     {e.kind !== "footing" && <section className="space-y-2"><h3 className="font-medium text-sm">Transferência para os apoios</h3>
       <p className="text-xs text-muted-foreground">{e.kind === "beam" ? "Dois apoios simples: esquerdo e depois direito. As reações são calculadas." : "Defina as frações tributárias. A sua soma deve ser igual a 1."}</p>
       {e.supports.map((s, i) => <div className="grid md:grid-cols-5 gap-2" key={i}>
-        <select aria-label={`Appui ${i + 1}`} className={selectClass} value={s.target} onChange={ev => editSupport(i, { target: ev.target.value, receiving: model.elements.find(x => x.id === ev.target.value)?.kind === "beam" ? "point" : "axial", position_m: null })}>
-          <option value="">{`Escolher o apoio${i + 1}`}</option>{model.elements.filter(x => x.id !== e.id && x.kind !== "slab").map(x => <option key={x.id} value={x.id}>{`${x.id} · ${TYPES[x.kind]}`}</option>)}</select>
-        {e.kind !== "beam" ? <Input aria-label="Fração (0 a 1)" placeholder="Fraction" type="number" step="any" value={s.fraction ?? ""} onChange={ev => editSupport(i, { fraction: number(ev.target.value) })} /> : <span className="text-sm p-2">{i === 0 ? "Gauche" : "Droite"}</span>}
+        <select aria-label={`Apoio ${i + 1}`} className={selectClass} value={s.target} onChange={ev => editSupport(i, { target: ev.target.value, receiving: model.elements.find(x => x.id === ev.target.value)?.kind === "beam" ? "point" : "axial", position_m: null })}>
+          <option value="">{`Escolher o apoio ${i + 1}`}</option>{model.elements.filter(x => x.id !== e.id && x.kind !== "slab").map(x => <option key={x.id} value={x.id}>{`${x.id} · ${TYPES[x.kind]}`}</option>)}</select>
+        {e.kind !== "beam" ? <Input aria-label="Fração (0 a 1)" placeholder="Fraction" type="number" step="any" value={s.fraction ?? ""} onChange={ev => editSupport(i, { fraction: number(ev.target.value) })} /> : <span className="text-sm p-2">{i === 0 ? "Esquerda" : "Direita"}</span>}
         <select aria-label="Carga recebida pelo apoio" className={selectClass} value={s.receiving} onChange={ev => editSupport(i, { receiving: ev.target.value, position_m: null })}><option value="axial">Axial centrada</option><option value="uniform">Uniforme sobre viga</option><option value="point">Pontual sobre viga</option></select>
         {s.receiving === "point" ? <Input aria-label="Posição na viga recetora (m)" placeholder="Position (m)" type="number" step="any" value={s.position_m ?? ""} onChange={ev => editSupport(i, { position_m: number(ev.target.value) })} /> : <span />}
-        <Button variant="ghost" onClick={() => set("supports", e.supports.filter((_, k) => k !== i))}>Retirer</Button>
+        <Button variant="ghost" onClick={() => set("supports", e.supports.filter((_, k) => k !== i))}>Remover</Button>
       </div>)}
       <Button variant="outline" size="sm" disabled={e.kind === "beam" && e.supports.length >= 2} onClick={() => set("supports", [...e.supports, { target: "", fraction: e.kind === "beam" ? null : 1, receiving: "axial", position_m: null }])}>Adicionar um apoio</Button>
     </section>}
@@ -122,7 +122,7 @@ export default function StructureCalc() {
   useEffect(() => { api.get("/structuro/calc/ec7/catalog").then(r => setEc7cat(r.data)).catch(() => {}); }, []);
   useEffect(() => { api.get("/structuro/calc/ec3/catalog").then(r => setEc3cat(r.data)).catch(() => {}); }, []);
   useEffect(() => { api.get("/structuro/calc/ec5/catalog").then(r => setEc5cat(r.data)).catch(() => {}); }, []);
-  const apply = data => { setStudy(data); setModel(data.model); setLevel(v => v || data.model.elements[0]?.level || "RDC"); };
+  const apply = data => { setStudy(data); setModel(data.model); setLevel(v => v || data.model.elements[0]?.level || "R/C"); };
   const task = async fn => { setBusy(true); try { await fn(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); setProgress(""); } };
   const create = (demonstration, drawingDemo = false, autoDemo = false) => task(async () => { const { data } = await api.post(BASE, { demonstration, drawing_demonstration: drawingDemo, automation_demonstration: autoDemo, plan_id: demonstration || drawingDemo || autoDemo ? null : plan || null }); apply(data); setSelected(null); await refresh(); });
   const save = () => task(async () => {
@@ -137,13 +137,13 @@ export default function StructureCalc() {
     let current = study, failures = [];
     for (let page = 1; page <= study.page_count; page++) {
       if (current.page_readings[String(page)]) continue;
-      setProgress(`Leitura da página${page} / ${study.page_count}`);
+      setProgress(`Leitura da página ${page} / ${study.page_count}`);
       try {
         const { data } = await api.post(`${BASE}/${study.study_id}/read-page`, { expected_revision: current.revision, page }, { timeout: 95000 });
         current = data; apply(data);
       } catch (e) { if (e?.response?.status === 409) throw e; failures.push(page); }
     }
-    if (failures.length) toast.error(`Páginas não lidas:${failures.join(", ")}. Vous pouvez relancer les pages restantes.`);
+    if (failures.length) toast.error(`Páginas não lidas: ${failures.join(", ")}. Pode relançar as páginas restantes.`);
     else toast.success("Páginas lidas; verifique e selecione os elementos a reter.");
   });
   const download = fmt => task(async () => {
@@ -158,7 +158,7 @@ export default function StructureCalc() {
   const qActions = () => (model?.actions || []).filter(a => a.kind === "Q");
   const genCombos = () => task(async () => {
     const { data } = await api.post(`${BASE}/${study.study_id}/combinations/generate`, { expected_revision: study.revision, categories: cats, options: { uls: true, sls_char: true, sls_freq: sfreq, sls_qp: true }, apply: true });
-    apply(data.study); await refresh(); toast.success(`${data.generated.length}combinação(ões) NP EN 1990 gerada(s) · a verificar pelo engenheiro`);
+    apply(data.study); await refresh(); toast.success(`${data.generated.length} combinação(ões) NP EN 1990 gerada(s) · a verificar pelo engenheiro`);
   });
   useEffect(() => {
     if (!study || JSON.stringify(model) !== JSON.stringify(study?.model)) { setEnvelope(null); setEc2res(null); setEc7res(null); setEc3res(null); setEc5res(null); setSlsres(null); setCrackres(null); setAncres(null); return; }
@@ -228,33 +228,33 @@ export default function StructureCalc() {
   return <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6" data-testid="structure-calc">
     <header className="flex flex-wrap justify-between gap-4"><div><p className="text-xs uppercase tracking-widest text-emerald-800">ConstruPilot · Structure</p>
       <h1 className="text-3xl font-semibold mt-2 flex gap-2 items-center"><Building2 /> Do projeto de licenciamento ao modelo estrutural</h1>
-      <p className="text-sm text-muted-foreground mt-2">Leitura das plantas, cálculo gravítico e plantas de princípio com fontes.</p></div><a href="/structuro" className="text-sm underline">Espace structure</a></header>
+      <p className="text-sm text-muted-foreground mt-2">Leitura das plantas, cálculo gravítico e plantas de princípio com fontes.</p></div><a href="/structuro" className="text-sm underline">Espaço estrutura</a></header>
     <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><b>Versão preliminar.</b> O motor calcula esforços no modelo introduzido. Ainda não dimensiona as secções nem as armaduras. Solo, estabilidade, resistência e sismo continuam a ser verificados por um engenheiro de estruturas.</div>
     {busy && <p role="status" className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" />{progress || "Traitement en cours…"}</p>}
     <fieldset disabled={busy} className="space-y-6 disabled:opacity-70">
       {!study ? <>
         <Card className="p-5 space-y-4"><h2 className="font-semibold">Começar a partir do seu projeto de licenciamento</h2><select className={selectClass} aria-label="PC source" value={plan} onChange={ev => setPlan(ev.target.value)}><option value="">Estudo vazio / introdução manual</option>{plans.map(p => <option key={p.plan_id} value={p.plan_id}>{p.filename}</option>)}</select>
-          <div className="flex flex-wrap gap-2"><Button onClick={() => create(false)} data-testid="create-study-btn">Criar o estudo</Button><Button variant="outline" onClick={() => create(true)} data-testid="open-demo-study-btn">Abrir um exemplo fictício</Button><Button variant="outline" onClick={() => create(false, false, true)} data-testid="open-automation-demo-btn">Exemple automatique (dossier)</Button><a className="text-sm underline p-2" href="/plan">Importar um novo projeto de licenciamento</a></div></Card>
+          <div className="flex flex-wrap gap-2"><Button onClick={() => create(false)} data-testid="create-study-btn">Criar o estudo</Button><Button variant="outline" onClick={() => create(true)} data-testid="open-demo-study-btn">Abrir um exemplo fictício</Button><Button variant="outline" onClick={() => create(false, false, true)} data-testid="open-automation-demo-btn">Exemplo automático (processo)</Button><a className="text-sm underline p-2" href="/plan">Importar um novo projeto de licenciamento</a></div></Card>
         <div className="grid md:grid-cols-2 gap-3">{studies.map(s => <button key={s.study_id} className="text-left border rounded-lg p-4" onClick={() => task(async () => { const { data } = await api.get(`${BASE}/${s.study_id}`); apply(data); })}><b>{s.model.title}</b><p className="text-xs text-muted-foreground">Revisão {s.revision}</p></button>)}</div>
       </> : <>
         <div className="flex flex-wrap gap-2 items-center"><Button variant="ghost" disabled={dirty} onClick={() => { setStudy(null); setModel(null); setSelected(null); setLevel(""); }}>Os meus estudos</Button>
           <Input className="max-w-md" aria-label="Título do estudo" value={model.title} onChange={ev => setModel({ ...model, title: ev.target.value })} />
           <Button onClick={save}><Calculator className="h-4 w-4 mr-2" />Guardar e calcular</Button>
           <Button variant="outline" disabled={dirty} onClick={() => download("pdf")}><FileDown className="h-4 w-4 mr-2" />PDF</Button><Button variant="outline" disabled={dirty} onClick={() => download("dxf")}>DXF</Button>
-          <span className="text-xs">{dirty ? "Alterações não guardadas · resultados ocultos" : `Revisão${study.revision}`}</span>
+          <span className="text-xs">{dirty ? "Alterações não guardadas · resultados ocultos" : `Revisão ${study.revision}`}</span>
           {dirty && <Button variant="ghost" onClick={() => setModel(study.model)}>Anular as alterações</Button>}
         </div>
         {study.plan_id && <Card className="p-5 space-y-3"><h2 className="font-semibold">Leitura do projeto de licenciamento: {Object.keys(study.page_readings).length} / {study.page_count} pages</h2>
           <p className="text-xs text-muted-foreground">Os candidatos ainda não são elementos estruturais validados. Verifique os duplicados entre plantas, cortes e alçados antes de os adicionar.</p>
           <Button variant="outline" disabled={dirty} onClick={readAll}>Ler as páginas restantes</Button>
-          {Object.values(study.page_readings).map(read => <details key={read.page} className="border rounded p-3"><summary className="cursor-pointer">Page {read.page} · {read.kind} · {read.elements.length} candidats</summary>
+          {Object.values(study.page_readings).map(read => <details key={read.page} className="border rounded p-3"><summary className="cursor-pointer">Página {read.page} · {read.kind} · {read.elements.length} candidats</summary>
             <ul className="text-sm list-disc ml-5 mt-3">{[...read.observations, ...read.missing].map((x, i) => <li key={i}>{x}</li>)}</ul>
             {read.elements.map(e => <div key={e.id} className="flex gap-3 items-center py-2"><span className="text-sm flex-1">{e.id} · {TYPES[e.kind]} · {e.level} · {e.length_m ?? "?"} × {e.width_m ?? "?"} × {e.height_m ?? "?"} m</span><Button size="sm" variant="outline" disabled={model.elements.some(x => x.id === e.id)} onClick={() => add(e)}>Adicionar ao modelo</Button></div>)}
           </details>)}
         </Card>}
         <div className="grid lg:grid-cols-[260px_1fr] gap-5"><Card className="p-4 space-y-3"><h2 className="font-semibold">Elementos estruturais</h2>
           <Button variant="outline" size="sm" onClick={() => { let n = model.elements.length + 1; while (model.elements.some(e => e.id === `E${n}`)) n++; add(blankElement(`E${n}`)); }}><Plus className="h-4 w-4" />Adicionar</Button>
-          {model.elements.map(e => <div key={e.id} className={`flex items-center rounded border p-2 ${selected === e.id ? "bg-emerald-50 border-emerald-600" : ""}`}><button className="text-left flex-1 text-sm" onClick={() => { setSelected(e.id); setLevel(e.level); }}>{e.id} · {TYPES[e.kind]}<p className="text-xs text-muted-foreground">{e.level} · {e.reviewed ? "introdução confirmada" : "a confirmar"}</p></button><button aria-label={`Eliminar${e.id}`} onClick={() => setModel({ ...model, gravity_model_reviewed: false, elements: model.elements.filter(x => x.id !== e.id) })}><Trash2 className="h-4 w-4" /></button></div>)}
+          {model.elements.map(e => <div key={e.id} className={`flex items-center rounded border p-2 ${selected === e.id ? "bg-emerald-50 border-emerald-600" : ""}`}><button className="text-left flex-1 text-sm" onClick={() => { setSelected(e.id); setLevel(e.level); }}>{e.id} · {TYPES[e.kind]}<p className="text-xs text-muted-foreground">{e.level} · {e.reviewed ? "introdução confirmada" : "a confirmar"}</p></button><button aria-label={`Eliminar ${e.id}`} onClick={() => setModel({ ...model, gravity_model_reviewed: false, elements: model.elements.filter(x => x.id !== e.id) })}><Trash2 className="h-4 w-4" /></button></div>)}
         </Card><div className="space-y-4"><Card className="p-5"><div className="flex justify-between gap-3 mb-4"><h2 className="font-semibold">Planta de princípio · não executória</h2><select aria-label="Piso da planta" className="border rounded p-1 text-sm" value={level} onChange={ev => setLevel(ev.target.value)}>{[...new Set([level, ...model.elements.map(e => e.level)])].map(l => <option key={l}>{l}</option>)}</select></div><Plan model={model} level={level} /></Card>
           {active && <ElementEditor element={active} model={model} update={updateElement} />}
         </div></div>
@@ -266,11 +266,11 @@ export default function StructureCalc() {
           </details>
         </Card>
         {!dirty && <Card className="p-5 space-y-3" data-testid="eurocode-combos">
-          <h2 className="font-semibold">Combinaisons Eurocode EN 1990</h2>
-          <p className="text-sm text-muted-foreground">Gera as combinações ELU/ELS a partir das suas ações. Coeficientes usuais do Anexo Nacional português (γG=1,35 ; γQ=1,5 ; ψ por categoria) — <b>a verificar pelo engenheiro</b>. Aucune résistance n'est validée.</p>
+          <h2 className="font-semibold">Combinações Eurocódigo NP EN 1990</h2>
+          <p className="text-sm text-muted-foreground">Gera as combinações ELU/ELS a partir das suas ações. Coeficientes usuais do Anexo Nacional português (γG=1,35 ; γQ=1,5 ; ψ por categoria) — <b>a verificar pelo engenheiro</b>. Nenhuma resistência é validada.</p>
           {qActions().length === 0 ? <p className="text-sm">Adicione pelo menos uma ação variável Q (e guarde) para gerar combinações.</p> : <div className="space-y-2">
             {qActions().map(q => <div key={q.id} className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium min-w-[7rem]">{q.label} ({q.id})</span>
-              <select className={selectClass + " max-w-xs"} aria-label={`Categoria${q.id}`} value={cats[q.id] || "A"} onChange={ev => setCats({ ...cats, [q.id]: ev.target.value })} data-testid={`combo-cat-${q.id}`}>{(catalog?.categories || [{ key: "A", label: "A — Habitation" }]).map(c => <option key={c.key} value={c.key}>{`${c.label} (ψ0=${c.psi0})`}</option>)}</select></div>)}
+              <select className={selectClass + " max-w-xs"} aria-label={`Categoria ${q.id}`} value={cats[q.id] || "A"} onChange={ev => setCats({ ...cats, [q.id]: ev.target.value })} data-testid={`combo-cat-${q.id}`}>{(catalog?.categories || [{ key: "A", label: "A — Habitation" }]).map(c => <option key={c.key} value={c.key}>{`${c.label} (ψ0=${c.psi0})`}</option>)}</select></div>)}
           </div>}
           <label className="flex gap-2 text-sm items-center"><input type="checkbox" checked={sfreq} onChange={ev => setSfreq(ev.target.checked)} data-testid="combo-sfreq" />Adicionar também a ELS frequente</label>
           <Button variant="outline" onClick={genCombos} disabled={qActions().length === 0} data-testid="combo-generate"><Calculator className="h-4 w-4 mr-2" />Gerar as combinações NP EN 1990</Button>
@@ -279,29 +279,29 @@ export default function StructureCalc() {
         {result && <Card className="p-5 space-y-4"><h2 className="font-semibold">{result.status === "blocked" ? "A completar antes do cálculo" : "Resultados mecânicos · resistência não verificada"}</h2>
           {result.issues.length > 0 && <ul className="list-disc ml-5 text-sm space-y-1">{result.issues.map((i, k) => <li key={k}><b>{i.element || "Modelo"}</b> : {i.message}</li>)}</ul>}
           {activeCase && <><select aria-label="Caso de carga" className={selectClass} value={activeCase.id} onChange={ev => setCaseId(ev.target.value)}>{result.cases.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
-            <div className="flex flex-wrap gap-6 text-sm"><span>Charges externes : <b>{activeCase.external_kn.toFixed(3)} kN</b></span><span>Reações no solo: <b>{activeCase.ground_kn.toFixed(3)} kN</b></span></div>
-            <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="p-2">Referência</th><th>Total (kN)</th><th>Efforts / pressions</th></tr></thead><tbody>{activeCase.elements.map(r => <tr key={r.id} className="border-b"><td className="p-2 font-medium">{r.id}</td><td>{r.total_kn.toFixed(3)}</td><td>{r.kind === "beam" ? `Mmax ${r.moment_max_knm.toFixed(3)} kN.m · Vmax ${r.shear_max_kn.toFixed(3)} kN` : r.kind === "footing" ? `q moyen ${r.mean_pressure_kpa.toFixed(3)} kPa` : r.axial_stress_mpa !== undefined ? `σ moyen ${r.axial_stress_mpa.toFixed(4)} MPa` : "Distribuição tributária"}</td></tr>)}</tbody></table></div>
+            <div className="flex flex-wrap gap-6 text-sm"><span>Cargas externas: <b>{activeCase.external_kn.toFixed(3)} kN</b></span><span>Reações no solo: <b>{activeCase.ground_kn.toFixed(3)} kN</b></span></div>
+            <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="p-2">Referência</th><th>Total (kN)</th><th>Esforços / pressões</th></tr></thead><tbody>{activeCase.elements.map(r => <tr key={r.id} className="border-b"><td className="p-2 font-medium">{r.id}</td><td>{r.total_kn.toFixed(3)}</td><td>{r.kind === "beam" ? `Mmax ${r.moment_max_knm.toFixed(3)} kN.m · Vmax ${r.shear_max_kn.toFixed(3)} kN` : r.kind === "footing" ? `q médio ${r.mean_pressure_kpa.toFixed(3)} kPa` : r.axial_stress_mpa !== undefined ? `σ médio ${r.axial_stress_mpa.toFixed(4)} MPa` : "Distribuição tributária"}</td></tr>)}</tbody></table></div>
           </>}
           {envelope && envelope.elements?.some(e => Object.keys(e.uls || {}).length || Object.keys(e.sls || {}).length) && <details data-testid="envelope-block" open><summary className="cursor-pointer text-sm font-medium">Combinação condicionante por elemento (envolvente NP EN 1990)</summary>
-            <div className="overflow-auto mt-2"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Referência</th><th>ELU — effort dimensionnant</th><th>Combinaison</th><th>ELS</th></tr></thead><tbody>{envelope.elements.filter(e => Object.keys(e.uls || {}).length || Object.keys(e.sls || {}).length).map(e => { const u = e.uls.moment_knm || e.uls.axial_kn || e.uls.pressure_kpa; const uk = e.uls.moment_knm ? `M ${e.uls.moment_knm.value} kN·m${e.uls.shear_kn ? ` · V ${e.uls.shear_kn.value} kN` : ""}` : e.uls.axial_kn ? `N ${e.uls.axial_kn.value} kN` : e.uls.pressure_kpa ? `q ${e.uls.pressure_kpa.value} kPa` : "—"; return <tr key={e.id} className="border-b"><td className="p-1 font-medium">{e.id}</td><td>{uk}</td><td>{u?.label || "—"}</td><td>{e.sls.deflection_mm ? `flecha${e.sls.deflection_mm.value} mm` : "—"}</td></tr>; })}</tbody></table></div>
+            <div className="overflow-auto mt-2"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Referência</th><th>ELU — effort dimensionnant</th><th>Combinação</th><th>ELS</th></tr></thead><tbody>{envelope.elements.filter(e => Object.keys(e.uls || {}).length || Object.keys(e.sls || {}).length).map(e => { const u = e.uls.moment_knm || e.uls.axial_kn || e.uls.pressure_kpa; const uk = e.uls.moment_knm ? `M ${e.uls.moment_knm.value} kN·m${e.uls.shear_kn ? ` · V ${e.uls.shear_kn.value} kN` : ""}` : e.uls.axial_kn ? `N ${e.uls.axial_kn.value} kN` : e.uls.pressure_kpa ? `q ${e.uls.pressure_kpa.value} kPa` : "—"; return <tr key={e.id} className="border-b"><td className="p-1 font-medium">{e.id}</td><td>{uk}</td><td>{u?.label || "—"}</td><td>{e.sls.deflection_mm ? `flecha ${e.sls.deflection_mm.value} mm` : "—"}</td></tr>; })}</tbody></table></div>
             <p className="text-[11px] text-muted-foreground mt-1">{envelope.note}</p></details>}
           <details><summary className="cursor-pointer text-sm">Domínio e limites do cálculo</summary><ul className="list-disc ml-5 text-xs mt-2 space-y-1">{result.limits.map(x => <li key={x}>{x}</li>)}</ul></details>
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="ec2-panel">
           <h2 className="font-semibold">NP EN 1992 — Armaduras de betão armado (vigas)</h2>
-          <p className="text-sm text-muted-foreground">A partir do <b>momento e do esforço transverso condicionantes</b> da envolvente NP EN 1990, cálculo determinístico do aço necessário (flexão simples/dupla, esforço transverso, As mín./máx.). Coeficientes usuais do Anexo Nacional português, <b>a verificar pelo engenheiro</b>. Aucune résistance validée.</p>
+          <p className="text-sm text-muted-foreground">A partir do <b>momento e do esforço transverso condicionantes</b> da envolvente NP EN 1990, cálculo determinístico do aço necessário (flexão simples/dupla, esforço transverso, As mín./máx.). Coeficientes usuais do Anexo Nacional português, <b>a verificar pelo engenheiro</b>. Nenhuma resistência validada.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
             <label className="space-y-1">Classe do betão<select className={selectClass} value={ec2opts.fck} onChange={ev => setEc2opts({ ...ec2opts, fck: Number(ev.target.value) })} data-testid="ec2-fck">{(ec2cat?.concrete || [{ key: "C25/30", fck: 25 }]).map(c => <option key={c.key} value={c.fck}>{c.key}</option>)}</select></label>
             <label className="space-y-1">Aço fyk (MPa)<Input type="number" step="any" value={ec2opts.fyk} onChange={ev => setEc2opts({ ...ec2opts, fyk: Number(ev.target.value) })} data-testid="ec2-fyk" /></label>
-            <label className="space-y-1">Enrobage d' (m)<Input type="number" step="any" value={ec2opts.cover_m} onChange={ev => setEc2opts({ ...ec2opts, cover_m: Number(ev.target.value) })} data-testid="ec2-cover" /></label>
+            <label className="space-y-1">Recobrimento d' (m)<Input type="number" step="any" value={ec2opts.cover_m} onChange={ev => setEc2opts({ ...ec2opts, cover_m: Number(ev.target.value) })} data-testid="ec2-cover" /></label>
             <label className="space-y-1">γc<Input type="number" step="any" value={ec2opts.gamma_c} onChange={ev => setEc2opts({ ...ec2opts, gamma_c: Number(ev.target.value) })} /></label>
             <label className="space-y-1">γs<Input type="number" step="any" value={ec2opts.gamma_s} onChange={ev => setEc2opts({ ...ec2opts, gamma_s: Number(ev.target.value) })} /></label>
             <label className="space-y-1">cot θ (1 a 2,5)<Input type="number" step="any" value={ec2opts.cot_theta} onChange={ev => setEc2opts({ ...ec2opts, cot_theta: Number(ev.target.value) })} data-testid="ec2-cottheta" /></label>
           </div>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-xs border-t pt-3">
-            <label className="space-y-1 col-span-3 md:col-span-6 text-muted-foreground">Plan de ferraillage (proposition couvrant l'As) — <b>disposições a verificar</b></label>
-            <label className="space-y-1">Barres long. Ø (mm)<select className={selectClass} value={ec2opts.bar_mm} onChange={ev => setEc2opts({ ...ec2opts, bar_mm: Number(ev.target.value) })} data-testid="ec2-bar">{[8, 10, 12, 14, 16, 20, 25, 32].map(d => <option key={d} value={d}>{`Ø${d}`}</option>)}</select></label>
-            <label className="space-y-1">Cadres Ø (mm)<select className={selectClass} value={ec2opts.stirrup_mm} onChange={ev => setEc2opts({ ...ec2opts, stirrup_mm: Number(ev.target.value) })} data-testid="ec2-stirrup">{[6, 8, 10, 12].filter(d => [8, 10, 12].includes(d)).map(d => <option key={d} value={d}>{`Ø${d}`}</option>)}</select></label>
+            <label className="space-y-1 col-span-3 md:col-span-6 text-muted-foreground">Planta de armaduras (proposta que cobre o As) — <b>disposições a verificar</b></label>
+            <label className="space-y-1">Varões long. Ø (mm)<select className={selectClass} value={ec2opts.bar_mm} onChange={ev => setEc2opts({ ...ec2opts, bar_mm: Number(ev.target.value) })} data-testid="ec2-bar">{[8, 10, 12, 14, 16, 20, 25, 32].map(d => <option key={d} value={d}>{`Ø${d}`}</option>)}</select></label>
+            <label className="space-y-1">Estribos Ø (mm)<select className={selectClass} value={ec2opts.stirrup_mm} onChange={ev => setEc2opts({ ...ec2opts, stirrup_mm: Number(ev.target.value) })} data-testid="ec2-stirrup">{[6, 8, 10, 12].filter(d => [8, 10, 12].includes(d)).map(d => <option key={d} value={d}>{`Ø${d}`}</option>)}</select></label>
             <label className="space-y-1">Ramos de estribo<select className={selectClass} value={ec2opts.legs} onChange={ev => setEc2opts({ ...ec2opts, legs: Number(ev.target.value) })} data-testid="ec2-legs">{[2, 3, 4].map(d => <option key={d} value={d}>{d}</option>)}</select></label>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -317,9 +317,9 @@ export default function StructureCalc() {
                     <td className="p-1 font-medium">{r.id}</td>
                     <td>{r.b_m}×{r.h_m} · {r.d_m}</td>
                     <td><b>M {r.med_knm} kN·m</b> → <b>{r.design.flexure.as_req_cm2} cm²</b><div className="text-[10px] text-muted-foreground">{r.design.flexure.mode === "double" ? `double · As'=${r.design.flexure.as_comp_cm2} cm²` : "flexion simple"} · μ={r.design.flexure.mu}/{r.design.flexure.mu_lim} · {r.med_case}</div></td>
-                    <td>{r.ved_kn != null ? <><b>V {r.ved_kn} kN</b> → <b>{r.design.shear.asw_s_req_cm2_m} cm²/m</b><div className="text-[10px] text-muted-foreground">{r.design.shear.needs_stirrups ? `cadres · cot θ=${r.design.shear.cot_theta} · s≤${r.design.shear.s_max_m} m` : `V_Rd,c=${r.design.shear.vrdc_kn} kN suffisant · mini`}</div></> : "—"}</td>
+                    <td>{r.ved_kn != null ? <><b>V {r.ved_kn} kN</b> → <b>{r.design.shear.asw_s_req_cm2_m} cm²/m</b><div className="text-[10px] text-muted-foreground">{r.design.shear.needs_stirrups ? `estribos · cot θ=${r.design.shear.cot_theta} · s≤${r.design.shear.s_max_m} m` : `V_Rd,c=${r.design.shear.vrdc_kn} kN suficiente · mín.`}</div></> : "—"}</td>
                     <td>{r.design.flexure.as_min_cm2} / {r.design.flexure.as_max_cm2} cm²</td>
-                    <td>{r.scheme ? <><b>{r.scheme.longitudinal.label}</b>{r.scheme.stirrups ? <> · {r.scheme.stirrups.label}</> : ""}{r.reinforcement_source === "automation" && <span data-testid={`ec2-auto-${r.id}`} className={`ml-1 text-[10px] font-semibold ${r.provided_ok ? "text-emerald-700" : "text-red-700"}`}>· auto {r.provided_ok ? "✓ suffisant" : "✗ insuffisant"}</span>}<div className="text-[10px] text-muted-foreground">As,prov {r.scheme.longitudinal.as_provided_cm2} cm² (req {r.scheme.longitudinal.as_req_cm2}){r.scheme.stirrups ? ` · ${r.scheme.stirrups.asw_s_prov_cm2_m} cm²/m` : ""}{r.reinforcement_source === "automation" ? "· aços automáticos reinjetados" : ""}</div></> : "—"}</td>
+                    <td>{r.scheme ? <><b>{r.scheme.longitudinal.label}</b>{r.scheme.stirrups ? <> · {r.scheme.stirrups.label}</> : ""}{r.reinforcement_source === "automation" && <span data-testid={`ec2-auto-${r.id}`} className={`ml-1 text-[10px] font-semibold ${r.provided_ok ? "text-emerald-700" : "text-red-700"}`}>· auto {r.provided_ok ? "✓ suficiente" : "✗ insuficiente"}</span>}<div className="text-[10px] text-muted-foreground">As,prov {r.scheme.longitudinal.as_provided_cm2} cm² (req {r.scheme.longitudinal.as_req_cm2}){r.scheme.stirrups ? ` · ${r.scheme.stirrups.asw_s_prov_cm2_m} cm²/m` : ""}{r.reinforcement_source === "automation" ? " · aços automáticos reinjetados" : ""}</div></> : "—"}</td>
                   </tr>)}</tbody></table>
             {ec2res.elements.some(r => r.status === "ok" && (r.design.warnings || []).length) && <ul className="list-disc ml-5 mt-2 text-amber-700 text-[11px]" data-testid="ec2-warnings">{ec2res.elements.filter(r => r.status === "ok").flatMap(r => (r.design.warnings || []).map((w, i) => <li key={r.id + i}>{r.id} : {w}</li>))}</ul>}
             <p className="text-[11px] text-muted-foreground mt-1">{ec2res.note}</p>
@@ -327,7 +327,7 @@ export default function StructureCalc() {
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="ec7-panel">
           <h2 className="font-semibold">NP EN 1997 — Capacidade resistente das fundações (sapatas)</h2>
-          <p className="text-sm text-muted-foreground">A partir da <b>pression dimensionnante</b> da envolvente NP EN 1990, capacidade resistente admissível (Anexo D, carga vertical centrada). Abordagem de cálculo 1 (Anexo Nacional português) por omissão. A razão q_Ed/q_Rd é <b>indicatif</b> — não vale como verificação regulamentar, a validar pelo engenheiro.</p>
+          <p className="text-sm text-muted-foreground">A partir da <b>pressão condicionante</b> da envolvente NP EN 1990, capacidade resistente admissível (Anexo D, carga vertical centrada). Abordagem de cálculo 1 (Anexo Nacional português) por omissão. A razão q_Ed/q_Rd é <b>indicatif</b> — não vale como verificação regulamentar, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
             <label className="space-y-1">Regime<select className={selectClass} value={ec7opts.mode} onChange={ev => setEc7opts({ ...ec7opts, mode: ev.target.value })} data-testid="ec7-mode"><option value="drained">Drenado (c', φ')</option><option value="undrained">Não drenado (cu)</option></select></label>
             <label className="space-y-1">Encastrement D (m)<Input type="number" step="any" value={ec7opts.d_m} onChange={ev => setEc7opts({ ...ec7opts, d_m: Number(ev.target.value) })} /></label>
@@ -339,7 +339,7 @@ export default function StructureCalc() {
             <label className="space-y-1">γR;v<Input type="number" step="any" value={ec7opts.gamma_Rv} onChange={ev => setEc7opts({ ...ec7opts, gamma_Rv: Number(ev.target.value) })} /></label>
           </div>
           <Button variant="outline" onClick={designEc7} data-testid="ec7-design"><Calculator className="h-4 w-4 mr-2" />Calcular a capacidade resistente NP EN 1997</Button>
-          {ec7res && <div className="overflow-auto" data-testid="ec7-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Sapata</th><th>B×L (m)</th><th>q_Ed (kPa)</th><th>q_Rd (kPa)</th><th>Utilisation q_Ed/q_Rd</th></tr></thead>
+          {ec7res && <div className="overflow-auto" data-testid="ec7-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Sapata</th><th>B×L (m)</th><th>q_Ed (kPa)</th><th>q_Rd (kPa)</th><th>Utilização q_Ed/q_Rd</th></tr></thead>
             <tbody>{ec7res.elements.map(r => r.status !== "ok"
               ? <tr key={r.id} className="border-b"><td className="p-1 font-medium">{r.id}</td><td colSpan={4} className="text-amber-700">{r.message || r.result?.message}</td></tr>
               : <tr key={r.id} className="border-b"><td className="p-1 font-medium">{r.id}</td><td>{r.result.B_m}×{r.result.L_m}</td><td>{r.result.q_ed_kpa}</td><td>{r.result.q_Rd_kpa}</td><td><Util u={r.result.utilisation} /></td></tr>)}</tbody></table>
@@ -347,7 +347,7 @@ export default function StructureCalc() {
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="spans-panel">
           <h2 className="font-semibold">Vãos das vigas</h2>
-          <p className="text-sm text-muted-foreground">Automáticos segundo a planta (comprimento introduzido). As <b>flechas ELS</b> utilizam SEMPRE o vão da planta automaticamente. Este campo só serve para o <b>Mcr automatique (EN 1993)</b> quando a planta não marca o comprimento de uma viga.</p>
+          <p className="text-sm text-muted-foreground">Automáticos segundo a planta (comprimento introduzido). As <b>flechas ELS</b> utilizam SEMPRE o vão da planta automaticamente. Este campo só serve para o <b>Mcr automático (NP EN 1993)</b> quando a planta não marca o comprimento de uma viga.</p>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
             {Object.keys(spans).length === 0 ? <span className="text-muted-foreground">Nenhuma viga no modelo.</span> : Object.entries(spans).map(([id, v]) => {
               const fromPlan = ((study?.model?.elements) || []).some(e => e.id === id && e.length_m != null);
@@ -360,12 +360,12 @@ export default function StructureCalc() {
           <h2 className="font-semibold">NP EN 1993 — Verificação do aço (vigas)</h2>
           <p className="text-sm text-muted-foreground">A partir do <b>M e V condicionantes</b> da envolvente: resistência da secção (flexão, corte) e encurvadura lateral. Propriedades de perfis públicas (EN 10365). Razões <b>indicatifs</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
-            <label className="space-y-1">Profil<select className={selectClass} value={ec3opts.profile} onChange={ev => setEc3opts({ ...ec3opts, profile: ev.target.value })} data-testid="ec3-profile">{ec3cat?.families ? Object.entries(ec3cat.families).map(([fam, keys]) => <optgroup key={fam} label={fam}>{keys.map(k => <option key={k} value={k}>{k}</option>)}</optgroup>) : <option value="IPE300">IPE300</option>}</select></label>
-            <label className="space-y-1">Nuance<select className={selectClass} value={ec3opts.grade} onChange={ev => setEc3opts({ ...ec3opts, grade: ev.target.value })} data-testid="ec3-grade">{Object.keys(ec3cat?.grades || { S235: 235, S275: 275, S355: 355 }).map(g => <option key={g} value={g}>{g}</option>)}</select></label>
-            <label className="space-y-1">Classe section<select className={selectClass} value={ec3opts.section_class} onChange={ev => setEc3opts({ ...ec3opts, section_class: ev.target.value })} data-testid="ec3-section-class"><option value="">Auto (Table 5.2)</option>{[1, 2, 3].map(c => <option key={c} value={c}>{`Classe ${c}`}</option>)}</select></label>
+            <label className="space-y-1">Perfil<select className={selectClass} value={ec3opts.profile} onChange={ev => setEc3opts({ ...ec3opts, profile: ev.target.value })} data-testid="ec3-profile">{ec3cat?.families ? Object.entries(ec3cat.families).map(([fam, keys]) => <optgroup key={fam} label={fam}>{keys.map(k => <option key={k} value={k}>{k}</option>)}</optgroup>) : <option value="IPE300">IPE300</option>}</select></label>
+            <label className="space-y-1">Classe<select className={selectClass} value={ec3opts.grade} onChange={ev => setEc3opts({ ...ec3opts, grade: ev.target.value })} data-testid="ec3-grade">{Object.keys(ec3cat?.grades || { S235: 235, S275: 275, S355: 355 }).map(g => <option key={g} value={g}>{g}</option>)}</select></label>
+            <label className="space-y-1">Classe da secção<select className={selectClass} value={ec3opts.section_class} onChange={ev => setEc3opts({ ...ec3opts, section_class: ev.target.value })} data-testid="ec3-section-class"><option value="">Auto (Table 5.2)</option>{[1, 2, 3].map(c => <option key={c} value={c}>{`Classe ${c}`}</option>)}</select></label>
             <label className="space-y-1">Curva de encurv. lat.<select className={selectClass} value={ec3opts.buckling_curve} onChange={ev => setEc3opts({ ...ec3opts, buckling_curve: ev.target.value })} data-testid="ec3-ltcurve"><option value="">Auto (Table 6.4)</option>{["a", "b", "c", "d"].map(c => <option key={c} value={c}>{c}</option>)}</select></label>
             <label className="space-y-1">C1 (encurvadura lateral)<Input type="number" step="any" value={ec3opts.c1} onChange={ev => setEc3opts({ ...ec3opts, c1: Number(ev.target.value) })} data-testid="ec3-c1" /></label>
-            <label className="space-y-1">Mcr manuel (sinon auto)<Input type="number" step="any" placeholder="automático da planta" value={ec3opts.mcr_knm} onChange={ev => setEc3opts({ ...ec3opts, mcr_knm: ev.target.value })} data-testid="ec3-mcr" /></label>
+            <label className="space-y-1">Mcr manual (senão automático)<Input type="number" step="any" placeholder="automático da planta" value={ec3opts.mcr_knm} onChange={ev => setEc3opts({ ...ec3opts, mcr_knm: ev.target.value })} data-testid="ec3-mcr" /></label>
             <label className="space-y-1">γM0<Input type="number" step="any" value={ec3opts.gamma_m0} onChange={ev => setEc3opts({ ...ec3opts, gamma_m0: Number(ev.target.value) })} /></label>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs border-t pt-3">
@@ -378,22 +378,22 @@ export default function StructureCalc() {
             <label className="flex items-end gap-2 text-xs"><input type="checkbox" checked={!!ec3opts.lateral_restraint} onChange={ev => setEc3opts({ ...ec3opts, lateral_restraint: ev.target.checked })} data-testid="ec3-lateral" />Travamento lateral (χLT=1)</label>
           </div>
           <Button variant="outline" onClick={designEc3} data-testid="ec3-design"><Calculator className="h-4 w-4 mr-2" />Verificar o aço NP EN 1993</Button>
-          {ec3res && <div className="overflow-auto" data-testid="ec3-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Flexion M/Mc,Rd</th><th>Cisaillement V/Vpl,Rd</th><th>Encurvadura lateral M/Mb,Rd</th></tr></thead>
+          {ec3res && <div className="overflow-auto" data-testid="ec3-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Flexion M/Mc,Rd</th><th>Corte V/Vpl,Rd</th><th>Encurvadura lateral M/Mb,Rd</th></tr></thead>
             <tbody>{ec3res.elements.map(r => r.status !== "ok"
               ? <tr key={r.id} className="border-b"><td className="p-1 font-medium">{r.id}</td><td colSpan={3} className="text-amber-700">{r.message}</td></tr>
               : <tr key={r.id} className="border-b align-top"><td className="p-1 font-medium">{r.id}<div className="text-[10px] text-muted-foreground">{r.profile}/{r.grade}{r.section_class ? ` · classe ${r.section_class} (${r.class_mode})` : ""}{r.span_m ? ` · L=${r.span_m}m (${r.span_source})` : ""}</div></td>
-                  <td><Util u={r.result.bending.utilisation} /><div className="text-[10px] text-muted-foreground">{r.result.bending.mv_interaction ? `Mc,Rd reduzido${r.result.bending.mc_rd_eff_knm} (M-V)` : `Mc,Rd ${r.result.bending.mc_rd_knm}`} kN·m</div></td>
+                  <td><Util u={r.result.bending.utilisation} /><div className="text-[10px] text-muted-foreground">{r.result.bending.mv_interaction ? `Mc,Rd reduzido ${r.result.bending.mc_rd_eff_knm} (M-V)` : `Mc,Rd ${r.result.bending.mc_rd_knm}`} kN·m</div></td>
                   <td><Util u={r.result.shear.utilisation} /><div className="text-[10px] text-muted-foreground">Vpl,Rd {r.result.shear.vpl_rd_kn} kN</div></td>
                   <td><Util u={r.result.lateral_torsional.utilisation} /><div className="text-[10px] text-muted-foreground">{r.result.lateral_torsional.note || `Mb,Rd ${r.result.lateral_torsional.mb_rd_knm} · Mcr ${r.mcr_knm} (${r.mcr_source})`}</div></td></tr>)}</tbody></table>
             <p className="text-[11px] text-muted-foreground mt-1">{ec3res.note}</p></div>}
-          {ec3res?.columns?.length > 0 && <div className="overflow-auto mt-2" data-testid="ec3-columns"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Pilar</th><th>N dim (kN)</th><th>Lcr (m)</th><th>Flambement (χy/χz)</th><th>Interaction N+M (§6.3.3 · kyy/kzy)</th></tr></thead>
+          {ec3res?.columns?.length > 0 && <div className="overflow-auto mt-2" data-testid="ec3-columns"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Pilar</th><th>N dim (kN)</th><th>Lcr (m)</th><th>Encurvadura (χy/χz)</th><th>Interaction N+M (§6.3.3 · kyy/kzy)</th></tr></thead>
             <tbody>{ec3res.columns.map(c => c.status !== "ok"
               ? <tr key={c.id} className="border-b"><td className="p-1 font-medium">{c.id}</td><td colSpan={4} className="text-amber-700">{c.message}</td></tr>
               : <tr key={c.id} className="border-b align-top"><td className="p-1 font-medium">{c.id}<div className="text-[10px] text-muted-foreground">{c.profile}/{c.grade} · classe {c.section_class} ({c.class_mode})</div></td>
                   <td>{c.ned_kn}<div className="text-[10px] text-muted-foreground">{c.ned_case}</div></td>
                   <td>{c.lcr_m} <span className="text-[10px] text-muted-foreground">({c.lcr_source})</span></td>
                   <td><Util u={c.result.buckling.utilisation} /><div className="text-[10px] text-muted-foreground">Nb,Rd {c.result.nb_rd_kn} kN · χy={c.result.chi_y} / χz={c.result.chi_z}</div></td>
-                  <td>{c.result.interaction ? <><Util u={c.result.interaction.utilisation} /><div className="text-[10px] text-muted-foreground">(6.61)={c.result.interaction.eq_661} · (6.62)={c.result.interaction.eq_662} · kyy={c.result.interaction.kyy} kzy={c.result.interaction.kzy} · χLT={c.result.interaction.chi_lt}</div></> : <span className="text-muted-foreground">N seul (M=0)</span>}</td></tr>)}</tbody></table>
+                  <td>{c.result.interaction ? <><Util u={c.result.interaction.utilisation} /><div className="text-[10px] text-muted-foreground">(6.61)={c.result.interaction.eq_661} · (6.62)={c.result.interaction.eq_662} · kyy={c.result.interaction.kyy} kzy={c.result.interaction.kzy} · χLT={c.result.interaction.chi_lt}</div></> : <span className="text-muted-foreground">Só N (M=0)</span>}</td></tr>)}</tbody></table>
             <p className="text-[11px] text-muted-foreground mt-1">Flexão composta dos pilares: método 2 (Anexo B) — equações 6.61 &amp; 6.62, fatores kyy/kzy. Indicativo, a validar.</p></div>}
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="sls-panel">
@@ -428,7 +428,7 @@ export default function StructureCalc() {
             <p className="text-[11px] text-muted-foreground mt-1">{crackres.note}</p></div>}
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="anc-panel">
-          <h2 className="font-semibold">EN 1992 §8.4/§8.7 — Ancrages & recouvrements</h2>
+          <h2 className="font-semibold">NP EN 1992 §8.4/§8.7 — Amarrações e emendas</h2>
           <p className="text-sm text-muted-foreground">Comprimento de amarração <b>lbd</b> (§8.4) e de emenda <b>l0</b> (§8.7) calculados a partir das <b>armaduras propostas</b> (Ø do varão, classe do betão, recobrimento, As,req/As,prov do painel NP EN 1992). Condições de aderência e ρ1 (% de varões emendados) editáveis. Razão <b>indicatif</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
             <label className="space-y-1">Aderência<select className={selectClass} value={ancopts.bond} onChange={ev => setAncopts({ ...ancopts, bond: ev.target.value })} data-testid="anc-bond"><option value="good">Bonne (η1=1,0)</option><option value="poor">Má (η1=0,7)</option></select></label>
@@ -438,8 +438,8 @@ export default function StructureCalc() {
             <label className="space-y-1">α4 (soldado)<Input type="number" step="any" value={ancopts.alpha4} onChange={ev => setAncopts({ ...ancopts, alpha4: Number(ev.target.value) })} data-testid="anc-a4" /></label>
             <label className="space-y-1">α5 (pression)<Input type="number" step="any" value={ancopts.alpha5} onChange={ev => setAncopts({ ...ancopts, alpha5: Number(ev.target.value) })} data-testid="anc-a5" /></label>
           </div>
-          <Button variant="outline" onClick={designAnchorage} data-testid="anc-design"><Calculator className="h-4 w-4 mr-2" />Calculer ancrages & recouvrements</Button>
-          {ancres && <div className="overflow-auto" data-testid="anc-results">{ancres.reinjected_from_automation && <p className="text-[11px] text-emerald-800 mb-1" data-testid="anc-reinjected">Ø e As,prov provenientes dos aços escolhidos pela cadeia automática (reinjetados em §8.4/§8.7).</p>}<table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Barre</th><th>fbd (MPa)</th><th>lb,rqd (m)</th><th>Ancrage lbd (m · ×Ø)</th><th>Recouvrement l0 (m · ×Ø)</th></tr></thead>
+          <Button variant="outline" onClick={designAnchorage} data-testid="anc-design"><Calculator className="h-4 w-4 mr-2" />Calcular amarrações e emendas</Button>
+          {ancres && <div className="overflow-auto" data-testid="anc-results">{ancres.reinjected_from_automation && <p className="text-[11px] text-emerald-800 mb-1" data-testid="anc-reinjected">Ø e As,prov provenientes dos aços escolhidos pela cadeia automática (reinjetados em §8.4/§8.7).</p>}<table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Varão</th><th>fbd (MPa)</th><th>lb,rqd (m)</th><th>Amarração lbd (m · ×Ø)</th><th>Emenda l0 (m · ×Ø)</th></tr></thead>
             <tbody>{ancres.elements.map(r => r.status !== "ok"
               ? <tr key={r.id} className="border-b"><td className="p-1 font-medium">{r.id}</td><td colSpan={5} className="text-amber-700">{r.message}</td></tr>
               : <tr key={r.id} className="border-b align-top"><td className="p-1 font-medium">{r.id}</td><td>{r.bar_label || `Ø${r.result.bar_mm}`}{r.reinforcement_source === "automation" ? <span className="text-[10px] text-emerald-700"> · auto</span> : ""}</td><td>{r.result.fbd_mpa}</td><td>{r.result.lb_rqd_m}</td>
@@ -451,7 +451,7 @@ export default function StructureCalc() {
           <h2 className="font-semibold">NP EN 1995 — Verificação da madeira (vigas)</h2>
           <p className="text-sm text-muted-foreground">A partir do <b>M e V condicionantes</b> : flexão, corte (kcr) e encurvadura lateral. kmod segundo duração × classe de serviço, γM e classes EN 338/EN 14080. Razões <b>indicatifs</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
-            <label className="space-y-1">Classe bois<select className={selectClass} value={ec5opts.strength_class} onChange={ev => setEc5opts({ ...ec5opts, strength_class: ev.target.value })} data-testid="ec5-class">{(ec5cat?.classes || [{ key: "C24" }]).map(c => <option key={c.key} value={c.key}>{c.key}</option>)}</select></label>
+            <label className="space-y-1">Classe da madeira<select className={selectClass} value={ec5opts.strength_class} onChange={ev => setEc5opts({ ...ec5opts, strength_class: ev.target.value })} data-testid="ec5-class">{(ec5cat?.classes || [{ key: "C24" }]).map(c => <option key={c.key} value={c.key}>{c.key}</option>)}</select></label>
             <label className="space-y-1">Classe de serviço<select className={selectClass} value={ec5opts.service_class} onChange={ev => setEc5opts({ ...ec5opts, service_class: ev.target.value })} data-testid="ec5-sc">{["1", "2", "3"].map(c => <option key={c} value={c}>{c}</option>)}</select></label>
             <label className="space-y-1">Duração da carga<select className={selectClass} value={ec5opts.load_duration} onChange={ev => setEc5opts({ ...ec5opts, load_duration: ev.target.value })} data-testid="ec5-dur">{(ec5cat?.load_durations || ["permanent", "long", "medium", "short", "instantaneous"]).map(d => <option key={d} value={d}>{d}</option>)}</select></label>
             <label className="space-y-1">lef (m, option.)<Input type="number" step="any" placeholder="para encurv. lat." value={ec5opts.lef_m} onChange={ev => setEc5opts({ ...ec5opts, lef_m: ev.target.value })} data-testid="ec5-lef" /></label>
@@ -459,7 +459,7 @@ export default function StructureCalc() {
             <label className="space-y-1">γM (option.)<Input type="number" step="any" placeholder="auto" value={ec5opts.gamma_m} onChange={ev => setEc5opts({ ...ec5opts, gamma_m: ev.target.value })} /></label>
           </div>
           <Button variant="outline" onClick={designEc5} data-testid="ec5-design"><Calculator className="h-4 w-4 mr-2" />Verificar a madeira NP EN 1995</Button>
-          {ec5res && <div className="overflow-auto" data-testid="ec5-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Flexion</th><th>Cisaillement</th><th>Encurvadura lateral</th></tr></thead>
+          {ec5res && <div className="overflow-auto" data-testid="ec5-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Flexão</th><th>Corte</th><th>Encurvadura lateral</th></tr></thead>
             <tbody>{ec5res.elements.map(r => r.status !== "ok"
               ? <tr key={r.id} className="border-b"><td className="p-1 font-medium">{r.id}</td><td colSpan={3} className="text-amber-700">{r.message}</td></tr>
               : <tr key={r.id} className="border-b align-top"><td className="p-1 font-medium">{r.id}<div className="text-[10px] text-muted-foreground">{r.strength_class} · {r.b_m}×{r.h_m}</div></td>
@@ -473,10 +473,10 @@ export default function StructureCalc() {
         {study && model && <StructureManualPanels study={study} model={model} setModel={setModel} dirty={dirty} save={save} envelope={envelope} ec2opts={ec2opts} busy={busy} />}
         {study && model && <StructureLintelPanel study={study} model={model} opts={lintelOpts} setOpts={setLintelOpts} base={BASE} busy={busy} saveModel={saveModel} />}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="dossier-panel">
-          <h2 className="font-semibold">Dossier BET complet (PDF)</h2>
+          <h2 className="font-semibold">Processo de engenharia completo (PDF)</h2>
           <p className="text-sm text-muted-foreground">Reúne os capítulos assinalados (combinações NP EN 1990 → armaduras / perfis / secções → capacidade resistente → flechas / fendilhação) numa única nota, carimbada «NÃO EXECUTÓRIO — a verificar pelo engenheiro», com as definições dos painéis acima.</p>
           <div className="flex flex-wrap gap-4 text-xs">
-            {[["ec2", "Betão NP EN 1992"], ["crack", "Fissuration §7.3"], ["anchorage", "Ancrages §8.4/§8.7"], ["ec3", "Aço NP EN 1993"], ["ec5", "Bois EN 1995"], ["ec7", "Fondations EN 1997"], ["sls", "Flechas ELS"], ["reinforcement", "Ferraillage manuel"], ["architecture", "Controlos de arquitetura"], ["linked", "Aços associados"], ["lintel", "Linteau (ouverture)"]].map(([k, label]) => <label key={k} className="flex items-center gap-1"><input type="checkbox" checked={!!dossierInc[k]} onChange={ev => setDossierInc({ ...dossierInc, [k]: ev.target.checked })} data-testid={`dossier-${k}`} />{label}</label>)}
+            {[["ec2", "Betão NP EN 1992"], ["crack", "Fendilhação §7.3"], ["anchorage", "Amarrações §8.4/§8.7"], ["ec3", "Aço NP EN 1993"], ["ec5", "Bois EN 1995"], ["ec7", "Fundações NP EN 1997"], ["sls", "Flechas ELS"], ["reinforcement", "Armaduras manuais"], ["architecture", "Controlos de arquitetura"], ["linked", "Aços associados"], ["lintel", "Padieira (abertura)"]].map(([k, label]) => <label key={k} className="flex items-center gap-1"><input type="checkbox" checked={!!dossierInc[k]} onChange={ev => setDossierInc({ ...dossierInc, [k]: ev.target.checked })} data-testid={`dossier-${k}`} />{label}</label>)}
           </div>
           <Button onClick={exportDossier} data-testid="dossier-export"><FileDown className="h-4 w-4 mr-2" />Transferir o processo de engenharia</Button>
         </Card>}
@@ -489,6 +489,6 @@ function JsonModel({ model, onChange }) {
   const [value, setValue] = useState(""), [error, setError] = useState("");
   useEffect(() => { setValue(JSON.stringify({ actions: model.actions, self_weight_action: model.self_weight_action, combinations: model.combinations }, null, 2)); }, [model.actions, model.self_weight_action, model.combinations]);
   return <div className="space-y-2 mt-3"><textarea aria-label="Ações e combinações" className="w-full border rounded p-2 font-mono text-xs" rows={10} value={value} onChange={ev => setValue(ev.target.value)} />
-    <Button size="sm" variant="outline" onClick={() => { try { const v = JSON.parse(value); if (!Array.isArray(v.actions) || !Array.isArray(v.combinations)) throw new Error(); onChange({ ...model, actions: v.actions, self_weight_action: v.self_weight_action, combinations: v.combinations }); setError(""); } catch { setError("Formato inválido: actions e combinations devem ser listas."); } }}>Appliquer</Button>{error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
+    <Button size="sm" variant="outline" onClick={() => { try { const v = JSON.parse(value); if (!Array.isArray(v.actions) || !Array.isArray(v.combinations)) throw new Error(); onChange({ ...model, actions: v.actions, self_weight_action: v.self_weight_action, combinations: v.combinations }); setError(""); } catch { setError("Formato inválido: actions e combinations devem ser listas."); } }}>Aplicar</Button>{error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
   </div>;
 }

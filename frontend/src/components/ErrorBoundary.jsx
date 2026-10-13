@@ -69,7 +69,7 @@ export class ErrorBoundary extends React.Component {
             <AlertTriangle className="h-7 w-7 text-destructive" />
           </div>
           <div>
-            <p className="overline text-destructive">Oups</p>
+            <p className="overline text-destructive">Ups</p>
             <h1 className="font-display text-2xl font-bold mt-2">
               Ocorreu um erro
             </h1>
@@ -86,14 +86,14 @@ export class ErrorBoundary extends React.Component {
               data-testid="error-boundary-reload-btn"
               className="rounded-sm bg-primary text-white text-sm font-semibold h-10 flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
             >
-              <RefreshCw className="h-4 w-4" /> Recharger
+              <RefreshCw className="h-4 w-4" /> Recarregar
             </button>
             <button
               onClick={this.handleGoHome}
               data-testid="error-boundary-home-btn"
               className="rounded-sm border border-border text-sm font-semibold h-10 flex items-center justify-center gap-2 hover:bg-secondary transition-colors"
             >
-              <Home className="h-4 w-4" /> Accueil
+              <Home className="h-4 w-4" /> Início
             </button>
           </div>
         </div>

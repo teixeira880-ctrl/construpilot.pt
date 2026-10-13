@@ -29,15 +29,15 @@ function Anomaly({ a, onFocus }) {
       {open && (
         <div className="px-2 pb-2 grid gap-1 bg-white/70 text-slate-800">
           {a.donnee_plan && <p><b>Dado da planta:</b> {a.donnee_plan}</p>}
-          {a.calcul && <p><b>Calcul ConstruPilot :</b> {a.calcul}</p>}
-          {a.formule && <p className="num"><b>Formule :</b> {a.formule}{a.resultat ? ` = ${a.resultat}` : ""}</p>}
+          {a.calcul && <p><b>Cálculo ConstruPilot:</b> {a.calcul}</p>}
+          {a.formule && <p className="num"><b>Fórmula:</b> {a.formule}{a.resultat ? ` = ${a.resultat}` : ""}</p>}
           {a.explication && <p><b>Explication :</b> {a.explication}</p>}
           {a.hypotheses?.length > 0 && <p><b>Hipóteses:</b> {a.hypotheses.join(" · ")}</p>}
           {a.action && <p><b>Ação recomendada:</b> {a.action}</p>}
-          <p className="text-muted-foreground">Confiance {a.confiance} · Passage 2 : {v.verdict || "—"}{v.recalcul ? ` — ${v.recalcul}` : ""}</p>
+          <p className="text-muted-foreground">Confiança {a.confiance} · Passage 2 : {v.verdict || "—"}{v.recalcul ? ` — ${v.recalcul}` : ""}</p>
           {a.adversarial && (
             <p className={`border-l-2 pl-1.5 ${a.adversarial.verdict === "MAINTENUE" ? "border-red-400" : a.adversarial.verdict === "REJETÉE" ? "border-emerald-500" : "border-yellow-500"}`} data-testid={`geo-anomaly-${a.numero}-adversarial`}>
-              <b>Controlo adversarial: {a.adversarial.verdict}</b>{a.niveau_initial && a.niveau_initial !== a.niveau ? ` (niveau ${a.niveau_initial} → ${a.niveau})` : ""}
+              <b>Controlo adversarial: {a.adversarial.verdict}</b>{a.niveau_initial && a.niveau_initial !== a.niveau ? ` (nível ${a.niveau_initial} → ${a.niveau})` : ""}
               {a.adversarial.attaque ? ` — attaque : ${a.adversarial.attaque}` : ""}{a.adversarial.recalcul ? ` — ${a.adversarial.recalcul}` : ""}
             </p>
           )}
@@ -61,7 +61,7 @@ function Narrative({ plan, pageIndex, geo, onUpdated }) {
     setBusy(true); setSecs(0);
     try {
       const data = await runCotesJob(`/takeoffs/${plan.plan_id}/cotes/narratif`, { page_index: pageIndex }, { onTick: setSecs });
-      toast.success(`Relatório narrativo redigido:${data.sections.length} section(s)`);
+      toast.success(`Relatório narrativo redigido: ${data.sections.length} section(s)`);
       onUpdated?.({ ...geo, narratif: data });
     } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Redação impossível"); }
     finally { setBusy(false); }
@@ -87,7 +87,7 @@ function Narrative({ plan, pageIndex, geo, onUpdated }) {
         </Button>
         {nar && (
           <Button size="sm" variant="outline" className="gap-1 rounded-sm" onClick={() => pdf(false)} data-testid="geo-narrative-pdf-btn">
-            <FileDown className="h-3.5 w-3.5" /> PDF narratif
+            <FileDown className="h-3.5 w-3.5" /> PDF narrativo
           </Button>
         )}
       </div>
@@ -99,8 +99,8 @@ function Narrative({ plan, pageIndex, geo, onUpdated }) {
       {nar && (
         <div className="text-[11px] border rounded-sm p-1.5 bg-muted/40 grid gap-1" data-testid="geo-narrative-body">
           {nar.stale && <p className="text-amber-800" data-testid="geo-narrative-stale">Relatório redigido antes da última análise — reescreva-o para o atualizar.</p>}
-          <p className="font-medium">{nar.titre || "Rapport narratif"} · {nar.sections.length} section(s)
-            <button className="underline ml-2" onClick={() => setOpen(!open)} data-testid="geo-narrative-toggle">{open ? "Reduzir" : "Lire"}</button></p>
+          <p className="font-medium">{nar.titre || "Relatório narrativo"} · {nar.sections.length} section(s)
+            <button className="underline ml-2" onClick={() => setOpen(!open)} data-testid="geo-narrative-toggle">{open ? "Reduzir" : "Ler"}</button></p>
           {open && (
             <>
               <p className="text-muted-foreground">{nar.introduction}</p>
@@ -109,7 +109,7 @@ function Narrative({ plan, pageIndex, geo, onUpdated }) {
                   <p className="font-semibold">{s.numero}. {s.titre}{s.ecart_mm != null ? ` — ${s.ecart_mm > 0 ? "+" : ""}${Math.round(s.ecart_mm)} mm` : ""}</p>
                   <p className="whitespace-pre-line">{s.texte}</p>
                   {s.calcul && <p className="num font-mono">{s.calcul}</p>}
-                  {s.conclusion && <p><b>Conclusion :</b> {s.conclusion}</p>}
+                  {s.conclusion && <p><b>Conclusão:</b> {s.conclusion}</p>}
                 </div>
               ))}
               {nar.conclusion && <p><b>Conclusão geral:</b> {nar.conclusion}</p>}
@@ -157,11 +157,11 @@ export function StudiesPanel({ plan, pageIndex, study, onUpdated }) {
       <div className="flex gap-2">
         <select className="h-7 text-[11px] border rounded-sm px-1 bg-background" value={effort} onChange={(e) => setEffort(e.target.value)} data-testid="studies-effort-select">
           <option value="high">Raciocínio elevado</option>
-          <option value="max">Raisonnement maximal (plan difficile)</option>
+          <option value="max">Raciocínio máximo (planta difícil)</option>
         </select>
         <Button size="sm" className="flex-1 justify-start gap-2 rounded-sm" disabled={busy} onClick={run} data-testid="studies-run-btn">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-          {busy ? `Analyse OpenAI en cours (${secs} s)…` : a ? "Relancer l'analyse OpenAI" : "Lancer l'analyse OpenAI (2 passes)"}
+          {busy ? `Analyse OpenAI en cours (${secs} s)…` : a ? "Relançar a análise OpenAI" : "Lançar a análise OpenAI (2 passagens)"}
         </Button>
         {a && <Button size="sm" variant="outline" className="gap-1 rounded-sm" onClick={pdf} data-testid="studies-pdf-btn"><FileDown className="h-3.5 w-3.5" /> PDF</Button>}
       </div>
@@ -200,7 +200,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
     setSecs(0);
     try {
       const data = await runCotesJob(`/takeoffs/${plan.plan_id}/cotes/geometry`, { page_index: pageIndex }, { onTick: setSecs });
-      toast.success(`Análise geométrica:${LVL[data.niveau_global][0]} — ${data.anomalies.length} anomalie(s), passage 2 : ${data.double_lecture.confirmees}confirmada(s)`, { duration: 8000 });
+      toast.success(`Análise geométrica: ${LVL[data.niveau_global][0]} — ${data.anomalies.length} anomalia(s), passagem 2: ${data.double_lecture.confirmees} confirmada(s)`, { duration: 8000 });
       onUpdated?.(data);
     } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Análise geométrica impossível"); }
     finally { setBusy(false); }
@@ -217,8 +217,8 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
             <span className={`text-[11px] font-bold px-2 py-0.5 rounded-sm border ${gcls}`} data-testid="geo-level">{gl}</span>
-            <span className="text-[11px] text-muted-foreground">{geo.anomalies.length} anomalie(s) · {geo.double_lecture?.confirmees ?? 0} confirmada(s) / {geo.double_lecture?.infirmees ?? 0} infirmada(s)
-              {geo.adversarial?.ok && ` · adversarial : ${geo.adversarial.maintenues} maintenue(s), ${geo.adversarial.contestees}contestada(s),${geo.adversarial.rejetees}rejeitada(s)`}</span>
+            <span className="text-[11px] text-muted-foreground">{geo.anomalies.length} anomalia(s) · {geo.double_lecture?.confirmees ?? 0} confirmada(s) / {geo.double_lecture?.infirmees ?? 0} infirmada(s)
+              {geo.adversarial?.ok && ` · adversarial : ${geo.adversarial.maintenues} maintenue(s), ${geo.adversarial.contestees} contestada(s), ${geo.adversarial.rejetees} rejeitada(s)`}</span>
             <button className="text-[11px] underline" onClick={() => setShow(!show)} data-testid="geo-toggle">{show ? "Reduzir" : "Detalhes"}</button>
           </div>
           {geo.stale && (
@@ -235,7 +235,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
               )}
               {geo.reponses && (
                 <div className="text-[11px] grid gap-0.5 border rounded-sm p-1.5 bg-muted/40" data-testid="geo-answers">
-                  <p><b>1. Fermeture :</b> {geo.reponses.fermeture || "NÃO INDICADO"}</p>
+                  <p><b>1. Fecho:</b> {geo.reponses.fermeture || "NÃO INDICADO"}</p>
                   <p><b>2. Compatibilidade:</b> {geo.reponses.compatibilite || "NÃO INDICADO"}</p>
                   <p><b>3. A verificar:</b> {(geo.reponses.a_verifier || []).join(" ; ") || "—"}</p>
                 </div>
@@ -253,7 +253,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
               {geo.matrice?.length > 0 && (
                 <div className="border rounded-sm overflow-auto" data-testid="geo-matrix">
                   <table className="w-full text-[11px]">
-                    <thead className="bg-muted"><tr><th className="px-1 text-left">Elemento</th><th className="px-1 text-right">Plan</th><th className="px-1 text-right">Calculado</th><th className="px-1 text-right">Desvio</th><th className="px-1 text-left">Statut</th></tr></thead>
+                    <thead className="bg-muted"><tr><th className="px-1 text-left">Elemento</th><th className="px-1 text-right">Planta</th><th className="px-1 text-right">Calculado</th><th className="px-1 text-right">Desvio</th><th className="px-1 text-left">Estado</th></tr></thead>
                     <tbody>{geo.matrice.map((m, i) => (
                       <tr key={i} className="border-t whitespace-nowrap"><td className="px-1 truncate max-w-[120px]" title={m.source_calcul}>{m.element}</td>
                         <td className="px-1 text-right num">{Number(m.valeur_plan_m).toFixed(2)}</td><td className="px-1 text-right num">{Number(m.valeur_calculee_m).toFixed(2)}</td>
@@ -263,7 +263,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
                 </div>
               )}
               <div className="grid gap-1" data-testid="geo-anomalies">
-                <p className="text-[11px] font-medium">Anomalies ({geo.anomalies.length})</p>
+                <p className="text-[11px] font-medium">Anomalias ({geo.anomalies.length})</p>
                 {geo.anomalies.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhuma anomalia geométrica detetada.</p>}
                 {geo.anomalies.map((a) => <Anomaly key={a.numero} a={a} onFocus={onFocusIndex} />)}
               </div>

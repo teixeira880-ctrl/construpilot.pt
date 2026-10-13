@@ -9,9 +9,9 @@ const BASE = process.env.REACT_APP_BACKEND_URL;
 
 const DOC_LAYOUTS = [
   { key: "bandeau", name: "Bandeau", desc: "Faixa de cor com o seu logótipo — a mais visível" },
-  { key: "classique", name: "Classique", desc: "Logótipo à esquerda, contactos à direita, filete de cor — sóbrio" },
+  { key: "classique", name: "Clássico", desc: "Logótipo à esquerda, contactos à direita, filete de cor — sóbrio" },
   { key: "compact", name: "Compact", desc: "Tabela densa, cabeçalho numa linha — cabe numa página" },
-  { key: "essentiel", name: "Essentiel", desc: "Cabeçalho de papel timbrado, n.º e data à direita — depurado" },
+  { key: "essentiel", name: "Essencial", desc: "Cabeçalho de papel timbrado, n.º e data à direita — depurado" },
   { key: "detaille", name: "Detalhado por capítulos", desc: "Papel timbrado + subtotais por capítulo em destaque" },
   { key: "signature", name: "Signature", desc: "Cabeçalho em faixa suave, designação do projeto em destaque" },
 ];
@@ -23,9 +23,9 @@ const DOC_COLORS = [
   { key: "sapin", name: "Vert sapin", hex: "#166534" },
   { key: "olive", name: "Olive", hex: "#4D7C0F" },
   { key: "ardoise", name: "Ardoise", hex: "#334155" },
-  { key: "bleu", name: "Bleu profond", hex: "#1D4ED8" },
+  { key: "bleu", name: "Azul profundo", hex: "#1D4ED8" },
   { key: "sarcelle", name: "Sarcelle", hex: "#0F766E" },
-  { key: "brique", name: "Brique", hex: "#B45309" },
+  { key: "brique", name: "Tijolo", hex: "#B45309" },
   { key: "bordeaux", name: "Bordeaux", hex: "#9F1239" },
   { key: "graphite", name: "Graphite", hex: "#1F2937" },
 ];
@@ -74,7 +74,7 @@ export default function CompanyPage() {
     for (const f of Array.from(files || [])) {
       const fd = new FormData(); fd.append("file", f); fd.append("title", f.name.replace(/\.[^.]+$/, "").slice(0, 80));
       try { await api.post("/company/page/photos", fd, { headers: { "Content-Type": "multipart/form-data" } }); }
-      catch (e) { toast.error(e?.response?.data?.detail || `Photo « ${f.name}» recusada`); }
+      catch (e) { toast.error(e?.response?.data?.detail || `Photo « ${f.name} » recusada`); }
     }
     setUploading(false); load();
   };
@@ -177,7 +177,7 @@ export default function CompanyPage() {
               </div>
               <div className="text-right shrink-0">
                 <div className="font-bold text-base leading-tight" style={{ color: shade(form.accent_color, 0.45) }}>ORÇAMENTO</div>
-                <div className="text-slate-500 text-[10px]">N° DEV-2026-0001</div>
+                <div className="text-slate-500 text-[10px]">N.º ORC-2026-0001</div>
               </div>
             </div>
           ) : (
@@ -218,7 +218,7 @@ export default function CompanyPage() {
           <a href={publicUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline text-xs" data-testid="public-open-link">Ver a minha página <ExternalLink className="h-3 w-3" /></a>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
-          <label className="text-sm">Accroche<Input data-testid="public-tagline-input" value={form.tagline} onChange={f("tagline")} maxLength={140} className="mt-1 rounded-sm" placeholder="Remodelação completa e estrutura desde 1998" /></label>
+          <label className="text-sm">Frase de impacto<Input data-testid="public-tagline-input" value={form.tagline} onChange={f("tagline")} maxLength={140} className="mt-1 rounded-sm" placeholder="Remodelação completa e estrutura desde 1998" /></label>
           <label className="text-sm">Telefone apresentado<Input data-testid="public-phone-input" value={form.contact_phone} onChange={f("contact_phone")} className="mt-1 rounded-sm" /></label>
           <label className="text-sm md:col-span-2">Apresentação<textarea data-testid="public-description-input" className="mt-1 w-full rounded-md border bg-background p-2 text-sm min-h-[90px]" maxLength={2000} value={form.description} onChange={f("description")} /></label>
           <label className="text-sm">Site web<Input data-testid="public-website-input" value={form.website} onChange={f("website")} className="mt-1 rounded-sm" placeholder="https://" /></label>
@@ -231,7 +231,7 @@ export default function CompanyPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold">Obras realizadas ({page.photos.length}/24)</h2>
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} data-testid="showcase-file-input" />
-          <Button variant="outline" className="rounded-sm gap-2" disabled={uploading} onClick={() => fileRef.current?.click()} data-testid="showcase-add-btn"><Upload className="h-4 w-4" /> {uploading ? "Envoi…" : "Adicionar fotos"}</Button>
+          <Button variant="outline" className="rounded-sm gap-2" disabled={uploading} onClick={() => fileRef.current?.click()} data-testid="showcase-add-btn"><Upload className="h-4 w-4" /> {uploading ? "A enviar…" : "Adicionar fotos"}</Button>
         </div>
         {page.photos.length === 0 && <p className="text-sm text-muted-foreground">Adicione as suas melhores obras: aparecerão na sua página pública com um título e uma descrição.</p>}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -241,7 +241,7 @@ export default function CompanyPage() {
               <figcaption className="p-2 space-y-1">
                 <Input defaultValue={p.title} placeholder="Título da obra" className="h-8 rounded-sm text-sm" onBlur={(e) => updPhoto(p.photo_id, { title: e.target.value })} data-testid={`showcase-title-${p.photo_id}`} />
                 <textarea defaultValue={p.description} placeholder="Descrição (trabalhos realizados, local, duração…)" className="w-full rounded-md border bg-background p-2 text-xs min-h-[48px]" onBlur={(e) => updPhoto(p.photo_id, { description: e.target.value })} data-testid={`showcase-desc-${p.photo_id}`} />
-                <button type="button" className="text-xs text-red-600 inline-flex items-center gap-1" onClick={() => delPhoto(p.photo_id)} data-testid={`showcase-del-${p.photo_id}`}><Trash2 className="h-3 w-3" /> Retirer</button>
+                <button type="button" className="text-xs text-red-600 inline-flex items-center gap-1" onClick={() => delPhoto(p.photo_id)} data-testid={`showcase-del-${p.photo_id}`}><Trash2 className="h-3 w-3" /> Remover</button>
               </figcaption>
             </figure>
           ))}

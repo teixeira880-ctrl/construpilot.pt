@@ -28,10 +28,10 @@ import { toast } from "sonner";
 
 const QUICK = [
   { key: "devis", to: "/devis", label: "Orçamentos & acompanhamento", icon: FileText },
-  { key: "factures", to: "/factures", label: "Factures", icon: FileText },
+  { key: "factures", to: "/factures", label: "Faturas", icon: FileText },
   { key: "situations", to: "/situations", label: "Autos de medição", icon: Layers },
   { key: "chantier", to: "/suivi-chantier", label: "Acompanhamento de obra", icon: ClipboardList },
-  { key: "rh", to: "/rh", label: "RH & Pointage", icon: HardHat },
+  { key: "rh", to: "/rh", label: "RH & Ponto", icon: HardHat },
   { key: "catalogue", to: "/mon-catalogue", label: "Catálogo de preços", icon: Tag },
 ];
 
@@ -115,7 +115,7 @@ export default function Entreprise() {
     return (
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="entreprise-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
-        <h1 className="font-display text-3xl font-bold">Espace Entreprise</h1>
+        <h1 className="font-display text-3xl font-bold">Espaço Empresa</h1>
         <p className="text-muted-foreground mt-3">Pilote toda a sua empresa, as suas equipas e os seus acessos — reservado ao <b>pack Business</b>.</p>
         <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-upgrade-btn">Passar ao pack Business <ArrowRight className="h-4 w-4" /></Button>
       </div>
@@ -128,7 +128,7 @@ export default function Entreprise() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8" data-testid="entreprise-page">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <SectionTitle over="Pack Business" title="Espace Entreprise">
+        <SectionTitle over="Pack Business" title="Espaço Empresa">
           O painel central da sua empresa: atividade, equipa, acessos e módulos profissionais.
         </SectionTitle>
         <div className="flex items-center gap-2">
@@ -143,17 +143,17 @@ export default function Entreprise() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="entreprise-kpis">
           <Kpi icon={Wallet} label="Volume de negócios faturado c/ IVA" value={eur(k.ca_ttc)} accent />
           <Kpi icon={TrendingUp} label="Em curso a cobrar" value={eur(k.encours)} />
-          <Kpi icon={ShieldCheck} label="Factures conformes" value={`${k.invoices_conformes}/${k.invoices}`} />
-          <Kpi icon={Layers} label="Situations" value={k.situations} />
+          <Kpi icon={ShieldCheck} label="Faturas conformes" value={`${k.invoices_conformes}/${k.invoices}`} />
+          <Kpi icon={Layers} label="Autos de medição" value={k.situations} />
           <Kpi icon={FileText} label="Orçamento" value={k.quotes} />
-          <Kpi icon={ClipboardList} label="Chantiers" value={k.chantiers} />
+          <Kpi icon={ClipboardList} label="Obras" value={k.chantiers} />
           <Kpi icon={XCircle} label="Reservas em curso" value={k.open_reserves} />
           <Kpi icon={Users} label="Equipa" value={`${k.members} (${k.workers} ouvriers)`} />
         </div>
       )}
 
       <div>
-        <p className="overline mb-3">Modules</p>
+        <p className="overline mb-3">Módulos</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3" data-testid="entreprise-modules">
           {QUICK.filter((q) => can(q.key)).map((q) => (
             <motion.button key={q.key} whileHover={{ y: -3 }} onClick={() => nav(q.to)} data-testid={`module-${q.key}`}
@@ -177,7 +177,7 @@ export default function Entreprise() {
               <DialogContent className="max-w-md" data-testid="employee-dialog">
                 <DialogHeader><DialogTitle>Novo colaborador</DialogTitle></DialogHeader>
                 <div className="grid gap-3 mt-1">
-                  <div className="grid gap-1.5"><Label>Nom</Label>
+                  <div className="grid gap-1.5"><Label>Nome</Label>
                     <Input value={emp.name} onChange={(e) => setEmp({ ...emp, name: e.target.value })} className="rounded-sm" data-testid="emp-name" /></div>
                   <div className="grid gap-1.5"><Label>E-mail</Label>
                     <Input type="email" value={emp.email} onChange={(e) => setEmp({ ...emp, email: e.target.value })} className="rounded-sm" data-testid="emp-email" /></div>
@@ -275,7 +275,7 @@ export default function Entreprise() {
 
       <div className="surface rounded-md p-5 flex flex-wrap items-center justify-between gap-4" data-testid="entreprise-subscription">
         <div>
-          <p className="overline">Abonnement</p>
+          <p className="overline">Subscrição</p>
           <p className="font-display font-semibold mt-1 capitalize">{(tier || "free").replace("_", " ")}{typeof sub?.plan === "string" ? ` · ${sub.plan}` : ""}</p>
         </div>
         <Button variant="outline" className="rounded-sm gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-manage-sub"><Wallet className="h-4 w-4" /> Gerir a subscrição</Button>

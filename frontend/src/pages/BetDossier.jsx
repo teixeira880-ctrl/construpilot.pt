@@ -12,19 +12,19 @@ import {
   GitCompareArrows, ShieldAlert, FileSearch, AlertTriangle, RefreshCw, Eye, Boxes,
 } from "lucide-react";
 
-const KIND_LABEL = { bet: "Note BET", plan: "Plan", cctp: "CCTP", autre: "Autre" };
+const KIND_LABEL = { bet: "Note BET", plan: "Planta", cctp: "CCTP", autre: "Outro" };
 const ENGINE = {
   claude: { label: "Analisado", cls: "bg-emerald-500/15 text-emerald-600" },
   skipped: { label: "Ilegível (DWG/IFC)", cls: "bg-slate-500/15 text-slate-600" },
   error: { label: "Falha de leitura", cls: "bg-red-500/15 text-red-600" },
-  fallback: { label: "Partiel", cls: "bg-amber-500/15 text-amber-700" },
+  fallback: { label: "Parcial", cls: "bg-amber-500/15 text-amber-700" },
 };
 
 const DISCLAIMER =
   "Controlo só de leitura: o StructuroPilot não calcula nada e não decide que valor está correto. Relata o que está escrito e assinala as diferenças a verificar por um engenheiro. Nunca «apto para execução».";
 
 function EngineBadge({ e }) {
-  const cfg = ENGINE[e] || { label: "En attente", cls: "bg-slate-500/15 text-slate-600" };
+  const cfg = ENGINE[e] || { label: "Em espera", cls: "bg-slate-500/15 text-slate-600" };
   return <Badge className={`rounded-sm border-0 ${cfg.cls}`} data-testid="doc-engine-badge">{cfg.label}</Badge>;
 }
 
@@ -49,7 +49,7 @@ export default function BetDossier() {
   const openDossier = async (id) => {
     setBusy(true);
     try { const { data } = await api.get(`/structuro/bet/studies/${id}`); setCurrent(data); setCmp({ a: "", b: "" }); setResp(data.responsable || ""); }
-    catch { toast.error("Dossier introuvable."); }
+    catch { toast.error("Processo não encontrado."); }
     finally { setBusy(false); }
   };
 
@@ -93,7 +93,7 @@ export default function BetDossier() {
   };
 
   const analyzeAutodesk = async (docId, filename) => {
-    if (!window.confirm(`Lançar a leitura Autodesk de «${filename}»?\n\nA tradução DWG/IFC via Autodesk consome crédito (depois fica em cache por ficheiro).`)) return;
+    if (!window.confirm(`Lançar a leitura Autodesk de « ${filename} »?\n\nA tradução DWG/IFC via Autodesk consome crédito (depois fica em cache por ficheiro).`)) return;
     setBusy(true);
     toast.info("Tradução Autodesk em curso… pode demorar até 1 min.");
     try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/documents/${docId}/analyze-autodesk`, {}, { timeout: 180000 }); setCurrent(data); toast.success("Leitura Autodesk concluída."); }
@@ -140,8 +140,7 @@ export default function BetDossier() {
           <div className="flex items-center gap-2 text-primary"><FileSearch className="h-5 w-5" /><span className="overline">StructuroPilot</span></div>
           <h1 className="font-display text-2xl font-bold">Análise de processo de engenharia</h1>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Importe plantas e memórias de cálculo de um gabinete de projeto em <strong>lecture seule</strong>. L'IA lit les PDF et images,
-            compare les versions (indice A → B) et signale les incohérences. Rapport de contrôle PDF à la clé.
+            Importe plantas e memórias de cálculo de um gabinete de projeto em <strong>só de leitura</strong>. A IA lê os PDF e imagens, compara as versões (índice A → B) e assinala as incoerências. Relatório de controlo em PDF incluído.
           </p>
         </header>
 
@@ -181,7 +180,7 @@ export default function BetDossier() {
     <div className="max-w-5xl mx-auto space-y-6" data-testid="bet-detail-page">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="sm" onClick={() => { setCurrent(null); loadList(); }} data-testid="bet-back-btn" className="gap-1"><ArrowLeft className="h-4 w-4" /> Dossiers</Button>
+          <Button variant="ghost" size="sm" onClick={() => { setCurrent(null); loadList(); }} data-testid="bet-back-btn" className="gap-1"><ArrowLeft className="h-4 w-4" /> Processos</Button>
           <h1 className="font-display text-xl font-bold truncate">{current.title}</h1>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
@@ -210,7 +209,7 @@ export default function BetDossier() {
             <input ref={fileRef} type="file" className="hidden" data-testid="bet-file-input"
               accept=".pdf,.png,.jpg,.jpeg,.webp,.dwg,.dxf,.ifc" onChange={(e) => upload(e.target.files?.[0])} />
             <Button onClick={() => fileRef.current?.click()} disabled={busy} className="gap-2" data-testid="bet-upload-btn">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importer
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importar
             </Button>
           </div>
         </div>
@@ -228,7 +227,7 @@ export default function BetDossier() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-sm">{d.original_filename}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {d.index && <Badge variant="outline" className="rounded-sm" data-testid={`bet-doc-index-${d.id}`}>Indice {d.index}</Badge>}
+                          {d.index && <Badge variant="outline" className="rounded-sm" data-testid={`bet-doc-index-${d.id}`}>Índice {d.index}</Badge>}
                           <Badge variant="outline" className="rounded-sm">{KIND_LABEL[d.kind] || d.kind}</Badge>
                           <EngineBadge e={ext.source_engine} />
                           {ext.autodesk && <Badge variant="outline" className="rounded-sm">Autodesk · {ext.autodesk.objects} obj.</Badge>}
@@ -236,13 +235,13 @@ export default function BetDossier() {
                       </div>
                       {isCad && (
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => analyzeAutodesk(d.id, d.original_filename)} disabled={busy} data-testid={`bet-doc-autodesk-${d.id}`}>
-                          <Boxes className="h-4 w-4" /> Analyser via Autodesk
+                          <Boxes className="h-4 w-4" /> Analisar via Autodesk
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" title="Ouvrir" asChild data-testid={`bet-doc-view-${d.id}`}>
+                      <Button variant="ghost" size="icon" title="Abrir" asChild data-testid={`bet-doc-view-${d.id}`}>
                         <a href={`${API}/structuro/bet/studies/${current.dossier_id}/documents/${d.id}/file`} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /></a>
                       </Button>
-                      {!isCad && <Button variant="ghost" size="icon" title="Relire" onClick={() => reanalyze(d.id)} disabled={busy} data-testid={`bet-doc-reanalyze-${d.id}`}><RefreshCw className="h-4 w-4" /></Button>}
+                      {!isCad && <Button variant="ghost" size="icon" title="Reler" onClick={() => reanalyze(d.id)} disabled={busy} data-testid={`bet-doc-reanalyze-${d.id}`}><RefreshCw className="h-4 w-4" /></Button>}
                       <Button variant="ghost" size="icon" title="Eliminar" onClick={() => deleteDoc(d.id)} disabled={busy} data-testid={`bet-doc-delete-${d.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                     {ext.resume && <p className="text-xs text-muted-foreground mt-2 pl-12">{ext.resume}</p>}
@@ -260,10 +259,10 @@ export default function BetDossier() {
 
       {/* Compare versions */}
       <Card className="p-4 space-y-3" data-testid="bet-compare-card">
-        <h2 className="font-semibold flex items-center gap-2"><GitCompareArrows className="h-4 w-4 text-primary" /> Comparer deux versions</h2>
+        <h2 className="font-semibold flex items-center gap-2"><GitCompareArrows className="h-4 w-4 text-primary" /> Comparar duas versões</h2>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
           <div className="flex-1">
-            <label className="text-xs text-muted-foreground">Version A (ancienne)</label>
+            <label className="text-xs text-muted-foreground">Versão A (antiga)</label>
             <Select value={cmp.a} onValueChange={(v) => setCmp((s) => ({ ...s, a: v }))}>
               <SelectTrigger data-testid="bet-compare-a"><SelectValue placeholder="Escolher…" /></SelectTrigger>
               <SelectContent>{liveDocs.map((d) => <SelectItem key={d.id} value={d.id}>{d.original_filename}{d.index ? ` (${d.index})` : ""}</SelectItem>)}</SelectContent>
@@ -276,7 +275,7 @@ export default function BetDossier() {
               <SelectContent>{liveDocs.map((d) => <SelectItem key={d.id} value={d.id}>{d.original_filename}{d.index ? ` (${d.index})` : ""}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <Button onClick={runCompare} disabled={busy} className="gap-2" data-testid="bet-compare-btn">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitCompareArrows className="h-4 w-4" />} Comparer</Button>
+          <Button onClick={runCompare} disabled={busy} className="gap-2" data-testid="bet-compare-btn">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitCompareArrows className="h-4 w-4" />} Comparar</Button>
         </div>
         {comparisons.map((c) => {
           const r = c.result || {};
@@ -299,7 +298,7 @@ export default function BetDossier() {
       <Card className="p-4 space-y-3" data-testid="bet-inconsistencies-card">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" /> Incoerências entre documentos</h2>
-          <Button variant="outline" onClick={runInconsistencies} disabled={busy} className="gap-2" data-testid="bet-inconsistencies-btn">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSearch className="h-4 w-4" />} Analyser</Button>
+          <Button variant="outline" onClick={runInconsistencies} disabled={busy} className="gap-2" data-testid="bet-inconsistencies-btn">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSearch className="h-4 w-4" />} Analisar</Button>
         </div>
         {!current.inconsistencies ? <p className="text-xs text-muted-foreground">Lance a análise depois de importar pelo menos dois documentos legíveis.</p>
           : inco.length === 0 ? <p className="text-xs text-emerald-600" data-testid="bet-inco-none">Nenhuma incoerência assinalada.</p>

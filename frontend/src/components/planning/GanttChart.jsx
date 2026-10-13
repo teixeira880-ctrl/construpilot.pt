@@ -48,7 +48,7 @@ export function GanttChart({ tasks = [], project, selected, onSelect }) {
           );
         })}
         <div className="flex gap-4 text-[10px] text-muted-foreground mt-2 ps-1">
-          <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-primary inline-block" /> chemin critique</span>
+          <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-primary inline-block" /> caminho crítico</span>
           <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-slate-300 inline-block" /> com margem</span>
           <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-sky-600/80 inline-block" /> real (introduzido)</span>
           <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-emerald-400/70 inline-block" /> avancement</span>

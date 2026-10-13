@@ -6,8 +6,8 @@ import { toast } from "sonner";
 
 const ACCEPT = ".dwg,.dxf,.rvt,.ifc,.nwc,.nwd,.pdf,.png,.jpg,.jpeg,.webp";
 const STATUS_LABELS = {
-  queued: "En file d'attente", autodesk_translating: "A ler o ficheiro CAD…", autodesk_done: "Fichier CAO lu",
-  running_vision: "A ler a planta…", done: "Bem-sucedido", needs_review: "A verificar", partial: "Partiel",
+  queued: "Em fila de espera", autodesk_translating: "A ler o ficheiro CAD…", autodesk_done: "Ficheiro CAD lido",
+  running_vision: "A ler a planta…", done: "Bem-sucedido", needs_review: "A verificar", partial: "Parcial",
   failed: "Falhado", cancelled: "Anulado", autodesk_error: "Falhado (CAD)", error: "Falhado",
 };
 const FINAL = ["done", "needs_review", "partial", "failed", "cancelled", "autodesk_error", "error"];
@@ -29,7 +29,7 @@ export default function PlansPro() {
   useEffect(() => {
     loadHistory();
     const jobParam = new URLSearchParams(window.location.search).get("job");
-    if (jobParam) api.get(`/plans-pro/job/${jobParam}`).then(({ data }) => openJob(data)).catch(() => toast.error("Analyse introuvable"));
+    if (jobParam) api.get(`/plans-pro/job/${jobParam}`).then(({ data }) => openJob(data)).catch(() => toast.error("Análise não encontrada"));
     return () => clearTimeout(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -74,7 +74,7 @@ export default function PlansPro() {
       setJob(data);
       startPolling(data.job_id);
     } catch (err) {
-      toast.error(err?.response?.status === 429 ? "Limite atteinte : 20 analyses par heure." : err?.response?.data?.detail || "Envio impossível");
+      toast.error(err?.response?.status === 429 ? "Limite atingido: 20 análises por hora." : err?.response?.data?.detail || "Envio impossível");
     } finally {
       setUploading(false);
     }
@@ -127,14 +127,14 @@ export default function PlansPro() {
                className="flex-1 text-sm" />
         <button type="submit" disabled={!file || uploading} data-testid="plans-pro-submit-btn"
                 className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-60">
-          {uploading ? "Envoi…" : "Analyser"}
+          {uploading ? "A enviar…" : "Analisar"}
         </button>
       </form>
 
       {job && !result && (
         <div data-testid="plans-pro-job-status" className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 space-y-2">
           <div className="text-sm">
-            <span className="font-medium">Statut : </span><span className={STATUS_TONE[job.status] || ""} data-testid="plans-pro-status-label">{STATUS_LABELS[job.status] || job.status}</span>
+            <span className="font-medium">Estado: </span><span className={STATUS_TONE[job.status] || ""} data-testid="plans-pro-status-label">{STATUS_LABELS[job.status] || job.status}</span>
             {job.progress && !FINAL.includes(job.status) && <span className="ml-2 text-slate-500">({job.progress})</span>}
           </div>
           {job.help && <p className="text-xs text-slate-500">{job.help}</p>}
@@ -148,7 +148,7 @@ export default function PlansPro() {
             <div className="text-xs text-red-700 space-y-1" data-testid="plans-pro-failed">
               <p>{job.error || "Nenhum resultado utilizável."}</p>
               {(job.checks || []).length > 0 && <ul className="list-disc ml-4">{job.checks.map((c, i) => <li key={i}>{c}</li>)}</ul>}
-              <button type="button" className="mt-1 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700" onClick={() => retry(job.job_id)} data-testid="plans-pro-retry-btn">Relancer l'analyse</button>
+              <button type="button" className="mt-1 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700" onClick={() => retry(job.job_id)} data-testid="plans-pro-retry-btn">Relançar a análise</button>
             </div>
           )}
           <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -166,7 +166,7 @@ export default function PlansPro() {
               <p className="font-medium">{STATUS_LABELS[result.status]} — {result.help}</p>
               {result.error && <p className="text-xs mt-1">{result.error}</p>}
               {(result.checks || []).length > 0 && <ul className="text-xs mt-1 list-disc ml-4">{result.checks.map((c, i) => <li key={i}>{c}</li>)}</ul>}
-              {result.can_retry && <button type="button" className="mt-2 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs hover:bg-slate-700" onClick={() => retry(result.job_id)} data-testid="plans-pro-result-retry-btn">Relancer l'analyse</button>}
+              {result.can_retry && <button type="button" className="mt-2 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs hover:bg-slate-700" onClick={() => retry(result.job_id)} data-testid="plans-pro-result-retry-btn">Relançar a análise</button>}
             </div>
           )}
           {result.status === "done" && (result.checks || []).length > 0 && (
@@ -180,7 +180,7 @@ export default function PlansPro() {
             <div className="md:col-span-2 space-y-2">
               <h2 className="font-semibold">Resumo</h2>
               <div className="text-sm space-y-1">
-                <div><span className="text-slate-500">Fichier :</span> {result.filename}</div>
+                <div><span className="text-slate-500">Ficheiro:</span> {result.filename}</div>
                 {result.autodesk?.urn && <div><span className="text-slate-500">URN :</span> {result.autodesk.urn.slice(0, 40)}…</div>}
                 {result.autodesk?.elements_count != null && (
                   <div><span className="text-slate-500">Elementos extraídos:</span> {result.autodesk.elements_count}</div>
@@ -249,14 +249,14 @@ export default function PlansPro() {
                 {result.vision.elements.map((el, i) => (
                   <details key={i} className={`text-xs rounded border ${el.disagreement ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30" : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60"}`} data-testid={`plans-pro-element-${el.kind}`}>
                     <summary className="px-2 py-1 cursor-pointer">
-                      {el.kind} × {el.count != null ? el.count : (el.count_range ? `${el.count_range[0]}–${el.count_range[1]}(a verificar)` : (el.sources_agreed != null ? "?" : "?"))}
+                      {el.kind} × {el.count != null ? el.count : (el.count_range ? `${el.count_range[0]}–${el.count_range[1]} (a verificar)` : (el.sources_agreed != null ? "?" : "?"))}
                       <span className="text-slate-500 ml-1">
-                        {el.observations ? `(${el.contributions}/${el.providers_total} lectures${el.disagreement ? "em desacordo" : " concordantes"})` : `(${el.sources_agreed ?? "?"} lectures — ancien format)`}
+                        {el.observations ? `(${el.contributions}/${el.providers_total} lectures${el.disagreement ? " em desacordo" : " concordantes"})` : `(${el.sources_agreed ?? "?"} leituras — formato antigo)`}
                       </span>
                     </summary>
                     {el.observations && (
                       <ul className="px-3 pb-2 text-slate-600 dark:text-slate-400">
-                        {el.observations.map((o, j) => <li key={j}>{o.provider} : {o.count}{o.declared_confidence != null ? `(confiança declarada${(o.declared_confidence * 100).toFixed(0)} %)` : ""}{o.notes ? ` — ${o.notes}` : ""}</li>)}
+                        {el.observations.map((o, j) => <li key={j}>{o.provider} : {o.count}{o.declared_confidence != null ? ` (confiança declarada ${(o.declared_confidence * 100).toFixed(0)} %)` : ""}{o.notes ? ` — ${o.notes}` : ""}</li>)}
                       </ul>
                     )}
                   </details>
@@ -276,7 +276,7 @@ export default function PlansPro() {
 
           {result.vision?.applicable_norms?.text && (
             <div>
-              <h2 className="font-semibold mb-2">Normes / DTU applicables</h2>
+              <h2 className="font-semibold mb-2">Normas aplicáveis (NP EN / LNEC)</h2>
               <div className="rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-sm whitespace-pre-wrap">
                 {result.vision.applicable_norms.text}
               </div>

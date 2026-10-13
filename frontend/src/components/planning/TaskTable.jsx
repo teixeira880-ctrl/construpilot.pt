@@ -38,7 +38,7 @@ export function TaskTable({ tasks, computed, trades = [], selected, onSelect, on
         <thead>
           <tr className="text-left text-muted-foreground border-b border-border">
             <th className="py-2 ps-2 w-8">#</th><th>Tarefa</th><th>Equipa / capítulo</th><th className="w-20">Duração (d)</th><th className="w-20">H. previstas</th>
-            <th>Depois de (antecessoras)</th><th className="w-24">Não antes de</th><th className="w-24">Início → fim</th><th className="w-16">Marge</th><th className="w-28">Avancement</th><th className="w-24" />
+            <th>Depois de (antecessoras)</th><th className="w-24">Não antes de</th><th className="w-24">Início → fim</th><th className="w-16">Margem</th><th className="w-28">Avanço</th><th className="w-24" />
           </tr>
         </thead>
         <tbody>
@@ -99,13 +99,13 @@ export function TaskTable({ tasks, computed, trades = [], selected, onSelect, on
                     <span className="w-8 text-right">{t.progress || 0}%</span>
                   </div>
                   {t.actual_end && <div className="text-[10px] text-emerald-700">concluída em {fr(t.actual_end)}</div>}
-                  {c?.progress_source === "pointage" && <div className="text-[10px] text-emerald-700" data-testid={`task-progress-source-${t.id}`}>auto · pointage RH</div>}
+                  {c?.progress_source === "pointage" && <div className="text-[10px] text-emerald-700" data-testid={`task-progress-source-${t.id}`}>auto · registo de horas RH</div>}
                   {c?.progress_source === "manuel" && t.planned_hours > 0 && t.progress < 100 && <button type="button" className="text-[10px] underline text-muted-foreground" onClick={(e) => { e.stopPropagation(); onFollowTimesheets?.(t.id); }} data-testid={`task-follow-timesheets-${t.id}`}>voltar a seguir o registo de horas</button>}
                 </td>
                 <td className="py-1.5 pe-1">
                   <div className="flex gap-0.5">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); move(idx, -1); }} title="Monter"><ArrowUp className="h-3 w-3" /></Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); move(idx, 1); }} title="Descendre"><ArrowDown className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); move(idx, -1); }} title="Subir"><ArrowUp className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); move(idx, 1); }} title="Descer"><ArrowDown className="h-3 w-3" /></Button>
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600" onClick={(e) => { e.stopPropagation(); remove(idx); }} title="Eliminar" data-testid={`task-delete-${t.id}`}><Trash2 className="h-3 w-3" /></Button>
                   </div>
                 </td>

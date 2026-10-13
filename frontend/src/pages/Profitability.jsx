@@ -10,17 +10,17 @@ import { useI18n } from "@/context/I18nContext";
 
 const L = {
   fr: {
-    kinds: [["achat", "Outro"], ["main_oeuvre", "Outro"], ["sous_traitance", "Sous-traitance"], ["location", "Outro"], ["commande", "Outro"], ["autre", "Autre"]],
-    noDate: "Sem data", sold: "Vendu HT", quotedCost: "Custo orçam.", plannedMargin: "margem prevista", realBuy: "Compras reais", realMargin: "Margem real",
-    reopen: "Reabrir a obra", finish: "Marcar concluída", label: "Descrição", labelPh: "Ex. Carrelage Point P", amount: "Montante s/ IVA (€)", type: "Type",
-    order: "Nota de encomenda", date: "Date", add: "Adicionar", loading: "A carregar…", labelReq: "Descrição e montante obrigatórios", added: "Despesa adicionada",
+    kinds: [["achat", "Outro"], ["main_oeuvre", "Outro"], ["sous_traitance", "Subempreitada"], ["location", "Outro"], ["encomenda", "Outro"], ["autre", "Outro"]],
+    noDate: "Sem data", sold: "Vendido s/ IVA", quotedCost: "Custo orçam.", plannedMargin: "margem prevista", realBuy: "Compras reais", realMargin: "Margem real",
+    reopen: "Reabrir a obra", finish: "Marcar concluída", label: "Descrição", labelPh: "Ex. Mosaico Point P", amount: "Montante s/ IVA (€)", type: "Tipo",
+    order: "Nota de encomenda", date: "Data", add: "Adicionar", loading: "A carregar…", labelReq: "Descrição e montante obrigatórios", added: "Despesa adicionada",
     addErr: "Não foi possível adicionar", delErr: "Não foi possível eliminar", updErr: "Não foi possível atualizar", markedDone: "Obra marcada como concluída", reopened: "Obra reaberta", loadErr: "Não foi possível carregar",
-    over: "Pilotage", title: "Relatório de rentabilidade", sub: "Margem real por obra e por mês: preço vendido vs custo previsto no orçamento vs compras reais (despesas registadas, notas de encomenda).",
-    includeOpen: "Incluir obras em curso (orçamentos assinados não concluídos)", quotesLink: "Acompanhamento de orçamentos →", kJobs: "Chantiers", kRev: "Chiffre d'affaires HT", kMargin: "Margem real s/ IVA", kRate: "Taxa de margem",
-    byMonth: "Par mois", monthlyEmpty: "Ainda não há obras concluídas: marque um orçamento assinado como « concluído » abaixo (ou selecione « incluir obras em curso »).",
-    hMonth: "Mois", hJobs: "Chantiers", hRev: "CA HT", hQuoted: "Custo orçam.", hReal: "Custo real", hMargin: "Marge", hRate: "Taux", byJob: "Por obra",
-    jobsEmpty: (o) => `. As obras aparecem assim que um orçamento é assinado.${o ? "" : ". As obras aparecem assim que um orçamento é assinado."}. Les chantiers apparaissent dès qu'un devis est signé.`, draft: "Brouillon", noClient: "Sem cliente", done: "concluída", open: "en cours",
-    soldHt: "vendu HT", quotedCostS: "custo orçamento", realBuyS: "compras reais", marginS: "marge", real: "real", planned: "prevista", reportErr: "Rapport indisponible",
+    over: "Gestão", title: "Relatório de rentabilidade", sub: "Margem real por obra e por mês: preço vendido vs custo previsto no orçamento vs compras reais (despesas registadas, notas de encomenda).",
+    includeOpen: "Incluir obras em curso (orçamentos assinados não concluídos)", quotesLink: "Acompanhamento de orçamentos →", kJobs: "Obras", kRev: "Volume de negócios s/ IVA", kMargin: "Margem real s/ IVA", kRate: "Taxa de margem",
+    byMonth: "Por mês", monthlyEmpty: "Ainda não há obras concluídas: marque um orçamento assinado como « concluído » abaixo (ou selecione « incluir obras em curso »).",
+    hMonth: "Mês", hJobs: "Obras", hRev: "CA HT", hQuoted: "Custo orçam.", hReal: "Custo real", hMargin: "Margem", hRate: "Taxa", byJob: "Por obra",
+    jobsEmpty: (o) => `. As obras aparecem assim que um orçamento é assinado.${o ? "" : " . As obras aparecem assim que um orçamento é assinado."}. As obras aparecem assim que um orçamento é assinado.`, draft: "Rascunho", noClient: "Sem cliente", done: "concluída", open: "en cours",
+    soldHt: "vendido s/ IVA", quotedCostS: "custo orçamento", realBuyS: "compras reais", marginS: "marge", real: "real", planned: "prevista", reportErr: "Relatório indisponível",
   },
   pt: {
     kinds: [["achat", "Compra de materiais"], ["main_oeuvre", "Mão de obra"], ["sous_traitance", "Subempreitada"], ["location", "Aluguer de equipamento"], ["commande", "Nota de encomenda fornecedor"], ["autre", "Outro"]],
@@ -124,7 +124,7 @@ const CostsPanel = ({ docId, onChange, T }) => {
             {KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
         </label>
-        {form.kind === "commande" ? (
+        {form.kind === "encomenda" ? (
           <label className="grid gap-1 text-xs">{T.order}
             <select value={form.order_id} onChange={(e) => setForm({ ...form, order_id: e.target.value })} className="h-9 w-full min-w-0 rounded-sm border border-input bg-background px-2 text-sm" data-testid={`profit-cost-order-${docId}`}>
               <option value="">—</option>

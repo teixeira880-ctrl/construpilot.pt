@@ -38,9 +38,9 @@ function InitCard({ info, onInit, busy }) {
 function Kpis({ project, tasks }) {
   const gap = project.deadline_gap_days;
   const items = [
-    ["Início", fr(project.start_date)], ["Fim previsto", fr(project.end_date)], ["Duração", `${project.duration_workdays}dias úteis`],
-    ["Chemin critique", `${project.critical_path.length} / ${tasks.length}tarefas`],
-    ["Objectif", project.deadline ? `${fr(project.deadline)} · ${gap >= 0 ? `+${gap} j` : `${gap} j`}` : "não fixado"],
+    ["Início", fr(project.start_date)], ["Fim previsto", fr(project.end_date)], ["Duração", `${project.duration_workdays} dias úteis`],
+    ["Caminho crítico", `${project.critical_path.length} / ${tasks.length} tarefas`],
+    ["Objetivo", project.deadline ? `${fr(project.deadline)} · ${gap >= 0 ? `+${gap} j` : `${gap} j`}` : "não fixado"],
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-2" data-testid="planning-kpis">
@@ -149,15 +149,15 @@ export default function Planning() {
           <Kpis project={info.schedule.project} tasks={info.schedule.tasks} />
           <div className="flex flex-wrap gap-2">
             <Button className="gap-2 rounded-sm" onClick={save} disabled={busy} data-testid="planning-save-btn">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : dirty ? <Save className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />} {dirty ? "Guardar e recalcular" : "Recalculer"}</Button>
-            <Button variant="outline" className="gap-2 rounded-sm" onClick={() => optimize(false)} disabled={busy || dirty} title={dirty ? "Enregistrez d'abord" : ""} data-testid="planning-optimize-btn"><Sparkles className="h-4 w-4" /> Optimiser (OR-Tools)</Button>
-            <Button variant="outline" className="gap-2 rounded-sm" onClick={baseline} disabled={busy || dirty} data-testid="planning-baseline-btn"><Flag className="h-4 w-4" /> {info.baseline ? `Referência de${fr(info.baseline.frozen_at?.slice(0, 10))} — refiger` : "Fixar como referência"}</Button>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : dirty ? <Save className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />} {dirty ? "Guardar e recalcular" : "Recalcular"}</Button>
+            <Button variant="outline" className="gap-2 rounded-sm" onClick={() => optimize(false)} disabled={busy || dirty} title={dirty ? "Guarde primeiro" : ""} data-testid="planning-optimize-btn"><Sparkles className="h-4 w-4" /> Otimizar (OR-Tools)</Button>
+            <Button variant="outline" className="gap-2 rounded-sm" onClick={baseline} disabled={busy || dirty} data-testid="planning-baseline-btn"><Flag className="h-4 w-4" /> {info.baseline ? `Referência de ${fr(info.baseline.frozen_at?.slice(0, 10))} — refiger` : "Fixar como referência"}</Button>
             <a href={`${API}/planning/chantiers/${chantierId}/pdf`} target="_blank" rel="noreferrer" data-testid="planning-pdf-link">
               <Button variant="outline" className="gap-2 rounded-sm" disabled={dirty}><FileDown className="h-4 w-4" /> PDF Gantt</Button></a>
             <Button variant="ghost" className="gap-2 rounded-sm text-red-600 ms-auto" onClick={remove} data-testid="planning-delete-btn"><Trash2 className="h-4 w-4" /> Eliminar</Button>
           </div>
           {dirty && <p className="text-xs text-amber-700" data-testid="planning-dirty">Alterações não guardadas: as datas apresentadas correspondem ao último cálculo.</p>}
-          {info.timesheet_sync?.length > 0 && <p className="text-xs text-emerald-700" data-testid="planning-timesheet-sync">Pointage RH : {info.timesheet_sync.length} tarefa(s) atualizada(s) automaticamente a partir das horas validadas ({info.timesheet_sync.map((s) => `${s.id} ${s.hours} h / ${s.planned} h → ${s.progress} %`).join(" · ")}).</p>}
+          {info.timesheet_sync?.length > 0 && <p className="text-xs text-emerald-700" data-testid="planning-timesheet-sync">Registo de horas RH: {info.timesheet_sync.length} tarefa(s) atualizada(s) automaticamente a partir das horas validadas ({info.timesheet_sync.map((s) => `${s.id} ${s.hours} h / ${s.planned} h → ${s.progress} %`).join(" · ")}).</p>}
 
           <Settings draft={draft} setDraft={setD} resources={resources} />
           <section className="surface p-4"><GanttChart tasks={info.schedule.tasks} project={info.schedule.project} selected={selected} onSelect={setSelected} /></section>
@@ -166,17 +166,17 @@ export default function Planning() {
                        onChange={(tasks) => setD({ ...draft, tasks })} onProgress={progress} onFollowTimesheets={followTimesheets} />
           </section>
           <SuggestionsPanel suggestions={info.suggestions} onHighlight={setSelected}
-                            onApplyCapacity={(res, val) => { const d = { ...draft, capacities: { ...draft.capacities, [res]: val } }; setDraft(d); run(() => api.put(`/planning/chantiers/${chantierId}`, { ...d, deadline: d.deadline || null }), `Capacidade «${res} » = ${val}`); }} />
+                            onApplyCapacity={(res, val) => { const d = { ...draft, capacities: { ...draft.capacities, [res]: val } }; setDraft(d); run(() => api.put(`/planning/chantiers/${chantierId}`, { ...d, deadline: d.deadline || null }), `Capacidade « ${res} » = ${val}`); }} />
         </>
       )}
 
       <Dialog open={!!opt} onOpenChange={(o) => !o && setOpt(null)}>
         <DialogContent className="max-w-lg" data-testid="optimize-dialog">
-          <DialogHeader><DialogTitle>Optimisation OR-Tools (CP-SAT)</DialogTitle>
+          <DialogHeader><DialogTitle>Otimização OR-Tools (CP-SAT)</DialogTitle>
             <DialogDescription>Minimiza o fim da obra respeitando as suas dependências e a capacidade das equipas.</DialogDescription></DialogHeader>
           {opt && (opt.ok ? (
             <div className="grid gap-3 text-sm">
-              <p data-testid="optimize-result">Planning actuel : <b>{opt.baseline_days} j</b> → otimizado: <b>{opt.makespan_days} j</b> {opt.gain_days > 0 ? <span className="text-emerald-700">(−{opt.gain_days} dias úteis, fim em {fr(opt.end_date)})</span> : <span className="text-muted-foreground">— já ótimo</span>}{opt.optimal ? "· solução ótima comprovada" : "· melhor solução encontrada em 8 s"}</p>
+              <p data-testid="optimize-result">Planeamento atual: <b>{opt.baseline_days} j</b> → otimizado: <b>{opt.makespan_days} j</b> {opt.gain_days > 0 ? <span className="text-emerald-700">(−{opt.gain_days} dias úteis, fim em {fr(opt.end_date)})</span> : <span className="text-muted-foreground">— já ótimo</span>}{opt.optimal ? " · solução ótima comprovada" : " · melhor solução encontrada em 8 s"}</p>
               {opt.moved.length > 0 && <ul className="text-xs grid gap-1 max-h-48 overflow-y-auto">{opt.moved.map((m) => <li key={m.id}>{m.name} : {m.moved_days > 0 ? `+${m.moved_days}` : m.moved_days} j → {fr(m.start_date)}</li>)}</ul>}
               <div className="flex gap-2 justify-end"><Button variant="outline" className="rounded-sm" onClick={() => setOpt(null)}>Fechar</Button>
                 {opt.gain_days > 0 && <Button className="rounded-sm" onClick={() => optimize(true)} data-testid="optimize-apply-btn">Aplicar (datas «não antes de»)</Button>}</div>

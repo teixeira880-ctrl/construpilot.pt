@@ -72,14 +72,14 @@ export default function RoofingTab({ plans, suppliers }) {
             {plans.map((p) => <option key={p.plan_id} value={p.plan_id}>{p.filename || p.plan_id}</option>)}
           </select>
         </div>
-        <div className="min-w-[180px]"><label className="text-xs text-muted-foreground">Couverture</label>
+        <div className="min-w-[180px]"><label className="text-xs text-muted-foreground">Cobertura</label>
           <select value={material} onChange={(e) => setMaterial(e.target.value)} className="w-full mt-1 rounded-sm border border-border bg-background px-3 py-2 text-sm" data-testid="roof-material-select">
             {materials.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
           </select>
         </div>
         <Button onClick={analyze} disabled={busy || !planId} className="gap-2 rounded-sm" data-testid="analyze-roof-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Analyse IA…" : "Analisar a cobertura"}
+          {busy ? "Análise IA…" : "Analisar a cobertura"}
         </Button>
       </div>
 
@@ -88,18 +88,18 @@ export default function RoofingTab({ plans, suppliers }) {
           <div className="surface p-4 space-y-3" data-testid="roof-params">
             <h3 className="font-bold flex items-center gap-2"><Home className="h-4 w-4 text-primary" />Parâmetros cobertura {ana.roof_type ? `· ${ana.roof_type}` : ""}</h3>
             {ana.scale_confidence != null && (
-              <p className="text-xs text-muted-foreground">Escala: {ana.scale_detected || "incertaine"} · confiance {Math.round((ana.scale_confidence || 0) * 100)}%</p>
+              <p className="text-xs text-muted-foreground">Escala: {ana.scale_detected || "incertaine"} · confiança {Math.round((ana.scale_confidence || 0) * 100)}%</p>
             )}
             <div className="flex flex-wrap items-end gap-3">
               <div><label className="text-xs text-muted-foreground">Superfície projetada (m²)</label><Input type="number" value={surface} onChange={(e) => setSurface(parseFloat(e.target.value) || 0)} className="h-8 w-32" data-testid="roof-surface" /></div>
-              <div><label className="text-xs text-muted-foreground">Pente (%)</label><Input type="number" value={pente} onChange={(e) => setPente(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="roof-pente" /></div>
+              <div><label className="text-xs text-muted-foreground">Inclinação (%)</label><Input type="number" value={pente} onChange={(e) => setPente(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="roof-pente" /></div>
               <div><label className="text-xs text-muted-foreground">Cumeeira (ml)</label><Input type="number" value={lg.faitage_ml} onChange={(e) => setL("faitage_ml", e.target.value)} className="h-8 w-24" data-testid="roof-faitage" /></div>
               <div><label className="text-xs text-muted-foreground">Rincões (ml)</label><Input type="number" value={lg.aretiers_ml} onChange={(e) => setL("aretiers_ml", e.target.value)} className="h-8 w-24" data-testid="roof-aretiers" /></div>
-              <div><label className="text-xs text-muted-foreground">Noues (ml)</label><Input type="number" value={lg.noues_ml} onChange={(e) => setL("noues_ml", e.target.value)} className="h-8 w-24" data-testid="roof-noues" /></div>
-              <div><label className="text-xs text-muted-foreground">Rives (ml)</label><Input type="number" value={lg.rives_ml} onChange={(e) => setL("rives_ml", e.target.value)} className="h-8 w-24" data-testid="roof-rives" /></div>
+              <div><label className="text-xs text-muted-foreground">Rincões (ml)</label><Input type="number" value={lg.noues_ml} onChange={(e) => setL("noues_ml", e.target.value)} className="h-8 w-24" data-testid="roof-noues" /></div>
+              <div><label className="text-xs text-muted-foreground">Beirados (ml)</label><Input type="number" value={lg.rives_ml} onChange={(e) => setL("rives_ml", e.target.value)} className="h-8 w-24" data-testid="roof-rives" /></div>
               <div><label className="text-xs text-muted-foreground">Esgoto (ml)</label><Input type="number" value={lg.egout_ml} onChange={(e) => setL("egout_ml", e.target.value)} className="h-8 w-24" data-testid="roof-egout" /></div>
-              <div><label className="text-xs text-muted-foreground">Pertes %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-20" data-testid="roof-loss" /></div>
-              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="roof-compute-btn"><Truck className="h-4 w-4" />Recalculer</Button>
+              <div><label className="text-xs text-muted-foreground">Perdas %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-20" data-testid="roof-loss" /></div>
+              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="roof-compute-btn"><Truck className="h-4 w-4" />Recalcular</Button>
             </div>
             {comp && (
               <p className="text-xs text-muted-foreground">Superfície inclinada: <b>{comp.surface_rampante_m2} m²</b> · angle {comp.angle_deg}° · {comp.material_label}</p>

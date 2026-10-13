@@ -64,7 +64,7 @@ export function SoroBlog() {
                 </h3>
                 <p className="text-sm text-muted-foreground line-clamp-3">{a.excerpt}</p>
                 <span className="text-primary text-sm font-semibold inline-flex items-center gap-1 mt-1">
-                  Lire l'article <ArrowRight className="h-3 w-3" />
+                  Ler o artigo <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
             </Link>

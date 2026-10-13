@@ -53,7 +53,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
           <Button onClick={onRun} disabled={busy} data-testid="pc-study-run-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600">
             <Sparkles className={`h-4 w-4 ${busy ? "animate-pulse" : ""}`} />
-            {busy ? "Análise do alvará em curso… (pode demorar 1-2 min)" : study ? "Relancer l'analyse" : "Lançar a análise da licença de construção"}
+            {busy ? "Análise do alvará em curso… (pode demorar 1-2 min)" : study ? "Relançar a análise" : "Lançar a análise da licença de construção"}
           </Button>
           <Button variant="outline" onClick={() => setSettingsOpen(true)} data-testid="pc-settings-open-btn"
                   className="rounded-sm gap-2">
@@ -97,7 +97,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
               <section>
                 <h3 className="text-sm font-semibold mb-1">O que pede a licença
                   <Badge variant="outline" className="ml-2 text-[10px] rounded-sm">
-                    confiance IA {Math.round((study.confidence || 0) * 100)} %
+                    confiança IA {Math.round((study.confidence || 0) * 100)} %
                   </Badge>
                 </h3>
                 <ul className="text-xs text-muted-foreground space-y-0.5">
@@ -110,13 +110,13 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
               <h3 className="text-sm font-semibold mb-1">Hipóteses adotadas</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 {[
-                  ["Niveaux", study.inputs?.levels, study.input_sources?.levels],
+                  ["Níveis", study.inputs?.levels, study.input_sources?.levels],
                   ["Superfície", `${num(study.inputs?.surface_m2, 1)} m²`, study.input_sources?.surface_m2],
                   ["Altura paredes", `${num(study.inputs?.wall_height_m, 2)} m`, study.input_sources?.wall_height_m],
                   ["Perímetro", `${num(study.inputs?.perimeter_m, 1)} m`, study.input_sources?.perimeter_m],
-                  ["Refends", `${num(study.inputs?.refends_m, 1)} m`, study.input_sources?.refends_m],
-                  ["Ouvertures", `${study.inputs?.openings_count} u · ${num(study.inputs?.openings_area_m2, 1)} m²`, ""],
-                  ["Escaliers", study.inputs?.stairs_count, ""],
+                  ["Paredes interiores", `${num(study.inputs?.refends_m, 1)} m`, study.input_sources?.refends_m],
+                  ["Vãos", `${study.inputs?.openings_count} u · ${num(study.inputs?.openings_area_m2, 1)} m²`, ""],
+                  ["Escadas", study.inputs?.stairs_count, ""],
                 ].map(([k, v, s]) => (
                   <div key={k} className="rounded-sm border border-border p-2">
                     <p className="text-muted-foreground text-[10px]">{k}{s ? ` · ${s}` : ""}</p>
@@ -164,15 +164,15 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                 <p className="font-bold num">{num(study.totals?.beton_m3)} m³</p></div>
               <div><p className="text-[10px] text-muted-foreground">Aços total</p>
                 <p className="font-bold num">{num(study.totals?.acier_kg)} kg</p></div>
-              <div><p className="text-[10px] text-muted-foreground">Briques isobrique</p>
+              <div><p className="text-[10px] text-muted-foreground">Tijolos térmicos</p>
                 <p className="font-bold num">{study.totals?.briques_u} u</p></div>
               <div><p className="text-[10px] text-muted-foreground">Custo de produção s/ IVA</p>
                 <p className="font-bold num" data-testid="pc-study-cout-ht">{eur(study.totals?.cout_ht ?? study.totals?.ht)}</p></div>
-              <div><p className="text-[10px] text-muted-foreground">Marge pro ({num(study.totals?.marge_pct ?? 0)} %)</p>
+              <div><p className="text-[10px] text-muted-foreground">Margem pro ({num(study.totals?.marge_pct ?? 0)} %)</p>
                 <p className="font-bold num text-emerald-600" data-testid="pc-study-marge">{eur(study.totals?.marge_eur ?? 0)}</p></div>
               <div><p className="text-[10px] text-muted-foreground">Preço de venda s/ IVA</p>
                 <p className="font-bold num">{eur(study.totals?.ht)}</p></div>
-              <div><p className="text-[10px] text-muted-foreground">TVA 20 %</p>
+              <div><p className="text-[10px] text-muted-foreground">IVA 20 %</p>
                 <p className="font-bold num">{eur(study.totals?.tva)}</p></div>
               <div><p className="text-[10px] text-muted-foreground">PREÇO DE VENDA C/ IVA</p>
                 <p className="font-bold num text-primary" data-testid="pc-study-total-ttc">{eur(study.totals?.ttc)}</p></div>
@@ -193,10 +193,10 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
-                      <th className="p-1.5">Niveau</th>
+                      <th className="p-1.5">Piso</th>
                       <th className="p-1.5 text-right">Betão</th>
-                      <th className="p-1.5 text-right">Aciers</th>
-                      <th className="p-1.5 text-right">Briques</th>
+                      <th className="p-1.5 text-right">Aços</th>
+                      <th className="p-1.5 text-right">Tijolos</th>
                       <th className="p-1.5 text-right">Paredes</th>
                       <th className="p-1.5 text-right">Total s/ IVA</th>
                       <th className="p-1.5 text-right">Comércio</th>
@@ -225,7 +225,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                                   className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-orange-600 transition underline underline-offset-2"
                                   title="Gerar a nota de encomenda de materiais deste nível"
                                   data-testid={`pc-level-${i}-order-btn`}>
-                            <PackageOpen className="h-3 w-3" /> Commander
+                            <PackageOpen className="h-3 w-3" /> Encomendar
                           </button>
                         </td>
                       </tr>
@@ -254,11 +254,11 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
-                      <th className="p-1.5">Phase</th>
+                      <th className="p-1.5">Fase</th>
                       <th className="p-1.5 text-center">Dias úteis</th>
                       <th className="p-1.5 text-center">Secagem</th>
                       <th className="p-1.5 text-center">Início</th>
-                      <th className="p-1.5 text-center">Fin</th>
+                      <th className="p-1.5 text-center">Fim</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -277,7 +277,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                   </tbody>
                 </table>
                 <p className="text-[11px] text-muted-foreground mt-1" data-testid="pc-planning-summary">
-                  Equipa de {study.planning.crew_size} compagnons — {study.planning.total_work_days} dias úteis + {study.planning.total_cure_days} dias de secagem betão, ou seja ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semaines)</b> de obra.
+                  Equipa de {study.planning.crew_size} colaboradores — {study.planning.total_work_days} dias úteis + {study.planning.total_cure_days} dias de secagem betão, ou seja ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semanas)</b> de obra.
                 </p>
                 <PcProgress key={planId} planId={planId} planning={study.planning}
                             progress={study.progress} />
@@ -298,12 +298,12 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
-                      <th className="p-1.5">Date</th>
-                      <th className="p-1.5">Origine</th>
+                      <th className="p-1.5">Data</th>
+                      <th className="p-1.5">Origem</th>
                       <th className="p-1.5 text-right">Betão</th>
-                      <th className="p-1.5 text-right">Aciers</th>
+                      <th className="p-1.5 text-right">Aços</th>
                       <th className="p-1.5 text-right">Total c/ IVA</th>
-                      <th className="p-1.5 text-right">Δ vs version actuelle</th>
+                      <th className="p-1.5 text-right">Δ vs versão atual</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -316,8 +316,8 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                             {new Date(h.saved_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                           </td>
                           <td className="p-1.5 text-muted-foreground">
-                            {h.source === "analyse" ? "Analyse IA" : "Recalcul"}
-                            {h.custom_pricing ? "· preço personalizado" : ""}
+                            {h.source === "análise" ? "Análise IA" : "Recálculo"}
+                            {h.custom_pricing ? " · preço personalizado" : ""}
                           </td>
                           <td className="p-1.5 text-right num">{num(h.beton_m3, 2)} m³</td>
                           <td className="p-1.5 text-right num">{num(h.acier_kg)} kg</td>
@@ -394,7 +394,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
             {study.warnings?.length > 0 && (
               <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
                 <p className="font-semibold flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3 text-amber-500" /> Avertissements IA
+                  <AlertTriangle className="h-3 w-3 text-amber-500" /> Avisos IA
                 </p>
                 {study.warnings.slice(0, 6).map((w, i) => (
                   <p key={i} className="text-muted-foreground">• {w}</p>

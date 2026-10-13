@@ -36,7 +36,7 @@ export function AgentsRunning() {
           const history = await api.get("/agents/runs");
           if (stopped) return;
           const completed = (history.data.runs || []).filter(run => finished.includes(run.run_id));
-          const options = { description: "Consulte os resultados e os pontos a verificar.", action: { label: "Ouvrir", onClick: () => navigate("/agents") } };
+          const options = { description: "Consulte os resultados e os pontos a verificar.", action: { label: "Abrir", onClick: () => navigate("/agents") } };
           if (completed.some(run => run.status === "error")) toast.error("Uma tarefa foi interrompida", options);
           else if (completed.some(run => run.status === "done")) toast.success("O controlo está concluído", options);
         }
@@ -61,7 +61,7 @@ export function AgentsRunning() {
     >
       <Loader2 className="h-4 w-4 text-primary animate-spin" />
       <span className="text-xs font-semibold">
-        {active.length} agent{active.length > 1 ? "s" : ""} en cours…
+        {active.length} agent{active.length > 1 ? "s" : ""} em curso…
       </span>
     </button>
   );

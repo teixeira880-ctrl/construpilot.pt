@@ -89,23 +89,23 @@ export default function Library() {
   };
 
   const remove = async (it) => {
-    if (!window.confirm(`Eliminar «${it.designation} » ?`)) return;
+    if (!window.confirm(`Eliminar « ${it.designation} » ?`)) return;
     try { await api.delete(`/library/${it.item_id}`); toast.success("Elemento eliminado"); load(); }
     catch { toast.error("Não foi possível eliminar"); }
   };
 
   const resetCatalogue = async () => {
     if (!window.confirm("Reinserir o catálogo inicial? Os seus elementos atuais são conservados.")) return;
-    try { const { data } = await api.post("/library/reset-catalogue"); toast.success(`Catálogo recarregado (${data.count}elementos)`); load(); }
+    try { const { data } = await api.post("/library/reset-catalogue"); toast.success(`Catálogo recarregado (${data.count} elementos)`); load(); }
     catch { toast.error("Ação impossível"); }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle over="Espace Pro" title="A sua biblioteca">
+        <SectionTitle over="Espaço Pro" title="A sua biblioteca">
           Os seus trabalhos e materiais com os seus preços. Reutilize-os nos seus orçamentos num clique — cada novo elemento inserido é guardado aqui automaticamente.
         </SectionTitle>
         <div className="flex gap-2 flex-wrap">
@@ -140,7 +140,7 @@ export default function Library() {
                  className="pl-9 rounded-sm" data-testid="library-search-input" />
         </div>
         <div className="flex gap-1 border border-border rounded-sm p-0.5" data-testid="library-type-filter">
-          {[["", "Todos"], ["ouvrage", "Ouvrages"], ["materiau", "Materiais"]].map(([v, lbl]) => (
+          {[["", "Todos"], ["ouvrage", "Trabalhos"], ["materiau", "Materiais"]].map(([v, lbl]) => (
             <button key={v} onClick={() => setTypeFilter(v)}
                     data-testid={`library-filter-${v || "all"}`}
                     className={`px-3 py-1.5 text-xs rounded-sm transition ${typeFilter === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -152,7 +152,7 @@ export default function Library() {
 
       {sources.length > 1 && (
         <div className="flex flex-wrap gap-1.5 items-center" data-testid="library-source-filter">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mr-1">Origine</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mr-1">Origem</span>
           <button onClick={() => setSourceFilter("")} data-testid="library-source-all"
                   className={`px-3 py-1 text-xs rounded-sm border transition ${sourceFilter === "" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
             Todas
@@ -183,8 +183,8 @@ export default function Library() {
             <span className="col-span-2">Categoria</span>
             <span className="col-span-1 text-center">Un.</span>
             <span className="col-span-2 text-right">PU HT</span>
-            <span className="col-span-1 text-center">TVA</span>
-            <span className="col-span-1 text-right">Actions</span>
+            <span className="col-span-1 text-center">IVA</span>
+            <span className="col-span-1 text-right">Ações</span>
           </div>
           {items.map((it) => (
             <div key={it.item_id}
@@ -224,7 +224,7 @@ export default function Library() {
           </DialogHeader>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label>Type</Label>
+              <Label>Tipo</Label>
               <select value={form.type} onChange={set("type")} data-testid="library-type-select"
                       className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
                 <option value="ouvrage">Trabalho (mão de obra + fornecimento)</option>
@@ -265,14 +265,14 @@ export default function Library() {
                      data-testid="library-cost" placeholder="opcional · serve para cálculo de margem" />
             </div>
             <div>
-              <Label>TVA</Label>
+              <Label>IVA</Label>
               <select value={form.vat_rate} onChange={set("vat_rate")} data-testid="library-vat"
                       className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
                 {VAT_RATES.map((r) => <option key={r} value={r}>{r} %</option>)}
               </select>
             </div>
             <div className="sm:col-span-2">
-              <Label>Notes (optionnel)</Label>
+              <Label>Notas (opcional)</Label>
               <Textarea value={form.notes} onChange={set("notes")} rows={2}
                         className="rounded-sm mt-1 resize-none" data-testid="library-notes" />
             </div>

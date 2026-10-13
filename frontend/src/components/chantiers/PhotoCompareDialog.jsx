@@ -17,7 +17,7 @@ export function PhotoCompareDialog({ open, onOpenChange, photos = [] }) {
     if (!after) return setAfter(path);
     setAfter(path);
   };
-  const roleOf = (path) => (before === path ? "Avant" : after === path ? "Após" : null);
+  const roleOf = (path) => (before === path ? "Antes" : after === path ? "Após" : null);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setBefore(null); setAfter(null); } }}>
@@ -48,7 +48,7 @@ export function PhotoCompareDialog({ open, onOpenChange, photos = [] }) {
               <button key={i} type="button" onClick={() => pick(p.path)}
                       className={`relative rounded-md overflow-hidden border-2 transition ${role ? "border-primary" : "border-transparent hover:border-border"}`}
                       data-testid={`photo-compare-pick-${i}`}>
-                <img src={url(p.path)} alt={p.title || "Photo"} loading="lazy" className="h-20 w-full object-cover" />
+                <img src={url(p.path)} alt={p.title || "Fotografia"} loading="lazy" className="h-20 w-full object-cover" />
                 {role && <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">{role}</span>}
               </button>
             );

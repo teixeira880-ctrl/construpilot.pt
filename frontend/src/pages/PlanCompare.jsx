@@ -109,7 +109,7 @@ export default function PlanCompare() {
       if (showRemoved) {
         beforeRooms.forEach(r => {
           if (!afterNames.has(_n(r.name))) {
-            drawRoom(r, "rgba(239,68,68,0.28)", "rgba(220,38,38,0.9)", "SUPPR.");
+            drawRoom(r, "rgba(239,68,68,0.28)", "rgba(220,38,38,0.9)", "ELIM.");
           }
         });
       }
@@ -117,7 +117,7 @@ export default function PlanCompare() {
       if (showAdded) {
         afterRooms.forEach(r => {
           if (!beforeNames.has(_n(r.name))) {
-            drawRoom(r, "rgba(34,197,94,0.28)", "rgba(22,163,74,0.9)", "AJOUT");
+            drawRoom(r, "rgba(34,197,94,0.28)", "rgba(22,163,74,0.9)", "ADICIONAR");
           }
         });
       }
@@ -164,7 +164,7 @@ export default function PlanCompare() {
     <div className="mx-auto max-w-[1200px] px-5 py-8 grid gap-8">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <p className="overline text-primary">ConstruPilot PLAN — Comparateur</p>
+          <p className="overline text-primary">ConstruPilot PLAN — Comparador</p>
           <h1 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight">
             Compare a planta existente e o projeto
           </h1>
@@ -180,7 +180,7 @@ export default function PlanCompare() {
 
       <div className="grid md:grid-cols-[1fr_auto_1fr_auto] gap-4 items-end surface p-6">
         <div className="grid gap-2">
-          <Label>Plan existant (avant)</Label>
+          <Label>Planta existente (antes)</Label>
           <Select value={beforeId} onValueChange={setBeforeId}>
             <SelectTrigger className="rounded-sm h-11" data-testid="compare-before-select">
               <SelectValue placeholder="Escolher uma planta…" />
@@ -213,7 +213,7 @@ export default function PlanCompare() {
         <Button onClick={runCompare} disabled={busy || !beforeId || !afterId}
                 data-testid="compare-run-btn"
                 className="rounded-sm gap-2 h-11 hover:bg-orange-600 hover:text-white">
-          <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Comparer
+          <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Comparar
         </Button>
       </div>
 
@@ -223,7 +223,7 @@ export default function PlanCompare() {
           {afterImage && (
             <div className="surface p-4" data-testid="compare-overlay">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
-                <p className="overline">Superposition visuelle</p>
+                <p className="overline">Sobreposição visual</p>
                 <div className="flex gap-3 text-xs items-center flex-wrap">
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="checkbox" checked={showAdded} onChange={(e) => setShowAdded(e.target.checked)}
@@ -287,7 +287,7 @@ export default function PlanCompare() {
           {/* Résumé */}
           <div className="grid sm:grid-cols-4 gap-4">
             <div className="surface p-5">
-              <p className="overline">Avant</p>
+              <p className="overline">Antes</p>
               <p className="num mt-2 text-2xl font-bold">{result.before.total_surface_m2} m²</p>
               <p className="num text-xs text-muted-foreground">{result.before.room_count} divisões</p>
             </div>
@@ -306,7 +306,7 @@ export default function PlanCompare() {
               </p>
             </div>
             <div className="surface p-5">
-              <p className="overline">Impact</p>
+              <p className="overline">Impacto</p>
               <div className="flex flex-wrap gap-1 mt-2">
                 <Badge variant="outline" className="rounded-sm gap-1 text-emerald-500">
                   <Plus className="h-3 w-3" /> {result.added.length}

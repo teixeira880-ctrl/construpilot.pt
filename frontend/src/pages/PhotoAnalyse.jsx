@@ -101,7 +101,7 @@ export default function PhotoAnalyse() {
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex: a divisão mede cerca de 8 m²" data-testid="photo-note-input" className="rounded-sm" />
           </div>
           <Button onClick={analyse} disabled={busy || !b64} data-testid="analyse-photo-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Sparkles className="h-4 w-4" /> {busy ? "Analyse en cours…" : "Analisar a foto"}
+            <Sparkles className="h-4 w-4" /> {busy ? "Análise em curso…" : "Analisar a foto"}
           </Button>
         </div>
 
@@ -112,7 +112,7 @@ export default function PhotoAnalyse() {
               <p className="mt-2 font-display text-xl font-semibold">{result.analysis.room_type}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge variant="outline" className="rounded-sm">Estado: {result.analysis.general_condition}</Badge>
-                <Badge variant="outline" className="rounded-sm">Confiance : {result.analysis.confidence}</Badge>
+                <Badge variant="outline" className="rounded-sm">Confiança: {result.analysis.confidence}</Badge>
                 <Badge variant="outline" className="rounded-sm num">
                   ≈ {num(result.analysis.estimated_dimensions?.floor_area_m2, 1)} m²
                 </Badge>
@@ -144,7 +144,7 @@ export default function PhotoAnalyse() {
 
             {result.analysis.risks?.length > 0 && (
               <div className="p-4 rounded-sm border border-amber-500/40 bg-amber-500/5">
-                <p className="overline text-amber-500 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Risques visibles</p>
+                <p className="overline text-amber-500 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Riscos visíveis</p>
                 <ul className="mt-2 text-sm text-muted-foreground grid gap-1">
                   {result.analysis.risks.map((r, i) => <li key={i}>• {r}</li>)}
                 </ul>
@@ -181,7 +181,7 @@ export default function PhotoAnalyse() {
           <div className="flex items-center gap-3">
             <Camera className="h-5 w-5 text-primary" />
             <h2 className="font-display text-2xl font-bold tracking-tight">
-              Estimation {result.confirmed ? "confirmada" : "preliminar"}
+              Estimativa {result.confirmed ? "confirmada" : "preliminar"}
             </h2>
           </div>
           <EstimationView est={result.estimation} />

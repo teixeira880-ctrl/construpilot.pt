@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Upload, FileUp, Loader2, CheckCircle2, XCircle, FileText, Trash2, ArrowLeft } from "lucide-react";
 
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-const STATUS_LABELS = { draft: "Brouillon", sent: "Enviado", signed: "Aceite", refused: "Recusado", paid: "Pago" };
+const STATUS_LABELS = { draft: "Rascunho", sent: "Enviado", signed: "Aceite", refused: "Recusado", paid: "Pago" };
 const lineTtc = (l) => (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0) * (1 + (Number(l.vat_rate) || 0) / 100);
 const itemTtc = (it) => (it.lines || []).reduce((s, l) => s + lineTtc(l), 0);
 
@@ -38,7 +38,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
     const files = Array.from(fileList || []).filter((f) => f && f.name.toLowerCase().endsWith(".pdf"));
     if (!files.length) { toast.error("Selecione um ou vários ficheiros PDF"); return; }
     setBusy(true);
-    const tid = toast.loading(files.length > 1 ? `A ler${files.length} PDF…` : "Leitura do PDF…");
+    const tid = toast.loading(files.length > 1 ? `A ler ${files.length} PDF…` : "Leitura do PDF…");
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f));
@@ -46,7 +46,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
       setItems((data.items || []).map((it) => ({ ...it, client: it.client || {}, lines: it.lines || [] })));
       setPhase("preview");
       const okc = (data.items || []).filter((i) => i.ok).length;
-      toast.success(`${okc}documento(s) legível(is) — verifique antes de validar`, { id: tid });
+      toast.success(`${okc} documento(s) legível(is) — verifique antes de validar`, { id: tid });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Leitura impossível", { id: tid });
     } finally { setBusy(false); }
@@ -69,7 +69,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
       const { data } = await api.post("/documents/import-pdf/confirm", { status, items: payload });
       setResults(data);
       setPhase("results");
-      if (data.imported > 0) { toast.success(`${data.imported}/${data.total}documento(s) criado(s)`, { id: tid }); setDidImport(true); }
+      if (data.imported > 0) { toast.success(`${data.imported}/${data.total} documento(s) criado(s)`, { id: tid }); setDidImport(true); }
       else toast.error("Nenhum documento criado", { id: tid });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Não foi possível importar", { id: tid });
@@ -111,7 +111,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="rounded-sm h-9" data-testid="import-docs-status"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="draft">Brouillon</SelectItem>
+                  <SelectItem value="draft">Rascunho</SelectItem>
                   <SelectItem value="sent">Enviado</SelectItem>
                   <SelectItem value="accepted">Aceite / assinado</SelectItem>
                   <SelectItem value="refused">Recusado</SelectItem>
@@ -160,7 +160,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
                       </SelectContent>
                     </Select>
                     <Input value={it.number || ""} onChange={(e) => setItem(i, { number: e.target.value })}
-                           placeholder="N° document" className="h-8 rounded-sm text-xs" data-testid={`import-preview-number-${i}`} />
+                           placeholder="N.º documento" className="h-8 rounded-sm text-xs" data-testid={`import-preview-number-${i}`} />
                     <Input value={it.client?.company || ""} onChange={(e) => setClient(i, { company: e.target.value })}
                            placeholder="Empresa cliente" className="h-8 rounded-sm text-xs" data-testid={`import-preview-company-${i}`} />
                     <Input value={it.client?.email || ""} onChange={(e) => setClient(i, { email: e.target.value })}
@@ -217,7 +217,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
                   {r.ok ? (
                     <p className="text-xs text-muted-foreground">
                       {r.doc_type === "invoice" ? "Fatura" : r.doc_type === "credit_note" ? "Nota de crédito" : "Orçamento"}
-                      {r.number ? ` n° ${r.number}` : ""} · {r.lines} ligne(s) · {eur(r.ttc)}
+                      {r.number ? ` n° ${r.number}` : ""} · {r.lines} linha(s) · {eur(r.ttc)}
                       {r.status ? ` · ${STATUS_LABELS[r.status] || r.status}` : ""}
                     </p>
                   ) : <p className="text-xs text-destructive">{r.error}</p>}
@@ -226,13 +226,13 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
                   <Button size="sm" variant="ghost" className="gap-1 shrink-0"
                           onClick={() => { setOpen(false); nav(`/devis-editeur/${r.doc_id}`); }}
                           data-testid={`import-docs-open-${i}`}>
-                    <FileText className="h-3.5 w-3.5" /> Ouvrir
+                    <FileText className="h-3.5 w-3.5" /> Abrir
                   </Button>
                 )}
               </div>
             ))}
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={reset} data-testid="import-docs-again">Importer d'autres PDF</Button>
+              <Button variant="outline" className="flex-1" onClick={reset} data-testid="import-docs-again">Importar outros PDF</Button>
               <Button className="flex-1" onClick={() => setOpen(false)} data-testid="import-docs-done">Terminado</Button>
             </div>
           </div>

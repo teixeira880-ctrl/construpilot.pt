@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 
 const LEVELS = [
-  { key: "bas", label: "Bas", desc: "gama económica" },
-  { key: "moyen", label: "Moyen", desc: "standard" },
-  { key: "haut", label: "Haut", desc: "premium" },
+  { key: "bas", label: "Baixo", desc: "gama económica" },
+  { key: "moyen", label: "Médio", desc: "standard" },
+  { key: "haut", label: "Alto", desc: "premium" },
 ];
 const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " €";
 
@@ -47,7 +47,7 @@ export default function SharedLibraryPanel() {
     setLevel(lvl);
     try {
       await api.put("/shared-library/level", { level: lvl });
-      toast.success(`Gama de preços:${lvl}`);
+      toast.success(`Gama de preços: ${lvl}`);
     } catch { toast.error("Impossível guardar a gama"); }
   };
 
@@ -91,7 +91,7 @@ export default function SharedLibraryPanel() {
           <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)}
                   className="rounded-sm gap-1" data-testid="shared-lib-toggle">
             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            {open ? "Masquer" : "Consulter"}
+            {open ? "Ocultar" : "Consultar"}
           </Button>
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function SharedLibraryPanel() {
             </div>
           )}
           {total > items.length && (
-            <p className="text-xs text-muted-foreground">Visualização de {items.length} / {total}. Affinez avec la recherche.</p>
+            <p className="text-xs text-muted-foreground">Visualização de {items.length} / {total}. Refine com a pesquisa.</p>
           )}
         </div>
       )}

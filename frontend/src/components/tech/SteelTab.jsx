@@ -79,7 +79,7 @@ export default function SteelTab({ plans, suppliers }) {
         </div>
         <Button onClick={analyze} disabled={busy || !planId} className="gap-2 rounded-sm" data-testid="analyze-rebar-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Analyse IA…" : "Analisar a armadura"}
+          {busy ? "Análise IA…" : "Analisar a armadura"}
         </Button>
       </div>
 
@@ -97,19 +97,19 @@ export default function SteelTab({ plans, suppliers }) {
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-bold">Mapa aço</h3>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={addLine} className="gap-1 rounded-sm"><Plus className="h-3.5 w-3.5" />Ligne</Button>
+                <Button size="sm" variant="outline" onClick={addLine} className="gap-1 rounded-sm"><Plus className="h-3.5 w-3.5" />Linha</Button>
                 <Button size="sm" onClick={save} className="rounded-sm" data-testid="save-bordereau">Guardar</Button>
               </div>
             </div>
             {ana.scale_confidence != null && (
-              <p className="text-xs text-muted-foreground mb-2">Escala: {ana.scale_detected || "incertaine"} · confiance {Math.round((ana.scale_confidence || 0) * 100)}%
+              <p className="text-xs text-muted-foreground mb-2">Escala: {ana.scale_detected || "incertaine"} · confiança {Math.round((ana.scale_confidence || 0) * 100)}%
                 {(ana.scale_confidence || 0) < 0.6 && <span className="text-red-600"> — calibração aconselhada</span>}</p>
             )}
             <div className="overflow-auto rounded-sm border border-border">
               <table className="w-full text-xs">
                 <thead className="bg-secondary/40"><tr>
-                  <th className="text-left p-2">Ø</th><th className="p-2">Zone</th><th className="p-2 text-right">ml</th>
-                  <th className="p-2 text-right">Poids kg</th><th className="p-2">Confiance</th><th className="p-2"></th><th className="p-2"></th>
+                  <th className="text-left p-2">Ø</th><th className="p-2">Zona</th><th className="p-2 text-right">ml</th>
+                  <th className="p-2 text-right">Peso kg</th><th className="p-2">Confiança</th><th className="p-2"></th><th className="p-2"></th>
                 </tr></thead>
                 <tbody>
                   {(ana.lines || []).map((l, i) => {
@@ -132,19 +132,19 @@ export default function SteelTab({ plans, suppliers }) {
               </table>
             </div>
             <div className="mt-3 flex flex-wrap gap-4 text-sm">
-              <span>Tonnage : <b>{ana.summary?.tonnage_t ?? 0} t</b></span>
+              <span>Tonelagem: <b>{ana.summary?.tonnage_t ?? 0} t</b></span>
               {ana.element_count > 1 && <span className="text-amber-600">Número de elementos idênticos detetado: <b>{ana.element_count}</b> (aplicado ao cálculo encomendável)</span>}
-              {(ana.treillis || []).length > 0 && <span>Treillis : <b>{ana.summary?.treillis_panels ?? 0} panneaux</b></span>}
+              {(ana.treillis || []).length > 0 && <span>Malha: <b>{ana.summary?.treillis_panels ?? 0} panneaux</b></span>}
             </div>
           </div>
 
           <div className="surface p-4 space-y-3">
             <h3 className="font-bold">Quantidades encomendáveis</h3>
             <div className="flex flex-wrap items-end gap-3">
-              <div><label className="text-xs text-muted-foreground">Pertes/chutes %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="loss-input" /></div>
+              <div><label className="text-xs text-muted-foreground">Perdas/sobras %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-24" data-testid="loss-input" /></div>
               <div><label className="text-xs text-muted-foreground">Comprimento barra (m)</label><Input type="number" value={barLen} onChange={(e) => setBarLen(parseFloat(e.target.value) || 12)} className="h-8 w-24" data-testid="barlen-input" /></div>
               <div><label className="text-xs text-muted-foreground">N.º elementos idênticos</label><Input type="number" value={count} onChange={(e) => setCount(parseInt(e.target.value) || 1)} className="h-8 w-24" data-testid="count-input" /></div>
-              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="compute-order-btn"><Sparkles className="h-4 w-4" />Calculer</Button>
+              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="compute-order-btn"><Sparkles className="h-4 w-4" />Calcular</Button>
             </div>
           </div>
 
