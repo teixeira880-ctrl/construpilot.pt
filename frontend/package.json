@@ -69,7 +69,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "craco build",
+    "build": "DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false craco build",
     "test": "craco test",
     "test:pilot": "node scripts/test-platform-pilot.cjs",
     "test:workspace": "node scripts/test-chantier-workspace.cjs",

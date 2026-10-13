@@ -1,5 +1,4 @@
 _mobile_src/
-mobile/
 **/node_modules/
 **/.git/
 **/__pycache__/
