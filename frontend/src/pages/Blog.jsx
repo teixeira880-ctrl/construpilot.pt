@@ -8,11 +8,17 @@ import { useI18n } from "@/context/I18nContext";
 import { api } from "@/lib/api";
 import NewsletterForm from "@/components/NewsletterForm";
 
-const dynToCard = (a) => ({
-  slug: a.slug, title: a.title, excerpt: a.excerpt || a.meta_description || "",
-  cover: a.hero_image_url || "/og-image.jpg", category: a.seed_keyword || "Guide",
-  readingMinutes: a.reading_minutes || 4, publishedAt: a.published_at,
-});
+const dynToCard = (a) => {
+  const audLabel = a.audience === "pros" ? "Profissionais"
+                 : a.audience === "particuliers" ? "Particulares"
+                 : (a.seed_keyword || "Guia");
+  return {
+    slug: a.slug, title: a.title, excerpt: a.excerpt || a.meta_description || "",
+    cover: a.hero_image_url || "/og-image.jpg", category: audLabel,
+    readingMinutes: a.reading_minutes || 4, publishedAt: a.published_at,
+    audience: a.audience || null, wordCount: a.word_count || null,
+  };
+};
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -33,14 +39,22 @@ export default function Blog() {
   const { lang } = useI18n();
   const isPT = lang === "pt";
   const [dyn, setDyn] = useState([]);
+  const [aud, setAud] = useState("all");
   useEffect(() => {
-    api.get(`/blog/autoseo?lang=${isPT ? "pt" : "fr"}`)
+    const audQ = aud === "all" ? "" : `&audience=${aud}`;
+    api.get(`/blog/autoseo?lang=${isPT ? "pt" : "fr"}${audQ}`)
       .then(({ data }) => setDyn((data.articles || []).map(dynToCard)))
       .catch(() => setDyn([]));
-  }, [isPT]);
+  }, [isPT, aud]);
   const staticArticles = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
   const staticSlugs = new Set(staticArticles.map((a) => a.slug));
-  const articles = [...dyn.filter((a) => !staticSlugs.has(a.slug)), ...staticArticles];
+  const combined = [...dyn.filter((a) => !staticSlugs.has(a.slug)), ...staticArticles];
+  const articles = aud === "all" ? combined : combined.filter((a) => a.audience === aud);
+  const SEGMENTS = [
+    ["all", "Todos", "blog-filter-all"],
+    ["pros", "Profissionais", "blog-filter-pros"],
+    ["particuliers", "Particulares", "blog-filter-particuliers"],
+  ];
   return (
     <>
       <SEO
@@ -70,6 +84,24 @@ export default function Blog() {
       </section>
 
       <section className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16">
+        <div className="flex flex-wrap gap-2 mb-8" role="tablist" aria-label="Filtrar por público">
+          {SEGMENTS.map(([key, label, tid]) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={aud === key}
+              onClick={() => setAud(key)}
+              data-testid={tid}
+              className={`px-4 py-2 rounded-full text-xs font-semibold border transition-colors ${
+                aud === key
+                  ? "bg-primary text-white border-primary"
+                  : "border-border hover:border-primary text-muted-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="blog-list">
           {articles.map((a) => (
             <Link
