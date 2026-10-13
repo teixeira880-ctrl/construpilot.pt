@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const APPS = ["ConstruPilot Obra", "ConstruPilot Colaborador", "ConstruPilot Particulares"];
-const CONTACT_EMAIL = "contact@construpilot.fr";
+const CONTACT_EMAIL = "info@construpilot.pt";
 const UPDATED = { fr: "Juin 2026", en: "June 2026" };
 
 const T = {

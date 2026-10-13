@@ -85,7 +85,7 @@ async def contact(body: ContactIn, request: Request, response: Response) -> dict
         await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": a["user_id"], "type": "support_request", "url": "/admin?tab=support",
                                            "message": f"Assistance : {doc['name']} — {doc['subject'][:60]}", "read": False, "created_at": now})
     from engines.emailer import send_email, wrap_html
-    support_to = os.environ.get("SUPPORT_EMAIL") or os.environ.get("ADMIN_SEED_EMAIL") or "info@construpilot.fr"
+    support_to = os.environ.get("SUPPORT_EMAIL") or os.environ.get("ADMIN_SEED_EMAIL") or "info@construpilot.pt"
     status = "sent"
     try:
         await send_email(support_to, f"[Assistance {doc['ticket_id']}] {doc['subject']}",
@@ -171,7 +171,7 @@ async def reply_ticket(ticket_id: str, body: TicketReplyIn, admin=Depends(curren
         raise HTTPException(404, "Pedido não encontrado")
     now = datetime.now(timezone.utc).isoformat()
     from engines.emailer import send_email, wrap_html
-    support_to = os.environ.get("SUPPORT_EMAIL") or os.environ.get("ADMIN_SEED_EMAIL") or "info@construpilot.fr"
+    support_to = os.environ.get("SUPPORT_EMAIL") or os.environ.get("ADMIN_SEED_EMAIL") or "info@construpilot.pt"
     try:
         await send_email(t["email"], f"Re: [Assistance {ticket_id}] {t['subject']}",
                          wrap_html(f'Resposta ao seu pedido {ticket_id}', f"<p>Olá {t['name']},</p><div style='white-space:pre-wrap'>{body.message.strip()}</div><hr><p style='color:#6b7280;font-size:12px'>O seu pedido: «{t['subject']} »<br>{t['message'][:800]}</p>"),

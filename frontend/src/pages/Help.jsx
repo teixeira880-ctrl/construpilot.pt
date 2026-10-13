@@ -63,7 +63,7 @@ function ContactForm() {
       <Textarea required minLength={10} rows={5} value={form.message} onChange={set("message")} placeholder="Descreva a sua pergunta ou o problema encontrado (página, mensagem de erro, o que esperava)…" className="resize-none" data-testid="help-message" />
       <input type="text" value={form.website} onChange={set("website")} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">Resposta por e-mail em 1 dia útil · <a href="mailto:info@construpilot.fr" className="text-primary hover:underline">info@construpilot.fr</a></p>
+        <p className="text-xs text-muted-foreground">Resposta por e-mail em 1 dia útil · <a href="mailto:info@construpilot.pt" className="text-primary hover:underline">info@construpilot.pt</a></p>
         <Button type="submit" disabled={busy} className="gap-2" data-testid="help-submit"><Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o meu pedido"}</Button>
       </div>
     </form>
@@ -78,7 +78,7 @@ export default function Help() {
     { icon: MessageCircle, title: "Assistente online", desc: "Resposta imediata às perguntas sobre a utilização do ConstruPilot.", action: <Button size="sm" onClick={openChat} data-testid="help-open-chat">Abrir o chat</Button> },
     { icon: Bot, title: "Assistente Construção (IA especializada)", desc: "Orçamentos, regulamentação, leitura de plantas, processo de obra — para profissionais com sessão iniciada.", action: <Button size="sm" variant="outline" asChild data-testid="help-open-assistant"><Link to={user ? "/assistant" : "/login?next=/assistant"}>/assistant</Link></Button> },
     { icon: KeyRound, title: "Espaço do cliente e subempreiteiro", desc: "Foi convidado para uma obra? Inicie sessão com o identificador recebido.", action: <Button size="sm" variant="outline" asChild data-testid="help-open-portal"><Link to="/espace">/espace</Link></Button> },
-    { icon: Mail, title: "E-mail", desc: "Para qualquer questão comercial, de faturação ou de dados pessoais.", action: <Button size="sm" variant="outline" asChild data-testid="help-mailto"><a href="mailto:info@construpilot.fr">info@construpilot.fr</a></Button> },
+    { icon: Mail, title: "E-mail", desc: "Para qualquer questão comercial, de faturação ou de dados pessoais.", action: <Button size="sm" variant="outline" asChild data-testid="help-mailto"><a href="mailto:info@construpilot.pt">info@construpilot.pt</a></Button> },
   ];
   return (
     <div className="grid gap-10 max-w-5xl" data-testid="help-page">

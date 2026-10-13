@@ -80,7 +80,7 @@ S = {
 }
 
 SITE = "construpilot.fr"
-CONTACT = "contact@construpilot.fr"
+CONTACT = "info@construpilot.pt"
 PATENT = "FR2611044"
 # Source unique de l'offre (miroir de GET /api/offer)
 OFFER = {"free_promo": True, "trial_days": 7,

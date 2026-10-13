@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ShieldCheck, Smartphone } from "lucide-react";
 
-const CONTACT_EMAIL = "contact@construpilot.fr";
+const CONTACT_EMAIL = "info@construpilot.pt";
 const UPDATED_FR = "Juin 2026";
 const UPDATED_EN = "June 2026";
 

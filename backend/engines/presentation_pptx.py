@@ -29,7 +29,7 @@ LIGHT = RGBColor(0xF1, 0xF6, 0xF2)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 
 SITE = "construpilot.fr"
-CONTACT = "contact@construpilot.fr"
+CONTACT = "info@construpilot.pt"
 PATENT = "FR2611044"
 
 # ════════════════════════════════════  Deck client  ════════════════════════════════════
